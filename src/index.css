@@ -1,0 +1,86 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
+@plugin "tailwindcss-animate";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --bg-color: #09090b;
+    --surface-color: #18181b;
+    --border-color: #27272a;
+    --text-primary: #fafafa;
+    --text-muted: #a1a1aa;
+  }
+
+  .light {
+    --bg-color: #ffffff;
+    --surface-color: #f4f4f5;
+    --border-color: #e4e4e7;
+    --text-primary: #09090b;
+    --text-muted: #52525b;
+  }
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-background: var(--bg-color);
+  --color-surface: var(--surface-color);
+  --color-border: var(--border-color);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  
+  --color-accent-success: #10b981;
+  --color-accent-ai: #3b82f6;
+  --color-accent-error: #ef4444;
+  --color-accent-warning: #f59e0b;
+  
+  /* --- LANDINGPAGE FARBEN WIEDERHERGESTELLT --- */
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-900: #1e3a8a;
+  
+  --color-dark-800: #27272a;
+  --color-dark-900: #18181b;
+  --color-dark-950: #09090b;
+}
+
+/* --- LANDINGPAGE EFFEKTE WIEDERHERGESTELLT --- */
+@utility bg-tech-grid {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@utility shadow-neon-brand {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+@utility text-glow {
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+/* Scrollbar Customization */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}

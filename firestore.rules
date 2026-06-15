@@ -1,0 +1,161 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // 1. HELPER FUNKTIONEN (High-Performance SaaS Mandanten-Logik)
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Null-Cost Check über Custom Claims im JWT Token!
+    // Keine Datenbank-Reads mehr, prüft direkt im Token!
+    function isSameCompany(resourceCompanyId) {
+      return isAuthenticated() && 
+             request.auth.token.companyId != null && 
+             request.auth.token.companyId == resourceCompanyId;
+    }
+
+    // System-Admin
+    function isSystemAdmin() {
+      return isAuthenticated() && request.auth.token.email == "cv1@gmx.ch";
+    }
+
+    // ===============================================================
+    // 2. GLOBALE REGELN & PUBLIC ROUTES
+    // ===============================================================
+
+    match /systemConfig/{docId} {
+      allow read: if true;
+      allow write: if false; 
+    }
+
+    // Öffentliches Lead-Formular (Jeder im Internet darf Leads erstellen)
+    match /leads/{leadId} {
+      allow create: if true;
+      // Lesen/Löschen darf man den Lead nur, wenn er zur eigenen Firma gehört!
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+    }
+
+    // Temp Receipts für den Smartphone Upload (müssen public schreibbar sein)
+    match /temp_receipts/{docId} {
+      allow create: if true;
+      allow read, delete: if isAuthenticated(); 
+    }
+
+    // +++ FIX 1.5: INVITE-SYSTEM FREISCHALTEN +++
+    // Unauthentifizierte Nutzer müssen den Invite-Token beim Onboarding lesen können
+    match /invites/{inviteId} {
+      allow read: if true;
+      allow update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+
+    // ===============================================================
+    // 3. CORE SAAS DATEN (Striktion auf Eigene Firma / companyId)
+    // ===============================================================
+
+    match /companies/{companyId} {
+      allow read, update: if isSystemAdmin() ||
+             isSameCompany(companyId);
+      allow create, delete: if isSystemAdmin();
+    }
+
+    match /users/{userId} {
+      // Nutzer dürfen ihr eigenes Profil lesen/schreiben ODER Admins der gleichen Firma
+      allow read, write: if isSystemAdmin() ||
+             request.auth.uid == userId || isSameCompany(resource.data.companyId);
+    }
+
+    // ===============================================================
+    // 4. PROJEKT & MODUL DATEN
+    // ===============================================================
+
+    match /projects/{projectId} {
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /projectMembers/{memberId} {
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /companyUsers/{userId} {
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /timeEntries/{entryId} {
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /defects/{defectId} {
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /cad_plans/{planId} {
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /documents/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /transactions/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /financeData/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /projectTasks/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /calendarEvents/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /audioNotes/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /whiteboardExports/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /chatMessages/{docId} { 
+      allow read, update, delete: if isSystemAdmin() ||
+             isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /dailyGoals/{docId} { 
+      allow read, write: if isAuthenticated();
+    }
+    match /siteData/{docId} {
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+
+    // ===============================================================
+    // 5. CATCH-ALL FÜR UNBEKANNTE DOKUMENTE
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if isSystemAdmin();
+    }
+  }
+}

@@ -1,0 +1,194 @@
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import { User, onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'; 
+import { auth, db, isConfigured } from '../firebase';
+
+export interface AppUser extends User {
+  role?: string;
+  hasActiveSubscription?: boolean;
+  stripeCustomerId?: string;
+  plan?: string;
+  companyId?: string;
+  trialEndsAt?: string;
+}
+
+interface AuthContextType {
+  currentUser: AppUser | null;
+  userRole: string | null;
+  loading: boolean;
+  logout: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextType>({
+  currentUser: null,
+  userRole: null,
+  loading: true,
+  logout: async () => {},
+});
+
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // 🔥 FIX: Der Loop-Breaker! Verhindert den Smartphone-Freeze.
+  const claimSyncAttempted = useRef(false);
+
+  const syncCustomClaims = async (user: User, companyId: string) => {
+    try {
+      await fetch('/api/set-tenant-claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid, companyId })
+      });
+      // ACHTUNG: Das löst onAuthStateChanged erneut aus!
+      await user.getIdToken(true);
+      console.log("Tenant Claims erfolgreich synchronisiert!");
+    } catch (error) {
+      console.error("Fehler beim Claim-Sync:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (!isConfigured || !auth) {
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && db) {
+        try {
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            let userData = docSnap.data() as AppUser;
+            
+            const tokenResult = await user.getIdTokenResult();
+            
+            // 🔥 FIX: Prüfe, ob wir in dieser Session schon synchronisiert haben
+            if (!tokenResult.claims.companyId && userData.companyId) {
+              if (!claimSyncAttempted.current) {
+                claimSyncAttempted.current = true; // Schalter umlegen
+                console.log("Token Claim fehlt. Führe Auto-Heal aus...");
+                await syncCustomClaims(user, userData.companyId);
+              } else {
+                console.warn("Claim-Sync übersprungen, um Endlosschleife zu verhindern.");
+              }
+            }
+
+            if (!userData.companyId) {
+              const newCompanyId = `comp_${user.uid}`;
+              await updateDoc(docRef, { companyId: newCompanyId });
+              
+              await setDoc(doc(db, 'companies', newCompanyId), {
+                id: newCompanyId,
+                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+                plan: 'Free Trial',
+                maxSeats: 1,
+                usedSeats: 1,
+                ownerId: user.uid,
+                createdAt: new Date().toISOString()
+              });
+              
+              if (!claimSyncAttempted.current) {
+                claimSyncAttempted.current = true;
+                await syncCustomClaims(user, newCompanyId);
+              }
+              userData = { ...userData, companyId: newCompanyId };
+            }
+
+            setUserRole(userData.role || 'owner');
+            setCurrentUser({ ...user, ...userData });
+          } else {
+            // === NEUER USER FLOW (MIT INVITE-LOGIK) ===
+            const urlParams = new URLSearchParams(window.location.search);
+            const inviteToken = urlParams.get('invite');
+
+            let targetCompanyId = `comp_${user.uid}`;
+            let targetRole = 'owner';
+            let isInvitedUser = false;
+
+            if (inviteToken) {
+              const inviteRef = doc(db, 'invites', inviteToken);
+              const inviteSnap = await getDoc(inviteRef);
+
+              if (inviteSnap.exists() && inviteSnap.data().status === 'pending') {
+                targetCompanyId = inviteSnap.data().companyId;
+                targetRole = 'employee';
+                isInvitedUser = true;
+
+                await updateDoc(inviteRef, {
+                  status: 'used',
+                  usedBy: user.uid,
+                  usedAt: new Date().toISOString()
+                });
+              }
+            }
+
+            const trialEndDate = new Date();
+            trialEndDate.setDate(trialEndDate.getDate() + 30);
+
+            const newUserData = {
+              email: user.email,
+              name: user.displayName || user.email?.split('@')[0] || 'Teammitglied',
+              role: targetRole,
+              companyId: targetCompanyId,
+              hasActiveSubscription: true, 
+              trialEndsAt: isInvitedUser ? null : trialEndDate.toISOString(),
+              createdAt: new Date().toISOString()
+            };
+            
+            await setDoc(docRef, newUserData);
+
+            if (!isInvitedUser) {
+              await setDoc(doc(db, 'companies', targetCompanyId), {
+                id: targetCompanyId,
+                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+                plan: 'Free Trial',
+                maxSeats: 1,
+                usedSeats: 1,
+                ownerId: user.uid,
+                createdAt: new Date().toISOString()
+              });
+            } else {
+              const compRef = doc(db, 'companies', targetCompanyId);
+              const compSnap = await getDoc(compRef);
+              if (compSnap.exists()) {
+                 await updateDoc(compRef, { usedSeats: (compSnap.data().usedSeats || 0) + 1 });
+              }
+            }
+
+            if (!claimSyncAttempted.current) {
+              claimSyncAttempted.current = true;
+              await syncCustomClaims(user, targetCompanyId);
+            }
+
+            setUserRole(targetRole);
+            setCurrentUser({ ...user, ...newUserData });
+          }
+        } catch (err: any) {
+          console.error("Auth Fetch Error:", err);
+        }
+      } else {
+        setUserRole(null);
+        setCurrentUser(null);
+      }
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const logout = () => signOut(auth!);
+
+  return (
+    <AuthContext.Provider value={{ currentUser, userRole, loading, logout }}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+}
