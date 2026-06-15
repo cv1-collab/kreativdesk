@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
-import { VitePWA } from 'vite-plugin-pwa'; // PWA-Plugin importiert
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -44,6 +44,8 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          // +++ FIX: Caching-Limit auf 5 MB erhöhen für 3D & BIM Viewer Chunks +++
+          maximumFileSizeToCacheInBytes: 5000000, 
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/firebase\.googleapis\.com\/.*$/,
