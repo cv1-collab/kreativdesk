@@ -63,7 +63,6 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      // +++ FIX 1: Globale Variablen für das PDF-WASM bereitstellen +++
       global: 'window',
       'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
     },
@@ -77,16 +76,19 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       hmr: process.env.DISABLE_HMR !== 'true',
     },
-    // +++ FIX 2: ESBuild Target für PDF +++
+    // +++ FIX: Zwingt den Minifier, die originalen Funktionsnamen zu behalten +++
+    esbuild: {
+      keepNames: true,
+    },
     optimizeDeps: {
       esbuildOptions: {
         target: 'esnext',
+        keepNames: true, // Greift auch bei den externen Libraries wie react-pdf
       }
     },
     // === PERFORMANCE TURBO: SMART CHUNK SPLITTING ===
     build: {
       target: 'esnext',
-      // +++ FIX 3: Mixed Modules erlauben (verhindert den "y is not a function" Fehler) +++
       commonjsOptions: {
         transformMixedEsModules: true,
       },
@@ -98,7 +100,6 @@ export default defineConfig(({ mode }) => {
             'vendor-ui': ['lucide-react', 'motion/react', 'clsx', 'tailwind-merge'],
             'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
             'vendor-charts': ['recharts'],
-            // +++ FIX 4: @react-pdf/renderer sauber zum PDF-Chunk hinzugefügt +++
             'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas', '@react-pdf/renderer']
           }
         }
