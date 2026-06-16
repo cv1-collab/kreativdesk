@@ -10,7 +10,7 @@ import {
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
@@ -184,23 +184,35 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
+    
     try {
       const fileName = `Buchung_${opCostData.category.replace(/\s/g,'_')}_${Date.now()}.pdf`;
       const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
 
-      await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
+      // +++ FIX: Finde die echte ID des Ordners "01_FINANZEN" +++
+      let targetFolderId = '';
+      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true));
+      const folderSnap = await getDocs(folderQ);
+      if (!folderSnap.empty) {
+        targetFolderId = folderSnap.docs[0].id;
+      } else {
+        const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() });
+        targetFolderId = newFolderRef.id;
+      }
 
-      // Sichert das PDF sichtbar in 01_FINANZEN
-      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
+      await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
+      
+      // Speichern mit der ECHTEN Folder ID
+      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
 
       for (let i = 0; i < opCostReceipts.length; i++) {
         if (opCostReceipts[i].startsWith('data:image')) {
           const fetchRes = await fetch(opCostReceipts[i]); const imgBlob = await fetchRes.blob();
           const imgRef = ref(storage, `${safeCompanyId}/documents/Original_Ext_Beleg_${Date.now()}_${i}.png`);
           await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
-          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
+          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
         }
       }
       addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });

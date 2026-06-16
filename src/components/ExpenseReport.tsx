@@ -11,7 +11,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
 
 import { db, storage } from '../firebase';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -238,14 +238,19 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
 
-      // Speichert die Transaktion
+      // +++ FIX: Finde die echte ID +++
+      let targetFolderId = '';
+      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true));
+      const folderSnap = await getDocs(folderQ);
+      if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
+      else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }
+
       await addDoc(collection(db, 'transactions'), { 
         type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', projectId: headerData.projectId || 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...receipts], createdAt: new Date().toISOString() 
       });
 
-      // Speichert das Dokument SICHTBAR im "01_FINANZEN" Ordner des Datenraums
       await addDoc(collection(db, 'documents'), { 
-        name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() 
+        name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() 
       });
 
       addToast(t('ext_costs_booked'), "success"); 

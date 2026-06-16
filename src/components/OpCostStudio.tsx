@@ -8,7 +8,7 @@ import { Landmark, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, F
 import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { db, storage } from '../firebase';
-import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '../utils';
 
@@ -128,19 +128,22 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
 
-      // Speichert die Transaktion
+      // +++ FIX: Finde die echte ID +++
+      let targetFolderId = '';
+      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true));
+      const folderSnap = await getDocs(folderQ);
+      if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
+      else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }
+
       await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
+      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
 
-      // Speichert das Haupt-PDF im "01_FINANZEN" Ordner
-      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
-
-      // Speichert die Original-Beleg-Bilder ebenfalls im "01_FINANZEN" Ordner
       for (let i = 0; i < opCostReceipts.length; i++) {
         if (opCostReceipts[i].startsWith('data:image')) {
           const fetchRes = await fetch(opCostReceipts[i]); const imgBlob = await fetchRes.blob();
           const imgRef = ref(storage, `${safeCompanyId}/documents/Original_Ext_Beleg_${Date.now()}_${i}.png`);
           await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
-          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
+          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
         }
       }
 
