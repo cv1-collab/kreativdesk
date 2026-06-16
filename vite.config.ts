@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          maximumFileSizeToCacheInBytes: 5000000, 
+          maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit 
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/firebase\.googleapis\.com\/.*$/,
