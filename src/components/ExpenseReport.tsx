@@ -6,9 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
 import QRCode from 'react-qr-code';
-import { 
-  Receipt, Plus, Trash2, X, Loader2, Image as ImageIcon, Smartphone, CheckCircle2, Camera, FileText
-} from 'lucide-react';
+import { Receipt, Plus, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
 
@@ -16,26 +14,76 @@ import { db, storage } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
+import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
-  en: {
-    expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment',
-    global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant',
-    amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached',
-    upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book',
-    cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description',
-    generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ext_costs_booked: 'Expenses successfully booked'
-  },
-  de: {
-    expense_studio: 'Spesen Studio', employee: 'Mitarbeiter', date: 'Datum', project_assignment: 'Projekt-Zuweisung',
-    global_expenses: 'Globale Spesen (Kein Projekt)', category: 'Kategorie', purpose_merchant: 'Zweck / Merchant',
-    amount: 'Betrag', add_position: 'Position hinzufügen', receipts_photos: 'Belege / Fotos', attached: 'angehängt',
-    upload_document: 'Beleg hochladen', live_scan: 'Live Scan', total: 'Total', save_book: 'Speichern & Verbuchen',
-    cancel: 'Abbrechen', analyzing_ai: 'KI analysiert Beleg...', take_photo: 'Foto aufnehmen', select: 'Wählen...', description: 'Beschreibung',
-    generate_pdf: 'PDF generieren & Verbuchen', save_error: 'Fehler beim Speichern', ext_costs_booked: 'Spesen erfolgreich verbucht'
-  }
+  en: { expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment', global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant', amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached', upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book', cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description', generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ext_costs_booked: 'Expenses successfully booked' },
+  de: { expense_studio: 'Spesen Studio', employee: 'Mitarbeiter', date: 'Datum', project_assignment: 'Projekt-Zuweisung', global_expenses: 'Globale Spesen (Kein Projekt)', category: 'Kategorie', purpose_merchant: 'Zweck / Merchant', amount: 'Betrag', add_position: 'Position hinzufügen', receipts_photos: 'Belege / Fotos', attached: 'angehängt', upload_document: 'Beleg hochladen', live_scan: 'Live Scan', total: 'Total', save_book: 'Speichern & Verbuchen', cancel: 'Abbrechen', analyzing_ai: 'KI analysiert Beleg...', take_photo: 'Foto aufnehmen', select: 'Wählen...', description: 'Beschreibung', generate_pdf: 'PDF generieren & Verbuchen', save_error: 'Fehler beim Speichern', ext_costs_booked: 'Spesen erfolgreich verbucht' }
 };
 
 const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+
+const pdfStyles = StyleSheet.create({
+  page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
+  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#f97316', paddingBottom: 10, marginBottom: 20 },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#f97316', textTransform: 'uppercase', marginBottom: 8 },
+  subtitle: { fontSize: 12, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' },
+  metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 },
+  metaLabel: { fontSize: 9, color: '#6b7280', marginRight: 10 },
+  metaValue: { fontSize: 9, color: '#000000', fontWeight: 'bold', width: 80, textAlign: 'right' },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 5 },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6 },
+  col1: { width: '30%' }, col2: { width: '50%' }, col3: { width: '20%', textAlign: 'right' },
+  textBold: { fontWeight: 'bold', color: '#000' },
+  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
+  footerText: { fontSize: 8, color: '#9ca3af' },
+  receiptsTitle: { fontSize: 12, fontWeight: 'bold', color: '#f97316', borderBottomWidth: 1, borderBottomColor: '#f97316', paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase', marginTop: 20 },
+  receiptsGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  receiptImage: { width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }
+});
+
+const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, receipts, formatCHF, t, companyUsers, projects }: any) => {
+  const user = Array.isArray(companyUsers) ? companyUsers.find((u:any) => u.id === headerData.userId) : null;
+  const project = Array.isArray(projects) ? projects.find((p:any) => p.id === headerData.projectId) : null;
+  return (
+    <Document>
+      <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
+        <View style={pdfStyles.headerContainer} fixed>
+          <View style={pdfStyles.headerLeft}><Text style={pdfStyles.title}>SPESEN</Text><Text style={pdfStyles.subtitle}>ABRECHNUNG</Text></View>
+          <View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('employee')}:</Text><Text style={pdfStyles.metaValue}>{user?.firstName} {user?.lastName}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('date')}:</Text><Text style={pdfStyles.metaValue}>{new Date(headerData.date).toLocaleDateString('de-CH')}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{project?.name || 'Intern'}</Text></View>
+          </View>
+        </View>
+        <View style={pdfStyles.tableHeader} fixed>
+          <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('category')}</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('description')}</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>{t('amount')} (CHF)</Text>
+        </View>
+        {positions.map((pos: any, idx: number) => (
+          <View key={idx} style={pdfStyles.tableRow} wrap={false}>
+            <View style={pdfStyles.col1}><Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontSize: 8, fontWeight: 'bold' }}>{pos.category}</Text></View>
+            <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{pos.description || '-'}</Text>
+            <Text style={[pdfStyles.col3, pdfStyles.textBold]}>{formatCHF(Number(pos.amount))}</Text>
+          </View>
+        ))}
+        <View style={{ alignItems: 'flex-end', marginTop: 15 }} wrap={false}>
+          <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#f97316', paddingBottom: 5 }}>
+            <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>{t('total').toUpperCase()}</Text>
+            <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>CHF {formatCHF(totalAmount)}</Text>
+          </View>
+        </View>
+        {receipts.length > 0 && (
+          <View style={{ marginTop: 20 }}>
+            <Text style={pdfStyles.receiptsTitle}>Angehängte Belege</Text>
+            <View style={pdfStyles.receiptsGrid}>{receipts.map((url: string, i: number) => <PDFImage key={i} src={url} style={pdfStyles.receiptImage} />)}</View>
+          </View>
+        )}
+        <View style={pdfStyles.footer} fixed><Text style={pdfStyles.footerText}>{settings.footerText}</Text><Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} /></View>
+      </Page>
+    </Document>
+  );
+};
 
 interface ExpenseReportProps { onClose: () => void; onSave: () => void; }
 
@@ -63,7 +111,6 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
 
-  // iPad & Smartphone Detection
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const isMobileOrTablet = windowWidth < 1024;
   useEffect(() => {
@@ -72,7 +119,6 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // +++ WÄCHTER: Mobile Upload Listener +++
   useEffect(() => {
     if (!db || !sessionId) return;
     const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', sessionId));
@@ -186,108 +232,30 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
-    
     try {
       const fileName = `Spesen_${Date.now()}.pdf`;
       const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
 
+      // Speichert die Transaktion
       await addDoc(collection(db, 'transactions'), { 
-        type: 'expense', 
-        amount: totalAmount, 
-        category: 'Spesen', 
-        description: `Spesenabrechnung (${positions.length} Positionen)`, 
-        date: headerData.date, 
-        status: 'Pending', 
-        projectId: headerData.projectId || 'global', 
-        ownerId: currentUser.uid, 
-        companyId: safeCompanyId,
-        receiptUrls: [finalPdfUrl, ...receipts], 
-        createdAt: new Date().toISOString() 
+        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', projectId: headerData.projectId || 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...receipts], createdAt: new Date().toISOString() 
       });
 
+      // Speichert das Dokument SICHTBAR im "01_FINANZEN" Ordner des Datenraums
       await addDoc(collection(db, 'documents'), { 
-        name: fileName, 
-        url: finalPdfUrl, 
-        type: 'pdf', 
-        isFolder: false, 
-        ownerId: currentUser.uid, 
-        companyId: safeCompanyId,
-        projectId: headerData.projectId || 'global', 
-        folderId: 'sys_finance', 
-        uploadedAt: new Date().toISOString() 
+        name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() 
       });
 
       addToast(t('ext_costs_booked'), "success"); 
       setIsPdfStudioOpen(false);
-      onSave();
+      if (onSave) onSave();
     } catch (error) {
       addToast(t('save_error'), "error");
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const renderPdfContent = () => {
-    const user = Array.isArray(companyUsers) ? companyUsers.find(u => u.id === headerData.userId) : null;
-    const project = Array.isArray(projects) ? projects.find(p => p.id === headerData.projectId) : null;
-    
-    return (
-      <div className="w-full font-sans pb-12" style={{ color: '#000000', backgroundColor: '#ffffff' }}>
-        <div className="flex justify-between items-start mt-4 mb-16">
-          <div className="flex flex-col w-1/2 pt-4">
-            <h1 className="text-4xl font-black uppercase tracking-widest mb-2" style={{ color: '#f97316' }}>SPESEN</h1>
-            <div className="text-xl font-bold uppercase tracking-widest mt-1" style={{ color: '#6b7280' }}>ABRECHNUNG</div>
-          </div>
-          <div className="w-1/2 flex justify-end">
-             <table className="text-sm text-right">
-               <tbody>
-                 <tr><td className="pr-4 py-1 font-medium" style={{ color: '#6b7280' }}>{t('employee')}:</td><td className="font-bold" style={{ color: '#000000' }}>{user?.firstName} {user?.lastName}</td></tr>
-                 <tr><td className="pr-4 py-1 font-medium" style={{ color: '#6b7280' }}>{t('date')}:</td><td className="font-bold" style={{ color: '#000000' }}>{new Date(headerData.date).toLocaleDateString('de-CH')}</td></tr>
-                 <tr><td className="pr-4 py-1 font-medium" style={{ color: '#6b7280' }}>Projekt:</td><td className="font-bold" style={{ color: '#000000' }}>{project?.name || 'Intern'}</td></tr>
-               </tbody>
-             </table>
-          </div>
-        </div>
-
-        <table className="w-full text-sm text-left mb-16" style={{ borderCollapse: 'collapse' }}>
-          <thead style={{ borderBottom: '2px solid #000000', color: '#000000' }}>
-            <tr><th className="py-3 px-2 font-bold w-48">{t('category')}</th><th className="py-3 px-2 font-bold">{t('description')}</th><th className="py-3 px-2 font-bold text-right w-36 whitespace-nowrap">{t('amount')} (CHF)</th></tr>
-          </thead>
-          <tbody>
-            {positions.map((pos, idx) => (
-              <tr key={idx} className="break-inside-avoid" style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <td className="py-4 px-2 align-top"><span className="px-2 py-1 rounded text-xs font-bold uppercase tracking-wider" style={{ color: '#4b5563', backgroundColor: '#f3f4f6' }}>{pos.category}</span></td>
-                <td className="py-4 px-2 align-top font-bold" style={{ color: '#000000' }}>{pos.description || '-'}</td>
-                <td className="py-4 px-2 text-right font-bold align-top whitespace-nowrap" style={{ color: '#000000' }}>{formatCHF(Number(pos.amount))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="flex justify-end pt-4 mb-16 break-inside-avoid">
-          <table className="w-64 text-sm text-right">
-            <tbody>
-              <tr><td className="py-3 pr-4 font-black text-lg uppercase tracking-widest" style={{ color: '#f97316' }}>{t('total')}</td><td className="py-3 font-black text-xl" style={{ color: '#f97316', borderBottom: '2px solid #f97316' }}>CHF {formatCHF(totalAmount)}</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        {receipts.length > 0 && (
-          <div className="break-before-page pt-8">
-            <h3 className="text-lg font-bold mb-6 uppercase tracking-widest pb-2" style={{ borderBottom: '1px solid #f97316', color: '#f97316' }}>Angehängte Belege</h3>
-            <div className="grid grid-cols-2 gap-4">
-              {receipts.map((url, i) => (
-                <div key={i} className="aspect-square rounded overflow-hidden p-2" style={{ backgroundColor: '#f9fafb', border: '1px solid #d1d5db' }}>
-                  <img src={url} className="w-full h-full object-contain" alt={`Beleg ${i+1}`} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
   };
 
   return (
@@ -301,7 +269,6 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
 
         <div className="flex-1 overflow-y-auto bg-background/50 custom-scrollbar relative">
           <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8">
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 bg-surface p-4 md:p-6 rounded-xl border border-border/50 shadow-sm">
               <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('employee')}</label><select value={headerData.userId} onChange={e => setHeaderData({...headerData, userId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold"><option value="">{t('select')}</option>{Array.isArray(companyUsers) && companyUsers.map((u:any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}</select></div>
               <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</label><input type="date" value={headerData.date} onChange={e => setHeaderData({...headerData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold" /></div>
@@ -378,15 +345,8 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
         </div>
       </div>
 
-      {/* Universal PDF Studio für Spesen */}
-      <UniversalPDFStudio 
-        isOpen={isPdfStudioOpen} 
-        onClose={() => setIsPdfStudioOpen(false)} 
-        title="Spesenabrechnung" 
-        fileName={`Spesen_${Date.now()}`}
-        onSaveCloud={handleSaveToCloud}
-      >
-        {renderPdfContent()}
+      <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title="Spesenabrechnung" fileName={`Spesen_${Date.now()}`} onSaveCloud={handleSaveToCloud}>
+        {(settings) => <ExpensePDFDocument settings={settings} headerData={headerData} positions={positions} totalAmount={totalAmount} receipts={receipts} formatCHF={formatCHF} t={t} companyUsers={companyUsers} projects={projects} />}
       </UniversalPDFStudio>
     </div>
   );

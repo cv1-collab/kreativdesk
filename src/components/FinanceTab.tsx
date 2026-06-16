@@ -31,7 +31,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
-interface Transaction { id: string; type?: string; amount: number; client?: string; description: string; date: string; status: string; category?: string; createdAt?: string; }
+interface Transaction { id: string; type?: string; amount: number; client?: string; description: string; date: string; status: string; category?: string; createdAt?: string; receiptUrls?: string[]; url?: string; }
 interface FinanceTabProps { addToast: (msg: string, type: 'success'|'error'|'info') => void; setShowExpenseModal: (s: boolean) => void; setShowInvoiceModal: (s: boolean) => void; setShowQuoteModal: (s: boolean) => void; setNewFileAlerts?: any; }
 
 const pdfStyles = StyleSheet.create({
@@ -191,14 +191,16 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       const finalPdfUrl = await getDownloadURL(storageRef);
 
       await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
-      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: 'sys_finance', uploadedAt: new Date().toISOString() });
+
+      // Sichert das PDF sichtbar in 01_FINANZEN
+      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
 
       for (let i = 0; i < opCostReceipts.length; i++) {
         if (opCostReceipts[i].startsWith('data:image')) {
-          const fetchRes = await fetch(opCostReceipts[i]); const blob = await fetchRes.blob();
+          const fetchRes = await fetch(opCostReceipts[i]); const imgBlob = await fetchRes.blob();
           const imgRef = ref(storage, `${safeCompanyId}/documents/Original_Ext_Beleg_${Date.now()}_${i}.png`);
-          await uploadBytes(imgRef, blob); const imgUrl = await getDownloadURL(imgRef);
-          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: 'sys_finance', uploadedAt: new Date().toISOString() });
+          await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
+          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
         }
       }
       addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
@@ -250,6 +252,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(quote.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {quote.url && <a href={quote.url} target="_blank" rel="noopener noreferrer" className="p-1 text-blue-500 hover:bg-blue-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={quote.status} onChange={(e) => handleUpdateStatus(quote.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", quote.status === 'Angenommen' || quote.status === 'Approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Angenommen" className="bg-surface">Angenommen</option><option value="Abgelehnt" className="bg-surface">Abgelehnt</option>
                         </select>
@@ -278,6 +281,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(inv.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {inv.url && <a href={inv.url} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={inv.status} onChange={(e) => handleUpdateStatus(inv.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", inv.status === 'Bezahlt' || inv.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
                         </select>
@@ -306,6 +310,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(exp.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {exp.receiptUrls?.[0] && <a href={exp.receiptUrls[0]} target="_blank" rel="noopener noreferrer" className="p-1 text-orange-500 hover:bg-orange-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={exp.status} onChange={(e) => handleUpdateStatus(exp.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", exp.status === 'Bezahlt' || exp.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
                         </select>
@@ -334,6 +339,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(op.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {op.receiptUrls?.[0] && <a href={op.receiptUrls[0]} target="_blank" rel="noopener noreferrer" className="p-1 text-purple-500 hover:bg-purple-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={op.status} onChange={(e) => handleUpdateStatus(op.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", op.status === 'Bezahlt' || op.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-purple-500/10 text-purple-500 border-purple-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
                         </select>

@@ -12,6 +12,57 @@ import { collection, addDoc, query, where, onSnapshot, doc, deleteDoc } from 'fi
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '../utils';
 
+import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+
+const pdfStyles = StyleSheet.create({
+  page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
+  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#a855f7', paddingBottom: 10, marginBottom: 20 },
+  headerLeft: { flex: 1 },
+  title: { fontSize: 24, fontWeight: 'bold', color: '#a855f7', textTransform: 'uppercase', marginBottom: 8 },
+  subtitle: { fontSize: 12, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' },
+  metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 },
+  metaLabel: { fontSize: 9, color: '#6b7280', marginRight: 10 },
+  metaValue: { fontSize: 9, color: '#000000', fontWeight: 'bold', width: 80, textAlign: 'right' },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 5 },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6 },
+  col1: { width: '30%' }, col2: { width: '50%' }, col3: { width: '20%', textAlign: 'right' },
+  textBold: { fontWeight: 'bold', color: '#000' },
+  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
+  footerText: { fontSize: 8, color: '#9ca3af' },
+  receiptsTitle: { fontSize: 12, fontWeight: 'bold', color: '#a855f7', borderBottomWidth: 1, borderBottomColor: '#a855f7', paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase', marginTop: 20 },
+  receiptsGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  receiptImage: { width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }
+});
+
+const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, formatCHF }: any) => (
+  <Document>
+    <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
+      <View style={pdfStyles.headerContainer} fixed>
+        <View style={pdfStyles.headerLeft}><Text style={pdfStyles.title}>BUCHUNG</Text><Text style={pdfStyles.subtitle}>EXTERNER BELEG</Text></View>
+        <View>
+          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Belegdatum:</Text><Text style={pdfStyles.metaValue}>{new Date(opCostData.date).toLocaleDateString('de-CH')}</Text></View>
+          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Erfasst am:</Text><Text style={pdfStyles.metaValue}>{new Date().toLocaleDateString('de-CH')}</Text></View>
+        </View>
+      </View>
+      <View style={pdfStyles.tableHeader} fixed>
+        <Text style={[pdfStyles.col1, pdfStyles.textBold]}>Kategorie</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>Firma / Zweck</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>Betrag (CHF)</Text>
+      </View>
+      <View style={pdfStyles.tableRow} wrap={false}>
+        <View style={pdfStyles.col1}><Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontSize: 8, fontWeight: 'bold' }}>{opCostData.category}</Text></View>
+        <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{opCostData.description || '-'}</Text>
+        <Text style={[pdfStyles.col3, pdfStyles.textBold, { color: '#a855f7' }]}>{formatCHF(Number(opCostData.amount))}</Text>
+      </View>
+      {opCostReceipts.length > 0 && (
+        <View style={{ marginTop: 20 }}>
+          <Text style={pdfStyles.receiptsTitle}>Original Beleg</Text>
+          <View style={pdfStyles.receiptsGrid}>{opCostReceipts.map((url: string, i: number) => <PDFImage key={i} src={url} style={pdfStyles.receiptImage} />)}</View>
+        </View>
+      )}
+      <View style={pdfStyles.footer} fixed><Text style={pdfStyles.footerText}>{settings.footerText}</Text><Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} /></View>
+    </Page>
+  </Document>
+);
+
 const opCategories = ['AHV / Sozialleistungen', 'Pensionskasse (BVG)', 'SUVA / Versicherungen', 'Steuern & MWST', 'Treuhand & Beratung', 'Miete & Infrastruktur', 'Software & Lizenzen', 'Fremdleistungen & Subunternehmer', 'Fahrzeuge & Mobilität', 'Marketing & Akquise'];
 
 export default function OpCostStudio({ onClose }: { onClose: () => void }) {
@@ -30,7 +81,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   const [uploadSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${uploadSessionId}`;
 
-  // KI-Logik zum Auslesen von Belegen
+  const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+
   const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string) => {
     setIsAnalyzingAI(true);
     addToast('KI analysiert Beleg...', 'info');
@@ -43,18 +95,9 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
       const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
 
-      setOpCostData(prev => ({
-        ...prev,
-        amount: cleanAmount || prev.amount,
-        description: vendorName || prev.description,
-        date: aiData.date || prev.date
-      }));
+      setOpCostData(prev => ({ ...prev, amount: cleanAmount || prev.amount, description: vendorName || prev.description, date: aiData.date || prev.date }));
       addToast('Beleg automatisch ausgefüllt!', 'success');
-    } catch (error) {
-      addToast('Konnte Beleg nicht lesen.', 'error');
-    } finally {
-      setIsAnalyzingAI(false);
-    }
+    } catch (error) { addToast('Konnte Beleg nicht lesen.', 'error'); } finally { setIsAnalyzingAI(false); }
   };
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,74 +119,35 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   };
 
   const handleSaveToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.companyId) return;
+    if (!currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
     try {
       const fileName = `Buchung_ExtKosten_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
+      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
 
-      await addDoc(collection(db, 'transactions'), { 
-        type: 'operating_cost', 
-        amount: Number(opCostData.amount), 
-        category: opCostData.category, 
-        description: opCostData.description || opCostData.category, 
-        date: opCostData.date, 
-        status: 'Pending', 
-        projectId: 'global', 
-        ownerId: currentUser.uid, 
-        companyId: currentUser.companyId,
-        receiptUrls: [finalPdfUrl, ...opCostReceipts], 
-        createdAt: new Date().toISOString() 
-      });
+      // Speichert die Transaktion
+      await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
+
+      // Speichert das Haupt-PDF im "01_FINANZEN" Ordner
+      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
+
+      // Speichert die Original-Beleg-Bilder ebenfalls im "01_FINANZEN" Ordner
+      for (let i = 0; i < opCostReceipts.length; i++) {
+        if (opCostReceipts[i].startsWith('data:image')) {
+          const fetchRes = await fetch(opCostReceipts[i]); const imgBlob = await fetchRes.blob();
+          const imgRef = ref(storage, `${safeCompanyId}/documents/Original_Ext_Beleg_${Date.now()}_${i}.png`);
+          await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
+          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: `sys_${safeCompanyId}_fin`, category: 'company', uploadedAt: new Date().toISOString() });
+        }
+      }
 
       addToast('Externe Kosten verbucht', "success"); 
       onClose();
-    } catch (error) {
-      addToast('Fehler beim Speichern', "error");
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (error) { addToast('Fehler beim Speichern', "error"); } finally { setIsSubmitting(false); }
   };
-
-  const renderPdfContent = () => (
-    <div className="w-full font-sans pb-12 text-black bg-white">
-      <div className="flex justify-between items-start mt-4 mb-16">
-        <div className="flex flex-col w-1/2 pt-4">
-          <h1 className="text-4xl font-black uppercase tracking-widest mb-2 text-purple-500">BUCHUNG</h1>
-          <div className="text-xl font-bold uppercase tracking-widest mt-1 text-zinc-500">EXTERNER BELEG</div>
-        </div>
-        <div className="w-1/2 flex justify-end">
-           <table className="text-sm text-right">
-             <tbody>
-               <tr><td className="pr-4 py-1 text-zinc-500">Belegdatum:</td><td className="font-bold">{new Date(opCostData.date).toLocaleDateString('de-CH')}</td></tr>
-             </tbody>
-           </table>
-        </div>
-      </div>
-      <table className="w-full text-sm text-left mb-16 border-collapse">
-        <thead className="border-b-2 border-black">
-          <tr><th className="py-3 px-2 font-bold w-48">Kategorie</th><th className="py-3 px-2 font-bold">Firma / Zweck</th><th className="py-3 px-2 font-bold text-right">Betrag (CHF)</th></tr>
-        </thead>
-        <tbody>
-          <tr className="border-b border-zinc-200">
-            <td className="py-4 px-2">{opCostData.category}</td>
-            <td className="py-4 px-2 font-bold">{opCostData.description || '-'}</td>
-            <td className="py-4 px-2 text-right font-bold text-purple-500">{Number(opCostData.amount).toFixed(2)}</td>
-          </tr>
-        </tbody>
-      </table>
-      {opCostReceipts.length > 0 && (
-        <div className="break-before-page pt-8">
-          <h3 className="text-lg font-bold mb-6 uppercase border-b border-purple-500 text-purple-500">Original Beleg</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {opCostReceipts.map((url, i) => (<div key={i} className="aspect-square bg-zinc-50 border border-zinc-300 p-2"><img src={url} className="w-full h-full object-contain" /></div>))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <>
@@ -177,7 +181,9 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       </div>
-      <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title="Buchungsbeleg" fileName={`Buchung_${Date.now()}`} onSaveCloud={handleSaveToCloud}>{renderPdfContent()}</UniversalPDFStudio>
+      <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title="Buchungsbeleg" fileName={`Buchung_${Date.now()}`} onSaveCloud={handleSaveToCloud}>
+        {(settings) => <OpCostPDFDocument settings={settings} opCostData={opCostData} opCostReceipts={opCostReceipts} formatCHF={formatCHF} />}
+      </UniversalPDFStudio>
     </>
   );
 }
