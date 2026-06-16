@@ -10,7 +10,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(), 
       tailwindcss(),
-      // === PWA CONFIGURATION: OFFLINE RESILIENCE ===
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
@@ -24,22 +23,9 @@ export default defineConfig(({ mode }) => {
           orientation: 'any',
           start_url: '/',
           icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
+            { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+            { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
           ]
         },
         workbox: {
@@ -51,10 +37,7 @@ export default defineConfig(({ mode }) => {
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'firebase-auth-cache',
-                expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 Tage
-                }
+                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 }
               }
             }
           ]
@@ -69,6 +52,8 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // +++ DER HARTE FIX: Erzwingt die reine Browser-ESM-Version ohne CJS-Konflikte +++
+        '@react-pdf/renderer': '@react-pdf/renderer/lib/react-pdf.browser.es.js'
       },
     },
     server: {
@@ -76,19 +61,24 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       hmr: process.env.DISABLE_HMR !== 'true',
     },
-    // +++ FIX: Zwingt den Minifier, die originalen Funktionsnamen zu behalten +++
-    esbuild: {
-      keepNames: true,
-    },
     optimizeDeps: {
       esbuildOptions: {
         target: 'esnext',
-        keepNames: true, // Greift auch bei den externen Libraries wie react-pdf
       }
     },
-    // === PERFORMANCE TURBO: SMART CHUNK SPLITTING ===
     build: {
       target: 'esnext',
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          keep_classnames: true,
+          keep_fnames: true,
+        },
+        mangle: {
+          keep_classnames: true,
+          keep_fnames: true,
+        }
+      },
       commonjsOptions: {
         transformMixedEsModules: true,
       },
@@ -100,7 +90,7 @@ export default defineConfig(({ mode }) => {
             'vendor-ui': ['lucide-react', 'motion/react', 'clsx', 'tailwind-merge'],
             'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
             'vendor-charts': ['recharts'],
-            'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas', '@react-pdf/renderer']
+            // +++ vendor-pdf entfernt: Wir lassen Rollup die PDF-Abhängigkeiten natürlich auflösen +++
           }
         }
       },
