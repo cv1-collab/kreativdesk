@@ -52,8 +52,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
-        // +++ DER HARTE FIX: Erzwingt die reine Browser-ESM-Version ohne CJS-Konflikte +++
-        '@react-pdf/renderer': '@react-pdf/renderer/lib/react-pdf.browser.es.js'
+        // Alias entfernt, um ENOENT-Abstürze zu verhindern
       },
     },
     server: {
@@ -68,17 +67,8 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'esnext',
-      minify: 'terser',
-      terserOptions: {
-        compress: {
-          keep_classnames: true,
-          keep_fnames: true,
-        },
-        mangle: {
-          keep_classnames: true,
-          keep_fnames: true,
-        }
-      },
+      // +++ ABSOLUTE STABILITÄT: Minifizierung deaktiviert +++
+      minify: false,
       commonjsOptions: {
         transformMixedEsModules: true,
       },
@@ -89,12 +79,12 @@ export default defineConfig(({ mode }) => {
             'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/functions'],
             'vendor-ui': ['lucide-react', 'motion/react', 'clsx', 'tailwind-merge'],
             'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
-            'vendor-charts': ['recharts'],
-            // +++ vendor-pdf entfernt: Wir lassen Rollup die PDF-Abhängigkeiten natürlich auflösen +++
+            'vendor-charts': ['recharts']
+            // vendor-pdf bleibt entfernt für sauberes dynamisches Resolving
           }
         }
       },
-      chunkSizeWarningLimit: 1500 
+      chunkSizeWarningLimit: 3000 // Limit hochgesetzt, da Dateien ohne Minifier logischerweise größer sind
     }
   };
 });
