@@ -44,7 +44,6 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          // +++ FIX: Caching-Limit auf 5 MB erhöhen für 3D & BIM Viewer Chunks +++
           maximumFileSizeToCacheInBytes: 5000000, 
           runtimeCaching: [
             {
@@ -64,6 +63,9 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      // +++ FIX 1: Globale Variablen für das PDF-WASM bereitstellen +++
+      global: 'window',
+      'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
     },
     resolve: {
       alias: {
@@ -75,9 +77,19 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       hmr: process.env.DISABLE_HMR !== 'true',
     },
+    // +++ FIX 2: ESBuild Target für PDF +++
+    optimizeDeps: {
+      esbuildOptions: {
+        target: 'esnext',
+      }
+    },
     // === PERFORMANCE TURBO: SMART CHUNK SPLITTING ===
     build: {
       target: 'esnext',
+      // +++ FIX 3: Mixed Modules erlauben (verhindert den "y is not a function" Fehler) +++
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
       rollupOptions: {
         output: {
           manualChunks: {
@@ -86,7 +98,8 @@ export default defineConfig(({ mode }) => {
             'vendor-ui': ['lucide-react', 'motion/react', 'clsx', 'tailwind-merge'],
             'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
             'vendor-charts': ['recharts'],
-            'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas']
+            // +++ FIX 4: @react-pdf/renderer sauber zum PDF-Chunk hinzugefügt +++
+            'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas', '@react-pdf/renderer']
           }
         }
       },
