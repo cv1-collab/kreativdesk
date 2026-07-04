@@ -3,6 +3,9 @@ import * as JoyrideModule from 'react-joyride';
 import type { Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
 
@@ -19,6 +22,7 @@ export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
   const { language } = useLanguage();
   const location = useLocation();
+  const { currentUser } = useAuth();
   const [steps, setSteps] = useState<Step[]>([]);
 
   useEffect(() => {
@@ -118,11 +122,19 @@ export default function ProductTour() {
     setSteps(validSteps);
   }, [isTourRunning, location.pathname, language]);
 
-  const handleJoyrideCallback = (data: any) => {
+  const handleJoyrideCallback = async (data: any) => {
     const { status, action } = data;
     if (['finished', 'skipped'].includes(status) || action === 'close') {
       stopTour();
       setSteps([]);
+      
+      if (currentUser?.uid && db) {
+        try {
+          await updateDoc(doc(db, 'users', currentUser.uid), { hasSeenTour: true });
+        } catch (error) {
+          console.error("Fehler beim Speichern des Tour-Status:", error);
+        }
+      }
     }
   };
 
@@ -132,6 +144,7 @@ export default function ProductTour() {
     <JoyrideComponent
       run={isTourRunning && steps.length > 0}
       steps={steps}
+      callback={handleJoyrideCallback}
       continuous
       showSkipButton
       scrollToFirstStep={false}

@@ -143,7 +143,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               companyId: targetCompanyId,
               hasActiveSubscription: true, 
               trialEndsAt: isInvitedUser ? null : trialEndDate.toISOString(),
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              hasSeenTour: false
             };
             
             await setDoc(docRef, newUserData);

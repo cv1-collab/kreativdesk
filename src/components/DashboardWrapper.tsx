@@ -23,7 +23,7 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
     // Variable für den Timer außerhalb des if-Blocks deklarieren
     let timer: NodeJS.Timeout;
 
-    if (currentUser.hasSeenTour === false) {
+    if (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined) {
       timer = setTimeout(() => {
         startTour();
       }, 500);
