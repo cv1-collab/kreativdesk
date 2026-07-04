@@ -213,6 +213,43 @@ export default function Signup() {
     await setDoc(doc(db, 'whiteboards', newProjectId), {
       companyId: newCompanyId, projectId: newProjectId, elements: '[]', createdAt: now
     });
+
+    if (isEnterprise) {
+      const entProjectId = `proj_ent_${Date.now()}`;
+      await setDoc(doc(db, 'projects', entProjectId), {
+        id: entProjectId, name: 'Enterprise Setup Template', description: 'Leeres, professionelles Template für euer erstes echtes Projekt.',
+        companyId: newCompanyId, ownerId: uid, status: 'active', createdAt: now, memberIds: [uid],
+        siteLocation: 'Zürich',
+        cam1Url: ''
+      });
+
+      await setDoc(doc(db, 'projectMembers', `pm-${entProjectId}-${uid}`), {
+        companyId: newCompanyId, projectId: entProjectId, userId: uid, role: 'Projektleitung', joinedAt: now
+      });
+
+      await setDoc(doc(db, 'financeData', `finance_${entProjectId}`), {
+        projectId: entProjectId, companyId: newCompanyId, activeVersionId: 'v1',
+        versions: [{
+          id: 'v1', name: 'Startbudget', createdAt: now, status: 'approved',
+          groups: [
+            { id: 'g_1', pos: '100', title: 'Planung & Honorare', items: [] },
+            { id: 'g_2', pos: '200', title: 'Rohbau', items: [] },
+            { id: 'g_3', pos: '300', title: 'Ausbau', items: [] },
+            { id: 'g_4', pos: '400', title: 'Reserve', items: [] }
+          ]
+        }]
+      });
+
+      await setDoc(doc(db, 'schedules', `schedule_${entProjectId}`), {
+        projectId: entProjectId, companyId: newCompanyId, ownerId: uid,
+        name: 'Masterplan', createdAt: now, isPublic: false,
+        tasks: [], smartMarkers: []
+      });
+
+      await setDoc(doc(db, 'whiteboards', entProjectId), {
+        companyId: newCompanyId, projectId: entProjectId, elements: '[]', createdAt: now
+      });
+    }
   };
 
   // 🔥 NEU: Zentrale Funktion, um den Welcome Webhook anzufunken

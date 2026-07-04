@@ -140,6 +140,25 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [isYearly, setIsYearly] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const languageContext = useLanguage() as any;
   const language = languageContext?.language || 'de';
@@ -274,6 +293,13 @@ export default function LandingPage() {
                  {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
                </button>
             </div>
+
+            {deferredPrompt && (
+              <button onClick={handleInstallClick} className="text-sm font-bold text-emerald-500 hover:text-emerald-400 transition-colors flex items-center gap-1">
+                <MonitorPlay size={16} />
+                App installieren
+              </button>
+            )}
 
             <button onClick={() => navigate('/login')} className="text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('nav_login')}</button>
             <button onClick={() => scrollTo('systems')} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg hover:bg-blue-700 transition-all">
