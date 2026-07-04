@@ -97,6 +97,9 @@ export default function SettingsTab() {
   const termsFileRef = useRef<HTMLInputElement>(null);
   const privacyFileRef = useRef<HTMLInputElement>(null);
 
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
+  const [bexioApiToken, setBexioApiToken] = useState('');
+
   // Abo States (Dynamisch)
   const [companyPlan, setCompanyPlan] = useState('Free Trial');
   const [maxSeats, setMaxSeats] = useState(1);
@@ -135,6 +138,8 @@ export default function SettingsTab() {
         setPrivacyPdfUrl(data.privacyPdfUrl || '');
         setSlackIntegration(data.integrations?.slack || false);
         setBexioIntegration(data.integrations?.bexio || false);
+        setSlackWebhookUrl(data.integrations?.slackWebhookUrl || '');
+        setBexioApiToken(data.integrations?.bexioApiToken || '');
         
         // Abo Daten
         setCompanyPlan(data.plan || 'Free Trial');
@@ -158,7 +163,12 @@ export default function SettingsTab() {
         address, zip: zipCode, city,
         iban, webhookUrl,
         primaryColor,
-        integrations: { slack: slackIntegration, bexio: bexioIntegration },
+        integrations: { 
+          slack: slackIntegration, 
+          bexio: bexioIntegration,
+          slackWebhookUrl,
+          bexioApiToken
+        },
         updatedAt: new Date().toISOString()
       });
       addToast('Einstellungen erfolgreich gespeichert!', 'success');
@@ -425,20 +435,37 @@ export default function SettingsTab() {
                   <LinkIcon size={16} className="text-accent-ai" /> Integrationen
                 </h4>
                 <div className="space-y-3">
-                  <label className="flex items-center gap-3 p-3 bg-background/30 rounded-xl border border-border/30 cursor-pointer">
-                    <input type="checkbox" checked={slackIntegration} onChange={e => setSlackIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
-                    <div>
-                      <div className="text-sm font-bold text-text-primary">Slack Integration</div>
-                      <div className="text-[10px] text-text-muted">Sende Benachrichtigungen in deinen Slack-Workspace</div>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-3 p-3 bg-background/30 rounded-xl border border-border/30 cursor-pointer">
-                    <input type="checkbox" checked={bexioIntegration} onChange={e => setBexioIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
-                    <div>
-                      <div className="text-sm font-bold text-text-primary">Bexio Integration</div>
-                      <div className="text-[10px] text-text-muted">Synchronisiere Kontakte und Rechnungen mit Bexio</div>
-                    </div>
-                  </label>
+                  <div className="p-3 bg-background/30 rounded-xl border border-border/30">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={slackIntegration} onChange={e => setSlackIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
+                      <div>
+                        <div className="text-sm font-bold text-text-primary">Slack Integration</div>
+                        <div className="text-[10px] text-text-muted">Sende Benachrichtigungen in deinen Slack-Workspace</div>
+                      </div>
+                    </label>
+                    {slackIntegration && (
+                      <div className="mt-3 ml-7">
+                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Slack Webhook URL</label>
+                        <input type="url" value={slackWebhookUrl} onChange={e => setSlackWebhookUrl(e.target.value)} placeholder="https://hooks.slack.com/services/..." className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="p-3 bg-background/30 rounded-xl border border-border/30">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={bexioIntegration} onChange={e => setBexioIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
+                      <div>
+                        <div className="text-sm font-bold text-text-primary">Bexio Integration</div>
+                        <div className="text-[10px] text-text-muted">Synchronisiere Kontakte und Rechnungen mit Bexio</div>
+                      </div>
+                    </label>
+                    {bexioIntegration && (
+                      <div className="mt-3 ml-7">
+                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Bexio API Token</label>
+                        <input type="text" value={bexioApiToken} onChange={e => setBexioApiToken(e.target.value)} placeholder="Dein Bexio API Token" className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

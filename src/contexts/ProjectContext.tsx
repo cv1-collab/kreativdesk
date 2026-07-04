@@ -35,13 +35,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [defects, setDefects] = useState<Defect[]>([]);
 
   const getQuery = (colName: string) => {
-    if (isAdmin) return query(collection(db, colName));
     if (!currentUser?.companyId) return query(collection(db, colName), where('companyId', '==', 'loading-state'));
     return query(collection(db, colName), where('companyId', '==', currentUser.companyId));
   };
 
   useEffect(() => {
-    if (!isAdmin && !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
 
     const unsubs: any[] = [];
 
@@ -68,41 +67,41 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }));
 
     return () => unsubs.forEach(unsub => unsub());
-  }, [currentUser?.companyId, isAdmin]);
+  }, [currentUser?.companyId]);
 
   const addProject = async (projectData: any) => {
-    if (!isAdmin && !currentUser?.companyId) return;
-    await addDoc(collection(db, 'projects'), { ...projectData, createdAt: new Date().toISOString(), ownerId: currentUser?.uid, companyId: isAdmin ? 'admin-system' : currentUser?.companyId, memberIds: [currentUser?.uid] });
+    if (!currentUser?.companyId) return;
+    await addDoc(collection(db, 'projects'), { ...projectData, createdAt: new Date().toISOString(), ownerId: currentUser?.uid, companyId: currentUser?.companyId, memberIds: [currentUser?.uid] });
   };
 
   const removeProject = async (id: string) => {
-    if (!isAdmin && !currentUser?.companyId) return;
-    await offboardProject(id, isAdmin ? 'admin-system' : currentUser!.companyId);
+    if (!currentUser?.companyId) return;
+    await offboardProject(id, currentUser.companyId);
   };
 
   const addCompanyUser = async (userData: any) => {
-    if (!isAdmin && !currentUser?.companyId) return;
-    await addDoc(collection(db, 'companyUsers'), { ...userData, ownerId: currentUser?.uid, companyId: isAdmin ? 'admin-system' : currentUser?.companyId, createdAt: new Date().toISOString() });
+    if (!currentUser?.companyId) return;
+    await addDoc(collection(db, 'companyUsers'), { ...userData, ownerId: currentUser?.uid, companyId: currentUser?.companyId, createdAt: new Date().toISOString() });
   };
 
   const updateCompanyUser = async (id: string, userData: any) => {
-    if (!isAdmin && !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
     await updateDoc(doc(db, 'companyUsers', id), { ...userData });
   };
 
   const removeCompanyUser = async (id: string) => {
-    if (!isAdmin && !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
     await deleteDoc(doc(db, 'companyUsers', id));
   };
 
   const addProjectMember = async (projectId: string, memberData: any) => {
-    if (!isAdmin && !currentUser?.companyId) return;
-    await addDoc(collection(db, 'projectMembers'), { projectId, ...memberData, companyId: isAdmin ? 'admin-system' : currentUser!.companyId, joinedAt: new Date().toISOString() });
+    if (!currentUser?.companyId) return;
+    await addDoc(collection(db, 'projectMembers'), { projectId, ...memberData, companyId: currentUser.companyId, joinedAt: new Date().toISOString() });
     await updateDoc(doc(db, 'projects', projectId), { memberIds: arrayUnion(memberData.userId) });
   };
 
   const removeProjectMember = async (projectId: string, userId: string) => {
-    if (!isAdmin && !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
     const q = query(collection(db, 'projectMembers'), where('projectId', '==', projectId), where('userId', '==', userId));
     const snap = await getDocs(q);
     snap.forEach(d => deleteDoc(d.ref));
@@ -110,8 +109,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addTimeEntry = async (entryData: any) => {
-    if (!isAdmin && !currentUser?.companyId) return;
-    await addDoc(collection(db, 'timeEntries'), { ...entryData, ownerId: currentUser?.uid, companyId: isAdmin ? 'admin-system' : currentUser?.companyId, createdAt: new Date().toISOString() });
+    if (!currentUser?.companyId) return;
+    await addDoc(collection(db, 'timeEntries'), { ...entryData, ownerId: currentUser?.uid, companyId: currentUser?.companyId, createdAt: new Date().toISOString() });
   };
 
   return (
