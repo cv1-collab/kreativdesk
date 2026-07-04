@@ -82,8 +82,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     if (!currentProjectId) return;
 
     if (currentProjectId.startsWith('demo-')) {
-      const industryKey = currentProjectId.split('-')[1] || 'construction';
-      const tpl = demoTemplates[industryKey] || demoTemplates.construction;
+      const tpl = demoTemplates.construction;
       
       const dynamicSlides: Slide[] = [
         {

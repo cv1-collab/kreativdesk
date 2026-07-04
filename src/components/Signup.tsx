@@ -43,7 +43,6 @@ export default function Signup() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [industry, setIndustry] = useState('construction');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -66,12 +65,17 @@ export default function Signup() {
       const inviteSnap = await getDoc(inviteRef);
       if (inviteSnap.exists() && inviteSnap.data().status === 'pending') {
         const inviteData = inviteSnap.data();
+        
+        if (inviteData.type === 'enterprise_workspace') {
+          return inviteData;
+        }
+
         const companyId = inviteData.companyId;
 
         // Create user doc
         const now = new Date().toISOString();
         await setDoc(doc(db, 'users', uid), {
-          email: userEmail, createdAt: now, role: 'Internal', companyId: companyId,
+          email: userEmail, createdAt: now, role: inviteData.role || 'Internal', companyId: companyId,
           hasActiveSubscription: true, hasSeenTour: false 
         });
 
@@ -96,22 +100,27 @@ export default function Signup() {
     return null;
   };
 
-  const generateOnboardingData = async (uid: string, userEmail: string | null, selectedInd: string) => {
+  const generateOnboardingData = async (uid: string, userEmail: string | null, enterpriseData?: any) => {
     const newCompanyId = `comp_${uid}`;
     const newProjectId = `proj_${Date.now()}`;
     const now = new Date().toISOString();
     const trialEndDate = new Date((new Date()).getTime() + (30 * 24 * 60 * 60 * 1000));
     
-    const tpl = demoTemplates[selectedInd] || demoTemplates.construction;
+    const tpl = demoTemplates.construction;
     
+    const isEnterprise = !!enterpriseData;
+    const plan = isEnterprise ? 'Enterprise' : 'Expert Trial';
+    const maxSeats = isEnterprise ? 50 : 1;
+    const companyName = enterpriseData?.companyName || `${userEmail?.split('@')[0] || 'User'}s Workspace`;
+
     await setDoc(doc(db, 'users', uid), {
       email: userEmail, createdAt: now, role: 'owner', companyId: newCompanyId,
-      hasActiveSubscription: true, plan: 'Expert Trial', trialEndsAt: trialEndDate.toISOString(), hasSeenTour: false 
+      hasActiveSubscription: true, plan: plan, trialEndsAt: trialEndDate.toISOString(), hasSeenTour: false 
     });
 
     await setDoc(doc(db, 'companies', newCompanyId), {
-      id: newCompanyId, name: `${userEmail?.split('@')[0] || 'User'}s Workspace`, plan: 'Expert Trial',
-      maxSeats: 1, usedSeats: 1, ownerId: uid, trialEndsAt: trialEndDate.toISOString(), createdAt: now
+      id: newCompanyId, name: companyName, plan: plan,
+      maxSeats: maxSeats, usedSeats: 1, ownerId: uid, trialEndsAt: trialEndDate.toISOString(), createdAt: now
     });
 
     await setDoc(doc(db, 'projects', newProjectId), {
@@ -237,14 +246,17 @@ export default function Signup() {
       if (!userDocSnap.exists()) {
         let assignedCompanyId = `comp_${userCredential.user.uid}`;
         if (inviteToken) {
-          const inviteCompanyId = await processInvite(userCredential.user.uid, userCredential.user.email, inviteToken);
-          if (inviteCompanyId) {
-            assignedCompanyId = inviteCompanyId;
+          const inviteResult = await processInvite(userCredential.user.uid, userCredential.user.email, inviteToken);
+          if (inviteResult && typeof inviteResult === 'string') {
+            assignedCompanyId = inviteResult;
+          } else if (inviteResult && typeof inviteResult === 'object') {
+            await generateOnboardingData(userCredential.user.uid, userCredential.user.email, inviteResult);
+            await updateDoc(doc(db, 'invites', inviteToken), { status: 'accepted', acceptedBy: userCredential.user.uid, acceptedAt: new Date().toISOString() });
           } else {
-            await generateOnboardingData(userCredential.user.uid, userCredential.user.email, industry);
+            await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
           }
         } else {
-          await generateOnboardingData(userCredential.user.uid, userCredential.user.email, industry);
+          await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
         }
         
         // 🔥 TRIGGER FÜR DEN WEBHOOK BEI GOOGLE SIGNUP
@@ -282,14 +294,17 @@ export default function Signup() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       let assignedCompanyId = `comp_${userCredential.user.uid}`;
       if (inviteToken) {
-        const inviteCompanyId = await processInvite(userCredential.user.uid, userCredential.user.email, inviteToken);
-        if (inviteCompanyId) {
-          assignedCompanyId = inviteCompanyId;
+        const inviteResult = await processInvite(userCredential.user.uid, userCredential.user.email, inviteToken);
+        if (inviteResult && typeof inviteResult === 'string') {
+          assignedCompanyId = inviteResult;
+        } else if (inviteResult && typeof inviteResult === 'object') {
+          await generateOnboardingData(userCredential.user.uid, userCredential.user.email, inviteResult);
+          await updateDoc(doc(db, 'invites', inviteToken), { status: 'accepted', acceptedBy: userCredential.user.uid, acceptedAt: new Date().toISOString() });
         } else {
-          await generateOnboardingData(userCredential.user.uid, userCredential.user.email, industry);
+          await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
         }
       } else {
-        await generateOnboardingData(userCredential.user.uid, userCredential.user.email, industry);
+        await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
       }
       
       // 🔥 TRIGGER FÜR DEN WEBHOOK BEI EMAIL SIGNUP
@@ -332,21 +347,6 @@ export default function Signup() {
           <div className="mt-10">
             <form onSubmit={handleSubmit} className="space-y-5">
               {error && <div className="rounded-lg bg-red-500/10 p-4 border border-red-500/20"><div className="text-sm text-red-400">{error}</div></div>}
-
-              <div>
-                <label className="block text-sm font-medium leading-6 text-[#fafafa] mb-1.5">{t('select_industry')}</label>
-                <select
-                  value={industry} onChange={(e) => setIndustry(e.target.value)}
-                  className="block w-full rounded-xl border-0 bg-[#18181b] py-3 text-[#fafafa] shadow-sm ring-1 ring-inset ring-[#27272a] focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm sm:leading-6 px-4 transition-all cursor-pointer"
-                >
-                  <option value="construction">🏗️ {t('ind_construction')}</option>
-                  <option value="interior">🛋️ {t('ind_interior')}</option>
-                  <option value="agency">📣 {t('ind_agency')}</option>
-                  <option value="tour">🎸 {t('ind_tour')}</option>
-                  <option value="museum">🖼️ {t('ind_museum')}</option>
-                  <option value="gastro">🍽️ {t('ind_gastro')}</option>
-                </select>
-              </div>
 
               <div>
                 <label className="block text-sm font-medium leading-6 text-[#fafafa] mb-1.5">{t('email')}</label>

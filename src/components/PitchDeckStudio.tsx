@@ -536,8 +536,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       let totalBudget = 0;
       
       if (targetId.startsWith('demo-')) {
-        const industryKey = targetId.split('-')[1] || 'construction';
-        const tpl = demoTemplates[industryKey];
+        const tpl = demoTemplates.construction;
         if (tpl && tpl.financeGroups) {
            budgetGroups = tpl.financeGroups.map((g: any) => {
              const groupTotal = g.items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
@@ -580,8 +579,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     try {
       let milestones: any[] = [];
       if (targetId.startsWith('demo-')) {
-        const industryKey = targetId.split('-')[1] || 'construction';
-        const tpl = demoTemplates[industryKey];
+        const tpl = demoTemplates.construction;
         if (tpl && tpl.tasks) {
            milestones = tpl.tasks.map((t:any) => {
               const s = new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0];
@@ -623,8 +621,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     
     let projectDefects = [];
     if (targetId.startsWith('demo-')) {
-        const industryKey = targetId.split('-')[1] || 'construction';
-        const tpl = demoTemplates[industryKey];
+        const tpl = demoTemplates.construction;
         if (tpl && tpl.defects) { projectDefects = tpl.defects.slice(0,4); }
     } else {
         projectDefects = (defects || []).filter((d:any) => d.projectId === targetId && d.status !== 'erledigt').slice(0, 4);
@@ -643,8 +640,7 @@ const handleGenerateTeamSlide = async () => {
     
     // 1. Prüfen, ob es das Demo-Projekt ist
     if (targetId.startsWith('demo-')) {
-        const industryKey = targetId.split('-')[1] || 'construction';
-        const tpl = demoTemplates[industryKey];
+        const tpl = demoTemplates.construction;
         if (tpl && tpl.members) { 
           // Avatare für die Demo erzwingen
           teamMembers = tpl.members.map((m: any) => ({

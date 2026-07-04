@@ -263,16 +263,16 @@ export default function CompanyDashboard() {
     setTimeout(() => navigate(`/project/${projectId}`), 500);
   };
 
-  const handleCreateDemoProject = async (type: 'construction' | 'interior' | 'agency' | 'tour' | 'museum' | 'gastro' = 'construction') => {
+  const handleCreateDemoProject = async (type: string = 'construction') => {
     if (!db || !currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
-    addToast(`Erstelle Demo Projekt (${type})...`, 'info');
+    addToast(`Erstelle Demo Projekt...`, 'info');
 
     try {
       const batch = writeBatch(db);
       const projectId = `prj-demo-${Date.now()}`;
-      const demoData = demoTemplates[type] || demoTemplates.construction;
+      const demoData = demoTemplates.construction;
 
       const newProj = {
         id: projectId, name: demoData.project.name, description: demoData.project.description, status: demoData.project.status,

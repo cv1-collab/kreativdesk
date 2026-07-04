@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Mail, Building, Phone, Calendar, Trash2, Megaphone } from 'lucide-react';
 import { cn } from '../../utils';
 
@@ -36,6 +36,33 @@ export default function AdminLeadsTab() {
       await updateDoc(doc(db, 'leads', id), { status: newStatus });
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleProvisionEnterprise = async (lead: any) => {
+    try {
+      const inviteToken = `ent_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      await setDoc(doc(db, 'invites', inviteToken), {
+        type: 'enterprise_workspace',
+        companyName: lead.company || `${lead.firstName || ''} ${lead.lastName || ''}`.trim() || 'Enterprise Workspace',
+        email: lead.email,
+        role: 'owner',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+
+      const inviteLink = `${window.location.origin}/signup?invite=${inviteToken}`;
+      
+      await updateDoc(doc(db, 'leads', lead.id), { 
+        status: 'Done',
+        inviteLink: inviteLink
+      });
+
+      alert(`Workspace vorbereitet! Einladungslink:\n\n${inviteLink}\n\nBitte kopieren und dem Kunden senden.`);
+    } catch (e) {
+      console.error('Error provisioning:', e);
+      alert('Fehler beim Freischalten.');
     }
   };
 
@@ -83,7 +110,8 @@ export default function AdminLeadsTab() {
               <tr><td colSpan={5} className="text-center py-12 text-text-muted">Noch keine Anfragen vorhanden.</td></tr>
             ) : (
               leads.map(lead => (
-                <tr key={lead.id} className="hover:bg-white/5 transition-colors group">
+                <React.Fragment key={lead.id}>
+                <tr className="hover:bg-white/5 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1.5 text-xs text-text-muted mb-1">
                       <Calendar size={12}/> {parseDate(lead.createdAt).toLocaleDateString('de-CH')}
@@ -115,11 +143,32 @@ export default function AdminLeadsTab() {
                     </select>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button onClick={() => handleDelete(lead.id)} className="p-2 text-text-muted hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {lead.status !== 'Done' && (
+                        <button 
+                          onClick={() => handleProvisionEnterprise(lead)} 
+                          className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          Freischalten
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(lead.id)} className="p-2 text-text-muted hover:bg-red-500/10 hover:text-red-500 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
+                {lead.inviteLink && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-3 bg-emerald-500/5 border-t border-border/50">
+                      <div className="flex items-center gap-2 text-xs text-emerald-500 font-medium">
+                        <span className="font-bold">Einladungslink:</span> 
+                        <input type="text" readOnly value={lead.inviteLink} className="bg-transparent border-none outline-none w-full cursor-text" onClick={(e) => (e.target as HTMLInputElement).select()} />
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
               ))
             )}
           </tbody>
@@ -158,19 +207,35 @@ export default function AdminLeadsTab() {
 
                 <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-1">
                   <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Status:</span>
-                  <select 
-                    value={lead.status || 'New'} 
-                    onChange={(e) => handleUpdateStatus(lead.id, e.target.value)}
-                    className={cn("text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border outline-none cursor-pointer shadow-sm", 
-                      lead.status === 'New' ? "bg-orange-500/10 text-orange-500 border-orange-500/20" : 
-                      lead.status === 'Done' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
-                      "bg-blue-500/10 text-blue-500 border-blue-500/20")}
-                  >
-                    <option value="New">Neu</option>
-                    <option value="Pending">In Kontakt</option>
-                    <option value="Done">Erledigt</option>
-                  </select>
+                  <div className="flex items-center gap-2">
+                    {lead.status !== 'Done' && (
+                      <button 
+                        onClick={() => handleProvisionEnterprise(lead)} 
+                        className="px-3 py-1.5 text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm transition-colors"
+                      >
+                        Freischalten
+                      </button>
+                    )}
+                    <select 
+                      value={lead.status || 'New'} 
+                      onChange={(e) => handleUpdateStatus(lead.id, e.target.value)}
+                      className={cn("text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border outline-none cursor-pointer shadow-sm", 
+                        lead.status === 'New' ? "bg-orange-500/10 text-orange-500 border-orange-500/20" : 
+                        lead.status === 'Done' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
+                        "bg-blue-500/10 text-blue-500 border-blue-500/20")}
+                    >
+                      <option value="New">Neu</option>
+                      <option value="Pending">In Kontakt</option>
+                      <option value="Done">Erledigt</option>
+                    </select>
+                  </div>
                 </div>
+                {lead.inviteLink && (
+                  <div className="bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/20 mt-2">
+                    <div className="text-[10px] font-bold text-emerald-500 mb-1">Einladungslink:</div>
+                    <input type="text" readOnly value={lead.inviteLink} className="text-xs text-text-primary bg-transparent w-full outline-none" onClick={(e) => (e.target as HTMLInputElement).select()} />
+                  </div>
+                )}
               </div>
             ))
           )}
