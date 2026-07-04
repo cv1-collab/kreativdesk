@@ -1,153 +1,275 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import DailyIframe from '@daily-co/daily-js';
-import { motion, useDragControls } from 'motion/react';
-import { Minimize2, Maximize2, X, Video } from 'lucide-react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useAuth } from './AuthContext';
+import { useProject } from './ProjectContext';
+import { db } from '../firebase';
+import { collection, doc, addDoc, updateDoc, onSnapshot, setDoc, getDoc, query, where } from 'firebase/firestore';
 
-interface VideoCallContextType {
-  isInCall: boolean;
-  setIsInCall: (value: boolean) => void;
-  isMinimized: boolean;
-  setIsMinimized: (value: boolean) => void;
-  isChatOpen: boolean;
-  setIsChatOpen: (value: boolean) => void;
-  setPlaceholderElement: (el: HTMLDivElement | null) => void;
+const servers = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'turn:global.relay.metered.ca:80', username: '24338600', credential: 'KreativDesk2026!' },
+    { urls: 'turn:global.relay.metered.ca:443', username: '24338600', credential: 'KreativDesk2026!' }
+  ]
+};
+
+interface IncomingCall {
+  id: string;
+  projectId: string;
+  callerName: string;
+  targetUserIds?: string[];
 }
 
-const VideoCallContext = createContext<VideoCallContextType>({
-  isInCall: false,
-  setIsInCall: () => {},
-  isMinimized: false,
-  setIsMinimized: () => {},
-  isChatOpen: false,
-  setIsChatOpen: () => {},
-  setPlaceholderElement: () => {},
-});
+interface VideoCallContextType {
+  localStream: MediaStream | null;
+  remoteStream: MediaStream | null;
+  screenStream: MediaStream | null;
+  isMicOn: boolean;
+  isCamOn: boolean;
+  isScreenSharing: boolean;
+  callStatus: 'idle' | 'calling' | 'connected';
+  callId: string;
+  joinCallId: string;
+  setJoinCallId: (id: string) => void;
+  
+  startCall: (targetUserIds?: string[], customCallId?: string) => Promise<void>; 
+  joinCall: (overrideId?: string | null) => Promise<void>; 
+  hangUp: () => void;
+  toggleMic: () => void;
+  toggleCam: () => void;
+  toggleScreenShare: () => Promise<void>;
+  
+  isInCall: boolean;
+  isMinimized: boolean;
+  setIsMinimized: (val: boolean) => void;
+  isChatOpen: boolean;
+  setIsChatOpen: (val: boolean) => void;
 
-export const useVideoCall = () => useContext(VideoCallContext);
+  incomingCall: IncomingCall | null;
+  setIncomingCall: (call: IncomingCall | null) => void;
+}
+
+const VideoCallContext = createContext<VideoCallContextType | undefined>(undefined);
+
+export const useVideoCall = () => {
+  const context = useContext(VideoCallContext);
+  if (!context) throw new Error('useVideoCall must be used within a VideoCallProvider');
+  return context;
+};
 
 export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isInCall, setIsInCall] = useState(false);
+  const { currentUser } = useAuth();
+  const { activeProjectId } = useProject();
+  
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [isCamOn, setIsCamOn] = useState(true);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  
+  const [callId, setCallId] = useState('');
+  const [joinCallId, setJoinCallId] = useState('');
+  const [callStatus, setCallStatus] = useState<'idle' | 'calling' | 'connected'>('idle');
+
   const [isMinimized, setIsMinimized] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); 
-  const [placeholderElement, setPlaceholderElement] = useState<HTMLDivElement | null>(null);
-  
-  const [isDragging, setIsDragging] = useState(false);
-  const dragControls = useDragControls();
-  const [rect, setRect] = useState({ top: 0, left: 0, width: 0, height: 0 });
-  
-  // Die dynamische Position für das PIP Fenster (unten rechts ist der Standard)
-  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const callRef = useRef<any>(null);
+  const isInCall = callStatus !== 'idle';
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? `comp_${currentUser.uid}` : '');
 
+  // 🔥 INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {
-    if (isInCall && containerRef.current && !callRef.current) {
-      callRef.current = DailyIframe.createFrame(containerRef.current, {
-        iframeStyle: {
-          width: '100%',
-          height: '100%',
-          border: '0',
-          backgroundColor: '#000000',
-        },
-        showLeaveButton: false, 
+    if (!safeCompanyId || !currentUser?.uid) return;
+    const mountTime = Date.now();
+    const q = query(collection(db, 'videoCalls'), where('companyId', '==', safeCompanyId));
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (!data.createdAt) return;
+          const callTime = new Date(data.createdAt).getTime();
+
+          if (callTime > mountTime - 10000 && data.callerId !== currentUser.uid) {
+            const isTargeted = data.targetUserIds && data.targetUserIds.length > 0;
+            const amITargeted = isTargeted && data.targetUserIds.includes(currentUser.uid);
+
+            // Klingelt nur, wenn es ein Projekt-Rundruf ist (!isTargeted) oder der User explizit markiert wurde
+            if (!isTargeted || amITargeted) {
+              setIncomingCall({
+                id: change.doc.id,
+                projectId: data.projectId,
+                callerName: data.callerName || 'Ein Teammitglied',
+                targetUserIds: data.targetUserIds || []
+              });
+            }
+          }
+        }
       });
-      callRef.current.join({ url: 'https://kreativ-desk-hub.daily.co/kreativ-desk-hub' });
-      callRef.current.on('left-meeting', () => setIsInCall(false));
-    } else if (!isInCall && callRef.current) {
-      callRef.current.destroy();
-      callRef.current = null;
+    });
+    return () => unsub();
+  }, [safeCompanyId, currentUser?.uid]);
+
+  const setupMediaSources = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setLocalStream(stream);
+      return stream;
+    } catch (error) {
+      console.error("Media Error:", error);
+      alert("Kamera oder Mikrofon blockiert.");
+      return null;
     }
-  }, [isInCall]);
+  };
 
-  useEffect(() => {
-    if (!placeholderElement) return;
+  const toggleMic = () => { if (localStream) { localStream.getAudioTracks().forEach(t => t.enabled = !isMicOn); setIsMicOn(!isMicOn); } };
+  const toggleCam = () => { if (localStream) { localStream.getVideoTracks().forEach(t => t.enabled = !isCamOn); setIsCamOn(!isCamOn); } };
 
-    const updateRect = () => {
-      const r = placeholderElement.getBoundingClientRect();
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+  const toggleScreenShare = async () => {
+    if (!isScreenSharing) {
+      try {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+        const screenTrack = displayStream.getVideoTracks()[0];
+        if (pcRef.current) {
+          const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) sender.replaceTrack(screenTrack);
+        }
+        setScreenStream(displayStream);
+        setIsScreenSharing(true);
+        screenTrack.onended = () => stopScreenShare();
+      } catch (err) { console.error("Screen share aborted", err); }
+    } else {
+      stopScreenShare();
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); setScreenStream(null); }
+    setIsScreenSharing(false);
+    if (localStream) {
+      const camTrack = localStream.getVideoTracks()[0];
+      if (pcRef.current && camTrack) {
+        const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) sender.replaceTrack(camTrack);
+      }
+    }
+  };
+
+  const startCall = async (targetUserIds: string[] = [], customCallId?: string) => {
+    const stream = await setupMediaSources();
+    if (!stream) return;
+
+    pcRef.current = new RTCPeerConnection(servers);
+    stream.getTracks().forEach(track => pcRef.current?.addTrack(track, stream));
+
+    pcRef.current.ontrack = (event) => {
+      setRemoteStream(event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]));
     };
 
-    updateRect();
-    window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect, true);
+    // 🔥 Nutzt die Kalender-ID (falls übergeben) oder erstellt eine neue
+    const callDocRef = customCallId ? doc(db, 'videoCalls', customCallId) : doc(collection(db, 'videoCalls'));
+    const offerCandidates = collection(callDocRef, 'offerCandidates');
+    const answerCandidates = collection(callDocRef, 'answerCandidates');
+
+    setCallId(callDocRef.id);
+    setCallStatus('calling');
+    setIsMinimized(false);
+
+    pcRef.current.onicecandidate = (e) => { if (e.candidate) addDoc(offerCandidates, e.candidate.toJSON()); };
+
+    const offerDescription = await pcRef.current.createOffer();
+    await pcRef.current.setLocalDescription(offerDescription);
+
+    let currentProjectId = activeProjectId || window.location.pathname.split('/')[2];
     
-    const observer = new ResizeObserver(updateRect);
-    observer.observe(placeholderElement);
+    await setDoc(callDocRef, { 
+      offer: { sdp: offerDescription.sdp, type: offerDescription.type }, 
+      projectId: currentProjectId || 'global', 
+      companyId: safeCompanyId, 
+      callerName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Teammitglied',
+      callerId: currentUser?.uid,
+      targetUserIds, 
+      createdAt: new Date().toISOString() 
+    });
 
-    return () => {
-      window.removeEventListener('resize', updateRect);
-      window.removeEventListener('scroll', updateRect, true);
-      observer.disconnect();
+    onSnapshot(callDocRef, (snapshot) => {
+      const data = snapshot.data();
+      if (!pcRef.current?.currentRemoteDescription && data?.answer) {
+        pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(e => console.warn(e));
+        setCallStatus('connected');
+      }
+    });
+
+    onSnapshot(answerCandidates, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') pcRef.current?.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(e => console.warn(e));
+      });
+    });
+  };
+
+  const joinCall = async (overrideId?: string | null) => {
+    const targetId = overrideId || joinCallId;
+    if (!targetId || !targetId.trim()) return;
+    
+    const callDoc = doc(db, 'videoCalls', targetId);
+    const callSnap = await getDoc(callDoc);
+    if (!callSnap.exists()) return alert("Meeting existiert nicht mehr.");
+
+    const stream = await setupMediaSources();
+    if (!stream) return;
+
+    pcRef.current = new RTCPeerConnection(servers);
+    stream.getTracks().forEach(track => pcRef.current?.addTrack(track, stream));
+
+    pcRef.current.ontrack = (event) => {
+      setRemoteStream(event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]));
     };
-  }, [placeholderElement]);
+
+    const offerCandidates = collection(callDoc, 'offerCandidates');
+    const answerCandidates = collection(callDoc, 'answerCandidates');
+
+    pcRef.current.onicecandidate = (e) => { if (e.candidate) addDoc(answerCandidates, e.candidate.toJSON()); };
+
+    await pcRef.current.setRemoteDescription(new RTCSessionDescription(callSnap.data().offer)).catch(e => console.warn(e));
+    const answerDescription = await pcRef.current.createAnswer();
+    await pcRef.current.setLocalDescription(answerDescription);
+
+    await updateDoc(callDoc, { answer: { sdp: answerDescription.sdp, type: answerDescription.type } });
+    
+    setCallId(targetId);
+    setCallStatus('connected');
+    setIsMinimized(false);
+
+    onSnapshot(offerCandidates, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') pcRef.current?.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(e => console.warn(e));
+      });
+    });
+  };
+
+  const hangUp = () => {
+    if (pcRef.current) pcRef.current.close();
+    if (localStream) localStream.getTracks().forEach(t => t.stop());
+    if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+    if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
+    setLocalStream(null); setRemoteStream(null); setScreenStream(null);
+    setIsScreenSharing(false); setCallStatus('idle'); setCallId(''); setJoinCallId(''); setIsMinimized(false);
+  };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setDragPos({ x: window.innerWidth - 340, y: window.innerHeight - 240 });
-    }
+    return () => hangUp();
   }, []);
 
   return (
-    <VideoCallContext.Provider value={{ isInCall, setIsInCall, isMinimized, setIsMinimized, isChatOpen, setIsChatOpen, setPlaceholderElement }}>
+    <VideoCallContext.Provider value={{
+      localStream, remoteStream, screenStream, isMicOn, isCamOn, isScreenSharing,
+      callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp, toggleMic, toggleCam, toggleScreenShare,
+      isInCall, isMinimized, setIsMinimized, isChatOpen, setIsChatOpen, incomingCall, setIncomingCall
+    }}>
       {children}
-      
-      <motion.div 
-        id="video-call-window"
-        drag={isMinimized} // Fenster ist nur im PIP Modus verschiebbar!
-        dragControls={dragControls}
-        dragListener={false} 
-        dragMomentum={false}
-        onDragStart={() => setIsDragging(true)}
-        onDragEnd={() => {
-          setIsDragging(false);
-          const el = document.getElementById('video-call-window');
-          if (el) {
-            const r = el.getBoundingClientRect();
-            // Speichert die letzte abgelegte Position des PIP Fensters
-            setDragPos({ x: r.left, y: r.top });
-          }
-        }}
-        initial={false}
-        animate={{
-          x: isMinimized ? dragPos.x : rect.left,
-          y: isMinimized ? dragPos.y : rect.top,
-          width: isMinimized ? 320 : rect.width,
-          height: isMinimized ? 224 : rect.height,
-          opacity: (!isMinimized && rect.width === 0) ? 0 : 1
-        }}
-        transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-        className={`fixed top-0 left-0 z-[9999] flex flex-col overflow-hidden bg-black ${
-          !isInCall ? 'hidden' : ''
-        } ${isMinimized ? 'shadow-2xl rounded-xl border border-border/50' : 'rounded-none border-none'}`}
-      >
-        {/* DRAG HANDLE - Nur sichtbar im PIP Modus! */}
-        {isMinimized && (
-          <div 
-            onPointerDown={(e) => dragControls.start(e)}
-            className="h-10 bg-surface border-b border-border/50 flex items-center justify-between px-4 cursor-move shrink-0 touch-none select-none"
-          >
-            <div className="flex items-center gap-2 pointer-events-none">
-              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-xs font-bold text-text-primary uppercase tracking-widest flex items-center gap-1.5"><Video size={12}/> Live Meeting</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button onPointerDown={(e) => e.stopPropagation()} onClick={() => setIsMinimized(false)} className="text-text-muted hover:text-text-primary transition-colors cursor-pointer z-50">
-                <Maximize2 size={16}/>
-              </button>
-              <button onPointerDown={(e) => e.stopPropagation()} onClick={() => setIsInCall(false)} className="text-text-muted hover:text-red-500 transition-colors cursor-pointer z-50">
-                <X size={18}/>
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* VIDEO CONTAINER */}
-        <div className={`flex-1 w-full relative ${isDragging ? 'pointer-events-none' : 'pointer-events-auto'}`}>
-          <div ref={containerRef} className="absolute inset-0 bg-[#121212]" />
-          {isDragging && <div className="absolute inset-0 z-50 bg-black/10" />}
-        </div>
-      </motion.div>
     </VideoCallContext.Provider>
   );
 };

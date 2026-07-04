@@ -58,7 +58,7 @@ const PublicLeadForm = lazy(() => import('./components/PublicLeadForm'));
 const SuccessPage = lazy(() => import('./components/SuccessPage'));
 const PlanEditorViewer = lazy(() => import('./components/PlanEditorViewer'));
 const MobileUpload = lazy(() => import('./components/MobileUpload'));
-
+const GuestMeet = lazy(() => import('./components/GuestMeet'));
 const GlobalSuspenseFallback = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-background">
     <Loader2 className="w-10 h-10 text-accent-ai animate-spin" />
@@ -76,16 +76,16 @@ export default function App() {
                 <TourProvider>
                   <BrowserRouter>
                     <VideoCallProvider>
-                      
+
                       <MaintenanceGuard>
                         <Screensaver />
-                        
+
                         <Suspense fallback={<GlobalSuspenseFallback />}>
                           <AIConcierge />
                           <ProductTour />
-                          
+
                           <CookieBanner />
-                          
+
                           <Routes>
                             {/* Öffentliche Routen */}
                             <Route path="/" element={<LandingPage />} />
@@ -93,20 +93,21 @@ export default function App() {
                             <Route path="/signup" element={<Signup />} />
                             <Route path="/pricing" element={<PricingPage />} />
                             <Route path="/success" element={<SuccessPage />} />
-                            
+                            <Route path="/guest-meet/:joinId" element={<GuestMeet />} />
+
                             {/* Legal Routen */}
                             <Route path="/privacy" element={<PrivacyPolicy />} />
                             <Route path="/imprint" element={<Imprint />} />
                             <Route path="/terms" element={<TermsOfService />} />
-                            
+
                             <Route path="/lead-form/:companyId" element={<PublicLeadForm />} />
                             <Route path="/lead-form" element={<PublicLeadForm />} />
-                            
+
                             <Route path="/mobile-upload/:type/:sessionId" element={<MobileUpload />} />
                             <Route path="/deck" element={<PitchDeck />} />
-                            
+
                             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-                            
+
                             {/* +++ HIER WIRD DER TRIAL GUARD INTEGRIERT +++ */}
                             <Route path="/app" element={
                               <PrivateRoute>
@@ -115,7 +116,7 @@ export default function App() {
                                 </TrialGuard>
                               </PrivateRoute>
                             } />
-                            
+
                             {/* Settings und Help bleiben OHNE TrialGuard erreichbar */}
                             <Route path="/help" element={<PrivateRoute><HelpCenter /></PrivateRoute>} />
                             <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
@@ -144,9 +145,9 @@ export default function App() {
                             </Route>
                           </Routes>
                         </Suspense>
-                        
+
                       </MaintenanceGuard>
-                      
+
                     </VideoCallProvider>
                   </BrowserRouter>
                 </TourProvider>

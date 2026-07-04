@@ -3,18 +3,30 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase'; 
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTour } from '../contexts/TourContext';
 
 export default function DashboardWrapper({ children }: { children: React.ReactNode }) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  
+  const { startTour } = useTour();
 
   useEffect(() => {
     // Wenn kein User da ist, Ladebildschirm beenden
     if (!currentUser || !db) {
       setLoading(false);
       return;
+    }
+
+    // Variable für den Timer außerhalb des if-Blocks deklarieren
+    let timer: NodeJS.Timeout;
+
+    if (currentUser.hasSeenTour === false) {
+      timer = setTimeout(() => {
+        startTour();
+      }, 500);
     }
 
     // Stripe Check (ohne illegale Datenbank-Scans)
@@ -36,7 +48,12 @@ export default function DashboardWrapper({ children }: { children: React.ReactNo
     };
 
     checkStripeRedirect();
-  }, [currentUser, location.search, navigate, location.pathname]);
+
+    // Zentraler Cleanup am Ende des Effects
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [currentUser, location.search, navigate, location.pathname, startTour]);
 
   if (loading) {
     return (

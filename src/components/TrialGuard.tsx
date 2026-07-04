@@ -1,3 +1,4 @@
+import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect } from 'react';
 import { Lock, CheckCircle2, Zap, Shield, Building2, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext'; 
@@ -13,10 +14,11 @@ export default function TrialGuard({ children }: TrialGuardProps) {
   const [isLocked, setIsLocked] = useState(false);
   const [interval, setInterval] = useState<BillingInterval>('year');
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [forceLock, setForceLock] = useState(false);
 
   useEffect(() => {
     // 1. Wenn kein User da ist oder es dein Super-Admin ist -> durchlassen
-    if (!currentUser || currentUser.email === 'cv1@gmx.ch') {
+    if (!currentUser || checkIsSuperAdmin(currentUser?.email)) {
       setIsLocked(false);
       return;
     }
@@ -43,6 +45,12 @@ export default function TrialGuard({ children }: TrialGuardProps) {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    const handleUpgradeModal = () => setForceLock(true);
+    window.addEventListener('open-upgrade-modal', handleUpgradeModal);
+    return () => window.removeEventListener('open-upgrade-modal', handleUpgradeModal);
+  }, []);
+
   const handleCheckout = async (planName: 'Starter' | 'Pro' | 'Expert') => {
     if (!currentUser?.uid || !currentUser?.email) return;
     setIsLoading(planName);
@@ -55,7 +63,7 @@ export default function TrialGuard({ children }: TrialGuardProps) {
   };
 
   // Wenn nicht gesperrt, zeige die normale App (Workspace)
-  if (!isLocked) {
+  if (!isLocked && !forceLock) {
     return <>{children}</>;
   }
 
@@ -68,14 +76,26 @@ export default function TrialGuard({ children }: TrialGuardProps) {
           <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-red-500/20 border border-red-500/20">
             <Lock size={32} />
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-[#fafafa] mb-4 tracking-tight">Deine Testphase ist abgelaufen.</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-[#fafafa] mb-4 tracking-tight">
+            {forceLock ? "Feature nicht verfügbar" : "Deine Testphase ist abgelaufen."}
+          </h1>
           <p className="text-[#a1a1aa] text-lg max-w-2xl mx-auto">
-            Du hast Kreativ Desk 30 Tage lang in vollem Umfang genutzt. Wähle jetzt dein passendes Setup, um nahtlos an deinen Projekten weiterzuarbeiten. Deine Daten sind sicher.
+            {forceLock 
+              ? "Für diese Funktion benötigst du ein Upgrade auf einen höheren Plan. Wähle jetzt dein passendes Setup, um das volle Potenzial freizuschalten."
+              : "Du hast Kreativ Desk 30 Tage lang in vollem Umfang genutzt. Wähle jetzt dein passendes Setup, um nahtlos an deinen Projekten weiterzuarbeiten. Deine Daten sind sicher."}
           </p>
         </div>
 
         {/* Toggle Monatlich / Jährlich */}
         <div className="flex justify-center mb-12">
+          {forceLock && (
+            <button 
+              onClick={() => setForceLock(false)}
+              className="mr-6 text-zinc-400 hover:text-white transition-colors underline underline-offset-4"
+            >
+              Abbrechen & Zurück
+            </button>
+          )}
           <div className="bg-[#18181b] border border-[#27272a] p-1 rounded-xl flex items-center shadow-sm">
             <button 
               onClick={() => setInterval('month')}
@@ -98,13 +118,14 @@ export default function TrialGuard({ children }: TrialGuardProps) {
           {/* STARTER */}
           <div className="bg-[#18181b] border border-[#27272a] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col relative">
             <h3 className="text-lg font-bold text-[#fafafa] mb-2 flex items-center gap-2"><Building2 size={20} className="text-[#a1a1aa]"/> Starter</h3>
-            <div className="text-3xl font-black text-[#fafafa] mb-1">CHF {interval === 'year' ? '35' : '45'} <span className="text-sm font-medium text-[#a1a1aa]">/ Monat</span></div>
+            <div className="text-3xl font-black text-[#fafafa] mb-1">CHF {interval === 'year' ? '30' : '39'} <span className="text-sm font-medium text-[#a1a1aa]">/ Monat</span></div>
             <p className="text-xs text-[#a1a1aa] mb-6">Perfekt für Freelancer zur 2D-Planorganisation.</p>
             
             <ul className="space-y-4 mb-8 flex-1 text-sm font-medium text-[#a1a1aa]">
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-emerald-500 shrink-0"/> 3 Aktive Projekte</li>
+              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-emerald-500 shrink-0"/> 2D CAD Viewer & Mängel</li>
+              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-emerald-500 shrink-0"/> Projekt-Budgets & Tracking</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-emerald-500 shrink-0"/> 5 GB Cloud Speicher</li>
-              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-emerald-500 shrink-0"/> PDF-Offerten & Rechnungen</li>
             </ul>
             
             <button 
@@ -126,7 +147,9 @@ export default function TrialGuard({ children }: TrialGuardProps) {
             <ul className="space-y-4 mb-8 flex-1 text-sm font-medium text-[#a1a1aa]">
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-blue-500 shrink-0"/> Unbegrenzte Projekte</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-blue-500 shrink-0"/> 3D BIM Viewer (IFC)</li>
+              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-blue-500 shrink-0"/> KI-Concierge & Pitch-Deck</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-blue-500 shrink-0"/> Mobile Mängel-App (Live-Sync)</li>
+              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-blue-500 shrink-0"/> Projekt-Budgets & Tracking</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-blue-500 shrink-0"/> 50 GB Cloud Speicher</li>
             </ul>
             
@@ -142,11 +165,13 @@ export default function TrialGuard({ children }: TrialGuardProps) {
           {/* EXPERT */}
           <div className="bg-[#18181b] border border-[#27272a] rounded-2xl p-6 md:p-8 shadow-sm flex flex-col relative">
             <h3 className="text-lg font-bold text-[#fafafa] mb-2 flex items-center gap-2"><Shield size={20} className="text-purple-500"/> Expert</h3>
-            <div className="text-3xl font-black text-[#fafafa] mb-1">CHF {interval === 'year' ? '159' : '199'} <span className="text-sm font-medium text-[#a1a1aa]">/ Monat</span></div>
+            <div className="text-3xl font-black text-[#fafafa] mb-1">CHF {interval === 'year' ? '149' : '189'} <span className="text-sm font-medium text-[#a1a1aa]">/ Monat</span></div>
             <p className="text-xs text-[#a1a1aa] mb-6">Für Power-User: Finanzen & API-Automatisierung.</p>
             
             <ul className="space-y-4 mb-8 flex-1 text-sm font-medium text-[#a1a1aa]">
+              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-purple-500 shrink-0"/> Unbegrenzte Projekte</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-purple-500 shrink-0"/> Alles aus dem Pro-Plan</li>
+              <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-purple-500 shrink-0"/> PDF-Offerten & Rechnungen</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-purple-500 shrink-0"/> API & Webhooks (Zapier/Make)</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-purple-500 shrink-0"/> Eigenes Branding & Domain</li>
               <li className="flex items-start gap-3"><CheckCircle2 size={18} className="text-purple-500 shrink-0"/> 250 GB Cloud Speicher</li>

@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useProject } from '../contexts/ProjectContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { 
   Database, Building2, Briefcase, FolderOpen, FileText, Upload, Trash2, 
@@ -35,11 +35,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-function formatBytes(bytes: number) {
-  if (!bytes || bytes === 0) return '0 Bytes';
+// FIX: Formatiert rohe Zahlen (Bytes) sauber in KB / MB
+function formatBytes(bytes: any) {
+  if (typeof bytes === 'string' && bytes.includes('B')) return bytes;
+  const num = Number(bytes);
+  if (!num || num === 0) return '0 Bytes';
   const k = 1024; const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const i = Math.floor(Math.log(num) / Math.log(k));
+  return parseFloat((num / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 export default function DocumentsTab() {
@@ -75,10 +78,8 @@ export default function DocumentsTab() {
     return folderHistory.length === 1 ? currentFolderId : folderHistory[1].id;
   };
 
-  // +++ WÄCHTER 1: Abfrage für die Neu-Badges (Ohne Absturz!) +++
   useEffect(() => {
     if (!currentUser || !db || !currentUser.uid) return;
-    
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     const q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('isFolder', '==', false));
     
@@ -89,7 +90,6 @@ export default function DocumentsTab() {
     return () => unsub();
   }, [currentUser]);
 
-  // +++ WÄCHTER 2: Abfrage für die Dokumente/Ordner (Ohne Absturz!) +++
   useEffect(() => {
     if (!currentUser || !db || !currentUser.uid) return;
     if (activeCategory === 'overview') return;
@@ -141,7 +141,8 @@ export default function DocumentsTab() {
         name: file.name, url: downloadUrl, size: formatBytes(file.size), type: file.type,
         ownerId: currentUser.uid, companyId: safeCompanyId, projectId: projId,
         folderId: currentFolderId === projId ? '' : currentFolderId, 
-        category: activeCategory, isFolder: false, createdAt: new Date().toISOString()
+        category: activeCategory, isFolder: false, createdAt: new Date().toISOString(),
+        readBy: [currentUser.uid] // Uploader hat es automatisch gelesen
       });
       addToast(t('upload') + ' ' + t('completed'), 'success');
     } catch (error) { addToast(t('upload_failed'), 'error'); } 
@@ -151,9 +152,7 @@ export default function DocumentsTab() {
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim() || !currentUser || !currentUser.uid) return;
-    
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    
     try {
       const projId = getProjId();
       await addDoc(collection(db, 'documents'), {
@@ -172,6 +171,39 @@ export default function DocumentsTab() {
       if (url) { const fileRef = ref(storage, url); await deleteObject(fileRef).catch(console.error); }
       addToast(t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
+  };
+
+  // +++ ECHTE BADGE LOGIK (Überprüfung von readBy) +++
+  const isFileUnread = (file: any) => {
+    if (!currentUser?.uid) return false;
+    return !file.readBy || !file.readBy.includes(currentUser.uid);
+  };
+
+  const folderHasNewFiles = (folderId: string, isProjectNode?: boolean) => {
+    if (isProjectNode) {
+      return allFilesForBadges.some(f => f.projectId === folderId && isFileUnread(f));
+    }
+    return allFilesForBadges.some(f => f.folderId === folderId && isFileUnread(f));
+  };
+
+  const companyHasNew = allFilesForBadges.some(f => f.category === 'company' && isFileUnread(f));
+  const projectsHasNew = allFilesForBadges.some(f => f.category === 'projects' && isFileUnread(f));
+
+  // +++ DATEI ÖFFNEN & ALS GELESEN MARKIEREN +++
+  const handleOpenFile = async (e: React.MouseEvent, file: any) => {
+    e.stopPropagation();
+    
+    const isNew = isFileUnread(file);
+    if (isNew && currentUser?.uid) {
+      try {
+        await updateDoc(doc(db, 'documents', file.id), {
+          readBy: arrayUnion(currentUser.uid)
+        });
+      } catch (error) {
+        console.error("Konnte Lesestatus nicht aktualisieren", error);
+      }
+    }
+    window.open(file.url || file.fileUrl, '_blank');
   };
 
   const navigateToFolder = (folderId: string, folderName: string) => {
@@ -205,32 +237,11 @@ export default function DocumentsTab() {
     }
   };
 
-  const isItemNew = (dateString: string) => {
-    if (!dateString) return false;
-    const fileDate = new Date(dateString).getTime();
-    const now = new Date().getTime();
-    return (now - fileDate) < 24 * 60 * 60 * 1000;
-  };
-
-  const folderHasNewFiles = (folderId: string, isProjectNode?: boolean) => {
-    if (isProjectNode) {
-      return allFilesForBadges.some(f => f.projectId === folderId && isItemNew(f.createdAt));
-    }
-    return allFilesForBadges.some(f => f.folderId === folderId && isItemNew(f.createdAt));
-  };
-
-  const companyHasNew = allFilesForBadges.some(f => f.category === 'company' && isItemNew(f.createdAt));
-  const projectsHasNew = allFilesForBadges.some(f => f.category === 'projects' && isItemNew(f.createdAt));
-
   const displayItems = activeCategory === 'projects' && currentFolderId === 'root'
     ? safeProjects
         .map(p => ({
-          id: p.id,
-          name: p.name,
-          isFolder: true,
-          isProjectNode: true,
-          createdAt: p.createdAt || new Date().toISOString(),
-          size: '--'
+          id: p.id, name: p.name, isFolder: true, isProjectNode: true,
+          createdAt: p.createdAt || new Date().toISOString(), size: '--'
         }))
         .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -362,28 +373,32 @@ export default function DocumentsTab() {
                    <tr><td colSpan={4} className="px-6 py-12 text-center text-text-muted font-bold">{t('no_files')}</td></tr>
                  ) : (
                    displayItems.map((doc) => {
-                     const showBadge = doc.isFolder ? folderHasNewFiles(doc.id, doc.isProjectNode) : isItemNew(doc.createdAt);
-                     const displayDate = doc.date || new Date(doc.createdAt || doc.uploadedAt).toLocaleDateString();
+                     const showBadge = doc.isFolder ? folderHasNewFiles(doc.id, doc.isProjectNode) : isFileUnread(doc);
+                     const displayDate = doc.date || new Date(doc.createdAt || doc.uploadedAt).toLocaleDateString('de-CH');
                      
                      return (
-                       <tr key={doc.id} onClick={() => doc.isFolder && navigateToFolder(doc.id, doc.name)} className={cn("hover:bg-background transition-colors group", doc.isFolder ? "cursor-pointer hover:bg-white/[0.02]" : "")}>
+                       <tr 
+                         key={doc.id} 
+                         onClick={(e) => doc.isFolder ? navigateToFolder(doc.id, doc.name) : handleOpenFile(e, doc)} 
+                         className={cn("hover:bg-background transition-colors group cursor-pointer", doc.isFolder ? "hover:bg-white/[0.02]" : "")}
+                       >
                          <td className="px-6 py-4 flex items-center gap-4">
                            <div className={cn("p-2.5 rounded-lg shrink-0 relative", doc.isFolder ? (activeCategory === 'company' ? "bg-blue-500/10 text-blue-500" : "bg-orange-500/10 text-orange-500") : "bg-surface border border-border text-text-muted")}>
                              {doc.isFolder ? <FolderOpen size={20} className={activeCategory === 'company' ? "fill-blue-500/20" : "fill-orange-500/20"} /> : <FileText size={20} />}
-                             {showBadge && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-background"></div>}
+                             {showBadge && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-background animate-pulse"></div>}
                            </div>
                            <div className="font-bold text-text-primary text-[15px] truncate max-w-md flex items-center gap-2 group-hover:text-accent-ai transition-colors">
                              {doc.name} 
                              {showBadge && <span className="px-1.5 py-0.5 bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-md border border-red-500/20">{t('new_badge')}</span>}
                            </div>
                          </td>
-                         <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : doc.size}</td>
+                         <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : formatBytes(doc.size)}</td>
                          <td className="px-6 py-4 text-text-muted font-medium text-xs">{displayDate}</td>
                          <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                            {!doc.isFolder && (
                              <>
-                               <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-blue-500 transition-colors border border-transparent hover:border-blue-500/30 opacity-0 group-hover:opacity-100" title={t('preview')} onClick={e => e.stopPropagation()}><Eye size={16} /></a>
-                               <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 text-text-muted hover:text-emerald-500 hover:bg-background rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('download')}><Download size={16} /></a>
+                               <button onClick={(e) => handleOpenFile(e, doc)} className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-blue-500 transition-colors border border-transparent hover:border-blue-500/30 opacity-0 group-hover:opacity-100" title={t('preview')}><Eye size={16} /></button>
+                               <button onClick={(e) => handleOpenFile(e, doc)} className="p-2 text-text-muted hover:text-emerald-500 hover:bg-background rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('download')}><Download size={16} /></button>
                              </>
                            )}
                            {!doc.isProjectNode && (
@@ -403,15 +418,19 @@ export default function DocumentsTab() {
                   <div className="text-center py-20 text-text-muted font-bold italic border-2 border-dashed border-border/50 rounded-2xl mx-4">{t('no_files')}</div>
                 ) : (
                   displayItems.map(doc => {
-                    const showBadge = doc.isFolder ? folderHasNewFiles(doc.id, doc.isProjectNode) : isItemNew(doc.createdAt);
-                    const displayDate = doc.date || new Date(doc.createdAt || doc.uploadedAt).toLocaleDateString();
+                    const showBadge = doc.isFolder ? folderHasNewFiles(doc.id, doc.isProjectNode) : isFileUnread(doc);
+                    const displayDate = doc.date || new Date(doc.createdAt || doc.uploadedAt).toLocaleDateString('de-CH');
 
                     return (
-                      <div key={doc.id} onClick={() => doc.isFolder && navigateToFolder(doc.id, doc.name)} className="bg-surface border border-border rounded-2xl p-4 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-transform relative overflow-hidden">
+                      <div 
+                        key={doc.id} 
+                        onClick={(e) => doc.isFolder ? navigateToFolder(doc.id, doc.name) : handleOpenFile(e, doc)} 
+                        className="bg-surface border border-border rounded-2xl p-4 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-transform relative overflow-hidden cursor-pointer"
+                      >
                         {showBadge && <div className="absolute top-0 right-0 w-8 h-8 bg-red-500/10 rounded-bl-2xl"></div>}
                         <div className={cn("p-4 rounded-xl shrink-0 shadow-inner relative", doc.isFolder ? (activeCategory === 'company' ? "bg-blue-500/10 text-blue-500" : "bg-orange-500/10 text-orange-500") : "bg-background border border-border text-text-muted")}>
                           {doc.isFolder ? <FolderOpen size={24} className={activeCategory === 'company' ? "fill-blue-500/20" : "fill-orange-500/20"} /> : <FileText size={24} />}
-                          {showBadge && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-surface"></div>}
+                          {showBadge && <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-surface animate-pulse"></div>}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-text-primary text-sm truncate mb-1 flex items-center gap-2">
@@ -420,12 +439,12 @@ export default function DocumentsTab() {
                           </div>
                           <div className="flex items-center gap-3 text-[10px] text-text-muted uppercase tracking-wider font-bold">
                             <span>{displayDate}</span>
-                            {!doc.isFolder && <span className="font-mono bg-background px-1.5 py-0.5 rounded border border-border">{doc.size}</span>}
+                            {!doc.isFolder && <span className="font-mono bg-background px-1.5 py-0.5 rounded border border-border">{formatBytes(doc.size)}</span>}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0 z-10">
+                        <div className="flex items-center gap-1 shrink-0 z-10" onClick={(e) => e.stopPropagation()}>
                           {!doc.isFolder ? (
-                            <a href={doc.url} target="_blank" rel="noreferrer" className="p-2.5 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 active:scale-95 transition-all" onClick={e => e.stopPropagation()}><Download size={16} /></a>
+                            <button onClick={(e) => handleOpenFile(e, doc)} className="p-2.5 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 active:scale-95 transition-all"><Download size={16} /></button>
                           ) : (
                              <div className="p-2 text-text-muted"><ChevronRight size={20}/></div>
                           )}

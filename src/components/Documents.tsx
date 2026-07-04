@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { db, storage } from '../firebase';
 import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -44,7 +45,7 @@ function formatBytes(bytes: number) {
 export default function Documents({ projectId: propProjectId }: { projectId?: string }) {
   const { currentUser } = useAuth();
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
-  const { projects, activeProjectId } = useProject() as any;
+  const { projects, activeProjectId, isDemoMode, demoData } = useProject() as any;
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const navigate = useNavigate();
@@ -72,14 +73,24 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   useEffect(() => {
     if (!db || !currentProjectId) return;
 
+    if (isDemoMode && demoData) {
+       let docs = (demoData.documents || []).map((d:any) => ({ id: d.id, name: d.name, size: '2.4 MB', type: 'application/pdf', isFolder: d.isFolder, folderId: d.folderId || 'root', createdAt: new Date().toISOString() }));
+       docs = docs.filter((d: any) => {
+          const docFolderId = (d.folderId && d.folderId !== '') ? d.folderId : 'root';
+          return docFolderId === currentFolderId;
+       });
+       setDocuments(docs);
+       return;
+    }
+
     const q = query(
       collection(db, 'documents'),
       where('projectId', '==', currentProjectId)
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      let docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      docs = docs.filter(d => {
+      let docs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      docs = docs.filter((d: any) => {
          const docFolderId = (d.folderId && d.folderId !== '') ? d.folderId : 'root';
          return docFolderId === currentFolderId;
       });
@@ -97,10 +108,19 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     setIsUploading(true);
     
     try {
+      const isAllowed = await checkStorageLimit(safeCompanyId, file.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploading(false);
+        return;
+      }
+
       const storageRef = ref(storage, `${safeCompanyId}/documents/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
       
+      await incrementStorage(safeCompanyId, file.size);
+
       await addDoc(collection(db, 'documents'), {
         name: file.name,
         url: downloadUrl,

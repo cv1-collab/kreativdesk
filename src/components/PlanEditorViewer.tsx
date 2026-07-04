@@ -12,7 +12,8 @@ import { cn } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext'; 
+import { useLanguage } from '../contexts/LanguageContext';
+import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import { db, storage } from '../firebase';
 import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -342,7 +343,9 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                       <Text style={{ position: 'absolute', left: tbWidth*0.6 + 4 * SCALE_X, top: h*0.95, color: tCol, fontSize: 3.5 * MM_TO_PX * SCALE_AVG * el.scale, fontFamily: 'Helvetica-Bold' }}>{el.data.gez}</Text>
 
                       <Rect x={`${tbWidth * 0.8}px`} y={`${35 * MM_TO_PX}px`} width={`${tbWidth * 0.2}px`} height={`${10 * MM_TO_PX}px`} fill={tCol} />
+                      {/* @ts-ignore */}
                       <Text x={`${tbWidth * 0.8 + (4 * MM_TO_PX)}px`} y={`${39 * MM_TO_PX}px`} fill="#ffffff" fontSize={`${2 * MM_TO_PX}px`} opacity={0.8} fontFamily="sans-serif">{t('plan_no')}</Text>
+                      {/* @ts-ignore */}
                       <Text x={`${tbWidth * 0.8 + (4 * MM_TO_PX)}px`} y={`${43 * MM_TO_PX}px`} fill="#ffffff" fontSize={`${4 * MM_TO_PX}px`} fontWeight="900" fontFamily="sans-serif">{el.data.planNummer}</Text>
                    </View>
                  );
@@ -619,9 +622,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          finalFileName = finalFileToUpload.name;
       }
 
+      const isAllowed = await checkStorageLimit(currentUser.companyId, finalFileToUpload.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploading(false);
+        return;
+      }
+
       const storageRef = ref(storage, `${currentUser?.companyId}/cad_plans/${Date.now()}_${finalFileName}`);
       await uploadBytes(storageRef, finalFileToUpload);
       const url = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, finalFileToUpload.size);
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
@@ -664,9 +675,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          finalFileName = finalFileToUpload.name;
       }
 
+      const isAllowed = await checkStorageLimit(currentUser.companyId, finalFileToUpload.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploadingOverlay(false);
+        return;
+      }
+
       const storageRef = ref(storage, `${currentUser?.companyId}/cad_plans/overlay_${Date.now()}_${finalFileName}`);
       await uploadBytes(storageRef, finalFileToUpload);
       const url = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, finalFileToUpload.size);
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
@@ -794,7 +813,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     e.stopPropagation();
-    try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err){}
+    try { (e.currentTarget as unknown as HTMLElement).setPointerCapture(e.pointerId); } catch(err){}
     
     if (activeTool === 'rect') setDraftElement({ id: `rect_${Date.now()}`, type: 'rect', x: nx, y: ny, w: 0.01, h: 0.01, color: '#3b82f6', strokeColor: '#2563eb', borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
     else if (activeTool === 'circle') setDraftElement({ id: `circle_${Date.now()}`, type: 'circle', x: nx, y: ny, r: 0.01, color: '#3b82f6', strokeColor: '#2563eb', borderStyle: 'solid', layerId: activeLayerId, opacity: 0.5 });
@@ -1066,9 +1085,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `PlanExport_${(planName || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
+      const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        return;
+      }
+
       const storageRef = ref(storage, `documents/${currentUser.uid}/${fileName}`);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, blob.size);
 
       await addDoc(collection(db, 'documents'), {
         name: fileName,
@@ -1114,9 +1140,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       try {
         let imageUrl = '';
         if (defectPrompt.file && storage) {
-          const storageRef = ref(storage, `${currentUser?.companyId}/pdf_exports/${fileName}`);
+          const isAllowed = await checkStorageLimit(currentUser.companyId, defectPrompt.file.size);
+          if (!isAllowed) {
+            addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+            setIsSavingDefect(false);
+            return;
+          }
+
+          const storageRef = ref(storage, `${currentUser?.companyId}/pdf_exports/${defectPrompt.file.name}`);
           await uploadBytes(storageRef, defectPrompt.file); 
           imageUrl = await getDownloadURL(storageRef);
+          await incrementStorage(currentUser.companyId, defectPrompt.file.size);
         }
 
         await setDoc(doc(db, 'defects', newPin.id), { 

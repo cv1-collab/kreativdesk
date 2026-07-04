@@ -30,8 +30,15 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
   const activeProject = {
     id: 'demo-1',
     companyId: 'demo-company',
-    // 🔥 FIX: Wir mappen die Emails der Team-Mitglieder direkt in das Projekt-Array
+    // Team & Kamera
     memberIds: template.members.map((m: any) => m.email || m.id), 
+    cam1Url: template.camera?.url || '',
+    
+    // 🔥 NEU: Wir injizieren die Finanzen, Timelines und Meilensteine aus dem Template!
+    financeGroups: template.financeGroups || [],
+    tasks: template.tasks || [],
+    smartMarkers: template.smartMarkers || [],
+    
     ...template.project
   };
 
@@ -62,7 +69,9 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
       companyUsers: mockCompanyUsers,
       projectMembers: mockProjectMembers,
       timeEntries: [],
-      defects: [],
+      // 🔥 NEU: Auch die Mängel aus dem Template durchreichen
+      defects: template.defects || [],
+      
       setActiveProject: () => {}, addProject: async () => {}, removeProject: async () => {}, 
       addCompanyUser: async () => {}, updateCompanyUser: async () => {}, removeCompanyUser: async () => {}, 
       addProjectMember: async () => {}, removeProjectMember: async () => {}, addTimeEntry: async () => {},

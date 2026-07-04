@@ -8,10 +8,11 @@ interface Toast {
   id: string;
   message: string;
   type: ToastType;
+  action?: { label: string; onClick: () => void };
 }
 
 interface ToastContextType {
-  addToast: (message: string, type?: ToastType) => void;
+  addToast: (message: string, type?: ToastType, action?: { label: string; onClick: () => void }) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -28,9 +29,9 @@ export const useToast = () => {
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const addToast = useCallback((message: string, type: ToastType = 'info') => {
+  const addToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; onClick: () => void }) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action }]);
 
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
@@ -66,6 +67,15 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               
               <p className="text-sm font-medium flex-1">{toast.message}</p>
               
+              {toast.action && (
+                <button
+                  onClick={() => { toast.action?.onClick(); removeToast(toast.id); }}
+                  className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded font-bold text-xs shrink-0 transition-colors"
+                >
+                  {toast.action.label}
+                </button>
+              )}
+
               <button
                 onClick={() => removeToast(toast.id)}
                 className="p-1 hover:bg-white/10 rounded-md transition-colors shrink-0"

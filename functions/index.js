@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const functions = require("firebase-functions"); // 🔥 NEU: Für die Datenbank-Trigger
+const { onSchedule } = require("firebase-functions/v2/scheduler"); // 🔥 NEU: Import für den Cronjob
+const functions = require("firebase-functions"); 
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -103,3 +104,49 @@ exports.setInitialClaims = functions.firestore
             console.log(`Initiale Claims gesetzt für User: ${context.params.userId}`);
         }
     });
+
+// ============================================================================
+// 4. NEU: NOTIFICATION CRONJOB (Datenbank-Bereinigung)
+// ============================================================================
+
+exports.cleanupOldNotifications = onSchedule(
+  {
+    schedule: "every day 02:00",
+    timeZone: "Europe/Zurich",
+    timeoutSeconds: 120,
+    memory: "256MiB"
+  }, 
+  async (event) => {
+    // 30 Tage in der Vergangenheit berechnen
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    console.log(`Starte Bereinigung für Notifications älter als: ${thirtyDaysAgo}`);
+
+    const db = admin.firestore();
+    const notificationsRef = db.collection("notifications");
+    
+    // Batch-Limitierung auf 500 für maximale Performance und Sicherheit
+    const q = notificationsRef.where("createdAt", "<", thirtyDaysAgo).limit(500);
+
+    try {
+      const snapshot = await q.get();
+      
+      if (snapshot.empty) {
+        console.log("Keine alten Benachrichtigungen zum Löschen gefunden.");
+        return;
+      }
+
+      // Batch-Löschung
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      console.log(`Erfolgreich ${snapshot.size} alte Benachrichtigungen gelöscht.`);
+      
+    } catch (error) {
+      console.error("Fehler beim Löschen der Benachrichtigungen:", error);
+    }
+  }
+);

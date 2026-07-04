@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { CheckCircle2, Building2, User, Mail, Phone, MessageSquare, Send, Loader2, Camera, QrCode } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { db } from '../firebase';
@@ -195,6 +195,16 @@ export default function PublicLeadForm() {
         status: 'New',
         createdAt: serverTimestamp(),
       });
+
+      // 🔥 Trigger Webhook
+      if (companyId) {
+        fetch('/api/send-lead-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ companyId, leadData: formData })
+        }).catch(err => console.error('Webhook trigger error:', err));
+      }
+
       setIsSubmitted(true);
     } catch (err) {
       console.error('Error submitting lead:', err);

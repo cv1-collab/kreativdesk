@@ -122,7 +122,7 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const { addToast } = useToast();
   
-  const { projects, activeProjectId, defects, projectMembers, timeEntries } = useProject() as any;
+  const { projects, activeProjectId, defects, projectMembers, timeEntries, isDemoMode, demoData } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -142,6 +142,15 @@ export default function Dashboard() {
   // === MULTI-TENANT FILTERUNG IN DASHBOARD ===
   useEffect(() => {
     if (!currentUser?.companyId || !db || !activeProject?.id) return;
+    
+    if (isDemoMode && demoData) {
+      const docs = demoData.documents ? demoData.documents.map((d:any) => ({ id: d.id, type: 'document', title: d.name, date: new Date().toISOString() })) : [];
+      setDocumentsCount(docs.length);
+      setRecentActivities(docs.slice(0, 8));
+      setVersions([{ id: 'v1', status: 'approved', groups: demoData.financeGroups || [] }]);
+      setTransactions([]);
+      return;
+    }
     const fetchData = async () => {
       try {
         const docQ = query(
@@ -355,7 +364,7 @@ export default function Dashboard() {
         {[
           { label: t('upload_floor_plan'), link: `/project/${activeProject?.id}/plans`, icon: Map },
           { label: t('generate_client_pitch_deck'), link: `/project/${activeProject?.id}/pitch`, icon: MonitorPlay },
-          { label: t('review_budget_variance'), link: `/project/${activeProject?.id}/finance`, icon: DollarSign }
+          ...(currentUser?.role === 'owner' || currentUser?.canViewFinance ? [{ label: t('review_budget_variance'), link: `/project/${activeProject?.id}/finance`, icon: DollarSign }] : [])
         ].map((action, i) => (
           <button key={i} onClick={() => navigate(action.link)} className="w-full text-left px-5 py-4 rounded-xl border border-border bg-surface hover:bg-white/5 transition-all text-sm font-bold text-text-muted hover:text-text-primary flex items-center justify-between group shadow-sm">
             <span className="flex items-center gap-3">

@@ -1,3 +1,4 @@
+import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -23,14 +24,16 @@ import {
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
   X, Shield, Moon, Sun, FolderOpen, Megaphone, Trash2, Landmark,
   DollarSign, LayoutDashboard, Bell, LayoutTemplate, Layers, BookOpen, CalendarDays,
-  Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw
+  Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw, Lightbulb
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, addDoc, deleteDoc, query, updateDoc, where, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, deleteDoc, query, updateDoc, where, setDoc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { PLAN_FEATURES, PlanTier } from '../utils/planFeatures';
+import { demoTemplates } from '../utils/demoTemplates';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -91,7 +94,7 @@ export default function CompanyDashboard() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
 
-  const isSuperAdmin = currentUser?.email?.toLowerCase() === 'cv1@gmx.ch';
+  const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
   const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
   const canSeeFinances = userRole === 'owner' || userRole === 'management';
   const canManageSettings = userRole === 'owner' || userRole === 'management';
@@ -260,9 +263,85 @@ export default function CompanyDashboard() {
     setTimeout(() => navigate(`/project/${projectId}`), 500);
   };
 
+  const handleCreateDemoProject = async (type: 'construction' | 'interior' | 'agency' | 'tour' | 'museum' | 'gastro' = 'construction') => {
+    if (!db || !currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    setIsSubmitting(true);
+    addToast(`Erstelle Demo Projekt (${type})...`, 'info');
+
+    try {
+      const batch = writeBatch(db);
+      const projectId = `prj-demo-${Date.now()}`;
+      const demoData = demoTemplates[type] || demoTemplates.construction;
+
+      const newProj = {
+        id: projectId, name: demoData.project.name, description: demoData.project.description, status: demoData.project.status,
+        siteLocation: demoData.project.siteLocation || '', imageUrl: demoData.project.imageUrl || '', planUrl: demoData.project.planUrl || '',
+        createdAt: new Date().toISOString(), ownerId: currentUser.uid, companyId: safeCompanyId, memberIds: [currentUser.uid]
+      };
+      batch.set(doc(db, 'projects', projectId), newProj);
+
+      const memberId = `pm-${projectId}-${currentUser.uid}`;
+      batch.set(doc(db, 'projectMembers', memberId), {
+        id: memberId, projectId, companyId: safeCompanyId, userId: currentUser.uid, userEmail: currentUser.email, projectRole: 'owner', companyRole: userRole, joinedAt: new Date().toISOString()
+      });
+
+      if (demoData.financeGroups) {
+        demoData.financeGroups.forEach((group: any) => {
+          const groupId = `fg-${projectId}-${group.pos}`;
+          batch.set(doc(db, 'financeData', groupId), { id: groupId, projectId, companyId: safeCompanyId, ...group });
+        });
+      }
+
+      await batch.commit();
+      setIsNewProjectModalOpen(false);
+      setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
+      addToast('Demo Projekt erfolgreich geladen!', 'success');
+      handleProjectClick(projectId);
+    } catch (err) {
+      console.error(err);
+      addToast('Fehler beim Laden des Demos', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const checkProjectLimit = (): boolean => {
+    if (!currentUser) return false;
+    // Get max projects for current plan, default to Starter limit (3)
+    const planName = currentUser.plan || 'Starter';
+    // Free Trial / Trial acts as Pro usually, but let's safely use PLAN_FEATURES or default to 3
+    let mappedPlan = PLAN_FEATURES[planName as PlanTier];
+    if (planName === 'Trial' || planName === 'Free Trial') mappedPlan = PLAN_FEATURES.Pro;
+    const maxLimit = mappedPlan?.maxProjects || 3;
+    
+    const activeProjectsCount = projects.filter((p: any) => p.status !== 'archived').length;
+    
+    if (activeProjectsCount >= maxLimit) {
+      window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
+      return false;
+    }
+    return true;
+  };
+
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !currentUser || !currentUser.uid) return;
+    
+    // Check Limits BEFORE creation
+    if (!checkProjectLimit()) return;
+
+    if (newProjectData.name.startsWith('Demo:')) {
+      let type: any = 'construction';
+      if (newProjectData.name.includes('Museum')) type = 'museum';
+      else if (newProjectData.name.includes('Gastro')) type = 'gastro';
+      else if (newProjectData.name.includes('Interior')) type = 'interior';
+      else if (newProjectData.name.includes('Agentur')) type = 'agency';
+      else if (newProjectData.name.includes('Tournee')) type = 'tour';
+      
+      return handleCreateDemoProject(type);
+    }
+    
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
     try {
@@ -345,7 +424,7 @@ export default function CompanyDashboard() {
         name: file.name, url: downloadUrl, fileUrl: downloadUrl, type: docType, size: sizeText,
         isFolder: false, folderId: activeFolderId, parentId: activeFolderId, category: currentFolder.category,
         ownerId: currentUser.uid, companyId: safeCompanyId, uploadedBy: currentUser.uid,
-        projectId: currentFolder.isProject ? currentFolder.id : 'global', createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+        projectId: (currentFolder as any)?.isProject ? currentFolder.id : 'global', createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
       addToast(t('upload_success'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
@@ -460,7 +539,7 @@ export default function CompanyDashboard() {
         <div className="flex-1 overflow-y-auto relative custom-scrollbar w-full p-4 md:p-8">
            {isMounted && (
              <div className="w-full h-full flex flex-col">
-               {activeTab === 'dashboard' && <DashboardOverviewTab setActiveTab={setActiveTab} projects={safeProjects} leads={safeLeads} team={safeCompanyUsers} userRole={userRole} />}
+               {activeTab === 'dashboard' && <DashboardOverviewTab setActiveTab={(tab) => setActiveTab(tab as any)} />}
                
                {activeTab === 'projects' && (
                  <div className="space-y-6 w-full animate-in fade-in duration-300">
@@ -548,22 +627,15 @@ export default function CompanyDashboard() {
                  </div>
                )}
                
-               {activeTab === 'team' && <div className="h-full w-full"><TeamCrmTab userRole={userRole} /></div>}
+               {activeTab === 'team' && <div className="h-full w-full"><TeamCrmTab userRole={userRole} companyUsers={safeCompanyUsers} /></div>}
                {activeTab === 'finance' && canSeeFinances && <div className="h-full w-full"><FinanceTab addToast={addToast} setShowExpenseModal={setShowExpenseModal} setShowInvoiceModal={setShowInvoiceModal} setShowQuoteModal={setShowQuoteModal} /></div>}
-               {activeTab === 'documents' && <div className="h-full w-full"><DocumentsTab 
-                  activeDocCategory={activeDocCategory} setActiveDocCategory={setActiveDocCategory}
-                  activeFolderId={activeFolderId} setActiveFolderId={setActiveFolderId}
-                  documentFoldersState={documentFoldersState} currentFiles={currentFiles} currentFolder={currentFolder}
-                  setIsNewFolderModalOpen={setIsNewFolderModalOpen} handleDeleteDocument={handleDeleteDocument}
-                  handleFileUpload={() => docUploadRef.current?.click()} fileInputRef={docUploadRef}
-                  setPreviewFile={setPreviewFile} previewFile={previewFile} t={t}
-               /></div>}
+               {activeTab === 'documents' && <div className="h-full w-full"><DocumentsTab /></div>}
                {activeTab === 'agenda' && <div className="h-full w-full"><AgendaTab /></div>}
                {activeTab === 'leads' && <div className="h-full w-full"><LeadsTab /></div>}
                
                {activeTab === 'templates' && (
                  <TemplatesTab 
-                   setActiveTab={setActiveTab} 
+                   setActiveTab={(tab) => setActiveTab(tab as any)} 
                    setShowExpenseModal={setShowExpenseModal}
                    setShowInvoiceModal={setShowInvoiceModal}
                    setShowQuoteModal={setShowQuoteModal}
@@ -573,7 +645,7 @@ export default function CompanyDashboard() {
                  />
                )}
                
-               {activeTab === 'settings' && canManageSettings && <div className="h-full w-full"><SettingsTab companyProfile={companyProfile} setCompanyProfile={setCompanyProfile} zapierWebhookUrl={zapierWebhookUrl} setZapierWebhookUrl={setZapierWebhookUrl} /></div>}
+               {activeTab === 'settings' && canManageSettings && <div className="h-full w-full"><SettingsTab /></div>}
              </div>
            )}
         </div>
@@ -588,7 +660,70 @@ export default function CompanyDashboard() {
                <button onClick={() => setIsNewProjectModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border"><X size={20}/></button>
              </div>
              <form id="new-project-form" onSubmit={handleCreateProject} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
-               <div className="space-y-2">
+               
+               <div className="space-y-3">
+                 <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Projekt-Vorlage wählen</label>
+                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: '', description: ''})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === '' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Leeres Projekt</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Ohne Test-Daten</span>
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Bau & Architektur', description: 'Beispielprojekt für Bauwesen & Architektur, inklusive Testdaten.'})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Bau & Architektur' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Bau</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Interior Design', description: 'Beispielprojekt für Inneneinrichtung, inklusive Testdaten.'})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Interior Design' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Interior</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Kreativ-Agentur', description: 'Beispielprojekt für eine Kreativ-Agentur, inklusive Testdaten.'})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Kreativ-Agentur' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Agentur</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Event & Tournee', description: 'Beispielprojekt für Event- & Tourneemanagement, inklusive Testdaten.'})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Event & Tournee' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Tournee</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Museum & Ausstellung', description: 'Beispielprojekt für Museen & Ausstellungen, inklusive Testdaten.'})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Museum & Ausstellung' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Museum</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
+                   </button>
+                   <button 
+                     type="button" 
+                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Gastronomie', description: 'Beispielprojekt für Gastronomie & Restaurant-Eröffnungen, inklusive Testdaten.'})}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Gastronomie' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                   >
+                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Gastro</span>
+                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
+                   </button>
+                 </div>
+               </div>
+
+               <div className="space-y-2 pt-2">
                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('project_name')} *</label>
                  <input type="text" required value={newProjectData.name} onChange={e => setNewProjectData({...newProjectData, name: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none font-bold text-text-primary shadow-sm" autoFocus />
                </div>

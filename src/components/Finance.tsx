@@ -19,9 +19,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, getDoc, addDoc, query, where, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, getDoc, getDocs, addDoc, query, where, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
@@ -315,7 +316,7 @@ export default function Finance() {
   const functions = getFunctions(getApp(), 'europe-west1');
   const tooltipContentStyle = { backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', borderColor: theme === 'dark' ? '#27272a' : '#e4e4e7', color: theme === 'dark' ? '#fafafa' : '#09090b', borderRadius: '8px' };
   
-  const { activeProjectId, projects, projectMembers, timeEntries, addTimeEntry } = useProject() as any;
+  const { activeProjectId, projects, projectMembers, timeEntries, addTimeEntry, isDemoMode, demoData } = useProject() as any;
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const currentProjectId = urlProjectId || activeProjectId;
   
@@ -338,10 +339,22 @@ export default function Finance() {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(orientation: portrait)');
-    const handleChange = (e: MediaQueryListEvent) => setIsPortrait(e.matches);
+    const handleChange = (e: any) => setIsPortrait(e.matches);
     setIsPortrait(mediaQuery.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
+    
+    // 🔥 FIX FÜR MOBILE CRASH: Apple Safari Kompatibilität
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange);
+    } else if ((mediaQuery as any).addListener) {
+      (mediaQuery as any).addListener(handleChange);
+    }
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', handleChange);
+      } else if ((mediaQuery as any).removeListener) {
+        (mediaQuery as any).removeListener(handleChange);
+      }
+    };
   }, []);
 
   // Versucht nativ den Screen zu locken, wenn auf Tabellenansicht geklickt wird
@@ -410,6 +423,39 @@ export default function Finance() {
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
+    // 🔥 DEMO-BRÜCKE: Lade Daten aus deinem Template!
+    if (isDemoMode && demoData) {
+      if (demoData.financeGroups) {
+         setVersions([{ id: 'demo-v1', name: 'Originalbudget', vatRate: 8.1, status: 'approved', groups: demoData.financeGroups }]);
+         setActiveVersionId('demo-v1');
+         setProjectHeader(prev => ({ ...prev, project: demoData.project?.name || 'Demo Projekt', version: 'Originalbudget' }));
+         
+         const dummyTxs: any[] = [];
+         let txId = 1;
+         let totalPlan = 0;
+         const today = new Date();
+         
+         demoData.financeGroups.forEach((g: any) => {
+           g.items.forEach((item: any) => {
+              const itemTotal = ((item.qty || item.quantity || 0) * (item.unitPrice || 0));
+              totalPlan += itemTotal;
+              if (txId % 2 !== 0) {
+                const pastDate = new Date(today);
+                pastDate.setDate(today.getDate() - (Math.random() * 30));
+                dummyTxs.push({ id: `demo-tx-${txId}`, date: pastDate.toISOString().split('T')[0], description: `Teilrechnung: ${item.description}`, category: 'Kreditorenrechnung', amount: -(itemTotal * 0.65), status: 'Bezahlt', budgetPosId: item.id });
+              }
+              txId++;
+           });
+         });
+
+         dummyTxs.push({ id: `demo-rev-1`, date: new Date().toISOString().split('T')[0], description: 'Akontozahlung Bauherr', category: 'Debitorenrechnung', amount: totalPlan * 0.7, status: 'Bezahlt' });
+         setTransactions(dummyTxs);
+      }
+      setIsInitialLoad(false);
+      return;
+    }
+
+    // --- REGULÄRER FIREBASE FETCH FÜR ECHTE USER ---
     if (!currentUser || !currentUser.companyId || !db || !currentProjectId) return;
     const q = query(collection(db, 'transactions'), where('companyId', '==', currentUser.companyId), where('projectId', '==', currentProjectId));
     const unsub = onSnapshot(q, (snap) => {
@@ -430,15 +476,29 @@ export default function Finance() {
     }).catch(e => console.log('Silent skip: getDoc blocked'));
     
     return () => unsub();
-  }, [currentUser, currentProjectId]);
+  }, [currentUser, currentProjectId, isDemoMode, demoData]);
 
+  // 🔥 AUTO-SAVE BLOCKIEREN IM DEMO MODUS
   useEffect(() => {
-    if (isInitialLoad || !currentUser || !currentUser.companyId || !db || isReadOnly || !currentProjectId) return;
+    if (isDemoMode || isInitialLoad || !currentUser || !currentUser.companyId || !db || isReadOnly || !currentProjectId) return;
     const timeout = setTimeout(() => {
       setDoc(doc(db, 'financeData', `finance_${currentProjectId}`), { versions, activeVersionId, projectHeader, includeOptions, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId }, { merge: true }).catch(() => {});
     }, 1500);
-    return () => clearTimeout(timeout);
-  }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, db, isReadOnly]);
+  }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, db, isReadOnly, isDemoMode, isInitialLoad]);
+
+  const [companyColor, setCompanyColor] = useState('#10b981');
+  useEffect(() => {
+    if (!db || !currentUser?.companyId) return;
+    const fetchCompanyData = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'companies', currentUser.companyId!));
+        if (snap.exists() && snap.data().primaryColor) {
+          setCompanyColor(snap.data().primaryColor);
+        }
+      } catch (e) { console.error('Error fetching company color:', e); }
+    };
+    fetchCompanyData();
+  }, [db, currentUser?.companyId]);
 
   useEffect(() => {
     if (!db || !opCostSessionId || !showReceiptStudio) return;
@@ -482,8 +542,14 @@ export default function Finance() {
     return () => unsub();
   }, [opCostSessionId, showReceiptStudio]);
 
-  const calculateGroupTotal = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + item.total + (includeOptions ? item.option : 0), 0);
-  const totalBudget = budgetGroups.reduce((sum, group) => sum + calculateGroupTotal(group), 0);
+  // 🔥 SICHERE BERECHNUNG MIT FALLBACK
+  const calculateGroupTotal = (group: BudgetGroup) => {
+    if (!group || !group.items) return 0;
+    return group.items.reduce((sum, item) => sum + (Number(item.total) || (Number(item.qty || (item as any).quantity || 0) * Number(item.unitPrice || 0))) + (includeOptions ? (Number(item.option) || 0) : 0), 0);
+  };
+
+  // Wenn noch geladen wird, zeige 0 statt NaN
+  const totalBudget = isInitialLoad ? 0 : budgetGroups.reduce((sum, group) => sum + calculateGroupTotal(group), 0);
 
   const getFilteredTransactions = () => {
     return transactions.filter(tx => {
@@ -579,6 +645,51 @@ export default function Finance() {
     return null;
   };
 
+  const handleExportCSV = async () => {
+    if (!currentUser || !currentUser.companyId) return;
+    try {
+      addToast('Bereite Export vor...', 'info');
+      // Fetch Defects for current project
+      let projectDefects: any[] = [];
+      if (currentProjectId) {
+        const defectsQuery = query(collection(db, 'defects'), where('companyId', '==', currentUser.companyId), where('projectId', '==', currentProjectId));
+        const defectsSnap = await getDocs(defectsQuery);
+        projectDefects = defectsSnap.docs.map(d => d.data());
+      } else {
+        const defectsQuery = query(collection(db, 'defects'), where('companyId', '==', currentUser.companyId));
+        const defectsSnap = await getDocs(defectsQuery);
+        projectDefects = defectsSnap.docs.map(d => d.data());
+      }
+
+      let csv = "Kategorie,Datum,Titel/Beschreibung,Betrag/Status\n";
+      
+      transactions.forEach((t: any) => {
+        const date = t.date || (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : '');
+        const desc = (t.description || t.title || '').replace(/"/g, '""');
+        csv += `"Finanzen","${date}","${desc}","${t.amount || 0}"\n`;
+      });
+      
+      projectDefects.forEach((d: any) => {
+        const date = d.createdAt ? new Date(d.createdAt).toISOString().split('T')[0] : '';
+        const desc = (d.title || d.description || '').replace(/"/g, '""');
+        csv += `"Mängel","${date}","${desc}","${d.status || ''}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `${activeProject?.name || 'Projekt'}_Export.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      addToast('Export erfolgreich', 'success');
+    } catch (e) {
+      console.error('Export error:', e);
+      addToast('Fehler beim Export', 'error');
+    }
+  };
+
   const handleDeleteTransaction = async (id: string) => {
     if (isReadOnly) return;
     if (window.confirm(t('delete_confirm'))) {
@@ -617,6 +728,9 @@ export default function Finance() {
   };
 
   const handleToggleApproveVersion = () => {
+    if (currentUser?.role !== 'owner' && !currentUser?.canApproveBudget) {
+      return addToast('Du hast keine Berechtigung, Budgets freizugeben.', 'error');
+    }
     const isCurrentlyApproved = activeVersion.status === 'approved';
     const msg = isCurrentlyApproved ? t('revoke_confirm') : t('approve_confirm');
     if (window.confirm(msg)) {
@@ -1096,9 +1210,12 @@ export default function Finance() {
               <button onClick={() => setShowTimeModal(true)} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm"><Clock size={16} /> <span className="hidden sm:inline ml-2">{t('book_hours')}</span></button>
               <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm"><FileSignature size={16} /> <span className="hidden sm:inline ml-2">{t('quote')}</span></button>
               <button onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-sm"><Receipt size={16} /> <span className="hidden sm:inline ml-2">{t('book_receipt')}</span></button>
-              <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm"><Send size={16} /> <span className="hidden sm:inline ml-2">{t('invoice')}</span></button>
+              <button onClick={() => setShowInvoiceModal(true)} className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm"><Send size={16} /> <span className="hidden sm:inline ml-2">{t('invoice')}</span></button>
             </div>
             <div className="hidden lg:block w-px h-6 bg-border/50 mx-1"></div>
+            <button onClick={handleExportCSV} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-2 h-[42px] shrink-0">
+               <Download size={16} /> <span className="hidden lg:inline">CSV Export</span>
+            </button>
             {activeTab !== 'overview' && (
               <button onClick={() => setIsPdfStudioOpen(true)} className="hidden lg:flex px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-2 h-[42px] cursor-pointer shrink-0">
                  <FileText size={16} /> <span>PDF Studio</span>
@@ -1110,7 +1227,7 @@ export default function Finance() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full">
            <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
               <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
-              <button onClick={() => setActiveTab('budget')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
+              <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
               <button onClick={() => setActiveTab('control')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 relative whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}>
                 <ClipboardList size={16} /> {t('payment_control')}
                 {approvedVersions.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span>}
@@ -1137,7 +1254,7 @@ export default function Finance() {
                     {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
                   </select>
                   <div className="w-px h-4 bg-border mx-1"></div>
-                  {!isReadOnly && (
+                  {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
                     <button onClick={handleToggleApproveVersion} className={cn("p-1 px-2 rounded text-xs font-bold transition-colors border mr-1 whitespace-nowrap", activeVersion.status === 'approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "hover:bg-white/5 text-text-muted border-border/50")} title={t('approve_revoke')}>
                       {activeVersion.status === 'approved' ? t('approved') : t('approve')}
                     </button>
@@ -1172,7 +1289,7 @@ export default function Finance() {
                 </h3>
                 <p className="text-2xl font-bold text-red-400 font-medium">CHF {formatCHF(filteredSpent)}</p>
               </div>
-              <div className="bg-gradient-to-br from-surface to-accent-ai/5 border border-border rounded-xl p-5 shadow-sm">
+              <div className="tour-finance-profit bg-gradient-to-br from-surface to-accent-ai/5 border border-border rounded-xl p-5 shadow-sm">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('project_profit')}</h3>
                 <p className={cn("text-2xl font-bold font-medium", 0 > filteredProfit ? "text-red-500" : "text-emerald-400")}>
                   CHF {formatCHF(filteredProfit)}
@@ -1652,6 +1769,7 @@ export default function Finance() {
         title={t('finance_budget')} 
         fileName={`Finanzen_${activeTab}_${Date.now()}`}
         onSaveCloud={handleSavePdfToCloud}
+        defaultAccentColor={companyColor}
       >
         {(settings) => (
           <FinancePDFDocument 
@@ -1668,7 +1786,7 @@ export default function Finance() {
              overviewTotalBudget={overviewTotalBudget}
              totalActualCostsIncludingHoursAllTime={totalActualCostsIncludingHoursAllTime}
              totalBudget={totalBudget}
-             vatRate={vatRate}
+             vatRate={activeVersion.vatRate}
              formatCHF={formatCHF}
              calculateGroupTotal={calculateGroupTotal}
              getAllTimeActualCostForGroup={getAllTimeActualCostForGroup}
@@ -1683,6 +1801,7 @@ export default function Finance() {
         title="Buchungsbeleg" 
         fileName={`Buchung_${incomingData.vendor.replace(/\s/g,'_')}_${Date.now()}`}
         onSaveCloud={handleSaveReceiptPdfToCloud}
+        defaultAccentColor={companyColor}
       >
         {(settings) => (
           <ReceiptPDFDocument 
@@ -1868,7 +1987,17 @@ export default function Finance() {
                 </div>
 
                 <div className="p-6 border-t border-border/50 bg-background/30 flex justify-end shrink-0">
-                   <button onClick={() => setIsReceiptPdfStudioOpen(true)} disabled={!incomingData.vendor || !incomingData.amount || isSubmitting} className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-50">
+                   <button 
+                    onClick={() => {
+                      if (!hasFeature(currentUser, 'invoice_studio')) {
+                        window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
+                      } else {
+                        setIsReceiptPdfStudioOpen(true);
+                      }
+                    }} 
+                    disabled={!incomingData.vendor || !incomingData.amount || isSubmitting} 
+                    className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-50"
+                  >
                      {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={18} />} {t('generate_pdf_book')}
                    </button>
                 </div>
@@ -1883,7 +2012,7 @@ export default function Finance() {
             type="invoice" 
             onClose={() => setShowInvoiceModal(false)} 
             onSave={handleSaveGeneratedInvoice} 
-            budgetData={versions.find(v => v.id === activeVersionId)} 
+            budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []} 
           />
         )}
         {showQuoteModal && (
@@ -1891,7 +2020,7 @@ export default function Finance() {
             type="quote" 
             onClose={() => setShowQuoteModal(false)} 
             onSave={handleSaveGeneratedQuote} 
-            budgetData={versions.find(v => v.id === activeVersionId)} 
+            budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []} 
           />
         )}
       </AnimatePresence>

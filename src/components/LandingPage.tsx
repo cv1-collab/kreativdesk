@@ -157,9 +157,9 @@ export default function LandingPage() {
   }, []);
 
   // ROI Rechner States
-  const [projectsCount, setProjectsCount] = useState(10);
-  const [hoursLost, setHoursLost] = useState(3); 
-  const [hourlyRate, setHourlyRate] = useState(150);
+  const [projectsCount, setProjectsCount] = useState(2);
+  const [hoursLost, setHoursLost] = useState(1); 
+  const [hourlyRate, setHourlyRate] = useState(120);
 
   // === MIKRO-INTERAKTIONEN (MOBILE CARDS) ===
   const [budgetSlider, setBudgetSlider] = useState(50);

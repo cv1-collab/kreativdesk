@@ -39,7 +39,8 @@ interface TemplatesTabProps {
   setShowInvoiceModal: (show: boolean) => void;
   setShowQuoteModal: (show: boolean) => void;
   setShowPitchModal: (show: boolean) => void;
-  setShowOpCostModal: (show: boolean) => void; // 🔥 Neu hinzugefügt
+  setShowOpCostModal: (show: boolean) => void; 
+  userRole?: string;
 }
 
 export default function TemplatesTab({ 

@@ -124,6 +124,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [isSavingToCloud, setIsSavingToCloud] = useState(false);
+  // +++ NEU: Loading State für den Medien-Import +++
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [imageFilters, setImageFilters] = useState({ brightness: 0, contrast: 0, saturation: 0 });
@@ -199,12 +201,34 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
 
   const [textPrompt, setTextPrompt] = useState<{ isOpen: boolean, x: number, y: number, value: string } | null>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // +++ FIX 1.7: Cloud Storage Upload anstatt Base64 +++
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => { setBgImageSrc(reader.result as string); };
-    reader.readAsDataURL(file);
+    if (!file || !currentUser || !currentUser.companyId) return;
+
+    setIsUploadingMedia(true);
+    try {
+      // Sichere Benennung für den Cloud Storage
+      const fileName = `whiteboard_bg_${Date.now()}_${file.name}`;
+      const storageReference = ref(storage, `whiteboardBackgrounds/${currentUser.uid}/${fileName}`);
+      
+      // Lade das Original-Bild in den Firebase Storage (Platz satt!)
+      await uploadBytes(storageReference, file);
+      
+      // Hole dir nur die saubere URL zurück
+      const downloadUrl = await getDownloadURL(storageReference);
+      
+      // Setze das Hintergrundbild auf die externe URL (Kein 5MB Text-String mehr)
+      setBgImageSrc(downloadUrl);
+      addToast('Bild erfolgreich eingefügt!', 'success');
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      addToast('Fehler beim Einfügen des Bildes.', 'error');
+    } finally {
+      setIsUploadingMedia(false);
+      // Reset input, damit das gleiche Bild erneut gewählt werden kann falls nötig
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const getDistance = (p1: any, p2: any) => Math.sqrt(Math.pow(p2.clientX - p1.clientX, 2) + Math.pow(p2.clientY - p1.clientY, 2));
@@ -413,14 +437,12 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     } catch (error) { console.error(error); addToast('Fehler beim Speichern in der Cloud.', 'error'); }
   };
 
-  // +++ FIX 1.7: 1MB FIRESTORE-LIMIT BEHOBEN +++
   const handleSaveToCloud = async () => {
     if (!stageRef.current || !currentUser || !currentUser.companyId || !db) return;
     setIsSavingToCloud(true); 
     setSelectedShapeId(null); 
     
     try {
-      // Kurze Pause, um die UI (Rahmen von selektierten Objekten) sicher zu entfernen
       setTimeout(async () => {
         try {
           const dataUrl = getCanvasDataUrl(1.5, 'image/png');
@@ -429,11 +451,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           const fileName = `Whiteboard_Skizze_${new Date().getTime()}.png`;
           const storageReference = ref(storage, `documents/${currentUser.uid}/${fileName}`);
           
-          // Base64 in einen Blob konvertieren
           const fetchRes = await fetch(dataUrl); 
           const blob = await fetchRes.blob();
           
-          // Bild in den Cloud Storage laden (Hier gibt es Gigabytes an Platz)
           await uploadBytes(storageReference, blob);
           const downloadUrl = await getDownloadURL(storageReference);
           
@@ -446,10 +466,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
             } catch (e) { console.error(e); }
           }
           
-          // Nur noch den Link (URL) und Metadaten in Firestore speichern
           await addDoc(collection(db, 'documents'), {
             name: fileName, 
-            url: downloadUrl, // Der Link zum Cloud Storage
+            url: downloadUrl, 
             fileUrl: downloadUrl, 
             size: formatBytes(blob.size), 
             type: 'image/png', 
@@ -502,8 +521,6 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         const uri = getCanvasDataUrl(2, 'image/jpeg');
         if (!uri) return;
         
-        // Da das Pitch Deck temporäre Präsentations-Assets nutzt, müssen wir es auch hier über den Storage routen
-        // anstatt den fetten Base64-String in `whiteboardExports` zu knallen.
         const fileName = `PitchDeck_Slide_${Date.now()}.jpg`;
         const storageReference = ref(storage, `whiteboardExports/${currentUser.uid}/${fileName}`);
         const fetchRes = await fetch(uri); 
@@ -514,7 +531,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         const id = `wb-${Date.now()}`;
         await setDoc(doc(db, 'whiteboardExports', id), { 
           id, 
-          imageUrl: downloadUrl, // Der Link, nicht der String!
+          imageUrl: downloadUrl, 
           ownerId: currentUser.uid, 
           companyId: currentUser.companyId, 
           createdAt: new Date().toISOString() 
@@ -607,8 +624,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
             <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
 
             <input type="file" ref={fileInputRef} accept="image/*,application/pdf" onChange={handleImageUpload} className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} className="px-3 md:px-4 py-2 bg-surface border border-border rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2">
-              <UploadCloud size={16} /> <span className="hidden md:inline">{t('import_media')}</span>
+            <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingMedia} className="px-3 md:px-4 py-2 bg-surface border border-border rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-50">
+              {isUploadingMedia ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />} 
+              <span className="hidden md:inline">{isUploadingMedia ? 'Lädt...' : t('import_media')}</span>
             </button>
             
             <button onClick={executePdfExport} className="hidden md:flex px-3 md:px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-bold hover:bg-red-500/20 transition-colors items-center gap-2">

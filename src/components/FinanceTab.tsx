@@ -84,6 +84,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const functions = getFunctions(getApp(), 'europe-west1');
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   
   const [showOpCostModal, setShowOpCostModal] = useState(false);
@@ -105,11 +106,21 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   useEffect(() => {
     if (!db || !currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    
+    // Fetch transactions
     const q = query(collection(db, 'transactions'), where('companyId', '==', safeCompanyId));
     const unsub = onSnapshot(q, (snap) => setTransactions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())));
-    return () => unsub();
+    
+    // Fetch projects
+    const pq = query(collection(db, 'projects'), where('companyId', '==', safeCompanyId));
+    const unsubP = onSnapshot(pq, (snap) => {
+      setProjects(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+    });
+
+    return () => { unsub(); unsubP(); };
   }, [currentUser]);
 
+  // Rest of applyAiData etc.
   const applyAiData = (aiData: any) => {
     const vendorName = aiData.vendor || aiData.merchant || aiData.company || aiData.description || '';
     const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
@@ -191,30 +202,63 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
 
-      // +++ FIX: Finde die echte ID des Ordners "01_FINANZEN" +++
       let targetFolderId = '';
-      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true));
+      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true), where('folderId', '==', 'root'));
       const folderSnap = await getDocs(folderQ);
       if (!folderSnap.empty) {
         targetFolderId = folderSnap.docs[0].id;
       } else {
-        const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() });
+        const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() });
         targetFolderId = newFolderRef.id;
       }
 
       await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
       
-      // Speichern mit der ECHTEN Folder ID
-      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
+      // FIX: size: blob.size ist jetzt hier drin!
+      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'application/pdf', size: blob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
 
       for (let i = 0; i < opCostReceipts.length; i++) {
-        if (opCostReceipts[i].startsWith('data:image')) {
-          const fetchRes = await fetch(opCostReceipts[i]); const imgBlob = await fetchRes.blob();
-          const imgRef = ref(storage, `${safeCompanyId}/documents/Original_Ext_Beleg_${Date.now()}_${i}.png`);
-          await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
-          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'IMAGE', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
+        const src = opCostReceipts[i];
+        if (!src) continue;
+
+        try {
+          // Löst ALLE Edge-Cases: Wandelt Base64 UND Mobile-URLs in ein sauberes lokales Blob um
+          const fetchRes = await fetch(src); 
+          const fileBlob = await fetchRes.blob();
+          
+          // Strikte MIME-Type und Extension Extraktion für die Bauakte
+          const mimeType = fileBlob.type || 'application/octet-stream';
+          const ext = mimeType.split('/')[1] || (mimeType.includes('pdf') ? 'pdf' : 'png');
+          const finalFileName = `Beleg_Scan_${Date.now()}_${i}.${ext}`;
+
+          // Sauber in den Firmen-Tresor hochladen
+          const fileRef = ref(storage, `${safeCompanyId}/documents/${finalFileName}`);
+          await uploadBytes(fileRef, fileBlob); 
+          const finalFileUrl = await getDownloadURL(fileRef);
+          
+          // Perfekter Datenbank-Eintrag in die Bauakte (documents)
+          await addDoc(collection(db, 'documents'), { 
+            name: finalFileName, 
+            url: finalFileUrl, 
+            fileUrl: finalFileUrl, 
+            type: mimeType, 
+            size: fileBlob.size, // Exakte Byte-Größe, verhindert UI-Crashes beim Rendern!
+            isFolder: false, 
+            ownerId: currentUser.uid, 
+            companyId: safeCompanyId, 
+            projectId: 'global', 
+            folderId: targetFolderId, 
+            category: 'company', 
+            uploadedAt: new Date().toISOString() 
+          });
+        } catch (err) {
+          console.error("Fehler beim Verarbeiten des Belegs:", err);
         }
       }
+      
+      // Die Notification (inkl. visibility: 'owner')
+      await addDoc(collection(db, 'notifications'), { title: 'Neuer Finanzbeleg', message: `${fileName} wurde in 01_FINANZEN abgelegt.`, type: 'document', isRead: false, visibility: 'owner', companyId: safeCompanyId, ownerId: currentUser.uid, createdAt: new Date().toISOString() });      
+      
       addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
     } catch (error) { addToast(t('save_error'), "error"); } finally { setIsSubmitting(false); }
   };
@@ -232,7 +276,23 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   return (
     <div className="space-y-6 animate-in fade-in duration-300 text-text-primary">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        <div><h2 className="text-2xl font-bold tracking-tight">{t('finance_analytics')}</h2><p className="text-text-muted mt-1 text-sm">{t('finance_overview_year')} {selectedYear}.</p></div>
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">{t('finance_analytics')}</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-text-muted text-sm">{t('finance_overview_year')}</p>
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="bg-background border border-border/50 rounded px-2 py-1 text-sm font-bold focus:border-accent-ai outline-none text-text-primary"
+            >
+              <option value="all">{t('all_years')}</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-2"><FileSignature size={16} /> {t('new_quote')}</button>
           <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"><FileText size={16} /> {t('new_invoice')}</button>
@@ -246,6 +306,48 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><TrendingUp size={18} /></div><h3 className="font-semibold text-sm">{t('invoices_total')}</h3></div><p className="text-2xl font-bold">CHF {totalRevenue.toLocaleString('de-CH')}</p></div>
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-orange-500/10 text-orange-500 rounded-lg"><Receipt size={18} /></div><h3 className="font-semibold text-sm">{t('expenses_team')}</h3></div><p className="text-2xl font-bold">CHF {totalSpesen.toLocaleString('de-CH')}</p></div>
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-lg"><Landmark size={18} /></div><h3 className="font-semibold text-sm">{t('ext_costs')}</h3></div><p className="text-2xl font-bold">CHF {totalOpCosts.toLocaleString('de-CH')}</p></div>
+      </div>
+
+      {/* PROJECT BUDGETS OVERVIEW */}
+      <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm">
+        <h3 className="font-bold flex items-center gap-2 mb-4"><Briefcase size={16} className="text-indigo-500"/> Projekt Budgets (Übersicht)</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-background/50 text-text-muted text-xs uppercase">
+              <tr>
+                <th className="px-4 py-2 rounded-l-lg">Projekt</th>
+                <th className="px-4 py-2 text-right">Geplantes Budget (Soll)</th>
+                <th className="px-4 py-2 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/30">
+              {projects.length === 0 && <tr><td colSpan={3} className="text-center py-4 text-text-muted">{t('no_entries')}</td></tr>}
+              {projects.map(proj => {
+                let pBudget = 0;
+                if (Array.isArray(proj.financeGroups)) {
+                  proj.financeGroups.forEach((g: any) => {
+                    if (Array.isArray(g.items)) {
+                      g.items.forEach((i: any) => {
+                        pBudget += (Number(i.qty) || 0) * (Number(i.unitPrice) || 0);
+                      });
+                    }
+                  });
+                }
+                return (
+                  <tr key={proj.id} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-medium">{proj.name}</td>
+                    <td className="px-4 py-3 text-right font-bold text-indigo-500">CHF {pBudget.toLocaleString('de-CH')}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className={cn("px-2 py-1 rounded text-xs font-medium", proj.status === 'active' ? "bg-emerald-500/10 text-emerald-500" : "bg-gray-500/10 text-gray-500")}>
+                        {proj.status === 'active' ? 'Aktiv' : 'Abgeschlossen'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

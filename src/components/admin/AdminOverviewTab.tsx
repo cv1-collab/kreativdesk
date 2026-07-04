@@ -68,7 +68,7 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
     // 🔥 FIX: Firebase Index Error durch Entfernen des where() Clauses vermieden
     const qTx = query(collection(db, 'transactions'), orderBy('date', 'desc'));
     const unsubTx = onSnapshot(qTx, snap => {
-      const allTxs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allTxs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
       
       const validTxs = allTxs.filter((tx: any) => 
         tx.category !== 'Kreditorenrechnung' && 

@@ -4,8 +4,11 @@ import { useProject } from '../contexts/ProjectContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio from './PitchDeckStudio';
 import { useTour } from '../contexts/TourContext';
+import { hasFeature } from '../utils/planFeatures';
+import { Lock } from 'lucide-react';
 
 import { 
   LayoutDashboard, Calendar, DollarSign, Box, Map,
@@ -45,6 +48,7 @@ export default function Layout() {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t: globalT } = useLanguage();
   const { startTour } = useTour();
+  const { addToast } = useToast();
   
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -65,11 +69,11 @@ export default function Layout() {
   const menuGroups = [
     { title: t('steuerung'), items: [ 
       { id: '', icon: LayoutDashboard, label: t('project_overview'), className: 'tour-proj-dashboard' }, 
-      { id: 'finance', icon: DollarSign, label: t('finance_budget'), className: 'tour-proj-finance' }, 
+      ...(currentUser?.role === 'owner' || currentUser?.canViewFinance ? [{ id: 'finance', icon: DollarSign, label: t('finance_budget'), className: 'tour-proj-finance' }] : []),
       { id: 'calendar', icon: Calendar, label: t('smart_calendar'), className: 'tour-proj-calendar' } 
     ]},
     { title: t('planung_bim'), items: [ 
-      { id: 'bim', icon: Box, label: t('3d_viewer'), className: 'tour-proj-bim' }, 
+      { id: 'bim', icon: Box, label: t('3d_viewer'), className: 'tour-proj-bim', featureId: '3d_bim' }, 
       { id: 'plans', icon: Map, label: t('cad_plans'), className: 'tour-proj-cad' } 
     ]},
     { title: t('ausfuehrung_kollaboration'), items: [ 
@@ -80,7 +84,7 @@ export default function Layout() {
     ]},
     { title: t('datenraum'), items: [ 
       { id: 'documents', icon: FileText, label: t('bau_akte'), className: 'tour-proj-docs' }, 
-      { id: 'pitch', icon: Presentation, label: t('pitch_deck'), className: 'tour-proj-pitch' }, 
+      { id: 'pitch', icon: Presentation, label: t('pitch_deck'), className: 'tour-proj-pitch', featureId: 'ai_audit' }, 
       { id: 'team', icon: UserCheck, label: t('projekt_zugriffe'), className: 'tour-proj-team' } 
     ]}
   ];
@@ -97,9 +101,10 @@ export default function Layout() {
     if (!projectId || !currentUser || !currentUser.companyId || !db) return;
     let docs: any[] = [];
     let defs: any[] = [];
+    let evts: any[] = [];
     
     const updateNotifs = () => {
-      const combined = [...docs, ...defs]
+      const combined = [...docs, ...defs, ...evts]
         .filter(item => item && item.time) 
         .sort((a, b) => parseTime(b.time) - parseTime(a.time))
         .slice(0, 15);
@@ -125,7 +130,30 @@ export default function Layout() {
       updateNotifs();
     });
 
-    return () => { unsubDocs(); unsubDefs(); };
+    const unsubEvts = onSnapshot(query(collection(db, 'calendarEvents'), where('companyId', '==', currentUser.companyId)), (snap) => {
+      evts = snap.docs.map(d => {
+         const data = d.data();
+         return { id: d.id, type: 'event', title: language === 'de' ? 'Neuer Termin' : 'New Event', desc: data.title || 'Termin', time: data.createdAt || new Date(data.timestamp || Date.now()).toISOString(), data };
+      }).filter(Boolean);
+      
+      snap.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          const createdAt = data.createdAt ? new Date(data.createdAt).getTime() : data.timestamp;
+          if (createdAt && Date.now() - createdAt < 15000) {
+            addToast(
+              language === 'de' ? `Neuer Termin: ${data.title || 'Kalendereintrag'}` : `New Event: ${data.title || 'Calendar Entry'}`,
+              'info',
+              { label: language === 'de' ? 'Ansehen' : 'View', onClick: () => navigate(`/app/project/${data.projectId || projectId || 'internal'}/agenda`) }
+            );
+          }
+        }
+      });
+      
+      updateNotifs();
+    });
+
+    return () => { unsubDocs(); unsubDefs(); unsubEvts(); };
   }, [projectId, currentUser, language, lastSeen]);
 
   useEffect(() => {
@@ -169,30 +197,64 @@ export default function Layout() {
             <div key={index}>
               <div className="px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">{group.title}</div>
               <div className="space-y-1">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.id}
-                    to={`/project/${projectId}${item.id ? `/${item.id}` : ''}`}
-                    end={item.id === ''}
-                    className={({ isActive }) => cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                      isActive ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:bg-white/5 hover:text-text-primary border border-transparent",
-                      item.className
-                    )}
-                  >
-                    <item.icon size={18} className="shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </NavLink>
-                ))}
+                {group.items.map((item) => {
+                  const isLocked = item.featureId && !hasFeature(currentUser, item.featureId);
+                  
+                  if (isLocked) {
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                          "text-text-muted/50 hover:bg-white/5 border border-transparent",
+                          item.className
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <item.icon size={18} className="shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </div>
+                        <Lock size={14} className="text-accent-ai/70" />
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <NavLink
+                      key={item.id}
+                      to={`/project/${projectId}${item.id ? `/${item.id}` : ''}`}
+                      end={item.id === ''}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        isActive ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:bg-white/5 hover:text-text-primary border border-transparent",
+                        item.className
+                      )}
+                    >
+                      <item.icon size={18} className="shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </NavLink>
+                  );
+                })}
               </div>
             </div>
           ))}
 
           <div className="mt-8 px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">AI Tools</div>
-          <button onClick={() => setShowPitchModal(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold text-purple-400 hover:bg-purple-500/10 transition-all border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] group tour-proj-pitch">
-            <MonitorPlay size={18} className="group-hover:scale-110 transition-transform" />
-            <span>{t('pitch_deck')}</span>
-          </button>
+          {(!hasFeature(currentUser, 'ai_audit')) ? (
+            <button onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold text-text-muted/50 hover:bg-white/5 transition-all border border-transparent group tour-proj-pitch">
+              <div className="flex items-center gap-3">
+                <MonitorPlay size={18} />
+                <span>{t('pitch_deck')}</span>
+              </div>
+              <Lock size={14} className="text-accent-ai/70" />
+            </button>
+          ) : (
+            <button onClick={() => setShowPitchModal(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold text-purple-400 hover:bg-purple-500/10 transition-all border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] group tour-proj-pitch">
+              <MonitorPlay size={18} className="group-hover:scale-110 transition-transform" />
+              <span>{t('pitch_deck')}</span>
+            </button>
+          )}
         </nav>
 
         <div className="p-4 border-t border-border/50 shrink-0 bg-surface/50 relative">

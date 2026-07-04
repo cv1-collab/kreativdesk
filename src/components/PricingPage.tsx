@@ -112,7 +112,7 @@ export default function PricingPage() {
   const plans = [
     {
       name: t('plan_starter'),
-      price: billingCycle === 'yearly' ? 35 : 39,
+      price: billingCycle === 'yearly' ? 30 : 39,
       icon: <Building2 className="w-6 h-6 text-zinc-400" />,
       description: t('desc_starter'),
       features: [t('f_proj_3'), t('f_2d_defects'), t('f_budget'), t('f_storage_5')],
@@ -129,7 +129,7 @@ export default function PricingPage() {
     },
     {
       name: t('plan_expert'),
-      price: billingCycle === 'yearly' ? 159 : 189, 
+      price: billingCycle === 'yearly' ? 149 : 189, 
       icon: <Shield className="w-6 h-6 text-emerald-500" />,
       description: t('desc_expert'),
       features: [t('f_proj_unlimited'), t('all_pro_features'), t('f_invoice'), t('f_api'), t('f_brand'), t('f_storage_250')],

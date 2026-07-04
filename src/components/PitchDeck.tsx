@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -71,8 +71,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const [canvasScale, setCanvasScale] = useState(0.8);
 
   useEffect(() => {
-    const availableWidth = windowDimensions.w;
-    const availableHeight = isFullscreen ? windowDimensions.h : (windowDimensions.h - (isMobile ? 120 : 160));
+    const availableWidth = isFullscreen ? windowDimensions.w : (windowDimensions.w - (isMobile ? 32 : 320));
+    const availableHeight = isFullscreen ? windowDimensions.h : (windowDimensions.h - (isMobile ? 180 : 260));
     const scaleW = availableWidth / 1200;
     const scaleH = availableHeight / 675;
     setCanvasScale(Math.min(scaleW, scaleH) * 0.95);
@@ -98,10 +98,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           id: `demo-slide-3`, title: 'Projekt-Budget (Live-Status)', content: '',
           order_index: 2, ownerId: 'demo', projectId: currentProjectId, layout: 'data-budget',
           dataPayload: {
-            totalBudget: tpl.financeGroups ? tpl.financeGroups.reduce((acc: number, g: any) => acc + g.items.reduce((sum: number, i: any) => sum + (i.amount || 0), 0), 0) : 0,
+            totalBudget: tpl.financeGroups ? tpl.financeGroups.reduce((acc: number, g: any) => acc + g.items.reduce((sum: number, i: any) => sum + ((i.qty || i.quantity || 0) * (i.unitPrice || 0)), 0), 0) : 0,
             budgetGroups: tpl.financeGroups ? tpl.financeGroups.map((g:any) => ({
-              pos: g.pos, title: g.title, total: g.items.reduce((sum:number, item:any)=>sum+(item.amount||0), 0),
-              items: g.items.map((i:any) => ({ pos: i.pos, title: i.title, total: i.amount }))
+              pos: g.pos, title: g.title, total: g.items.reduce((sum:number, item:any)=>sum+((item.qty || item.quantity || 0) * (item.unitPrice || 0)), 0),
+              items: g.items.map((i:any) => ({ pos: i.pos, title: i.title, total: (i.qty || i.quantity || 0) * (i.unitPrice || 0) }))
             })) : []
           }
         },
@@ -178,6 +178,25 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const goPrevSlide = () => { if (hasPrevSlide) setActiveSlideId(slides[currentSlideIndex - 1].id); };
   const goNextSlide = () => { if (hasNextSlide) setActiveSlideId(slides[currentSlideIndex + 1].id); };
 
+  const activeProject = projects.find((p: any) => p.id === currentProjectId);
+  const deckSettings = activeProject?.deckSettings || {
+    logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'swiss'
+  };
+
+  const getThemeClasses = () => {
+    switch(deckSettings.themeStyle) {
+      case 'architecture': return 'font-mono bg-zinc-50 text-zinc-900 border-2 border-zinc-900 shadow-[8px_8px_0px_#18181b]';
+      case 'photography': return 'font-serif bg-[#0f0f12] text-zinc-100 border border-zinc-800 shadow-2xl';
+      case 'scenography': return 'font-sans bg-[#09090b] text-zinc-100 border-l-4 shadow-2xl';
+      case 'swiss': return 'font-sans bg-white text-black border-[6px] border-black tracking-tight shadow-none';
+      case 'neo-brutalism': return 'font-sans bg-white text-black border-[8px] border-black shadow-[16px_16px_0px_#000000]';
+      case 'glassmorphism': return 'font-sans bg-gradient-to-br from-white/60 to-white/30 backdrop-blur-3xl text-zinc-800 border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-3xl';
+      case 'cyberpunk': return 'font-mono bg-[#050505] text-zinc-100 border-l-[6px] shadow-[0_0_40px_rgba(0,0,0,0.5)]';
+      case 'minimal-tech': return 'font-sans bg-[#fafafa] text-zinc-800 border border-zinc-200 shadow-sm rounded-2xl';
+      case 'keynote': default: return 'font-sans bg-white text-zinc-900 shadow-xl border border-zinc-200 rounded-xl';
+    }
+  };
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().catch(err => console.error(err));
@@ -187,10 +206,16 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   };
 
   const renderSlideContent = (slide: Slide) => {
-    const tc = "text-black"; 
+    const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
+    const tc = isDarkTheme ? "text-white" : "text-black";
     
     return (
-      <div className="w-full h-full flex flex-col p-12 relative overflow-hidden font-sans bg-white text-black border-[4px] border-black tracking-tight shadow-none">
+      <div className={cn("w-full h-full flex flex-col p-12 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
+        {deckSettings.themeStyle === 'scenography' && <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full blur-[120px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(30%, -30%)' }}></div>}
+        {deckSettings.themeStyle === 'neo-brutalism' && <div className="absolute top-0 right-0 w-48 h-48 border-b-[8px] border-l-[8px] border-black pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(10%, -10%)' }}></div>}
+        {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[1px] opacity-50 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
+        {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
+        
         <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
           <h2 className={cn("w-full font-bold truncate leading-tight", slide.layout === 'title-only' ? "text-5xl md:text-7xl text-center" : "text-3xl md:text-5xl", tc)}>{slide.title}</h2>
         </div>
@@ -320,7 +345,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 {slide.dataPayload.members.map((m:any, i:number) => (
                   <div key={i} className="p-6 flex flex-col items-center text-center border rounded-3xl border-black/10 bg-black/5">
                     <div className="w-28 h-28 lg:w-32 lg:h-32 rounded-full mb-6 bg-zinc-200 overflow-hidden shrink-0 border-4 relative" style={{ borderColor: '#3b82f6' }}>
-                      {m.photoURL ? <img src={m.photoURL} className="w-full h-full object-cover pointer-events-none"/> : null}
+                      {m.photoURL || m.avatar ? <img src={m.photoURL || m.avatar} className="w-full h-full object-cover pointer-events-none"/> : null}
                     </div>
                     <div className={cn("font-bold text-xl truncate w-full", tc)}>{m.name}</div>
                     <div className="text-sm font-bold mb-4 truncate w-full text-blue-500">{m.role || 'Team'}</div>
@@ -331,8 +356,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         </div>
         
         <div className="h-[10%] flex flex-row items-end justify-between border-t border-black/10 pb-2 z-10 shrink-0 mt-4">
-          <span className="text-[10px] uppercase font-bold tracking-widest opacity-40 text-blue-500">Vertraulich – Projekt Status Report</span>
-          <span className="text-[10px] uppercase font-bold tracking-widest opacity-40 text-black">KREATIV DESK</span>
+          <span className="text-[10px] uppercase font-bold tracking-widest opacity-40" style={{ color: deckSettings.themeColor }}>{deckSettings.footerText}</span>
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] uppercase font-bold tracking-widest opacity-40 text-black">KREATIV DESK</span>
+            {deckSettings.logoUrl && <img src={deckSettings.logoUrl} alt="Logo" className="h-6 object-contain opacity-80 pointer-events-none" />}
+          </div>
         </div>
       </div>
     );
@@ -372,6 +400,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             </div>
           </div>
           <div className="flex items-center gap-3">
+             <button onClick={() => window.open(`/lead-form/${currentUser?.companyId || 'global'}`, '_blank')} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+               <Mail size={14} /> <span className="hidden sm:inline">Kontakt</span>
+             </button>
              <button onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Settings size={14} /> <span className="hidden sm:inline">{t('open_studio')}</span>
              </button>

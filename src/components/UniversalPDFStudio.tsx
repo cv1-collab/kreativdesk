@@ -23,6 +23,7 @@ interface UniversalPDFStudioProps {
   defaultOrientation?: 'portrait' | 'landscape';
   sidebarControls?: React.ReactNode;
   children: React.ReactNode | ((settings: PDFSettings) => React.ReactNode);
+  defaultAccentColor?: string;
 }
 
 // Dummy-Export, damit bestehende Imports nicht crashen
@@ -32,7 +33,7 @@ export const getPageDimensions = (format: string, orientation: string) => {
 
 export default function UniversalPDFStudio({ 
   isOpen, onClose, title, fileName, onSaveCloud, 
-  defaultOrientation = 'portrait', sidebarControls, children 
+  defaultOrientation = 'portrait', sidebarControls, children, defaultAccentColor = '#3b82f6'
 }: UniversalPDFStudioProps) {
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -41,7 +42,7 @@ export default function UniversalPDFStudio({
   const [format, setFormat] = useState<'A4' | 'A3'>('A4');
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(defaultOrientation);
   const [logo, setLogo] = useState<string | null>(null);
-  const [accentColor, setAccentColor] = useState('#3b82f6');
+  const [accentColor, setAccentColor] = useState(defaultAccentColor);
   const [footerText, setFooterText] = useState('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH'));
   
   const logoRef = useRef<HTMLInputElement>(null);

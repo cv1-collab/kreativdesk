@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { db, storage, auth } from '../firebase';
-import { doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
+import { db, storage } from '../firebase'; // auth wurde hier entfernt, da wir jetzt Vercel nutzen
+import { doc, updateDoc, collection, addDoc, serverTimestamp, setDoc, getDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/stripeClient';
+import { hasFeature } from '../utils/planFeatures';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -85,6 +86,17 @@ export default function SettingsTab() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
 
+  // Neue States für Features
+  const [primaryColor, setPrimaryColor] = useState('#10b981');
+  const [termsPdfUrl, setTermsPdfUrl] = useState('');
+  const [privacyPdfUrl, setPrivacyPdfUrl] = useState('');
+  const [slackIntegration, setSlackIntegration] = useState(false);
+  const [bexioIntegration, setBexioIntegration] = useState(false);
+  const [isUploadingTerms, setIsUploadingTerms] = useState(false);
+  const [isUploadingPrivacy, setIsUploadingPrivacy] = useState(false);
+  const termsFileRef = useRef<HTMLInputElement>(null);
+  const privacyFileRef = useRef<HTMLInputElement>(null);
+
   // Abo States (Dynamisch)
   const [companyPlan, setCompanyPlan] = useState('Free Trial');
   const [maxSeats, setMaxSeats] = useState(1);
@@ -118,6 +130,11 @@ export default function SettingsTab() {
         setIban(data.iban || '');
         setWebhookUrl(data.webhookUrl || '');
         setLogoUrl(data.logoUrl || '');
+        setPrimaryColor(data.primaryColor || '#10b981');
+        setTermsPdfUrl(data.termsPdfUrl || '');
+        setPrivacyPdfUrl(data.privacyPdfUrl || '');
+        setSlackIntegration(data.integrations?.slack || false);
+        setBexioIntegration(data.integrations?.bexio || false);
         
         // Abo Daten
         setCompanyPlan(data.plan || 'Free Trial');
@@ -140,6 +157,8 @@ export default function SettingsTab() {
         uid: uidNumber, vat: vatNumber,
         address, zip: zipCode, city,
         iban, webhookUrl,
+        primaryColor,
+        integrations: { slack: slackIntegration, bexio: bexioIntegration },
         updatedAt: new Date().toISOString()
       });
       addToast('Einstellungen erfolgreich gespeichert!', 'success');
@@ -153,24 +172,98 @@ export default function SettingsTab() {
     if (!file || !storage || !currentUser?.companyId) return;
     setIsUploadingLogo(true);
     try {
+      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploadingLogo(false);
+        return;
+      }
       const logoRef = ref(storage, `${currentUser.companyId}/company_assets/logo_${Date.now()}`);
       await uploadBytes(logoRef, file);
       const downloadUrl = await getDownloadURL(logoRef);
+      await incrementStorage(currentUser.companyId, file.size);
       await updateDoc(doc(db, 'companies', currentUser.companyId), { logoUrl: downloadUrl });
       setLogoUrl(downloadUrl);
     } catch (error) { addToast('Fehler beim Logo-Upload', 'error'); } 
     finally { setIsUploadingLogo(false); }
   };
 
-  // Passwort zurücksetzen
+  const handleTermsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !storage || !currentUser?.companyId) return;
+    setIsUploadingTerms(true);
+    try {
+      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploadingTerms(false);
+        return;
+      }
+      const termsRef = ref(storage, `${currentUser.companyId}/company_assets/terms_${Date.now()}.pdf`);
+      await uploadBytes(termsRef, file);
+      const downloadUrl = await getDownloadURL(termsRef);
+      await incrementStorage(currentUser.companyId, file.size);
+      await updateDoc(doc(db, 'companies', currentUser.companyId), { termsPdfUrl: downloadUrl });
+      setTermsPdfUrl(downloadUrl);
+      addToast('AGB erfolgreich hochgeladen', 'success');
+    } catch (error) {
+      console.error(error);
+      addToast('Fehler beim Upload', 'error');
+    } finally {
+      setIsUploadingTerms(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handlePrivacyUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !storage || !currentUser?.companyId) return;
+    setIsUploadingPrivacy(true);
+    try {
+      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploadingPrivacy(false);
+        return;
+      }
+      const storageRef = ref(storage, `${currentUser.companyId}/privacy_policies/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, file.size);
+      
+      await updateDoc(doc(db, 'companies', currentUser.companyId), { privacyPdfUrl: downloadUrl });
+      setPrivacyPdfUrl(downloadUrl);
+      addToast('Datenschutzrichtlinie erfolgreich hochgeladen', 'success');
+    } catch (error) {
+      console.error(error);
+      addToast('Fehler beim Upload', 'error');
+    } finally {
+      setIsUploadingPrivacy(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  // Passwort zurücksetzen (NEU: Verbunden mit Vercel & Make.com)
   const handleResetPassword = async () => {
-    if (!auth || !currentUser?.email) return;
+    if (!currentUser?.email) return;
     setIsResetLoading(true);
     try {
-      await sendPasswordResetEmail(auth, currentUser.email);
+      // WICHTIG: Hier rufen wir jetzt zwingend unsere eigene Vercel-API auf!
+      const response = await fetch('/api/send-reset-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: currentUser.email })
+      });
+
+      if (!response.ok) throw new Error('Webhook Request fehlgeschlagen');
+
       addToast('Link zum Zurücksetzen gesendet!', 'success');
-    } catch (error) { addToast('Fehler beim Senden der E-Mail', 'error'); } 
-    finally { setIsResetLoading(false); }
+    } catch (error) { 
+      console.error("Webhook Fehler:", error);
+      addToast('Fehler beim Senden der E-Mail', 'error'); 
+    } finally { 
+      setIsResetLoading(false); 
+    }
   };
 
   // Stripe
@@ -267,6 +360,87 @@ export default function SettingsTab() {
                 <input type="url" value={webhookUrl} onChange={e => setWebhookUrl(e.target.value)} placeholder="https://make.com/hooks/..." className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner" />
                 <p className="text-[10px] text-text-muted mt-2">{t('webhook_desc')}</p>
               </div>
+              <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50">
+                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <FileText size={16} className="text-accent-ai" /> Dokumente & AGB
+                </h4>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 bg-background/30 p-4 rounded-xl border border-border/30">
+                  <div className="w-12 h-12 bg-background border border-border rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                    <FileText size={20} className="text-text-muted" />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <h5 className="font-bold text-sm">AGB (Terms & Conditions)</h5>
+                    <input type="file" ref={termsFileRef} onChange={handleTermsUpload} accept="application/pdf" className="hidden" />
+                    <button type="button" onClick={() => termsFileRef.current?.click()} disabled={isUploadingTerms} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm">
+                      <Upload size={14} /> {termsPdfUrl ? 'AGB aktualisieren' : 'AGB hochladen (PDF)'}
+                    </button>
+                    {termsPdfUrl && <a href={termsPdfUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent-ai hover:underline flex items-center gap-1"><ExternalLink size={10} /> Aktuelles Dokument ansehen</a>}
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 bg-background/30 p-4 rounded-xl border border-border/30 mt-4">
+                  <div className="w-12 h-12 bg-background border border-border rounded-xl flex items-center justify-center shrink-0 shadow-inner">
+                    <Shield size={20} className="text-text-muted" />
+                  </div>
+                  <div className="space-y-2 flex-1">
+                    <h5 className="font-bold text-sm">Datenschutzrichtlinie (Privacy Policy)</h5>
+                    <input type="file" ref={privacyFileRef} onChange={handlePrivacyUpload} accept="application/pdf" className="hidden" />
+                    <button type="button" onClick={() => privacyFileRef.current?.click()} disabled={isUploadingPrivacy} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm">
+                      <Upload size={14} /> {privacyPdfUrl ? 'Datenschutz aktualisieren' : 'Datenschutz hochladen (PDF)'}
+                    </button>
+                    {privacyPdfUrl && <a href={privacyPdfUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent-ai hover:underline flex items-center gap-1"><ExternalLink size={10} /> Aktuelles Dokument ansehen</a>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50 relative">
+                {!hasFeature(currentUser, 'branding') && (
+                  <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
+                    <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="bg-surface px-4 py-2 rounded-lg border border-border shadow-lg flex items-center gap-2 text-sm font-bold text-text-primary hover:bg-white/5">
+                      <Lock size={16} className="text-accent-ai" /> Branding freischalten
+                    </button>
+                  </div>
+                )}
+                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <Palette size={16} className="text-accent-ai" /> Custom Branding
+                </h4>
+                <div className="flex items-center gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
+                  <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-12 h-12 rounded cursor-pointer bg-transparent border-0 p-0" />
+                  <div className="space-y-1">
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest">Hauptfarbe (Hex)</label>
+                    <input type="text" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-sm outline-none text-text-primary font-mono shadow-inner w-32" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50 relative">
+                {!hasFeature(currentUser, 'api_webhooks') && (
+                  <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-10 flex items-center justify-center rounded-xl">
+                    <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="bg-surface px-4 py-2 rounded-lg border border-border shadow-lg flex items-center gap-2 text-sm font-bold text-text-primary hover:bg-white/5">
+                      <Lock size={16} className="text-accent-ai" /> Integrationen freischalten
+                    </button>
+                  </div>
+                )}
+                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <LinkIcon size={16} className="text-accent-ai" /> Integrationen
+                </h4>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 p-3 bg-background/30 rounded-xl border border-border/30 cursor-pointer">
+                    <input type="checkbox" checked={slackIntegration} onChange={e => setSlackIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
+                    <div>
+                      <div className="text-sm font-bold text-text-primary">Slack Integration</div>
+                      <div className="text-[10px] text-text-muted">Sende Benachrichtigungen in deinen Slack-Workspace</div>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 bg-background/30 rounded-xl border border-border/30 cursor-pointer">
+                    <input type="checkbox" checked={bexioIntegration} onChange={e => setBexioIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
+                    <div>
+                      <div className="text-sm font-bold text-text-primary">Bexio Integration</div>
+                      <div className="text-[10px] text-text-muted">Synchronisiere Kontakte und Rechnungen mit Bexio</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-border/50 flex justify-end">
@@ -292,6 +466,7 @@ export default function SettingsTab() {
           </div>
 
           <ScreensaverSettingsCard currentUser={currentUser} />
+          <TeamPermissionsCard currentUser={currentUser} />
         </div>
 
         {/* LINKE SPALTE (1/3) - STRIPE SUBSCRIPTION ABRECHNUNG */}
@@ -376,9 +551,16 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
     if (!file || !currentUser?.companyId) return;
     setIsUploading(true);
     try {
+      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploading(false);
+        return;
+      }
       const r = ref(storage, `screensaver/${currentUser.companyId}_${Date.now()}`);
       await uploadBytes(r, file);
       const url = await getDownloadURL(r);
+      await incrementStorage(currentUser.companyId, file.size);
       setImage(url);
       await setDoc(doc(db, 'companySettings', currentUser.companyId), { screensaverImage: url }, { merge: true });
       addToast('Hintergrundbild hochgeladen!', 'success');
@@ -433,6 +615,87 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
           <Save size={14} /> Speichern
         </button>
       </div>
+    </div>
+  );
+}
+
+// TEAM BERECHTIGUNGEN KOMPONENTE
+function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
+  const { addToast } = useToast();
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchTeam = async () => {
+      if (!db || !currentUser?.companyId) return;
+      setIsLoading(true);
+      try {
+        const q = query(collection(db, 'users'), where('companyId', '==', currentUser.companyId));
+        const snapshot = await getDocs(q);
+        const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setTeamMembers(members);
+      } catch (err) {
+        console.error("Error fetching team", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTeam();
+  }, [currentUser?.companyId]);
+
+  const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        [field]: !currentValue
+      });
+      setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: !currentValue } : m));
+      addToast('Berechtigung aktualisiert', 'success');
+    } catch (err) {
+      addToast('Fehler beim Aktualisieren', 'error');
+    }
+  };
+
+  return (
+    <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
+      <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
+        <Users size={16} /> Rollen & Berechtigungen
+      </h3>
+      
+      {isLoading ? (
+        <div className="flex justify-center p-4"><Loader2 size={24} className="animate-spin text-accent-ai" /></div>
+      ) : teamMembers.length === 0 ? (
+        <p className="text-sm text-text-muted text-center p-4">Keine Teammitglieder gefunden.</p>
+      ) : (
+        <div className="space-y-4">
+          {teamMembers.map(member => (
+            <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-background/30 border border-border/30 rounded-xl gap-4">
+              <div>
+                <p className="text-sm font-bold text-text-primary">{member.email}</p>
+                <p className="text-[10px] text-text-muted">{member.role || 'Member'}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only" checked={member.canViewFinance || false} onChange={() => togglePermission(member.id, 'canViewFinance', member.canViewFinance || false)} />
+                    <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canViewFinance ? "bg-accent-ai" : "bg-background border border-border")} />
+                    <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canViewFinance ? "transform translate-x-3" : "")} />
+                  </div>
+                  <span className="text-xs font-bold text-text-muted">Finanzen sehen</span>
+                </label>
+                
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="relative">
+                    <input type="checkbox" className="sr-only" checked={member.canApproveBudget || false} onChange={() => togglePermission(member.id, 'canApproveBudget', member.canApproveBudget || false)} />
+                    <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canApproveBudget ? "bg-accent-ai" : "bg-background border border-border")} />
+                    <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canApproveBudget ? "transform translate-x-3" : "")} />
+                  </div>
+                  <span className="text-xs font-bold text-text-muted">Budget freigeben</span>
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

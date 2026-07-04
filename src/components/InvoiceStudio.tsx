@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, X, Calculator, CheckSquare, Cloud, Send, FileSignature, FileText } from 'lucide-react';
 import { cn } from '../utils';
 import { db, storage } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // NATIVE PDF ENGINE IMPORTS
@@ -141,14 +141,59 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
     if (onSave) {
       onSave({ file: blob, fileName, total, clientName: formData.recipient.split('\n')[0] || 'Kunde', invoiceNumber: formData.invoiceNumber, budgetPosId: '', type });
     } else {
-      // Fallback Logik wenn vom CompanyDashboard geöffnet (Ohne Props)
       if (!currentUser || !currentUser.companyId) return;
       try {
         const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
         await uploadBytes(storageRef, blob);
         const url = await getDownloadURL(storageRef);
-        await addDoc(collection(db, 'documents'), { name: fileName, url: url, fileUrl: url, type: 'application/pdf', isFolder: false, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: activeProjectId, category: 'projects', uploadedAt: new Date().toISOString() });
+        
+        let targetFolderId = '';
+        let targetCategory = 'projects';
+        let targetProjectId: string | null = activeProjectId;
+
+        if (activeProjectId === 'global') {
+            targetCategory = 'company';
+            targetProjectId = 'global';
+            const folderQ = query(collection(db, 'documents'), where('companyId', '==', currentUser.companyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true), where('folderId', '==', 'root'));
+            const folderSnap = await getDocs(folderQ);
+            if (!folderSnap.empty) {
+                targetFolderId = folderSnap.docs[0].id;
+            } else {
+                const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: currentUser.companyId, createdAt: new Date().toISOString() });
+                targetFolderId = newFolderRef.id;
+            }
+        } 
+
+        // FIX: size: blob.size integriert
+        await addDoc(collection(db, 'documents'), { 
+          name: fileName, 
+          url: url, 
+          fileUrl: url, 
+          type: 'application/pdf', 
+          size: blob.size, 
+          isFolder: false, 
+          ownerId: currentUser.uid, 
+          companyId: currentUser.companyId, 
+          projectId: targetProjectId, 
+          folderId: targetFolderId, 
+          category: targetCategory, 
+          uploadedAt: new Date().toISOString() 
+        });
+        
         await addDoc(collection(db, 'transactions'), { date: formData.date, description: `${type === 'invoice' ? 'Rechnung' : 'Offerte'}: ${formData.invoiceNumber}`, category: type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', amount: total, status: type === 'invoice' ? 'Offen' : 'Draft', ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: activeProjectId, url: url });
+        
+        // FIX: visibility: 'owner' integriert
+        await addDoc(collection(db, 'notifications'), { 
+          title: type === 'invoice' ? 'Neue Rechnung' : 'Neue Offerte', 
+          message: `${fileName} wurde erfolgreich erstellt.`, 
+          type: 'document', 
+          isRead: false, 
+          visibility: 'owner', 
+          companyId: currentUser.companyId, 
+          ownerId: currentUser.uid, 
+          createdAt: new Date().toISOString() 
+        });
+
         addToast('Erfolgreich gespeichert', 'success');
         onClose();
       } catch (e) {

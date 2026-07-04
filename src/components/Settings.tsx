@@ -148,10 +148,13 @@ export default function Settings() {
     }
   };
 
-  const handlePasswordReset = async () => {
+  // Ersetze deine handlePasswordReset Funktion in Settings.tsx hiermit:
+
+const handlePasswordReset = async () => {
     if (!currentUser?.email) return;
     setIsSendingReset(true);
     try {
+      // WICHTIG: Das ruft nun dein Vercel-Backend auf, nicht Firebase direkt!
       const response = await fetch('/api/send-reset-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,8 +165,8 @@ export default function Settings() {
 
       setResetSuccess(true);
       addToast(t('password_reset_success'), 'success');
-      setTimeout(() => setResetSuccess(false), 5000);
     } catch (error) {
+      console.error("Reset Fehler:", error);
       addToast(t('password_reset_error'), 'error');
     } finally {
       setIsSendingReset(false);

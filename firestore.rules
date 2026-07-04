@@ -19,7 +19,13 @@ service cloud.firestore {
 
     // System-Admin
     function isSystemAdmin() {
-      return isAuthenticated() && request.auth.token.email == "cv1@gmx.ch";
+      return isAuthenticated() && request.auth.token.email in ["cv1@gmx.ch", "carlo@vesciodesign.ch"];
+    }
+
+    // Company-Owner
+    function isCompanyOwner(resourceCompanyId) {
+      return isSameCompany(resourceCompanyId) && 
+             (request.auth.token.role == "owner" || request.auth.token.role == "Owner");
     }
 
     // ===============================================================
@@ -58,8 +64,8 @@ service cloud.firestore {
     // ===============================================================
 
     match /companies/{companyId} {
-      allow read, update: if isSystemAdmin() ||
-             isSameCompany(companyId);
+      allow read: if isSystemAdmin() || isSameCompany(companyId);
+      allow update: if isSystemAdmin() || isCompanyOwner(companyId);
       allow create, delete: if isSystemAdmin();
     }
 
@@ -74,8 +80,8 @@ service cloud.firestore {
     // ===============================================================
 
     match /projects/{projectId} {
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId);
+      allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /projectMembers/{memberId} {
@@ -84,8 +90,8 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /companyUsers/{userId} {
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId);
+      allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /timeEntries/{entryId} {
@@ -114,8 +120,8 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /financeData/{docId} { 
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId); 
+      allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /projectTasks/{docId} { 
@@ -143,12 +149,48 @@ service cloud.firestore {
              isSameCompany(resource.data.companyId); 
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
-    match /dailyGoals/{docId} { 
-      allow read, write: if isAuthenticated();
+    match /goals/{docId} { 
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId); 
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /siteData/{docId} {
       allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /projectSchedules/{docId} { 
+      allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /videoCalls/{docId} { 
+      allow read, update: if docId.matches('^meet-.*') || isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+      
+      match /{subcollection}/{subDoc} {
+        allow read, write: if docId.matches('^meet-.*') || isSystemAdmin() || isSameCompany(get(/databases/$(database)/documents/videoCalls/$(docId)).data.companyId);
+      }
+    }
+    match /notifications/{docId} { 
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /knowledgeDocs/{docId} { 
+      allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /embeddings/{docId} { 
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
+    }
+    match /slides/{docId} {
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
+    match /companySettings/{docId} {
+      allow read: if isSystemAdmin() || isSameCompany(docId);
+      allow write: if isSystemAdmin() || isCompanyOwner(docId);
     }
 
     // ===============================================================

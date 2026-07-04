@@ -10,6 +10,9 @@ export interface AppUser extends User {
   plan?: string;
   companyId?: string;
   trialEndsAt?: string;
+  canViewFinance?: boolean;
+  canApproveBudget?: boolean;
+  hasSeenTour?: boolean;
 }
 
 interface AuthContextType {
@@ -35,18 +38,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 FIX: Der Loop-Breaker! Verhindert den Smartphone-Freeze.
   const claimSyncAttempted = useRef(false);
 
   const syncCustomClaims = async (user: User, companyId: string) => {
     try {
+      const token = await user.getIdToken();
       await fetch('/api/set-tenant-claim', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ uid: user.uid, companyId })
       });
-      // ACHTUNG: Das löst onAuthStateChanged erneut aus!
-      await user.getIdToken(true);
+      await user.getIdToken(true); // Erzwingt den Refresh des Tokens
       console.log("Tenant Claims erfolgreich synchronisiert!");
     } catch (error) {
       console.error("Fehler beim Claim-Sync:", error);
@@ -67,17 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (docSnap.exists()) {
             let userData = docSnap.data() as AppUser;
-            
             const tokenResult = await user.getIdTokenResult();
             
-            // 🔥 FIX: Prüfe, ob wir in dieser Session schon synchronisiert haben
-            if (!tokenResult.claims.companyId && userData.companyId) {
+            // 🔥 DER ENTSCHEIDENDE FIX: 
+            // Erkennt, wenn du die DB manuell änderst und zwingt das System zur Heilung!
+            if (tokenResult.claims.companyId !== userData.companyId && userData.companyId) {
               if (!claimSyncAttempted.current) {
-                claimSyncAttempted.current = true; // Schalter umlegen
-                console.log("Token Claim fehlt. Führe Auto-Heal aus...");
+                claimSyncAttempted.current = true;
+                console.log("Token Claim veraltet. Führe Auto-Heal aus...");
                 await syncCustomClaims(user, userData.companyId);
-              } else {
-                console.warn("Claim-Sync übersprungen, um Endlosschleife zu verhindern.");
               }
             }
 
@@ -105,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserRole(userData.role || 'owner');
             setCurrentUser({ ...user, ...userData });
           } else {
-            // === NEUER USER FLOW (MIT INVITE-LOGIK) ===
+            // === NEUER USER FLOW ===
             const urlParams = new URLSearchParams(window.location.search);
             const inviteToken = urlParams.get('invite');
 

@@ -1,0 +1,28 @@
+  // +++ DIE ULTIMATIVE LÖSUNG FÜR DAS BUDGET & MWST-NaN +++
+  const handleCreateDemoProject = async (type: 'construction' | 'interior' | 'agency' = 'construction') => {
+    if (!db || !currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    setIsSubmitting(true);
+    addToast(`Lösche alte Daten und lade Demo (${type})...`, 'info');
+
+    try {
+      const batch = writeBatch(db);
+      const now = new Date().toISOString();
+      const projectId = `prj-demo-${Date.now()}`;
+      const demoData = demoTemplates[type] || demoTemplates.construction;
+
+      // 1. AUTO-CLEANUP (Löscht die Geister aus den alten Versuchen)
+  // +++ DIE ULTIMATIVE LÖSUNG FÜR DAS BUDGET & MWST-NaN +++
+  const handleCreateDemoProject = async (type: 'construction' | 'interior' | 'agency' = 'construction') => {
+    if (!db || !currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    setIsSubmitting(true);
+    addToast(`Lösche alte Daten und lade Demo (${type})...`, 'info');
+
+    try {
+      const batch = writeBatch(db);
+      const now = new Date().toISOString();
+      const projectId = `prj-demo-${Date.now()}`;
+      const demoData = demoTemplates[type] || demoTemplates.construction;
+
+      // 1. AUTO-CLEANUP (Löscht die Geister aus den alten Versuchen)

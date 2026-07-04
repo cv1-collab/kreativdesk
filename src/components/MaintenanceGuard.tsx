@@ -1,3 +1,4 @@
+import { checkIsSuperAdmin } from '../config/admins';
 import React, { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -32,7 +33,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   }, []);
 
   // Prüfen, ob der Nutzer der Super-Admin ist
-  const isAdmin = currentUser?.email?.toLowerCase() === 'cv1@gmx.ch';
+  const isAdmin = checkIsSuperAdmin(currentUser?.email);
   
   // Public Routes (Login) müssen immer erreichbar sein, damit sich der Admin einloggen kann!
   const isPublicRoute = location.pathname === '/login' || location.pathname === '/';

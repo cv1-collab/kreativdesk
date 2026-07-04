@@ -83,12 +83,12 @@ const pdfStyles = StyleSheet.create({
 
   tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingBottom: 5, marginBottom: 5 },
   tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6 },
-  col1: { width: '15%' }, // Date
-  col2: { width: '20%' }, // Resource / Project
-  col3: { width: '30%', paddingRight: 10 }, // Activity / Time & Title
-  col4: { width: '15%' }, // Status / Type
-  col5: { width: '10%', textAlign: 'right' }, // Hours
-  col6: { width: '10%', textAlign: 'right' }, // Amount
+  col1: { width: '15%' }, 
+  col2: { width: '20%' }, 
+  col3: { width: '30%', paddingRight: 10 }, 
+  col4: { width: '15%' }, 
+  col5: { width: '10%', textAlign: 'right' }, 
+  col6: { width: '10%', textAlign: 'right' }, 
   textBold: { fontWeight: 'bold', color: '#000000' },
   textMuted: { color: '#6b7280', fontSize: 8, marginTop: 2 },
 
@@ -241,7 +241,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const { addToast } = useToast();
   const navigate = useNavigate();
   const { language, t: globalT } = useLanguage();
-  const { projects: contextProjects } = useProject() as any; 
+  const { projects: contextProjects, isDemoMode } = useProject() as any; 
 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -270,7 +270,6 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [printType, setPrintType] = useState<'rapport' | 'agenda'>('rapport');
 
-  // +++ WÄCHTER HINZUGEFÜGT +++
   useEffect(() => {
     if (!db || !currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
@@ -285,7 +284,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const qTime = query(collection(db, 'timeEntries'), where('companyId', '==', safeCompanyId));
     const unsubTime = onSnapshot(qTime,
       (snap) => {
-        const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
         entries.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
         setLocalTimeEntries(entries);
       }
@@ -364,12 +363,33 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     
     try {
+      if (isDemoMode) {
+        setIsEventModalOpen(false);
+        setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
+        addToast(t('completed'), 'success');
+        return;
+      }
+
+      // 🔥 FIX: Deep Linking ?join= Parameter setzen
       const eventData = { 
         ...newEvent, createdAt: new Date().toISOString(), 
-        meetingLink: newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?room=${Date.now()}` : null,
+        meetingLink: newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?join=meet-${Date.now()}` : null,
         companyId: safeCompanyId, ownerId: currentUser.uid
       };
       await addDoc(collection(db, 'calendarEvents'), eventData);
+      
+      // Notifications System Trigger
+      await addDoc(collection(db, 'notifications'), {
+        title: 'Neuer Termin',
+        message: `Der Termin "${newEvent.title}" wurde erstellt.`,
+        type: 'event',
+        isRead: false,
+        visibility: 'company',
+        companyId: safeCompanyId,
+        ownerId: currentUser.uid,
+        createdAt: new Date().toISOString()
+      });
+
       setIsEventModalOpen(false);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
       addToast(t('completed'), 'success');

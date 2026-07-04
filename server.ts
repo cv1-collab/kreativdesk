@@ -69,6 +69,23 @@ async function startServer() {
       if (!uid || !companyId) return res.status(400).json({ error: 'Missing uid or companyId' });
       if (!firebaseAdmin) return res.status(500).json({ error: 'Firebase Admin not initialized' });
 
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+      }
+
+      const idToken = authHeader.split('Bearer ')[1];
+      let decodedToken;
+      try {
+        decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+      } catch (err) {
+        return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+      }
+
+      if (decodedToken.uid !== uid && decodedToken.email !== 'cv1@gmx.ch') {
+        return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
+      }
+
       const userRecord = await firebaseAdmin.auth().getUser(uid);
       const currentClaims = userRecord.customClaims || {};
 
@@ -247,7 +264,39 @@ async function startServer() {
     res.status(200).send();
   });
 
-  // --- 5. WELCOME WEBHOOK (MAKE.COM / n8n) ---
+  // --- 5. LEAD WEBHOOK ---
+  app.post('/api/send-lead-webhook', async (req, res) => {
+    try {
+      const { companyId, leadData } = req.body;
+      if (!companyId || !leadData) return res.status(400).json({ error: 'Missing data' });
+      if (!firebaseAdmin) return res.status(500).json({ error: 'Firebase Admin not initialized' });
+
+      // Fetch company profile
+      const companySnap = await firebaseAdmin.firestore().collection('companies').doc(companyId).get();
+      if (!companySnap.exists) return res.status(404).json({ error: 'Company not found' });
+      
+      const companyData = companySnap.data();
+      const webhookUrl = companyData?.webhookUrl;
+
+      if (webhookUrl) {
+         await fetch(webhookUrl, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ ...leadData, event: 'new_lead' })
+         });
+         console.log(`Lead Webhook erfolgreich gesendet an: ${webhookUrl}`);
+      } else {
+         console.log(`Kein Webhook für Company ${companyId} hinterlegt.`);
+      }
+
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Lead Webhook Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // --- 5.1 WELCOME WEBHOOK (MAKE.COM / n8n) ---
   app.post('/api/send-welcome-webhook', async (req, res) => {
     try {
       const { email, name, uid } = req.body;

@@ -1,3 +1,4 @@
+import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect } from 'react';
 import { X, Bell, Sparkles, CheckCircle2, Mail, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -57,7 +58,8 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
   const [userData, setUserData] = useState<any>(null);
   
   const [newLeads, setNewLeads] = useState<any[]>([]);
-  const isSuperAdmin = currentUser?.email?.toLowerCase() === 'cv1@gmx.ch';
+  const [userNotifications, setUserNotifications] = useState<any[]>([]);
+  const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid || !db) return;
@@ -68,6 +70,17 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
       } catch (error) { console.error("Fehler:", error); }
     };
     fetchUserData();
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!db || !currentUser?.companyId) return;
+    const q = query(collection(db, 'notifications'), where('companyId', '==', currentUser.companyId));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      notifs.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setUserNotifications(notifs);
+    });
+    return () => unsub();
   }, [currentUser]);
 
   useEffect(() => {
@@ -86,6 +99,11 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
     catch (error) { console.error(error); }
   };
 
+  const markNotificationAsRead = async (notifId: string) => {
+    try { await updateDoc(doc(db, 'notifications', notifId), { isRead: true }); }
+    catch (error) { console.error(error); }
+  };
+
   const handleSendVerification = async () => {
     if (auth.currentUser && currentUser?.email) {
       try {
@@ -101,7 +119,8 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
 
   if (!isOpen) return null;
 
-  const totalNotifs = warnings.length + (!currentUser?.emailVerified ? 1 : 0) + newLeads.length;
+  const unreadUserNotifs = userNotifications.filter(n => !n.isRead).length;
+  const totalNotifs = warnings.length + (!currentUser?.emailVerified ? 1 : 0) + newLeads.length + unreadUserNotifs;
 
   return (
     <div className="fixed inset-y-0 right-0 w-80 bg-surface/95 backdrop-blur-xl border-l border-border/50 shadow-2xl z-[100000] flex flex-col animate-in slide-in-from-right duration-300 text-text-primary">
@@ -152,6 +171,23 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
               </div>
             </motion.div>
           )}
+
+          {/* USER NOTIFICATIONS */}
+          {userNotifications.map((notif) => (
+            <motion.div key={notif.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className={`relative border rounded-xl p-4 shadow-sm group ${notif.isRead ? 'bg-surface/50 border-border/30 opacity-70' : 'bg-blue-500/10 border-blue-500/30'}`}>
+              <button onClick={() => markNotificationAsRead(notif.id)} className="absolute top-2 right-2 text-text-muted hover:text-text-primary transition-colors opacity-0 group-hover:opacity-100"><CheckCircle2 size={14} /></button>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${notif.isRead ? 'bg-surface border-border text-text-muted' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className={`text-sm font-bold mb-1 ${notif.isRead ? 'text-text-primary' : 'text-blue-400'}`}>{notif.title}</h4>
+                  <p className="text-xs text-text-muted leading-relaxed font-medium">{notif.message}</p>
+                  <span className="text-[10px] font-bold text-text-muted mt-2 block uppercase tracking-wider">{new Date(notif.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
 
           {/* AI WARNINGS */}
           {warnings.map((warn) => (

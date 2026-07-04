@@ -1,3 +1,4 @@
+import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -63,7 +64,7 @@ export default function AdminDashboard() {
   }, [location.search, navigate]);
 
   useEffect(() => {
-    if (!db || currentUser?.email?.toLowerCase() !== 'cv1@gmx.ch') return;
+    if (!db || !checkIsSuperAdmin(currentUser?.email)) return;
     const q = query(collection(db, 'leads'), where('companyId', '==', 'kreativ-desk-website'), where('status', '==', 'New'));
     const unsub = onSnapshot(q, (snapshot) => {
       setNewLeadsCount(snapshot.docs.length);

@@ -240,11 +240,11 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
             return (
               <React.Fragment key={`task-content-${task.id}`}>
                 <View style={{ position: 'absolute', left: 16 * SCALE, top: taskY, width: LEFT_COL_W - 32 * SCALE, height: rowHeight, justifyContent: 'center' }}>
-                  <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 11 * fontScale, color: '#000' }} numberOfLines={1}>{task.title}</Text>
+                  <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 11 * fontScale, color: '#000' }}>{task.title}</Text>
                   <Text style={{ fontFamily: 'Helvetica', fontSize: 8 * fontScale, color: '#6b7280', marginTop: 2 * SCALE }}>{new Date(task.start).toLocaleDateString('de-CH')} - {new Date(task.end).toLocaleDateString('de-CH')}</Text>
                 </View>
                 <View style={{ position: 'absolute', left: barLeft, top: taskY + 4 * SCALE, width: barWidth, height: 32 * SCALE, backgroundColor: bgColor, borderRadius: 4 * SCALE, justifyContent: 'center', paddingLeft: 6 * SCALE, overflow: 'hidden' }}>
-                  {task.barText && <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 7 * fontScale, color: '#fff' }} numberOfLines={1}>{task.barText}</Text>}
+                  {task.barText && <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 7 * fontScale, color: '#fff' }}>{task.barText}</Text>}
                 </View>
               </React.Fragment>
             );
@@ -258,7 +258,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
               <View key={`m-${m.id}`} style={{ position: 'absolute', left: leftPt, top: getYPt(UI_HEADER_H), height: PDF_H - getYPt(UI_HEADER_H) - getYPt(20), borderLeftWidth: 1.5 * SCALE, borderLeftColor: hexCol, borderLeftStyle: m.style === 'dashed' ? 'dashed' : 'solid' }}>
                  <View style={{ position: 'absolute', top: -15 * fontScale, left: -25 * fontScale, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE }}>
                    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 5 * fontScale, color: hexCol, textAlign: 'center' }}>{new Date(m.date).toLocaleDateString('de-CH')}</Text>
-                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 6 * fontScale, color: hexCol, textAlign: 'center' }} numberOfLines={1}>{m.label}</Text>
+                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 6 * fontScale, color: hexCol, textAlign: 'center' }}>{m.label}</Text>
                  </View>
               </View>
             );
@@ -314,7 +314,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
 export default function Calendar() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { projects } = useProject() as any;
+  const { projects, isDemoMode, demoData } = useProject() as any;
   const { addToast } = useToast();
   const { theme } = useTheme(); 
   const { currentUser } = useAuth();
@@ -410,9 +410,38 @@ export default function Calendar() {
 
   // === MULTI-TENANT & GLOBAL SILO FIX ===
   useEffect(() => {
+    // 🔥 DEMO-BRÜCKE: Lade den Terminplan aus deinem Template!
+    if (isDemoMode && demoData) {
+       hasLoadedInitial.current = true;
+       setIsInitialLoad(false);
+       const today = new Date();
+       
+       if (demoData.tasks) {
+          const mappedTasks = demoData.tasks.map((t: any) => {
+             const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 40);
+             const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 40);
+             return { id: t.id, title: t.title, start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0], color: t.color, status: t.status };
+          });
+          setGanttTasks(mappedTasks);
+       }
+       if (demoData.smartMarkers) {
+          const mappedMarkers = demoData.smartMarkers.map((m: any) => {
+             const date = new Date(today); date.setDate(date.getDate() + (m.daysOffset || 0) - 40);
+             return { id: m.id, date: date.toISOString().split('T')[0], label: m.title, color: m.color, style: m.style || 'solid' };
+          });
+          setSmartMarkers(mappedMarkers);
+       }
+       setTargetYear(today.getFullYear());
+       setScheduleName(demoData.project?.name || 'Masterplan');
+       
+       setSchedules([{ id: 'demo-s1', name: 'Masterplan Bau', targetYear: today.getFullYear(), ganttTasks: [], smartMarkers: [], shapes: [] }]);
+       setActiveScheduleId('demo-s1');
+       return;
+    }
+
+    // --- REGULÄRER FIREBASE FETCH FÜR ECHTE USER ---
     if (!currentProjectId || !db || !currentUser?.companyId) return;
     hasLoadedInitial.current = false;
-
     const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
 
     const unsub = onSnapshot(doc(db, 'projectSchedules', scheduleDocId), (docSnap) => {
@@ -433,71 +462,46 @@ export default function Calendar() {
           }
         }
       } else {
-        const defaultSchedule: Schedule = {
-          id: `s-${Date.now()}`,
-          name: t('master_plan'),
-          targetYear: new Date().getFullYear(),
-          ganttTasks: DEFAULT_TASKS,
-          smartMarkers: DEFAULT_MARKERS,
-          shapes: []
-        };
+        const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: t('master_plan'), targetYear: new Date().getFullYear(), ganttTasks: DEFAULT_TASKS, smartMarkers: DEFAULT_MARKERS, shapes: [] };
         setSchedules([defaultSchedule]);
-        setDoc(doc(db, 'projectSchedules', scheduleDocId), { 
-          schedules: [defaultSchedule], 
-          activeScheduleId: defaultSchedule.id,
-          companyId: currentUser.companyId,
-          projectId: currentProjectId
-        });
-        
-        if (!hasLoadedInitial.current) {
-          setActiveScheduleId(defaultSchedule.id);
-          setScheduleName(defaultSchedule.name);
-          setGanttTasks(defaultSchedule.ganttTasks);
-          setSmartMarkers(defaultSchedule.smartMarkers);
-          setShapes(defaultSchedule.shapes);
-          setTargetYear(defaultSchedule.targetYear);
-          hasLoadedInitial.current = true;
-        }
+        setDoc(doc(db, 'projectSchedules', scheduleDocId), { schedules: [defaultSchedule], activeScheduleId: defaultSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId });
       }
       setIsInitialLoad(false);
     });
     return () => unsub();
-  }, [currentProjectId, currentUser]);
-
-  const handleSwitchSchedule = (id: string, schedulesList = schedules) => {
-    setActiveScheduleId(id);
-    const active = schedulesList.find(s => s.id === id);
-    if (active) {
-      setGanttTasks(active.ganttTasks || []);
-      setSmartMarkers(active.smartMarkers || []);
-      setShapes(active.shapes || []);
-      setTargetYear(active.targetYear || new Date().getFullYear());
-      setDocHeader(prev => ({ ...prev, title: active.name }));
-    }
-  };
+  }, [currentProjectId, currentUser, isDemoMode, demoData]);
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    if (isInitialLoad || !activeScheduleId || !db || !currentUser?.companyId) return;
+    // 🔥 AUTO-SAVE BLOCKIEREN IM DEMO MODUS
+    if (isDemoMode || isInitialLoad || !activeScheduleId || !db || !currentUser?.companyId) return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
     autoSaveTimeout.current = setTimeout(() => {
       setSchedules(prevSchedules => {
          const updated = prevSchedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
          const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-         setDoc(doc(db, 'projectSchedules', scheduleDocId), { 
-           schedules: updated, 
-           activeScheduleId,
-           companyId: currentUser.companyId
-         }, { merge: true });
+         setDoc(doc(db, 'projectSchedules', scheduleDocId), { schedules: updated, activeScheduleId, companyId: currentUser.companyId }, { merge: true });
          return updated;
       });
     }, 1000);
     return () => clearTimeout(autoSaveTimeout.current!);
-  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId]);
-
+  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, isDemoMode]);
   const setTargetYearHelper = (year: number) => {
     setTargetYear(year);
+  };
+
+  const handleSwitchSchedule = (id: string, customSchedules?: Schedule[]) => {
+    const list = customSchedules || schedules;
+    const target = list.find(s => s.id === id);
+    if (target) {
+      setActiveScheduleId(id);
+      setScheduleName(target.name || t('master_plan'));
+      setGanttTasks(target.ganttTasks?.length ? target.ganttTasks : DEFAULT_TASKS);
+      setSmartMarkers(target.smartMarkers?.length ? target.smartMarkers : DEFAULT_MARKERS);
+      setShapes(target.shapes || []);
+      setTargetYear(target.targetYear || new Date().getFullYear());
+    }
   };
 
   const handleCreateSchedule = () => {
@@ -821,7 +825,7 @@ export default function Calendar() {
             </div>
 
             <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
-              <button onClick={() => setViewMode('gantt')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'gantt' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Columns size={16}/> {t('master_plan')}</button>
+              <button onClick={() => setViewMode('gantt')} className={cn("tour-calendar-gantt flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'gantt' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Columns size={16}/> {t('master_plan')}</button>
               <button onClick={() => setViewMode('month')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'month' ? "bg-white/10 text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}><LayoutTemplate size={16}/> {t('month_focus')}</button>
               <button onClick={() => setViewMode('day')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'day' ? "bg-white/10 text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}><AlignJustify size={16}/> {t('day_focus')}</button>
             </div>
@@ -989,19 +993,21 @@ export default function Calendar() {
                       );
                     })}
 
-                    {smartMarkers.map(m => (
+                    {smartMarkers.map((m, i) => {
+                      const offset = (i % 4) * 28;
+                      return (
                       <div 
                         key={m.id} 
                         className={cn("absolute z-20 transition-all", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")}
                         style={{ left: `${getX(getYearPercentage(m.date))}%`, top: UI_HEADER_H, bottom: 20, borderLeftWidth: 2, borderLeftColor: m.color || '#ef4444', borderLeftStyle: m.style === 'dashed' ? 'dashed' : 'solid' }}
                         onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(m); } }}
                       >
-                         <div className="absolute top-0 -translate-x-1/2 -translate-y-full bg-background border rounded-lg px-3 py-1 whitespace-nowrap shadow-lg cursor-pointer hover:scale-105 transition-transform" style={{ borderColor: m.color || '#ef4444' }}>
+                         <div className="absolute left-1/2 -translate-x-1/2 bg-background border rounded-lg px-3 py-1 whitespace-nowrap shadow-lg cursor-pointer hover:scale-105 transition-transform" style={{ borderColor: m.color || '#ef4444', top: `${10 + offset}px` }}>
                            <div className="text-[10px] font-black text-center" style={{ color: m.color || '#ef4444' }}>{new Date(m.date).toLocaleDateString('de-CH')}</div>
                            <div className="text-xs font-bold text-text-primary text-center">{m.label}</div>
                          </div>
                       </div>
-                    ))}
+                    )})}
 
                     <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
                       {shapes.map((s) => {
@@ -1119,7 +1125,8 @@ export default function Calendar() {
                          <input 
                            value={docHeader.title} 
                            onChange={e => setDocHeader({...docHeader, title: e.target.value})} 
-                           className="text-3xl sm:text-4xl font-extrabold bg-transparent outline-none w-full transition-colors border-b border-transparent focus:border-accent-ai placeholder-text-muted/50 text-text-primary" 
+                           disabled={isDemoMode}
+                           className="text-3xl sm:text-4xl font-extrabold bg-transparent outline-none w-full transition-colors border-b border-transparent focus:border-accent-ai placeholder-text-muted/50 text-text-primary disabled:opacity-70 disabled:cursor-not-allowed" 
                            placeholder={t('title')} 
                          />
                          
@@ -1129,7 +1136,8 @@ export default function Calendar() {
                               <input 
                                 value={docHeader.project} 
                                 onChange={e => setDocHeader({...docHeader, project: e.target.value})} 
-                                className="font-bold text-sm sm:text-base bg-transparent outline-none w-[160px] transition-colors border-b border-transparent focus:border-accent-ai text-text-primary" 
+                                disabled={isDemoMode}
+                                className="font-bold text-sm sm:text-base bg-transparent outline-none w-[160px] transition-colors border-b border-transparent focus:border-accent-ai text-text-primary disabled:opacity-70 disabled:cursor-not-allowed" 
                                 placeholder={t('project')} 
                               />
                             </div>
@@ -1138,7 +1146,8 @@ export default function Calendar() {
                               <input 
                                 value={docHeader.version} 
                                 onChange={e => setDocHeader({...docHeader, version: e.target.value})} 
-                                className="font-bold text-sm sm:text-base bg-transparent outline-none w-[70px] transition-colors border-b border-transparent focus:border-accent-ai text-text-primary" 
+                                disabled={isDemoMode}
+                                className="font-bold text-sm sm:text-base bg-transparent outline-none w-[70px] transition-colors border-b border-transparent focus:border-accent-ai text-text-primary disabled:opacity-70 disabled:cursor-not-allowed" 
                                 placeholder="v1.0" 
                               />
                             </div>
@@ -1148,7 +1157,8 @@ export default function Calendar() {
                                 type="date" 
                                 value={docHeader.date} 
                                 onChange={e => setDocHeader({...docHeader, date: e.target.value})} 
-                                className="font-bold text-sm sm:text-base bg-transparent outline-none w-[130px] transition-colors border-b border-transparent focus:border-accent-ai text-text-primary" 
+                                disabled={isDemoMode}
+                                className="font-bold text-sm sm:text-base bg-transparent outline-none w-[130px] transition-colors border-b border-transparent focus:border-accent-ai text-text-primary disabled:opacity-70 disabled:cursor-not-allowed" 
                               />
                             </div>
                          </div>
@@ -1162,7 +1172,7 @@ export default function Calendar() {
                       <div className="flex border-b-2 pb-2 mb-6 shrink-0 min-w-[800px] border-border/50 relative z-30">
                         <div className="w-1/3 pr-4 font-bold uppercase tracking-widest text-sm flex items-center justify-between text-text-primary">
                           <span>{t('project_phases')}</span>
-                          <button onClick={handleAddPhase} className="flex items-center gap-1 p-1 px-2 hover:bg-accent-ai/10 text-accent-ai rounded transition-colors print:hidden text-xs font-bold cursor-pointer">
+                          <button onClick={handleAddPhase} className="tour-calendar-add flex items-center gap-1 p-1 px-2 hover:bg-accent-ai/10 text-accent-ai rounded transition-colors print:hidden text-xs font-bold cursor-pointer">
                             <Plus size={14}/> {t('add_phase')}
                           </button>
                         </div>
@@ -1252,12 +1262,13 @@ export default function Calendar() {
                           })}
                         </svg>
 
-                        {smartMarkers.map(marker => {
+                        {smartMarkers.map((marker, i) => {
                           const left = getYearPercentage(marker.date);
+                          const offset = (i % 4) * 28;
                           return (
                             <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `calc(33.33% + ${left * 0.666}%)` }}>
                               <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
-                              <div className="absolute top-0 -translate-x-1/2 -translate-y-6 px-2 py-1 rounded text-[10px] font-bold shadow-md whitespace-nowrap border flex flex-col items-center pointer-events-auto bg-surface" style={{ color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
+                              <div className="absolute left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold shadow-md whitespace-nowrap border flex flex-col items-center pointer-events-auto bg-surface" style={{ top: `${10 + offset}px`, color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
                                 <span className="text-[8px] mb-0.5 text-text-muted">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
                                 {marker.label}
                                 <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer"><X size={10}/></button>
@@ -1370,7 +1381,7 @@ export default function Calendar() {
                       </div>
                     </div>
                     <div className="mt-8 pt-4 border-t-2 shrink-0 min-w-[800px] border-border/50">
-                       <input value={customFooter} onChange={e => setCustomFooter(e.target.value)} className="w-full text-center text-xs font-medium bg-transparent outline-none transition-colors py-1 rounded text-text-muted hover:bg-white/5 focus:bg-white/5" placeholder="Individuelle Fusszeile eingeben..." />
+                       <input disabled={isDemoMode} value={customFooter} onChange={e => setCustomFooter(e.target.value)} className="w-full text-center text-xs font-medium bg-transparent outline-none transition-colors py-1 rounded text-text-muted hover:bg-white/5 focus:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Individuelle Fusszeile eingeben..." />
                     </div>
                   </div>
                 </div>
@@ -1379,7 +1390,7 @@ export default function Calendar() {
                 <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4 bg-background custom-scrollbar">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-lg text-text-primary">{t('project_phases')}</h3>
-                    <button onClick={handleAddPhase} className="p-2 bg-accent-ai/10 text-accent-ai rounded-lg font-bold text-xs flex items-center gap-1 shadow-sm">
+                    <button onClick={handleAddPhase} className="tour-calendar-add p-2 bg-accent-ai/10 text-accent-ai rounded-lg font-bold text-xs flex items-center gap-1 shadow-sm">
                       <Plus size={14}/> {t('add_phase')}
                     </button>
                   </div>

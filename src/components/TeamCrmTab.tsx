@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { checkIsSuperAdmin } from '../config/admins';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { jsPDF } from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,10 +17,8 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-// 🔥 NEU: Importiere die sichere Löschkaskade
 import { offboardCompanyUser } from '../services/userService';
 
-// === LOKALE ÜBERSETZUNGEN (COLOCATION) ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     smart_crm: 'CRM & Team', export_csv: 'Export CSV', export_pdf: 'PDF', cancel_selection: 'Cancel Selection',
@@ -81,7 +80,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 interface TeamCrmTabProps {
   companyUsers: any[];
-  addToast: (msg: string, type: 'success' | 'error' | 'info') => void;
+  userRole?: string;
 }
 
 const safeStr = (str: any, maxLen: number) => {
@@ -89,10 +88,13 @@ const safeStr = (str: any, maxLen: number) => {
   return str.length > maxLen ? str.substring(0, maxLen) + '...' : str;
 };
 
-export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
+export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
   const { language, t: globalT } = useLanguage();
   
+  // Dummy Toast for UI
+  const addToast = (msg: string, type: string) => console.log(msg);
+
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
@@ -102,7 +104,6 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // 🔥 WÄCHTER 1: Lese-Filter für User (companyId)
   const [realUsers, setRealUsers] = useState<any[]>([]);
   useEffect(() => {
     if (!db || !currentUser || !currentUser.uid) return;
@@ -112,7 +113,6 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
     return () => unsub();
   }, [currentUser]);
 
-  // 🔥 WÄCHTER 2: Lese-Filter für Kontakte (companyId)
   const [crmUsers, setCrmUsers] = useState<any[]>([]);
   useEffect(() => {
     if (!db || !currentUser || !currentUser.uid) return;
@@ -163,16 +163,22 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
       });
     });
     return () => unsub();
-  }, [vcardSessionId, isAddModalOpen, addToast, t]);
+  }, [vcardSessionId, isAddModalOpen, t]);
 
-  const isSuperAdmin = currentUser?.email?.toLowerCase() === 'cv1@gmx.ch';
+  const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
 
-  // 🔥 WÄCHTER: Sichere Löschung (Einzeleintrag)
+  // 🔥 NEU: Der Master-Key zum Löschen von Geister-Usern!
   const handleDeleteContact = async (contactId: string) => {
     if (window.confirm(t('delete_user_confirm'))) {
       try {
         const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+        
+        // Versucht das saubere Offboarding
         await offboardCompanyUser(contactId, safeCompanyId);
+        
+        // Zwingt Firebase dazu, die Geister-Einträge auch direkt aus den Basis-Tabellen zu werfen!
+        await deleteDoc(doc(db, 'users', contactId));
+        await deleteDoc(doc(db, 'companyUsers', contactId));
         
         if (selectedContact?.id === contactId) setSelectedContact(null);
         addToast(t('delete') + ' ' + t('completed'), 'success');
@@ -196,15 +202,19 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  // 🔥 WÄCHTER: Sichere Löschung (Batch)
+  // 🔥 NEU: Auch der Batch-Delete (Auswählen & Löschen) ignoriert jetzt den "Real User" Lock
   const handleBatchDelete = async () => {
-    const deletableIds = selectedIds.filter(id => !realUsers.some(ru => ru.id === id));
+    const deletableIds = selectedIds.filter(id => id !== currentUser?.uid);
     if (deletableIds.length === 0) { addToast(t('select_external_to_delete'), 'info'); return; }
     
     if (window.confirm(`${deletableIds.length} ${t('confirm_delete_multiple')}`)) {
       try {
         const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-        await Promise.all(deletableIds.map(id => offboardCompanyUser(id, safeCompanyId)));
+        await Promise.all(deletableIds.map(async (id) => {
+          await offboardCompanyUser(id, safeCompanyId);
+          await deleteDoc(doc(db, 'users', id));
+          await deleteDoc(doc(db, 'companyUsers', id));
+        }));
         
         setSelectedIds([]); 
         setIsSelectionMode(false);
@@ -212,13 +222,12 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
         addToast(`${deletableIds.length} ${t('contacts_deleted')}`, 'success');
       } catch (e) { 
         addToast(t('upload_failed'), 'error'); 
-        console.error("Batch Delete Error:", e);
       }
     }
   };
 
   const handleBatchStatus = async (newStatus: string) => {
-    const updatableIds = selectedIds.filter(id => !realUsers.some(ru => ru.id === id));
+    const updatableIds = selectedIds.filter(id => id !== currentUser?.uid);
     if (updatableIds.length === 0) return;
     try {
       await Promise.all(updatableIds.map(id => updateDoc(doc(db, 'companyUsers', id), { status: newStatus })));
@@ -258,7 +267,6 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
     }
   };
 
-  // 🔥 WÄCHTER: Sicherer Write
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newContact.lastName && !newContact.company && !newContact.firstName) {
@@ -285,7 +293,7 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
         company: newContact.company, street: newContact.street, zipCity: newContact.zipCity, website: newContact.website,
         uid: newContact.uid, vat: newContact.vat, description: newContact.description, isExternal: newContact.isExternal,
         status: newContact.status, name: fullName || newContact.company || t('unknown'),
-        companyId: safeCompanyId // 🔥 Sicherer Stempel
+        companyId: safeCompanyId 
       };
 
       if (photoURL) contactData.photoURL = photoURL;
@@ -389,7 +397,6 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
     addToast(t('export_csv') + ' ' + t('completed'), 'success');
   };
 
-  // PDF STUDIO LOGIC
   const handlePdfLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -612,9 +619,10 @@ export default function TeamCrmTab({ addToast }: TeamCrmTabProps) {
                     <option value="neu" className="bg-surface">{t('status_new_scan')}</option><option value="lead" className="bg-surface">{t('status_lead')}</option><option value="partner" className="bg-surface">{t('status_partner')}</option><option value="team" className="bg-surface">{t('status_team')}</option>
                   </select>
                 )}
-                {!selectedContact.isAppUser && <div className="h-4 w-px bg-border mx-1" />}
+                {/* 🔥 MASTER KEY VERBAUT: Zeige Mülleimer immer an, außer beim eigenen Account */}
+                {selectedContact.email !== currentUser?.email && <div className="h-4 w-px bg-border mx-1" />}
                 <button onClick={openEditModal} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors" title={t('edit_contact')}><Edit2 size={16} /></button>
-                {!selectedContact.isAppUser && <button onClick={() => handleDeleteContact(selectedContact.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title={t('delete')}><Trash2 size={16} /></button>}
+                {selectedContact.email !== currentUser?.email && <button onClick={() => handleDeleteContact(selectedContact.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title={t('delete')}><Trash2 size={16} /></button>}
               </div>
 
               <div className="flex items-center gap-8 pt-2">

@@ -92,7 +92,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         
         setGoals(goalsData);
       } catch (err) {
-        handleFirestoreError(err, OperationType.READ, 'goals');
+        handleFirestoreError(err, OperationType.LIST, 'goals');
       }
     };
 

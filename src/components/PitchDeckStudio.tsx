@@ -31,7 +31,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     click_for_image: 'Click to select image', pos: 'Pos', text: 'Description', no_media_found: 'No media found in this project.',
     add_as_slide: 'Add as Slide', deck_engine: 'Deck Engine', master_templates: 'Master Templates',
     keynote: 'Keynote', architecture: 'Architecture', photography: 'Photography', scenography: 'Scenography',
-    swiss: 'Swiss Minimal', master_logo: 'Master Logo', change_logo: 'Change Logo', upload_logo: 'Upload Logo',
+    swiss: 'Swiss Minimal', neo_brutalism: 'Neo-Brutalism', glassmorphism: 'Glassmorphism', cyberpunk: 'Cyberpunk', minimal_tech: 'Minimalist Tech', master_logo: 'Master Logo', change_logo: 'Change Logo', upload_logo: 'Upload Logo',
     accent_color: 'Accent Color', footer_text: 'Footer Text', import_app_data: 'Project Reporting',
     load_budget: 'Import Budget Table', load_team: 'Import Project Team', generate_roadmap: 'Import Smart Calendar',
     import_cad: 'Import CAD Plans', import_bim: 'Import 3D BIM', import_renderings: 'Import Renderings',
@@ -60,7 +60,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     click_for_image: 'Klicken für Bildauswahl', pos: 'Pos', text: 'Beschreibung', no_media_found: 'Keine Medien in diesem Projekt gefunden.',
     add_as_slide: 'Als Folie hinzufügen', deck_engine: 'Deck Engine', master_templates: 'Master Templates',
     keynote: 'Keynote', architecture: 'Architektur', photography: 'Fotografie', scenography: 'Szenografie',
-    swiss: 'Swiss Minimal', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
+    swiss: 'Swiss Minimal', neo_brutalism: 'Neo-Brutalism', glassmorphism: 'Glassmorphism', cyberpunk: 'Cyberpunk', minimal_tech: 'Minimalist Tech', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
     accent_color: 'Akzentfarbe', footer_text: 'Fusszeile', import_app_data: 'Projekt-Reporting',
     load_budget: 'Budget Tabelle', load_team: 'Projekt-Team', generate_roadmap: 'Smart Calendar',
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
@@ -85,8 +85,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-interface Slide { id: string; title: string; content: string; imageUrl?: string; order_index: number; ownerId: string; projectId?: string; layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid'; fontSize?: number; dataPayload?: any; }
-interface DeckSettings { logoUrl: string; footerText: string; themeColor: string; themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss'; }
+interface Slide { id: string; title: string; content: string; imageUrl?: string; order_index: number; ownerId: string; companyId?: string; projectId?: string; layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid'; fontSize?: number; dataPayload?: any; }
+interface DeckSettings { logoUrl: string; footerText: string; themeColor: string; themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech'; }
 
 export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () => void, projectId?: string }) {
   const { addToast } = useToast();
@@ -157,6 +157,20 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const activeProject = projects.find((p: any) => p.id === (projectId || importProjectId));
   const activeSlide = slides.find(s => s.id === activeSlideId) || null;
 
+  useEffect(() => {
+    if (activeProject?.deckSettings) {
+      setDeckSettings(prev => ({ ...prev, ...activeProject.deckSettings }));
+    }
+  }, [activeProject?.deckSettings]);
+
+  const updateDeckSettings = (newSettings: Partial<DeckSettings>) => {
+    const updated = { ...deckSettings, ...newSettings };
+    setDeckSettings(updated);
+    if (activeProject?.id && activeProject.id !== 'global' && !activeProject.id.startsWith('demo-')) {
+       updateDoc(doc(db, 'projects', activeProject.id), { deckSettings: updated }).catch(e => console.error("Error saving deck settings:", e));
+    }
+  };
+
   const currentSlideIndex = slides.findIndex(s => s.id === activeSlideId);
   const hasPrevSlide = currentSlideIndex > 0;
   const hasNextSlide = currentSlideIndex !== -1 && currentSlideIndex < slides.length - 1;
@@ -217,7 +231,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const file = e.target.files?.[0];
     if (file) { 
       const reader = new FileReader(); 
-      reader.onloadend = () => setDeckSettings({ ...deckSettings, logoUrl: reader.result as string }); 
+      reader.onloadend = () => updateDeckSettings({ logoUrl: reader.result as string });
       reader.readAsDataURL(file); 
     }
   };
@@ -251,7 +265,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167] });
     const pw = docPdf.internal.pageSize.getWidth();
     const ph = docPdf.internal.pageSize.getHeight();
-    const isDarkTheme = deckSettings.themeStyle === 'photography' || deckSettings.themeStyle === 'scenography';
+    const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
     
     const addSafeImage = async (url: string, x: number, y: number, w: number, h: number, preserveRatio: boolean = false) => {
        try {
@@ -287,12 +301,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             docPdf.addImage(dataUrl, 'JPEG', x, y, w, h, '', 'FAST');
          }
        } catch(e) {
-         try {
-           docPdf.addImage(url, 'JPEG', x, y, w, h, '', 'FAST');
-         } catch(err) {
-           docPdf.setFillColor(isDarkTheme ? 40 : 245);
-           docPdf.rect(x, y, w, h, 'F');
-         }
+          try {
+            docPdf.addImage(url, 'JPEG', x, y, w, h, '', 'FAST');
+          } catch(err) {
+            docPdf.setFillColor(isDarkTheme ? '#282828' : '#f5f5f5');
+            docPdf.rect(x, y, w, h, 'F');
+          }
        }
     };
 
@@ -301,12 +315,25 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (i > 0) docPdf.addPage();
       
       if (isDarkTheme) { docPdf.setFillColor(15, 15, 18); docPdf.rect(0, 0, pw, ph, 'F'); }
-      else if (deckSettings.themeStyle === 'swiss') { docPdf.setFillColor(255, 255, 255); docPdf.rect(0, 0, pw, ph, 'F'); docPdf.setDrawColor(0, 0, 0); docPdf.setLineWidth(1); docPdf.rect(5, 5, pw - 10, ph - 10, 'S'); }
+      else if (['swiss', 'neo-brutalism', 'minimal-tech'].includes(deckSettings.themeStyle)) { 
+        docPdf.setFillColor(255, 255, 255); docPdf.rect(0, 0, pw, ph, 'F'); 
+        if (deckSettings.themeStyle === 'swiss') {
+          docPdf.setDrawColor(0, 0, 0); docPdf.setLineWidth(1); docPdf.rect(5, 5, pw - 10, ph - 10, 'S'); 
+        } else if (deckSettings.themeStyle === 'neo-brutalism') {
+          docPdf.setDrawColor(0, 0, 0); docPdf.setLineWidth(3); docPdf.rect(5, 5, pw - 10, ph - 10, 'S'); 
+          docPdf.setFillColor(deckSettings.themeColor); docPdf.rect(pw - 50, 0, 50, 50, 'F');
+        }
+      }
+      else if (deckSettings.themeStyle === 'glassmorphism') {
+        docPdf.setFillColor(245, 245, 250); docPdf.rect(0, 0, pw, ph, 'F');
+        docPdf.setFillColor(255, 255, 255); docPdf.setDrawColor(230, 230, 230); docPdf.setLineWidth(0.5);
+        docPdf.roundedRect(10, 10, pw - 20, ph - 20, 5, 5, 'FD');
+      }
       else { docPdf.setFillColor(255, 255, 255); docPdf.rect(0, 0, pw, ph, 'F'); }
       
       docPdf.setFillColor(deckSettings.themeColor);
       if (deckSettings.themeStyle === 'keynote' || deckSettings.themeStyle === 'scenography') { docPdf.rect(0, 0, pw, 2, 'F'); }
-      if (deckSettings.themeStyle === 'scenography') { docPdf.rect(0, 0, 2, ph, 'F'); }
+      if (deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk') { docPdf.rect(0, 0, 2, ph, 'F'); }
       
       docPdf.setFontSize(8); docPdf.setTextColor(150, 150, 150); docPdf.text(deckSettings.footerText, 15, ph - 10); docPdf.text(`${t('slide')} ${i + 1}`, pw - 25, ph - 10);
       
@@ -339,7 +366,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       else if (slide.layout === 'smart-calendar' && slide.dataPayload?.milestones) {
          const milestones = slide.dataPayload.milestones;
          if (milestones.length > 0) {
-           docPdf.setFillColor(isDarkTheme ? 30 : 240); docPdf.rect(15, cy, pw - 30, 8, 'F');
+           docPdf.setFillColor(isDarkTheme ? '#1e1e1e' : '#f0f0f0'); docPdf.rect(15, cy, pw - 30, 8, 'F');
            docPdf.setTextColor(isDarkTheme ? 150 : 100); docPdf.setFontSize(8);
            docPdf.text('Phase / Task', 20, cy + 5); docPdf.text('Status', (pw/3) + 15, cy + 5); docPdf.text('Timeline', (pw/3) + 40, cy + 5);
 
@@ -359,7 +386,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
              docPdf.setTextColor(isDarkTheme ? 150 : 100); docPdf.setFontSize(7); docPdf.text(`${ms.start} - ${ms.end}`, 20, gy + 8);
              docPdf.setTextColor(isDarkTheme ? 200 : 100); docPdf.setFontSize(8); docPdf.text(ms.status || 'Aktiv', (pw/3) + 15, gy + 4);
              
-             docPdf.setFillColor(isDarkTheme ? 40 : 230); docPdf.rect((pw/3) + 40, gy, availableWidth, 6, 'F'); 
+             docPdf.setFillColor(isDarkTheme ? '#282828' : '#e6e6e6'); docPdf.rect((pw/3) + 40, gy, availableWidth, 6, 'F'); 
              docPdf.setFillColor(deckSettings.themeColor); docPdf.rect((pw/3) + 40 + left, gy, barW, 6, 'F'); 
              gy += 16;
            });
@@ -373,7 +400,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         });
         autoTable(docPdf, { 
           startY: cy, margin: { left: 15, right: 15 }, head: [[t('pos'), t('text'), 'CHF']], body: tData, 
-          theme: isDarkTheme ? 'dark' : 'grid', headStyles: { fillColor: deckSettings.themeColor }, styles: { fontSize: 9, cellPadding: 3 }
+          theme: 'grid', headStyles: { fillColor: deckSettings.themeColor }, styles: { fontSize: 9, cellPadding: 3, fillColor: isDarkTheme ? [40, 40, 40] : [255, 255, 255], textColor: isDarkTheme ? [255, 255, 255] : [20, 20, 20] }
         });
         const finalY = (docPdf as any).lastAutoTable.finalY || cy;
         docPdf.setFontSize(12); docPdf.setTextColor(isDarkTheme ? 255 : 0); 
@@ -608,27 +635,44 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     setMobileTab('slides');
   };
 
-  const handleGenerateTeamSlide = async () => {
+const handleGenerateTeamSlide = async () => {
     const targetId = projectId || importProjectId;
     if (!targetId) return addToast(t('select_project'), "info");
     
     let teamMembers = [];
+    
+    // 1. Prüfen, ob es das Demo-Projekt ist
     if (targetId.startsWith('demo-')) {
         const industryKey = targetId.split('-')[1] || 'construction';
         const tpl = demoTemplates[industryKey];
         if (tpl && tpl.members) { 
-          teamMembers = tpl.members; 
+          // Avatare für die Demo erzwingen
+          teamMembers = tpl.members.map((m: any) => ({
+             ...m,
+             photoURL: m.photoURL || `/demo-assets/avatar_${m.name.split(' ')[0].toLowerCase()}.jpg`
+          }));
         }
     } else {
+        // 2. Echte Projekt-Datenbank abfragen
         teamMembers = (projectMembers || []).filter((m: any) => m.projectId === targetId).map((m: any) => {
           const user = (companyUsers || []).find((u: any) => u.id === m.userId);
-          return user ? { name: user.name || user.email, role: m.role, photoURL: user.photoURL || user.avatar, email: user.email, phone: user.phone || '' } : null;
+          // Holt das Bild, egal ob es unter photoURL oder avatar gespeichert wurde
+          const avatar = user?.photoURL || user?.avatar || m.avatar || m.photoURL || '';
+          return { 
+            name: m.userName || m.name || user?.name || user?.email || 'Teammitglied', 
+            role: m.projectRole || m.role || 'Projekt-Team', 
+            photoURL: avatar, 
+            email: m.userEmail || user?.email || '', 
+            phone: user?.phone || m.phone || '' 
+          };
         }).filter(Boolean);
     }
       
+    // 3. Wenn absolut niemand im Projekt ist, keinen "Max Muster" mehr zeigen!
     const fallbackData = teamMembers.length > 0 ? teamMembers : [
-        { name: 'Max Muster', role: 'Admin', email: 'admin@studio.ch', phone: '', photoURL: '' }
+        { name: 'Bitte Team hinzufügen', role: 'Noch niemand zugewiesen', email: '', phone: '', photoURL: '' }
     ];
+    
     await handleAddSlide('team-grid', t('project_team'), { members: fallbackData });
     addToast(t('team_imported'), "success");
     setMobileTab('slides');
@@ -647,8 +691,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         where('projectId', '==', targetId)
       );
       const snap = await getDocs(q);
-      const docs = snap.docs.map(d => ({id: d.id, ...d.data()})).filter((d:any) => (d.url || d.fileUrl) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
-      setAvailableMedia(docs.map(d => ({...d, url: d.url || d.fileUrl})));
+      const docs = snap.docs.map(d => ({id: d.id, ...(d.data() as any)})).filter((d:any) => (d.url || d.fileUrl) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
+      setAvailableMedia(docs.map((d: any) => ({...d, url: d.url || d.fileUrl})));
     } catch(e) { addToast(t('error_load'), "error"); }
     finally { setIsMediaLoading(false); }
   };
@@ -681,6 +725,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       case 'photography': return 'font-serif bg-[#0f0f12] text-zinc-100 border border-zinc-800 shadow-2xl';
       case 'scenography': return 'font-sans bg-[#09090b] text-zinc-100 border-l-4 shadow-2xl';
       case 'swiss': return 'font-sans bg-white text-black border-[6px] border-black tracking-tight shadow-none';
+      case 'neo-brutalism': return 'font-sans bg-white text-black border-[8px] border-black shadow-[16px_16px_0px_#000000]';
+      case 'glassmorphism': return 'font-sans bg-gradient-to-br from-white/60 to-white/30 backdrop-blur-3xl text-zinc-800 border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-3xl';
+      case 'cyberpunk': return 'font-mono bg-[#050505] text-zinc-100 border-l-[6px] shadow-[0_0_40px_rgba(0,0,0,0.5)]';
+      case 'minimal-tech': return 'font-sans bg-[#fafafa] text-zinc-800 border border-zinc-200 shadow-sm rounded-2xl';
       case 'keynote': default: return 'font-sans bg-white text-zinc-900 shadow-xl border border-zinc-200 rounded-xl';
     }
   };
@@ -692,15 +740,18 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const renderSlideContent = (slide: Slide) => {
-    const isDarkTheme = deckSettings.themeStyle === 'photography' || deckSettings.themeStyle === 'scenography';
+    const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-black";
     
     const displayTitle = activeSlide?.id === slide.id ? localTitle || slide.title : slide.title;
     const displayContent = activeSlide?.id === slide.id ? localContent || slide.content : slide.content;
 
     return (
-      <div className={cn("w-full h-full flex flex-col p-8 md:p-12 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
+      <div className={cn("w-full h-full flex flex-col p-8 md:p-12 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
         {deckSettings.themeStyle === 'scenography' && <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full blur-[120px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(30%, -30%)' }}></div>}
+        {deckSettings.themeStyle === 'neo-brutalism' && <div className="absolute top-0 right-0 w-48 h-48 border-b-[8px] border-l-[8px] border-black pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(10%, -10%)' }}></div>}
+        {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[1px] opacity-50 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
+        {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
         
         <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
           {!isPreviewMode && !isMobile ? (
@@ -884,7 +935,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         <div className="h-[10%] flex flex-row items-end justify-between border-t border-black/10 pb-2 z-10 shrink-0 mt-4">
           <span className="text-[8px] lg:text-[10px] uppercase font-bold tracking-widest opacity-40" style={{ color: deckSettings.themeColor }}>
              {!isMobile && !isPreviewMode ? (
-               <input type="text" value={deckSettings.footerText} onChange={e => setDeckSettings({...deckSettings, footerText: e.target.value})} className="bg-transparent outline-none w-64" placeholder="Footer Text" />
+               <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="bg-transparent outline-none w-64" placeholder="Footer Text" />
              ) : (
                <span>{deckSettings.footerText}</span>
              )}
@@ -967,7 +1018,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             {mobileTab === 'slides' && (
               <div className="space-y-6">
                  <div className="relative">
-                   <button type="button" onClick={() => setShowAddMenu(!showAddMenu)} className="w-full py-3 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold flex items-center justify-center gap-2"><Plus size={16}/> {t('new_slide')}</button>
+                   <button type="button" onClick={() => setShowAddMenu(!showAddMenu)} className="tour-deck-add w-full py-3 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl font-bold flex items-center justify-center gap-2"><Plus size={16}/> {t('new_slide')}</button>
                    <AnimatePresence>
                      {showAddMenu && (
                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col gap-2 mt-2">
@@ -1032,13 +1083,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             {mobileTab === 'design' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-3">
-                  {[ {id:'keynote',n:'Keynote'},{id:'scenography',n:'Szenografie'},{id:'architecture',n:'Architektur'},{id:'swiss',n:'Swiss Minimal'},{id:'photography',n:'Fotografie'}].map(thm=>(
-                    <button type="button" key={thm.id} onClick={()=>setDeckSettings({...deckSettings,themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-400":"bg-white/5 border-white/10 text-white")}>{thm.n}</button>
+                  {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
+                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-400":"bg-white/5 border-white/10 text-white")}>{thm.n}</button>
                   ))}
                 </div>
                 <div className="pt-2">
                   <label className="text-xs font-bold text-white/50 uppercase mb-2 block">Footer Text</label>
-                  <input type="text" value={deckSettings.footerText} onChange={e => setDeckSettings({...deckSettings, footerText: e.target.value})} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white outline-none focus:border-purple-500" />
+                  <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white outline-none focus:border-purple-500" />
                 </div>
               </div>
             )}
@@ -1074,11 +1125,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           <div className="w-72 bg-surface border-r border-border flex-col shrink-0 shadow-2xl z-20 flex">
             <div className="h-16 flex items-center px-5 border-b border-border"><MonitorPlay className="mr-3 text-purple-400" size={18} /><h2 className="font-bold text-sm uppercase">{t('deck_engine')}</h2></div>
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-              <div>
+              <div className="tour-deck-template">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
                 <div className="space-y-2">
-                  {[ {id:'keynote',n:'Keynote'},{id:'scenography',n:'Szenografie'},{id:'architecture',n:'Architektur'},{id:'swiss',n:'Swiss Minimal'},{id:'photography',n:'Fotografie'}].map(thm=>(
-                    <button type="button" key={thm.id} onClick={()=>setDeckSettings({...deckSettings,themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-400":"bg-background border-border")}>{thm.n}</button>
+                  {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
+                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-400":"bg-background border-border")}>{thm.n}</button>
                   ))}
                 </div>
               </div>
@@ -1168,7 +1219,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               )}
             </div>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-2 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex">
+              <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-2 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex">
                  <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
               </button>
               <div className="h-6 w-px bg-border mx-1"></div>
@@ -1277,8 +1328,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('color')}</label>
                     <div className="flex flex-row items-center gap-3 bg-black border border-white/10 rounded-xl p-2 shadow-inner">
-                       <input type="color" value={deckSettings.themeColor} onChange={(e) => setDeckSettings({...deckSettings, themeColor: e.target.value})} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
-                       <input type="text" value={deckSettings.themeColor} onChange={(e) => setDeckSettings({...deckSettings, themeColor: e.target.value})} className="flex-1 bg-transparent text-sm font-mono font-bold text-white outline-none uppercase" />
+                       <input type="color" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
+                       <input type="text" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className="flex-1 bg-transparent text-sm font-mono font-bold text-white outline-none uppercase" />
                      </div>
                   </div>
                   

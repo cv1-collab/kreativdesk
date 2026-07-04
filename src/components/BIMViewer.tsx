@@ -19,10 +19,12 @@ import {
 import { cn } from '../utils';
 
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
+import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, addDoc, collection, query, where, getDocs, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { storage, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { hasFeature } from '../utils/planFeatures';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext'; 
@@ -425,6 +427,18 @@ export default function BIMViewer() {
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   useEffect(() => { setPortalNode(document.body); }, []);
 
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (currentUser && !hasFeature(currentUser, '3d_bim')) {
+      navigate('/app', { replace: true });
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
+      }, 100);
+    }
+  }, [currentUser, navigate]);
+
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window !== 'undefined') {
       const isUserAgentMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -491,7 +505,6 @@ export default function BIMViewer() {
   const [defectPins, setDefectPins] = useState<{position: THREE.Vector3, normal: THREE.Vector3, id: string, description: string}[]>([]);
   const [isTouring, setIsTouring] = useState(false);
   
-  const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { theme } = useTheme(); 
   const { projects, isDemoMode, demoData } = useProject() as any;
@@ -623,8 +636,8 @@ export default function BIMViewer() {
     const unsub = onSnapshot(q, (snap) => {
       const allDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const models = allDocs.filter(d => {
-        const type = String(d.type || '').toLowerCase();
-        const name = String(d.name || '').toLowerCase();
+        const type = String((d as any).type || '').toLowerCase();
+        const name = String((d as any).name || '').toLowerCase();
         return ['obj', 'gltf', 'glb', 'dae', 'ifc', 'dwg', 'fbx', '3d model'].includes(type) ||
                name.endsWith('.obj') || name.endsWith('.gltf') || name.endsWith('.glb') || 
                name.endsWith('.dae') || name.endsWith('.ifc') || name.endsWith('.dwg') || name.endsWith('.fbx');
@@ -681,9 +694,15 @@ export default function BIMViewer() {
         let imageUrl = '';
         if (storage && base64DataUrl) {
           const blob = new Blob([new Uint8Array(atob(base64DataUrl.split(',')[1]).split('').map(c => c.charCodeAt(0)))], {type: 'image/png'});
+          const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
+          if (!isAllowed) {
+            addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+            return;
+          }
           const storageRef = ref(storage, `${currentUser!.companyId}/defects/${newPin.id}.png`);
           await uploadBytes(storageRef, blob);
           imageUrl = await getDownloadURL(storageRef);
+          await incrementStorage(currentUser.companyId, blob.size);
         }
         
         await setDoc(doc(db, 'defects', newPin.id), { 
@@ -750,10 +769,17 @@ export default function BIMViewer() {
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
       const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' });
+      const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploading(false);
+        return;
+      }
       const fileName = `AI_Render_${activeStyle}_${Date.now()}.png`;
       const storageRef = ref(storage, `${currentUser!.companyId}/ai_renders/${fileName}`);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, blob.size);
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("KI Renderings", docCategory);
       await addDoc(collection(db, 'documents'), { name: fileName, url: downloadUrl, fileUrl: downloadUrl, projectId: projectId, folderId: targetFolderId, ownerId: currentUser.uid, uploadedBy: currentUser.uid, companyId: currentUser.companyId, type: 'image/png', size: formatBytes(blob.size), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
@@ -769,10 +795,17 @@ export default function BIMViewer() {
 
   const handleSavePdfToCloud = async (blob: Blob) => {
     try {
+      if (!currentUser || !currentUser.companyId) return;
+      const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        return;
+      }
       const fileName = `BIM_Report_${Date.now()}.pdf`;
       const storageRef = ref(storage, `${currentUser!.companyId}/pdf_exports/${fileName}`);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, blob.size);
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("03_PLANUNG", docCategory);
@@ -831,9 +864,16 @@ export default function BIMViewer() {
     addToast('Modell lädt in die Cloud...', 'info');
 
     try {
+      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsUploading(false);
+        return;
+      }
       const storageRef = ref(storage, `documents/${projectId}/3d_models_${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
+      await incrementStorage(currentUser.companyId, file.size);
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const folderId = await ensureFolder("3D Modelle", docCategory);
@@ -892,7 +932,7 @@ export default function BIMViewer() {
           </button>
           
           {customModels.map(model => (
-            <div key={model.id} className={cn("flex items-center justify-between p-2 rounded-lg text-sm font-medium transition-colors border shrink-0", activeModelId === model.id ? "bg-accent-ai/10 border-accent-ai/30 text-accent-ai" : "bg-background border-border hover:bg-surface text-text-primary")} opacity={1}>
+            <div key={model.id} className={cn("flex items-center justify-between p-2 rounded-lg text-sm font-medium transition-colors border shrink-0", activeModelId === model.id ? "bg-accent-ai/10 border-accent-ai/30 text-accent-ai" : "bg-background border-border hover:bg-surface text-text-primary")}>
               <div className="flex-1 truncate cursor-pointer pr-2" onClick={() => { setActiveModelId(model.id); if(isMobile) setShowMobileTools(false); }}>
                 {model.name}
               </div>

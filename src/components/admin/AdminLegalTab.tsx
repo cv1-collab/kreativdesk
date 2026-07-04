@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Scale, FileText, Upload, CheckCircle2, Loader2 } from 'lucide-react';
+import { Scale, FileText, Upload, CheckCircle2, Loader2, Shield, Activity, AlertTriangle } from 'lucide-react';
 import { db, storage } from '../../firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';

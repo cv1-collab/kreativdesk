@@ -13,6 +13,7 @@ import UniversalPDFStudio from './UniversalPDFStudio';
 import { db, storage } from '../firebase';
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -233,25 +234,52 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
     try {
+      const isAllowed = await checkStorageLimit(safeCompanyId, blob.size);
+      if (!isAllowed) {
+        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+        setIsSubmitting(false);
+        return;
+      }
       const fileName = `Spesen_${Date.now()}.pdf`;
       const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
       await uploadBytes(storageRef, blob);
       const finalPdfUrl = await getDownloadURL(storageRef);
+      await incrementStorage(safeCompanyId, blob.size);
 
-      // +++ FIX: Finde die echte ID +++
       let targetFolderId = '';
-      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true));
+      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true), where('folderId', '==', 'root'));
       const folderSnap = await getDocs(folderQ);
       if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
-      else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }
+      else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }
 
       await addDoc(collection(db, 'transactions'), { 
         type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', projectId: headerData.projectId || 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...receipts], createdAt: new Date().toISOString() 
       });
 
+      // FIX: size: blob.size integriert
       await addDoc(collection(db, 'documents'), { 
-        name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'pdf', isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() 
+        name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'application/pdf', size: blob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() 
       });
+
+      // Fallback-Schleife für Kamera/Bild-Belege der Spesen (inkl. size)
+      for (let i = 0; i < receipts.length; i++) {
+        if (receipts[i].startsWith('data:image')) {
+          const fetchRes = await fetch(receipts[i]); const imgBlob = await fetchRes.blob();
+          const isImgAllowed = await checkStorageLimit(safeCompanyId, imgBlob.size);
+          if (!isImgAllowed) {
+             addToast('Speicherplatz-Limit erreicht (Belege)! Bitte upgrade.', 'error');
+             continue;
+          }
+          const imgRef = ref(storage, `${safeCompanyId}/documents/Spesen_Beleg_${Date.now()}_${i}.png`);
+          await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
+          await incrementStorage(safeCompanyId, imgBlob.size);
+          
+          await addDoc(collection(db, 'documents'), { name: `Spesen_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'image/png', size: imgBlob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
+        }
+      }
+
+      // FIX: visibility: 'owner' integriert
+      await addDoc(collection(db, 'notifications'), { title: 'Neue Spesenabrechnung', message: `${fileName} wurde in 01_FINANZEN abgelegt.`, type: 'document', isRead: false, visibility: 'owner', companyId: safeCompanyId, ownerId: currentUser.uid, createdAt: new Date().toISOString() });
 
       addToast(t('ext_costs_booked'), "success"); 
       setIsPdfStudioOpen(false);

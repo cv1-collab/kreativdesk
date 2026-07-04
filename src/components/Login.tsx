@@ -1,3 +1,4 @@
+import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
@@ -70,7 +71,7 @@ export default function Login() {
   const { currentUser } = useAuth();
 
   if (currentUser) {
-    if (currentUser.email?.toLowerCase() === 'cv1@gmx.ch') return <Navigate to="/admin" />;
+    if (checkIsSuperAdmin(currentUser.email)) return <Navigate to="/admin" />;
     return <Navigate to="/app" />;
   }
 
@@ -136,8 +137,13 @@ export default function Login() {
       if (!userDocSnap.exists()) {
         await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
         try {
+          const token = await userCredential.user.getIdToken();
           await fetch('/api/set-tenant-claim', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST', 
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({ uid: userCredential.user.uid, companyId: `comp_${userCredential.user.uid}` })
           });
           await new Promise(resolve => setTimeout(resolve, 1500));

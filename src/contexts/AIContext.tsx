@@ -28,7 +28,6 @@ export const useAI = () => {
 };
 
 export const AIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // FIX: Das Array startet jetzt komplett leer! Keine Dummy-Warnungen mehr.
   const [warnings, setWarnings] = useState<AIWarning[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 

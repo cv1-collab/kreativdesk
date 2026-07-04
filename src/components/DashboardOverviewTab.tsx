@@ -31,12 +31,17 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
   const [leads, setLeads] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
 
+  const [transactions, setTransactions] = useState<any[]>([]);
+
   useEffect(() => {
     if (!db || !currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
     const qProjects = query(collection(db, 'projects'), where('companyId', '==', safeCompanyId));
-    const unsubP = onSnapshot(qProjects, snap => setProjects(snap.docs.map(d => d.data())));
+    const unsubP = onSnapshot(qProjects, snap => setProjects(snap.docs.map(d => {
+      const data = d.data();
+      return { id: d.id, ...data };
+    })));
     
     const qLeads = query(collection(db, 'leads'), where('companyId', '==', safeCompanyId));
     const unsubL = onSnapshot(qLeads, snap => {
@@ -47,7 +52,10 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
     const qTeam = query(collection(db, 'companyUsers'), where('companyId', '==', safeCompanyId));
     const unsubT = onSnapshot(qTeam, snap => setTeam(snap.docs.map(d => d.data())));
 
-    return () => { unsubP(); unsubL(); unsubT(); };
+    const qTransactions = query(collection(db, 'transactions'), where('companyId', '==', safeCompanyId));
+    const unsubTx = onSnapshot(qTransactions, snap => setTransactions(snap.docs.map(d => d.data())));
+
+    return () => { unsubP(); unsubL(); unsubT(); unsubTx(); };
   }, [currentUser]);
 
   const activeProjects = projects.filter(p => p.status === 'active');
@@ -58,6 +66,24 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
     { name: 'Planung', value: projects.filter(p => p.status === 'planning').length, color: '#f59e0b' },
     { name: 'Abgeschlossen', value: projects.filter(p => p.status === 'completed').length, color: '#6366f1' }
   ].filter(d => d.value > 0);
+
+  // Calc budget
+  let totalPortfolioBudget = 0;
+  projects.forEach(proj => {
+    if (Array.isArray(proj.financeGroups)) {
+      proj.financeGroups.forEach((g: any) => {
+        if (Array.isArray(g.items)) {
+          g.items.forEach((i: any) => {
+            totalPortfolioBudget += (Number(i.qty) || 0) * (Number(i.unitPrice) || 0);
+          });
+        }
+      });
+    }
+  });
+
+  const totalInvoices = transactions
+    .filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'revenue' || tx.type === 'invoice')
+    .reduce((acc, curr) => acc + Math.abs(Number(curr.amount) || 0), 0);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -88,7 +114,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
          </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          <div className="bg-surface border border-border rounded-3xl p-6 min-h-[300px] flex flex-col">
             <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 mb-6"><Target size={16}/> {t('project_status')}</h3>
             <div className="flex-1 w-full relative min-h-[200px]">
@@ -114,15 +140,36 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
             <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 mb-6"><Activity size={16}/> {t('recent_leads')}</h3>
             <div className="space-y-4">
                {leads.slice(0, 3).map((l, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-background rounded-xl border border-border/50">
+                  <div key={i} onClick={() => setActiveTab('leads')} className="flex items-center justify-between p-3 bg-background rounded-xl border border-border/50 cursor-pointer hover:border-accent-ai/50 transition-colors group">
                      <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-orange-500/10 text-orange-500 flex items-center justify-center font-bold text-xs">{l.company?.charAt(0) || l.firstName?.charAt(0)}</div>
                         <div><div className="text-sm font-bold">{l.company || `${l.firstName} ${l.lastName}`}</div><div className="text-[10px] opacity-50">{l.email}</div></div>
                      </div>
-                     <ArrowRight size={14} className="text-text-muted" />
+                     <ArrowRight size={14} className="text-text-muted group-hover:text-accent-ai group-hover:translate-x-1 transition-all" />
                   </div>
                ))}
                {leads.length === 0 && <div className="text-center py-12 text-text-muted text-sm italic">Keine neuen Leads</div>}
+            </div>
+         </div>
+         
+         <div className="bg-surface border border-border rounded-3xl p-6 min-h-[300px] flex flex-col cursor-pointer group hover:border-indigo-500/50 transition-colors" onClick={() => setActiveTab('finance')}>
+            <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center justify-between mb-6">
+              <span className="flex items-center gap-2"><Building2 size={16}/> Finanzen</span>
+              <ArrowRight size={14} className="text-text-muted group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+            </h3>
+            
+            <div className="flex-1 flex flex-col justify-center space-y-6">
+              <div>
+                <div className="text-xs text-text-muted uppercase tracking-widest mb-1">Portfolio Budget</div>
+                <div className="text-3xl font-black text-indigo-500">CHF {totalPortfolioBudget.toLocaleString('de-CH')}</div>
+              </div>
+              
+              <div className="h-px w-full bg-border/50" />
+              
+              <div>
+                <div className="text-xs text-text-muted uppercase tracking-widest mb-1">Fakturierter Umsatz</div>
+                <div className="text-2xl font-bold text-emerald-500">CHF {totalInvoices.toLocaleString('de-CH')}</div>
+              </div>
             </div>
          </div>
       </div>

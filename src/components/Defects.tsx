@@ -224,7 +224,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!currentProjectId) return;
 
     // 🔥 DEMO-MODUS SCHUTZSCHILD: Lädt die perfekten Dummy-Mängel!
-    if (currentProjectId === 'demo-1' || activeProject?.name === 'Quartier Neubau Süd') {
+    if (currentProjectId === 'demo-1') {
       setDefects(DEMO_DEFECTS);
       return;
     }
@@ -261,7 +261,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!id) return;
 
     // Lokaler State Update für die interaktive Demo!
-    if (currentProjectId === 'demo-1' || activeProject?.name === 'Quartier Neubau Süd') {
+    if (currentProjectId === 'demo-1') {
       setDefects(prev => prev.map(d => d.id === id ? { ...d, status } : d));
       return;
     }
@@ -300,7 +300,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     e.preventDefault();
     
     // Lokaler State Update für die interaktive Demo!
-    if (currentProjectId === 'demo-1' || activeProject?.name === 'Quartier Neubau Süd') {
+    if (currentProjectId === 'demo-1') {
        setIsSubmitting(true);
        setTimeout(() => {
          if (editingId) {
@@ -348,7 +348,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleDeleteDefect = async (id: string) => {
     if (!window.confirm(t('delete_confirm'))) return;
 
-    if (currentProjectId === 'demo-1' || activeProject?.name === 'Quartier Neubau Süd') {
+    if (currentProjectId === 'demo-1') {
         setDefects(prev => prev.filter(d => d.id !== id));
         addToast(t('delete') + ' ' + t('completed'), 'success');
         return;

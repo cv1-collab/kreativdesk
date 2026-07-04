@@ -11,7 +11,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@daily-co/daily-js": "^0.89.1",
     "@google/genai": "^1.44.0",
     "@jitsi/react-sdk": "^1.4.4",
     "@react-pdf/renderer": "^4.5.1",
@@ -19,6 +18,7 @@
     "@react-three/fiber": "^9.5.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "buffer": "^6.0.3",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "dotenv": "^17.4.2",
@@ -54,14 +54,17 @@
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
     "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/stripe": "^8.0.416",
     "@types/three": "^0.183.1",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
+    "@vercel/node": "^5.8.22",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.27.4",
     "eslint": "^9.39.3",
