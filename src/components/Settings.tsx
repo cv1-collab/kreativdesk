@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { updateProfile, deleteUser } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, onSnapshot, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { storage, db } from '../firebase';
+import { storage, db, auth } from '../firebase';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
