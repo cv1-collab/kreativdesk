@@ -22,11 +22,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     hero_beta_disclaimer: 'We are currently in the Public Beta phase. Join now to shape the future of project management and secure early-adopter conditions.',
     cta_primary: 'Try it live', cta_secondary: 'Request Enterprise Setup',
     demo_title: 'Experience the real system.', demo_subtitle: 'No dummy graphics. No fake interfaces. Click through the actual Kreativ-Desk dashboard right here.',
+    demo_subtitle_mobile: 'Swipe through the interactive highlights of our core features.',
     mobile_demo_cta: 'Are you on a desktop? Experience the entire operating system live!',
     card1_title: 'Smart Budgeting', card1_desc: 'Live Calculation & Variants', card1_label: 'Material Quality', card1_total: 'Live Budget',
     card2_title: '3D AI-Audit', card2_desc: 'Collision check in seconds', card2_btn_scan: 'Run AI Audit', card2_scanning: 'Scanning BIM...', card2_safe: 'No escape route conflicts',
     card3_title: 'Site App', card3_desc: 'Check off defects offline', card3_t1: 'Crack in wall (Ground Floor)', card3_t2: 'Window jams (Room 3)', card3_t3: 'Paint touch-up',
     card4_title: 'Auto Pitch-Deck', card4_desc: 'From data to 12 slides', card4_btn: 'Generate PDF', card4_generating: 'Designing Slides...', card4_done: '12 Slides Ready',
+    card5_title: 'Full Experience', card5_desc: 'Switch to Desktop', card5_cta: 'Start Free Trial',
     systems_title: 'Project Control Systems', systems_subtitle: 'Infrastructure for studios and companies that need to steer complex productions scalably.',
     sys1_title: 'Kreativ Desk Studio', sys1_desc: 'Focus: Control for a single large-scale project. (Includes 5 Team Seats)', sys1_price: 'from CHF 15,000', sys1_renewal: 'Setup incl. 1st yr. From yr 2: CHF 7,500 / yr.',
     sys2_title: 'Kreativ Desk Agency', sys2_desc: 'Focus: Multiple parallel productions. (Includes 15 Team Seats)', sys2_price: 'CHF 25,000', sys2_renewal: 'Setup incl. 1st yr. From yr 2: CHF 19,500 / yr.',
@@ -77,14 +79,16 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     hero_title1: 'Das Operating System', hero_title2: 'für komplexe Projekte.',
     hero_subtitle: 'Plane, budgetiere und realisiere anspruchsvolle Projekte mit klarer Struktur, KI-gestützter Kontrolle und einem zentralen Workspace.',
     hero_beta_disclaimer: 'Wir befinden uns aktuell in der Public Beta. Sei von Anfang an dabei, gestalte die Zukunft der Projektsteuerung mit und sichere dir exklusive Early-Adopter Konditionen.',
-    cta_primary: 'Live ausprobieren', cta_secondary: 'Enterprise Setup anfragen',
+    cta_primary: 'Try it live', cta_secondary: 'Request Enterprise Setup',
     demo_title: 'Erlebe das echte System.', demo_subtitle: 'Keine Dummy-Grafiken. Keine Fake-Interfaces. Klick dich direkt hier durch die echte Kreativ-Desk Oberfläche.',
+    demo_subtitle_mobile: 'Wische dich durch die interaktiven Highlights unserer Kernfunktionen.',
     mobile_demo_cta: 'Bist du am Desktop? Erlebe das gesamte Betriebssystem live!',
     card1_title: 'Smart Budgeting', card1_desc: 'Live Kalkulation & Varianten', card1_label: 'Material-Qualität', card1_total: 'Live Budget',
     card2_title: '3D AI-Audit', card2_desc: 'Kollisionsprüfung in Sekunden', card2_btn_scan: 'KI Audit starten', card2_scanning: 'BIM wird gescannt...', card2_safe: 'Keine Fluchtweg-Konflikte',
     card3_title: 'Baustellen-App', card3_desc: 'Mängel offline abhaken', card3_t1: 'Riss in Wand (EG)', card3_t2: 'Fenster klemmt (Zimmer 3)', card3_t3: 'Malerarbeiten ausbessern',
-    card4_title: 'Auto Pitch-Deck', card4_desc: 'Von Daten zu 12 Slides', card4_btn: 'PDF Generieren', card4_generating: 'Slides werden designt...', card4_done: '12 Slides bereit',
-    systems_title: 'Project Control Systems', systems_subtitle: 'Infrastruktur für Studios und Unternehmen, die komplexe Produktionen skalierbar steuern müssen.',
+    card4_title: 'Auto Pitch-Deck', card4_desc: 'Von Daten zu 12 Slides', card4_btn: 'PDF generieren', card4_generating: 'Gestalte Slides...', card4_done: '12 Slides fertig',
+    card5_title: 'Volles Erlebnis', card5_desc: 'Wechsle zum Desktop', card5_cta: 'Jetzt kostenlos testen',
+    systems_title: 'Projekt-Steuerungssysteme', systems_subtitle: 'Infrastruktur für Studios und Firmen, die komplexe Produktionen skalierbar steuern müssen.',
     sys1_title: 'Kreativ Desk Studio', sys1_desc: 'Fokus: Kontrolle für ein einzelnes Großprojekt. (inklusive 5 Team-Lizenzen)', sys1_price: 'ab CHF 15’000', sys1_renewal: 'Setup inkl. 1. Jahr. Ab Jahr 2: CHF 7’500 / Jahr.',
     sys2_title: 'Kreativ Desk Agency', sys2_desc: 'Fokus: Mehrere parallele Produktionen. (inklusive 15 Team-Lizenzen)', sys2_price: 'CHF 25’000', sys2_renewal: 'Setup inkl. 1. Jahr. Ab Jahr 2: CHF 19’500 / Jahr.',
     sys3_title: 'Kreativ Desk Enterprise', sys3_desc: 'Fokus: Tiefe Integration und strategische Begleitung. (inklusive 30 Team-Lizenzen)', sys3_price: 'ab CHF 40’000', sys3_renewal: 'Setup inkl. 1. Jahr. Ab Jahr 2: ab CHF 35’000 / Jahr.',
@@ -465,12 +469,25 @@ export default function LandingPage() {
                   </div>
                 </div>
 
+                {/* Card 5 - CTA */}
+                <div className="min-w-[85vw] sm:min-w-[320px] snap-center bg-gradient-to-br from-zinc-800 to-zinc-950 border border-zinc-800 rounded-3xl p-6 shadow-xl flex flex-col justify-center items-center text-center">
+                  <div className="w-16 h-16 bg-white/10 text-white rounded-2xl flex items-center justify-center mb-6 shadow-2xl">
+                    <MonitorPlay size={32} />
+                  </div>
+                  <h3 className="text-2xl font-black text-white mb-2">{t('card5_title')}</h3>
+                  <p className="text-zinc-400 mb-8">{t('card5_desc')}</p>
+                  <Link to="/register" className="w-full py-4 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:bg-zinc-200 shadow-xl">
+                    {t('card5_cta')} <ArrowRight size={18} />
+                  </Link>
+                </div>
+
               </div>
               
               <div className="text-center px-6">
-                <p className="inline-flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-full text-xs font-bold text-text-muted shadow-sm">
-                  <MonitorPlay size={14} className="text-blue-500"/> {t('mobile_demo_cta')}
-                </p>
+                <div className="inline-flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-2xl text-sm font-bold text-blue-400 shadow-lg relative overflow-hidden">
+                  <div className="absolute inset-0 bg-blue-500/5 animate-pulse"></div>
+                  <MonitorPlay size={18} className="text-blue-500"/> {t('mobile_demo_cta')}
+                </div>
               </div>
             </div>
 
