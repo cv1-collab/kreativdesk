@@ -80,11 +80,17 @@ export default function App() {
                       <MaintenanceGuard>
                         <Screensaver />
 
-                        <Suspense fallback={<GlobalSuspenseFallback />}>
+                        <Suspense fallback={null}>
                           <AIConcierge />
+                        </Suspense>
+                        <Suspense fallback={null}>
                           <ProductTour />
-
+                        </Suspense>
+                        <Suspense fallback={null}>
                           <CookieBanner />
+                        </Suspense>
+
+                        <Suspense fallback={<GlobalSuspenseFallback />}>
 
                           <Routes>
                             {/* Öffentliche Routen */}
