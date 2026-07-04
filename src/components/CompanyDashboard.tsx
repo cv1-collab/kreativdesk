@@ -524,6 +524,11 @@ export default function CompanyDashboard() {
             <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
             <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm"><Bell size={18} />{unreadNotifications > 0 && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
+            {isSuperAdmin && (
+              <button onClick={() => navigate('/admin')} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors">
+                <Shield size={16} /> <span className="hidden sm:inline text-xs font-bold">Admin</span>
+              </button>
+            )}
             <button onClick={handleLogout} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors">
               <LogOut size={16} /> <span className="hidden sm:inline text-xs font-bold">{t('logout')}</span>
             </button>
