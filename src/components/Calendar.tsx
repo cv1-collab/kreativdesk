@@ -332,7 +332,7 @@ export default function Calendar() {
   const [viewMode, setViewMode] = useState<'gantt' | 'month' | 'day'>('gantt');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => setIsMounted(true), []);
+  useEffect(() => { setTimeout(() => setIsMounted(true), 0); }, []);
 
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
@@ -413,7 +413,7 @@ export default function Calendar() {
     // 🔥 DEMO-BRÜCKE: Lade den Terminplan aus deinem Template!
     if (isDemoMode && demoData) {
        hasLoadedInitial.current = true;
-       setIsInitialLoad(false);
+       setTimeout(() => setIsInitialLoad(false), 0);
        const today = new Date();
        
        if (demoData.tasks) {
@@ -422,14 +422,14 @@ export default function Calendar() {
              const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 40);
              return { id: t.id, title: t.title, start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0], color: t.color, status: t.status };
           });
-          setGanttTasks(mappedTasks);
+          setTimeout(() => setGanttTasks(mappedTasks), 0);
        }
        if (demoData.smartMarkers) {
           const mappedMarkers = demoData.smartMarkers.map((m: any) => {
              const date = new Date(today); date.setDate(date.getDate() + (m.daysOffset || 0) - 40);
              return { id: m.id, date: date.toISOString().split('T')[0], label: m.title, color: m.color, style: m.style || 'solid' };
           });
-          setSmartMarkers(mappedMarkers);
+          setTimeout(() => setSmartMarkers(mappedMarkers), 0);
        }
        setTargetYear(today.getFullYear());
        setScheduleName(demoData.project?.name || 'Masterplan');
@@ -704,7 +704,7 @@ export default function Calendar() {
     }
     
     if (dragContext && activeTool === 'cursor') {
-      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) {}
+      try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err) { console.error('Failed to release pointer capture', err); }
     }
     setDragContext(null);
   };
@@ -730,7 +730,7 @@ export default function Calendar() {
     if (activeTool === 'cursor' && !editingTask && !editingShape && !editingMarker && !dragContext) {
       isPanning.current = true;
       startPan.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
-      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err) {}
+      try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err) { console.error('Failed to set pointer capture', err); }
     }
   };
 
@@ -742,7 +742,7 @@ export default function Calendar() {
 
   const handleMainPointerUp = (e: React.PointerEvent) => {
     isPanning.current = false;
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err){}
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err){ console.error('Failed to release pointer capture', err); }
   };
 
   return (

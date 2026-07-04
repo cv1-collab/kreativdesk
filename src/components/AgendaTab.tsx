@@ -815,7 +815,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
             isOpen={isPdfStudioOpen} 
             onClose={() => setIsPdfStudioOpen(false)} 
             title={printType === 'rapport' ? 'Rapport' : 'Agenda'} 
-            fileName={`${printType === 'rapport' ? 'Rapport' : 'Agenda'}_${Date.now()}`}
+            fileName={`${printType === 'rapport' ? 'Rapport' : 'Agenda'}`}
             onSaveCloud={handleSavePdfToCloud}
             defaultOrientation="portrait"
           >

@@ -59,7 +59,7 @@ export default function AIConcierge() {
   useEffect(() => {
     const saved = localStorage.getItem('kreativ_ai_pos');
     if (saved) {
-      try { setPos(JSON.parse(saved)); } catch (e) {}
+      try { setPos(JSON.parse(saved)); } catch (e) { console.error('Failed to parse saved pos', e); }
     }
     setHasLoadedPos(true);
   }, []);

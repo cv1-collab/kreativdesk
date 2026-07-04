@@ -113,19 +113,6 @@ export default function AdminBrandTab() {
                  </div>
               </div>
             </div>
-            
-            {/* WARTUNGSMODUS */}
-            <div className="bg-surface border border-border rounded-2xl p-5 md:p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-text-primary flex items-center gap-2"><AlertTriangle size={16} className="text-orange-500"/> {t('maintenance')}</h4>
-                  <p className="text-xs text-text-muted mt-1 leading-relaxed">{t('maintenance_desc')}</p>
-                </div>
-                <button type="button" onClick={() => setConfig({...config, isMaintenance: !config.isMaintenance})} className={cn("px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-sm", config.isMaintenance ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20")}>
-                  {config.isMaintenance ? t('active') : t('inactive')}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 

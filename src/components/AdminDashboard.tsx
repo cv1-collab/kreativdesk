@@ -58,7 +58,7 @@ export default function AdminDashboard() {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
     if (tab) {
-      setActiveTab(tab);
+      setTimeout(() => setActiveTab(tab), 0);
       navigate('/admin', { replace: true });
     }
   }, [location.search, navigate]);

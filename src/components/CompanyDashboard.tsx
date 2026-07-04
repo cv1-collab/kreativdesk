@@ -286,12 +286,85 @@ export default function CompanyDashboard() {
         id: memberId, projectId, companyId: safeCompanyId, userId: currentUser.uid, userEmail: currentUser.email, projectRole: 'owner', companyRole: userRole, joinedAt: new Date().toISOString()
       });
 
+      const now = new Date().toISOString();
+
       if (demoData.financeGroups) {
-        demoData.financeGroups.forEach((group: any) => {
-          const groupId = `fg-${projectId}-${group.pos}`;
-          batch.set(doc(db, 'financeData', groupId), { id: groupId, projectId, companyId: safeCompanyId, ...group });
+        batch.set(doc(db, 'financeData', `finance_${projectId}`), {
+          projectId: projectId, companyId: safeCompanyId, activeVersionId: 'v1',
+          versions: [{
+            id: 'v1', name: 'Startbudget', createdAt: now, status: 'approved',
+            groups: demoData.financeGroups.map((g: any, gIdx: number) => ({
+              id: `g_${gIdx}`, pos: g.pos, title: g.title,
+              items: g.items.map((i: any, iIdx: number) => ({
+                id: `item_${gIdx}_${iIdx}`, pos: i.pos, title: i.title, description: i.description || '',
+                unit: i.unit || 'Pausch.', qty: i.qty || 1, unitPrice: i.unitPrice || 0,
+                type: i.type || 'cost',
+                total: (i.qty || 1) * (i.unitPrice || 0)
+              }))
+            }))
+          }]
+        });
+      } else {
+        batch.set(doc(db, 'financeData', `finance_${projectId}`), {
+          projectId: projectId, companyId: safeCompanyId, activeVersionId: 'v1',
+          versions: [{
+            id: 'v1', name: 'Startbudget', createdAt: now, status: 'approved',
+            groups: [{ id: 'g1', pos: '100', title: 'Projektbudget', items: [] }]
+          }]
         });
       }
+
+      // 2. Schedule Data (Calendar)
+      if (demoData.tasks || demoData.smartMarkers) {
+        batch.set(doc(db, 'schedules', `schedule_${projectId}`), {
+          projectId: projectId, companyId: safeCompanyId, ownerId: currentUser.uid,
+          name: 'Initialer Projektplan', createdAt: now, isPublic: false,
+          tasks: (demoData.tasks || []).map((t: any) => {
+            const start = new Date(Date.now() + (t.daysOffsetStart || 0) * 86400000).toISOString().split('T')[0];
+            const end = new Date(Date.now() + (t.daysOffsetEnd || 0) * 86400000).toISOString().split('T')[0];
+            return { id: t.id, title: t.title, startDate: start, endDate: end, progress: t.progress || 0, status: t.status || 'Geplant', color: t.color };
+          }),
+          smartMarkers: (demoData.smartMarkers || []).map((m: any) => {
+            const date = new Date(Date.now() + (m.daysOffset || 0) * 86400000).toISOString().split('T')[0];
+            return { id: m.id, date: date, label: m.title, color: m.color };
+          })
+        });
+      }
+
+      // 3. Pitch Deck Slides
+      if (demoData.pitchDeck && demoData.pitchDeck.slides) {
+        for (const slide of demoData.pitchDeck.slides) {
+          batch.set(doc(db, 'slides', `slide_${projectId}_${slide.id}`), {
+            title: slide.title, content: slide.content || '', 
+            projectId: projectId, companyId: safeCompanyId, ownerId: currentUser.uid, 
+            layout: slide.layout || 'split', order_index: slide.order_index || 0, 
+            imageUrl: slide.imageUrl || '',
+            fontSize: slide.fontSize || 36, createdAt: now
+          });
+        }
+      }
+
+      // 4. Defects
+      if (demoData.defects) {
+        for (let i = 0; i < demoData.defects.length; i++) {
+          const d = demoData.defects[i];
+          batch.set(doc(db, 'defects', `defect_${projectId}_${i}`), {
+            title: d.title, description: d.description || '', projectId: projectId, companyId: safeCompanyId, reporterId: currentUser.uid,
+            priority: d.priority || 'Mittel', status: d.status || 'Offen', trade: d.trade || '', location: d.location || '',
+            imageUrl: d.imageUrl || '', createdAt: now
+          });
+        }
+      }
+
+      batch.set(doc(db, 'documents', `doc_${Date.now()}`), {
+        companyId: safeCompanyId, projectId: projectId, name: 'Projekt-Übersicht.pdf', category: 'plans', 
+        url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2000&auto=format&fit=crop', 
+        type: 'application/pdf', size: '2.4 MB', isFolder: false, ownerId: currentUser.uid, createdAt: now
+      });
+
+      batch.set(doc(db, 'whiteboards', projectId), {
+        companyId: safeCompanyId, projectId: projectId, elements: '[]', createdAt: now
+      });
 
       await batch.commit();
       setIsNewProjectModalOpen(false);
@@ -683,46 +756,6 @@ export default function CompanyDashboard() {
                      className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Bau & Architektur' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
                    >
                      <span className="text-sm font-bold text-text-primary leading-tight">Demo: Bau</span>
-                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
-                   </button>
-                   <button 
-                     type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Interior Design', description: 'Beispielprojekt für Inneneinrichtung, inklusive Testdaten.'})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Interior Design' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
-                   >
-                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Interior</span>
-                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
-                   </button>
-                   <button 
-                     type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Kreativ-Agentur', description: 'Beispielprojekt für eine Kreativ-Agentur, inklusive Testdaten.'})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Kreativ-Agentur' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
-                   >
-                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Agentur</span>
-                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
-                   </button>
-                   <button 
-                     type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Event & Tournee', description: 'Beispielprojekt für Event- & Tourneemanagement, inklusive Testdaten.'})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Event & Tournee' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
-                   >
-                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Tournee</span>
-                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
-                   </button>
-                   <button 
-                     type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Museum & Ausstellung', description: 'Beispielprojekt für Museen & Ausstellungen, inklusive Testdaten.'})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Museum & Ausstellung' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
-                   >
-                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Museum</span>
-                     <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
-                   </button>
-                   <button 
-                     type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Gastronomie', description: 'Beispielprojekt für Gastronomie & Restaurant-Eröffnungen, inklusive Testdaten.'})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Gastronomie' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
-                   >
-                     <span className="text-sm font-bold text-text-primary leading-tight">Demo: Gastro</span>
                      <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
                    </button>
                  </div>
