@@ -331,7 +331,7 @@ export default function MeetChat() {
               knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${topChunks.map(c => `--- Document: ${c.title} ---\n${c.text}\n`).join('\n')}`;
             }
           }
-        } catch (err) {}
+        } catch (err) { console.error('Knowledge search fail', err); }
 
         const context = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
         const prompt = `You are the "AI Concierge" for Kreativ-Desk OS. You are participating in a live project chat.\n${knowledgeContext}\nRecent chat history:\n${context}\nYou: ${userMessage}\nProvide a helpful, concise response. If you reference a document, include a reference tag at the end: [REF: Document Name].`;
@@ -354,7 +354,7 @@ export default function MeetChat() {
           reference: reference || null, createdAt: serverTimestamp()
         });
       }
-    } catch (error: any) {} finally { setIsAITyping(false); }
+    } catch (error: any) { console.error('AI chat fail', error); } finally { setIsAITyping(false); }
   };
 
   const handleGenerateSummary = async () => {

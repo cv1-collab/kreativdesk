@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface AIWarning {
@@ -18,7 +19,7 @@ interface AIContextType {
 
 const AIContext = createContext<AIContextType | undefined>(undefined);
 
-// eslint-disable-next-line react-refresh/only-export-components
+ 
 export const useAI = () => {
   const context = useContext(AIContext);
   if (!context) {

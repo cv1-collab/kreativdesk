@@ -10,40 +10,20 @@ interface TrialGuardProps {
 }
 
 export default function TrialGuard({ children }: TrialGuardProps) {
-  const { currentUser } = useAuth(); 
-  const [isLocked, setIsLocked] = useState(false);
+  const { currentUser } = useAuth();
   const [interval, setInterval] = useState<BillingInterval>('year');
   const [isLoading, setIsLoading] = useState<string | null>(null);
   const [forceLock, setForceLock] = useState(false);
-
-  useEffect(() => {
-    // 1. Wenn kein User da ist oder es dein Super-Admin ist -> durchlassen
-    if (!currentUser || checkIsSuperAdmin(currentUser?.email)) {
-      setIsLocked(false);
-      return;
-    }
-
-    // 2. Mitarbeiter (employees) niemals sperren, das muss der Owner regeln
-    if (currentUser.role === 'employee') {
-      setIsLocked(false);
-      return;
-    }
-
-    // 3. Logik für den Owner: Prüfe, ob die 30 Tage abgelaufen sind
+  let isLocked = false;
+  if (currentUser && !checkIsSuperAdmin(currentUser.email) && currentUser.role !== 'employee') {
     if (currentUser.trialEndsAt) {
       const today = new Date();
       const trialEnd = new Date(currentUser.trialEndsAt);
-      
-      // Wenn das heutige Datum NACH dem Ablaufdatum liegt UND er noch im "Trial" Plan ist
       if (today > trialEnd && currentUser.plan?.includes('Trial')) {
-        setIsLocked(true);
-      } else {
-        setIsLocked(false);
+        isLocked = true;
       }
-    } else {
-      setIsLocked(false);
     }
-  }, [currentUser]);
+  }
 
   useEffect(() => {
     const handleUpgradeModal = () => setForceLock(true);

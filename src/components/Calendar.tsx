@@ -396,7 +396,7 @@ export default function Calendar() {
   useEffect(() => {
     if (!chartRef.current) return;
     const observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
+      for (const entry of entries) {
         if (entry.contentRect.width > 0) {
           setChartWidth(entry.contentRect.width);
         }

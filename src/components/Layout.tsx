@@ -176,7 +176,7 @@ export default function Layout() {
     }
   };
 
-  const handleLogout = async () => { try { await logout(); navigate('/login'); } catch (error) {} };
+  const handleLogout = async () => { try { await logout(); navigate('/login'); } catch (error) { console.error(error); } };
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden selection:bg-accent-ai/30 text-text-primary flex-col lg:flex-row font-sans">

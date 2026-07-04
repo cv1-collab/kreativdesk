@@ -418,7 +418,7 @@ export default function CompanyDashboard() {
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
       const docType = file.type || file.name.split('.').pop()?.toLowerCase() || 'unknown';
-      let sizeText = formatBytes(file.size);
+      const sizeText = formatBytes(file.size);
       
       await addDoc(collection(db, 'documents'), {
         name: file.name, url: downloadUrl, fileUrl: downloadUrl, type: docType, size: sizeText,

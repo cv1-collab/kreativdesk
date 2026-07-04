@@ -37,13 +37,13 @@ export default function PremiumFeature({ children, title, description }: Premium
   useEffect(() => {
     let isMounted = true;
 
-    // VIP BYPASS FÜR DEN DEMO USER
-    if (currentUser?.email === 'demo@kreativdesk.com' || currentUser?.uid === 'demo-user') {
-      setIsPremiumValid(true);
-      return;
-    }
-
     const checkAccess = async () => {
+      // VIP BYPASS FÜR DEN DEMO USER
+      if (currentUser?.email === 'demo@kreativdesk.com' || currentUser?.uid === 'demo-user') {
+        if (isMounted) setIsPremiumValid(true);
+        return;
+      }
+
       if (!currentUser || !db) return;
       try {
         const docRef = doc(db, 'users', currentUser.uid);

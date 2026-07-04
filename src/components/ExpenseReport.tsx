@@ -127,7 +127,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
       snapshot.docChanges().forEach(async (change) => {
         if (change.type === 'added') {
           const data = change.doc.data();
-          let imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
+          const imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
           if (imgSrc) setReceipts(prev => prev.includes(imgSrc) ? prev : [...prev, imgSrc]);
           
           if (imgSrc) {
@@ -144,7 +144,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
                     reader.readAsDataURL(blob);
                   });
                   base64ToProcess = base64Str.split(',')[1];
-               } catch(e) {}
+               } catch(e) { console.error('Fetch receipt error', e); }
             }
             await processImageWithAI(base64ToProcess || null, data.url || null, mimeToProcess);
           }

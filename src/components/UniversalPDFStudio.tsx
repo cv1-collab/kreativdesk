@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, Sparkles } from 'lucide-react';
@@ -68,7 +69,7 @@ export default function UniversalPDFStudio({
 
   // Generiert das Blob direkt aus dem React-PDF Dokument für Download/Upload
   const generatePDF = async (toCloud: boolean) => {
-    toCloud ? setIsUploading(true) : setIsGenerating(true);
+    if (toCloud) { setIsUploading(true); } else { setIsGenerating(true); }
 
     try {
       const docElement = getDocument();

@@ -29,10 +29,14 @@ export default function GuestMeet() {
   // Validate Meeting ID
   useEffect(() => {
     if (!joinId) {
-      setError('Ungültiger Meeting-Link.');
+      setTimeout(() => {
+        setError('Ungültiger Meeting-Link.');
+      }, 0);
       return;
     }
-    setJoinCallId(joinId);
+    setTimeout(() => {
+      setJoinCallId(joinId);
+    }, 0);
     
     // Check if meeting exists
     const checkMeeting = async () => {

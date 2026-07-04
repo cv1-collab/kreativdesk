@@ -240,8 +240,7 @@ export default function Signup() {
       const userCredential = await signInWithPopup(auth, provider);
       
       const userDocRef = doc(db, 'users', userCredential.user.uid);
-      let userDocSnap;
-      try { userDocSnap = await getDoc(userDocRef); } catch (err) { throw err; }
+      const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
         let assignedCompanyId = `comp_${userCredential.user.uid}`;
@@ -274,7 +273,9 @@ export default function Signup() {
           });
           await new Promise(resolve => setTimeout(resolve, 1500));
           await userCredential.user.getIdToken(true);
-        } catch (e) {}
+        } catch (e) {
+          console.error('Tenant claim failed', e);
+        }
       } else {
         await new Promise(resolve => setTimeout(resolve, 1500));
         await userCredential.user.getIdToken(true);
@@ -326,7 +327,9 @@ export default function Signup() {
         });
         await new Promise(resolve => setTimeout(resolve, 1500));
         await userCredential.user.getIdToken(true);
-      } catch (e) {}
+      } catch (e) {
+        console.error('Tenant claim failed', e);
+      }
       
       navigate('/app');
     } catch (error: any) { setError(t('signup_error')); } finally { setLoading(false); }

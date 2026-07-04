@@ -131,8 +131,7 @@ export default function Login() {
       const userCredential = await signInWithPopup(auth, provider);
       
       const userDocRef = doc(db, 'users', userCredential.user.uid);
-      let userDocSnap;
-      try { userDocSnap = await getDoc(userDocRef); } catch (err) { throw err; }
+      const userDocSnap = await getDoc(userDocRef);
       
       if (!userDocSnap.exists()) {
         await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
@@ -148,7 +147,7 @@ export default function Login() {
           });
           await new Promise(resolve => setTimeout(resolve, 1500));
           await userCredential.user.getIdToken(true);
-        } catch (e) {}
+        } catch (e) { console.error('Tenant claim fail', e); }
       } else {
         await new Promise(resolve => setTimeout(resolve, 1500));
         await userCredential.user.getIdToken(true);

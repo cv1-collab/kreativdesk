@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -68,15 +68,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   }, []);
 
   const isMobile = windowDimensions.w < 1024;
-  const [canvasScale, setCanvasScale] = useState(0.8);
-
-  useEffect(() => {
-    const availableWidth = isFullscreen ? windowDimensions.w : (windowDimensions.w - (isMobile ? 32 : 320));
-    const availableHeight = isFullscreen ? windowDimensions.h : (windowDimensions.h - (isMobile ? 180 : 260));
-    const scaleW = availableWidth / 1200;
-    const scaleH = availableHeight / 675;
-    setCanvasScale(Math.min(scaleW, scaleH) * 0.95);
-  }, [isMobile, windowDimensions.w, windowDimensions.h, isFullscreen]);
+  const availableWidth = isFullscreen ? windowDimensions.w : (windowDimensions.w - (isMobile ? 32 : 320));
+  const availableHeight = isFullscreen ? windowDimensions.h : (windowDimensions.h - (isMobile ? 180 : 260));
+  const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675) * 0.95;
 
   useEffect(() => {
     if (!currentProjectId) return;
@@ -127,9 +121,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         }
       ];
 
-      setSlides(dynamicSlides);
-      setActiveSlideId(dynamicSlides[0].id);
-      setIsLoading(false);
+      setTimeout(() => {
+        setSlides(dynamicSlides);
+        setActiveSlideId(dynamicSlides[0].id);
+        setIsLoading(false);
+      }, 0);
       return;
     }
 
@@ -159,6 +155,14 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  const activeSlide = slides.find(s => s.id === activeSlideId) || null;
+  const currentSlideIndex = slides.findIndex(s => s.id === activeSlideId);
+  const hasPrevSlide = currentSlideIndex > 0;
+  const hasNextSlide = currentSlideIndex !== -1 && currentSlideIndex < slides.length - 1;
+
+  const goPrevSlide = useCallback(() => { if (hasPrevSlide) setActiveSlideId(slides[currentSlideIndex - 1].id); }, [hasPrevSlide, slides, currentSlideIndex]);
+  const goNextSlide = useCallback(() => { if (hasNextSlide) setActiveSlideId(slides[currentSlideIndex + 1].id); }, [hasNextSlide, slides, currentSlideIndex]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'Space') goNextSlide();
@@ -167,15 +171,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeSlideId, slides, isFullscreen]);
-
-  const activeSlide = slides.find(s => s.id === activeSlideId) || null;
-  const currentSlideIndex = slides.findIndex(s => s.id === activeSlideId);
-  const hasPrevSlide = currentSlideIndex > 0;
-  const hasNextSlide = currentSlideIndex !== -1 && currentSlideIndex < slides.length - 1;
-
-  const goPrevSlide = () => { if (hasPrevSlide) setActiveSlideId(slides[currentSlideIndex - 1].id); };
-  const goNextSlide = () => { if (hasNextSlide) setActiveSlideId(slides[currentSlideIndex + 1].id); };
+  }, [activeSlideId, slides, isFullscreen, goNextSlide, goPrevSlide]);
 
   const activeProject = projects.find((p: any) => p.id === currentProjectId);
   const deckSettings = activeProject?.deckSettings || {

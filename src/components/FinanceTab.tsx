@@ -146,7 +146,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       snapshot.docChanges().forEach(async (change) => { 
         if (change.type === 'added') { 
           const data = change.doc.data(); 
-          let imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
+          const imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
           if (imgSrc) { setOpCostReceipts(prev => prev.includes(imgSrc) ? prev : [...prev, imgSrc]); } 
           const extData = data.receiptData || data.extractedData;
           if (extData && (extData.total || extData.amount || extData.vendor || extData.merchant)) {

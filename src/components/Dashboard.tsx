@@ -145,10 +145,12 @@ export default function Dashboard() {
     
     if (isDemoMode && demoData) {
       const docs = demoData.documents ? demoData.documents.map((d:any) => ({ id: d.id, type: 'document', title: d.name, date: new Date().toISOString() })) : [];
-      setDocumentsCount(docs.length);
-      setRecentActivities(docs.slice(0, 8));
-      setVersions([{ id: 'v1', status: 'approved', groups: demoData.financeGroups || [] }]);
-      setTransactions([]);
+      setTimeout(() => {
+        setDocumentsCount(docs.length);
+        setRecentActivities(docs.slice(0, 8));
+        setVersions([{ id: 'v1', status: 'approved', groups: demoData.financeGroups || [] }]);
+        setTransactions([]);
+      }, 0);
       return;
     }
     const fetchData = async () => {
@@ -380,7 +382,7 @@ export default function Dashboard() {
         isOpen={isPdfStudioOpen} 
         onClose={() => setIsPdfStudioOpen(false)} 
         title="Executive Summary PDF" 
-        fileName={`Summary_${activeProject?.name?.replace(/\s+/g, '_')}_${Date.now()}`}
+        fileName={`Summary_${activeProject?.name?.replace(/\s+/g, '_') || 'Project'}`}
         onSaveCloud={handleSavePdfToCloud}
       >
         {(settings) => (

@@ -384,7 +384,7 @@ export default function Finance() {
           if (window.screen.orientation && 'unlock' in window.screen.orientation) {
             window.screen.orientation.unlock();
           }
-        } catch (e) {}
+        } catch (e) { console.error('Unlock screen fail', e); }
       };
       unlockScreen();
     }
@@ -508,7 +508,7 @@ export default function Finance() {
       snapshot.docChanges().forEach(async (change) => { 
         if (change.type === 'added') { 
           const data = change.doc.data(); 
-          let imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
+          const imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
           if (imgSrc) setIncomingReceipts(prev => prev.includes(imgSrc) ? prev : [...prev, imgSrc]); 
           
           const extData = data.receiptData || data.extractedData;
@@ -531,7 +531,7 @@ export default function Finance() {
                   reader.readAsDataURL(blob);
                 });
                 base64ToProcess = base64Str.split(',')[1];
-              } catch(e) {}
+              } catch(e) { console.error('Fetch receipt fail', e); }
             }
             await processImageWithAI(base64ToProcess || null, data.url || null, mimeToProcess);
           }

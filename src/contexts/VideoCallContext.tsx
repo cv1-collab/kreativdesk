@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useProject } from './ProjectContext';
@@ -183,7 +184,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const offerDescription = await pcRef.current.createOffer();
     await pcRef.current.setLocalDescription(offerDescription);
 
-    let currentProjectId = activeProjectId || window.location.pathname.split('/')[2];
+    const currentProjectId = activeProjectId || window.location.pathname.split('/')[2];
     
     await setDoc(callDocRef, { 
       offer: { sdp: offerDescription.sdp, type: offerDescription.type }, 

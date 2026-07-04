@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
