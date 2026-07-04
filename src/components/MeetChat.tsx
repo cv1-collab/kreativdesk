@@ -415,15 +415,7 @@ export default function MeetChat() {
   return (
     <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden text-text-primary">
       
-      <div className="flex flex-col items-center justify-center flex-1 min-h-[70vh] py-12 px-6 text-center lg:hidden animate-in fade-in z-50">
-         <div className="w-24 h-24 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mb-6 border border-blue-500/20 shadow-inner shrink-0">
-           <Monitor className="w-12 h-12" />
-         </div>
-         <h2 className="text-2xl font-bold text-text-primary mb-3 tracking-tight">{t('mobile_blocked_title')}</h2>
-         <p className="text-text-muted max-w-md leading-relaxed font-medium">{t('mobile_blocked_desc')}</p>
-      </div>
-
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="hidden lg:flex flex-1 flex-col min-h-0 space-y-4 h-full">
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-1 flex-col min-h-0 space-y-4 h-full">
         
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 overflow-x-auto pb-2">
           <div className="shrink-0 flex flex-col">
