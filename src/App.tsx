@@ -29,6 +29,7 @@ const CookieBanner = lazy(() => import('./components/CookieBanner'));
 
 // +++ NEU: Der Trial Guard (Paywall) +++
 const TrialGuard = lazy(() => import('./components/TrialGuard'));
+const EmailVerificationGuard = lazy(() => import('./components/EmailVerificationGuard'));
 
 // === LAZY LOADING (CODE SPLITTING) ===
 const Layout = lazy(() => import('./components/Layout'));
@@ -117,22 +118,26 @@ export default function App() {
                             {/* +++ HIER WIRD DER TRIAL GUARD INTEGRIERT +++ */}
                             <Route path="/app" element={
                               <PrivateRoute>
-                                <TrialGuard>
-                                  <CompanyDashboard />
-                                </TrialGuard>
+                                <EmailVerificationGuard>
+                                  <TrialGuard>
+                                    <CompanyDashboard />
+                                  </TrialGuard>
+                                </EmailVerificationGuard>
                               </PrivateRoute>
                             } />
 
                             {/* Settings und Help bleiben OHNE TrialGuard erreichbar */}
-                            <Route path="/help" element={<PrivateRoute><HelpCenter /></PrivateRoute>} />
-                            <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+                            <Route path="/help" element={<PrivateRoute><EmailVerificationGuard><HelpCenter /></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/settings" element={<PrivateRoute><EmailVerificationGuard><Settings /></EmailVerificationGuard></PrivateRoute>} />
 
                             {/* +++ PROJEKT BEREICH (KOMPLETT GESCHÜTZT) +++ */}
                             <Route path="/project/:projectId" element={
                               <PrivateRoute>
-                                <TrialGuard>
-                                  <Layout />
-                                </TrialGuard>
+                                <EmailVerificationGuard>
+                                  <TrialGuard>
+                                    <Layout />
+                                  </TrialGuard>
+                                </EmailVerificationGuard>
                               </PrivateRoute>
                             }>
                               <Route index element={<Dashboard />} />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, Navigate, useSearchParams } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -294,6 +294,10 @@ export default function Signup() {
       
       // 🔥 TRIGGER FÜR DEN WEBHOOK BEI EMAIL SIGNUP
       await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid);
+
+      // +++ EMAIL VERIFICATION +++
+      await sendEmailVerification(userCredential.user);
+      addToast('Bitte überprüfe dein E-Mail-Postfach, um deinen Account zu verifizieren.', 'success');
 
       try {
         const token = await userCredential.user.getIdToken();

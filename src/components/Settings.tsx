@@ -114,6 +114,7 @@ export default function Settings() {
   const [resetSuccess, setResetSuccess] = useState(false);
   
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -254,18 +255,31 @@ const handlePasswordReset = async () => {
 
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm(t('confirm_sure'));
-    if (!confirmed || !currentUser || !db) return;
+    if (!confirmed || !currentUser) return;
 
+    setIsDeletingAccount(true);
     try {
-      await deleteDoc(doc(db, 'users', currentUser.uid));
-      await deleteUser(currentUser);
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Fehler beim Löschen des Accounts');
+      }
+      
+      // Das Löschen via API kickt den Nutzer ohnehin serverseitig raus. 
+      // Wir navigieren sicherheitshalber zum Login.
+      auth.signOut();
       navigate('/login');
     } catch (error: any) {
-      if (error.code === 'auth/requires-recent-login') {
-        addToast(t('recent_login_required'), 'error');
-      } else {
-        addToast(t('upload_failed'), 'error');
-      }
+      console.error(error);
+      addToast(t('upload_failed'), 'error');
+      setIsDeletingAccount(false);
     }
   };
 
@@ -396,8 +410,9 @@ const handlePasswordReset = async () => {
               <h3 className="font-semibold text-red-500 mb-1">{t('delete_account')}</h3>
               <p className="text-text-muted text-sm max-w-lg">{t('delete_account_warn')}</p>
             </div>
-            <button onClick={handleDeleteAccount} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-red-500 text-white rounded-lg font-bold shadow-lg hover:bg-red-600 transition-all flex items-center justify-center gap-2 shrink-0">
-              <Trash2 className="w-4 h-4" /> {t('delete_account_btn')}
+            <button onClick={handleDeleteAccount} disabled={isDeletingAccount} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-red-500 text-white rounded-lg font-bold shadow-lg hover:bg-red-600 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50">
+              {isDeletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              {isDeletingAccount ? 'Wird gelöscht...' : t('delete_account_btn')}
             </button>
           </div>
         </section>
