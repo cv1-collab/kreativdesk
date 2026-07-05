@@ -7,49 +7,33 @@ export default async function handler(req: any, res: any) {
 
   try {
     const { prompt, imageUrl } = req.body;
-    let finalPrompt = prompt || 'A highly detailed architectural design, photorealistic';
-    const apiKey = process.env.GEMINI_API_KEY; 
+    const finalPrompt = prompt || 'A creative architectural design';
     
-    // Step 1: Use Gemini 2.0 Flash Experimental, which supports native Image-to-Image generation
-    if (imageUrl && apiKey) {
-      const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1alpha' });
-      const imageRes = await fetch(imageUrl);
-      const arrayBuffer = await imageRes.arrayBuffer();
-      const base64Image = Buffer.from(arrayBuffer).toString('base64');
-      
-      const visionPrompt = `You are an expert architectural renderer. I am giving you a raw 3D model screenshot. You must redraw THIS EXACT GEOMETRY perfectly, but apply the following style: "${finalPrompt}". Do not invent new structures, keep the exact shape, blocks, and camera angle. Output the final image.`;
-      
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash-exp',
-        contents: [
-          { role: 'user', parts: [
-            { inlineData: { mimeType: 'image/png', data: base64Image } },
-            { text: visionPrompt }
-          ]}
-        ]
-      });
-      
-      let base64Out = null;
-      if (response.candidates && response.candidates.length > 0) {
-        for (const part of response.candidates[0].content.parts) {
-          if (part.inlineData && part.inlineData.data) {
-            base64Out = part.inlineData.data;
-            break;
-          }
-        }
-      }
-
-      if (base64Out) {
-        return res.status(200).json({ imageBytes: base64Out });
-      } else {
-        throw new Error("Gemini 2.0 Flash did not return an image inlineData part.");
-      }
-    } else {
-      throw new Error("Image URL or API Key missing");
+    // We use Pollinations AI for high-quality, free image generation 
+    // If an imageUrl is provided, Pollinations uses it as a structural guide (img2img)
+    const encodedPrompt = encodeURIComponent(finalPrompt.substring(0, 1000));
+    let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 10000)}&model=flux`;
+    
+    if (imageUrl) {
+      pollinationsUrl += `&image=${encodeURIComponent(imageUrl)}`;
     }
+    
+    console.log("Fetching from Pollinations:", pollinationsUrl);
+    const imageRes = await fetch(pollinationsUrl);
+    if (!imageRes.ok) {
+      throw new Error(`Failed to fetch image from AI service: ${imageRes.statusText}`);
+    }
+    
+    const arrayBuffer = await imageRes.arrayBuffer();
+    const base64Out = Buffer.from(arrayBuffer).toString('base64');
+
+    res.status(200).json({
+      imageBytes: base64Out
+    });
     
   } catch (error: any) {
     console.error("Image Generation Error:", error);
     res.status(500).json({ error: 'Server error during image generation: ' + error.message });
   }
 }
+
