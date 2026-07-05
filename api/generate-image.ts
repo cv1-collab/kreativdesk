@@ -19,7 +19,7 @@ export default async function handler(req: any, res: any) {
         const arrayBuffer = await imageRes.arrayBuffer();
         const base64Image = Buffer.from(arrayBuffer).toString('base64');
         
-        const visionPrompt = `Analyze this reference sketch or 3D model. The user wants to generate a final high-quality rendering. Their styling instruction is: "${finalPrompt}". Please write an extremely vivid, purely descriptive image generation prompt (midjourney style). Describe the EXACT geometry, layout, colors, and camera angle you see in the image, combined with the user's styling. DO NOT include meta-text like "Transform this sketch" or "Here is the prompt". Just output the raw visual description.`;
+        const visionPrompt = `Analyze this reference sketch or 3D model. The user wants to generate a final high-quality rendering based ONLY on these structural lines. Their styling instruction is: "${finalPrompt}". Please write an extremely vivid, purely descriptive image generation prompt. CRITICAL RULES: 1. Describe the EXACT geometry, layout, and camera angle you see. 2. DO NOT invent or add architectural details like windows, doors, balconies, people, or trees unless they are clearly drawn in the reference! Keep it to the basic blocks, columns, or wireframes if that's all that is visible. 3. Apply the user's styling. 4. Output ONLY the raw visual description, no meta-text.`;
         
         const response = await ai.models.generateContent({
           model: 'gemini-1.5-flash',
