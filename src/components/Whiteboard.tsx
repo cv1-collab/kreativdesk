@@ -412,7 +412,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       
       let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
       if (uploadedImageUrl) {
-        pollinationsUrl += `&image=${encodeURIComponent(uploadedImageUrl)}`;
+        pollinationsUrl += `&image=${encodeURIComponent(uploadedImageUrl)}&model=seedream`;
       }
 
       const imageRes = await fetch(pollinationsUrl);

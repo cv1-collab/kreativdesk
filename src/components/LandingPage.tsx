@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
   Moon, Sun, Video, CheckCircle2, Calendar, Sparkles, 
   ArrowRight, Shield, Menu, X, Briefcase, Zap, Building2, 
@@ -8,7 +8,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import DemoLayout from '../components/DemoLayout'; 
+const DemoLayout = lazy(() => import('../components/DemoLayout'));
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -401,7 +401,9 @@ export default function LandingPage() {
               </div>
               <div className="w-full bg-background overflow-x-auto overflow-y-hidden custom-scrollbar relative">
                  <div className="w-[1280px] xl:w-full h-[700px] md:h-[800px] xl:h-[850px] relative origin-top-left">
-                   <DemoLayout isDemoMode={true} />
+                   <Suspense fallback={<div className="flex h-full w-full items-center justify-center"><Loader2 className="animate-spin text-text-muted" /></div>}>
+                     <DemoLayout isDemoMode={true} />
+                   </Suspense>
                  </div>
               </div>
             </div>
