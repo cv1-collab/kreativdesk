@@ -12,7 +12,7 @@ export default async function handler(req: any, res: any) {
     
     // Step 1: Use Gemini 2.0 Flash Experimental, which supports native Image-to-Image generation
     if (imageUrl && apiKey) {
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1alpha' });
       const imageRes = await fetch(imageUrl);
       const arrayBuffer = await imageRes.arrayBuffer();
       const base64Image = Buffer.from(arrayBuffer).toString('base64');
