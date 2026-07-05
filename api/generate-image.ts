@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import fetch from 'node-fetch';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -6,33 +6,29 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const apiKey = process.env.GEMINI_API_KEY; 
+    const { prompt } = req.body;
+    const finalPrompt = prompt || 'A creative architectural design';
     
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Gemini API key not configured' });
+    // We use Pollinations AI for high-quality, free image generation 
+    // since Imagen 3 is regionally restricted for this Google account.
+    const encodedPrompt = encodeURIComponent(finalPrompt);
+    // nologo=true removes the watermark, enhance=true uses AI to improve the prompt
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&enhance=true`;
+    
+    const imageRes = await fetch(imageUrl);
+    if (!imageRes.ok) {
+      throw new Error("Failed to fetch image from AI service");
     }
     
-    const ai = new GoogleGenAI({ apiKey });
-    const { prompt } = req.body;
-
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-001',
-      prompt: prompt || 'A creative architectural design',
-      config: {
-        numberOfImages: 1,
-        outputMimeType: 'image/png'
-      }
-    });
-    
-    const base64Image = response.generatedImages?.[0]?.image?.imageBytes;
-    if (!base64Image) throw new Error("No image generated");
+    const arrayBuffer = await imageRes.arrayBuffer();
+    const base64Image = Buffer.from(arrayBuffer).toString('base64');
 
     res.status(200).json({
       imageBytes: base64Image
     });
     
   } catch (error: any) {
-    console.error("Proxy Error:", error);
+    console.error("Image Generation Error:", error);
     res.status(500).json({ error: 'Server error during image generation', details: error.message });
   }
 }
