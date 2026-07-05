@@ -21,7 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { useTour } from '../contexts/TourContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
