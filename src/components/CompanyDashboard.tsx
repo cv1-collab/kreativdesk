@@ -379,6 +379,14 @@ export default function CompanyDashboard() {
     }
   };
 
+  useEffect(() => {
+    const handleCreateDemo = (e: any) => {
+      handleCreateDemoProject(e.detail?.type || 'construction');
+    };
+    window.addEventListener('create-demo-project', handleCreateDemo);
+    return () => window.removeEventListener('create-demo-project', handleCreateDemo);
+  }, [currentUser]);
+
   const checkProjectLimit = (): boolean => {
     if (!currentUser) return false;
     // Get max projects for current plan, default to Starter limit (3)

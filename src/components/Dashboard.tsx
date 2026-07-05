@@ -145,11 +145,13 @@ export default function Dashboard() {
     
     if (isDemoMode && demoData) {
       const docs = demoData.documents ? demoData.documents.map((d:any) => ({ id: d.id, type: 'document', title: d.name, date: new Date().toISOString() })) : [];
+      const times = demoData.timeEntries ? demoData.timeEntries.map((d:any) => ({ id: d.id, type: 'time', title: `${d.hours}h: ${d.description}`, date: d.date || new Date().toISOString() })) : [];
+      
       setTimeout(() => {
         setDocumentsCount(docs.length);
-        setRecentActivities(docs.slice(0, 8));
+        setRecentActivities([...docs, ...times].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8));
         setVersions([{ id: 'v1', status: 'approved', groups: demoData.financeGroups || [] }]);
-        setTransactions([]);
+        setTransactions(demoData.transactions || []);
       }, 0);
       return;
     }

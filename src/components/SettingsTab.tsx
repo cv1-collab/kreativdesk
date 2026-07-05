@@ -531,6 +531,20 @@ export default function SettingsTab() {
               </button>
             )}
           </div>
+          
+          <div className="bg-surface border border-border rounded-xl p-5 md:p-6 shadow-sm">
+            <h4 className="text-sm font-bold text-text-primary mb-2 flex items-center gap-2">
+              <Building2 size={16} className="text-accent-ai" /> Entwickler & Demo
+            </h4>
+            <p className="text-xs text-text-muted mb-4">Lade ein Testprojekt (Dummy) mit realen Daten, Dokumenten und Finanzen in deinen Workspace.</p>
+            <button 
+              type="button" 
+              onClick={() => window.dispatchEvent(new CustomEvent('create-demo-project', { detail: { type: 'construction' } }))}
+              className="w-full py-2.5 bg-background border border-border hover:border-accent-ai text-text-primary rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center gap-2"
+            >
+              <Zap size={14} /> Testdummy (Bau) laden
+            </button>
+          </div>
         </div>
       </div>
     </div>

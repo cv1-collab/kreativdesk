@@ -1263,10 +1263,10 @@ export default function Calendar() {
                         </svg>
 
                         {smartMarkers.map((marker, i) => {
-                          const left = getYearPercentage(marker.date);
+                          const leftPct = getYearPercentage(marker.date);
                           const offset = (i % 4) * 28;
                           return (
-                            <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `calc(33.33% + ${left * 0.666}%)` }}>
+                            <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
                               <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
                               <div className="absolute left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold shadow-md whitespace-nowrap border flex flex-col items-center pointer-events-auto bg-surface" style={{ top: `${10 + offset}px`, color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
                                 <span className="text-[8px] mb-0.5 text-text-muted">{new Date(marker.date).toLocaleDateString('de-CH')}</span>

@@ -95,6 +95,20 @@ export const demoTemplates: Record<string, any> = {
         { id: 'slide-c6', order_index: 5, title: 'Qualitätssicherung & Mängel', content: 'Das digitale Mängelmanagement erlaubt die Echtzeit-Zuweisung von Abweichungen direkt an die verantwortlichen Unternehmer auf Platz.', layout: 'split', imageUrl: '/demo-assets/mangel_betonriss.jpg' },
         { id: 'slide-c7', order_index: 6, title: 'Nächste Meilensteine', content: 'Aufrichten des Dachstuhls im kommenden Monat, gefolgt vom planmässigen Start der Rohbauinstallationen für Heizung, Lüftung und Sanitär.', layout: 'image-focus', imageUrl: '/demo-assets/bau_pitch_render.jpg' }
       ]
-    }
+    },
+    
+    // 🔥 FINANCIAL DATA & TRANSACTIONS
+    transactions: [
+      { id: 'tx1', category: 'Kreditorenrechnung', amount: -15000, date: new Date(Date.now() - 5*86400000).toISOString(), description: 'Rodung und Abtransport von Sträuchern', title: 'Rechnung Baumeister', status: 'Bezahlt' },
+      { id: 'tx2', category: 'Kreditorenrechnung', amount: -18000, date: new Date(Date.now() - 12*86400000).toISOString(), description: 'Baggerarbeiten inkl. Entsorgung und Transport', title: 'Abbruch', status: 'Bezahlt' },
+      { id: 'tx3', category: 'Debitorenrechnung', amount: 80000, date: new Date(Date.now() - 2*86400000).toISOString(), description: 'Akontozahlung Bauherr Phase 1', title: 'Akonto Phase 1', status: 'Bezahlt' }
+    ],
+
+    // 🔥 TIME ENTRIES
+    timeEntries: [
+      { id: 'time1', description: 'Baustellenbesichtigung & Rapport', hours: 4, date: new Date(Date.now() - 1*86400000).toISOString() },
+      { id: 'time2', description: 'Planungssitzung Statik', hours: 2.5, date: new Date(Date.now() - 3*86400000).toISOString() },
+      { id: 'time3', description: 'Abnahme Aushub', hours: 3, date: new Date(Date.now() - 6*86400000).toISOString() }
+    ]
   }
 };
