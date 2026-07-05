@@ -410,22 +410,18 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
       const encodedPrompt = encodeURIComponent(prompt);
       
-      let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
-      if (uploadedImageUrl) {
-        pollinationsUrl += `&image=${encodeURIComponent(uploadedImageUrl)}`;
-      }
-
-      const imageRes = await fetch(pollinationsUrl);
-      if (!imageRes.ok) throw new Error("Image API failed");
+      // Call the Vercel backend API instead of fetching Pollinations directly
+      // This will use our new Google Imagen 3 edge-function pipeline
+      const response = await callGeminiImageAPI(prompt, uploadedImageUrl);
       
-      const imageBlob = await imageRes.blob();
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setRenderedImage(reader.result as string);
-        addToast('Design erfolgreich generiert!', 'success');
-        setIsRendering(false);
-      };
-      reader.readAsDataURL(imageBlob);
+      if (!response.imageBytes) throw new Error("No image data returned from backend");
+      
+      // Convert base64 to data URL
+      const dataUrl = `data:image/png;base64,${response.imageBytes}`;
+      
+      setRenderedImage(dataUrl);
+      addToast('Design erfolgreich generiert!', 'success');
+      setIsRendering(false);
       
     } catch (error) {
       console.error("AI Render API Error:", error);
