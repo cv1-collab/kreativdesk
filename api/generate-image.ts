@@ -10,54 +10,43 @@ export default async function handler(req: any, res: any) {
     let finalPrompt = prompt || 'A highly detailed architectural design, photorealistic';
     const apiKey = process.env.GEMINI_API_KEY; 
     
-    // Step 1: Analyze the sketch/3D model using Gemini 1.5 Flash
+    // Step 1: Use Gemini 2.0 Flash Experimental, which supports native Image-to-Image generation
     if (imageUrl && apiKey) {
-      try {
-        const ai = new GoogleGenAI({ apiKey });
-        const imageRes = await fetch(imageUrl);
-        const arrayBuffer = await imageRes.arrayBuffer();
-        const base64Image = Buffer.from(arrayBuffer).toString('base64');
-        
-        const visionPrompt = `Analyze this reference sketch or 3D model. The user wants to generate a high-quality architectural rendering based ONLY on these structural lines. Their styling instruction is: "${finalPrompt}". Please write an extremely vivid, purely descriptive image generation prompt. CRITICAL RULES: 1. Describe the EXACT geometry, layout, and camera angle you see. 2. DO NOT invent or add architectural details like windows, doors, balconies, people, or trees unless they are clearly drawn in the reference! 3. If the reference is just abstract blocks or columns, explicitly append to your prompt: "abstract minimalist 3D blocks, massing model, architecture study, no windows, no doors, purely structural". 4. Apply the user's styling. 5. Output ONLY the raw visual description, no meta-text.`;
-        
-        const response = await ai.models.generateContent({
-          model: 'gemini-1.5-flash',
-          contents: [
-            { role: 'user', parts: [
-              { inlineData: { mimeType: 'image/png', data: base64Image } },
-              { text: visionPrompt }
-            ]}
-          ]
-        });
-        
-        if (response.text) {
-          finalPrompt = response.text.trim();
-          console.log("Enhanced prompt from Gemini:", finalPrompt);
+      const ai = new GoogleGenAI({ apiKey });
+      const imageRes = await fetch(imageUrl);
+      const arrayBuffer = await imageRes.arrayBuffer();
+      const base64Image = Buffer.from(arrayBuffer).toString('base64');
+      
+      const visionPrompt = `You are an expert architectural renderer. I am giving you a raw 3D model screenshot. You must redraw THIS EXACT GEOMETRY perfectly, but apply the following style: "${finalPrompt}". Do not invent new structures, keep the exact shape, blocks, and camera angle. Output the final image.`;
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash-exp',
+        contents: [
+          { role: 'user', parts: [
+            { inlineData: { mimeType: 'image/png', data: base64Image } },
+            { text: visionPrompt }
+          ]}
+        ]
+      });
+      
+      let base64Out = null;
+      if (response.candidates && response.candidates.length > 0) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData && part.inlineData.data) {
+            base64Out = part.inlineData.data;
+            break;
+          }
         }
-      } catch (geminiError) {
-        console.error("Gemini Vision analysis failed:", geminiError);
       }
-    }
-    
-    // Step 2: Generate Image via Pollinations AI (Text-to-Image Flux Model)
-    // We use Pollinations in the backend because Google's Imagen 3 is returning NOT_FOUND for this API key.
-    const encodedPrompt = encodeURIComponent(finalPrompt.substring(0, 1000));
-    // Seed ensures we get a fresh generation, model=flux ensures high quality
-    const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 10000)}&model=flux`;
-    
-    console.log("Fetching from Pollinations:", pollinationsUrl);
-    const pollRes = await fetch(pollinationsUrl);
-    
-    if (!pollRes.ok) {
-      throw new Error(`Pollinations API failed with status ${pollRes.status}`);
-    }
-    
-    const imageArrayBuffer = await pollRes.arrayBuffer();
-    const base64Out = Buffer.from(imageArrayBuffer).toString('base64');
 
-    res.status(200).json({
-      imageBytes: base64Out
-    });
+      if (base64Out) {
+        return res.status(200).json({ imageBytes: base64Out });
+      } else {
+        throw new Error("Gemini 2.0 Flash did not return an image inlineData part.");
+      }
+    } else {
+      throw new Error("Image URL or API Key missing");
+    }
     
   } catch (error: any) {
     console.error("Image Generation Error:", error);
