@@ -141,8 +141,6 @@ export default function Dashboard() {
 
   // === MULTI-TENANT FILTERUNG IN DASHBOARD ===
   useEffect(() => {
-    if (!currentUser?.companyId || !db || !activeProject?.id) return;
-    
     if (isDemoMode && demoData) {
       const docs = demoData.documents ? demoData.documents.map((d:any) => ({ id: d.id, type: 'document', title: d.name, date: new Date().toISOString() })) : [];
       const times = demoData.timeEntries ? demoData.timeEntries.map((d:any) => ({ id: d.id, type: 'time', title: `${d.hours}h: ${d.description}`, date: d.date || new Date().toISOString() })) : [];
@@ -155,6 +153,9 @@ export default function Dashboard() {
       }, 0);
       return;
     }
+    
+    if (!currentUser?.companyId || !db || !activeProject?.id) return;
+    
     const fetchData = async () => {
       try {
         const docQ = query(

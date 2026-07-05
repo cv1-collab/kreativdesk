@@ -1209,8 +1209,8 @@ export default function Calendar() {
                             const endPct = getYearPercentage(task.start);
                             const startX = (chartWidth * 0.333333) + ((startPct / 100) * (chartWidth * 0.666666));
                             const endX = (chartWidth * 0.333333) + ((endPct / 100) * (chartWidth * 0.666666));
-                            const startY = (i - 1) * 64 + 20; 
-                            const endY = i * 64 + 20;
+                            const startY = (i - 1) * 64 + 20 + 100; // shifted down by 100px for markers
+                            const endY = i * 64 + 20 + 100;
                             const arrowColor = "#52525b";
 
                             const isFlush = Math.abs(endX - startX) <= 15;
@@ -1336,7 +1336,7 @@ export default function Calendar() {
                           );
                         })}
 
-                        <div className="relative z-[20] space-y-6">
+                        <div className="relative z-[20] space-y-6 pt-[100px]">
                           {ganttTasks.map((task, index) => {
                             const startPct = getYearPercentage(task.start);
                             const endPct = Math.max(startPct + 1, getYearPercentage(task.end));

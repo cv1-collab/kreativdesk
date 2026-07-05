@@ -53,6 +53,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [showNotifications, setShowNotifications] = useState(false);
   const [newLeadsCount, setNewLeadsCount] = useState(0); 
+  const [kdCompany, setKdCompany] = useState<any>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -62,6 +63,16 @@ export default function AdminDashboard() {
       navigate('/admin', { replace: true });
     }
   }, [location.search, navigate]);
+
+  useEffect(() => {
+    if (!db || !currentUser?.companyId) return;
+    const unsub = onSnapshot(doc(db, 'companies', currentUser.companyId), (docSnap) => {
+      if (docSnap.exists()) {
+        setKdCompany({ id: docSnap.id, ...docSnap.data() });
+      }
+    });
+    return () => unsub();
+  }, [currentUser]);
 
   useEffect(() => {
     if (!db || !checkIsSuperAdmin(currentUser?.email)) return;
@@ -149,6 +160,12 @@ export default function AdminDashboard() {
                <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500"><Shield size={16} /></div>
                <span className="font-bold text-sm truncate max-w-[120px]">{t('admin_control')}</span>
             </div>
+            {kdCompany && (
+              <div className="hidden md:flex items-center gap-2 text-xs font-bold bg-accent-ai/10 text-accent-ai px-3 py-1.5 rounded-full border border-accent-ai/20 ml-2">
+                <Users size={14} />
+                <span>Kreativ Desk Lizenzen: {kdCompany.usedSeats || 1} / {kdCompany.maxSeats || 10}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative z-[1000]">

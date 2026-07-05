@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useProject } from '../contexts/ProjectContext';
 import { cn } from '../utils';
 import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
 
@@ -52,12 +53,26 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [isAdding, setIsAdding] = useState(false);
   const { currentUser } = useAuth();
+  const { isDemoMode, demoData } = useProject() as any;
   
   const { language, t: globalT } = useLanguage();
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key;
 
   // === MULTI-TENANT FILTERUNG (GOALS LESEN) ===
   useEffect(() => {
+    if (isDemoMode) {
+      if (demoData?.goals) {
+        setGoals(demoData.goals.map((g: any) => ({ ...g, projectId })));
+      } else {
+        setGoals([
+          { id: '1', title: t('demo_goal_1'), completed: true, priority: 'High', createdAt: new Date(), projectId },
+          { id: '2', title: t('demo_goal_2'), completed: false, priority: 'Medium', createdAt: new Date(), projectId },
+          { id: '3', title: t('demo_goal_3'), completed: false, priority: 'Low', createdAt: new Date(), projectId }
+        ]);
+      }
+      return;
+    }
+
     if (!currentUser || !currentUser.uid || !db || !projectId) return;
 
     // +++ WÄCHTER HINZUGEFÜGT +++
@@ -65,15 +80,6 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
 
     const fetchGoals = async () => {
       try {
-        if (currentUser.uid === 'demo-user') {
-          setGoals([
-            { id: '1', title: t('demo_goal_1'), completed: true, priority: 'High', createdAt: new Date(), projectId },
-            { id: '2', title: t('demo_goal_2'), completed: false, priority: 'Medium', createdAt: new Date(), projectId },
-            { id: '3', title: t('demo_goal_3'), completed: false, priority: 'Low', createdAt: new Date(), projectId }
-          ]);
-          return;
-        }
-
         const q = query(
           collection(db, 'goals'),
           where('companyId', '==', safeCompanyId), // <-- Sicherer Wächter
@@ -97,7 +103,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     };
 
     fetchGoals();
-  }, [currentUser, projectId, language]); 
+  }, [currentUser, projectId, language, isDemoMode, demoData]); 
 
   // === MULTI-TENANT FILTERUNG (GOALS SCHREIBEN) ===
   const handleAddGoal = async (e: React.FormEvent) => {
