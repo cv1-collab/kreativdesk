@@ -82,7 +82,12 @@ async function startServer() {
         return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
       }
 
-      if (decodedToken.uid !== uid && decodedToken.email !== 'cv1@gmx.ch') {
+      const SUPER_ADMIN_EMAILS = [
+        'cv1@gmx.ch',
+        'carlo@vesciodesign.ch'
+      ];
+
+      if (decodedToken.uid !== uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
         return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
       }
 

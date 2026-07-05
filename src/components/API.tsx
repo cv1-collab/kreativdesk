@@ -1,17 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Network, Key, Link as LinkIcon, Plus, Copy, CheckCircle2, Trash2, Webhook, RefreshCw, Settings } from 'lucide-react';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 
 export default function API() {
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
+  const { currentUser } = useAuth();
   const isDe = language === 'de';
   const t = (key: string) => globalT(key) || key;
 
   const [keys, setKeys] = useState<{ id: string; name: string; key: string; created: string; lastUsed: string }[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!db || !currentUser?.companyId) return;
+    const q = query(collection(db, 'apiKeys'), where('companyId', '==', currentUser.companyId));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const fetchedKeys = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name || 'API Integration',
+          key: data.key,
+          created: data.createdAt ? new Date(data.createdAt.toDate ? data.createdAt.toDate() : data.createdAt).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : new Date().toLocaleDateString(isDe ? 'de-CH' : 'en-US'),
+          lastUsed: data.lastUsed ? new Date(data.lastUsed.toDate ? data.lastUsed.toDate() : data.lastUsed).toLocaleDateString(isDe ? 'de-CH' : 'en-US') : (isDe ? 'Noch nie' : 'Never')
+        };
+      });
+      setKeys(fetchedKeys);
+    });
+    return () => unsub();
+  }, [currentUser, isDe]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -20,21 +43,31 @@ export default function API() {
     addToast(isDe ? 'Kopiert!' : 'Copied!', 'success');
   };
 
-  const handleCreateKey = () => {
-    const newKey = {
-      id: Math.random().toString(),
-      name: isDe ? 'Neue Integration' : 'New Integration',
-      key: 'kd_live_' + Math.random().toString(36).substring(2, 15),
-      created: new Date().toLocaleDateString(isDe ? 'de-CH' : 'en-US'),
-      lastUsed: isDe ? 'Noch nie' : 'Never'
-    };
-    setKeys([newKey, ...keys]);
-    addToast(isDe ? 'Neuer Key generiert!' : 'New key generated!', 'success');
+  const handleCreateKey = async () => {
+    if (!db || !currentUser?.companyId) return;
+    try {
+      const newKeyString = 'kd_live_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      await addDoc(collection(db, 'apiKeys'), {
+        companyId: currentUser.companyId,
+        name: isDe ? 'Neue Integration' : 'New Integration',
+        key: newKeyString,
+        createdAt: serverTimestamp(),
+        lastUsed: null
+      });
+      addToast(isDe ? 'Neuer Key generiert!' : 'New key generated!', 'success');
+    } catch (e) {
+      addToast(isDe ? 'Fehler beim Erstellen' : 'Error creating key', 'error');
+    }
   };
 
-  const handleDeleteKey = (id: string) => {
-    setKeys(keys.filter(k => k.id !== id));
-    addToast(isDe ? 'Key gelöscht' : 'Key deleted', 'info');
+  const handleDeleteKey = async (id: string) => {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, 'apiKeys', id));
+      addToast(isDe ? 'Key gelöscht' : 'Key deleted', 'info');
+    } catch (e) {
+      addToast(isDe ? 'Fehler beim Löschen' : 'Error deleting key', 'error');
+    }
   };
 
   const roadmap = [

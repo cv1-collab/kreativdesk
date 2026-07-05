@@ -188,6 +188,10 @@ service cloud.firestore {
       allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
+    match /apiKeys/{docId} {
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+    }
     match /companySettings/{docId} {
       allow read: if isSystemAdmin() || isSameCompany(docId);
       allow write: if isSystemAdmin() || isCompanyOwner(docId);
