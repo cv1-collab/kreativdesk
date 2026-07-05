@@ -393,6 +393,37 @@ async function startServer() {
     }
   });
 
+  // --- 7a. GEMINI IMAGE GENERATION PROXY ---
+  app.post('/api/generate-image', async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY; 
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+      
+      const ai = new GoogleGenAI({ apiKey });
+      const { prompt } = req.body;
+
+      // Note: We use Imagen 3 for text-to-image generation
+      const response = await ai.models.generateImages({
+        model: 'imagen-3.0-generate-001',
+        prompt: prompt || 'A creative architectural design',
+        config: {
+          numberOfImages: 1,
+          outputMimeType: 'image/png'
+        }
+      });
+      
+      const base64Image = response.generatedImages?.[0]?.image?.imageBytes;
+      if (!base64Image) throw new Error("No image generated");
+
+      res.status(200).json({
+        imageBytes: base64Image
+      });
+    } catch (error: any) {
+      console.error("AI Image Gen Error:", error);
+      res.status(500).json({ error: 'Server error during image generation', details: error.message });
+    }
+  });
+
 // --- 7b. GEMINI AI EMBEDDING PROXY ---
   app.post('/api/embed', async (req, res) => {
     try {

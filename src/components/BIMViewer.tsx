@@ -749,14 +749,15 @@ export default function BIMViewer() {
   const handleGenerateRender = async () => {
     setIsRendering(true);
     try {
-      const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
-      const base64Data = dataUrl?.split(',')[1];
-      if (!base64Data) throw new Error("No image data");
-      const response = await callGeminiAPI('gemini-2.5-flash-image', [ { inlineData: { data: base64Data, mimeType: 'image/png' } }, { text: `Transform this 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}` } ]);
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) { setGeneratedImage(`data:image/png;base64,${part.inlineData.data}`); break; }
+      const { callGeminiImageAPI } = await import('../utils/geminiClient');
+      const response = await callGeminiImageAPI(`Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`);
+      if (response.imageBytes) {
+         setGeneratedImage(`data:image/png;base64,${response.imageBytes}`);
       }
-    } catch (error: any) { addToast(t('error_generating_render'), "error"); } finally { setIsRendering(false); }
+    } catch (error: any) { 
+      console.error(error);
+      addToast(t('error_generating_render'), "error"); 
+    } finally { setIsRendering(false); }
   };
 
   const handleSaveRenderToCloud = async (e: React.MouseEvent) => {

@@ -391,15 +391,16 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     if (!renderPrompt.trim()) return addToast('Bitte Prompt eingeben.', 'info');
     setIsRendering(true);
     try {
-      const base64Data = sketchDataUrl ? sketchDataUrl.split(',')[1] : '';
-      if (!base64Data) throw new Error("No image data available");
-      const prompt = `Transform this hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow of the sketch.`;
-      const response = await callGeminiAPI('gemini-2.5-flash-image', [{ inlineData: { data: base64Data, mimeType: 'image/png' } }, { text: prompt }]);
-      let foundImage = false;
-      for (const part of response.candidates?.[0]?.content?.parts || []) {
-        if (part.inlineData) { setRenderedImage(`data:image/png;base64,${part.inlineData.data}`); foundImage = true; break; }
+      const { callGeminiImageAPI } = await import('../utils/geminiClient');
+      const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
+      const response = await callGeminiImageAPI(prompt);
+      
+      if (response.imageBytes) { 
+        setRenderedImage(`data:image/png;base64,${response.imageBytes}`); 
+        addToast('Design erfolgreich generiert!', 'success'); 
+      } else { 
+        throw new Error("No valid image data returned from API."); 
       }
-      if (foundImage) { addToast('Design erfolgreich generiert!', 'success'); } else { throw new Error("No valid image data returned from API."); }
     } catch (error) {
       console.error("AI Render API Error:", error);
       addToast('Fehler bei der Bildgenerierung.', 'error');

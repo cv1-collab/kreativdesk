@@ -16,6 +16,21 @@ export async function callGeminiAPI(model: string, contents: any, config?: any) 
   return await response.json();
 }
 
+export async function callGeminiImageAPI(prompt: string) {
+  const response = await fetch('/api/generate-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt })
+  });
+
+  if (!response.ok) {
+    const errData = await response.json();
+    throw new Error(errData.error || 'API Request failed');
+  }
+
+  return await response.json();
+}
+
 export async function callGeminiChatAPI(model: string, message: string, history: any[] = [], config?: any) {
   // Wir wandeln den bisherigen Chat-Verlauf und die neue Nachricht in das standardisierte 'contents'-Format um
   const contents = [
