@@ -749,7 +749,6 @@ export default function BIMViewer() {
   const handleGenerateRender = async () => {
     setIsRendering(true);
     try {
-      const { callGeminiImageAPI } = await import('../utils/geminiClient');
       const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
       
       let uploadedImageUrl = undefined;
@@ -767,14 +766,30 @@ export default function BIMViewer() {
         }
       }
 
-      const response = await callGeminiImageAPI(`Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`, uploadedImageUrl);
-      if (response.imageBytes) {
-         setGeneratedImage(`data:image/png;base64,${response.imageBytes}`);
+      const prompt = `Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`;
+      const encodedPrompt = encodeURIComponent(prompt);
+      
+      let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+      if (uploadedImageUrl) {
+        pollinationsUrl += `&image=${encodeURIComponent(uploadedImageUrl)}`;
       }
+
+      const imageRes = await fetch(pollinationsUrl);
+      if (!imageRes.ok) throw new Error("Image API failed");
+      
+      const imageBlob = await imageRes.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGeneratedImage(reader.result as string);
+        setIsRendering(false);
+      };
+      reader.readAsDataURL(imageBlob);
+      
     } catch (error: any) { 
       console.error(error);
       addToast(t('error_generating_render'), "error"); 
-    } finally { setIsRendering(false); }
+      setIsRendering(false);
+    }
   };
 
   const handleSaveRenderToCloud = async (e: React.MouseEvent) => {

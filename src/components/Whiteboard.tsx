@@ -391,11 +391,11 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     if (!renderPrompt.trim()) return addToast('Bitte Prompt eingeben.', 'info');
     setIsRendering(true);
     try {
-      const { callGeminiImageAPI } = await import('../utils/geminiClient');
       let uploadedImageUrl = undefined;
       
       if (sketchDataUrl && currentUser && storage) {
         try {
+          const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
           const fetchRes = await fetch(sketchDataUrl);
           const blob = await fetchRes.blob();
           const fileName = `tmp_render_${Date.now()}.png`;
@@ -408,19 +408,31 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       }
 
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
-      const response = await callGeminiImageAPI(prompt, uploadedImageUrl);
+      const encodedPrompt = encodeURIComponent(prompt);
       
-      if (response.imageBytes) { 
-        setRenderedImage(`data:image/png;base64,${response.imageBytes}`); 
-        addToast('Design erfolgreich generiert!', 'success'); 
-      } else { 
-        throw new Error("No valid image data returned from API."); 
+      let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000)}`;
+      if (uploadedImageUrl) {
+        pollinationsUrl += `&image=${encodeURIComponent(uploadedImageUrl)}`;
       }
+
+      const imageRes = await fetch(pollinationsUrl);
+      if (!imageRes.ok) throw new Error("Image API failed");
+      
+      const imageBlob = await imageRes.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setRenderedImage(reader.result as string);
+        addToast('Design erfolgreich generiert!', 'success');
+        setIsRendering(false);
+      };
+      reader.readAsDataURL(imageBlob);
+      
     } catch (error) {
       console.error("AI Render API Error:", error);
       addToast('Fehler bei der Bildgenerierung.', 'error');
       setRenderedImage('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=2000&q=80');
-    } finally { setIsRendering(false); }
+      setIsRendering(false);
+    }
   };
 
   const addRenderToCanvas = () => {
