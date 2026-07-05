@@ -751,8 +751,23 @@ export default function BIMViewer() {
     try {
       const { callGeminiImageAPI } = await import('../utils/geminiClient');
       const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
-      const base64Data = dataUrl?.split(',')[1];
-      const response = await callGeminiImageAPI(`Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`, base64Data);
+      
+      let uploadedImageUrl = undefined;
+      if (dataUrl && currentUser && storage) {
+        try {
+          const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+          const fetchRes = await fetch(dataUrl);
+          const blob = await fetchRes.blob();
+          const fileName = `tmp_render_3d_${Date.now()}.png`;
+          const storageRef = ref(storage, `whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
+          await uploadBytes(storageRef, blob);
+          uploadedImageUrl = await getDownloadURL(storageRef);
+        } catch (err) {
+          console.error("Failed to upload temp snapshot", err);
+        }
+      }
+
+      const response = await callGeminiImageAPI(`Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`, uploadedImageUrl);
       if (response.imageBytes) {
          setGeneratedImage(`data:image/png;base64,${response.imageBytes}`);
       }

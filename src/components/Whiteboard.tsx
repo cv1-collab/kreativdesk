@@ -392,9 +392,23 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     setIsRendering(true);
     try {
       const { callGeminiImageAPI } = await import('../utils/geminiClient');
-      const base64Data = sketchDataUrl ? sketchDataUrl.split(',')[1] : undefined;
+      let uploadedImageUrl = undefined;
+      
+      if (sketchDataUrl && currentUser && storage) {
+        try {
+          const fetchRes = await fetch(sketchDataUrl);
+          const blob = await fetchRes.blob();
+          const fileName = `tmp_render_${Date.now()}.png`;
+          const storageRef = ref(storage, `whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
+          await uploadBytes(storageRef, blob);
+          uploadedImageUrl = await getDownloadURL(storageRef);
+        } catch (err) {
+          console.error("Failed to upload temp sketch", err);
+        }
+      }
+
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
-      const response = await callGeminiImageAPI(prompt, base64Data);
+      const response = await callGeminiImageAPI(prompt, uploadedImageUrl);
       
       if (response.imageBytes) { 
         setRenderedImage(`data:image/png;base64,${response.imageBytes}`); 
