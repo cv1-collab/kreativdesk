@@ -9,7 +9,7 @@ import {
   Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check
 } from 'lucide-react';
 import { cn } from '../utils';
-import { callGeminiAPI } from '../utils/geminiClient';
+import { callGeminiAPI, callGeminiImageAPI } from '../utils/geminiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
