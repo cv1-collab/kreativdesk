@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: 'Gemini API key not configured' });
     }
     
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey, apiVersion: 'v1alpha' });
     const { prompt, imageUrl } = req.body;
     
     let finalPrompt = prompt || 'A highly detailed architectural design, photorealistic';
