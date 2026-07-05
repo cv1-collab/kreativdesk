@@ -1,5 +1,4 @@
 import { GoogleGenAI } from '@google/genai';
-import fetch from 'node-fetch';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -62,6 +61,6 @@ export default async function handler(req: any, res: any) {
     
   } catch (error: any) {
     console.error("Image Generation Error:", error);
-    res.status(500).json({ error: 'Server error during image generation', details: error.message });
+    res.status(500).json({ error: 'Server error during image generation: ' + error.message });
   }
 }
