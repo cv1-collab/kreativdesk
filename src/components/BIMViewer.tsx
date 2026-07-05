@@ -750,7 +750,9 @@ export default function BIMViewer() {
     setIsRendering(true);
     try {
       const { callGeminiImageAPI } = await import('../utils/geminiClient');
-      const response = await callGeminiImageAPI(`Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`);
+      const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
+      const base64Data = dataUrl?.split(',')[1];
+      const response = await callGeminiImageAPI(`Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`, base64Data);
       if (response.imageBytes) {
          setGeneratedImage(`data:image/png;base64,${response.imageBytes}`);
       }

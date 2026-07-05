@@ -392,8 +392,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     setIsRendering(true);
     try {
       const { callGeminiImageAPI } = await import('../utils/geminiClient');
+      const base64Data = sketchDataUrl ? sketchDataUrl.split(',')[1] : undefined;
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
-      const response = await callGeminiImageAPI(prompt);
+      const response = await callGeminiImageAPI(prompt, base64Data);
       
       if (response.imageBytes) { 
         setRenderedImage(`data:image/png;base64,${response.imageBytes}`); 

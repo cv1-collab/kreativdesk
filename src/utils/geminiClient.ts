@@ -16,11 +16,11 @@ export async function callGeminiAPI(model: string, contents: any, config?: any) 
   return await response.json();
 }
 
-export async function callGeminiImageAPI(prompt: string) {
+export async function callGeminiImageAPI(prompt: string, base64Image?: string) {
   const response = await fetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt })
+    body: JSON.stringify({ prompt, base64Image })
   });
 
   if (!response.ok) {
