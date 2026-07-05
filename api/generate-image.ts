@@ -71,6 +71,6 @@ export default async function handler(req: any, res: any) {
     
   } catch (error: any) {
     console.error("Imagen 3 Error:", error);
-    res.status(500).json({ error: 'Server error during image generation', details: error.message });
+    res.status(500).json({ error: "Server error: " + error.message });
   }
 }
