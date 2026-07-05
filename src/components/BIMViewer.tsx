@@ -758,7 +758,7 @@ export default function BIMViewer() {
           const fetchRes = await fetch(dataUrl);
           const blob = await fetchRes.blob();
           const fileName = `tmp_render_3d_${Date.now()}.png`;
-          const storageRef = ref(storage, `whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
+          const storageRef = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
           await uploadBytes(storageRef, blob);
           uploadedImageUrl = await getDownloadURL(storageRef);
         } catch (err) {
@@ -903,7 +903,7 @@ export default function BIMViewer() {
         setIsUploading(false);
         return;
       }
-      const storageRef = ref(storage, `documents/${projectId}/3d_models_${Date.now()}_${file.name}`);
+      const storageRef = ref(storage, `${currentUser.companyId}/documents/${projectId}/3d_models_${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       await incrementStorage(currentUser.companyId, file.size);

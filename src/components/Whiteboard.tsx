@@ -210,7 +210,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     try {
       // Sichere Benennung für den Cloud Storage
       const fileName = `whiteboard_bg_${Date.now()}_${file.name}`;
-      const storageReference = ref(storage, `whiteboardBackgrounds/${currentUser.uid}/${fileName}`);
+      const storageReference = ref(storage, `${currentUser.companyId}/whiteboardBackgrounds/${currentUser.uid}/${fileName}`);
       
       // Lade das Original-Bild in den Firebase Storage (Platz satt!)
       await uploadBytes(storageReference, file);
@@ -399,7 +399,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           const fetchRes = await fetch(sketchDataUrl);
           const blob = await fetchRes.blob();
           const fileName = `tmp_render_${Date.now()}.png`;
-          const storageRef = ref(storage, `whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
+          const storageRef = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
           await uploadBytes(storageRef, blob);
           uploadedImageUrl = await getDownloadURL(storageRef);
         } catch (err) {
@@ -453,7 +453,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Whiteboard_${(activeProject?.name || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `documents/${currentUser.uid}/${fileName}`);
+      const storageRef = ref(storage, `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
       const docCategory = activeProject?.id === 'global' ? 'company' : 'projects';
@@ -477,7 +477,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           if (!dataUrl) throw new Error("Konnte Bild nicht erstellen");
           
           const fileName = `Whiteboard_Skizze_${new Date().getTime()}.png`;
-          const storageReference = ref(storage, `documents/${currentUser.uid}/${fileName}`);
+          const storageReference = ref(storage, `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`);
           
           const fetchRes = await fetch(dataUrl); 
           const blob = await fetchRes.blob();
@@ -550,7 +550,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         if (!uri) return;
         
         const fileName = `PitchDeck_Slide_${Date.now()}.jpg`;
-        const storageReference = ref(storage, `whiteboardExports/${currentUser.uid}/${fileName}`);
+        const storageReference = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/${fileName}`);
         const fetchRes = await fetch(uri); 
         const blob = await fetchRes.blob();
         await uploadBytes(storageReference, blob);
