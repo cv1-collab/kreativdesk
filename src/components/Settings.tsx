@@ -13,6 +13,8 @@ import { doc, setDoc, onSnapshot, deleteDoc, collection, query, where, getDocs }
 import { storage, db, auth } from '../firebase';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -236,20 +238,51 @@ const handlePasswordReset = async () => {
       const snapDocs = await getDocs(qDocs);
       exportData.documents = snapDocs.docs.map(d => d.data());
 
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
+      // 1. Initialize JSZip
+      const zip = new JSZip();
+
+      // 2. Add JSON data
+      const dataStr = JSON.stringify(exportData, null, 2);
+      zip.file("KreativDesk_Datenauskunft.json", dataStr);
+
+      // 3. Fetch physical files and add to ZIP
+      const dateienFolder = zip.folder("Dateien");
+      const filesToDownload = exportData.documents.filter((d: any) => !d.isFolder && d.fileUrl);
+
+      if (filesToDownload.length > 0) {
+        addToast(`Lade ${filesToDownload.length} Dateien für den Export herunter...`, 'info');
+      }
+
+      let downloadedCount = 0;
+      for (const doc of filesToDownload) {
+        try {
+          const response = await fetch(doc.fileUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            const fileName = doc.name || `file_${downloadedCount}`;
+            dateienFolder?.file(fileName, blob);
+            downloadedCount++;
+            // Update toast roughly every 5 files to avoid spam
+            if (downloadedCount % 5 === 0) {
+              addToast(`Verarbeite Dateien... (${downloadedCount}/${filesToDownload.length})`, 'info');
+            }
+          }
+        } catch (err) {
+          console.warn(`Fehler beim Herunterladen von ${doc.name}:`, err);
+        }
+      }
+
+      // 4. Generate and download ZIP
+      addToast('ZIP-Archiv wird erstellt...', 'info');
+      const zipBlob = await zip.generateAsync({ type: "blob" });
       
       const dateString = new Date().toISOString().split('T')[0];
-      downloadAnchorNode.setAttribute("download", `KreativDesk_Datenauskunft_${dateString}.json`);
-      
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+      saveAs(zipBlob, `KreativDesk_DSGVO_Export_${dateString}.zip`);
 
-      addToast(t('upload_success'), 'success');
+      addToast('Datenexport erfolgreich abgeschlossen!', 'success');
     } catch (error) {
-      addToast(t('upload_failed'), 'error');
+      console.error("Export Error:", error);
+      addToast(globalT('error'), 'error');
     }
   };
 
