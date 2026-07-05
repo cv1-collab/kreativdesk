@@ -767,19 +767,31 @@ export default function BIMViewer() {
       }
 
       const prompt = `Transform a 3D building model view into a high-end architectural rendering. Style: ${renderPrompt}`;
-      const encodedPrompt = encodeURIComponent(prompt);
+      const encodedPrompt = encodeURIComponent(prompt.substring(0, 1000));
       
-      // Call the Vercel backend API instead of fetching Pollinations directly
-      // This will use our new Google Imagen 3 edge-function pipeline
-      const response = await callGeminiImageAPI(prompt, uploadedImageUrl);
+      let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 10000)}&model=flux`;
       
-      if (!response.imageBytes) throw new Error("No image data returned from backend");
+      if (uploadedImageUrl) {
+        pollinationsUrl += `&image=${encodeURIComponent(uploadedImageUrl)}`;
+      }
+
+      console.log("Fetching rendering directly from Pollinations...", pollinationsUrl);
       
-      // Convert base64 to data URL
-      const dataUrlOut = `data:image/png;base64,${response.imageBytes}`;
+      // Fetch directly from frontend to avoid Vercel's 10-second timeout!
+      const imageRes = await fetch(pollinationsUrl);
+      if (!imageRes.ok) {
+        throw new Error(`Failed to generate image: ${imageRes.statusText}`);
+      }
       
-      setGeneratedImage(dataUrlOut);
-      setIsRendering(false);
+      const blob = await imageRes.blob();
+      
+      // Convert Blob to Base64 data URL so handleSaveRenderToCloud works without modification
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGeneratedImage(reader.result as string);
+        setIsRendering(false);
+      };
+      reader.readAsDataURL(blob);
       
     } catch (error: any) { 
       console.error(error);
