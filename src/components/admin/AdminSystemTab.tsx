@@ -116,29 +116,7 @@ export default function AdminSystemTab() {
         </button>
       </div>
 
-      {/* ACTION: Upgrade Kreativ Desk */}
-      <div className="bg-surface border border-border p-6 rounded-xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <Sparkles className="text-emerald-500" />
-            <h3 className="font-bold text-lg text-text-primary">Upgrade Kreativ Desk</h3>
-          </div>
-          <p className="text-sm text-text-muted">Setzt maxSeats für cv1@gmx.ch auf 10.</p>
-        </div>
-        <button 
-          onClick={async () => {
-            try {
-              const compRef = doc(db, 'companies', `comp_7VnJ8RSZVAXG9pcPIEklPaWl0fG3`);
-              await setDoc(compRef, { maxSeats: 10 }, { merge: true });
-              addToast('Kreativ Desk erfolgreich auf 10 Lizenzen geupgradet!', 'success');
-            } catch (e) {
-              addToast('Fehler beim Upgrade', 'error');
-            }
-          }} 
-          className="px-6 py-2.5 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-all border border-emerald-500/20 shrink-0">
-          Auf 10 Sitze upgraden
-        </button>
-      </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-surface border border-border p-6 rounded-xl shadow-sm flex flex-col">

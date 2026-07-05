@@ -13,14 +13,16 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     master_data: 'Master Data', company_name: 'Company Name (Master)', address: 'Address', zip: 'ZIP',
     city: 'City', iban: 'IBAN', design: 'Design', upload_desc: 'Upload your official company logo (PNG/SVG recommended).',
     accent_color: 'Accent Color', maintenance: 'Maintenance Mode', maintenance_desc: 'Locks access for all regular user accounts.',
-    active: 'Active', inactive: 'Inactive', save_branding: 'Save Branding Settings', branding_saved: 'Branding saved!'
+    active: 'Active', inactive: 'Inactive', save_branding: 'Save Branding Settings', branding_saved: 'Branding saved!',
+    email: 'Email', phone: 'Phone', website: 'Website', uid: 'UID'
   },
   de: {
     global_branding: 'Globales Branding', branding_desc: 'Konfiguriere das White-Label Erscheinungsbild deiner Instanz.',
     master_data: 'Stammdaten', company_name: 'Firmenname (Master)', address: 'Adresse', zip: 'PLZ',
     city: 'Ort', iban: 'IBAN', design: 'Design', upload_desc: 'Lade dein offizielles Firmen-Logo hoch (PNG/SVG empfohlen).',
     accent_color: 'Akzentfarbe', maintenance: 'Wartungsmodus', maintenance_desc: 'Sperrt den Zugriff für alle regulären Benutzer-Accounts.',
-    active: 'Aktiv', inactive: 'Inaktiv', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding gespeichert!'
+    active: 'Aktiv', inactive: 'Inaktiv', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding gespeichert!',
+    email: 'E-Mail', phone: 'Telefon', website: 'Webseite', uid: 'UID-Nummer'
   }
 };
 
@@ -84,6 +86,22 @@ export default function AdminBrandTab() {
               <div>
                 <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('city')}</label>
                 <input value={config.city} onChange={e => setConfig({...config, city: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('email')}</label>
+                <input type="email" value={config.email} onChange={e => setConfig({...config, email: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('phone')}</label>
+                <input type="tel" value={config.phone} onChange={e => setConfig({...config, phone: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('website')}</label>
+                <input type="url" value={config.website} onChange={e => setConfig({...config, website: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('uid')}</label>
+                <input value={config.uid} onChange={e => setConfig({...config, uid: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner uppercase" />
               </div>
               <div className="sm:col-span-2">
                 <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('iban')}</label>
