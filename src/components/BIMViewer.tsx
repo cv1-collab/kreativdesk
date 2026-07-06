@@ -617,6 +617,8 @@ export default function BIMViewer() {
   const [renderPrompt, setRenderPrompt] = useState('Photorealistic architectural rendering, daylight, clear sky, high quality, 8k resolution, cinematic composition');
   const [activeStyle, setActiveStyle] = useState('realistic');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [isUpscaling, setIsUpscaling] = useState(false);
   const [showRenderModal, setShowRenderModal] = useState(false);
 
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
@@ -815,6 +817,7 @@ export default function BIMViewer() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setGeneratedImage(reader.result as string);
+        setGeneratedImageUrl(generatedUrl);
         setIsRendering(false);
       };
       reader.readAsDataURL(blob);
@@ -823,6 +826,35 @@ export default function BIMViewer() {
       console.error(error);
       addToast(t('error_generating_render'), "error"); 
       setIsRendering(false);
+    }
+  };
+
+  const handleUpscale = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!generatedImageUrl) return;
+    setIsUpscaling(true);
+    addToast('Starte 4K Upscaling... Bitte warten.', 'info');
+    try {
+      const result: any = await fal.subscribe("fal-ai/esrgan", {
+        input: { image_url: generatedImageUrl, scale: 2 },
+        logs: true
+      });
+      const upscaledUrl = result.data ? result.data.image.url : result.image.url;
+      
+      const imageRes = await fetch(upscaledUrl);
+      const blob = await imageRes.blob();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setGeneratedImage(reader.result as string);
+        setGeneratedImageUrl(upscaledUrl);
+        setIsUpscaling(false);
+        addToast('Upscaling auf 4K erfolgreich!', 'success');
+      };
+      reader.readAsDataURL(blob);
+    } catch (error: any) {
+      console.error("Upscale Error:", error);
+      addToast('Fehler beim Hochskalieren.', 'error');
+      setIsUpscaling(false);
     }
   };
 
@@ -1340,8 +1372,11 @@ export default function BIMViewer() {
                     )}
                     {generatedImage && !isRendering && (
                       <div className="absolute bottom-6 right-6 flex gap-3">
+                        <button onClick={handleUpscale} disabled={isUpscaling || isUploading} className="px-5 py-2.5 bg-surface/80 backdrop-blur-md border border-border text-accent-ai rounded-xl text-sm font-bold hover:bg-background transition-all shadow-lg disabled:opacity-50 flex items-center gap-2">
+                          {isUpscaling ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} 4K Upscale
+                        </button>
                         <a href={generatedImage} download="kreativ-desk-render.png" className="px-5 py-2.5 bg-surface/80 backdrop-blur-md border border-border text-text-primary rounded-xl text-sm font-bold hover:bg-background transition-all shadow-lg">{t('download_image')}</a>
-                        <button onClick={handleSaveRenderToCloud} disabled={isUploading} className="px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold hover:bg-accent-ai/90 shadow-md disabled:opacity-50 flex items-center gap-2 transition-all">
+                        <button onClick={handleSaveRenderToCloud} disabled={isUploading || isUpscaling} className="px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold hover:bg-accent-ai/90 shadow-md disabled:opacity-50 flex items-center gap-2 transition-all">
                           {isUploading ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />} {t('save_to_dataroom')}
                         </button>
                       </div>

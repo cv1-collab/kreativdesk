@@ -146,6 +146,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [renderPrompt, setRenderPrompt] = useState('');
   const [isRendering, setIsRendering] = useState(false);
   const [renderedImage, setRenderedImage] = useState<string | null>(null);
+  const [isUpscaling, setIsUpscaling] = useState(false);
   const [sketchDataUrl, setSketchDataUrl] = useState<string | null>(null); 
   const [activeStyle, setActiveStyle] = useState("realistic");
 
@@ -457,6 +458,26 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       addToast('Fehler bei der Bildgenerierung.', 'error');
       setRenderedImage('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=2000&q=80');
       setIsRendering(false);
+    }
+  };
+
+  const handleUpscale = async () => {
+    if (!renderedImage) return;
+    setIsUpscaling(true);
+    addToast('Starte 4K Upscaling... Bitte warten.', 'info');
+    try {
+      const result: any = await fal.subscribe("fal-ai/esrgan", {
+        input: { image_url: renderedImage, scale: 2 },
+        logs: true
+      });
+      const upscaledUrl = result.data ? result.data.image.url : result.image.url;
+      setRenderedImage(upscaledUrl);
+      setIsUpscaling(false);
+      addToast('Upscaling auf 4K erfolgreich!', 'success');
+    } catch (error: any) {
+      console.error("Upscale Error:", error);
+      addToast('Fehler beim Hochskalieren.', 'error');
+      setIsUpscaling(false);
     }
   };
 
@@ -981,10 +1002,13 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
                       
                       {renderedImage ? (
                         <div className="flex flex-col gap-3">
-                          <button onClick={addRenderToCanvas} className="w-full py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex justify-center items-center gap-2">
+                          <button onClick={handleUpscale} disabled={isUpscaling} className="w-full py-3 bg-surface/80 border border-border text-accent-ai rounded-xl text-sm font-bold shadow-sm hover:bg-background transition-colors disabled:opacity-50 flex justify-center items-center gap-2">
+                            {isUpscaling ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />} 4K Upscale
+                          </button>
+                          <button onClick={addRenderToCanvas} disabled={isUpscaling} className="w-full py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex justify-center items-center gap-2 disabled:opacity-50">
                             <ImagePlus size={18} /> {t('add_to_canvas')}
                           </button>
-                          <button onClick={() => { setRenderedImage(null); setRenderPrompt(''); }} className="w-full py-3 bg-surface border border-border text-text-primary rounded-xl text-sm font-bold hover:bg-white/5 transition-colors">
+                          <button onClick={() => { setRenderedImage(null); setRenderPrompt(''); }} disabled={isUpscaling} className="w-full py-3 bg-surface border border-border text-text-primary rounded-xl text-sm font-bold hover:bg-white/5 transition-colors disabled:opacity-50">
                             Neues Rendering starten
                           </button>
                         </div>
