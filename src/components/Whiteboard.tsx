@@ -435,12 +435,12 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         logs: true,
       }) as any;
 
-      if (!response || !response.images || response.images.length === 0) {
+      const responseData = response.data || response;
+      if (!responseData || !responseData.images || responseData.images.length === 0) {
         throw new Error("API Antwort: " + JSON.stringify(response || "Keine Antwort"));
       }
       
-      const dataUrl = response.images[0].url;
-      
+      const dataUrl = responseData.images[0].url;
       setRenderedImage(dataUrl);
       addToast('Design erfolgreich generiert!', 'success');
       setIsRendering(false);
