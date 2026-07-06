@@ -960,7 +960,6 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
                     </div>
 
                     <div className="flex-1 flex flex-col justify-center">
-                    <div className="flex-1 flex flex-col justify-center">
                       <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">Stil & Kreativität</label>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         {[
