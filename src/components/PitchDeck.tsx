@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
@@ -395,8 +395,15 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <button onClick={() => window.open(`/lead-form/${currentUser?.companyId || 'global'}`, '_blank')} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
-               <Mail size={14} /> <span className="hidden sm:inline">Kontakt</span>
+             <button onClick={() => {
+               if (navigator.share) {
+                 navigator.share({ title: 'Pitch Deck', url: window.location.href }).catch(() => {});
+               } else {
+                 navigator.clipboard.writeText(window.location.href);
+                 alert("Link kopiert!");
+               }
+             }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+               <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
              <button onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Settings size={14} /> <span className="hidden sm:inline">{t('open_studio')}</span>
