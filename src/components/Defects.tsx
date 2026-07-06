@@ -13,9 +13,10 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject, Defect } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { db, storage } from '../firebase';
+import { db, storage, functions } from '../firebase';
 import { doc, updateDoc, setDoc, deleteDoc, collection, query, where, onSnapshot, getDocs, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
 import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -241,14 +242,30 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   useEffect(() => {
     if (!db || !uploadSessionId || !showQrScanner) return;
     const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', uploadSessionId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
+    const unsub = onSnapshot(q, async (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
         if (change.type === 'added') {
           const data = change.doc.data();
-          if (data.url) {
-            setCurrentDefect(prev => ({ ...prev, imageUrl: data.url }));
+          if (data.url || data.base64Image) {
+            let base64ToProcess = data.base64Image;
+            let mimeToProcess = data.mimeType || 'image/jpeg';
+            if (!base64ToProcess && data.url) {
+               try {
+                  const res = await fetch(data.url);
+                  const blob = await res.blob();
+                  mimeToProcess = blob.type;
+                  const base64Str = await new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(blob);
+                  });
+                  base64ToProcess = base64Str.split(',')[1];
+               } catch(e) { console.error('Fetch error', e); }
+            }
+            if (data.url) setCurrentDefect(prev => ({ ...prev, imageUrl: data.url }));
             setShowQrScanner(false);
-            addToast('Bild vom Smartphone empfangen!', 'success');
+            addToast('Bild vom Smartphone empfangen! KI analysiert...', 'success');
+            await processDefectImageWithAI(base64ToProcess || null, mimeToProcess);
             deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error);
           }
         }
@@ -375,6 +392,30 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     finally { setIsAnalyzing(false); }
   };
 
+  const processDefectImageWithAI = async (base64Data: string | null, mimeType: string) => {
+    if (!base64Data) return;
+    setIsAnalyzingImage(true);
+    addToast(t('ai_analyzing_defects'), 'info');
+    try {
+      const analyzeDefect = httpsCallable(functions, 'analyzeDefect');
+      const result = await analyzeDefect({ base64Image: base64Data, mimeType });
+      const aiData = result.data as any;
+      
+      setCurrentDefect(prev => ({
+        ...prev, 
+        title: prev.title || aiData.title || "Schaden/Mangel erkannt", 
+        description: prev.description || aiData.description || "Potenzieller Mangel.", 
+        trade: prev.trade || aiData.trade || "Baumeister / Gipser", 
+        priority: aiData.priority || "High"
+      }));
+      addToast("KI hat das Bild analysiert!", "success");
+    } catch (error) {
+      addToast(t('error_ai_analysis'), "error");
+    } finally {
+      setIsAnalyzingImage(false);
+    }
+  };
+
   const handleLocalImageUploadWithAI = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
@@ -385,14 +426,20 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       setCurrentDefect(prev => ({ ...prev, imageUrl: url }));
-      await new Promise(r => setTimeout(r, 1500)); 
-      
-      setCurrentDefect(prev => ({
-        ...prev, title: prev.title || "Schaden/Mangel erkannt", description: prev.description || "Die KI hat einen potenziellen Mangel auf dem Foto identifiziert. Bitte Details prüfen.", trade: prev.trade || "Baumeister / Gipser", priority: "High"
-      }));
-      addToast("KI hat das Bild analysiert!", "success");
-    } catch (error) { addToast(globalT('error'), 'error'); } 
-    finally { setIsAnalyzingImage(false); }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        if (reader.result) {
+          const base64String = reader.result as string;
+          const base64Data = base64String.split(',')[1];
+          await processDefectImageWithAI(base64Data, file.type);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) { 
+      addToast(globalT('error'), 'error'); 
+      setIsAnalyzingImage(false);
+    } 
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {

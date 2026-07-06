@@ -72,7 +72,37 @@ exports.analyzeReceipt = onCall({
 });
 
 // ============================================================================
-// 3. NEU: CUSTOM CLAIMS (Mandantenfähigkeit & Performance)
+// 3. MÄNGEL & DEFECTS SCANNER (Neu)
+// ============================================================================
+exports.analyzeDefect = onCall({ 
+    region: 'europe-west1',
+    maxInstances: 10,
+    invoker: 'public' 
+}, async (request) => {
+    const data = request.data;
+    const base64Image = data.base64Image;
+    const mimeType = data.mimeType || 'image/jpeg';
+
+    if (!base64Image) throw new HttpsError('invalid-argument', 'Fehler: Kein Bild empfangen.');
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+        
+        const prompt = "Analysiere dieses Foto eines potenziellen Mangels oder Schadens im Baubereich (Defect). Gib exakt ein JSON-Objekt zurück, ohne Formatierungszeichen drumherum. " +
+                       "Struktur: {\"title\": \"Kurzer, prägnanter Titel (max 5 Worte)\", \"description\": \"Detaillierte Beschreibung was auf dem Foto als Mangel/Schaden erkennbar ist\", \"trade\": \"Das am ehesten betroffene Gewerk, z.B. Baumeister, Gipser, Elektriker, Maler, Schreiner, Sanitär\", \"priority\": \"Schätze die Dringlichkeit ein: wähle exakt einen dieser Werte: Low, Medium, High, Critical\"}.";
+
+        const imageParts = [{ inlineData: { data: base64Image, mimeType: mimeType } }];
+        const result = await model.generateContent([prompt, ...imageParts]);
+        let cleanedJson = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
+        return JSON.parse(cleanedJson);
+    } catch (error) {
+        console.error("Backend Error Log - Defect Analysis:", error.message);
+        throw new HttpsError('internal', 'KI-Verbindungsfehler: ' + error.message);
+    }
+});
+
+// ============================================================================
+// 4. CUSTOM CLAIMS (Mandantenfähigkeit & Performance)
 // ============================================================================
 
 // Setzt den Stempel, wenn das User-Dokument aktualisiert wird (z.B. Rollen-Wechsel)
