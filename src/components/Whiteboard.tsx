@@ -147,6 +147,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [isRendering, setIsRendering] = useState(false);
   const [renderedImage, setRenderedImage] = useState<string | null>(null);
   const [sketchDataUrl, setSketchDataUrl] = useState<string | null>(null); 
+  const [activeStyle, setActiveStyle] = useState("realistic");
+
 
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -423,6 +425,11 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
          throw new Error("Fehler: Skizze konnte nicht für das Rendering hochgeladen werden. Bitte überprüfe deine Verbindung.");
       }
 
+      let styleStrength = 0.75;
+      if (activeStyle === 'colorize') styleStrength = 0.4;
+      if (activeStyle === 'sketch') styleStrength = 0.5;
+      if (activeStyle === 'comic') styleStrength = 0.65;
+
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
       
       // Call fal.ai via proxy for image generation
@@ -430,7 +437,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         input: {
           prompt: prompt,
           image_url: uploadedImageUrl,
-          strength: 0.75, // Better for sketches
+          strength: styleStrength,
         },
         logs: true,
       }) as any;
@@ -953,11 +960,24 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
                     </div>
 
                     <div className="flex-1 flex flex-col justify-center">
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">Stil & Kreativität</label>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {[
+                          { id: 'realistic', name: 'Kreativ & Realistisch', strength: 0.75, prompt: 'Transform this hand-drawn sketch into a high-quality, realistic rendering. Add beautiful details.' },
+                          { id: 'comic', name: 'Comic & Illustration', strength: 0.65, prompt: 'Transform this sketch into a colorful, professional comic book style illustration with bold outlines.' },
+                          { id: 'sketch', name: 'Skizze Verfeinern', strength: 0.5, prompt: 'Keep the exact lines of this sketch, but make it look like a highly professional, detailed pencil/ink drawing.' },
+                          { id: 'colorize', name: 'Streng (Nur Ausmalen)', strength: 0.4, prompt: 'Do not change the shapes or lines at all! Only add flat colors and basic shading according to the prompt.' }
+                        ].map(style => (
+                          <button key={style.id} onClick={() => { setActiveStyle(style.id); setRenderPrompt(style.prompt + '\n\n' + renderPrompt); }} className={`p-2 text-xs font-medium text-left rounded-lg border transition-all duration-200 ${activeStyle === style.id ? "bg-accent-ai/10 border-accent-ai/50 text-accent-ai shadow-sm" : "bg-background border-transparent text-text-muted hover:bg-surface hover:text-text-primary"}`}>{style.name}</button>
+                        ))}
+                      </div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Dein Prompt</label>
                       <textarea 
                         value={renderPrompt} 
                         onChange={e => setRenderPrompt(e.target.value)} 
                         placeholder={t('describe_vision')}
-                        className="w-full h-32 bg-background border border-border rounded-xl p-4 text-sm font-medium text-text-primary focus:outline-none focus:border-accent-ai resize-none custom-scrollbar mb-6"
+                        className="w-full h-24 bg-background border border-border rounded-xl p-3 text-sm font-medium text-text-primary focus:outline-none focus:border-accent-ai resize-none custom-scrollbar mb-6"
                       />
                       
                       {renderedImage ? (
