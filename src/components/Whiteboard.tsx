@@ -396,14 +396,34 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     if (!renderPrompt.trim()) return addToast('Bitte Prompt eingeben.', 'info');
     setIsRendering(true);
     try {
+      let uploadedImageUrl = undefined;
+      
+      if (sketchDataUrl && currentUser && storage) {
+        try {
+          const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+          const fetchRes = await fetch(sketchDataUrl);
+          const blob = await fetchRes.blob();
+          const fileName = `tmp_render_wb_${Date.now()}.png`;
+          const storageRef = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
+          await uploadBytes(storageRef, blob);
+          uploadedImageUrl = await getDownloadURL(storageRef);
+        } catch (err) {
+          console.error("Failed to upload temp sketch", err);
+        }
+      }
+
+      if (!uploadedImageUrl) {
+         throw new Error("Fehler: Skizze konnte nicht für das Rendering hochgeladen werden. Bitte überprüfe deine Verbindung.");
+      }
+
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
       
       // Call fal.ai via proxy for image generation
       const response = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
         input: {
           prompt: prompt,
-          image_url: sketchDataUrl,
-          strength: 0.85,
+          image_url: uploadedImageUrl,
+          strength: 0.75, // Better for sketches
         },
         logs: true,
       }) as any;
