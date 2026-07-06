@@ -371,12 +371,19 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     }
   };
 
-  const getCanvasDataUrl = (scale: number, mimeType: string = 'image/png') => {
+  const getCanvasDataUrl = (scale: number, mimeType: string = 'image/png', forceWhiteBg: boolean = false) => {
     if (!stageRef.current) return null;
     const bgRect = stageRef.current.findOne('.background-rect');
-    if (bgRect) { bgRect.fill(canvasBgColor); stageRef.current.draw(); }
+    const originalBg = bgRect ? bgRect.fill() : 'transparent';
+    if (bgRect) { 
+      bgRect.fill(forceWhiteBg ? 'white' : (canvasBgColor === 'transparent' ? 'white' : canvasBgColor)); 
+      stageRef.current.draw(); 
+    }
     const dataUrl = stageRef.current.toDataURL({ pixelRatio: scale, mimeType });
-    if (bgRect) { bgRect.fill('transparent'); stageRef.current.draw(); }
+    if (bgRect) { 
+      bgRect.fill(originalBg); 
+      stageRef.current.draw(); 
+    }
     return dataUrl;
   };
 
@@ -385,7 +392,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     setTimeout(() => {
       if (stageRef.current) {
         const safeScale = Math.min(1, 800 / stageRef.current.width()); 
-        const dataUrl = getCanvasDataUrl(safeScale, 'image/png');
+        const dataUrl = getCanvasDataUrl(safeScale, 'image/png', true); // Force white bg for AI!
         if (dataUrl) setSketchDataUrl(dataUrl);
       }
       setShowAiRender(true);
@@ -428,8 +435,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         logs: true,
       }) as any;
 
-      if (!response.images || response.images.length === 0) {
-        throw new Error("No image data returned from backend");
+      if (!response || !response.images || response.images.length === 0) {
+        throw new Error("API Antwort: " + JSON.stringify(response || "Keine Antwort"));
       }
       
       const dataUrl = response.images[0].url;
