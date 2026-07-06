@@ -8,7 +8,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader.js';
-import { callGeminiAPI, callGeminiImageAPI } from '../utils/geminiClient';
+import { callGeminiAPI } from '../utils/geminiClient';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Box, Layers, Eye, EyeOff, Maximize, Rotate3D,
