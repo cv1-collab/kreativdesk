@@ -776,11 +776,11 @@ export default function BIMViewer() {
         throw new Error("Failed to upload snapshot image. An image is required for ControlNet rendering.");
       }
 
-      let styleStrength = 0.88;
-      if (activeStyle === 'sketch') styleStrength = 0.75;
-      if (activeStyle === 'cyberpunk') styleStrength = 0.92;
+      let styleStrength = 0.96;
+      if (activeStyle === 'sketch') styleStrength = 0.85;
+      if (activeStyle === 'cyberpunk') styleStrength = 0.98;
 
-      const prompt = renderPrompt ? `Transform this basic 3D massing block model into a highly detailed, realistic real-world architecture. The input image represents only the basic shape and volume. You MUST add actual architectural materials, realistic windows, facades, doors, and a real environment. Do NOT render simple blocks. Style: ${renderPrompt}` : `Transform this basic 3D massing block model into a high-end, photorealistic architectural building. The input image represents only the basic shape and volume. You MUST add actual architectural materials, realistic windows, facades, doors, and a real environment. Do NOT render simple blocks.`;
+      const prompt = renderPrompt ? `Transform this basic 3D massing block model into a highly detailed, realistic real-world architecture. The input image represents only the basic shape and volume. You MUST add actual architectural materials, realistic windows, facades, doors, and a completely new realistic environment/background. Do NOT render simple blocks. Do NOT keep the plain background. Style: ${renderPrompt}` : `Transform this basic 3D massing block model into a high-end, photorealistic architectural building. The input image represents only the basic shape and volume. You MUST add actual architectural materials, realistic windows, facades, doors, and a completely new realistic environment/background. Do NOT render simple blocks. Do NOT keep the plain background.`;
       
       console.log("Generating rendering via fal.ai...");
       
