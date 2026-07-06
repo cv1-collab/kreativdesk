@@ -837,21 +837,21 @@ export default function Calendar() {
           </div>
         </header>
 
-        {isMounted && isLandscapeMode && createPortal(
-          <div className="fixed inset-0 z-[100000] bg-black touch-none">
-             <div
-               style={{
-                 position: 'absolute',
-                 top: '50%',
-                 left: '50%',
-                 width: isNativeLandscape ? '100vw' : '100dvh',
-                 height: isNativeLandscape ? '100dvh' : '100vw',
-                 transform: isNativeLandscape ? 'translate(-50%, -50%) rotate(0deg)' : 'translate(-50%, -50%) rotate(90deg)',
-                 transition: 'transform 0.3s ease-in-out, width 0.3s, height 0.3s'
-               }}
-               className="flex flex-col bg-background shadow-2xl"
-             >
-                <div className="flex items-center justify-between p-3 border-b border-border/50 shrink-0 bg-surface">
+        {isMounted && isLandscapeMode && (
+          !isNativeLandscape ? createPortal(
+            <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95">
+              <div className="bg-surface border border-border p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm">
+                <RotateCw size={48} className="mb-6 text-accent-ai animate-[spin_3s_linear_infinite]" />
+                <h2 className="text-xl font-bold mb-3 text-text-primary">Bitte Smartphone drehen</h2>
+                <p className="text-sm text-text-muted mb-8 font-medium">Um die vollständige Masterplan-Ansicht zu nutzen, drehe dein Gerät bitte ins Querformat (Landscape).</p>
+                <button onClick={() => setIsLandscapeMode(false)} className="w-full py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl font-bold transition-colors">Abbrechen</button>
+              </div>
+            </div>,
+            document.body
+          ) : createPortal(
+            <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col touch-none">
+              <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
+                <div className="flex items-center justify-between p-3 border-b border-border/50 shrink-0 bg-surface z-50 relative">
                    <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
                       <CalendarIcon size={16} className="text-accent-ai"/> {docHeader.title}
                    </h3>
@@ -1088,7 +1088,7 @@ export default function Calendar() {
              </div>
           </div>,
           document.body
-        )}
+        ))}
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 min-h-0 overflow-hidden z-10">
           
@@ -1182,7 +1182,7 @@ export default function Calendar() {
                         </div>
                       </div>
 
-                      <div className="absolute inset-0 flex ml-[33.33%] z-0 pointer-events-none min-w-[800px]" style={{ top: '80px', bottom: '20px' }}>
+                      <div className="absolute flex z-0 pointer-events-none" style={{ left: '33.333333%', right: 0, top: '80px', bottom: '20px' }}>
                         {getMonths().map((_, i) => (<div key={i} className="flex-1 border-l h-full opacity-50 border-border/30"></div>))}
                       </div>
 
