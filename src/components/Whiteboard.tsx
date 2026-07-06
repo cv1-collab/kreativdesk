@@ -378,7 +378,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     const bgRect = stageRef.current.findOne('.background-rect');
     const originalBg = bgRect ? bgRect.fill() : 'transparent';
     if (bgRect) { 
-      bgRect.fill(forceWhiteBg ? 'white' : (canvasBgColor === 'transparent' ? 'white' : canvasBgColor)); 
+      bgRect.fill(forceWhiteBg ? 'white' : ((canvasBgColor as string) === 'transparent' ? 'white' : canvasBgColor)); 
       stageRef.current.draw(); 
     }
     const dataUrl = stageRef.current.toDataURL({ pixelRatio: scale, mimeType });
