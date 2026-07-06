@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 // === SYNCHRONE IMPORTE ===
 import LandingPage from './components/LandingPage';
@@ -159,6 +160,7 @@ export default function App() {
 
                       </MaintenanceGuard>
 
+                      <Analytics />
                     </VideoCallProvider>
                   </BrowserRouter>
                 </TourProvider>
