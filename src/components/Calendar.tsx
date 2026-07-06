@@ -431,11 +431,12 @@ export default function Calendar() {
           });
           setTimeout(() => setSmartMarkers(mappedMarkers), 0);
        }
-       setTargetYear(today.getFullYear());
-       setScheduleName(demoData.project?.name || 'Masterplan');
-       
-       setSchedules([{ id: 'demo-s1', name: 'Masterplan Bau', targetYear: today.getFullYear(), ganttTasks: [], smartMarkers: [], shapes: [] }]);
-       setActiveScheduleId('demo-s1');
+       setTimeout(() => {
+         setTargetYear(today.getFullYear());
+         setScheduleName(demoData.project?.name || 'Masterplan');
+         setSchedules([{ id: 'demo-s1', name: 'Masterplan Bau', targetYear: today.getFullYear(), ganttTasks: [], smartMarkers: [], shapes: [] }]);
+         setActiveScheduleId('demo-s1');
+       }, 0);
        return;
     }
 

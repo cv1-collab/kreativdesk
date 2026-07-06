@@ -61,15 +61,17 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   // === MULTI-TENANT FILTERUNG (GOALS LESEN) ===
   useEffect(() => {
     if (isDemoMode) {
-      if (demoData?.goals) {
-        setGoals(demoData.goals.map((g: any) => ({ ...g, projectId })));
-      } else {
-        setGoals([
-          { id: '1', title: t('demo_goal_1'), completed: true, priority: 'High', createdAt: new Date(), projectId },
-          { id: '2', title: t('demo_goal_2'), completed: false, priority: 'Medium', createdAt: new Date(), projectId },
-          { id: '3', title: t('demo_goal_3'), completed: false, priority: 'Low', createdAt: new Date(), projectId }
-        ]);
-      }
+      Promise.resolve().then(() => {
+        if (demoData?.goals) {
+          setGoals(demoData.goals.map((g: any) => ({ ...g, projectId })));
+        } else {
+          setGoals([
+            { id: '1', title: t('demo_goal_1'), completed: true, priority: 'High', createdAt: new Date(), projectId },
+            { id: '2', title: t('demo_goal_2'), completed: false, priority: 'Medium', createdAt: new Date(), projectId },
+            { id: '3', title: t('demo_goal_3'), completed: false, priority: 'Low', createdAt: new Date(), projectId }
+          ]);
+        }
+      });
       return;
     }
 

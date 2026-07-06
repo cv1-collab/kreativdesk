@@ -197,7 +197,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }
 
     const unsub = onSnapshot(q, async (snapshot) => {
-      let loadedSlides = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Slide));
+      const loadedSlides = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Slide));
 
       // Auto-Seed Demo Pitch Deck if empty
       if (loadedSlides.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
