@@ -48,6 +48,15 @@ export default function Layout() {
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t: globalT } = useLanguage();
   const { startTour } = useTour();
+
+  useEffect(() => {
+    if (currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined)) {
+      const timer = setTimeout(() => {
+        startTour();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser, startTour]);
   const { addToast } = useToast();
   
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';

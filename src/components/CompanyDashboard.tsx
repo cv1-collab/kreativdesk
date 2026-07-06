@@ -89,6 +89,15 @@ export default function CompanyDashboard() {
   
   const { startTour } = useTour();
 
+  useEffect(() => {
+    if (currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined)) {
+      const timer = setTimeout(() => {
+        startTour();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser, startTour]);
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings'>('dashboard');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
