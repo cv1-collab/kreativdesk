@@ -776,7 +776,7 @@ export default function BIMViewer() {
         throw new Error("Failed to upload snapshot image. An image is required for ControlNet rendering.");
       }
 
-      const prompt = `Transform this 3D building block model into a high-end, photorealistic architectural rendering. Maintain the exact geometry. Style: ${renderPrompt}`;
+      const prompt = renderPrompt ? `Transform this 3D building block model into a high-quality rendering. Maintain the general geometry and structure of the original image. Style: ${renderPrompt}` : `Transform this 3D building block model into a high-end, photorealistic architectural rendering. Maintain the exact geometry.`;
       
       console.log("Generating rendering via fal.ai...");
       
