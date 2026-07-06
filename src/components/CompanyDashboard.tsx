@@ -288,6 +288,18 @@ export default function CompanyDashboard() {
 
       const now = new Date().toISOString();
 
+      if (demoData.members) {
+        demoData.members.forEach((m: any, idx: number) => {
+          const fakeUid = `demo-uid-${idx}-${Date.now()}`;
+          const pmId = `pm-${projectId}-${fakeUid}`;
+          batch.set(doc(db, 'projectMembers', pmId), {
+            id: pmId, projectId, companyId: safeCompanyId, userId: fakeUid, userEmail: m.email, 
+            name: m.name, role: m.role, photoURL: m.photoURL || '', phone: m.phone || '',
+            projectRole: 'member', companyRole: 'employee', joinedAt: now
+          });
+        });
+      }
+
       if (demoData.financeGroups) {
         batch.set(doc(db, 'financeData', `finance_${projectId}`), {
           projectId: projectId, companyId: safeCompanyId, activeVersionId: 'v1',
@@ -356,11 +368,38 @@ export default function CompanyDashboard() {
         }
       }
 
-      batch.set(doc(db, 'documents', `doc_${Date.now()}`), {
-        companyId: safeCompanyId, projectId: projectId, name: 'Projekt-Übersicht.pdf', category: 'plans', 
-        url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2000&auto=format&fit=crop', 
-        type: 'application/pdf', size: '2.4 MB', isFolder: false, ownerId: currentUser.uid, createdAt: now
-      });
+      if (demoData.documents && demoData.documents.length > 0) {
+        demoData.documents.forEach((d: any, idx: number) => {
+          const docId = `doc_${projectId}_${idx}`;
+          batch.set(doc(db, 'documents', docId), {
+            companyId: safeCompanyId, projectId: projectId, name: d.name, category: d.category || 'documents',
+            url: d.url, fileUrl: d.url, type: d.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+            size: d.size || '1.2 MB', isFolder: false, ownerId: currentUser.uid, createdAt: now
+          });
+        });
+      } else {
+        batch.set(doc(db, 'documents', `doc_${Date.now()}`), {
+          companyId: safeCompanyId, projectId: projectId, name: 'Projekt-Übersicht.pdf', category: 'plans', 
+          url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2000&auto=format&fit=crop', 
+          type: 'application/pdf', size: '2.4 MB', isFolder: false, ownerId: currentUser.uid, createdAt: now
+        });
+      }
+
+      if (demoData.transactions) {
+        demoData.transactions.forEach((tx: any, idx: number) => {
+          batch.set(doc(db, 'financeTransactions', `tx_${projectId}_${idx}`), {
+            ...tx, projectId, companyId: safeCompanyId, createdAt: now
+          });
+        });
+      }
+
+      if (demoData.timeEntries) {
+        demoData.timeEntries.forEach((te: any, idx: number) => {
+          batch.set(doc(db, 'timeEntries', `time_${projectId}_${idx}`), {
+            ...te, projectId, companyId: safeCompanyId, userId: currentUser.uid, createdAt: now
+          });
+        });
+      }
 
       batch.set(doc(db, 'whiteboards', projectId), {
         companyId: safeCompanyId, projectId: projectId, elements: '[]', createdAt: now
