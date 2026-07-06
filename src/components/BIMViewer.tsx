@@ -776,11 +776,11 @@ export default function BIMViewer() {
         throw new Error("Failed to upload snapshot image. An image is required for ControlNet rendering.");
       }
 
-      let styleStrength = 0.96;
-      if (activeStyle === 'sketch') styleStrength = 0.85;
-      if (activeStyle === 'cyberpunk') styleStrength = 0.98;
+      let styleStrength = 0.88;
+      if (activeStyle === 'sketch') styleStrength = 0.75;
+      if (activeStyle === 'cyberpunk') styleStrength = 0.90;
 
-      const prompt = renderPrompt ? `Transform this basic 3D massing block model into a highly detailed, realistic real-world architecture. The input image represents only the basic shape and volume. You MUST add actual architectural materials, realistic windows, facades, doors, and a completely new realistic environment/background. Do NOT render simple blocks. Do NOT keep the plain background. Style: ${renderPrompt}` : `Transform this basic 3D massing block model into a high-end, photorealistic architectural building. The input image represents only the basic shape and volume. You MUST add actual architectural materials, realistic windows, facades, doors, and a completely new realistic environment/background. Do NOT render simple blocks. Do NOT keep the plain background.`;
+      const prompt = renderPrompt ? `Transform this 3D massing model into a photorealistic architectural building. IMPORTANT RULES: 1. You MUST keep the exact shape, volume and massing of the original building in the image. 2. DO NOT change the outline or geometry. 3. Add actual architectural materials, realistic windows, and facades. 4. Completely replace the white background with a realistic environment (sky, ground, trees, context). Style: ${renderPrompt}` : `Transform this 3D massing model into a photorealistic architectural building. IMPORTANT RULES: 1. You MUST keep the exact shape, volume and massing of the original building in the image. 2. DO NOT change the outline or geometry. 3. Add actual architectural materials, realistic windows, and facades. 4. Completely replace the white background with a realistic environment (sky, ground, trees, context).`;
       
       console.log("Generating rendering via fal.ai...");
       
