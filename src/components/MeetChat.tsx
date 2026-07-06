@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles,
-  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff
+  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions
 } from 'lucide-react';
 import { cn } from '../utils';
 import { callGeminiAPI, callGeminiEmbedAPI } from '../utils/geminiClient';
@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
-import { collection, query, orderBy, onSnapshot, serverTimestamp, Timestamp, setDoc, doc, where, getDocs, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, serverTimestamp, Timestamp, setDoc, doc, where, getDocs, getDoc, addDoc } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -44,7 +44,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; reference?: string; createdAt?: Timestamp; }
+interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; reference?: string; createdAt?: Timestamp; }
 
 export default function MeetChat() {
   const { projectId } = useParams();
@@ -87,6 +87,77 @@ export default function MeetChat() {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+  
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const recognitionRef = useRef<any>(null);
+  const isTranscribingRef = useRef(isTranscribing);
+
+  useEffect(() => { isTranscribingRef.current = isTranscribing; }, [isTranscribing]);
+
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = currentLang === 'de' ? 'de-CH' : 'en-US';
+
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          const finalStr = event.results[i][0].transcript.trim();
+          if (finalStr && (callId || joinCallId) && currentUser?.companyId && db) {
+             addDoc(collection(db, `videoCalls/${callId || joinCallId}/chatMessages`), {
+                sender: currentUser.displayName || 'Teilnehmer',
+                text: finalStr,
+                isTranscript: true,
+                timestamp: serverTimestamp(),
+                projectId: projectId || activeProjectId || 'global',
+                companyId: currentUser.companyId
+             }).catch(console.error);
+          }
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      setCurrentTranscript(interim);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.warn("Speech recognition error:", event.error);
+      if (event.error === 'not-allowed') setIsTranscribing(false);
+    };
+    
+    recognition.onend = () => {
+      if (isTranscribingRef.current) {
+         try { recognition.start(); } catch(e){}
+      }
+    };
+
+    recognitionRef.current = recognition;
+    return () => recognition.stop();
+  }, [callId, joinCallId, currentUser, activeProjectId, projectId, currentLang]);
+
+  const toggleTranscription = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+       addToast("Dein Browser unterstützt keine Live-Transkription (Chrome, Safari oder Edge empfohlen).", "error");
+       return;
+    }
+    if (isTranscribing) {
+       setIsTranscribing(false);
+       if (recognitionRef.current) recognitionRef.current.stop();
+       setCurrentTranscript('');
+       addToast("Live-Transkription deaktiviert", "info");
+    } else {
+       setIsTranscribing(true);
+       if (recognitionRef.current) {
+          try { recognitionRef.current.start(); addToast("Live-Transkription gestartet", "success"); } catch(e){}
+       }
+    }
+  };
 
   const openScheduleModal = () => {
     setGeneratedMeetingId(`meet-${Date.now()}`);
@@ -360,8 +431,8 @@ export default function MeetChat() {
   const handleGenerateSummary = async () => {
     setIsGeneratingSummary(true);
     try {
-      const context = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-      const prompt = `Based on the following meeting chat transcript, generate a concise meeting summary with 3 bullet points of Action Items. Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
+      const context = messages.map(m => `${m.sender}${m.isTranscript ? ' (gesprochen)' : ''}: ${m.text}`).join('\n');
+      const prompt = `Based on the following meeting chat and spoken transcript, generate a concise meeting summary with 3 bullet points of Action Items. Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
       const response = await callGeminiAPI('gemini-2.5-flash', prompt);
       setMeetingSummary(response.text || 'Summary generated.');
       setShowChat(true);
@@ -510,9 +581,16 @@ export default function MeetChat() {
                     <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all", isMicOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")}>{isMicOn ? <Mic size={20} /> : <MicOff size={20} />}</button>
                     <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all", isCamOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")}>{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
                     <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block", !isScreenSharing ? "bg-surface hover:bg-white/10 text-white" : "bg-accent-ai text-white shadow-lg")}>{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
+                    <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block", isTranscribing ? "bg-accent-ai text-white shadow-lg" : "bg-surface hover:bg-white/10 text-white")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
                     <div className="w-px h-8 bg-border/50 mx-1 md:mx-2"></div>
                     <button onClick={hangUp} className="px-4 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg flex items-center gap-2"><PhoneOff size={18} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
                   </div>
+
+                  {currentTranscript && (
+                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-2xl text-white text-lg font-medium max-w-2xl text-center shadow-2xl z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-2">
+                      {currentTranscript}
+                    </div>
+                  )}
 
                   <div className="absolute top-6 left-4 flex flex-col md:flex-row items-start md:items-center gap-3 bg-background/90 backdrop-blur-md border border-border/50 px-4 py-2 rounded-xl shadow-lg z-30">
                     <div className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-text-muted font-bold">Meeting ID</span><span className="text-xs md:text-sm font-mono font-bold text-white">{callId || joinCallId}</span></div>
