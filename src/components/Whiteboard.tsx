@@ -9,7 +9,12 @@ import {
   Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check
 } from 'lucide-react';
 import { cn } from '../utils';
-import { callGeminiAPI, callGeminiImageAPI } from '../utils/geminiClient';
+import { callGeminiAPI } from '../utils/geminiClient';
+import { fal } from "@fal-ai/client";
+
+fal.config({
+  proxyUrl: "/api/fal/proxy",
+});
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -410,14 +415,21 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
       const encodedPrompt = encodeURIComponent(prompt);
       
-      // Call the Vercel backend API instead of fetching Pollinations directly
-      // This will use our new Google Imagen 3 edge-function pipeline
-      const response = await callGeminiImageAPI(prompt, uploadedImageUrl);
+      // Call fal.ai via proxy for image generation
+      const response = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
+        input: {
+          prompt: prompt,
+          image_url: uploadedImageUrl || "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=2000&q=80",
+          strength: 0.85,
+        },
+        logs: true,
+      }) as any;
+
+      if (!response.images || response.images.length === 0) {
+        throw new Error("No image data returned from backend");
+      }
       
-      if (!response.imageBytes) throw new Error("No image data returned from backend");
-      
-      // Convert base64 to data URL
-      const dataUrl = `data:image/png;base64,${response.imageBytes}`;
+      const dataUrl = response.images[0].url;
       
       setRenderedImage(dataUrl);
       addToast('Design erfolgreich generiert!', 'success');
