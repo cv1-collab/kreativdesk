@@ -6,14 +6,19 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const falResponse = await fetch(targetUrl, {
+    const options: any = {
       method: req.method,
       headers: {
         'Authorization': `Key ${process.env.FAL_KEY}`,
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(req.body)
-    });
+      }
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      options.body = JSON.stringify(req.body);
+    }
+
+    const falResponse = await fetch(targetUrl, options);
 
     if (!falResponse.ok) {
       const errorText = await falResponse.text();
