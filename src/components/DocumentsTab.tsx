@@ -7,6 +7,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { db, storage } from '../firebase';
 import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, updateDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { decrementStorage } from '../utils/storageGuard';
 import { 
   Database, Building2, Briefcase, FolderOpen, FileText, Upload, Trash2, 
   Download, Eye, ArrowLeft, FolderPlus, Loader2, X, Search, HardDrive, ChevronRight
@@ -164,11 +165,33 @@ export default function DocumentsTab() {
     } catch (err) { addToast(t('upload_failed'), 'error'); }
   };
 
-  const handleDelete = async (docId: string, url?: string) => {
+  const handleDelete = async (docObj: any) => {
     if (!window.confirm(t('confirm_delete'))) return;
     try {
-      await deleteDoc(doc(db, 'documents', docId));
-      if (url) { const fileRef = ref(storage, url); await deleteObject(fileRef).catch(console.error); }
+      await deleteDoc(doc(db, 'documents', docObj.id));
+      if (docObj.url && !docObj.isFolder) {
+        const fileRef = ref(storage, docObj.url);
+        await deleteObject(fileRef).catch(console.error);
+
+        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+        let byteSize = 0;
+        if (docObj.size) {
+          if (typeof docObj.size === 'number') {
+            byteSize = docObj.size;
+          } else if (typeof docObj.size === 'string') {
+            const val = parseFloat(docObj.size);
+            if (!isNaN(val)) {
+              if (docObj.size.includes('GB')) byteSize = val * 1024 * 1024 * 1024;
+              else if (docObj.size.includes('MB')) byteSize = val * 1024 * 1024;
+              else if (docObj.size.includes('KB')) byteSize = val * 1024;
+              else byteSize = val;
+            }
+          }
+        }
+        if (byteSize > 0 && safeCompanyId) {
+          await decrementStorage(safeCompanyId, Math.floor(byteSize));
+        }
+      }
       addToast(t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
   };
@@ -402,7 +425,7 @@ export default function DocumentsTab() {
                              </>
                            )}
                            {!doc.isProjectNode && (
-                             <button onClick={(e) => { e.stopPropagation(); handleDelete(doc.id, doc.url); }} className="p-2 hover:bg-red-500/10 rounded-lg text-text-muted hover:text-red-500 transition-colors border border-transparent hover:border-red-500/30 opacity-0 group-hover:opacity-100" title={t('delete')}><Trash2 size={16} /></button>
+                             <button onClick={(e) => { e.stopPropagation(); handleDelete(doc); }} className="p-2 hover:bg-red-500/10 rounded-lg text-text-muted hover:text-red-500 transition-colors border border-transparent hover:border-red-500/30 opacity-0 group-hover:opacity-100" title={t('delete')}><Trash2 size={16} /></button>
                            )}
                          </td>
                        </tr>
@@ -449,7 +472,7 @@ export default function DocumentsTab() {
                              <div className="p-2 text-text-muted"><ChevronRight size={20}/></div>
                           )}
                           {!doc.isProjectNode && (
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(doc.id, doc.url); }} className="p-2.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 active:scale-95 transition-all"><Trash2 size={16}/></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDelete(doc); }} className="p-2.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 active:scale-95 transition-all"><Trash2 size={16}/></button>
                           )}
                         </div>
                       </div>

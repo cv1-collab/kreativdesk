@@ -13,10 +13,10 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
+import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { db, storage } from '../firebase';
 import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata } from 'firebase/storage';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -718,6 +718,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const handleDeletePlan = async () => {
     if (activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht gelöscht werden.", "info");
     if (activePlanId && window.confirm(t('confirm_delete_plan'))) {
+      if (planImage && planImage.includes('firebase')) {
+        try {
+          const fileRef = ref(storage, planImage);
+          const meta = await getMetadata(fileRef).catch(() => null);
+          await deleteObject(fileRef).catch(console.error);
+          if (meta && meta.size && currentUser?.companyId) {
+            await decrementStorage(currentUser.companyId, Number(meta.size));
+          }
+        } catch (e) { console.error("Error deleting plan image from storage:", e); }
+      }
+      
       await deleteDoc(doc(db, 'cad_plans', activePlanId));
       setPlanImage(null); setActivePlanId(null);
     }

@@ -39,3 +39,21 @@ export const incrementStorage = async (companyId: string, fileSize: number): Pro
     console.error("Fehler beim Aktualisieren des Storage-Zählers:", error);
   }
 };
+
+export const decrementStorage = async (companyId: string, fileSize: number): Promise<void> => {
+  try {
+    const compRef = doc(db, 'companies', companyId);
+    // Don't let it go below 0 just in case
+    const compSnap = await getDoc(compRef);
+    if (!compSnap.exists()) return;
+    
+    const currentUsed = compSnap.data().storageUsed || 0;
+    const newUsed = Math.max(0, currentUsed - fileSize);
+    
+    await updateDoc(compRef, {
+      storageUsed: newUsed
+    });
+  } catch (error) {
+    console.error("Fehler beim Verringern des Storage-Zählers:", error);
+  }
+};

@@ -19,8 +19,8 @@ import {
 import { cn } from '../utils';
 
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
-import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, setDoc, addDoc, collection, query, where, getDocs, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { storage, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -40,15 +40,13 @@ import { auth } from '../firebase';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
-  requestMiddleware: [
-    async (request) => {
-      if (auth.currentUser) {
-        const token = await auth.currentUser.getIdToken();
-        request.headers.set('Authorization', `Bearer ${token}`);
-      }
-      return request;
+  requestMiddleware: async (request: any) => {
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      request.headers.set('Authorization', `Bearer ${token}`);
     }
-  ]
+    return request;
+  }
 });
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -946,11 +944,36 @@ export default function BIMViewer() {
     }
   };
 
-  const handleDeleteModel = async (id: string) => {
+  const handleDeleteModel = async (model: any) => {
     if (!window.confirm(t('confirm_delete_model'))) return;
     try {
-      await deleteDoc(doc(db, 'documents', id));
-      if (activeModelId === id) setActiveModelId('default');
+      await deleteDoc(doc(db, 'documents', model.id));
+      
+      if (model.url) {
+        const fileRef = ref(storage, model.url);
+        await deleteObject(fileRef).catch(console.error);
+
+        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+        let byteSize = 0;
+        if (model.size) {
+          if (typeof model.size === 'number') {
+            byteSize = model.size;
+          } else if (typeof model.size === 'string') {
+            const val = parseFloat(model.size);
+            if (!isNaN(val)) {
+              if (model.size.includes('GB')) byteSize = val * 1024 * 1024 * 1024;
+              else if (model.size.includes('MB')) byteSize = val * 1024 * 1024;
+              else if (model.size.includes('KB')) byteSize = val * 1024;
+              else byteSize = val;
+            }
+          }
+        }
+        if (byteSize > 0 && safeCompanyId) {
+          await decrementStorage(safeCompanyId, Math.floor(byteSize));
+        }
+      }
+
+      if (activeModelId === model.id) setActiveModelId('default');
     } catch (err) { addToast(t('error_processing_model'), 'error'); }
   };
 
@@ -1047,7 +1070,7 @@ export default function BIMViewer() {
                 {model.name}
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); handleDeleteModel(model.id); }} className="p-1 hover:bg-red-500/20 rounded text-text-muted hover:text-red-500"><Trash2 size={14} /></button>
+                <button onClick={(e) => { e.stopPropagation(); handleDeleteModel(model); }} className="p-1 hover:bg-red-500/20 rounded text-text-muted hover:text-red-500"><Trash2 size={14} /></button>
                 {activeModelId === model.id && <CheckCircle2 size={16} className="ml-1" />}
               </div>
             </div>

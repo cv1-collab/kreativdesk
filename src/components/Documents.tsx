@@ -6,7 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { db, storage } from '../firebase';
 import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
+import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { motion, AnimatePresence } from 'motion/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
@@ -176,13 +176,32 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     } catch (err) { addToast(t('upload_failed'), 'error'); }
   };
 
-  const handleDelete = async (docId: string, url?: string) => {
+  const handleDelete = async (docObj: any) => {
     if (!window.confirm(t('confirm_delete'))) return;
     try {
-      await deleteDoc(doc(db, 'documents', docId));
-      if (url) {
-        const fileRef = ref(storage, url);
+      await deleteDoc(doc(db, 'documents', docObj.id));
+      if (docObj.url && !docObj.isFolder) {
+        const fileRef = ref(storage, docObj.url);
         await deleteObject(fileRef).catch(console.error);
+
+        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+        let byteSize = 0;
+        if (docObj.size) {
+          if (typeof docObj.size === 'number') {
+            byteSize = docObj.size;
+          } else if (typeof docObj.size === 'string') {
+            const val = parseFloat(docObj.size);
+            if (!isNaN(val)) {
+              if (docObj.size.includes('GB')) byteSize = val * 1024 * 1024 * 1024;
+              else if (docObj.size.includes('MB')) byteSize = val * 1024 * 1024;
+              else if (docObj.size.includes('KB')) byteSize = val * 1024;
+              else byteSize = val;
+            }
+          }
+        }
+        if (byteSize > 0 && safeCompanyId) {
+          await decrementStorage(safeCompanyId, Math.floor(byteSize));
+        }
       }
       addToast(t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
@@ -279,7 +298,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                           <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 text-text-muted hover:text-emerald-500 hover:bg-background rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('download')}><Download size={16} /></a>
                         </>
                       )}
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(doc.id, doc.url); }} className="p-2 hover:bg-red-500/10 rounded-lg text-text-muted hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" title={t('delete')}><Trash2 size={16} /></button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(doc); }} className="p-2 hover:bg-red-500/10 rounded-lg text-text-muted hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" title={t('delete')}><Trash2 size={16} /></button>
                     </td>
                   </tr>
                 ))
