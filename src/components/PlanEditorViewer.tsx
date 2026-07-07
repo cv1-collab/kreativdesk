@@ -26,7 +26,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     save: 'Save', upload_success: 'Upload successful!', upload_failed: 'Upload failed.',
     polygon_click_corners: 'Click corners.', close_shape: 'Close shape', upload_cad_plan: 'Upload Main Plan',
-    upload_cad_desc: 'Drop a file (JPG, PNG) here.', true_scale_engine: 'TrueScale™ Engine',
+    upload_cad_desc: 'Drop a file (JPG, PNG, PDF) here.', true_scale_engine: 'TrueScale™ Engine',
     no_plan_loaded: 'No plan loaded', landscape: 'Landscape', portrait: 'Portrait', upload_plan: 'Upload Plan',
     pdf_export: 'PDF Export', save_cloud: 'Save to Cloud', properties: 'Properties', length_meters: 'Length in meters',
     color: 'Color', line_thickness: 'Line thickness', text_size: 'Text size', scale: 'Scale', project: 'Project',
