@@ -134,6 +134,20 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         isFolder: false,
         createdAt: serverTimestamp()
       });
+
+      // Notification erstellen
+      await addDoc(collection(db, 'notifications'), { 
+        title: 'Neues Dokument', 
+        message: `${file.name} wurde hochgeladen.`, 
+        type: 'document', 
+        isRead: false, 
+        visibility: 'owner', 
+        companyId: safeCompanyId, 
+        ownerId: currentUser.uid, 
+        projectId: currentProjectId,
+        createdAt: new Date().toISOString() 
+      });
+
       addToast(t('upload') + ' ' + t('completed'), 'success');
     } catch (error) { addToast(t('upload_failed'), 'error'); } 
     finally { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
@@ -245,8 +259,14 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 displayItems.map((doc) => (
                   <tr key={doc.id} onClick={() => doc.isFolder && navigateToFolder(doc.id, doc.name)} className={cn("hover:bg-background transition-colors group", doc.isFolder ? "cursor-pointer" : "")}>
                     <td className="px-6 py-4 flex items-center gap-4">
-                      <div className={cn("p-2.5 rounded-lg shrink-0", doc.isFolder ? "bg-orange-500/10 text-orange-500" : "bg-surface border border-border text-text-muted")}>
-                        {doc.isFolder ? <FolderOpen size={20} className="fill-orange-500/20" /> : <FileText size={20} />}
+                      <div className="relative">
+                        <div className={cn("p-2.5 rounded-lg shrink-0", doc.isFolder ? "bg-orange-500/10 text-orange-500" : "bg-surface border border-border text-text-muted")}>
+                          {doc.isFolder ? <FolderOpen size={20} className="fill-orange-500/20" /> : <FileText size={20} />}
+                        </div>
+                        {/* Red Dot if it's a new file (within 24 hours) */}
+                        {!doc.isFolder && doc.createdAt && (Date.now() - (doc.createdAt?.seconds ? doc.createdAt.seconds * 1000 : new Date(doc.createdAt).getTime()) < 24 * 60 * 60 * 1000) && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-surface animate-pulse"></div>
+                        )}
                       </div>
                       <div className="font-bold text-text-primary text-[15px] group-hover:text-accent-ai transition-colors">{doc.name}</div>
                     </td>
