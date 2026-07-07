@@ -368,6 +368,54 @@ async function startServer() {
     }
   });
 
+  // --- 6.1 EXTERNAL CAMERA WEBHOOK ---
+  app.post('/api/webhook/camera-defect', async (req, res) => {
+    try {
+      const { projectId, companyId, imageUrl, description, cameraName, secret } = req.body;
+      
+      // Basic security check
+      const expectedSecret = process.env.CAMERA_WEBHOOK_SECRET || 'kreativ-desk-camera-123';
+      if (secret !== expectedSecret) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid secret token' });
+      }
+
+      if (!projectId || !companyId) {
+        return res.status(400).json({ error: 'Missing projectId or companyId' });
+      }
+
+      if (!firebaseAdmin || !db) {
+        return res.status(500).json({ error: 'Firebase Admin not initialized' });
+      }
+
+      // Create a defect document in the global 'defects' collection
+      const newDefect = {
+        projectId,
+        companyId,
+        ownerId: 'system_camera',
+        title: `⚠️ Camera Alert: ${cameraName || 'Site Camera'}`,
+        description: description || 'Automated safety alert detected by camera AI.',
+        imageUrl: imageUrl || '',
+        status: 'To Do',
+        priority: 'Critical',
+        trade: 'Sicherheit / Überwachung',
+        location: cameraName || 'Site',
+        date: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      const docRef = await db.collection('defects').add(newDefect);
+      
+      // Set the generated ID onto the document to match the frontend schema
+      await docRef.update({ id: docRef.id });
+
+      console.log(`Camera defect ticket created successfully: ${docRef.id}`);
+      res.status(200).json({ success: true, defectId: docRef.id });
+    } catch (error: any) {
+      console.error("Camera Webhook Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // --- 7. GEMINI AI PROXY (Sicherheit für den API Key) ---
   app.post('/api/generate', async (req, res) => {
     try {
