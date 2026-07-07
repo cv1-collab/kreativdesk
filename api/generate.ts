@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { verifyAuth } from './_auth';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -6,7 +7,11 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    // +++ FIX: Echtes Node.js Environment ohne VITE_ Präfix +++
+    const user = await verifyAuth(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY; 
     
     if (!apiKey) {

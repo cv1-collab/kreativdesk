@@ -70,9 +70,16 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Nutzer dürfen ihr eigenes Profil lesen/schreiben ODER Admins der gleichen Firma
-      allow read, write: if isSystemAdmin() ||
-             request.auth.uid == userId || isSameCompany(resource.data.companyId);
+      allow read: if isSystemAdmin() || request.auth.uid == userId || isSameCompany(resource.data.companyId);
+      
+      // Nutze request.resource.data.diff, um zu prüfen, ob geschützte Felder geändert werden
+      allow update: if isSystemAdmin() || (
+        (request.auth.uid == userId || isCompanyOwner(resource.data.companyId)) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'companyId', 'plan', 'hasActiveSubscription', 'stripeCustomerId', 'subscriptionId', 'subscriptionStatus', 'trialEndsAt']) || isSystemAdmin() || (isCompanyOwner(resource.data.companyId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt'])))
+      );
+      
+      allow create: if isSystemAdmin() || request.auth.uid == userId;
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
     }
 
     // ===============================================================
@@ -90,7 +97,11 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /companyUsers/{userId} {
-      allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow read: if isSystemAdmin() || isSameCompany(resource.data.companyId);
+      allow update: if isSystemAdmin() || (
+        isSameCompany(resource.data.companyId) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isCompanyOwner(resource.data.companyId))
+      );
       allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }

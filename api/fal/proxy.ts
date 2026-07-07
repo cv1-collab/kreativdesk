@@ -1,3 +1,5 @@
+import { verifyAuth } from '../_auth';
+
 export default async function handler(req: any, res: any) {
   const targetUrl = req.headers['x-fal-target-url'];
   
@@ -6,6 +8,10 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    const user = await verifyAuth(req);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
     const headers: any = {
       'Authorization': `Key ${process.env.FAL_KEY}`,
       'Content-Type': 'application/json'

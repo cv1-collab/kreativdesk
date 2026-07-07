@@ -36,8 +36,19 @@ import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@reac
 
 import { fal } from "@fal-ai/client";
 
+import { auth } from '../firebase';
+
 fal.config({
   proxyUrl: "/api/fal/proxy",
+  requestMiddleware: [
+    async (request) => {
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        request.headers.set('Authorization', `Bearer ${token}`);
+      }
+      return request;
+    }
+  ]
 });
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {

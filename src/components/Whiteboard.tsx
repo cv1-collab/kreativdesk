@@ -12,8 +12,19 @@ import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { fal } from "@fal-ai/client";
 
+import { auth } from '../firebase';
+
 fal.config({
   proxyUrl: "/api/fal/proxy",
+  requestMiddleware: [
+    async (request) => {
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        request.headers.set('Authorization', `Bearer ${token}`);
+      }
+      return request;
+    }
+  ]
 });
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';

@@ -1,10 +1,16 @@
-// Die GoogleGenAI Bibliothek und der VITE_GEMINI_API_KEY sind hier restlos gestrichen!
-// Zero-Trust-Architektur: Das Frontend kommuniziert ausschliesslich mit deinem gesicherten Vercel-Backend.
+import { auth } from '../firebase';
 
 export async function callGeminiAPI(model: string, contents: any, config?: any) {
+  let token = '';
+  if (auth.currentUser) {
+    token = await auth.currentUser.getIdToken();
+  }
   const response = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ model, contents, config })
   });
 
@@ -30,10 +36,16 @@ export async function callGeminiChatAPI(model: string, message: string, history:
 }
 
 export async function callGeminiEmbedAPI(model: string, contents: any) {
-  // Embeddings erfordern einen eigenen Endpunkt im Backend, da die KI hier Vektoren statt Text berechnet
+  let token = '';
+  if (auth.currentUser) {
+    token = await auth.currentUser.getIdToken();
+  }
   const response = await fetch('/api/embed', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ model, contents })
   });
 

@@ -17,10 +17,16 @@ service firebase.storage {
 
     // 2. Öffentliche Scanner (Ohne Login nutzbar via Session-ID)
     match /temp_receipts/{imageId} { 
-      allow read, write: if true; 
+      allow create: if true;
+      allow get: if true;
+      allow list: if false;
+      allow delete: if request.auth != null;
     }
     match /scanned_vcards/{imageId} { 
-      allow read, write: if true; 
+      allow create: if true;
+      allow get: if true;
+      allow list: if false;
+      allow delete: if request.auth != null;
     }
 
     // 3. System-Assets (AGBs, Logos etc.)
