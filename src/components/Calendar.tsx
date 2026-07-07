@@ -1265,14 +1265,18 @@ export default function Calendar() {
 
                         {smartMarkers.map((marker, i) => {
                           const leftPct = getYearPercentage(marker.date);
-                          const offset = (i % 4) * 28;
+                          const offset = i * 64;
                           return (
                             <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
                               <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
-                              <div className="absolute left-1/2 -translate-x-1/2 px-2 py-1 rounded text-[10px] font-bold shadow-md whitespace-nowrap border flex flex-col items-center pointer-events-auto bg-surface" style={{ top: `${10 + offset}px`, color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
-                                <span className="text-[8px] mb-0.5 text-text-muted">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
-                                {marker.label}
-                                <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer"><X size={10}/></button>
+                              <div className="absolute pointer-events-auto flex items-center" style={{ top: `${20 + offset}px`, left: '-5px' }}>
+                                <div className="w-2.5 h-2.5 rotate-45 border-[2px] bg-white shadow-sm shrink-0" style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                                <div className="w-3 h-[2px]" style={{ backgroundColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                                <div className="px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col relative group-hover/marker:shadow-lg transition-shadow" style={{ color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
+                                  <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
+                                  <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
+                                  <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>
+                                </div>
                               </div>
                             </div>
                           );

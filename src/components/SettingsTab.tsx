@@ -10,7 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 import { db, storage } from '../firebase'; // auth wurde hier entfernt, da wir jetzt Vercel nutzen
 import { doc, updateDoc, collection, addDoc, serverTimestamp, setDoc, getDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
+import { checkStorageLimit, incrementStorage, STORAGE_LIMITS } from '../utils/storageGuard';
 import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/stripeClient';
 import { hasFeature } from '../utils/planFeatures';
 
@@ -104,6 +104,7 @@ export default function SettingsTab() {
   const [companyPlan, setCompanyPlan] = useState('Free Trial');
   const [maxSeats, setMaxSeats] = useState(1);
   const [usedSeats, setUsedSeats] = useState(1);
+  const [storageUsed, setStorageUsed] = useState(0);
 
   // Loading States
   const [isSaving, setIsSaving] = useState(false);
@@ -145,6 +146,7 @@ export default function SettingsTab() {
         setCompanyPlan(data.plan || 'Free Trial');
         setMaxSeats(data.maxSeats || 1);
         setUsedSeats(data.usedSeats || 1);
+        setStorageUsed(data.storageUsed || 0);
       }
     });
     return () => unsub();
@@ -505,13 +507,33 @@ export default function SettingsTab() {
             <h4 className="text-xl font-bold mb-1 text-emerald-500">Kreativ-Desk {companyPlan.includes('Trial') ? 'Trial' : companyPlan}</h4>
             <p className="text-sm text-text-muted mb-6 leading-relaxed">Dein aktueller Tarif für {agencyName || 'deine Agentur'}.</p>
             
-            <div className="bg-background/50 border border-border/50 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Users size={14}/> Lizenzen</span>
-                <span className="text-sm font-bold text-text-primary">{usedSeats} / {maxSeats}</span>
+            <div className="bg-background/50 border border-border/50 rounded-lg p-4 mb-6 space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Users size={14}/> Lizenzen</span>
+                  <span className="text-sm font-bold text-text-primary">{usedSeats} / {maxSeats}</span>
+                </div>
+                <div className="w-full bg-surface rounded-full h-2 overflow-hidden border border-border/50">
+                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(usedSeats / maxSeats) * 100}%` }}></div>
+                </div>
               </div>
-              <div className="w-full bg-surface rounded-full h-2 overflow-hidden border border-border/50">
-                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(usedSeats / maxSeats) * 100}%` }}></div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Save size={14}/> Speicherplatz</span>
+                  <span className="text-sm font-bold text-text-primary">
+                    {(storageUsed / (1024 * 1024 * 1024)).toFixed(2)} GB / {((STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter']) / (1024 * 1024 * 1024)).toFixed(0)} GB
+                  </span>
+                </div>
+                <div className="w-full bg-surface rounded-full h-2 overflow-hidden border border-border/50">
+                  <div 
+                    className={cn(
+                      "h-full rounded-full",
+                      (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) > 0.9 ? "bg-red-500" : 
+                      (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) > 0.75 ? "bg-amber-500" : "bg-emerald-500"
+                    )} 
+                    style={{ width: `${Math.min(100, (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) * 100)}%` }}></div>
+                </div>
               </div>
             </div>
             
