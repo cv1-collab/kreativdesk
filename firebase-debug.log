@@ -1,0 +1,168 @@
+[debug] [2026-07-06T12:29:03.536Z] ----------------------------------------------------------------------
+[debug] [2026-07-06T12:29:03.544Z] Command:       /usr/local/bin/firebase /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase deploy --only functions
+[debug] [2026-07-06T12:29:03.545Z] CLI Version:   15.8.0
+[debug] [2026-07-06T12:29:03.545Z] Platform:      darwin
+[debug] [2026-07-06T12:29:03.545Z] Node Version:  v20.18.2
+[debug] [2026-07-06T12:29:03.545Z] Time:          Mon Jul 06 2026 14:29:03 GMT+0200 (Central European Summer Time)
+[debug] [2026-07-06T12:29:03.546Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-06T12:29:03.550Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-07-06T12:29:04.858Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-06T12:29:04.860Z] > authorizing via signed-in user (cv1@gmx.ch)
+[debug] [2026-07-06T12:29:04.860Z] [iam] checking project kreativdesk-schweiz for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[debug] [2026-07-06T12:29:04.862Z] Checked if tokens are valid: false, expires at: 1783253820403
+[debug] [2026-07-06T12:29:04.862Z] Checked if tokens are valid: false, expires at: 1783253820403
+[debug] [2026-07-06T12:29:04.862Z] > refreshing access token with scopes: []
+[debug] [2026-07-06T12:29:04.864Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-07-06T12:29:04.864Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-07-06T12:29:05.046Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-07-06T12:29:05.047Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-07-06T12:29:05.062Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz:testIamPermissions [none]
+[debug] [2026-07-06T12:29:05.063Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz:testIamPermissions  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:05.063Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-07-06T12:29:05.177Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-07-06T12:29:05.177Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-07-06T12:29:05.822Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz:testIamPermissions 200
+[debug] [2026-07-06T12:29:05.823Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[debug] [2026-07-06T12:29:05.824Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:05.824Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:05.825Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/kreativdesk-schweiz/serviceAccounts/kreativdesk-schweiz@appspot.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-07-06T12:29:05.825Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/kreativdesk-schweiz/serviceAccounts/kreativdesk-schweiz@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-07-06T12:29:06.581Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/kreativdesk-schweiz/serviceAccounts/kreativdesk-schweiz@appspot.gserviceaccount.com:testIamPermissions 404
+[debug] [2026-07-06T12:29:06.582Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/kreativdesk-schweiz/serviceAccounts/kreativdesk-schweiz@appspot.gserviceaccount.com:testIamPermissions {"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}}
+[debug] [2026-07-06T12:29:06.584Z] [functions] service account IAM check errored, deploy may fail: Request to https://iam.googleapis.com/v1/projects/kreativdesk-schweiz/serviceAccounts/kreativdesk-schweiz@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account {"name":"FirebaseError","children":[],"context":{"body":{"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}},"response":{"statusCode":404}},"exit":1,"message":"Request to https://iam.googleapis.com/v1/projects/kreativdesk-schweiz/serviceAccounts/kreativdesk-schweiz@appspot.gserviceaccount.com:testIamPermissions had HTTP Error: 404, Unknown service account","status":404}
+[info] 
+[info] === Deploying to 'kreativdesk-schweiz'...
+[info] 
+[info] i  deploying functions 
+[debug] [2026-07-06T12:29:06.594Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:06.594Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:06.595Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2026-07-06T12:29:06.595Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudresourcemanager.googleapis.com  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:07.548Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudresourcemanager.googleapis.com 200
+[debug] [2026-07-06T12:29:07.548Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2026-07-06T12:29:07.561Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.561Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.561Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz [none]
+[debug] [2026-07-06T12:29:07.783Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz 200
+[debug] [2026-07-06T12:29:07.783Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/kreativdesk-schweiz {"projectNumber":"1093121683682","projectId":"kreativdesk-schweiz","lifecycleState":"ACTIVE","name":"KreativDesk Schweiz","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-07-05T10:47:44.970Z"}
+[info] i  functions: preparing codebase default for deployment 
+[info] i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+[debug] [2026-07-06T12:29:07.787Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.787Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.788Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.789Z] Checked if tokens are valid: true, expires at: 1783344544047
+[info] i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+[debug] [2026-07-06T12:29:07.790Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.790Z] Checked if tokens are valid: true, expires at: 1783344544047
+[info] i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[debug] [2026-07-06T12:29:07.791Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.791Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:07.793Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com [none]
+[debug] [2026-07-06T12:29:07.793Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:07.794Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/runtimeconfig.googleapis.com [none]
+[debug] [2026-07-06T12:29:07.794Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/runtimeconfig.googleapis.com  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:07.798Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com [none]
+[debug] [2026-07-06T12:29:07.798Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:07.801Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com [none]
+[debug] [2026-07-06T12:29:07.801Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:08.697Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com 200
+[debug] [2026-07-06T12:29:08.698Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com [omitted]
+[warn] ⚠  functions: missing required API cloudbuild.googleapis.com. Enabling now... 
+[debug] [2026-07-06T12:29:08.703Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:08.703Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:08.703Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com:enable [none]
+[debug] [2026-07-06T12:29:08.703Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com:enable  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:08.706Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/runtimeconfig.googleapis.com 200
+[debug] [2026-07-06T12:29:08.706Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/runtimeconfig.googleapis.com [omitted]
+[debug] [2026-07-06T12:29:08.716Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com 200
+[debug] [2026-07-06T12:29:08.717Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com [omitted]
+[warn] ⚠  artifactregistry: missing required API artifactregistry.googleapis.com. Enabling now... 
+[debug] [2026-07-06T12:29:08.717Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:08.717Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:08.718Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com:enable [none]
+[debug] [2026-07-06T12:29:08.718Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com:enable  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:08.720Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com 200
+[debug] [2026-07-06T12:29:08.721Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com [omitted]
+[warn] ⚠  functions: missing required API cloudfunctions.googleapis.com. Enabling now... 
+[debug] [2026-07-06T12:29:08.721Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:08.721Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:08.723Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com:enable [none]
+[debug] [2026-07-06T12:29:08.723Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com:enable  x-goog-user-project=kreativdesk-schweiz
+[debug] [2026-07-06T12:29:09.546Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com:enable 200
+[debug] [2026-07-06T12:29:09.546Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudbuild.googleapis.com:enable [omitted]
+[debug] [2026-07-06T12:29:09.895Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com:enable 200
+[debug] [2026-07-06T12:29:09.896Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/cloudfunctions.googleapis.com:enable [omitted]
+[debug] [2026-07-06T12:29:10.143Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com:enable 200
+[debug] [2026-07-06T12:29:10.144Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/kreativdesk-schweiz/services/artifactregistry.googleapis.com:enable [omitted]
+[debug] [2026-07-06T12:29:20.164Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:20.174Z] Checked if tokens are valid: true, expires at: 1783344544047
+[debug] [2026-07-06T12:29:20.176Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/kreativdesk-schweiz/adminSdkConfig [none]
+[debug] [2026-07-06T12:29:20.839Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/kreativdesk-schweiz/adminSdkConfig 200
+[debug] [2026-07-06T12:29:20.839Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/kreativdesk-schweiz/adminSdkConfig {"projectId":"kreativdesk-schweiz","storageBucket":"kreativdesk-schweiz.firebasestorage.app"}
+[debug] [2026-07-06T12:29:20.844Z] Validating nodejs source
+[warn] ⚠  functions: Runtime Node.js 20 was deprecated on 2026-04-30 and will be decommissioned on 2026-10-30, after which you will not be able to deploy without upgrading. Consider upgrading now to avoid disruption. See https://cloud.google.com/functions/docs/runtime-support for full details on the lifecycle policy 
+[warn] ⚠  functions: Couldn't find firebase-functions package in your source code. Have you run 'npm install'? 
+[debug] [2026-07-06T12:29:20.853Z] getFunctionsSDKVersion encountered error: Cannot find module 'firebase-functions'
+Require stack:
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/versioning.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/emulator/functionsEmulatorShared.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/frameworks/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/prepare.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/deploy.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/cli.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase.js {"code":"MODULE_NOT_FOUND","requireStack":["/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/versioning.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/emulator/functionsEmulatorShared.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/frameworks/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/prepare.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/deploy.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/index.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/cli.js","/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase.js"]}
+[debug] [2026-07-06T12:29:20.857Z] checkFunctionsSDKVersion encountered error: Invalid Version:  {}
+[debug] [2026-07-06T12:29:20.857Z] > [functions] package.json contents: {
+  "name": "functions",
+  "version": "1.0.0",
+  "description": "Kreativ Desk Backend",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "private": true
+}
+[debug] [2026-07-06T12:29:20.857Z] Building nodejs source
+[info] i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[debug] [2026-07-06T12:29:20.858Z] Could not parse firebase-functions version '' into semver.
+[debug] [2026-07-06T12:29:20.860Z] Could not find functions.yaml. Must use http discovery
+[debug] [2026-07-06T12:29:20.876Z] Error: Cannot find module 'firebase-functions'
+Require stack:
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/emulator/functionsEmulatorShared.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/frameworks/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/prepare.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/hosting/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/deploy.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/commands/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/index.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/cli.js
+- /Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/bin/firebase.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1225:15)
+    at Function._resolveFilename (pkg/prelude/bootstrap.js:1959:46)
+    at Function.resolve (node:internal/modules/helpers:190:19)
+    at Delegate.findFunctionsBinary (/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:101:33)
+    at Delegate.spawnFunctionsProcess (/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:131:30)
+    at Delegate.serveAdmin (/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:152:35)
+    at Delegate.discoverBuild (/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/runtimes/node/index.js:192:41)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async loadCodebases (/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js:334:33)
+    at async prepare (/Users/carlo/.cache/firebase/tools/lib/node_modules/firebase-tools/lib/deploy/functions/prepare.js:69:24)
+[error] 
+[error] Error: An unexpected error has occurred.
