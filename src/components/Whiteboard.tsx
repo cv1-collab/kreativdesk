@@ -38,6 +38,7 @@ import { collection, onSnapshot, doc, setDoc, deleteDoc, query, where, addDoc, g
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import PremiumFeature from './PremiumFeature';
 
 interface LayerData { id: string; name: string; visible: boolean; items: any[]; }
 
@@ -685,7 +686,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
   return (
-    <>
+    <PremiumFeature>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex-1 w-full h-full min-h-0 flex flex-col bg-background text-text-primary overflow-hidden">
         
         {/* HEADER */}
@@ -1055,6 +1056,6 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         </>,
         document.body
       )}
-    </>
+    </PremiumFeature>
   );
 }

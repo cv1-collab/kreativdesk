@@ -123,6 +123,33 @@ async function startServer() {
     }
   };
 
+  // --- 0.2 SUBSCRIPTION MIDDLEWARE (Zero-Trust Security for AI & Premium Endpoints) ---
+  const verifySubscription = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.uid) return res.status(401).json({ error: 'Unauthorized' });
+      
+      const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
+      if (SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
+        return next();
+      }
+
+      if (!db) return res.status(500).json({ error: 'Database not connected' });
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      if (!userDoc.exists) return res.status(403).json({ error: 'Forbidden: User not found' });
+      
+      const userData = userDoc.data();
+      if (userData?.hasActiveSubscription === false) {
+        return res.status(403).json({ error: 'Forbidden: Active subscription required.' });
+      }
+      
+      (req as any).dbUser = userData; // Attach DB user data for routes to use if needed
+      next();
+    } catch (err) {
+      console.error('Subscription verification failed:', err);
+      return res.status(500).json({ error: 'Internal server error during authorization' });
+    }
+  };
 
   // --- 1. STRIPE CHECKOUT SESSION (Kugelsicher mit priceId & Gutscheinen) ---
   app.post('/api/create-checkout-session', async (req, res) => {
@@ -435,7 +462,7 @@ async function startServer() {
   });
 
   // --- 7. GEMINI AI PROXY (Sicherheit für den API Key) ---
-  app.post('/api/generate', verifyAuth, async (req, res) => {
+  app.post('/api/generate', verifyAuth, verifySubscription, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
@@ -460,7 +487,7 @@ async function startServer() {
   });
 
   // --- 7a. GEMINI IMAGE GENERATION PROXY ---
-  app.post('/api/generate-image', verifyAuth, async (req, res) => {
+  app.post('/api/generate-image', verifyAuth, verifySubscription, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
@@ -491,7 +518,7 @@ async function startServer() {
   });
 
 // --- 7b. GEMINI AI EMBEDDING PROXY ---
-  app.post('/api/embed', verifyAuth, async (req, res) => {
+  app.post('/api/embed', verifyAuth, verifySubscription, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });

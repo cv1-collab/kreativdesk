@@ -4,6 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
+import PremiumFeature from './PremiumFeature';
 import { db, storage } from '../firebase';
 import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp, writeBatch, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -982,7 +983,8 @@ const handleGenerateTeamSlide = async () => {
   }
 
   return (
-    <div className={cn("fixed inset-0 z-[100000] bg-background text-text-primary flex flex-col lg:flex-row overflow-hidden h-[100dvh]")}>
+    <PremiumFeature>
+      <div className={cn("fixed inset-0 z-[100000] bg-background text-text-primary flex flex-col lg:flex-row overflow-hidden h-[100dvh]")}>
       
       {/* === MOBILE LAYOUT === */}
       <div className="lg:hidden flex flex-col w-full h-full bg-[#09090b] overflow-hidden">
@@ -1389,7 +1391,7 @@ const handleGenerateTeamSlide = async () => {
           </div>
         )}
       </AnimatePresence>
-
     </div>
+    </PremiumFeature>
   );
 }

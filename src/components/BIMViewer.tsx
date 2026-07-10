@@ -31,7 +31,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useProject } from '../contexts/ProjectContext'; 
 import { jsPDF } from 'jspdf';
 
-import UniversalPDFStudio from './UniversalPDFStudio';
+import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
+import PremiumFeature from './PremiumFeature';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
 import { fal } from "@fal-ai/client";
@@ -1167,7 +1168,7 @@ export default function BIMViewer() {
   );
 
   return (
-    <>
+    <PremiumFeature>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="absolute inset-0 flex flex-col bg-background p-4 md:p-6 gap-4">
         
         <header className="flex flex-col md:flex-row md:items-start justify-between gap-4 shrink-0">
@@ -1455,6 +1456,6 @@ export default function BIMViewer() {
         </>,
         document.body
       )}
-    </>
+    </PremiumFeature>
   );
 }

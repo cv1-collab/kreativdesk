@@ -13,6 +13,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import PremiumFeature from './PremiumFeature';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { db, storage } from '../firebase';
 import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -1195,6 +1196,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   return (
+    <PremiumFeature>
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
       <header className="h-16 border-b border-border bg-surface/90 backdrop-blur-xl flex flex-row items-center justify-between px-6 shrink-0 z-30 shadow-sm flex-wrap overflow-hidden">
@@ -1574,5 +1576,6 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         )}
       </UniversalPDFStudio>
     </div>
+    </PremiumFeature>
   );
 }

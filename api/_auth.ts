@@ -40,7 +40,26 @@ export async function verifyAuth(req: any) {
 
   try {
     const decodedToken = await adminInstance.auth().verifyIdToken(token);
-    return decodedToken;
+    
+    const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
+    if (SUPER_ADMINS.includes(decodedToken.email?.toLowerCase() || '')) {
+      return decodedToken;
+    }
+
+    const db = adminInstance.firestore();
+    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+    if (!userDoc.exists) {
+      console.error('User not found in database');
+      return null;
+    }
+
+    const userData = userDoc.data();
+    if (userData?.hasActiveSubscription === false) {
+      console.error('Active subscription required');
+      return null;
+    }
+
+    return { ...decodedToken, plan: userData?.plan };
   } catch (error) {
     console.error('Auth verification failed:', error);
     return null;
