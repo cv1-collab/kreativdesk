@@ -392,7 +392,7 @@ export default function Calendar() {
   const [editingShape, setEditingShape] = useState<Shape | null>(null);
 
   const UI_HEADER_H = 45;
-  const UI_ROW_H = 88;
+  const UI_ROW_H = 64;
   const UI_PAD_TOP = 16;
   const UI_PAD_BOT = 40;
   const chartMinHeight = Math.max(500, UI_HEADER_H + UI_PAD_TOP + (ganttTasks.length * UI_ROW_H) + UI_PAD_BOT);
@@ -1011,11 +1011,11 @@ export default function Calendar() {
                       const offsetY = marker.offsetY !== undefined ? marker.offsetY : defaultOffset;
 
                       return (
-                        <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
-                          <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                        <div key={marker.id} className="absolute top-0 bottom-0 w-px group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
+                          <div className={cn("absolute inset-0 border-l-2 z-[30]", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
                           
                           <div 
-                            className={cn("absolute pointer-events-auto flex items-center transition-transform", activeTool === 'cursor' ? 'cursor-ns-resize hover:scale-105' : '')} 
+                            className={cn("absolute pointer-events-auto flex items-center transition-transform z-[50]", activeTool === 'cursor' ? 'cursor-ns-resize hover:scale-105' : '')} 
                             style={{ top: `${UI_HEADER_H + UI_PAD_TOP + offsetY}px`, left: '-5px' }}
                             onPointerDown={(e) => {
                               if (activeTool === 'cursor') {
@@ -1297,11 +1297,11 @@ export default function Calendar() {
                           const offsetY = marker.offsetY !== undefined ? marker.offsetY : defaultOffset;
 
                           return (
-                            <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
-                              <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                            <div key={marker.id} className="absolute top-0 bottom-0 w-px group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
+                              <div className={cn("absolute inset-0 border-l-2 z-[30]", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
                               
                               <div 
-                                className={cn("absolute pointer-events-auto flex items-center transition-transform", activeTool === 'cursor' ? 'cursor-ns-resize hover:scale-105' : '')} 
+                                className={cn("absolute pointer-events-auto flex items-center transition-transform z-[50]", activeTool === 'cursor' ? 'cursor-ns-resize hover:scale-105' : '')} 
                                 style={{ top: `${20 + offsetY}px`, left: '-5px' }}
                                 onPointerDown={(e) => {
                                   if (activeTool === 'cursor') {
