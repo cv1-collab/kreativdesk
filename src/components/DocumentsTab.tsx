@@ -5,12 +5,13 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useProject } from '../contexts/ProjectContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, updateDoc, arrayUnion, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { decrementStorage } from '../utils/storageGuard';
 import { 
   Database, Building2, Briefcase, FolderOpen, FileText, Upload, Trash2, 
-  Download, Eye, ArrowLeft, FolderPlus, Loader2, X, Search, HardDrive, ChevronRight
+  Download, Eye, ArrowLeft, FolderPlus, Loader2, X, Search, HardDrive, ChevronRight,
+  Lock, Globe
 } from 'lucide-react';
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -82,7 +83,9 @@ export default function DocumentsTab() {
   useEffect(() => {
     if (!currentUser || !db || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('isFolder', '==', false));
+    const q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('isFolder', '==', false),
+      or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser.uid))
+    );
     
     const unsub = onSnapshot(q, (snapshot) => {
       setAllFilesForBadges(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -100,7 +103,9 @@ export default function DocumentsTab() {
     let q;
 
     if (activeCategory === 'company') {
-      q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', 'global'), where('category', '==', 'company'), where('folderId', '==', currentFolderId));
+      q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', 'global'), where('category', '==', 'company'), where('folderId', '==', currentFolderId),
+        or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser.uid))
+      );
       unsub = onSnapshot(q, (snapshot) => {
         setDocuments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       }, (err) => console.error("Company Docs Snapshot Error:", err));
@@ -110,7 +115,9 @@ export default function DocumentsTab() {
         return;
       }
       const projId = getProjId();
-      q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', projId));
+      q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', projId),
+        or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser.uid))
+      );
       
       unsub = onSnapshot(q, (snapshot) => {
         let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -143,6 +150,7 @@ export default function DocumentsTab() {
         ownerId: currentUser.uid, companyId: safeCompanyId, projectId: projId,
         folderId: currentFolderId === projId ? '' : currentFolderId, 
         category: activeCategory, isFolder: false, createdAt: new Date().toISOString(),
+        visibility: 'company',
         readBy: [currentUser.uid] // Uploader hat es automatisch gelesen
       });
       addToast(t('upload') + ' ' + t('completed'), 'success');
@@ -159,7 +167,7 @@ export default function DocumentsTab() {
       await addDoc(collection(db, 'documents'), {
         name: newFolderName, isFolder: true, ownerId: currentUser.uid, companyId: safeCompanyId,
         projectId: projId, folderId: currentFolderId === projId ? '' : currentFolderId, 
-        category: activeCategory, createdAt: new Date().toISOString()
+        category: activeCategory, createdAt: new Date().toISOString(), visibility: 'company'
       });
       setNewFolderName(''); setIsNewFolderModalOpen(false); addToast(t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
@@ -194,6 +202,16 @@ export default function DocumentsTab() {
       }
       addToast(t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
+  };
+
+  const toggleVisibility = async (docObj: any) => {
+    try {
+      const newVisibility = docObj.visibility === 'private' ? 'company' : 'private';
+      await updateDoc(doc(db, 'documents', docObj.id), { visibility: newVisibility });
+      addToast(t('completed'), 'success');
+    } catch (err) {
+      addToast(t('upload_failed'), 'error');
+    }
   };
 
   // +++ ECHTE BADGE LOGIK (Überprüfung von readBy) +++
@@ -413,6 +431,7 @@ export default function DocumentsTab() {
                            <div className="font-bold text-text-primary text-[15px] truncate max-w-md flex items-center gap-2 group-hover:text-accent-ai transition-colors">
                              {doc.name} 
                              {showBadge && <span className="px-1.5 py-0.5 bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-md border border-red-500/20">{t('new_badge')}</span>}
+                             {doc.visibility === 'private' && <Lock size={12} className="text-red-500" title="Privat" />}
                            </div>
                          </td>
                          <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : formatBytes(doc.size)}</td>
@@ -420,6 +439,11 @@ export default function DocumentsTab() {
                          <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                            {!doc.isFolder && (
                              <>
+                               {doc.ownerId === currentUser?.uid && (
+                                 <button onClick={(e) => { e.stopPropagation(); toggleVisibility(doc); }} className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-accent-ai transition-colors border border-transparent opacity-0 group-hover:opacity-100" title={doc.visibility === 'private' ? 'Privat (Klick für Öffentlich)' : 'Öffentlich (Klick für Privat)'}>
+                                   {doc.visibility === 'private' ? <Lock size={16} className="text-red-500" /> : <Globe size={16} />}
+                                 </button>
+                               )}
                                <button onClick={(e) => handleOpenFile(e, doc)} className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-blue-500 transition-colors border border-transparent hover:border-blue-500/30 opacity-0 group-hover:opacity-100" title={t('preview')}><Eye size={16} /></button>
                                <button onClick={(e) => handleOpenFile(e, doc)} className="p-2 text-text-muted hover:text-emerald-500 hover:bg-background rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('download')}><Download size={16} /></button>
                              </>
@@ -459,6 +483,7 @@ export default function DocumentsTab() {
                           <div className="font-bold text-text-primary text-sm truncate mb-1 flex items-center gap-2">
                             {doc.name}
                             {showBadge && <span className="px-1.5 py-0.5 bg-red-500 text-white text-[8px] font-black uppercase tracking-widest rounded-md">{t('new_badge')}</span>}
+                            {doc.visibility === 'private' && <Lock size={12} className="text-red-500" title="Privat" />}
                           </div>
                           <div className="flex items-center gap-3 text-[10px] text-text-muted uppercase tracking-wider font-bold">
                             <span>{displayDate}</span>

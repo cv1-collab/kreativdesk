@@ -4,7 +4,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp, or, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { motion, AnimatePresence } from 'motion/react';
@@ -12,7 +12,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
   Database, Building2, Briefcase, FolderOpen, FileText, Upload, Trash2, 
-  Download, ChevronRight, Loader2, X, FolderPlus, Eye, ArrowLeft
+  Download, ChevronRight, Loader2, X, FolderPlus, Eye, ArrowLeft, Lock, Globe
 } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -85,7 +85,8 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
     const q = query(
       collection(db, 'documents'),
-      where('projectId', '==', currentProjectId)
+      where('projectId', '==', currentProjectId),
+      or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser?.uid || ''))
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -132,6 +133,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         folderId: currentFolderId === 'root' ? currentProjectId : currentFolderId, 
         category: 'projects',
         isFolder: false,
+        visibility: 'company',
         createdAt: serverTimestamp()
       });
 
@@ -168,6 +170,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         projectId: currentProjectId,
         folderId: currentFolderId === 'root' ? currentProjectId : currentFolderId,
         category: 'projects',
+        visibility: 'company',
         createdAt: serverTimestamp()
       });
       setNewFolderName('');
@@ -205,6 +208,16 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       }
       addToast(t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
+  };
+
+  const toggleVisibility = async (docObj: any) => {
+    try {
+      const newVisibility = docObj.visibility === 'private' ? 'company' : 'private';
+      await updateDoc(doc(db, 'documents', docObj.id), { visibility: newVisibility });
+      addToast(t('completed'), 'success');
+    } catch (err) {
+      addToast(t('upload_failed'), 'error');
+    }
   };
 
   const navigateToFolder = (folderId: string, folderName: string) => {
@@ -287,13 +300,21 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-surface animate-pulse"></div>
                         )}
                       </div>
-                      <div className="font-bold text-text-primary text-[15px] group-hover:text-accent-ai transition-colors">{doc.name}</div>
+                      <div className="font-bold text-text-primary text-[15px] group-hover:text-accent-ai transition-colors flex items-center gap-2">
+                        {doc.name}
+                        {doc.visibility === 'private' && <Lock size={12} className="text-red-500" title="Privat" />}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : doc.size}</td>
                     <td className="px-6 py-4 text-text-muted font-medium text-xs">{doc.createdAt?.toDate ? doc.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                       {!doc.isFolder && (
                         <>
+                          {doc.ownerId === currentUser?.uid && (
+                            <button onClick={(e) => { e.stopPropagation(); toggleVisibility(doc); }} className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-accent-ai transition-colors opacity-0 group-hover:opacity-100" title={doc.visibility === 'private' ? 'Privat (Klick für Öffentlich)' : 'Öffentlich (Klick für Privat)'}>
+                              {doc.visibility === 'private' ? <Lock size={16} className="text-red-500" /> : <Globe size={16} />}
+                            </button>
+                          )}
                           <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100" title={t('preview')} onClick={e => e.stopPropagation()}><Eye size={16} /></a>
                           <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 text-text-muted hover:text-emerald-500 hover:bg-background rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('download')}><Download size={16} /></a>
                         </>
