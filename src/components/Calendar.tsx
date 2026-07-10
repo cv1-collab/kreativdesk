@@ -213,6 +213,25 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
                 );
               }
             })}
+
+            {ganttTasks.map((task: any, i: number) => {
+              const marker = smartMarkers[i];
+              if (!marker) return null;
+              
+              const startX = getXPt(getYearPercentage(task.end));
+              const endX = getXPt(getYearPercentage(marker.date));
+              const startY = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 20);
+              const endY = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42);
+              const hexCol = marker.color || '#ef4444';
+              
+              return (
+                <G key={`marker-link-${marker.id}`}>
+                  <Line x1={startX} y1={startY} x2={endX} y2={startY} stroke={hexCol} strokeWidth={1.5 * SCALE} strokeDasharray={marker.style === 'dashed' ? '4 3' : 'none'} />
+                  <Line x1={endX} y1={startY} x2={endX} y2={endY} stroke={hexCol} strokeWidth={1.5 * SCALE} strokeDasharray={marker.style === 'dashed' ? '4 3' : 'none'} />
+                  <Polygon points={`${endX - 3*SCALE},${endY - 3*SCALE} ${endX + 3*SCALE},${endY - 3*SCALE} ${endX},${endY + 2*SCALE}`} fill={hexCol} />
+                </G>
+              );
+            })}
           </Svg>
 
           {/* LAYER 4: TABLE HEADER */}
@@ -251,9 +270,21 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
           })}
 
           {/* LAYER 6: MEILENSTEINE (MARKERS) */}
-          {(smartMarkers || []).map((m: any) => {
+          {(smartMarkers || []).map((m: any, i: number) => {
+            const task = ganttTasks[i];
             const leftPt = getXPt(getYearPercentage(m.date));
             const hexCol = m.color || (m.priority === 'high' ? '#ef4444' : '#f59e0b');
+            
+            if (task) {
+              const boxTop = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42);
+              return (
+                <View key={`m-${m.id}`} style={{ position: 'absolute', left: leftPt - 25 * fontScale, top: boxTop, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE, borderRadius: 2 * SCALE }}>
+                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 5 * fontScale, color: hexCol, textAlign: 'center' }}>{new Date(m.date).toLocaleDateString('de-CH')}</Text>
+                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 6 * fontScale, color: hexCol, textAlign: 'center' }}>{m.label}</Text>
+                </View>
+              );
+            }
+            
             return (
               <View key={`m-${m.id}`} style={{ position: 'absolute', left: leftPt, top: getYPt(UI_HEADER_H), height: PDF_H - getYPt(UI_HEADER_H) - getYPt(20), borderLeftWidth: 1.5 * SCALE, borderLeftColor: hexCol, borderLeftStyle: m.style === 'dashed' ? 'dashed' : 'solid' }}>
                  <View style={{ position: 'absolute', top: -15 * fontScale, left: -25 * fontScale, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE }}>
@@ -934,6 +965,26 @@ export default function Calendar() {
                           );
                         }
                       })}
+
+                      {smartMarkers.map((marker, i) => {
+                        const task = ganttTasks[i];
+                        if (!task) return null;
+                        const taskEndPct = getYearPercentage(task.end);
+                        const markerPct = getYearPercentage(marker.date);
+                        
+                        const startX = (chartWidth * 0.333333) + ((taskEndPct / 100) * (chartWidth * 0.666666));
+                        const endX = (chartWidth * 0.333333) + ((markerPct / 100) * (chartWidth * 0.666666));
+                        const startY = UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 20;
+                        const endY = UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42;
+                        
+                        return (
+                          <g key={`marker-link-${marker.id}`}>
+                            <path d={`M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`} fill="none" stroke={marker.color || '#ef4444'} strokeWidth="2" strokeDasharray={marker.style === 'dashed' ? '4 4' : 'none'} />
+                            <circle cx={startX} cy={startY} r="3" fill={marker.color || '#ef4444'} />
+                            <polygon points={`${endX-3},${endY-3} ${endX+3},${endY-3} ${endX},${endY+2}`} fill={marker.color || '#ef4444'} />
+                          </g>
+                        );
+                      })}
                     </svg>
 
                     <div className="absolute inset-0 z-10 pointer-events-none" onPointerDown={activeTool !== 'cursor' ? onCanvasPointerDown : undefined} style={{ pointerEvents: activeTool !== 'cursor' ? 'auto' : 'none' }}></div>
@@ -994,21 +1045,40 @@ export default function Calendar() {
                       );
                     })}
 
-                    {smartMarkers.map((m, i) => {
-                      const offset = (i % 4) * 28;
+                    {smartMarkers.map((marker, i) => {
+                      const task = ganttTasks[i];
+                      const leftPct = getYearPercentage(marker.date);
+                      
+                      if (task) {
+                        return (
+                          <div 
+                            key={marker.id} 
+                            className={cn("absolute z-20 transition-all group/marker", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")}
+                            style={{ 
+                              left: `${33.333333 + (leftPct * 0.666666)}%`, 
+                              top: UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42, 
+                            }}
+                            onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}
+                          >
+                             <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col items-center hover:scale-105 transition-transform" style={{ color: marker.color || '#ef4444', borderColor: marker.color || '#ef4444' }}>
+                               <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
+                               <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
+                               <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>
+                             </div>
+                          </div>
+                        );
+                      }
+
+                      const offset = i * 64;
                       return (
-                      <div 
-                        key={m.id} 
-                        className={cn("absolute z-20 transition-all", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")}
-                        style={{ left: `${getX(getYearPercentage(m.date))}%`, top: UI_HEADER_H, bottom: 20, borderLeftWidth: 2, borderLeftColor: m.color || '#ef4444', borderLeftStyle: m.style === 'dashed' ? 'dashed' : 'solid' }}
-                        onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(m); } }}
-                      >
-                         <div className="absolute left-1/2 -translate-x-1/2 bg-background border rounded-lg px-3 py-1 whitespace-nowrap shadow-lg cursor-pointer hover:scale-105 transition-transform" style={{ borderColor: m.color || '#ef4444', top: `${10 + offset}px` }}>
-                           <div className="text-[10px] font-black text-center" style={{ color: m.color || '#ef4444' }}>{new Date(m.date).toLocaleDateString('de-CH')}</div>
-                           <div className="text-xs font-bold text-text-primary text-center">{m.label}</div>
-                         </div>
-                      </div>
-                    )})}
+                        <div key={marker.id} className={cn("absolute z-20 transition-all", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")} style={{ left: `${33.333333 + (leftPct * 0.666666)}%`, top: UI_HEADER_H, bottom: 20, borderLeftWidth: 2, borderLeftColor: marker.color || '#ef4444', borderLeftStyle: marker.style === 'dashed' ? 'dashed' : 'solid' }} onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}>
+                           <div className="absolute left-1/2 -translate-x-1/2 bg-background border rounded-lg px-3 py-1 whitespace-nowrap shadow-lg cursor-pointer hover:scale-105 transition-transform" style={{ borderColor: marker.color || '#ef4444', top: `${10 + offset}px` }}>
+                             <div className="text-[9px] font-black text-center" style={{ color: marker.color || '#ef4444' }}>{new Date(marker.date).toLocaleDateString('de-CH')}</div>
+                             <div className="text-xs font-bold text-text-primary text-center">{marker.label}</div>
+                           </div>
+                        </div>
+                      );
+                    })}
 
                     <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
                       {shapes.map((s) => {
@@ -1261,11 +1331,54 @@ export default function Calendar() {
                               </g>
                             );
                           })}
+
+                          {smartMarkers.map((marker, i) => {
+                            const task = ganttTasks[i];
+                            if (!task) return null;
+                            const taskEndPct = getYearPercentage(task.end);
+                            const markerPct = getYearPercentage(marker.date);
+                            
+                            const startX = (chartWidth * 0.333333) + ((taskEndPct / 100) * (chartWidth * 0.666666));
+                            const endX = (chartWidth * 0.333333) + ((markerPct / 100) * (chartWidth * 0.666666));
+                            const startY = i * 64 + 120;
+                            const endY = i * 64 + 142;
+                            
+                            return (
+                              <g key={`marker-link-${marker.id}`}>
+                                <path d={`M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`} fill="none" stroke={marker.color || '#ef4444'} strokeWidth="2" strokeDasharray={marker.style === 'dashed' ? '4 4' : 'none'} />
+                                <circle cx={startX} cy={startY} r="3" fill={marker.color || '#ef4444'} />
+                                <polygon points={`${endX-3},${endY-3} ${endX+3},${endY-3} ${endX},${endY+2}`} fill={marker.color || '#ef4444'} />
+                              </g>
+                            );
+                          })}
                         </svg>
 
                         {smartMarkers.map((marker, i) => {
+                          const task = ganttTasks[i];
                           const leftPct = getYearPercentage(marker.date);
-                          const offset = i * 64;
+                          
+                          if (task) {
+                            const boxTop = i * 64 + 142;
+                            return (
+                              <div 
+                                key={marker.id} 
+                                className={cn("absolute z-40 transition-all group/marker", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")}
+                                style={{ 
+                                  left: `${33.333333 + (leftPct * 0.666666)}%`, 
+                                  top: boxTop, 
+                                }}
+                                onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}
+                              >
+                                 <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col items-center hover:scale-105 transition-transform" style={{ color: marker.color || '#ef4444', borderColor: marker.color || '#ef4444' }}>
+                                   <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
+                                   <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
+                                   <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>
+                                 </div>
+                              </div>
+                            );
+                          }
+
+                          const offset = i * 64 + 100;
                           return (
                             <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
                               <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
