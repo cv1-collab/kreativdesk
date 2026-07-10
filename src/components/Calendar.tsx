@@ -418,8 +418,8 @@ export default function Calendar() {
   const [editingShape, setEditingShape] = useState<Shape | null>(null);
 
   const UI_HEADER_H = 45;
+  const UI_ROW_H = 88;
   const UI_PAD_TOP = 16;
-  const UI_ROW_H = 64;
   const UI_PAD_BOT = 40;
   const chartMinHeight = Math.max(500, UI_HEADER_H + UI_PAD_TOP + (ganttTasks.length * UI_ROW_H) + UI_PAD_BOT);
 
@@ -1063,13 +1063,13 @@ export default function Calendar() {
                              <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col items-center hover:scale-105 transition-transform" style={{ color: marker.color || '#ef4444', borderColor: marker.color || '#ef4444' }}>
                                <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
                                <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
-                               <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>
+                               {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>}
                              </div>
                           </div>
                         );
                       }
 
-                      const offset = i * 64;
+                      const offset = i * 88;
                       return (
                         <div key={marker.id} className={cn("absolute z-20 transition-all", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")} style={{ left: `${33.333333 + (leftPct * 0.666666)}%`, top: UI_HEADER_H, bottom: 20, borderLeftWidth: 2, borderLeftColor: marker.color || '#ef4444', borderLeftStyle: marker.style === 'dashed' ? 'dashed' : 'solid' }} onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}>
                            <div className="absolute left-1/2 -translate-x-1/2 bg-background border rounded-lg px-3 py-1 whitespace-nowrap shadow-lg cursor-pointer hover:scale-105 transition-transform" style={{ borderColor: marker.color || '#ef4444', top: `${10 + offset}px` }}>
@@ -1163,7 +1163,7 @@ export default function Calendar() {
         <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 min-h-0 overflow-hidden z-10">
           
           {/* === SLIM TOOLBAR === */}
-          {viewMode === 'gantt' && (
+          {viewMode === 'gantt' && !isDemoMode && (
             <div className="hidden md:flex w-16 shrink-0 px-2 sm:px-0">
               <div className="bg-surface border border-border/50 rounded-xl p-2 flex flex-col items-center gap-2 shadow-sm w-full h-fit overflow-y-auto custom-scrollbar">
                 <button onClick={() => setActiveTool('cursor')} className={cn("p-3 rounded-lg transition-colors mt-2", activeTool === 'cursor' ? "bg-accent-ai/10 text-accent-ai" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('select')}><MousePointer2 size={20} /></button>
@@ -1243,9 +1243,9 @@ export default function Calendar() {
                       <div className="flex border-b-2 pb-2 mb-6 shrink-0 min-w-[800px] border-border/50 relative z-30">
                         <div className="w-1/3 pr-4 font-bold uppercase tracking-widest text-sm flex items-center justify-between text-text-primary">
                           <span>{t('project_phases')}</span>
-                          <button onClick={handleAddPhase} className="tour-calendar-add flex items-center gap-1 p-1 px-2 hover:bg-accent-ai/10 text-accent-ai rounded transition-colors print:hidden text-xs font-bold cursor-pointer">
+                          {!isDemoMode && <button onClick={handleAddPhase} className="tour-calendar-add flex items-center gap-1 p-1 px-2 hover:bg-accent-ai/10 text-accent-ai rounded transition-colors print:hidden text-xs font-bold cursor-pointer">
                             <Plus size={14}/> {t('add_phase')}
-                          </button>
+                          </button>}
                         </div>
                         <div className="w-2/3 flex relative">
                           {getMonths().map((m, i) => (<div key={i} className="flex-1 text-center font-bold text-sm border-l first:border-0 text-text-muted border-border/50">{m}</div>))}
@@ -1256,7 +1256,6 @@ export default function Calendar() {
                         {getMonths().map((_, i) => (<div key={i} className="flex-1 border-l h-full opacity-50 border-border/30"></div>))}
                       </div>
 
-                      {/* HIER GREIFT DER RESIZE OBSERVER! PERFEKTE MESSPUNKTE */}
                       <div 
                         className="relative flex-1 group/canvas z-20 min-w-[800px]" 
                         ref={chartRef} 
@@ -1280,8 +1279,8 @@ export default function Calendar() {
                             const endPct = getYearPercentage(task.start);
                             const startX = (chartWidth * 0.333333) + ((startPct / 100) * (chartWidth * 0.666666));
                             const endX = (chartWidth * 0.333333) + ((endPct / 100) * (chartWidth * 0.666666));
-                            const startY = (i - 1) * 64 + 20 + 100; // shifted down by 100px for markers
-                            const endY = i * 64 + 20 + 100;
+                            const startY = (i - 1) * UI_ROW_H + 20 + 100;
+                            const endY = i * UI_ROW_H + 20 + 100;
                             const arrowColor = "#52525b";
 
                             const isFlush = Math.abs(endX - startX) <= 15;
@@ -1340,8 +1339,8 @@ export default function Calendar() {
                             
                             const startX = (chartWidth * 0.333333) + ((taskEndPct / 100) * (chartWidth * 0.666666));
                             const endX = (chartWidth * 0.333333) + ((markerPct / 100) * (chartWidth * 0.666666));
-                            const startY = i * 64 + 120;
-                            const endY = i * 64 + 142;
+                            const startY = i * UI_ROW_H + 120;
+                            const endY = i * UI_ROW_H + 144;
                             
                             return (
                               <g key={`marker-link-${marker.id}`}>
@@ -1358,7 +1357,7 @@ export default function Calendar() {
                           const leftPct = getYearPercentage(marker.date);
                           
                           if (task) {
-                            const boxTop = i * 64 + 142;
+                            const boxTop = i * UI_ROW_H + 144;
                             return (
                               <div 
                                 key={marker.id} 
@@ -1372,13 +1371,13 @@ export default function Calendar() {
                                  <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col items-center hover:scale-105 transition-transform" style={{ color: marker.color || '#ef4444', borderColor: marker.color || '#ef4444' }}>
                                    <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
                                    <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
-                                   <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>
+                                   {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>}
                                  </div>
                               </div>
                             );
                           }
 
-                          const offset = i * 64 + 100;
+                          const offset = i * UI_ROW_H + 100;
                           return (
                             <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
                               <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
@@ -1388,7 +1387,7 @@ export default function Calendar() {
                                 <div className="px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col relative group-hover/marker:shadow-lg transition-shadow" style={{ color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
                                   <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
                                   <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
-                                  <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>
+                                  {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>}
                                 </div>
                               </div>
                             </div>
@@ -1454,7 +1453,7 @@ export default function Calendar() {
                           );
                         })}
 
-                        <div className="relative z-[20] space-y-6 pt-[100px]">
+                        <div className="relative z-[20] space-y-12 pt-[100px]">
                           {ganttTasks.map((task, index) => {
                             const startPct = getYearPercentage(task.start);
                             const endPct = Math.max(startPct + 1, getYearPercentage(task.end));
@@ -1464,8 +1463,8 @@ export default function Calendar() {
                             return (
                               <div key={task.id} className="flex items-center group/row" style={{ height: 40, marginTop: index === 0 ? 0 : 24 }}>
                                 <div className="w-1/3 pr-4 flex flex-col gap-1 relative pointer-events-auto z-[30]">
-                                  <button onPointerDown={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="absolute -left-6 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden hover:bg-red-500/10 p-1 rounded cursor-pointer z-50"><Trash2 size={14}/></button>
-                                  <button onPointerDown={(e) => { e.stopPropagation(); setEditingTask(task); }} className="absolute -right-2 top-1 opacity-0 group-hover/row:opacity-100 text-text-muted hover:text-accent-ai transition-opacity print:hidden cursor-pointer z-50"><Edit2 size={14}/></button>
+                                  {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="absolute -left-6 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden hover:bg-red-500/10 p-1 rounded cursor-pointer z-50"><Trash2 size={14}/></button>}
+                                  {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setEditingTask(task); }} className="absolute -right-2 top-1 opacity-0 group-hover/row:opacity-100 text-text-muted hover:text-accent-ai transition-opacity print:hidden cursor-pointer z-50"><Edit2 size={14}/></button>}
                                   
                                   <div className="font-bold text-sm w-full truncate cursor-pointer hover:text-accent-ai transition-colors text-text-primary" onClick={() => setEditingTask(task)}>{task.title}</div>
                                   <div className="flex items-center gap-2">
@@ -1508,9 +1507,9 @@ export default function Calendar() {
                 <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4 bg-background custom-scrollbar">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-lg text-text-primary">{t('project_phases')}</h3>
-                    <button onClick={handleAddPhase} className="tour-calendar-add p-2 bg-accent-ai/10 text-accent-ai rounded-lg font-bold text-xs flex items-center gap-1 shadow-sm">
+                    {!isDemoMode && <button onClick={handleAddPhase} className="tour-calendar-add p-2 bg-accent-ai/10 text-accent-ai rounded-lg font-bold text-xs flex items-center gap-1 shadow-sm">
                       <Plus size={14}/> {t('add_phase')}
-                    </button>
+                    </button>}
                   </div>
                   
                   {ganttTasks.length === 0 ? (
@@ -1535,8 +1534,8 @@ export default function Calendar() {
                               </div>
                             </div>
                             <div className="flex gap-2 absolute right-3 top-3">
-                               <button onClick={() => setEditingTask(task)} className="p-2 text-text-muted hover:text-accent-ai bg-background rounded-lg border border-border/50 shadow-sm"><Edit2 size={14}/></button>
-                               <button onClick={() => deleteTask(task.id)} className="p-2 text-text-muted hover:text-red-500 bg-background rounded-lg border border-border/50 shadow-sm"><Trash2 size={14}/></button>
+                               {!isDemoMode && <button onClick={() => setEditingTask(task)} className="p-2 text-text-muted hover:text-accent-ai bg-background rounded-lg border border-border/50 shadow-sm"><Edit2 size={14}/></button>}
+                               {!isDemoMode && <button onClick={() => deleteTask(task.id)} className="p-2 text-text-muted hover:text-red-500 bg-background rounded-lg border border-border/50 shadow-sm"><Trash2 size={14}/></button>}
                             </div>
                           </div>
                           
