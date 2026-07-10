@@ -25,7 +25,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
-import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Svg, Line, Rect, Ellipse, G } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Svg, Line, Rect, Ellipse, G, Polygon } from '@react-pdf/renderer';
 
 function formatBytes(bytes: number) {
   if (!bytes || bytes === 0) return '0 Bytes';
