@@ -91,6 +91,25 @@ async function startServer() {
         return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
       }
 
+      // ++ SICHERHEITSLOGIK ++
+      // Prüfen, ob der Nutzer einen gültigen Anspruch auf diese companyId hat
+      if (decodedToken.uid === uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
+        if (companyId !== `comp_${uid}`) {
+          // Er versucht einer fremden Firma beizutreten. Hat er ein Invite?
+          if (!db) return res.status(500).json({ error: 'Database error' });
+          const invitesSnapshot = await db.collection('invites')
+            .where('email', '==', decodedToken.email)
+            .where('companyId', '==', companyId)
+            .where('status', '==', 'pending')
+            .get();
+            
+          if (invitesSnapshot.empty) {
+            console.error(`Sicherheitsverletzung: Nutzer ${uid} versuchte ohne Invite der Firma ${companyId} beizutreten.`);
+            return res.status(403).json({ error: 'Forbidden: Invalid or missing invite for this company' });
+          }
+        }
+      }
+
       const userRecord = await firebaseAdmin.auth().getUser(uid);
       const currentClaims = userRecord.customClaims || {};
 

@@ -1,5 +1,6 @@
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 if (getApps().length === 0) {
   initializeApp({
@@ -22,9 +23,50 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Missing uid or companyId' });
   }
 
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+  const auth = getAuth();
+  const db = getFirestore();
+  let decodedToken;
+  
   try {
-    const auth = getAuth();
-    
+    decodedToken = await auth.verifyIdToken(idToken);
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+  }
+
+  const SUPER_ADMIN_EMAILS = [
+    'cv1@gmx.ch',
+    'carlo@vesciodesign.ch'
+  ];
+
+  if (decodedToken.uid !== uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
+    return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
+  }
+
+  // ++ SICHERHEITSLOGIK ++
+  // Prüfen, ob der Nutzer einen gültigen Anspruch auf diese companyId hat
+  if (decodedToken.uid === uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
+    if (companyId !== `comp_${uid}`) {
+      // Er versucht einer fremden Firma beizutreten. Hat er ein Invite?
+      const invitesSnapshot = await db.collection('invites')
+        .where('email', '==', decodedToken.email)
+        .where('companyId', '==', companyId)
+        .where('status', '==', 'pending')
+        .get();
+        
+      if (invitesSnapshot.empty) {
+        console.error(`Sicherheitsverletzung: Nutzer ${uid} versuchte ohne Invite der Firma ${companyId} beizutreten.`);
+        return res.status(403).json({ error: 'Forbidden: Invalid or missing invite for this company' });
+      }
+    }
+  }
+
+  try {
     // Hole bestehende Claims, um nichts zu überschreiben
     const userRecord = await auth.getUser(uid);
     const currentClaims = userRecord.customClaims || {};
