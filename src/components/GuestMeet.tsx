@@ -6,6 +6,17 @@ import { useVideoCall } from '../contexts/VideoCallContext';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, Users } from 'lucide-react';
 import { cn } from '../utils';
 
+const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(e => console.warn(e));
+    }
+  }, [stream]);
+  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover relative z-10" />;
+};
+
 export default function GuestMeet() {
   const { joinId } = useParams<{ joinId: string }>();
   const navigate = useNavigate();
@@ -19,10 +30,9 @@ export default function GuestMeet() {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   const {
-    localStream, remoteStream, isMicOn, isCamOn, callStatus,
+    localStream, remoteStreams, isMicOn, isCamOn, callStatus,
     joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall
   } = useVideoCall();
 
@@ -86,11 +96,11 @@ export default function GuestMeet() {
   }, [localStream]);
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(e => console.warn(e));
+    if (localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(e => console.warn(e));
     }
-  }, [remoteStream, callStatus]);
+  }, [localStream]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,7 +217,24 @@ export default function GuestMeet() {
           </div>
         ) : (
           <>
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover relative z-10" />
+            <div className={cn("absolute inset-0 z-10 grid gap-1", 
+              Object.keys(remoteStreams).length <= 1 ? "grid-cols-1" :
+              Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
+              Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
+              "grid-cols-3 grid-rows-2"
+            )}>
+              {Object.entries(remoteStreams).map(([peerId, stream]) => (
+                <div key={peerId} className="w-full h-full relative overflow-hidden bg-zinc-900 border border-white/5">
+                  <RemoteVideo stream={stream} />
+                </div>
+              ))}
+              {Object.keys(remoteStreams).length === 0 && (
+                <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
+                  <Loader2 size={40} className="animate-spin mb-4 text-accent-ai" />
+                  <p className="font-bold text-sm tracking-widest uppercase text-white">Warte auf Gastgeber...</p>
+                </div>
+              )}
+            </div>
             <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20">
               <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />
             </div>

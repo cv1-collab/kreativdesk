@@ -18,6 +18,17 @@ import { useVideoCall } from '../contexts/VideoCallContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 
+const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(e => console.warn(e));
+    }
+  }, [stream]);
+  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />;
+};
+
 // === LOKALE ÜBERSETZUNGEN ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -58,7 +69,7 @@ export default function MeetChat() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
   const { 
-    localStream, remoteStream, screenStream, isMicOn, isCamOn, isScreenSharing,
+    localStream, remoteStreams, screenStream, isMicOn, isCamOn, isScreenSharing,
     callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp,
     toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen
   } = useVideoCall();
@@ -84,7 +95,6 @@ export default function MeetChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mainVideoRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   
@@ -253,13 +263,6 @@ export default function MeetChat() {
       localVideoRef.current.play().catch(e => console.log(e));
     }
   }, [localStream, callStatus, isScreenSharing, activeView]);
-
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(e => console.warn(e));
-    }
-  }, [remoteStream, callStatus, activeView]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
@@ -571,7 +574,26 @@ export default function MeetChat() {
               ) : (
                 <div className="w-full h-full relative bg-black">
                   <div ref={mainVideoRef} className="absolute inset-0 bg-transparent z-0" />
-                  <video ref={remoteVideoRef} autoPlay playsInline muted={false} className="w-full h-full object-cover relative z-10" />
+                  
+                  <div className={cn("absolute inset-0 z-10 grid gap-1", 
+                    Object.keys(remoteStreams).length === 0 ? "grid-cols-1" :
+                    Object.keys(remoteStreams).length === 1 ? "grid-cols-1" :
+                    Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
+                    Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
+                    "grid-cols-3 grid-rows-2"
+                  )}>
+                    {Object.entries(remoteStreams).map(([peerId, stream]) => (
+                      <div key={peerId} className="w-full h-full relative overflow-hidden bg-zinc-900 border border-white/5">
+                        <RemoteVideo stream={stream} />
+                      </div>
+                    ))}
+                    {Object.keys(remoteStreams).length === 0 && (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
+                        <Loader2 size={40} className="animate-spin mb-4 text-accent-ai" />
+                        <p className="font-bold text-sm tracking-widest uppercase text-white">Warte auf Teilnehmer...</p>
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20">
                     <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")} />

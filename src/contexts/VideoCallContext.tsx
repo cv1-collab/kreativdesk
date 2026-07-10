@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useAuth } from './AuthContext';
 import { useProject } from './ProjectContext';
 import { db } from '../firebase';
-import { collection, doc, addDoc, updateDoc, onSnapshot, setDoc, getDoc, query, where } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, onSnapshot, setDoc, getDoc, query, where, deleteDoc } from 'firebase/firestore';
 
 const servers = {
   iceServers: [
@@ -22,7 +22,7 @@ interface IncomingCall {
 
 interface VideoCallContextType {
   localStream: MediaStream | null;
-  remoteStream: MediaStream | null;
+  remoteStreams: Record<string, MediaStream>;
   screenStream: MediaStream | null;
   isMicOn: boolean;
   isCamOn: boolean;
@@ -62,7 +62,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { activeProjectId } = useProject();
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   
   const [isMicOn, setIsMicOn] = useState(true);
@@ -78,10 +78,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [incomingCall, setIncomingCall] = useState<IncomingCall | null>(null);
 
   const isInCall = callStatus !== 'idle';
-  const pcRef = useRef<RTCPeerConnection | null>(null);
+  
+  // Mesh Network Refs
+  const myIdRef = useRef<string>(`guest_${Math.random().toString(36).substring(2, 9)}`);
+  const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
+  const unsubSignalsRef = useRef<(() => void) | null>(null);
+  const unsubParticipantsRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (currentUser?.uid) {
+      myIdRef.current = currentUser.uid;
+    }
+  }, [currentUser]);
+
   const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? `comp_${currentUser.uid}` : '');
 
-  // 🔥 INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
+  // INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {
     if (!safeCompanyId || !currentUser?.uid) return;
     const mountTime = Date.now();
@@ -98,7 +110,6 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             const isTargeted = data.targetUserIds && data.targetUserIds.length > 0;
             const amITargeted = isTargeted && data.targetUserIds.includes(currentUser.uid);
 
-            // Klingelt nur, wenn es ein Projekt-Rundruf ist (!isTargeted) oder der User explizit markiert wurde
             if (!isTargeted || amITargeted) {
               setIncomingCall({
                 id: change.doc.id,
@@ -134,10 +145,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
         const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         const screenTrack = displayStream.getVideoTracks()[0];
-        if (pcRef.current) {
-          const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
+        
+        Object.values(pcsRef.current).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
           if (sender) sender.replaceTrack(screenTrack);
-        }
+        });
+
         setScreenStream(displayStream);
         setIsScreenSharing(true);
         screenTrack.onended = () => stopScreenShare();
@@ -152,42 +165,130 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIsScreenSharing(false);
     if (localStream) {
       const camTrack = localStream.getVideoTracks()[0];
-      if (pcRef.current && camTrack) {
-        const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video');
-        if (sender) sender.replaceTrack(camTrack);
+      if (camTrack) {
+        Object.values(pcsRef.current).forEach(pc => {
+          const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+          if (sender) sender.replaceTrack(camTrack);
+        });
       }
     }
+  };
+
+  const createPeerConnection = (peerId: string, currentCallId: string, stream: MediaStream) => {
+    const pc = new RTCPeerConnection(servers);
+    pcsRef.current[peerId] = pc;
+
+    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+
+    pc.ontrack = (event) => {
+      setRemoteStreams(prev => ({ ...prev, [peerId]: event.streams[0] }));
+    };
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        addDoc(collection(db, `videoCalls/${currentCallId}/signals`), {
+          from: myIdRef.current,
+          to: peerId,
+          type: 'candidate',
+          candidate: event.candidate.toJSON(),
+          createdAt: new Date().toISOString()
+        });
+      }
+    };
+
+    return pc;
+  };
+
+  const joinMeshNetwork = async (currentCallId: string, stream: MediaStream) => {
+    const myId = myIdRef.current;
+    
+    // Join participants list
+    await setDoc(doc(db, `videoCalls/${currentCallId}/participants`, myId), {
+      joinedAt: new Date().toISOString()
+    });
+
+    // Listen to signals directed at me
+    const q = query(collection(db, `videoCalls/${currentCallId}/signals`), where('to', '==', myId));
+    unsubSignalsRef.current = onSnapshot(q, async (snapshot) => {
+      for (const change of snapshot.docChanges()) {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          const peerId = data.from;
+          let pc = pcsRef.current[peerId];
+
+          if (data.type === 'offer') {
+            if (!pc) pc = createPeerConnection(peerId, currentCallId, stream);
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await addDoc(collection(db, `videoCalls/${currentCallId}/signals`), {
+              from: myId,
+              to: peerId,
+              type: 'answer',
+              answer: { sdp: answer.sdp, type: answer.type },
+              createdAt: new Date().toISOString()
+            });
+          } else if (data.type === 'answer') {
+            if (pc && pc.signalingState !== 'stable') {
+              await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+            }
+          } else if (data.type === 'candidate') {
+            if (pc) await pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(console.error);
+          }
+        }
+      }
+    });
+
+    // Listen for new participants
+    unsubParticipantsRef.current = onSnapshot(collection(db, `videoCalls/${currentCallId}/participants`), (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === 'added') {
+          const peerId = change.doc.id;
+          if (peerId !== myId && !pcsRef.current[peerId]) {
+            // Only the peer with the lexicographically larger ID creates the offer to avoid collision
+            if (myId > peerId) {
+              const pc = createPeerConnection(peerId, currentCallId, stream);
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              await addDoc(collection(db, `videoCalls/${currentCallId}/signals`), {
+                from: myId,
+                to: peerId,
+                type: 'offer',
+                offer: { sdp: offer.sdp, type: offer.type },
+                createdAt: new Date().toISOString()
+              });
+            }
+          }
+        } else if (change.type === 'removed') {
+          const peerId = change.doc.id;
+          if (pcsRef.current[peerId]) {
+            pcsRef.current[peerId].close();
+            delete pcsRef.current[peerId];
+            setRemoteStreams(prev => {
+              const next = { ...prev };
+              delete next[peerId];
+              return next;
+            });
+          }
+        }
+      });
+    });
   };
 
   const startCall = async (targetUserIds: string[] = [], customCallId?: string) => {
     const stream = await setupMediaSources();
     if (!stream) return;
 
-    pcRef.current = new RTCPeerConnection(servers);
-    stream.getTracks().forEach(track => pcRef.current?.addTrack(track, stream));
-
-    pcRef.current.ontrack = (event) => {
-      setRemoteStream(event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]));
-    };
-
-    // 🔥 Nutzt die Kalender-ID (falls übergeben) oder erstellt eine neue
-    const callDocRef = customCallId ? doc(db, 'videoCalls', customCallId) : doc(collection(db, 'videoCalls'));
-    const offerCandidates = collection(callDocRef, 'offerCandidates');
-    const answerCandidates = collection(callDocRef, 'answerCandidates');
-
-    setCallId(callDocRef.id);
-    setCallStatus('calling');
-    setIsMinimized(false);
-
-    pcRef.current.onicecandidate = (e) => { if (e.candidate) addDoc(offerCandidates, e.candidate.toJSON()); };
-
-    const offerDescription = await pcRef.current.createOffer();
-    await pcRef.current.setLocalDescription(offerDescription);
-
     const currentProjectId = activeProjectId || window.location.pathname.split('/')[2];
+    const callDocRef = customCallId ? doc(db, 'videoCalls', customCallId) : doc(collection(db, 'videoCalls'));
+    const currentCallId = callDocRef.id;
+
+    setCallId(currentCallId);
+    setCallStatus('connected');
+    setIsMinimized(false);
     
+    // Create the room
     await setDoc(callDocRef, { 
-      offer: { sdp: offerDescription.sdp, type: offerDescription.type }, 
       projectId: currentProjectId || 'global', 
       companyId: safeCompanyId, 
       callerName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Teammitglied',
@@ -196,19 +297,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       createdAt: new Date().toISOString() 
     });
 
-    onSnapshot(callDocRef, (snapshot) => {
-      const data = snapshot.data();
-      if (!pcRef.current?.currentRemoteDescription && data?.answer) {
-        pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer)).catch(e => console.warn(e));
-        setCallStatus('connected');
-      }
-    });
-
-    onSnapshot(answerCandidates, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') pcRef.current?.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(e => console.warn(e));
-      });
-    });
+    await joinMeshNetwork(currentCallId, stream);
   };
 
   const joinCall = async (overrideId?: string | null) => {
@@ -222,42 +311,38 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const stream = await setupMediaSources();
     if (!stream) return;
 
-    pcRef.current = new RTCPeerConnection(servers);
-    stream.getTracks().forEach(track => pcRef.current?.addTrack(track, stream));
-
-    pcRef.current.ontrack = (event) => {
-      setRemoteStream(event.streams && event.streams[0] ? event.streams[0] : new MediaStream([event.track]));
-    };
-
-    const offerCandidates = collection(callDoc, 'offerCandidates');
-    const answerCandidates = collection(callDoc, 'answerCandidates');
-
-    pcRef.current.onicecandidate = (e) => { if (e.candidate) addDoc(answerCandidates, e.candidate.toJSON()); };
-
-    await pcRef.current.setRemoteDescription(new RTCSessionDescription(callSnap.data().offer)).catch(e => console.warn(e));
-    const answerDescription = await pcRef.current.createAnswer();
-    await pcRef.current.setLocalDescription(answerDescription);
-
-    await updateDoc(callDoc, { answer: { sdp: answerDescription.sdp, type: answerDescription.type } });
-    
     setCallId(targetId);
     setCallStatus('connected');
     setIsMinimized(false);
 
-    onSnapshot(offerCandidates, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') pcRef.current?.addIceCandidate(new RTCIceCandidate(change.doc.data())).catch(e => console.warn(e));
-      });
-    });
+    await joinMeshNetwork(targetId, stream);
   };
 
   const hangUp = () => {
-    if (pcRef.current) pcRef.current.close();
+    // Clean up all peer connections
+    Object.values(pcsRef.current).forEach(pc => pc.close());
+    pcsRef.current = {};
+
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     if (screenStream) screenStream.getTracks().forEach(t => t.stop());
-    if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
-    setLocalStream(null); setRemoteStream(null); setScreenStream(null);
-    setIsScreenSharing(false); setCallStatus('idle'); setCallId(''); setJoinCallId(''); setIsMinimized(false);
+    Object.values(remoteStreams).forEach(stream => stream.getTracks().forEach(t => t.stop()));
+    
+    setLocalStream(null); 
+    setRemoteStreams({}); 
+    setScreenStream(null);
+    setIsScreenSharing(false); 
+    setCallStatus('idle'); 
+    setCallId(''); 
+    setJoinCallId(''); 
+    setIsMinimized(false);
+
+    // Remove self from participants list
+    if (callId && myIdRef.current) {
+      deleteDoc(doc(db, `videoCalls/${callId}/participants`, myIdRef.current)).catch(console.error);
+    }
+
+    if (unsubSignalsRef.current) { unsubSignalsRef.current(); unsubSignalsRef.current = null; }
+    if (unsubParticipantsRef.current) { unsubParticipantsRef.current(); unsubParticipantsRef.current = null; }
   };
 
   useEffect(() => {
@@ -266,7 +351,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   return (
     <VideoCallContext.Provider value={{
-      localStream, remoteStream, screenStream, isMicOn, isCamOn, isScreenSharing,
+      localStream, remoteStreams, screenStream, isMicOn, isCamOn, isScreenSharing,
       callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp, toggleMic, toggleCam, toggleScreenShare,
       isInCall, isMinimized, setIsMinimized, isChatOpen, setIsChatOpen, incomingCall, setIncomingCall
     }}>

@@ -5,10 +5,21 @@ import { useProject } from '../contexts/ProjectContext';
 import { Mic, MicOff, Video as VideoIcon, VideoOff, PhoneOff, Maximize2, PhoneCall } from 'lucide-react';
 import { cn } from '../utils';
 
+const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(e => console.warn(e));
+    }
+  }, [stream]);
+  return <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />;
+};
+
 export function GlobalVideoPlayer() {
   const navigate = useNavigate();
   const {
-    remoteStream, localStream,
+    remoteStreams, localStream,
     isInCall, isMinimized, setIsMinimized,
     isMicOn, isCamOn,
     toggleMic, toggleCam, hangUp,
@@ -17,15 +28,14 @@ export function GlobalVideoPlayer() {
 
   const { activeProjectId } = useProject();
 
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (isMinimized && remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(e => console.warn(e));
+    if (isMinimized && localVideoRef.current && localStream) {
+      localVideoRef.current.srcObject = localStream;
+      localVideoRef.current.play().catch(e => console.warn(e));
     }
-  }, [isMinimized, remoteStream]);
+  }, [isMinimized, localStream]);
 
   useEffect(() => {
     if (isMinimized && localVideoRef.current && localStream) {
@@ -97,7 +107,22 @@ export function GlobalVideoPlayer() {
   return (
     <div className="fixed bottom-6 right-6 w-72 md:w-80 h-48 bg-zinc-900 rounded-2xl shadow-2xl border border-white/10 z-[100] overflow-hidden flex flex-col group animate-in slide-in-from-bottom-5 fade-in duration-300">
       
-      <video ref={remoteVideoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+      <div className={cn("absolute inset-0 grid gap-0.5", 
+        Object.keys(remoteStreams).length <= 1 ? "grid-cols-1" :
+        Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
+        "grid-cols-2 grid-rows-2"
+      )}>
+        {Object.entries(remoteStreams).map(([peerId, stream]) => (
+          <div key={peerId} className="w-full h-full relative overflow-hidden bg-black">
+            <RemoteVideo stream={stream} />
+          </div>
+        ))}
+        {Object.keys(remoteStreams).length === 0 && (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-black">
+            <span className="text-white text-xs font-bold uppercase tracking-widest opacity-50">Warte...</span>
+          </div>
+        )}
+      </div>
       
       <div className="absolute bottom-4 right-4 w-20 h-28 bg-black rounded-xl overflow-hidden shadow-lg border border-white/10">
         <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover transform -scale-x-100" />

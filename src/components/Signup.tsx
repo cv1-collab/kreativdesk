@@ -253,13 +253,16 @@ export default function Signup() {
   };
 
   // 🔥 NEU: Zentrale Funktion, um den Welcome Webhook anzufunken
-  const triggerWelcomeWebhook = async (email: string | null, uid: string) => {
+  const triggerWelcomeWebhook = async (email: string | null, uid: string, token: string) => {
     if (!email) return;
     try {
       const name = email.split('@')[0];
       await fetch('/api/send-welcome-webhook', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ email, name, uid })
       });
     } catch (err) {
@@ -296,7 +299,8 @@ export default function Signup() {
         }
         
         // 🔥 TRIGGER FÜR DEN WEBHOOK BEI GOOGLE SIGNUP
-        await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid);
+        const tokenForWebhook = await userCredential.user.getIdToken();
+        await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
 
         try {
           const token = await userCredential.user.getIdToken();
@@ -346,7 +350,8 @@ export default function Signup() {
       }
       
       // 🔥 TRIGGER FÜR DEN WEBHOOK BEI EMAIL SIGNUP
-      await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid);
+      const tokenForWebhook = await userCredential.user.getIdToken();
+      await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
 
       // +++ EMAIL VERIFICATION +++
       await sendEmailVerification(userCredential.user);

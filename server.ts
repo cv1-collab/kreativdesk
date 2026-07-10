@@ -106,6 +106,24 @@ async function startServer() {
     }
   });
 
+  // --- 0.1 AUTH MIDDLEWARE ---
+  const verifyAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+    }
+    const idToken = authHeader.split('Bearer ')[1];
+    try {
+      if (!firebaseAdmin) throw new Error('Firebase Admin not initialized');
+      const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+      (req as any).user = decodedToken;
+      next();
+    } catch (err) {
+      return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+    }
+  };
+
+
   // --- 1. STRIPE CHECKOUT SESSION (Kugelsicher mit priceId & Gutscheinen) ---
   app.post('/api/create-checkout-session', async (req, res) => {
     try {
@@ -302,7 +320,7 @@ async function startServer() {
   });
 
   // --- 5.1 WELCOME WEBHOOK (MAKE.COM / n8n) ---
-  app.post('/api/send-welcome-webhook', async (req, res) => {
+  app.post('/api/send-welcome-webhook', verifyAuth, async (req, res) => {
     try {
       const { email, name, uid } = req.body;
       if (!email) return res.status(400).json({ error: 'Email missing' });
@@ -337,7 +355,7 @@ async function startServer() {
   });
 
   // --- 6. PASSWORD RESET WEBHOOK (MAKE.COM / n8n) ---
-  app.post('/api/send-reset-webhook', async (req, res) => {
+  app.post('/api/send-reset-webhook', verifyAuth, async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: 'Email missing' });
@@ -417,7 +435,7 @@ async function startServer() {
   });
 
   // --- 7. GEMINI AI PROXY (Sicherheit für den API Key) ---
-  app.post('/api/generate', async (req, res) => {
+  app.post('/api/generate', verifyAuth, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
@@ -442,7 +460,7 @@ async function startServer() {
   });
 
   // --- 7a. GEMINI IMAGE GENERATION PROXY ---
-  app.post('/api/generate-image', async (req, res) => {
+  app.post('/api/generate-image', verifyAuth, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
@@ -473,7 +491,7 @@ async function startServer() {
   });
 
 // --- 7b. GEMINI AI EMBEDDING PROXY ---
-  app.post('/api/embed', async (req, res) => {
+  app.post('/api/embed', verifyAuth, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });

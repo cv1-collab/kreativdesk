@@ -16,8 +16,9 @@ import { auth } from '../firebase';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
+  // @ts-ignore - mismatch in fal-ai types
   requestMiddleware: [
-    async (request) => {
+    async (request: any) => {
       if (auth.currentUser) {
         const token = await auth.currentUser.getIdToken();
         request.headers.set('Authorization', `Bearer ${token}`);
