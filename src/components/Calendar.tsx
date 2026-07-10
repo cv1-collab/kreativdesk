@@ -106,7 +106,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
   
   const UI_HEADER_H = 45;
   const UI_PAD_TOP = 16;
-  const UI_ROW_H = 64;
+  const UI_ROW_H = 48;
 
   const isLandscape = settings.orientation === 'landscape';
   const isA3 = settings.format === 'A3';
@@ -154,12 +154,12 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
              if (i === 0) return null;
              return <View key={`grid-${i}`} style={{ position: 'absolute', left: LEFT_COL_W + (i * MONTH_W), top: getYPt(UI_HEADER_H), bottom: 0, width: 1 * SCALE, backgroundColor: '#e5e7eb' }} />
           })}
-          {ganttTasks.map((_: any, i: number) => (
+          {ganttTasks.filter(t => t.title && t.title.trim() !== '').map((_: any, i: number) => (
             <View key={`hline-${i}`} style={{ position: 'absolute', top: getYPt(UI_HEADER_H + UI_PAD_TOP + (i + 1) * UI_ROW_H - 10), left: 0, width: PDF_W, height: 1 * SCALE, backgroundColor: '#e5e7eb' }} />
           ))}
 
           {/* LAYER 2: GRAY TRACK BACKGROUNDS */}
-          {ganttTasks.map((task: any, i: number) => (
+          {ganttTasks.filter(t => t.title && t.title.trim() !== '').map((task: any, i: number) => (
             <View key={`track-${task.id}`} style={{ position: 'absolute', left: LEFT_COL_W, top: getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H) + 4 * SCALE, width: RIGHT_COL_W, height: 32 * SCALE, backgroundColor: '#f3f4f6', borderRadius: 4 * SCALE }} />
           ))}
 
@@ -178,7 +178,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
           </View>
 
           {/* LAYER 5: COLORED BARS & TASK TEXT */}
-          {ganttTasks.map((task: any, i: number) => {
+          {ganttTasks.filter(t => t.title && t.title.trim() !== '').map((task: any, i: number) => {
             const startPct = getYearPercentage(task.start);
             const widthPct = Math.max(0.5, getYearPercentage(task.end) - startPct);
             const bgColor = task.color?.startsWith('#') ? task.color : '#3b82f6';
@@ -341,10 +341,11 @@ export default function Calendar() {
   const [editingShape, setEditingShape] = useState<Shape | null>(null);
 
   const UI_HEADER_H = 45;
-  const UI_ROW_H = 64;
+  const UI_ROW_H = 48;
   const UI_PAD_TOP = 16;
   const UI_PAD_BOT = 40;
-  const chartMinHeight = Math.max(500, UI_HEADER_H + UI_PAD_TOP + (ganttTasks.length * UI_ROW_H) + UI_PAD_BOT);
+  const visibleTasks = ganttTasks.filter(t => t.title && t.title.trim() !== '');
+  const chartMinHeight = Math.max(500, UI_HEADER_H + UI_PAD_TOP + (visibleTasks.length * UI_ROW_H) + UI_PAD_BOT);
 
   // FIX: Nutze ResizeObserver, um chartWidth absolut millimetergenau synchron zu halten!
   useEffect(() => {
@@ -845,7 +846,7 @@ export default function Calendar() {
                       ))}
                     </div>
 
-                    {ganttTasks.map((task, index) => (
+                    {visibleTasks.map((task, index) => (
                       <div key={`hline-${task.id}`} className="absolute left-0 right-0 h-px bg-border/30" style={{ top: UI_HEADER_H + UI_PAD_TOP + (index + 1) * UI_ROW_H - 10 }} />
                     ))}
 
@@ -853,7 +854,7 @@ export default function Calendar() {
 
                     <div className="absolute inset-0 z-10 pointer-events-none" onPointerDown={activeTool !== 'cursor' ? onCanvasPointerDown : undefined} style={{ pointerEvents: activeTool !== 'cursor' ? 'auto' : 'none' }}></div>
 
-                    {ganttTasks.map((task, index) => {
+                    {visibleTasks.map((task, index) => {
                       const startPct = getYearPercentage(task.start);
                       const widthPct = Math.max(0.5, getYearPercentage(task.end) - startPct);
                       const isSelected = editingTask?.id === task.id;
@@ -1248,14 +1249,14 @@ export default function Calendar() {
                         })}
 
                         <div className="relative z-[20] space-y-12 pt-[100px]">
-                          {ganttTasks.map((task, index) => {
+                          {visibleTasks.map((task, index) => {
                             const startPct = getYearPercentage(task.start);
                             const endPct = Math.max(startPct + 1, getYearPercentage(task.end));
                             const width = endPct - startPct;
                             const isHexColor = task.color.startsWith('#');
                             
                             return (
-                              <div key={task.id} className="flex items-center group/row" style={{ height: 40, marginTop: index === 0 ? 0 : 24 }}>
+                              <div key={task.id} className="flex items-center group/row" style={{ height: 40, marginTop: index === 0 ? 0 : 8 }}>
                                 <div className="w-1/3 pr-4 flex flex-col gap-1 relative pointer-events-auto z-[30]">
                                   {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); deleteTask(task.id); }} className="absolute -left-6 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 transition-opacity print:hidden hover:bg-red-500/10 p-1 rounded cursor-pointer z-50"><Trash2 size={14}/></button>}
                                   {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setEditingTask(task); }} className="absolute -right-2 top-1 opacity-0 group-hover/row:opacity-100 text-text-muted hover:text-accent-ai transition-opacity print:hidden cursor-pointer z-50"><Edit2 size={14}/></button>}
@@ -1311,7 +1312,7 @@ export default function Calendar() {
                       {t('no_active_phases')}
                     </div>
                   ) : (
-                    [...ganttTasks].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()).map(task => {
+                    [...visibleTasks].filter(t => t.title?.trim()).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()).map(task => {
                       const brdColor = task.color.startsWith('#') ? task.color : '#3b82f6';
                       return (
                         <div key={task.id} className="bg-surface border border-border/50 rounded-xl p-4 shadow-sm relative overflow-hidden group">
