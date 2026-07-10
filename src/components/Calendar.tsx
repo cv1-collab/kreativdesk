@@ -1248,7 +1248,7 @@ export default function Calendar() {
                           );
                         })}
 
-                        <div className="relative z-[20] space-y-12 pt-[100px]">
+                        <div className="relative z-[20] pt-[100px]">
                           {visibleTasks.map((task, index) => {
                             const startPct = getYearPercentage(task.start);
                             const endPct = Math.max(startPct + 1, getYearPercentage(task.end));

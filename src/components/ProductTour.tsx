@@ -12,7 +12,7 @@ import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settin
 // VITE ESM Kompatibilität
 let JoyrideComponent: any = JoyrideModule;
 if (typeof JoyrideModule !== 'function') {
-  JoyrideComponent = (JoyrideModule as any).default || (JoyrideModule as any).Joyride;
+  JoyrideComponent = (JoyrideModule as any)['default'] || (JoyrideModule as any).Joyride;
 }
 if (typeof JoyrideComponent === 'object' && !JoyrideComponent.$$typeof) {
   JoyrideComponent = Object.values(JoyrideModule).find(val => typeof val === 'function') || (() => null);
