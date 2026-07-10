@@ -71,7 +71,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 };
 
 interface GanttTask { id: string; title: string; start: string; end: string; color: string; status: string; barText?: string; }
-interface SmartMarker { id: string; date: string; label: string; color: string; style: 'dashed' | 'solid'; }
+interface SmartMarker { id: string; date: string; label: string; color: string; style: 'dashed' | 'solid'; offsetY?: number; }
 interface Shape { id: string; type: 'rect' | 'circle' | 'line' | 'text' | 'note'; startX: number; startY: number; endX: number; endY: number; text?: string; color?: string; }
 interface Schedule { id: string; name: string; targetYear: number; ganttTasks: GanttTask[]; smartMarkers: SmartMarker[]; shapes: Shape[]; }
 
@@ -214,24 +214,6 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
               }
             })}
 
-            {ganttTasks.map((task: any, i: number) => {
-              const marker = smartMarkers[i];
-              if (!marker) return null;
-              
-              const startX = getXPt(getYearPercentage(task.end));
-              const endX = getXPt(getYearPercentage(marker.date));
-              const startY = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 20);
-              const endY = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42);
-              const hexCol = marker.color || '#ef4444';
-              
-              return (
-                <G key={`marker-link-${marker.id}`}>
-                  <Line x1={startX} y1={startY} x2={endX} y2={startY} stroke={hexCol} strokeWidth={1.5 * SCALE} strokeDasharray={marker.style === 'dashed' ? '4 3' : 'none'} />
-                  <Line x1={endX} y1={startY} x2={endX} y2={endY} stroke={hexCol} strokeWidth={1.5 * SCALE} strokeDasharray={marker.style === 'dashed' ? '4 3' : 'none'} />
-                  <Polygon points={`${endX - 3*SCALE},${endY - 3*SCALE} ${endX + 3*SCALE},${endY - 3*SCALE} ${endX},${endY + 2*SCALE}`} fill={hexCol} />
-                </G>
-              );
-            })}
           </Svg>
 
           {/* LAYER 4: TABLE HEADER */}
@@ -271,23 +253,15 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
 
           {/* LAYER 6: MEILENSTEINE (MARKERS) */}
           {(smartMarkers || []).map((m: any, i: number) => {
-            const task = ganttTasks[i];
             const leftPt = getXPt(getYearPercentage(m.date));
             const hexCol = m.color || (m.priority === 'high' ? '#ef4444' : '#f59e0b');
-            
-            if (task) {
-              const boxTop = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42);
-              return (
-                <View key={`m-${m.id}`} style={{ position: 'absolute', left: leftPt - 25 * fontScale, top: boxTop, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE, borderRadius: 2 * SCALE }}>
-                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 5 * fontScale, color: hexCol, textAlign: 'center' }}>{new Date(m.date).toLocaleDateString('de-CH')}</Text>
-                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 6 * fontScale, color: hexCol, textAlign: 'center' }}>{m.label}</Text>
-                </View>
-              );
-            }
+            const defaultOffset = i * UI_ROW_H + 100;
+            const offsetY = m.offsetY !== undefined ? m.offsetY : defaultOffset;
+            const boxTop = getYPt(UI_HEADER_H + UI_PAD_TOP + offsetY);
             
             return (
               <View key={`m-${m.id}`} style={{ position: 'absolute', left: leftPt, top: getYPt(UI_HEADER_H), height: PDF_H - getYPt(UI_HEADER_H) - getYPt(20), borderLeftWidth: 1.5 * SCALE, borderLeftColor: hexCol, borderLeftStyle: m.style === 'dashed' ? 'dashed' : 'solid' }}>
-                 <View style={{ position: 'absolute', top: -15 * fontScale, left: -25 * fontScale, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE }}>
+                 <View style={{ position: 'absolute', top: boxTop - getYPt(UI_HEADER_H), left: -25 * fontScale, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE, borderRadius: 2 * SCALE }}>
                    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 5 * fontScale, color: hexCol, textAlign: 'center' }}>{new Date(m.date).toLocaleDateString('de-CH')}</Text>
                    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 6 * fontScale, color: hexCol, textAlign: 'center' }}>{m.label}</Text>
                  </View>
@@ -411,7 +385,7 @@ export default function Calendar() {
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentShape, setCurrentShape] = useState<Partial<Shape> | null>(null);
-  const [dragContext, setDragContext] = useState<{type: 'task'|'shape', id: string, action: 'move'|'resizeL'|'resizeR', startX: number, startY: number, initialStart?: string, initialEnd?: string, initialShape?: Shape} | null>(null);
+  const [dragContext, setDragContext] = useState<{type: 'task'|'shape'|'marker', id: string, action: 'move'|'resizeL'|'resizeR'|'moveY', startX: number, startY: number, initialStart?: string, initialEnd?: string, initialShape?: Shape, initialOffsetY?: number} | null>(null);
   const [isAddingMarker, setIsAddingMarker] = useState(false);
   const [newMarker, setNewMarker] = useState<Partial<SmartMarker>>({ date: `${targetYear}-06-01`, label: '', color: '#3b82f6', style: 'dashed' });
   const [editingMarker, setEditingMarker] = useState<SmartMarker | null>(null);
@@ -723,6 +697,10 @@ export default function Calendar() {
       const deltaXPctTotal = ((e.clientX - dragContext.startX) / rect.width) * 100;
       const deltaYPctTotal = ((e.clientY - dragContext.startY) / chartMinHeight) * 100;
       setShapes(prev => prev.map(s => s.id === shape.id ? { ...s, startX: shape.startX + deltaXPctTotal, endX: shape.endX + deltaXPctTotal, startY: shape.startY + deltaYPctTotal, endY: shape.endY + deltaYPctTotal } : s));
+    } else if (dragContext.type === 'marker' && dragContext.action === 'moveY') {
+      const deltaY = e.clientY - dragContext.startY;
+      const newOffsetY = (dragContext.initialOffsetY || 0) + deltaY;
+      setSmartMarkers(prev => prev.map(m => m.id === dragContext.id ? { ...m, offsetY: newOffsetY } : m));
     }
   };
 
@@ -966,25 +944,7 @@ export default function Calendar() {
                         }
                       })}
 
-                      {smartMarkers.map((marker, i) => {
-                        const task = ganttTasks[i];
-                        if (!task) return null;
-                        const taskEndPct = getYearPercentage(task.end);
-                        const markerPct = getYearPercentage(marker.date);
-                        
-                        const startX = (chartWidth * 0.333333) + ((taskEndPct / 100) * (chartWidth * 0.666666));
-                        const endX = (chartWidth * 0.333333) + ((markerPct / 100) * (chartWidth * 0.666666));
-                        const startY = UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 20;
-                        const endY = UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42;
-                        
-                        return (
-                          <g key={`marker-link-${marker.id}`}>
-                            <path d={`M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`} fill="none" stroke={marker.color || '#ef4444'} strokeWidth="2" strokeDasharray={marker.style === 'dashed' ? '4 4' : 'none'} />
-                            <circle cx={startX} cy={startY} r="3" fill={marker.color || '#ef4444'} />
-                            <polygon points={`${endX-3},${endY-3} ${endX+3},${endY-3} ${endX},${endY+2}`} fill={marker.color || '#ef4444'} />
-                          </g>
-                        );
-                      })}
+
                     </svg>
 
                     <div className="absolute inset-0 z-10 pointer-events-none" onPointerDown={activeTool !== 'cursor' ? onCanvasPointerDown : undefined} style={{ pointerEvents: activeTool !== 'cursor' ? 'auto' : 'none' }}></div>
@@ -1046,36 +1006,34 @@ export default function Calendar() {
                     })}
 
                     {smartMarkers.map((marker, i) => {
-                      const task = ganttTasks[i];
                       const leftPct = getYearPercentage(marker.date);
-                      
-                      if (task) {
-                        return (
-                          <div 
-                            key={marker.id} 
-                            className={cn("absolute z-20 transition-all group/marker", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")}
-                            style={{ 
-                              left: `${33.333333 + (leftPct * 0.666666)}%`, 
-                              top: UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 42, 
-                            }}
-                            onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}
-                          >
-                             <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col items-center hover:scale-105 transition-transform" style={{ color: marker.color || '#ef4444', borderColor: marker.color || '#ef4444' }}>
-                               <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
-                               <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
-                               {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>}
-                             </div>
-                          </div>
-                        );
-                      }
+                      const defaultOffset = i * UI_ROW_H + 100;
+                      const offsetY = marker.offsetY !== undefined ? marker.offsetY : defaultOffset;
 
-                      const offset = i * 88;
                       return (
-                        <div key={marker.id} className={cn("absolute z-20 transition-all", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")} style={{ left: `${33.333333 + (leftPct * 0.666666)}%`, top: UI_HEADER_H, bottom: 20, borderLeftWidth: 2, borderLeftColor: marker.color || '#ef4444', borderLeftStyle: marker.style === 'dashed' ? 'dashed' : 'solid' }} onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}>
-                           <div className="absolute left-1/2 -translate-x-1/2 bg-background border rounded-lg px-3 py-1 whitespace-nowrap shadow-lg cursor-pointer hover:scale-105 transition-transform" style={{ borderColor: marker.color || '#ef4444', top: `${10 + offset}px` }}>
-                             <div className="text-[9px] font-black text-center" style={{ color: marker.color || '#ef4444' }}>{new Date(marker.date).toLocaleDateString('de-CH')}</div>
-                             <div className="text-xs font-bold text-text-primary text-center">{marker.label}</div>
-                           </div>
+                        <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
+                          <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                          
+                          <div 
+                            className={cn("absolute pointer-events-auto flex items-center transition-transform", activeTool === 'cursor' ? 'cursor-ns-resize hover:scale-105' : '')} 
+                            style={{ top: `${UI_HEADER_H + UI_PAD_TOP + offsetY}px`, left: '-5px' }}
+                            onPointerDown={(e) => {
+                              if (activeTool === 'cursor') {
+                                e.stopPropagation();
+                                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                                setDragContext({ type: 'marker', id: marker.id, action: 'moveY', startX: e.clientX, startY: e.clientY, initialOffsetY: offsetY });
+                              }
+                            }}
+                            onClick={(e) => { if(activeTool === 'cursor' && !isDemoMode) { e.stopPropagation(); setEditingMarker(marker); } }}
+                          >
+                            <div className="w-2.5 h-2.5 rotate-45 border-[2px] bg-white shadow-sm shrink-0" style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                            <div className="w-3 h-[2px]" style={{ backgroundColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
+                            <div className="px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col relative group-hover/marker:shadow-lg transition-shadow" style={{ color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
+                              <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
+                              <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
+                              {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}
@@ -1331,57 +1289,29 @@ export default function Calendar() {
                             );
                           })}
 
-                          {smartMarkers.map((marker, i) => {
-                            const task = ganttTasks[i];
-                            if (!task) return null;
-                            const taskEndPct = getYearPercentage(task.end);
-                            const markerPct = getYearPercentage(marker.date);
-                            
-                            const startX = (chartWidth * 0.333333) + ((taskEndPct / 100) * (chartWidth * 0.666666));
-                            const endX = (chartWidth * 0.333333) + ((markerPct / 100) * (chartWidth * 0.666666));
-                            const startY = i * UI_ROW_H + 120;
-                            const endY = i * UI_ROW_H + 144;
-                            
-                            return (
-                              <g key={`marker-link-${marker.id}`}>
-                                <path d={`M ${startX} ${startY} L ${endX} ${startY} L ${endX} ${endY}`} fill="none" stroke={marker.color || '#ef4444'} strokeWidth="2" strokeDasharray={marker.style === 'dashed' ? '4 4' : 'none'} />
-                                <circle cx={startX} cy={startY} r="3" fill={marker.color || '#ef4444'} />
-                                <polygon points={`${endX-3},${endY-3} ${endX+3},${endY-3} ${endX},${endY+2}`} fill={marker.color || '#ef4444'} />
-                              </g>
-                            );
-                          })}
                         </svg>
 
                         {smartMarkers.map((marker, i) => {
-                          const task = ganttTasks[i];
                           const leftPct = getYearPercentage(marker.date);
-                          
-                          if (task) {
-                            const boxTop = i * UI_ROW_H + 144;
-                            return (
-                              <div 
-                                key={marker.id} 
-                                className={cn("absolute z-40 transition-all group/marker", activeTool === 'cursor' ? "cursor-pointer hover:opacity-80" : "pointer-events-none")}
-                                style={{ 
-                                  left: `${33.333333 + (leftPct * 0.666666)}%`, 
-                                  top: boxTop, 
-                                }}
-                                onClick={(e) => { if(activeTool==='cursor') { e.stopPropagation(); setEditingMarker(marker); } }}
-                              >
-                                 <div className="absolute left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col items-center hover:scale-105 transition-transform" style={{ color: marker.color || '#ef4444', borderColor: marker.color || '#ef4444' }}>
-                                   <span className="text-[9px] mb-0.5 opacity-70 leading-none">{new Date(marker.date).toLocaleDateString('de-CH')}</span>
-                                   <span className="whitespace-nowrap leading-none mt-1">{marker.label}</span>
-                                   {!isDemoMode && <button onPointerDown={(e) => { e.stopPropagation(); setSmartMarkers(prev => prev.filter(m => m.id !== marker.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/marker:opacity-100 print:hidden shadow-lg cursor-pointer transition-opacity"><X size={10} strokeWidth={3}/></button>}
-                                 </div>
-                              </div>
-                            );
-                          }
+                          const defaultOffset = i * UI_ROW_H + 100;
+                          const offsetY = marker.offsetY !== undefined ? marker.offsetY : defaultOffset;
 
-                          const offset = i * UI_ROW_H + 100;
                           return (
                             <div key={marker.id} className="absolute top-0 bottom-0 w-px z-[40] group/marker pointer-events-none" style={{ left: `${33.333333 + (leftPct * 0.666666)}%` }}>
                               <div className={cn("absolute inset-0 border-l-2", marker.color.startsWith('bg-') ? marker.color.replace('bg-', 'border-') : '', marker.style === 'dashed' ? 'border-dashed' : 'border-solid')} style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
-                              <div className="absolute pointer-events-auto flex items-center" style={{ top: `${20 + offset}px`, left: '-5px' }}>
+                              
+                              <div 
+                                className={cn("absolute pointer-events-auto flex items-center transition-transform", activeTool === 'cursor' ? 'cursor-ns-resize hover:scale-105' : '')} 
+                                style={{ top: `${20 + offsetY}px`, left: '-5px' }}
+                                onPointerDown={(e) => {
+                                  if (activeTool === 'cursor') {
+                                    e.stopPropagation();
+                                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                                    setDragContext({ type: 'marker', id: marker.id, action: 'moveY', startX: e.clientX, startY: e.clientY, initialOffsetY: offsetY });
+                                  }
+                                }}
+                                onClick={(e) => { if(activeTool === 'cursor' && !isDemoMode) { e.stopPropagation(); setEditingMarker(marker); } }}
+                              >
                                 <div className="w-2.5 h-2.5 rotate-45 border-[2px] bg-white shadow-sm shrink-0" style={{ borderColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
                                 <div className="w-3 h-[2px]" style={{ backgroundColor: marker.color.startsWith('#') ? marker.color : undefined }}></div>
                                 <div className="px-3 py-1.5 rounded-lg text-xs font-bold shadow-md border bg-surface flex flex-col relative group-hover/marker:shadow-lg transition-shadow" style={{ color: marker.color.startsWith('#') ? marker.color : undefined, borderColor: marker.color.startsWith('#') ? marker.color : undefined }}>
@@ -1660,7 +1590,7 @@ export default function Calendar() {
       </div>
 
       <AnimatePresence>
-        {editingTask && (
+        {editingTask && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
             <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
               <h3 className="font-bold text-lg">{t('edit_phase')}</h3>
@@ -1703,7 +1633,7 @@ export default function Calendar() {
           </motion.aside>
         )}
 
-        {isAddingMarker && (
+        {isAddingMarker && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
             <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
               <h3 className="font-bold text-lg flex items-center gap-2"><Milestone size={18} className="text-orange-500"/> {t('add_milestone')}</h3>
@@ -1734,7 +1664,7 @@ export default function Calendar() {
           </motion.aside>
         )}
 
-        {editingMarker && (
+        {editingMarker && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
             <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
               <h3 className="font-bold text-lg flex items-center gap-2"><Milestone size={18} className="text-orange-500"/> Meilenstein bearbeiten</h3>
@@ -1761,7 +1691,7 @@ export default function Calendar() {
           </motion.aside>
         )}
 
-        {editingShape && (
+        {editingShape && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
             <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
               <h3 className="font-bold text-lg flex items-center gap-2"><Edit2 size={18} className="text-blue-500"/> Notiz / Element bearbeiten</h3>
