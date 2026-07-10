@@ -92,33 +92,39 @@ async function startServer() {
       }
 
       // ++ SICHERHEITSLOGIK ++
-      // Prüfen, ob der Nutzer einen gültigen Anspruch auf diese companyId hat
+      let assignedRole = 'owner'; // Default: Wenn er seiner EIGENEN Firma beitritt, ist er Owner.
+
       if (decodedToken.uid === uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
         if (companyId !== `comp_${uid}`) {
-          // Er versucht einer fremden Firma beizutreten. Hat er ein Invite?
-          if (!db) return res.status(500).json({ error: 'Database error' });
-          const invitesSnapshot = await db.collection('invites')
+          const invitesSnapshot = await firebaseAdmin.firestore().collection('invites')
             .where('email', '==', decodedToken.email)
             .where('companyId', '==', companyId)
             .where('status', '==', 'pending')
             .get();
             
           if (invitesSnapshot.empty) {
-            console.error(`Sicherheitsverletzung: Nutzer ${uid} versuchte ohne Invite der Firma ${companyId} beizutreten.`);
             return res.status(403).json({ error: 'Forbidden: Invalid or missing invite for this company' });
+          } else {
+            assignedRole = invitesSnapshot.docs[0].data().role || 'Mitarbeiter';
           }
         }
       }
 
-      const userRecord = await firebaseAdmin.auth().getUser(uid);
-      const currentClaims = userRecord.customClaims || {};
+      try {
+        const userRecord = await firebaseAdmin.auth().getUser(uid);
+        const currentClaims = userRecord.customClaims || {};
 
-      await firebaseAdmin.auth().setCustomUserClaims(uid, {
-        ...currentClaims,
-        companyId: companyId
-      });
+        await firebaseAdmin.auth().setCustomUserClaims(uid, {
+          ...currentClaims,
+          companyId: companyId,
+          role: assignedRole
+        });
 
-      res.status(200).json({ success: true, message: `Tenant claim ${companyId} set for user ${uid}` });
+        res.status(200).json({ success: true, message: `Tenant claim ${companyId} and role ${assignedRole} set for user ${uid}` });
+      } catch (error: any) {
+        console.error("Custom Claim Error:", error);
+        res.status(500).json({ error: 'Failed to set custom claims', details: error.message });
+      }
     } catch (error: any) {
       console.error("Custom Claim Error:", error);
       res.status(500).json({ error: 'Failed to set custom claims', details: error.message });

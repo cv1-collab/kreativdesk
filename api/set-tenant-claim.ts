@@ -49,7 +49,8 @@ export default async function handler(req: any, res: any) {
   }
 
   // ++ SICHERHEITSLOGIK ++
-  // Prüfen, ob der Nutzer einen gültigen Anspruch auf diese companyId hat
+  let assignedRole = 'owner'; // Default: Wenn er seiner EIGENEN Firma beitritt, ist er Owner.
+
   if (decodedToken.uid === uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
     if (companyId !== `comp_${uid}`) {
       // Er versucht einer fremden Firma beizutreten. Hat er ein Invite?
@@ -62,6 +63,9 @@ export default async function handler(req: any, res: any) {
       if (invitesSnapshot.empty) {
         console.error(`Sicherheitsverletzung: Nutzer ${uid} versuchte ohne Invite der Firma ${companyId} beizutreten.`);
         return res.status(403).json({ error: 'Forbidden: Invalid or missing invite for this company' });
+      } else {
+        // Invite existiert, Rolle übernehmen
+        assignedRole = invitesSnapshot.docs[0].data().role || 'Mitarbeiter';
       }
     }
   }
@@ -71,13 +75,14 @@ export default async function handler(req: any, res: any) {
     const userRecord = await auth.getUser(uid);
     const currentClaims = userRecord.customClaims || {};
 
-    // Brenne die companyId in das Token
+    // Brenne die companyId und die role in das Token
     await auth.setCustomUserClaims(uid, {
       ...currentClaims,
-      companyId: companyId
+      companyId: companyId,
+      role: assignedRole
     });
 
-    return res.status(200).json({ success: true, message: `Tenant claim ${companyId} set for user ${uid}` });
+    return res.status(200).json({ success: true, message: `Tenant claim ${companyId} and role ${assignedRole} set for user ${uid}` });
   } catch (error: any) {
     console.error("Custom Claim Error:", error);
     return res.status(500).json({ error: 'Failed to set custom claims', details: error.message });

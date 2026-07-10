@@ -283,40 +283,26 @@ export default function Signup() {
       const userDocSnap = await getDoc(userDocRef);
 
       if (!userDocSnap.exists()) {
-        let assignedCompanyId = `comp_${userCredential.user.uid}`;
-        if (inviteToken) {
-          const inviteResult = await processInvite(userCredential.user.uid, userCredential.user.email, inviteToken);
-          if (inviteResult && typeof inviteResult === 'string') {
-            assignedCompanyId = inviteResult;
-          } else if (inviteResult && typeof inviteResult === 'object') {
-            await generateOnboardingData(userCredential.user.uid, userCredential.user.email, inviteResult);
-            await updateDoc(doc(db, 'invites', inviteToken), { status: 'accepted', acceptedBy: userCredential.user.uid, acceptedAt: new Date().toISOString() });
-          } else {
-            await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
-          }
-        } else {
-          await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
+        const token = await userCredential.user.getIdToken();
+        const response = await fetch('/api/register-company', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
+        });
+
+        if (!response.ok) {
+          throw new Error('Registration failed on server.');
         }
-        
+
         // 🔥 TRIGGER FÜR DEN WEBHOOK BEI GOOGLE SIGNUP
         const tokenForWebhook = await userCredential.user.getIdToken();
         await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
 
-        try {
-          const token = await userCredential.user.getIdToken();
-          await fetch('/api/set-tenant-claim', {
-            method: 'POST', 
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ uid: userCredential.user.uid, companyId: assignedCompanyId })
-          });
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          await userCredential.user.getIdToken(true);
-        } catch (e) {
-          console.error('Tenant claim failed', e);
-        }
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        await userCredential.user.getIdToken(true);
       } else {
         await new Promise(resolve => setTimeout(resolve, 1500));
         await userCredential.user.getIdToken(true);
@@ -334,21 +320,20 @@ export default function Signup() {
     try {
       setError(''); setLoading(true);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      let assignedCompanyId = `comp_${userCredential.user.uid}`;
-      if (inviteToken) {
-        const inviteResult = await processInvite(userCredential.user.uid, userCredential.user.email, inviteToken);
-        if (inviteResult && typeof inviteResult === 'string') {
-          assignedCompanyId = inviteResult;
-        } else if (inviteResult && typeof inviteResult === 'object') {
-          await generateOnboardingData(userCredential.user.uid, userCredential.user.email, inviteResult);
-          await updateDoc(doc(db, 'invites', inviteToken), { status: 'accepted', acceptedBy: userCredential.user.uid, acceptedAt: new Date().toISOString() });
-        } else {
-          await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
-        }
-      } else {
-        await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
+      const token = await userCredential.user.getIdToken();
+      const response = await fetch('/api/register-company', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
+      });
+
+      if (!response.ok) {
+        throw new Error('Registration failed on server.');
       }
-      
+
       // 🔥 TRIGGER FÜR DEN WEBHOOK BEI EMAIL SIGNUP
       const tokenForWebhook = await userCredential.user.getIdToken();
       await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
@@ -357,21 +342,8 @@ export default function Signup() {
       await sendEmailVerification(userCredential.user);
       addToast('Bitte überprüfe dein E-Mail-Postfach, um deinen Account zu verifizieren.', 'success');
 
-      try {
-        const token = await userCredential.user.getIdToken();
-        await fetch('/api/set-tenant-claim', {
-          method: 'POST', 
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ uid: userCredential.user.uid, companyId: assignedCompanyId })
-        });
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        await userCredential.user.getIdToken(true);
-      } catch (e) {
-        console.error('Tenant claim failed', e);
-      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await userCredential.user.getIdToken(true);
       
       navigate('/app');
     } catch (error: any) { setError(t('signup_error')); } finally { setLoading(false); }

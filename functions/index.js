@@ -105,7 +105,8 @@ exports.analyzeDefect = onCall({
 // 4. CUSTOM CLAIMS (Mandantenfähigkeit & Performance)
 // ============================================================================
 
-// Setzt den Stempel, wenn das User-Dokument aktualisiert wird (z.B. Rollen-Wechsel)
+/* 
+// DEAKTIVIERT WEGEN SICHERHEITSLÜCKE: Custom Claims werden nun sicher über /api/register-tenant und /api/set-tenant-claim gesetzt!
 exports.setCompanyClaims = functions.firestore
     .document('users/{userId}')
     .onUpdate(async (change, context) => {
@@ -134,6 +135,7 @@ exports.setInitialClaims = functions.firestore
             console.log(`Initiale Claims gesetzt für User: ${context.params.userId}`);
         }
     });
+*/
 
 // ============================================================================
 // 4. NEU: NOTIFICATION CRONJOB (Datenbank-Bereinigung)
