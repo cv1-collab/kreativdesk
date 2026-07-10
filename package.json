@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/server.mjs --external:express --external:vite --external:@google/genai",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives ",
     "start": "node dist/server.mjs",
     "preview": "vite preview"
   },

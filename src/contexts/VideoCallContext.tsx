@@ -80,7 +80,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const isInCall = callStatus !== 'idle';
   
   // Mesh Network Refs
-  const myIdRef = useRef<string>(`guest_${Math.random().toString(36).substring(2, 9)}`);
+  const [initialMyId] = useState(() => `guest_${Math.random().toString(36).substring(2, 9)}`);
+  const myIdRef = useRef<string>(initialMyId);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
   const unsubSignalsRef = useRef<(() => void) | null>(null);
   const unsubParticipantsRef = useRef<(() => void) | null>(null);

@@ -246,10 +246,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setPortalNode(document.body);
-  }, []);
+  const portalNode = typeof document !== 'undefined' ? document.body : null;
 
   const activeProjects = (projects && projects.length > 0) ? projects : (contextProjects || []);
   const safeProjects = Array.isArray(activeProjects) ? activeProjects : [];

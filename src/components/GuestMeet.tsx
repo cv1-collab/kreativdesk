@@ -111,17 +111,16 @@ export default function GuestMeet() {
     // Lead Capture (Optional)
     if (meetingCompanyId && guestEmail.trim()) {
       try {
-        await addDoc(collection(db, 'companyUsers'), {
+        await addDoc(collection(db, 'leads'), {
           firstName: guestName,
           lastName: '',
           email: guestEmail,
           company: '',
           phone: '',
-          isExternal: true,
-          status: 'lead',
-          source: 'Video Call',
+          status: 'New',
+          source: 'Video Call Guest',
           companyId: meetingCompanyId,
-          createdAt: new Date().toISOString()
+          createdAt: serverTimestamp()
         });
       } catch (err) {
         console.error('Failed to save lead:', err);

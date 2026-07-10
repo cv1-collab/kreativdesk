@@ -143,7 +143,7 @@ export default function MeetChat() {
     
     recognition.onend = () => {
       if (isTranscribingRef.current) {
-         try { recognition.start(); } catch(e){}
+         try { recognition.start(); } catch(e){ console.warn(e); }
       }
     };
 
@@ -164,7 +164,7 @@ export default function MeetChat() {
     } else {
        setIsTranscribing(true);
        if (recognitionRef.current) {
-          try { recognitionRef.current.start(); addToast("Live-Transkription gestartet", "success"); } catch(e){}
+          try { recognitionRef.current.start(); addToast("Live-Transkription gestartet", "success"); } catch(e){ console.warn(e); }
        }
     }
   };
@@ -241,7 +241,7 @@ export default function MeetChat() {
       }));
     });
     return () => unsubscribe();
-  }, [currentUser, projectId, activeProjectId]);
+  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId]);
 
   useEffect(() => {
     if (!db || !currentUser || !currentUser.companyId) return;

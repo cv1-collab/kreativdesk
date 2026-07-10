@@ -16,7 +16,7 @@ import { auth } from '../firebase';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
-  // @ts-ignore - mismatch in fal-ai types
+  // @ts-expect-error - mismatch in fal-ai types
   requestMiddleware: [
     async (request: any) => {
       if (auth.currentUser) {
