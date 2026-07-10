@@ -167,52 +167,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
           <Svg viewBox={`0 0 ${PDF_W} ${PDF_H}`} style={{ position: 'absolute', top: 0, left: 0, width: PDF_W, height: PDF_H }}>
             {ganttTasks.map((task: any, i: number) => {
               if (i === 0) return null;
-              const prevTask = ganttTasks[i-1];
-              
-              const startX = getXPt(getYearPercentage(prevTask.end));
-              const rawEndX = getXPt(getYearPercentage(task.start));
-              
-              const minArrowX = LEFT_COL_W + (0.8 * PDF_W / 100);
-              const arrowEndX = Math.max(minArrowX, rawEndX); 
-              
-              const startY = getYPt(UI_HEADER_H + UI_PAD_TOP + (i - 1) * UI_ROW_H + 20); 
-              const endY = getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H + 20);
-              const color = "#9ca3af";
 
-              const isFlush = Math.abs(arrowEndX - startX) <= (1.5 * PDF_W / 100);
-              const isBackward = arrowEndX < startX - (1.5 * PDF_W / 100);
-
-              if (isFlush) {
-                return (
-                  <G key={`dep-${task.id}`}>
-                    <Line x1={startX} y1={startY} x2={startX} y2={endY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={startX} y1={endY} x2={Math.max(startX + (0.1*PDF_W/100), arrowEndX)} y2={endY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                  </G>
-                );
-              } else if (isBackward) {
-                const dropY = getYPt(UI_HEADER_H + UI_PAD_TOP + (i - 1) * UI_ROW_H + 52);
-                const dropXStart = startX + (0.5 * PDF_W / 100);
-                const dropXEnd = Math.max(LEFT_COL_W, arrowEndX - (0.5 * PDF_W / 100));
-
-                return (
-                  <G key={`dep-${task.id}`}>
-                    <Line x1={startX} y1={startY} x2={dropXStart} y2={startY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={dropXStart} y1={startY} x2={dropXStart} y2={dropY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={dropXStart} y1={dropY} x2={dropXEnd} y2={dropY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={dropXEnd} y1={dropY} x2={dropXEnd} y2={endY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={dropXEnd} y1={endY} x2={arrowEndX} y2={endY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                  </G>
-                );
-              } else {
-                return (
-                  <G key={`dep-${task.id}`}>
-                    <Line x1={startX} y1={startY} x2={startX + (1 * PDF_W / 100)} y2={startY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={startX + (1 * PDF_W / 100)} y1={startY} x2={startX + (1 * PDF_W / 100)} y2={endY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                    <Line x1={startX + (1 * PDF_W / 100)} y1={endY} x2={arrowEndX} y2={endY} stroke={color} strokeWidth={1.5 * SCALE} strokeDasharray="4 3" />
-                  </G>
-                );
-              }
-            })}
 
           </Svg>
 
@@ -900,52 +855,7 @@ export default function Calendar() {
                       <div key={`hline-${task.id}`} className="absolute left-0 right-0 h-px bg-border/30" style={{ top: UI_HEADER_H + UI_PAD_TOP + (index + 1) * UI_ROW_H - 10 }} />
                     ))}
 
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
-                      {ganttTasks.map((task, index) => {
-                        if (index === 0) return null;
-                        const prevTask = ganttTasks[index - 1];
-                        const startPct = getYearPercentage(prevTask.end);
-                        const endPct = getYearPercentage(task.start);
-                        const startX = (chartWidth * 0.333333) + ((startPct / 100) * (chartWidth * 0.666666));
-                        const endX = (chartWidth * 0.333333) + ((endPct / 100) * (chartWidth * 0.666666));
-                        const startY = UI_HEADER_H + UI_PAD_TOP + (index - 1) * UI_ROW_H + 20;
-                        const endY = UI_HEADER_H + UI_PAD_TOP + index * UI_ROW_H + 20;
 
-                        const isFlush = Math.abs(endX - startX) <= 15;
-                        const isBackward = endX < startX - 15;
-
-                        if (isFlush) {
-                          return (
-                            <g key={`dep-${task.id}`}>
-                              <path d={`M ${startX} ${startY} L ${startX} ${endY} L ${endX} ${endY}`} fill="none" stroke="#52525b" strokeWidth="2" strokeDasharray="4 4" />
-                              <circle cx={startX} cy={startY} r="3" fill="#52525b" />
-                              <polygon points={`${endX},${endY-4} ${endX+6},${endY} ${endX},${endY+4}`} fill="#52525b" />
-                            </g>
-                          );
-                        } else if (isBackward) {
-                          const dropY = UI_HEADER_H + UI_PAD_TOP + (index - 1) * UI_ROW_H + 52;
-                          const minX = (chartWidth * 0.333333) + 10;
-                          const dropXEnd = Math.max(minX, endX - 10);
-                          return (
-                            <g key={`dep-${task.id}`}>
-                              <path d={`M ${startX} ${startY} L ${startX+10} ${startY} L ${startX+10} ${dropY} L ${dropXEnd} ${dropY} L ${dropXEnd} ${endY} L ${endX} ${endY}`} fill="none" stroke="#52525b" strokeWidth="2" strokeDasharray="4 4" />
-                              <circle cx={startX} cy={startY} r="3" fill="#52525b" />
-                              <polygon points={`${endX-4},${endY-4} ${endX+2},${endY} ${endX-4},${endY+4}`} fill="#52525b" />
-                            </g>
-                          );
-                        } else {
-                          return (
-                            <g key={`dep-${task.id}`}>
-                              <path d={`M ${startX} ${startY} L ${startX+15} ${startY} L ${startX+15} ${endY} L ${endX} ${endY}`} fill="none" stroke="#52525b" strokeWidth="2" strokeDasharray="4 4" />
-                              <circle cx={startX} cy={startY} r="3" fill="#52525b" />
-                              <polygon points={`${endX-4},${endY-4} ${endX+2},${endY} ${endX-4},${endY+4}`} fill="#52525b" />
-                            </g>
-                          );
-                        }
-                      })}
-
-
-                    </svg>
 
                     <div className="absolute inset-0 z-10 pointer-events-none" onPointerDown={activeTool !== 'cursor' ? onCanvasPointerDown : undefined} style={{ pointerEvents: activeTool !== 'cursor' ? 'auto' : 'none' }}></div>
 
@@ -1230,47 +1140,7 @@ export default function Calendar() {
                               <path d="M 0 0 L 10 5 L 0 10 z" fill="#52525b" />
                             </marker>
                           </defs>
-                          {ganttTasks.map((task, i) => {
-                            if (i === 0) return null;
-                            const prevTask = ganttTasks[i-1];
-                            const startPct = getYearPercentage(prevTask.end);
-                            const endPct = getYearPercentage(task.start);
-                            const startX = (chartWidth * 0.333333) + ((startPct / 100) * (chartWidth * 0.666666));
-                            const endX = (chartWidth * 0.333333) + ((endPct / 100) * (chartWidth * 0.666666));
-                            const startY = (i - 1) * UI_ROW_H + 20 + 100;
-                            const endY = i * UI_ROW_H + 20 + 100;
-                            const arrowColor = "#52525b";
 
-                            const isFlush = Math.abs(endX - startX) <= 15;
-                            const isBackward = endX < startX - 15;
-
-                            if (isFlush) {
-                              return (
-                                <g key={`dep-${task.id}`}>
-                                  <line x1={startX} y1={startY} x2={startX} y2={endY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={startX} y1={endY} x2={Math.max(startX + 0.1, endX)} y2={endY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrowhead)" />
-                                </g>
-                              );
-                            } else if (isBackward) {
-                              return (
-                                <g key={`dep-${task.id}`}>
-                                  <line x1={startX} y1={startY} x2={startX + 0.5} y2={startY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={startX + 0.5} y1={startY} x2={startX + 0.5} y2={startY + 32} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={startX + 0.5} y1={startY + 32} x2={endX - 0.5} y2={startY + 32} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={endX - 0.5} y1={startY + 32} x2={endX - 0.5} y2={endY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={endX - 0.5} y1={endY} x2={endX} y2={endY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrowhead)" />
-                                </g>
-                              );
-                            } else {
-                              return (
-                                <g key={`dep-${task.id}`}>
-                                  <line x1={startX} y1={startY} x2={startX + 1} y2={startY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={startX + 1} y1={startY} x2={startX + 1} y2={endY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" />
-                                  <line x1={startX + 1} y1={endY} x2={endX} y2={endY} stroke={arrowColor} strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrowhead)" />
-                                </g>
-                              );
-                            }
-                          })}
 
                           {[...shapes, currentShape].filter(s => s?.type === 'line').map((shape, i) => {
                             if (!shape) return null;
