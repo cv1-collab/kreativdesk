@@ -163,13 +163,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
             <View key={`track-${task.id}`} style={{ position: 'absolute', left: LEFT_COL_W, top: getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H) + 4 * SCALE, width: RIGHT_COL_W, height: 32 * SCALE, backgroundColor: '#f3f4f6', borderRadius: 4 * SCALE }} />
           ))}
 
-          {/* LAYER 3: DEPENDENCIES (SVG ARROWS) */}
-          <Svg viewBox={`0 0 ${PDF_W} ${PDF_H}`} style={{ position: 'absolute', top: 0, left: 0, width: PDF_W, height: PDF_H }}>
-            {ganttTasks.map((task: any, i: number) => {
-              if (i === 0) return null;
 
-
-          </Svg>
 
           {/* LAYER 4: TABLE HEADER */}
           <View style={{ position: 'absolute', top: 0, left: 0, width: PDF_W, height: getYPt(UI_HEADER_H), borderBottomWidth: 1 * SCALE, borderBottomColor: '#d1d5db', backgroundColor: '#fafafa' }}>
