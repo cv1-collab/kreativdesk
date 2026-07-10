@@ -504,7 +504,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-2xl font-black text-white mb-2">{t('card5_title')}</h3>
                   <p className="text-zinc-400 mb-8">{t('card5_desc')}</p>
-                  <Link to="/register" className="w-full py-4 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:bg-zinc-200 shadow-xl">
+                  <Link to="/signup" className="w-full py-4 bg-white text-black rounded-xl font-bold flex items-center justify-center gap-2 transition-all hover:bg-zinc-200 shadow-xl">
                     {t('card5_cta')} <ArrowRight size={18} />
                   </Link>
                 </div>

@@ -486,6 +486,25 @@ export default function MeetChat() {
     setSelectedUserIds(prev => prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]);
   };
 
+  const [isMobileViewport, setIsMobileViewport] = useState(() => window.innerWidth < 1024);
+  useEffect(() => {
+    const handleResize = () => setIsMobileViewport(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  if (isMobileViewport) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center h-full bg-background p-6 text-center">
+        <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6">
+          <MonitorOff size={40} />
+        </div>
+        <h2 className="text-2xl font-bold text-text-primary mb-3">{t('mobile_blocked_title')}</h2>
+        <p className="text-text-muted max-w-sm">{t('mobile_blocked_desc')}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden text-text-primary">
       
