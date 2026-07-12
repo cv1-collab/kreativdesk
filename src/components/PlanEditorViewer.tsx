@@ -1111,7 +1111,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         return;
       }
 
-      const storageRef = ref(storage, `documents/${currentUser.uid}/${fileName}`);
+      const storageRef = ref(storage, `${currentUser?.companyId}/documents/${currentUser.uid}/${fileName}`);
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
       await incrementStorage(currentUser.companyId, blob.size);

@@ -552,7 +552,7 @@ export default function CompanyDashboard() {
 
     addToast(`Upload: ${file.name}...`, 'info');
     try {
-      const storageRef = ref(storage, `documents/${currentUser.uid}/${Date.now()}_${file.name}`);
+      const storageRef = ref(storage, `${currentUser.companyId}/documents/${currentUser.uid}/${Date.now()}_${file.name}`);
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
       const docType = file.type || file.name.split('.').pop()?.toLowerCase() || 'unknown';

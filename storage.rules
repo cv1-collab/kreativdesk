@@ -15,15 +15,22 @@ service firebase.storage {
       allow read, write: if request.auth != null;
     }
 
-    // 2. Öffentliche Scanner (Ohne Login nutzbar via Session-ID)
+    // 2. Öffentliche Scanner & Mobile Uploads (Ohne Login nutzbar via Session-ID)
+    // Dateigröße auf max 10MB beschränkt um Spam zu verhindern
     match /temp_receipts/{imageId} { 
-      allow create: if true;
+      allow create: if request.resource.size < 10 * 1024 * 1024;
+      allow get: if true;
+      allow list: if false;
+      allow delete: if request.auth != null;
+    }
+    match /temp_mobile_uploads/{imageId} { 
+      allow create: if request.resource.size < 10 * 1024 * 1024;
       allow get: if true;
       allow list: if false;
       allow delete: if request.auth != null;
     }
     match /scanned_vcards/{imageId} { 
-      allow create: if true;
+      allow create: if request.resource.size < 5 * 1024 * 1024;
       allow get: if true;
       allow list: if false;
       allow delete: if request.auth != null;
