@@ -448,7 +448,7 @@ export default function DocumentsTab() {
                            <div className="font-bold text-text-primary text-[15px] truncate max-w-md flex items-center gap-2 group-hover:text-accent-ai transition-colors">
                              {doc.name} 
                              {showBadge && <span className="px-1.5 py-0.5 bg-red-500/10 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-md border border-red-500/20">{t('new_badge')}</span>}
-                             {doc.visibility === 'private' && <Lock size={12} className="text-red-500" title="Privat" />}
+                             {doc.visibility === 'private' && <span title="Privat"><Lock size={12} className="text-red-500" /></span>}
                            </div>
                          </td>
                          <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : formatBytes(doc.size)}</td>
@@ -500,7 +500,7 @@ export default function DocumentsTab() {
                           <div className="font-bold text-text-primary text-sm truncate mb-1 flex items-center gap-2">
                             {doc.name}
                             {showBadge && <span className="px-1.5 py-0.5 bg-red-500 text-white text-[8px] font-black uppercase tracking-widest rounded-md">{t('new_badge')}</span>}
-                            {doc.visibility === 'private' && <Lock size={12} className="text-red-500" title="Privat" />}
+                            {doc.visibility === 'private' && <span title="Privat"><Lock size={12} className="text-red-500" /></span>}
                           </div>
                           <div className="flex items-center gap-3 text-[10px] text-text-muted uppercase tracking-wider font-bold">
                             <span>{displayDate}</span>

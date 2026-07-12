@@ -1,4 +1,3 @@
-/* eslint-disable */
 const fs = require('fs');
 
 const promptText = `Analyze this reference sketch or 3D model. The user wants to generate a high-quality architectural rendering based ONLY on these structural lines. Their styling instruction is: "\\\${finalPrompt}". Please write an extremely vivid, purely descriptive image generation prompt.
