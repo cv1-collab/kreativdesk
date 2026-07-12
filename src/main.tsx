@@ -20,7 +20,8 @@ if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
 import * as Sentry from "@sentry/react";
 
 Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
+  // Fallback auf den direkten Key, falls Vercel die Environment Variable beim Build verschluckt hat
+  dsn: import.meta.env.VITE_SENTRY_DSN || "https://84f2745b5dc505891b233869c8a7df39@o4511721911287808.ingest.de.sentry.io/4511721931276368",
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
