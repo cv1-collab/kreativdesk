@@ -111,17 +111,9 @@ export default function AdminSystemTab() {
           </div>
           <p className="text-sm text-text-muted">Sperrt den Zugriff für alle Benutzer außer Super-Admins.</p>
         </div>
-        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-          <button 
-            onClick={() => { throw new Error('Test-Fehler für Sentry! (Ausgelöst durch Admin)'); }} 
-            className="w-full md:w-auto px-6 py-3 md:py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all border shrink-0 bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20"
-          >
-            <ShieldAlert size={16} /> Sentry testen
-          </button>
-          <button onClick={toggleMaintenance} disabled={isUpdatingMaintenance} className={cn("w-full md:w-auto px-6 py-3 md:py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all border shrink-0", isMaintenance ? "bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/20 hover:bg-red-600" : "bg-background text-text-primary border-border hover:bg-white/5")}>
-            {isUpdatingMaintenance ? <Loader2 className="animate-spin" size={16} /> : (isMaintenance ? <ShieldAlert size={16} /> : <Wrench size={16} />)} {isMaintenance ? "Wartung beenden" : "Wartung starten"}
-          </button>
-        </div>
+        <button onClick={toggleMaintenance} disabled={isUpdatingMaintenance} className={cn("w-full md:w-auto px-6 py-3 md:py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all border shrink-0", isMaintenance ? "bg-red-500 text-white border-red-600 shadow-lg shadow-red-500/20 hover:bg-red-600" : "bg-background text-text-primary border-border hover:bg-white/5")}>
+          {isUpdatingMaintenance ? <Loader2 className="animate-spin" size={16} /> : (isMaintenance ? <ShieldAlert size={16} /> : <Wrench size={16} />)} {isMaintenance ? "Wartung beenden" : "Wartung starten"}
+        </button>
       </div>
 
 
