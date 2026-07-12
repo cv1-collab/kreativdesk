@@ -6,7 +6,7 @@ import { useAI } from '../contexts/AIContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, and, or } from 'firebase/firestore';
 import { callGeminiAPI, callGeminiChatAPI } from '../utils/geminiClient';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -74,7 +74,16 @@ export default function AIConcierge() {
       const fetchContext = async () => {
         try {
           const txQuery = query(collection(db, 'transactions'), where('companyId', '==', safeCompanyId));
-          const eventsQuery = query(collection(db, 'calendarEvents'), where('companyId', '==', safeCompanyId));
+          const eventsQuery = query(
+            collection(db, 'calendarEvents'),
+            and(
+              where('companyId', '==', safeCompanyId),
+              or(
+                where('visibility', 'in', ['public', 'company']),
+                where('ownerId', '==', currentUser?.uid || '')
+              )
+            )
+          );
           const defectsQuery = query(collection(db, 'defects'), where('companyId', '==', safeCompanyId));
           
           const [txSnap, eventsSnap, defectsSnap] = await Promise.all([

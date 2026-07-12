@@ -16,7 +16,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import PremiumFeature from './PremiumFeature';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { db, storage } from '../firebase';
-import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, onSnapshot, updateDoc, deleteDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata } from 'firebase/storage';
 
 // NATIVE PDF ENGINE IMPORTS
@@ -469,9 +469,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        return; 
     }
 
+    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
     const q = query(
       collection(db, 'cad_plans'), 
-      where('projectId', '==', currentProjectId)
+      and(
+        where('projectId', '==', currentProjectId),
+        where('companyId', '==', safeCompanyId),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser?.uid || '')
+        )
+      )
     );
     return onSnapshot(q, (snap) => {
       let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));

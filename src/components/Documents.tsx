@@ -4,7 +4,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp, or, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp, updateDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { motion, AnimatePresence } from 'motion/react';
@@ -83,17 +83,25 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
        return;
     }
 
+    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
     const q = query(
       collection(db, 'documents'),
-      where('projectId', '==', currentProjectId),
-      or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser?.uid || ''))
+      and(
+        where('projectId', '==', currentProjectId),
+        where('companyId', '==', safeCompanyId),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser?.uid || '')
+        )
+      )
     );
 
     const unsub = onSnapshot(q, (snap) => {
       let docs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       docs = docs.filter((d: any) => {
          const docFolderId = (d.folderId && d.folderId !== '') ? d.folderId : 'root';
-         return docFolderId === currentFolderId;
+         const isVisible = d.visibility === 'company' || d.ownerId === (currentUser?.uid || '');
+         return docFolderId === currentFolderId && isVisible;
       });
       setDocuments(docs);
     }, (err) => console.error("Docs Snapshot Error:", err));
@@ -302,7 +310,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
                       <div className="font-bold text-text-primary text-[15px] group-hover:text-accent-ai transition-colors flex items-center gap-2">
                         {doc.name}
-                        {doc.visibility === 'private' && <Lock size={12} className="text-red-500" title="Privat" />}
+                        {doc.visibility === 'private' && <span title="Privat" className="flex items-center"><Lock size={12} className="text-red-500" /></span>}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : doc.size}</td>

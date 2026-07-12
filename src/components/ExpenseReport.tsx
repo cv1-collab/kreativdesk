@@ -11,7 +11,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
 
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 
@@ -247,7 +247,16 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
       await incrementStorage(safeCompanyId, blob.size);
 
       let targetFolderId = '';
-      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true), where('folderId', '==', 'root'));
+      const folderQ = query(
+        collection(db, 'documents'), 
+        and(
+          where('companyId', '==', safeCompanyId), 
+          where('name', '==', '01_FINANZEN'), 
+          where('isFolder', '==', true), 
+          where('folderId', '==', 'root'),
+          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+        )
+      );
       const folderSnap = await getDocs(folderQ);
       if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
       else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }

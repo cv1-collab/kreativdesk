@@ -9,7 +9,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { updateProfile, deleteUser } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, setDoc, onSnapshot, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, deleteDoc, collection, query, where, getDocs, and, or } from 'firebase/firestore';
 import { storage, db, auth } from '../firebase';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -234,7 +234,16 @@ const handlePasswordReset = async () => {
       const snapProjects = await getDocs(qProjects);
       exportData.projects = snapProjects.docs.map(d => d.data());
 
-      const qDocs = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId));
+      const qDocs = query(
+        collection(db, 'documents'),
+        and(
+          where('companyId', '==', safeCompanyId),
+          or(
+            where('visibility', 'in', ['public', 'company']),
+            where('ownerId', '==', currentUser.uid)
+          )
+        )
+      );
       const snapDocs = await getDocs(qDocs);
       exportData.documents = snapDocs.docs.map(d => d.data());
 

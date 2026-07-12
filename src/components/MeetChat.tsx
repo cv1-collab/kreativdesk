@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
-import { collection, query, orderBy, onSnapshot, serverTimestamp, Timestamp, setDoc, doc, where, getDocs, getDoc, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, serverTimestamp, Timestamp, setDoc, doc, where, getDocs, getDoc, addDoc, and, or } from 'firebase/firestore';
 import { motion } from 'motion/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -245,7 +245,17 @@ export default function MeetChat() {
 
   useEffect(() => {
     if (!db || !currentUser || !currentUser.companyId) return;
-    const q = query(collection(db, 'calendarEvents'), where('companyId', '==', currentUser.companyId), where('type', '==', 'call'));
+    const q = query(
+      collection(db, 'calendarEvents'),
+      and(
+        where('companyId', '==', currentUser.companyId),
+        where('type', '==', 'call'),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser.uid)
+        )
+      )
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const calls = snapshot.docs.map(doc => doc.data())
         .filter((c: any) => c.projectId === (projectId || activeProjectId || 'global') || c.projectId === 'internal')

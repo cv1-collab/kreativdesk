@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useProject } from '../contexts/ProjectContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, updateDoc, arrayUnion, or } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, updateDoc, arrayUnion, or, and } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { decrementStorage } from '../utils/storageGuard';
 import { 
@@ -83,8 +83,13 @@ export default function DocumentsTab() {
   useEffect(() => {
     if (!currentUser || !db || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('isFolder', '==', false),
-      or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser.uid))
+    const q = query(
+      collection(db, 'documents'), 
+      and(
+        where('companyId', '==', safeCompanyId), 
+        where('isFolder', '==', false),
+        or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+      )
     );
     
     const unsub = onSnapshot(q, (snapshot) => {
@@ -103,8 +108,15 @@ export default function DocumentsTab() {
     let q;
 
     if (activeCategory === 'company') {
-      q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', 'global'), where('category', '==', 'company'), where('folderId', '==', currentFolderId),
-        or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser.uid))
+      q = query(
+        collection(db, 'documents'), 
+        and(
+          where('companyId', '==', safeCompanyId), 
+          where('projectId', '==', 'global'), 
+          where('category', '==', 'company'), 
+          where('folderId', '==', currentFolderId),
+          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+        )
       );
       unsub = onSnapshot(q, (snapshot) => {
         setDocuments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -115,8 +127,13 @@ export default function DocumentsTab() {
         return;
       }
       const projId = getProjId();
-      q = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', projId),
-        or(where('visibility', '==', 'company'), where('ownerId', '==', currentUser.uid))
+      q = query(
+        collection(db, 'documents'), 
+        and(
+          where('companyId', '==', safeCompanyId), 
+          where('projectId', '==', projId),
+          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+        )
       );
       
       unsub = onSnapshot(q, (snapshot) => {

@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, X, Calculator, CheckSquare, Cloud, Send, FileSignature, FileText } from 'lucide-react';
 import { cn } from '../utils';
 import { db, storage } from '../firebase';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // NATIVE PDF ENGINE IMPORTS
@@ -154,7 +154,16 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         if (activeProjectId === 'global') {
             targetCategory = 'company';
             targetProjectId = 'global';
-            const folderQ = query(collection(db, 'documents'), where('companyId', '==', currentUser.companyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true), where('folderId', '==', 'root'));
+            const folderQ = query(
+              collection(db, 'documents'), 
+              and(
+                where('companyId', '==', currentUser.companyId), 
+                where('name', '==', '01_FINANZEN'), 
+                where('isFolder', '==', true), 
+                where('folderId', '==', 'root'),
+                or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+              )
+            );
             const folderSnap = await getDocs(folderQ);
             if (!folderSnap.empty) {
                 targetFolderId = folderSnap.docs[0].id;

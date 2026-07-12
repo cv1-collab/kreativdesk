@@ -31,7 +31,7 @@ service cloud.firestore {
     // Prüft, ob ein Dokument privat ist und ob der Nutzer der Owner ist
     function isVisibleAndInCompany(resourceData) {
       return isSameCompany(resourceData.companyId) && 
-             (!('visibility' in resourceData) || resourceData.visibility != 'private' || resourceData.ownerId == request.auth.uid);
+             (resourceData.visibility == 'public' || resourceData.visibility == 'company' || resourceData.ownerId == request.auth.uid);
     }
 
     // ===============================================================

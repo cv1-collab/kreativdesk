@@ -10,7 +10,7 @@ import {
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
@@ -203,7 +203,16 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       const finalPdfUrl = await getDownloadURL(storageRef);
 
       let targetFolderId = '';
-      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('name', '==', '01_FINANZEN'), where('isFolder', '==', true), where('folderId', '==', 'root'));
+      const folderQ = query(
+        collection(db, 'documents'), 
+        and(
+          where('companyId', '==', safeCompanyId), 
+          where('name', '==', '01_FINANZEN'), 
+          where('isFolder', '==', true), 
+          where('folderId', '==', 'root'),
+          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+        )
+      );
       const folderSnap = await getDocs(folderQ);
       if (!folderSnap.empty) {
         targetFolderId = folderSnap.docs[0].id;

@@ -22,7 +22,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, getDoc, getDocs, addDoc, query, where, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, getDoc, getDocs, addDoc, query, where, deleteDoc, updateDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getApp } from 'firebase/app';
@@ -802,7 +802,16 @@ export default function Finance() {
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
     if (!currentUser || !currentUser.companyId || !currentProjectId) return '';
-    const folderQ = query(collection(db, 'documents'), where('companyId', '==', currentUser.companyId), where('name', '==', folderName), where('isFolder', '==', true), where('projectId', '==', currentProjectId));
+    const folderQ = query(
+      collection(db, 'documents'), 
+      and(
+        where('companyId', '==', currentUser.companyId), 
+        where('name', '==', folderName), 
+        where('isFolder', '==', true), 
+        where('projectId', '==', currentProjectId),
+        or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+      )
+    );
     const folderSnap = await getDocs(folderQ);
     if (!folderSnap.empty) return folderSnap.docs[0].id;
     const newFolderRef = await addDoc(collection(db, 'documents'), { name: folderName, isFolder: true, category: docCategory, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId, createdAt: new Date().toISOString() });

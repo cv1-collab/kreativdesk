@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, addDoc, deleteDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, deleteDoc, updateDoc, query, where, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus, 
@@ -272,7 +272,16 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     
     // 1. Termine
-    const qEvents = query(collection(db, 'calendarEvents'), where('companyId', '==', safeCompanyId));
+    const qEvents = query(
+      collection(db, 'calendarEvents'),
+      and(
+        where('companyId', '==', safeCompanyId),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser?.uid || '')
+        )
+      )
+    );
     const unsubEvents = onSnapshot(qEvents, 
       (snap) => setCalendarEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     );

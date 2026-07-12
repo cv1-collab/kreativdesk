@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, and, or } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -131,9 +131,17 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
     if (!currentUser || !currentUser.companyId || !db) return;
     
+    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
     const q = query(
       collection(db, 'slides'), 
-      where('projectId', '==', currentProjectId)
+      and(
+        where('projectId', '==', currentProjectId),
+        where('companyId', '==', safeCompanyId),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser?.uid || '')
+        )
+      )
     );
 
     const unsub = onSnapshot(q, (snapshot) => {

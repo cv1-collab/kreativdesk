@@ -34,7 +34,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, where, addDoc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, where, addDoc, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -501,7 +501,16 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const ensureFolder = async (folderName: string, docCategory: string) => {
     if (!currentUser || !currentUser.companyId) return '';
     const currentProjectId = activeProject?.id || 'global';
-    const folderQ = query(collection(db, 'documents'), where('companyId', '==', currentUser.companyId), where('name', '==', folderName), where('isFolder', '==', true), where('projectId', '==', currentProjectId));
+    const folderQ = query(
+      collection(db, 'documents'), 
+      and(
+        where('companyId', '==', currentUser.companyId), 
+        where('name', '==', folderName), 
+        where('isFolder', '==', true), 
+        where('projectId', '==', currentProjectId),
+        or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+      )
+    );
     const folderSnap = await getDocs(folderQ);
     if (!folderSnap.empty) return folderSnap.docs[0].id;
     const newFolderRef = await addDoc(collection(db, 'documents'), { name: folderName, isFolder: true, category: docCategory, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId, createdAt: new Date().toISOString() });
@@ -547,7 +556,15 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           let targetFolderId = '';
           if (projectId) {
             try {
-              const folderQ = query(collection(db, 'documents'), where('companyId', '==', currentUser.companyId), where('name', '==', `Projekt: ${activeProject?.name || 'Unbenannt'}`), where('isFolder', '==', true));
+              const folderQ = query(
+                collection(db, 'documents'), 
+                and(
+                  where('companyId', '==', currentUser.companyId), 
+                  where('name', '==', `Projekt: ${activeProject?.name || 'Unbenannt'}`), 
+                  where('isFolder', '==', true),
+                  or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+                )
+              );
               const folderSnap = await getDocs(folderQ);
               if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; }
             } catch (e) { console.error(e); }

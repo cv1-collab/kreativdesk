@@ -30,7 +30,7 @@ import { cn } from '../utils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, addDoc, deleteDoc, query, updateDoc, where, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, doc, addDoc, deleteDoc, query, updateDoc, where, setDoc, writeBatch, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { PLAN_FEATURES, PlanTier } from '../utils/planFeatures';
 import { demoTemplates } from '../utils/demoTemplates';
@@ -196,7 +196,16 @@ export default function CompanyDashboard() {
     if (!db || !currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
-    const qDocs = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId));
+    const qDocs = query(
+      collection(db, 'documents'),
+      and(
+        where('companyId', '==', safeCompanyId),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser.uid)
+        )
+      )
+    );
     const unsubDocs = onSnapshot(qDocs, (snap) => {
       setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });

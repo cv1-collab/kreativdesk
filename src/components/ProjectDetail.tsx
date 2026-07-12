@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'; // <-- NEU
 import PitchDeckStudio from './PitchDeckStudio';
 import { ArrowLeft, FolderOpen, MonitorPlay, ChevronRight, KanbanSquare, Plus, LayoutDashboard, GripVertical, Trash2 } from 'lucide-react';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, setDoc, deleteDoc, and, or } from 'firebase/firestore';
 import { cn } from '../utils';
 
 // === LOKALE ÜBERSETZUNGEN ===
@@ -54,8 +54,14 @@ export default function ProjectDetail() {
     if (!projectId || !db || !currentUser?.companyId) return;
     const q = query(
       collection(db, 'projectTasks'), 
-      where('projectId', '==', projectId),
-      where('companyId', '==', currentUser.companyId) // <-- Mandanten-Sicherheit
+      and(
+        where('projectId', '==', projectId),
+        where('companyId', '==', currentUser.companyId), // <-- Mandanten-Sicherheit
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser.uid)
+        )
+      )
     );
     const unsub = onSnapshot(q, snap => {
       setTasks(snap.docs.map(d => ({ id: d.id, ...d.data() })));

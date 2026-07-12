@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import PremiumFeature from './PremiumFeature';
 import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp, writeBatch, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp, writeBatch, addDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Sparkles, Image as ImageIcon, X, Download, Plus, Trash2, 
@@ -191,10 +191,30 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const targetId = projectId || importProjectId;
     let q;
     
+    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
     if (targetId && targetId !== 'global') {
-      q = query(collection(db, 'slides'), where('projectId', '==', targetId));
+      q = query(
+        collection(db, 'slides'),
+        and(
+          where('projectId', '==', targetId),
+          where('companyId', '==', safeCompanyId),
+          or(
+            where('visibility', 'in', ['public', 'company']),
+            where('ownerId', '==', currentUser?.uid || '')
+          )
+        )
+      );
     } else {
-      q = query(collection(db, 'slides'), where('companyId', '==', currentUser.companyId));
+      q = query(
+        collection(db, 'slides'),
+        and(
+          where('companyId', '==', safeCompanyId),
+          or(
+            where('visibility', 'in', ['public', 'company']),
+            where('ownerId', '==', currentUser?.uid || '')
+          )
+        )
+      );
     }
 
     const unsub = onSnapshot(q, async (snapshot) => {

@@ -9,7 +9,7 @@ import {
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
 import { db, storage } from '../firebase';
-import { onSnapshot, query, where, collection, doc, deleteDoc, addDoc, updateDoc, getDocs } from 'firebase/firestore';
+import { onSnapshot, query, where, collection, doc, deleteDoc, addDoc, updateDoc, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -508,7 +508,16 @@ export default function LeadsTab() {
       await uploadBytes(storageRef, blob);
       const downloadUrl = await getDownloadURL(storageRef);
       
-      const folderQ = query(collection(db, 'documents'), where('companyId', '==', safeCompanyId), where('projectId', '==', 'global'), where('name', '==', '04_SALES'), where('isFolder', '==', true));
+      const folderQ = query(
+        collection(db, 'documents'), 
+        and(
+          where('companyId', '==', safeCompanyId), 
+          where('projectId', '==', 'global'), 
+          where('name', '==', '04_SALES'), 
+          where('isFolder', '==', true),
+          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
+        )
+      );
       const folderSnap = await getDocs(folderQ);
       let targetFolderId = 'root';
       if (!folderSnap.empty) targetFolderId = folderSnap.docs[0].id;

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils';
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, and, or } from 'firebase/firestore';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -139,7 +139,16 @@ export default function Layout() {
       updateNotifs();
     });
 
-    const unsubEvts = onSnapshot(query(collection(db, 'calendarEvents'), where('companyId', '==', currentUser.companyId)), (snap) => {
+    const unsubEvts = onSnapshot(query(
+      collection(db, 'calendarEvents'),
+      and(
+        where('companyId', '==', currentUser.companyId),
+        or(
+          where('visibility', 'in', ['public', 'company']),
+          where('ownerId', '==', currentUser.uid)
+        )
+      )
+    ), (snap) => {
       evts = snap.docs.map(d => {
          const data = d.data();
          return { id: d.id, type: 'event', title: language === 'de' ? 'Neuer Termin' : 'New Event', desc: data.title || 'Termin', time: data.createdAt || new Date(data.timestamp || Date.now()).toISOString(), data };
