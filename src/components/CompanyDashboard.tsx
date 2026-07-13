@@ -644,7 +644,7 @@ export default function CompanyDashboard() {
         <WelcomeOnboarding 
           currentUser={currentUser} 
           onComplete={() => {
-            // Optionale lokale State-Aktualisierung, aber onSnapshot in App.tsx sollte das übernehmen
+            window.location.reload();
           }} 
         />
       )}
