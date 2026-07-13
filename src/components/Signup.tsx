@@ -215,8 +215,8 @@ export default function Signup() {
       const tokenForWebhook = await userCredential.user.getIdToken();
       await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
 
-      // +++ EMAIL VERIFICATION +++
-      await sendEmailVerification(userCredential.user);
+      // Webhook handles the email sending via Make.com!
+      // await sendEmailVerification(userCredential.user); // Removed to prevent auth/too-many-requests collision
       addToast('Bitte überprüfe dein E-Mail-Postfach, um deinen Account zu verifizieren.', 'success');
 
       await new Promise(resolve => setTimeout(resolve, 1500));
