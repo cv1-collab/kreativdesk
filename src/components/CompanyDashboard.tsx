@@ -316,8 +316,9 @@ export default function CompanyDashboard() {
       const now = new Date().toISOString();
 
       if (demoData.members) {
-        demoData.members.forEach((m: any, idx: number) => {
-          const fakeUid = `demo-uid-${idx}-${Date.now()}`;
+        demoData.members.forEach((m: any) => {
+          // Determine a deterministic UID so creating multiple demo projects doesn't clutter the CRM
+          const fakeUid = `demo-uid-${m.email.replace(/[^a-zA-Z0-9]/g, '-')}`;
           const pmId = `pm-${projectId}-${fakeUid}`;
           batch.set(doc(db, 'projectMembers', pmId), {
             id: pmId, projectId, companyId: safeCompanyId, userId: fakeUid, userEmail: m.email, 
@@ -325,6 +326,7 @@ export default function CompanyDashboard() {
             projectRole: 'member', companyRole: 'employee', joinedAt: now
           });
           // Also create the user in companyUsers so they show up in the team tab!
+          // Using a deterministic ID ensures we just overwrite/update the existing demo user instead of cloning
           batch.set(doc(db, 'companyUsers', fakeUid), {
             id: fakeUid, companyId: safeCompanyId, email: m.email, name: m.name,
             role: m.role.includes('Intern') ? 'Internal' : 'External Planner',
