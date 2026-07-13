@@ -6,49 +6,46 @@ service firebase.storage {
       return request.auth != null && request.auth.token.email in ["cv1@gmx.ch", "carlo@vesciodesign.ch"];
     }
 
+    // Helper: Begrenzt Dateiuploads auf 5MB und nur Bilder (Spam/Malware Schutz)
+    function isSafeImageUpload() {
+      return request.resource.size < 5 * 1024 * 1024 && request.resource.contentType.matches('image/.*');
+    }
+
     // 1. Profilbilder & Avatare
     match /avatars/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (isSuperAdmin() || request.auth.uid == userId);
     }
     match /crm_avatars/{imageId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      // request.resource == null erlaubt das fehlerfreie Löschen der Datei
+      allow write: if request.auth != null && (request.resource == null || isSafeImageUpload()); 
     }
 
-    // 2. Öffentliche Scanner & Mobile Uploads (Ohne Login nutzbar via Session-ID)
-    // Dateigröße auf max 10MB beschränkt um Spam zu verhindern
+    // 2. Öffentliche Scanner (Ohne Login nutzbar via Session-ID)
     match /temp_receipts/{imageId} { 
-      allow create: if request.resource.size < 10 * 1024 * 1024;
-      allow get: if true;
-      allow list: if false;
-      allow delete: if request.auth != null;
-    }
-    match /temp_mobile_uploads/{imageId} { 
-      allow create: if request.resource.size < 10 * 1024 * 1024;
-      allow get: if true;
-      allow list: if false;
-      allow delete: if request.auth != null;
+      allow read: if true; 
+      allow write: if request.resource == null || isSafeImageUpload(); 
     }
     match /scanned_vcards/{imageId} { 
-      allow create: if request.resource.size < 5 * 1024 * 1024;
-      allow get: if true;
-      allow list: if false;
-      allow delete: if request.auth != null;
+      allow read: if true; 
+      allow write: if request.resource == null || isSafeImageUpload(); 
     }
 
-    // 3. System-Assets (AGBs, Logos etc.)
+    // 3. System-Assets
     match /system/{allPaths=**} {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
 
     // 4. Hochsichere Firmen-Tresore (Multi-Tenancy)
-    // Dateinamen sind in Firebase Storage kryptografisch, daher reicht hier der Read-Check auf die Ordner-Ebene
     match /{companyId}/{allPaths=**} {
-      allow read, write: if request.auth != null && (isSuperAdmin() || request.auth.token.companyId == companyId || companyId == 'demo-company');
+      allow read, write: if request.auth != null 
+                         && !(companyId in ['avatars', 'crm_avatars', 'temp_receipts', 'scanned_vcards', 'system'])
+                         && (isSuperAdmin() || request.auth.token.companyId == companyId || companyId == 'demo-company');
     }
 
-    // 5. Strenge Fallback-Sperre (Blockiert alles, was oben nicht explizit erlaubt wurde)
+    // 5. Strenge Fallback-Sperre
     match /{allPaths=**} {
       allow read, write: if false;
     }

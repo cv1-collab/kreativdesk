@@ -9,60 +9,44 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Null-Cost Check über Custom Claims im JWT Token!
-    // Keine Datenbank-Reads mehr, prüft direkt im Token!
     function isSameCompany(resourceCompanyId) {
       return isAuthenticated() && 
              request.auth.token.companyId != null && 
              request.auth.token.companyId == resourceCompanyId;
     }
 
-    // System-Admin
     function isSystemAdmin() {
       return isAuthenticated() && request.auth.token.email in ["cv1@gmx.ch", "carlo@vesciodesign.ch"];
     }
 
-    // Owner
+    // Rollen Helper
     function isCompanyOwner(resourceCompanyId) {
       return isSameCompany(resourceCompanyId) && 
              (request.auth.token.role == "owner" || request.auth.token.role == "Owner");
     }
 
-    // Management
     function isManagement(resourceCompanyId) {
-      return isSameCompany(resourceCompanyId) && 
-             request.auth.token.role == "management";
+      return isSameCompany(resourceCompanyId) && request.auth.token.role == "management";
     }
 
-    // Employee
     function isEmployee(resourceCompanyId) {
-      return isSameCompany(resourceCompanyId) && 
-             request.auth.token.role == "employee";
+      return isSameCompany(resourceCompanyId) && request.auth.token.role == "employee";
     }
 
-    // Management oder Owner
-    function isManagementOrOwner(resourceCompanyId) {
-      return isCompanyOwner(resourceCompanyId) || isManagement(resourceCompanyId);
-    }
-
-    // ABAC Helpers (Reflecting permissions.ts)
+    // ABAC Permissions (Reflecting permissions.ts)
     function canCreateProject(resourceCompanyId) {
       return isCompanyOwner(resourceCompanyId) || isManagement(resourceCompanyId) || isEmployee(resourceCompanyId);
     }
-
     function canDeleteProject(resourceCompanyId) {
       return isCompanyOwner(resourceCompanyId) || isManagement(resourceCompanyId);
     }
-
     function canManageUsers(resourceCompanyId) {
       return isCompanyOwner(resourceCompanyId) || isManagement(resourceCompanyId);
     }
-
     function canViewFinance(resourceCompanyId) {
       return isCompanyOwner(resourceCompanyId) || isManagement(resourceCompanyId);
     }
 
-    // Prüft, ob ein Dokument privat ist und ob der Nutzer der Owner ist
     function isVisibleAndInCompany(resourceData) {
       return isSameCompany(resourceData.companyId) && 
              (resourceData.visibility == 'public' || resourceData.visibility == 'company' || resourceData.ownerId == request.auth.uid);
@@ -77,22 +61,16 @@ service cloud.firestore {
       allow write: if false; 
     }
 
-    // Öffentliches Lead-Formular (Jeder im Internet darf Leads erstellen)
     match /leads/{leadId} {
       allow create: if true;
-      // Lesen/Löschen darf man den Lead nur, wenn er zur eigenen Firma gehört!
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId);
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
     }
 
-    // Temp Receipts für den Smartphone Upload (müssen public schreibbar sein)
     match /temp_receipts/{docId} {
       allow create: if true;
       allow read, delete: if isAuthenticated(); 
     }
 
-    // +++ FIX 1.5: INVITE-SYSTEM FREISCHALTEN +++
-    // Unauthentifizierte Nutzer müssen den Invite-Token beim Onboarding lesen können
     match /invites/{inviteId} {
       allow read: if true;
       allow update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
@@ -100,19 +78,16 @@ service cloud.firestore {
     }
 
     // ===============================================================
-    // 3. CORE SAAS DATEN (Striktion auf Eigene Firma / companyId)
+    // 3. CORE SAAS DATEN
     // ===============================================================
-
+    
     match /auditLogs/{logId} {
-      // Nur Management und Owner dürfen Audit Logs lesen
-      allow read: if isSystemAdmin() || isManagementOrOwner(resource.data.companyId);
-      // Jeder eingeloggte Nutzer darf Logs für seine eigene Firma schreiben, aber nicht verfälschen
+      allow read: if isSystemAdmin() || isCompanyOwner(resource.data.companyId) || isManagement(resource.data.companyId);
       allow create: if isSystemAdmin() || (
         isSameCompany(request.resource.data.companyId) &&
         request.resource.data.userId == request.auth.uid
       );
-      // Niemand darf Logs löschen oder ändern (immutability)
-      allow update, delete: if false;
+      allow update, delete: if false; // Logs sind unveränderbar (Immutable)
     }
 
     match /companies/{companyId} {
@@ -123,13 +98,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSystemAdmin() || request.auth.uid == userId || isSameCompany(resource.data.companyId);
-      
-      // Nutze request.resource.data.diff, um zu prüfen, ob geschützte Felder geändert werden
       allow update: if isSystemAdmin() || (
         (request.auth.uid == userId || isCompanyOwner(resource.data.companyId)) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'companyId', 'plan', 'hasActiveSubscription', 'stripeCustomerId', 'subscriptionId', 'subscriptionStatus', 'trialEndsAt']) || isSystemAdmin() || (isCompanyOwner(resource.data.companyId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt'])))
       );
-      
       allow create: if isSystemAdmin();
       allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
     }
@@ -144,8 +116,7 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || canCreateProject(request.resource.data.companyId);
     }
     match /projectMembers/{memberId} {
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId);
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /companyUsers/{userId} {
@@ -157,14 +128,19 @@ service cloud.firestore {
       allow delete: if isSystemAdmin() || canManageUsers(resource.data.companyId);
       allow create: if isSystemAdmin() || (isSameCompany(request.resource.data.companyId) && canManageUsers(request.resource.data.companyId));
     }
+    
+    match /financeData/{docId} { 
+      allow read, update: if isSystemAdmin() || canViewFinance(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
+      allow create: if isSystemAdmin() || canViewFinance(request.resource.data.companyId); 
+    }
+    
     match /timeEntries/{entryId} {
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId);
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /defects/{defectId} {
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId);
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
     }
     match /cad_plans/{planId} {
@@ -176,14 +152,8 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /transactions/{docId} { 
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId); 
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId); 
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
-    }
-    match /financeData/{docId} { 
-      allow read, update: if isSystemAdmin() || canViewFinance(resource.data.companyId);
-      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
-      allow create: if isSystemAdmin() || canViewFinance(request.resource.data.companyId); 
     }
     match /projectTasks/{docId} { 
       allow read, update, delete: if isSystemAdmin() || isVisibleAndInCompany(resource.data); 
@@ -194,8 +164,7 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /audioNotes/{docId} { 
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId); 
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId); 
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /whiteboardExports/{docId} { 
@@ -203,8 +172,7 @@ service cloud.firestore {
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /chatMessages/{docId} { 
-      allow read, update, delete: if isSystemAdmin() ||
-             isSameCompany(resource.data.companyId); 
+      allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId); 
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /goals/{docId} { 
@@ -217,7 +185,7 @@ service cloud.firestore {
     }
     match /projectSchedules/{docId} { 
       allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
-      allow delete: if isSystemAdmin() || isManagementOrOwner(resource.data.companyId);
+      allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
       allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId); 
     }
     match /videoCalls/{docId} { 
