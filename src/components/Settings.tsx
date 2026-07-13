@@ -158,10 +158,10 @@ const handlePasswordReset = async () => {
     setIsSendingReset(true);
     try {
       // WICHTIG: Das ruft nun dein Vercel-Backend auf, nicht Firebase direkt!
-      const response = await fetch('/api/send-reset-webhook', {
+      const response = await fetch('/api/send-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: currentUser.email })
+        body: JSON.stringify({ type: "reset",  email: currentUser.email })
       });
 
       if (!response.ok) throw new Error('Webhook fehlgeschlagen');
@@ -203,7 +203,7 @@ const handlePasswordReset = async () => {
       const response = await fetch('/api/create-portal-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify({ type: "reset", 
           customerId: dbData.stripeCustomerId, // Sichere Übergabe
           returnUrl: window.location.origin + '/app' 
         })

@@ -257,13 +257,13 @@ export default function Signup() {
     if (!email) return;
     try {
       const name = email.split('@')[0];
-      await fetch('/api/send-welcome-webhook', {
+      await fetch('/api/send-webhook', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ email, name, uid })
+        body: JSON.stringify({ type: "welcome",  email, name, uid })
       });
     } catch (err) {
       console.error("Welcome Webhook Fehler:", err);
@@ -290,7 +290,7 @@ export default function Signup() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
+          body: JSON.stringify({ type: "welcome",  uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
         });
 
         if (!response.ok) {
@@ -327,7 +327,7 @@ export default function Signup() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
+        body: JSON.stringify({ type: "welcome",  uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
       });
 
       if (!response.ok) {

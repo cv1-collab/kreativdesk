@@ -143,7 +143,7 @@ export default function Login() {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ uid: userCredential.user.uid, companyId: `comp_${userCredential.user.uid}` })
+            body: JSON.stringify({ type: "reset",  uid: userCredential.user.uid, companyId: `comp_${userCredential.user.uid}` })
           });
           await new Promise(resolve => setTimeout(resolve, 1500));
           await userCredential.user.getIdToken(true);
@@ -179,9 +179,9 @@ export default function Login() {
     try {
       setResetMessage(''); setResetError(''); setResetLoading(true);
       
-      const response = await fetch('/api/send-reset-webhook', {
+      const response = await fetch('/api/send-webhook', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: resetEmail })
+        body: JSON.stringify({ type: "reset",  email: resetEmail })
       });
 
       if (!response.ok) throw new Error('Webhook fehlgeschlagen');

@@ -265,10 +265,10 @@ export default function SettingsTab() {
     setIsResetLoading(true);
     try {
       // WICHTIG: Hier rufen wir jetzt zwingend unsere eigene Vercel-API auf!
-      const response = await fetch('/api/send-reset-webhook', {
+      const response = await fetch('/api/send-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: currentUser.email })
+        body: JSON.stringify({ type: "reset",  email: currentUser.email })
       });
 
       if (!response.ok) throw new Error('Webhook Request fehlgeschlagen');

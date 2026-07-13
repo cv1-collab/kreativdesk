@@ -1,6 +1,6 @@
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 
 if (getApps().length === 0) {
   initializeApp({
@@ -111,7 +111,7 @@ export default async function handler(req: any, res: any) {
           // Increment seats
           const companyRef = db.collection('companies').doc(assignedCompanyId);
           await companyRef.update({
-            usedSeats: getFirestore().collection('companies').doc().firestore.FieldValue?.increment(1) || 1
+            usedSeats: FieldValue.increment(1)
           });
         }
       }

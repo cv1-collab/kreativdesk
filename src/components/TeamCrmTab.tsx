@@ -326,10 +326,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         // Trigger Make.com Webhook für die Einladungs-E-Mail
         if (!newContact.isExternal) {
           try {
-            await fetch('/api/send-invite-webhook', {
+            await fetch('/api/send-webhook', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
+              body: JSON.stringify({ type: "invite",  
                 email: newContact.email, 
                 name: fullName, 
                 role: 'employee',

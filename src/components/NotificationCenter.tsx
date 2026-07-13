@@ -107,10 +107,10 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
   const handleSendVerification = async () => {
     if (auth.currentUser && currentUser?.email) {
       try {
-        await fetch('/api/send-welcome-webhook', {
+        await fetch('/api/send-webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: currentUser.email, name: userData?.firstName || currentUser.displayName || 'Nutzer', uid: currentUser.uid })
+          body: JSON.stringify({ type: "welcome",  email: currentUser.email, name: userData?.firstName || currentUser.displayName || 'Nutzer', uid: currentUser.uid })
         });
         setVerificationSent(true);
       } catch (error) { console.error(error); }
