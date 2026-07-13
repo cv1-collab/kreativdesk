@@ -140,8 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const trialEndDate = new Date();
             trialEndDate.setDate(trialEndDate.getDate() + 30);
 
-            const newUserData: AppUser = {
-              ...user,
+            const newUserData = {
+              uid: user.uid,
               email: user.email,
               name: user.displayName || user.email?.split('@')[0] || 'Teammitglied',
               role: targetRole as Role,
@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               trialEndsAt: isInvitedUser ? undefined : trialEndDate.toISOString(),
               createdAt: new Date().toISOString(),
               hasSeenTour: false
-            } as unknown as AppUser;
+            };
             
             await setDoc(docRef, newUserData);
 

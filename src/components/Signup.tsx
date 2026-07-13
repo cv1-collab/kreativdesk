@@ -339,7 +339,6 @@ export default function Signup() {
       await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
 
       // +++ EMAIL VERIFICATION +++
-      await sendEmailVerification(userCredential.user);
       addToast('Bitte überprüfe dein E-Mail-Postfach, um deinen Account zu verifizieren.', 'success');
 
       await new Promise(resolve => setTimeout(resolve, 1500));

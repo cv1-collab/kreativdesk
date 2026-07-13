@@ -12,6 +12,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import registerCompanyHandler from './api/register-company';
+
 // === FIREBASE ADMIN INIT ===
 function getFirebaseAdmin() {
   if (getApps().length === 0) {
@@ -61,6 +63,8 @@ async function startServer() {
       express.json()(req, res, next);
     }
   });
+
+  app.post('/api/register-company', registerCompanyHandler);
 
   // --- 0. TENANT CLAIM (Sitzplatz-Architektur) ---
   app.post('/api/set-tenant-claim', async (req, res) => {

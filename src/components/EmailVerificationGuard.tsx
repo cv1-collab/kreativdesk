@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { sendEmailVerification } from 'firebase/auth';
 import { useToast } from '../contexts/ToastContext';
 import { cn } from '../utils';
 
@@ -31,10 +30,23 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
   }, [currentUser, currentUser?.emailVerified]);
 
   const handleResendVerification = async () => {
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.email) return;
     setIsResending(true);
     try {
-      await sendEmailVerification(currentUser);
+      const token = await currentUser.getIdToken();
+      const name = currentUser.email.split('@')[0];
+      
+      const response = await fetch('/api/send-webhook', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ type: "welcome", email: currentUser.email, name, uid: currentUser.uid })
+      });
+
+      if (!response.ok) throw new Error('Webhook fehlgeschlagen');
+
       setHasResent(true);
       setTimeout(() => setHasResent(false), 60000); // Erlaubt erneutes Senden nach 1 Minute
     } catch (error) {
