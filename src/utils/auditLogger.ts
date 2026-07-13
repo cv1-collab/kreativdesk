@@ -13,10 +13,10 @@ export type AuditAction =
 export interface AuditLogEntry {
   companyId: string;
   userId: string;
-  userEmail: string;
+  userEmail?: string;
   action: AuditAction;
-  details: string;
-  timestamp: string;
+  details: string | any;
+  timestamp?: string;
   resourceId?: string; // e.g., projectId or documentId
 }
 

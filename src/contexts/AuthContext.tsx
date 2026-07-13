@@ -16,6 +16,7 @@ export interface AppUser extends User {
   canViewFinance?: boolean;
   canApproveBudget?: boolean;
   hasSeenTour?: boolean;
+  hasCompletedOnboarding?: boolean;
 }
 
 interface AuthContextType {

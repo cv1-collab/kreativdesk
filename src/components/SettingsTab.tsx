@@ -5,6 +5,7 @@ import {
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
   Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,8 +68,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function SettingsTab() {
   const { language, t: globalT } = useLanguage();
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { addToast } = useToast();
+  const navigate = useNavigate();
   
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
