@@ -4,6 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits';
+import { logAuditAction } from '../utils/auditLogger';
 import { useToast } from '../contexts/ToastContext';
 import NotificationCenter from './NotificationCenter';
 import { useTour } from '../contexts/TourContext';
@@ -19,6 +22,7 @@ import LeadsTab from './LeadsTab';
 import TemplatesTab from './TemplatesTab';
 import FinanceTab from './FinanceTab';
 import SettingsTab from './SettingsTab';
+import AuditLogsTab from './AuditLogsTab';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
@@ -105,8 +109,11 @@ export default function CompanyDashboard() {
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
   const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
-  const canSeeFinances = userRole === 'owner' || userRole === 'management';
-  const canManageSettings = userRole === 'owner' || userRole === 'management';
+  const { hasPermission } = usePermissions();
+  const { limits } = useSubscriptionLimits();
+  const canSeeFinances = hasPermission('canViewFinance');
+  const canManageSettings = hasPermission('canManageCompany');
+  const canCreateProjects = hasPermission('canCreateProject');
   
   const [activeDocCategory, setActiveDocCategory] = useState<'root' | 'company' | 'projects'>('root');
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -446,12 +453,9 @@ export default function CompanyDashboard() {
 
   const checkProjectLimit = (): boolean => {
     if (!currentUser) return false;
-    // Get max projects for current plan, default to Starter limit (3)
-    const planName = currentUser.plan || 'Starter';
-    // Free Trial / Trial acts as Pro usually, but let's safely use PLAN_FEATURES or default to 3
-    let mappedPlan = PLAN_FEATURES[planName as PlanTier];
-    if (planName === 'Trial' || planName === 'Free Trial') mappedPlan = PLAN_FEATURES.Pro;
-    const maxLimit = mappedPlan?.maxProjects || 3;
+    const maxLimit = limits.maxProjects;
+    
+    if (maxLimit === -1) return true; // Unlimited
     
     const activeProjectsCount = projects.filter((p: any) => p.status !== 'archived').length;
     
@@ -522,9 +526,18 @@ export default function CompanyDashboard() {
   const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveDropdownId(null);
-    if (!db || !window.confirm(t('confirm_delete'))) return;
+    if (!db || !currentUser || !window.confirm(t('confirm_delete'))) return;
     try {
       await deleteDoc(doc(db, 'projects', projectId));
+      
+      const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+      await logAuditAction({
+        action: 'PROJECT_DELETED',
+        userId: currentUser.uid,
+        companyId: safeCompanyId,
+        details: { projectId }
+      });
+      
       addToast(t('delete_completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
   };
@@ -605,7 +618,8 @@ export default function CompanyDashboard() {
       { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), className: 'tour-agenda' }
     ]},
     { title: 'System', items: [ 
-      { id: 'settings', icon: Settings, label: t('settings'), hide: !canManageSettings, className: 'tour-settings' } 
+      { id: 'settings', icon: Settings, label: t('settings'), hide: !canManageSettings, className: 'tour-settings' },
+      { id: 'audit', icon: Shield, label: 'Audit Logs', hide: !hasPermission('canManageCompany'), className: 'tour-audit' }
     ] }
   ];
 
@@ -683,6 +697,7 @@ export default function CompanyDashboard() {
            {isMounted && (
              <div className="w-full h-full flex flex-col">
                {activeTab === 'dashboard' && <DashboardOverviewTab setActiveTab={(tab) => setActiveTab(tab as any)} />}
+               {activeTab === 'audit' && <AuditLogsTab />}
                
                {activeTab === 'projects' && (
                  <div className="space-y-6 w-full animate-in fade-in duration-300">
@@ -690,7 +705,7 @@ export default function CompanyDashboard() {
                       <div>
                         <h2 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary">{t('projects')}</h2>
                       </div>
-                      {(userRole === 'owner' || userRole === 'management') && (
+                      {canCreateProjects && (
                         <button onClick={() => setIsNewProjectModalOpen(true)} className="w-full sm:w-auto px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
                           <Plus size={16} /> {t('new_project')}
                         </button>
@@ -731,7 +746,7 @@ export default function CompanyDashboard() {
                         <div key={p.id} onClick={() => handleProjectClick(p.id)} className="bg-surface border border-border hover:border-accent-ai/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg group flex flex-col relative">
                           <div className="flex justify-between items-start mb-3">
                             <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-text-muted group-hover:text-accent-ai transition-colors"><Building2 size={24} /></div>
-                            {(userRole === 'owner' || userRole === 'management') && (
+                            {hasPermission('canDeleteProject') && (
                               <div className="dropdown-container relative shrink-0">
                                 <button onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === p.id ? null : p.id); }} className="p-2 text-text-muted hover:text-text-primary hover:bg-background rounded-lg transition-colors"><MoreVertical size={16} /></button>
                                 {activeDropdownId === p.id && (
@@ -761,7 +776,7 @@ export default function CompanyDashboard() {
                           <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-50" />
                           <h3 className="text-xl font-bold text-text-primary mb-2">Noch keine Projekte</h3>
                           <p className="text-text-muted mb-6">Erstelle dein erstes Projekt, um loszulegen.</p>
-                          {(userRole === 'owner' || userRole === 'management') && (
+                          {canCreateProjects && (
                             <button onClick={() => setIsNewProjectModalOpen(true)} className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2"><Plus size={16} /> {t('create_project')}</button>
                           )}
                         </div>

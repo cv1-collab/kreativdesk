@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { db, storage } from '../firebase';
 import { collection, query, where, getDocs, onSnapshot, doc, getDoc, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -127,6 +128,7 @@ export default function Dashboard() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   const { currentUser } = useAuth();
+  const { hasPermission } = usePermissions();
   
   const activeProject = (projects || []).find((p: any) => p.id === (projectId || activeProjectId));
   const currentProjectMembers = (projectMembers || []).filter((m: any) => m.projectId === activeProject?.id);
@@ -369,7 +371,7 @@ export default function Dashboard() {
         {[
           { label: t('upload_floor_plan'), link: `/project/${activeProject?.id}/plans`, icon: Map },
           { label: t('generate_client_pitch_deck'), link: `/project/${activeProject?.id}/pitch`, icon: MonitorPlay },
-          ...(currentUser?.role === 'owner' || currentUser?.canViewFinance ? [{ label: t('review_budget_variance'), link: `/project/${activeProject?.id}/finance`, icon: DollarSign }] : [])
+          ...(hasPermission('canViewFinance') ? [{ label: t('review_budget_variance'), link: `/project/${activeProject?.id}/finance`, icon: DollarSign }] : [])
         ].map((action, i) => (
           <button key={i} onClick={() => navigate(action.link)} className="w-full text-left px-5 py-4 rounded-xl border border-border bg-surface hover:bg-white/5 transition-all text-sm font-bold text-text-muted hover:text-text-primary flex items-center justify-between group shadow-sm">
             <span className="flex items-center gap-3">

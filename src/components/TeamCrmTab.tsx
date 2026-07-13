@@ -16,7 +16,8 @@ import { doc, collection, addDoc, setDoc, onSnapshot, query, where, deleteDoc, u
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
-
+import { usePermissions } from '../hooks/usePermissions';
+import { logAuditAction } from '../utils/auditLogger';
 import { offboardCompanyUser } from '../services/userService';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -91,6 +92,7 @@ const safeStr = (str: any, maxLen: number) => {
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
   const { language, t: globalT } = useLanguage();
+  const { hasPermission } = usePermissions();
   
   // Dummy Toast for UI
   const addToast = (msg: string, type: string) => console.log(msg);
@@ -179,6 +181,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         // Zwingt Firebase dazu, die Geister-Einträge auch direkt aus den Basis-Tabellen zu werfen!
         await deleteDoc(doc(db, 'users', contactId));
         await deleteDoc(doc(db, 'companyUsers', contactId));
+        
+        await logAuditAction({
+          action: 'USER_REMOVED',
+          userId: currentUser.uid,
+          companyId: safeCompanyId,
+          details: { removedUserId: contactId }
+        });
         
         if (selectedContact?.id === contactId) setSelectedContact(null);
         addToast(t('delete') + ' ' + t('completed'), 'success');
@@ -305,7 +314,15 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       } else {
         contactData.role = newContact.isExternal ? null : 'employee';
         contactData.createdAt = new Date().toISOString();
-        await addDoc(collection(db, 'companyUsers'), contactData);
+        const docRef = await addDoc(collection(db, 'companyUsers'), contactData);
+        
+        await logAuditAction({
+          action: 'USER_INVITED',
+          userId: currentUser.uid,
+          companyId: safeCompanyId,
+          details: { invitedUserId: docRef.id, isExternal: newContact.isExternal }
+        });
+        
         addToast(t('save') + ' ' + t('completed'), 'success');
       }
       
@@ -559,7 +576,9 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           <button onClick={handleExportCSV} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-lg text-sm font-bold hover:bg-background transition-all flex items-center gap-2 shadow-sm"><FileText size={16} /> <span className="hidden sm:inline">{t('export_csv')}</span></button>
           <button onClick={() => vcfInputRef.current?.click()} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-lg text-sm font-bold hover:bg-background transition-all flex items-center gap-2 shadow-sm"><FileUp size={16} /> <span className="hidden sm:inline">{t('vcf_import')}</span></button>
           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("px-4 py-2 border rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-sm", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={16} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
-          <button onClick={() => { setNewContact((prev: any) => ({ ...prev, isExternal: true })); setIsAddModalOpen(true); }} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all flex items-center gap-2"><UserPlus size={16} /> <span className="hidden sm:inline">{t('new_contact')}</span></button>
+          {hasPermission('canManageUsers') && (
+            <button onClick={() => { setNewContact((prev: any) => ({ ...prev, isExternal: true })); setIsAddModalOpen(true); }} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all flex items-center gap-2"><UserPlus size={16} /> <span className="hidden sm:inline">{t('new_contact')}</span></button>
+          )}
         </div>
       </div>
 
@@ -621,8 +640,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                 )}
                 {/* 🔥 MASTER KEY VERBAUT: Zeige Mülleimer immer an, außer beim eigenen Account */}
                 {selectedContact.email !== currentUser?.email && <div className="h-4 w-px bg-border mx-1" />}
-                <button onClick={openEditModal} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors" title={t('edit_contact')}><Edit2 size={16} /></button>
-                {selectedContact.email !== currentUser?.email && <button onClick={() => handleDeleteContact(selectedContact.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title={t('delete')}><Trash2 size={16} /></button>}
+                {hasPermission('canManageUsers') && (
+                  <>
+                    <button onClick={openEditModal} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors" title={t('edit_contact')}><Edit2 size={16} /></button>
+                    {selectedContact.email !== currentUser?.email && <button onClick={() => handleDeleteContact(selectedContact.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title={t('delete')}><Trash2 size={16} /></button>}
+                  </>
+                )}
               </div>
 
               <div className="flex items-center gap-8 pt-2">
@@ -656,7 +679,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                   </div>
                 </div>
 
-                {(selectedContact.isAppUser || selectedContact.role) && (
+                {(selectedContact.isAppUser || selectedContact.role) && hasPermission('canManageUsers') && (
                   <div className="col-span-2 space-y-4 pt-4 border-t border-border/50">
                      <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest">{t('role_management_system')}</h3>
                      <select value={selectedContact.role || 'employee'} onChange={(e) => handleRoleChange(selectedContact.id, e.target.value)} disabled={selectedContact.id === currentUser?.uid && isSuperAdmin} className="w-full max-w-xs px-4 py-2.5 rounded-xl text-sm font-bold border outline-none cursor-pointer bg-background hover:bg-white/5 border-border text-text-primary focus:border-accent-ai transition-colors">

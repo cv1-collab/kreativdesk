@@ -3,9 +3,11 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'; 
 import { auth, db, isConfigured } from '../firebase';
+import { Role } from '../config/permissions';
 
 export interface AppUser extends User {
-  role?: string;
+  name?: string;
+  role?: Role;
   hasActiveSubscription?: boolean;
   stripeCustomerId?: string;
   plan?: string;
@@ -18,7 +20,7 @@ export interface AppUser extends User {
 
 interface AuthContextType {
   currentUser: AppUser | null;
-  userRole: string | null;
+  userRole: Role | null;
   loading: boolean;
   logout: () => Promise<void>;
 }
@@ -36,7 +38,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
   const claimSyncAttempted = useRef(false);
@@ -106,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               userData = { ...userData, companyId: newCompanyId };
             }
 
-            setUserRole(userData.role || 'owner');
+            setUserRole((userData.role as Role) || 'owner');
             setCurrentUser({ ...user, ...userData });
           } else {
             // === NEUER USER FLOW ===
@@ -137,16 +139,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const trialEndDate = new Date();
             trialEndDate.setDate(trialEndDate.getDate() + 30);
 
-            const newUserData = {
+            const newUserData: AppUser = {
+              ...user,
               email: user.email,
               name: user.displayName || user.email?.split('@')[0] || 'Teammitglied',
-              role: targetRole,
+              role: targetRole as Role,
               companyId: targetCompanyId,
               hasActiveSubscription: true, 
-              trialEndsAt: isInvitedUser ? null : trialEndDate.toISOString(),
+              trialEndsAt: isInvitedUser ? undefined : trialEndDate.toISOString(),
               createdAt: new Date().toISOString(),
               hasSeenTour: false
-            };
+            } as unknown as AppUser;
             
             await setDoc(docRef, newUserData);
 
@@ -173,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await syncCustomClaims(user, targetCompanyId);
             }
 
-            setUserRole(targetRole);
+            setUserRole(targetRole as Role);
             setCurrentUser({ ...user, ...newUserData });
           }
         } catch (err: any) {
