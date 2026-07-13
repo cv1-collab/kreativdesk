@@ -96,13 +96,15 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
-    if (currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined) && !hasSeenTourLocal) {
+    const isOnboardingActive = !currentUser?.hasCompletedOnboarding && userRole !== 'super_admin';
+    
+    if (!isOnboardingActive && currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined) && !hasSeenTourLocal) {
       const timer = setTimeout(() => {
         startTour();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [currentUser, startTour]);
+  }, [currentUser, startTour, userRole]);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit'>('dashboard');
   const [userProfile, setUserProfile] = useState<any>(null);

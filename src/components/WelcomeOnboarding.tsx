@@ -3,8 +3,10 @@ import { auth, db, storage } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
+import { useTour } from '../contexts/TourContext';
 
 export default function WelcomeOnboarding({ currentUser, onComplete }: { currentUser: any, onComplete: () => void }) {
+  const { startTour, stopTour } = useTour();
   const [name, setName] = useState(currentUser?.name || '');
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>(currentUser?.photoURL || '');
@@ -12,11 +14,14 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
   const [step, setStep] = useState(1);
 
   useEffect(() => {
+    // Stoppe die Tour sofort, solange dieses Fenster sichtbar ist, um Überlappungen zu verhindern!
+    stopTour();
+    
     if (currentUser?.name && currentUser.name !== 'Neues Teammitglied') {
       setName(currentUser.name);
     }
     if (currentUser?.photoURL) setAvatarPreview(currentUser.photoURL);
-  }, [currentUser]);
+  }, [currentUser, stopTour]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -72,6 +77,10 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
 
       setStep(3); // Zeige Erfolgs-Screen kurz an
       setTimeout(() => {
+        const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
+        if (!hasSeenTourLocal) {
+          startTour();
+        }
         onComplete();
       }, 2000);
     } catch (error) {

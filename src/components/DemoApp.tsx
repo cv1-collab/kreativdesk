@@ -29,6 +29,7 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
 
   const activeProject = {
     id: 'demo-1',
+    name: template.project?.name || 'Quartier Neubau Süd',
     companyId: 'demo-company',
     // Team & Kamera
     memberIds: template.members.map((m: any) => m.email || m.id), 

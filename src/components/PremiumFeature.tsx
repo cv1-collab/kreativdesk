@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useProject } from '../contexts/ProjectContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Lock, Sparkles, ArrowRight } from 'lucide-react';
@@ -27,6 +28,7 @@ interface PremiumFeatureProps {
 
 export default function PremiumFeature({ children, title, description }: PremiumFeatureProps) {
   const { currentUser } = useAuth();
+  const { isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -38,8 +40,8 @@ export default function PremiumFeature({ children, title, description }: Premium
     let isMounted = true;
 
     const checkAccess = async () => {
-      // 1. If we are on the demo route, ALWAYS allow premium features
-      if (window.location.pathname.includes('/demo')) {
+      // 1. If we are in demo mode or on the demo route, ALWAYS allow premium features
+      if (isDemoMode || window.location.pathname.includes('/demo')) {
         if (isMounted) setIsPremiumValid(true);
         return;
       }
@@ -81,7 +83,7 @@ export default function PremiumFeature({ children, title, description }: Premium
     checkAccess();
     
     return () => { isMounted = false; };
-  }, [currentUser]);
+  }, [currentUser, isDemoMode]);
 
   if (isPremiumValid === null) {
     return <div className="w-full h-[60vh] bg-surface border border-border rounded-xl animate-pulse"></div>;

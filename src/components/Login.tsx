@@ -70,7 +70,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
 
-  if (currentUser) {
+  if (currentUser && !loading) {
     if (checkIsSuperAdmin(currentUser.email)) return <Navigate to="/admin" />;
     return <Navigate to="/app" />;
   }

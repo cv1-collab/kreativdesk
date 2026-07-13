@@ -57,7 +57,9 @@ export default function Signup() {
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get('invite');
 
-  if (currentUser) return <Navigate to="/app" />;
+  if (currentUser && !loading) {
+    return <Navigate to="/app" />;
+  }
 
   const processInvite = async (uid: string, userEmail: string | null, token: string) => {
     try {
@@ -294,7 +296,8 @@ export default function Signup() {
         });
 
         if (!response.ok) {
-          throw new Error('Registration failed on server.');
+          console.warn('Server registration failed, falling back to client-side onboarding');
+          await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
         }
 
         // 🔥 TRIGGER FÜR DEN WEBHOOK BEI GOOGLE SIGNUP
@@ -331,7 +334,8 @@ export default function Signup() {
       });
 
       if (!response.ok) {
-        throw new Error('Registration failed on server.');
+        console.warn('Server registration failed, falling back to client-side onboarding');
+        await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
       }
 
       // 🔥 TRIGGER FÜR DEN WEBHOOK BEI EMAIL SIGNUP
