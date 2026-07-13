@@ -353,7 +353,7 @@ export default function CompanyDashboard() {
 
       // 2. Schedule Data (Calendar)
       if (demoData.tasks || demoData.smartMarkers) {
-        batch.set(doc(db, 'schedules', `schedule_${projectId}`), {
+        batch.set(doc(db, 'projectSchedules', `schedule_${projectId}`), {
           projectId: projectId, companyId: safeCompanyId, ownerId: currentUser.uid,
           name: 'Initialer Projektplan', createdAt: now, isPublic: false,
           tasks: (demoData.tasks || []).map((t: any) => {
@@ -412,7 +412,7 @@ export default function CompanyDashboard() {
 
       if (demoData.transactions) {
         demoData.transactions.forEach((tx: any, idx: number) => {
-          batch.set(doc(db, 'financeTransactions', `tx_${projectId}_${idx}`), {
+          batch.set(doc(db, 'transactions', `tx_${projectId}_${idx}`), {
             ...tx, projectId, companyId: safeCompanyId, createdAt: now
           });
         });
@@ -426,7 +426,7 @@ export default function CompanyDashboard() {
         });
       }
 
-      batch.set(doc(db, 'whiteboards', projectId), {
+      batch.set(doc(db, 'whiteboardExports', projectId), {
         companyId: safeCompanyId, projectId: projectId, elements: '[]', createdAt: now
       });
 
