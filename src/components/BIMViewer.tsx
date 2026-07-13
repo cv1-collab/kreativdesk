@@ -447,13 +447,14 @@ export default function BIMViewer() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (isDemoMode) return;
     if (currentUser && !hasFeature(currentUser, '3d_bim')) {
       navigate('/app', { replace: true });
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
       }, 100);
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, navigate, isDemoMode]);
 
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window !== 'undefined') {

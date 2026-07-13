@@ -38,13 +38,23 @@ export default function PremiumFeature({ children, title, description }: Premium
     let isMounted = true;
 
     const checkAccess = async () => {
+      // 1. If we are on the demo route, ALWAYS allow premium features
+      if (window.location.pathname.includes('/demo')) {
+        if (isMounted) setIsPremiumValid(true);
+        return;
+      }
+
       // VIP BYPASS FÜR DEN DEMO USER
       if (currentUser?.email === 'demo@kreativdesk.com' || currentUser?.uid === 'demo-user') {
         if (isMounted) setIsPremiumValid(true);
         return;
       }
 
-      if (!currentUser || !db) return;
+      if (!currentUser || !db) {
+        if (isMounted) setIsPremiumValid(false);
+        return;
+      }
+
       try {
         const docRef = doc(db, 'users', currentUser.uid);
         const snap = await getDoc(docRef);

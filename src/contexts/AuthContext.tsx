@@ -110,7 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             setUserRole((userData.role as Role) || 'owner');
-            setCurrentUser({ ...user, ...userData });
+            const appUser = Object.assign(Object.create(Object.getPrototypeOf(user)), user, userData);
+            setCurrentUser(appUser);
           } else {
             // === NEUER USER FLOW ===
             const urlParams = new URLSearchParams(window.location.search);
@@ -178,7 +179,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
             setUserRole(targetRole as Role);
-            setCurrentUser({ ...user, ...newUserData });
+            const appUser = Object.assign(Object.create(Object.getPrototypeOf(user)), user, newUserData);
+            setCurrentUser(appUser);
           }
         } catch (err: any) {
           console.error("Auth Fetch Error:", err);
