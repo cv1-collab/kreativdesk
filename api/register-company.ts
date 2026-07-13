@@ -51,6 +51,8 @@ export default async function handler(req: any, res: any) {
     let assignedRole = 'owner';
     let isInvite = false;
 
+    const batch = db.batch();
+
     // 1. Process Invite if present
     if (inviteToken) {
       const inviteRef = db.collection('invites').doc(inviteToken);
@@ -62,7 +64,7 @@ export default async function handler(req: any, res: any) {
           assignedRole = inviteData.role || 'Mitarbeiter';
           isInvite = true;
           
-          await inviteRef.update({
+          batch.update(inviteRef, {
             status: 'accepted',
             acceptedBy: uid,
             acceptedAt: now
@@ -70,7 +72,7 @@ export default async function handler(req: any, res: any) {
           
           // Increment seats
           const companyRef = db.collection('companies').doc(assignedCompanyId);
-          await companyRef.update({
+          batch.update(companyRef, {
             usedSeats: FieldValue.increment(1)
           });
         }
@@ -84,7 +86,7 @@ export default async function handler(req: any, res: any) {
     const companyName = enterpriseData?.companyName || `${email.split('@')[0] || 'User'}s Workspace`;
 
     // 2. Create User
-    await db.collection('users').doc(uid).set({
+    batch.set(db.collection('users').doc(uid), {
       email: email, createdAt: now, role: assignedRole, companyId: assignedCompanyId,
       hasActiveSubscription: true, plan: plan, trialEndsAt: trialEndDate.toISOString(), hasSeenTour: false 
     });
@@ -95,23 +97,23 @@ export default async function handler(req: any, res: any) {
       const newProjectId = `proj_${Date.now()}`;
       const tpl = demoTemplates.construction;
 
-      await db.collection('companies').doc(newCompanyId).set({
+      batch.set(db.collection('companies').doc(newCompanyId), {
         id: newCompanyId, name: companyName, plan: plan,
         maxSeats: maxSeats, usedSeats: 1, ownerId: uid, trialEndsAt: trialEndDate.toISOString(), createdAt: now
       });
 
-      await db.collection('projects').doc(newProjectId).set({
+      batch.set(db.collection('projects').doc(newProjectId), {
         id: newProjectId, name: tpl.project.name, description: tpl.project.description,
         companyId: newCompanyId, ownerId: uid, status: 'active', createdAt: now, memberIds: [uid],
         siteLocation: tpl.project.siteLocation, cam1Url: ''
       });
 
-      await db.collection('projectMembers').doc(`pm-${newProjectId}-${uid}`).set({
+      batch.set(db.collection('projectMembers').doc(`pm-${newProjectId}-${uid}`), {
         companyId: newCompanyId, projectId: newProjectId, userId: uid, role: 'Projektleitung', joinedAt: now
       });
 
       // Finance
-      await db.collection('financeData').doc(`finance_${newProjectId}`).set({
+      batch.set(db.collection('financeData').doc(`finance_${newProjectId}`), {
         projectId: newProjectId, companyId: newCompanyId, activeVersionId: 'v1',
         versions: [{
           id: 'v1', name: 'Startbudget', createdAt: now, status: 'approved',
@@ -128,7 +130,7 @@ export default async function handler(req: any, res: any) {
       });
 
       // Schedules
-      await db.collection('schedules').doc(`schedule_${newProjectId}`).set({
+      batch.set(db.collection('schedules').doc(`schedule_${newProjectId}`), {
         projectId: newProjectId, companyId: newCompanyId, ownerId: uid,
         name: 'Initialer Projektplan', createdAt: now, isPublic: false,
         tasks: (tpl.tasks || []).map((t: any) => {
@@ -144,7 +146,7 @@ export default async function handler(req: any, res: any) {
 
       // Pitch Deck Slides
       for (const slide of tpl.pitchDeck.slides) {
-        await db.collection('slides').doc(`slide_${newProjectId}_${slide.id}`).set({
+        batch.set(db.collection('slides').doc(`slide_${newProjectId}_${slide.id}`), {
           title: slide.title, content: slide.content || '', 
           projectId: newProjectId, companyId: newCompanyId, ownerId: uid, 
           layout: slide.layout || 'split', order_index: slide.order_index || 0, 
@@ -155,7 +157,7 @@ export default async function handler(req: any, res: any) {
       // Defects
       for (let i = 0; i < tpl.defects.length; i++) {
         const d = tpl.defects[i];
-        await db.collection('defects').doc(`defect_${newProjectId}_${i}`).set({
+        batch.set(db.collection('defects').doc(`defect_${newProjectId}_${i}`), {
           title: d.title, description: d.description || '', projectId: newProjectId, companyId: newCompanyId, reporterId: uid,
           priority: d.priority || 'Mittel', status: d.status || 'Offen', trade: d.trade || '', location: d.location || '',
           imageUrl: d.imageUrl || '', createdAt: now
@@ -165,10 +167,10 @@ export default async function handler(req: any, res: any) {
       // Documents
       if (tpl.documents) {
         for (let i = 0; i < tpl.documents.length; i++) {
-          const doc = tpl.documents[i];
-          await db.collection('documents').doc(`doc_${newProjectId}_${i}`).set({
-            companyId: newCompanyId, projectId: newProjectId, name: doc.name, category: doc.category || 'plans', 
-            url: doc.url || '', type: doc.type || (doc.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'), 
+          const docItem = tpl.documents[i];
+          batch.set(db.collection('documents').doc(`doc_${newProjectId}_${i}`), {
+            companyId: newCompanyId, projectId: newProjectId, name: docItem.name, category: docItem.category || 'plans', 
+            url: docItem.url || '', type: docItem.type || (docItem.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'), 
             size: '2.4 MB', isFolder: false, ownerId: uid, createdAt: now
           });
         }
@@ -178,7 +180,7 @@ export default async function handler(req: any, res: any) {
       if (tpl.transactions) {
         for (let i = 0; i < tpl.transactions.length; i++) {
           const tx = tpl.transactions[i];
-          await db.collection('transactions').doc(`tx_${newProjectId}_${i}`).set({
+          batch.set(db.collection('transactions').doc(`tx_${newProjectId}_${i}`), {
             id: tx.id, companyId: newCompanyId, projectId: newProjectId, createdBy: uid,
             category: tx.category, amount: tx.amount, date: tx.date || now,
             description: tx.description, title: tx.title, status: tx.status, createdAt: now
@@ -190,7 +192,7 @@ export default async function handler(req: any, res: any) {
       if (tpl.timeEntries) {
         for (let i = 0; i < tpl.timeEntries.length; i++) {
           const te = tpl.timeEntries[i];
-          await db.collection('timeEntries').doc(`te_${newProjectId}_${i}`).set({
+          batch.set(db.collection('timeEntries').doc(`te_${newProjectId}_${i}`), {
             id: te.id, companyId: newCompanyId, projectId: newProjectId, userId: uid,
             description: te.description, hours: te.hours, date: te.date || now, createdAt: now
           });
@@ -202,20 +204,23 @@ export default async function handler(req: any, res: any) {
         for (let i = 0; i < tpl.members.length; i++) {
           const m = tpl.members[i];
           const fakeUserId = `demo_user_${i}`;
-          await db.collection('users').doc(fakeUserId).set({
+          batch.set(db.collection('users').doc(fakeUserId), {
             email: m.email, name: m.name, role: m.role, companyId: newCompanyId,
             photoURL: m.photoURL, createdAt: now
           });
-          await db.collection('projectMembers').doc(`pm-${newProjectId}-${fakeUserId}`).set({
+          batch.set(db.collection('projectMembers').doc(`pm-${newProjectId}-${fakeUserId}`), {
             companyId: newCompanyId, projectId: newProjectId, userId: fakeUserId, role: m.role, joinedAt: now
           });
         }
       }
 
-      await db.collection('whiteboards').doc(newProjectId).set({
+      batch.set(db.collection('whiteboards').doc(newProjectId), {
         companyId: newCompanyId, projectId: newProjectId, elements: '[]', createdAt: now
       });
     }
+
+    // Commit all batched writes
+    await batch.commit();
 
     // 4. Set Custom Claims
     const userRecord = await auth.getUser(uid);
