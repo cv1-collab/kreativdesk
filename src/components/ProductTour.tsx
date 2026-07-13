@@ -4,7 +4,7 @@ import type { Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
@@ -146,7 +146,7 @@ export default function ProductTour() {
 
   return (
     <JoyrideComponent
-      run={isTourRunning && steps.length > 0 && currentUser?.emailVerified !== false}
+      run={isTourRunning && steps.length > 0 && auth.currentUser?.emailVerified !== false}
       steps={steps}
       callback={handleJoyrideCallback}
       continuous
