@@ -6,7 +6,7 @@ export default async function handler(req: any, res: any) {
   try {
     const key = process.env.STRIPE_SECRET_KEY;
     const stripe = new Stripe(key!, { apiVersion: '2025-02-24.acacia' as any });
-    const { customerId } = req.body;
+    const { customerId, returnUrl } = req.body;
 
     // NEU: Kurzer Check, ob die ID auch wirklich da ist
     if (!customerId) {
@@ -15,8 +15,8 @@ export default async function handler(req: any, res: any) {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      // GEÄNDERT: Schickt den User genau auf /settings zurück
-      return_url: `${req.headers.origin}/settings`, 
+      // GEÄNDERT: Schickt den User auf /app oder die mitgegebene URL zurück
+      return_url: returnUrl || `${req.headers.origin}/app`, 
     });
 
     res.status(200).json({ url: session.url });

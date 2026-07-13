@@ -156,5 +156,63 @@ export default async function handler(req: any, res: any) {
     }
   }
 
+  // --- 3. LOGIK BEI PLAN-ÄNDERUNGEN (UPGRADE/DOWNGRADE IM PORTAL) ---
+  else if (event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as Stripe.Subscription;
+    const customerId = subscription.customer as string;
+
+    // Wir holen uns die erste Price-ID aus den Items, um herauszufinden, welcher Plan das ist.
+    // Dafür rufen wir die Stripe API auf, um das Product zu inspizieren (falls nicht im metadata).
+    try {
+      const priceId = subscription.items.data[0]?.price?.id;
+      let planName = 'Starter';
+      let maxSeats = 1;
+      
+      // Das Mapping von Price IDs (Wie in stripeClient.ts) zu Plan-Namen
+      const PRICING_MATRIX: Record<string, {name: string, seats: number}> = {
+        'price_1TdyXhQTfAtOGrggdoSEPjWr': {name: 'Starter', seats: 1}, // Monthly
+        'price_1TdyYYQTfAtOGrggNecH3ItP': {name: 'Starter', seats: 1}, // Yearly
+        'price_1TcizpQTfAtOGrggKGYLMG4c': {name: 'Pro', seats: 1}, // Monthly
+        'price_1TdyU4QTfAtOGrggIvnyXe2j': {name: 'Pro', seats: 1}, // Yearly
+        'price_1TdyaEQTfAtOGrggpbWcVles': {name: 'Expert', seats: 1}, // Monthly
+        'price_1TdyaxQTfAtOGrggbeJBPDFY': {name: 'Expert', seats: 1}, // Yearly
+      };
+
+      if (priceId && PRICING_MATRIX[priceId]) {
+        planName = PRICING_MATRIX[priceId].name;
+        maxSeats = PRICING_MATRIX[priceId].seats;
+      }
+
+      // Falls die Subscription gekündigt wird (cancel_at_period_end = true), Status auf 'active' lassen, bis sie deleted wird
+      const status = subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status;
+      
+      const usersRef = db.collection('users');
+      const snapshot = await usersRef.where('stripeCustomerId', '==', customerId).get();
+
+      if (!snapshot.empty) {
+        const userDoc = snapshot.docs[0];
+        const userData = userDoc.data();
+
+        await userDoc.ref.update({
+          hasActiveSubscription: status === 'active',
+          subscriptionStatus: status,
+          plan: planName,
+          updatedAt: new Date()
+        });
+
+        if (userData.companyId) {
+          await db.collection('companies').doc(userData.companyId).update({
+            plan: planName,
+            maxSeats: maxSeats,
+            updatedAt: new Date()
+          });
+        }
+        console.log(`Subscription Updated für Customer ${customerId} zu Plan ${planName}.`);
+      }
+    } catch (error) {
+      console.error(`Firebase Write Error bei Subscription Update:`, error);
+    }
+  }
+
   res.json({ received: true });
 }

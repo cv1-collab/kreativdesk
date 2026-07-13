@@ -323,6 +323,24 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           details: { invitedUserId: docRef.id, isExternal: newContact.isExternal }
         });
         
+        // Trigger Make.com Webhook für die Einladungs-E-Mail
+        if (!newContact.isExternal) {
+          try {
+            await fetch('/api/send-invite-webhook', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                email: newContact.email, 
+                name: fullName, 
+                role: 'employee',
+                inviterName: currentUser.name || 'Dein Team'
+              })
+            });
+          } catch (e) {
+            console.error("Fehler beim Senden des Invite-Webhooks:", e);
+          }
+        }
+        
         addToast(t('save') + ' ' + t('completed'), 'success');
       }
       

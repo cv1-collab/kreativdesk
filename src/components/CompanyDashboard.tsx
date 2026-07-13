@@ -23,6 +23,7 @@ import TemplatesTab from './TemplatesTab';
 import FinanceTab from './FinanceTab';
 import SettingsTab from './SettingsTab';
 import AuditLogsTab from './AuditLogsTab';
+import WelcomeOnboarding from './WelcomeOnboarding';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
@@ -639,7 +640,15 @@ export default function CompanyDashboard() {
 
   return (
     <div className="flex h-[100dvh] bg-background text-text-primary relative w-full overflow-hidden">
-      
+      {currentUser && !currentUser.hasCompletedOnboarding && userRole !== 'super_admin' && (
+        <WelcomeOnboarding 
+          currentUser={currentUser} 
+          onComplete={() => {
+            // Optionale lokale State-Aktualisierung, aber onSnapshot in App.tsx sollte das übernehmen
+          }} 
+        />
+      )}
+
       <AnimatePresence>
         {isNotificationOpen && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} ref={notificationRef} className="absolute top-16 right-4 sm:right-6 w-80 max-w-[90vw] z-[999999] shadow-2xl">

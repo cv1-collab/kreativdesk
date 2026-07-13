@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -295,6 +297,101 @@ export default function SettingsTab() {
     finally { setIsPortalLoading(false); }
   };
 
+  const handleExportData = async () => {
+    addToast('Datenexport gestartet...', 'info');
+    if (!currentUser || !db) return;
+
+    try {
+      const safeCompanyId = currentUser.companyId;
+      if (!safeCompanyId) throw new Error("No companyId");
+      
+      const exportData: any = { accountInfo: {}, projects: [], documents: [] };
+
+      const qProjects = query(collection(db, 'projects'), where('companyId', '==', safeCompanyId));
+      const snapProjects = await getDocs(qProjects);
+      exportData.projects = snapProjects.docs.map(d => d.data());
+
+      const qDocs = query(
+        collection(db, 'documents'),
+        where('companyId', '==', safeCompanyId)
+      );
+      const snapDocs = await getDocs(qDocs);
+      exportData.documents = snapDocs.docs.map(d => d.data());
+
+      // 1. Initialize JSZip
+      const zip = new JSZip();
+
+      // 2. Add JSON data
+      const dataStr = JSON.stringify(exportData, null, 2);
+      zip.file("KreativDesk_Datenauskunft.json", dataStr);
+
+      // 3. Fetch physical files and add to ZIP
+      const dateienFolder = zip.folder("Dateien");
+      const filesToDownload = exportData.documents.filter((d: any) => !d.isFolder && d.fileUrl);
+
+      if (filesToDownload.length > 0) {
+        addToast(`Lade ${filesToDownload.length} Dateien für den Export herunter...`, 'info');
+      }
+
+      let downloadedCount = 0;
+      for (const doc of filesToDownload) {
+        try {
+          const response = await fetch(doc.fileUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            const fileName = doc.name || `file_${downloadedCount}`;
+            dateienFolder?.file(fileName, blob);
+            downloadedCount++;
+            if (downloadedCount % 5 === 0) {
+              addToast(`Verarbeite Dateien... (${downloadedCount}/${filesToDownload.length})`, 'info');
+            }
+          }
+        } catch (err) {
+          console.warn(`Fehler beim Herunterladen von ${doc.name}:`, err);
+        }
+      }
+
+      // 4. Generate and download ZIP
+      addToast('ZIP-Archiv wird erstellt...', 'info');
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      
+      const dateString = new Date().toISOString().split('T')[0];
+      saveAs(zipBlob, `KreativDesk_DSGVO_Export_${dateString}.zip`);
+
+      addToast('Datenexport erfolgreich abgeschlossen!', 'success');
+    } catch (error) {
+      console.error("Export Error:", error);
+      addToast('Fehler beim Export', 'error');
+    }
+  };
+
+  const handleDeleteCompany = async () => {
+    const confirmed = window.confirm('Bist du sicher, dass du diesen Account (und die Firma) unwiderruflich löschen möchtest? Dies kann nicht rückgängig gemacht werden.');
+    if (!confirmed || !currentUser || !currentUser.companyId) return;
+
+    try {
+      addToast('Account wird gelöscht...', 'info');
+      
+      // Soft-Delete auf Company Ebene
+      await updateDoc(doc(db, 'companies', currentUser.companyId), {
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        status: 'archived',
+        deletedBy: currentUser.uid
+      });
+
+      // Wir könnten hier auch Stripe Subscription canceln falls benötigt, 
+      // aber normalerweise macht das ein Cloud Function Cleanup Script
+
+      await logout();
+      addToast('Account erfolgreich gelöscht.', 'success');
+      navigate('/login');
+    } catch (error) {
+      console.error("Delete Error:", error);
+      addToast('Fehler beim Löschen des Accounts', 'error');
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300 pb-24">
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -566,6 +663,36 @@ export default function SettingsTab() {
             >
               <Zap size={14} /> Testdummy (Bau) laden
             </button>
+          </div>
+          
+          {/* GDPR / Datenschutz Card */}
+          <div className="bg-surface border border-border rounded-xl p-5 md:p-6 shadow-sm mt-6">
+            <h4 className="text-sm font-bold text-text-primary mb-2 flex items-center gap-2">
+              <Shield size={16} className="text-accent-ai" /> Datenschutz & GDPR
+            </h4>
+            <p className="text-xs text-text-muted mb-4">Verwalte deine persönlichen Daten gemäss den aktuellen Datenschutzrichtlinien (DSGVO). Du kannst all deine Daten exportieren oder deinen Account und deine Firma unwiderruflich löschen.</p>
+            
+            <div className="space-y-3">
+              <button 
+                type="button" 
+                onClick={handleExportData}
+                className="w-full py-2.5 bg-background border border-border hover:border-accent-ai text-text-primary rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center gap-2"
+              >
+                <Download size={14} /> Datenauskunft anfordern (ZIP)
+              </button>
+
+              <button 
+                type="button" 
+                onClick={handleDeleteCompany}
+                className="w-full py-2.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-white text-red-500 rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center gap-2"
+              >
+                <Trash2 size={14} /> Account & Firma unwiderruflich löschen
+              </button>
+            </div>
+            <div className="mt-4 p-3 bg-red-500/5 rounded-lg border border-red-500/10 flex gap-3 items-start">
+              <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
+              <p className="text-[10px] text-red-500/80 leading-relaxed">Achtung: Die Löschung des Accounts entfernt alle Projekte, Finanzen und Mitarbeiter der Firma. Diese Aktion kann nicht rückgängig gemacht werden.</p>
+            </div>
           </div>
         </div>
       </div>
