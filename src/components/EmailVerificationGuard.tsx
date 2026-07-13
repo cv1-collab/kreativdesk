@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { sendEmailVerification } from 'firebase/auth';
+import { useToast } from '../contexts/ToastContext';
 import { cn } from '../utils';
 
 interface EmailVerificationGuardProps {
@@ -10,6 +11,7 @@ interface EmailVerificationGuardProps {
 
 export default function EmailVerificationGuard({ children }: EmailVerificationGuardProps) {
   const { currentUser } = useAuth();
+  const { addToast } = useToast();
   const [isLocked, setIsLocked] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [hasResent, setHasResent] = useState(false);
@@ -37,7 +39,7 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
       setTimeout(() => setHasResent(false), 60000); // Erlaubt erneutes Senden nach 1 Minute
     } catch (error) {
       console.error('Fehler beim erneuten Senden der Verifizierungs-E-Mail:', error);
-      alert('Fehler: E-Mail konnte nicht gesendet werden. Bitte warte einen Moment.');
+      addToast('Fehler: E-Mail konnte nicht gesendet werden. Bitte warte einen Moment.', 'error');
     } finally {
       setIsResending(false);
     }

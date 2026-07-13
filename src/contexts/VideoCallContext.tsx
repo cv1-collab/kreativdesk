@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useProject } from './ProjectContext';
+import { useToast } from './ToastContext';
 import { db } from '../firebase';
 import { collection, doc, addDoc, updateDoc, onSnapshot, setDoc, getDoc, query, where, deleteDoc } from 'firebase/firestore';
 
@@ -60,6 +61,7 @@ export const useVideoCall = () => {
 export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
   const { activeProjectId } = useProject();
+  const { addToast } = useToast();
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
@@ -133,7 +135,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return stream;
     } catch (error) {
       console.error("Media Error:", error);
-      alert("Kamera oder Mikrofon blockiert.");
+      addToast("Kamera oder Mikrofon blockiert.", "error");
       return null;
     }
   };
@@ -307,7 +309,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     const callDoc = doc(db, 'videoCalls', targetId);
     const callSnap = await getDoc(callDoc);
-    if (!callSnap.exists()) return alert("Meeting existiert nicht mehr.");
+    if (!callSnap.exists()) { addToast("Meeting existiert nicht mehr.", "error"); return; }
 
     const stream = await setupMediaSources();
     if (!stream) return;

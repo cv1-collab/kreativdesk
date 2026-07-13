@@ -3,6 +3,7 @@ import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Mail, Building, Phone, Calendar, Trash2, Megaphone } from 'lucide-react';
 import { cn } from '../../utils';
+import { useToast } from '../../contexts/ToastContext';
 
 // 🔥 NEU: Helfer-Funktion für sicheres Datum-Parsing
 const parseDate = (dateData: any) => {
@@ -13,6 +14,7 @@ const parseDate = (dateData: any) => {
 };
 
 export default function AdminLeadsTab() {
+  const { addToast } = useToast();
   const [leads, setLeads] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,10 +61,10 @@ export default function AdminLeadsTab() {
         inviteLink: inviteLink
       });
 
-      alert(`Workspace vorbereitet! Einladungslink:\n\n${inviteLink}\n\nBitte kopieren und dem Kunden senden.`);
+      addToast('Workspace vorbereitet! Der Einladungslink wird nun angezeigt.', 'success');
     } catch (e) {
       console.error('Error provisioning:', e);
-      alert('Fehler beim Freischalten.');
+      addToast('Fehler beim Freischalten.', 'error');
     }
   };
 

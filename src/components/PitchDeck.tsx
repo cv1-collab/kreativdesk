@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { cn } from '../utils';
+import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio from './PitchDeckStudio';
 import { demoTemplates } from '../utils/demoTemplates';
 
@@ -43,6 +44,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const { language, t: globalT } = useLanguage();
   const { projects, activeProjectId } = useProject() as any;
   const navigate = useNavigate();
+  const { addToast } = useToast();
   
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -408,7 +410,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                  navigator.share({ title: 'Pitch Deck', url: window.location.href }).catch(() => {});
                } else {
                  navigator.clipboard.writeText(window.location.href);
-                 alert("Link kopiert!");
+                 addToast("Link kopiert!", "success");
                }
              }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>

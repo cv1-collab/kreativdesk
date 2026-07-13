@@ -5,8 +5,10 @@ import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { UploadCloud, CheckCircle2, Loader2, Camera } from 'lucide-react';
 import { cn } from '../utils';
+import { useToast } from '../contexts/ToastContext';
 
 export default function MobileUpload() {
+  const { addToast } = useToast();
   const { sessionId } = useParams<{ sessionId: string }>();
   const [isUploading, setIsUploading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -36,7 +38,7 @@ export default function MobileUpload() {
       setIsSuccess(true);
     } catch (error) {
       console.error('Upload Error:', error);
-      alert('Upload fehlgeschlagen. Bitte erneut versuchen.');
+      addToast('Upload fehlgeschlagen. Bitte erneut versuchen.', 'error');
     } finally {
       setIsUploading(false);
     }
