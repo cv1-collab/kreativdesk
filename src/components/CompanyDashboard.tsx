@@ -302,6 +302,7 @@ export default function CompanyDashboard() {
       const newProj = {
         id: projectId, name: demoData.project.name, description: demoData.project.description, status: demoData.project.status,
         siteLocation: demoData.project.siteLocation || '', imageUrl: demoData.project.imageUrl || '', planUrl: demoData.project.planUrl || '',
+        cam1Url: demoData.camera?.url || '',
         createdAt: new Date().toISOString(), ownerId: currentUser.uid, companyId: safeCompanyId, memberIds: [currentUser.uid]
       };
       batch.set(doc(db, 'projects', projectId), newProj);
@@ -321,6 +322,12 @@ export default function CompanyDashboard() {
             id: pmId, projectId, companyId: safeCompanyId, userId: fakeUid, userEmail: m.email, 
             name: m.name, role: m.role, photoURL: m.photoURL || '', phone: m.phone || '',
             projectRole: 'member', companyRole: 'employee', joinedAt: now
+          });
+          // Also create the user in companyUsers so they show up in the team tab!
+          batch.set(doc(db, 'companyUsers', fakeUid), {
+            id: fakeUid, companyId: safeCompanyId, email: m.email, name: m.name,
+            role: m.role.includes('Intern') ? 'Internal' : 'External Planner',
+            avatar: m.photoURL || '', createdAt: now, ownerId: currentUser.uid
           });
         });
       }
@@ -385,9 +392,14 @@ export default function CompanyDashboard() {
       if (demoData.defects) {
         for (let i = 0; i < demoData.defects.length; i++) {
           const d = demoData.defects[i];
+          let status = d.status || 'To Do';
+          if (status === 'In Arbeit' || status === 'Aktiv') status = 'In Progress';
+          if (status === 'Offen') status = 'To Do';
+          if (status === 'Erledigt') status = 'Done';
+          
           batch.set(doc(db, 'defects', `defect_${projectId}_${i}`), {
             title: d.title, description: d.description || '', projectId: projectId, companyId: safeCompanyId, reporterId: currentUser.uid,
-            priority: d.priority || 'Mittel', status: d.status || 'Offen', trade: d.trade || '', location: d.location || '',
+            priority: d.priority || 'Medium', status: status, trade: d.trade || '', location: d.location || '',
             imageUrl: d.imageUrl || '', createdAt: now
           });
         }
