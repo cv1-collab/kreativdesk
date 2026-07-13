@@ -546,8 +546,10 @@ export default function CompanyDashboard() {
       await logAuditAction({
         action: 'PROJECT_DELETED',
         userId: currentUser.uid,
+        userEmail: currentUser.email || 'unknown',
         companyId: safeCompanyId,
-        details: `projectId: ${projectId}`
+        details: `projectId: ${projectId}`,
+        timestamp: new Date().toISOString()
       });
       
       addToast(t('delete_completed'), 'success');
