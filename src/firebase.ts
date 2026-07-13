@@ -7,6 +7,7 @@ import {
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions"; // <-- NEU HINZUGEFÜGT
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 // Deine Firebase Konfiguration
 const firebaseConfig = {
@@ -22,6 +23,15 @@ export const isConfigured = !!firebaseConfig.apiKey;
 
 // App initialisieren
 const app = initializeApp(firebaseConfig);
+
+// App Check initialisieren (Security)
+// Nutzt einen unsichtbaren ReCAPTCHA v3 Token im Hintergrund
+if (typeof window !== "undefined" && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+    isTokenAutoRefreshEnabled: true
+  });
+}
 
 // Moderne Art den Offline-Speicher (inkl. Multi-Tab Support) zu aktivieren
 const db = initializeFirestore(app, {
