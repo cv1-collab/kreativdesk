@@ -128,11 +128,15 @@ export default function ProductTour() {
       stopTour();
       setSteps([]);
       
-      if (currentUser?.uid && db) {
-        try {
-          await updateDoc(doc(db, 'users', currentUser.uid), { hasSeenTour: true });
-        } catch (error) {
-          console.error("Fehler beim Speichern des Tour-Status:", error);
+      if (currentUser?.uid) {
+        // Fallback to localStorage to ensure the tour doesn't aggressively restart
+        localStorage.setItem(`tour_${currentUser.uid}`, 'true');
+        if (db) {
+          try {
+            await updateDoc(doc(db, 'users', currentUser.uid), { hasSeenTour: true });
+          } catch (error) {
+            console.error("Fehler beim Speichern des Tour-Status:", error);
+          }
         }
       }
     }

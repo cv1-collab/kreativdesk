@@ -95,7 +95,8 @@ export default function CompanyDashboard() {
   const { startTour } = useTour();
 
   useEffect(() => {
-    if (currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined)) {
+    const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
+    if (currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined) && !hasSeenTourLocal) {
       const timer = setTimeout(() => {
         startTour();
       }, 500);
