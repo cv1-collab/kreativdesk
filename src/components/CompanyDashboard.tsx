@@ -734,7 +734,7 @@ export default function CompanyDashboard() {
                         <h2 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary">{t('projects')}</h2>
                       </div>
                       {canCreateProjects && (
-                        <button onClick={() => setIsNewProjectModalOpen(true)} className="w-full sm:w-auto px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
+                        <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn w-full sm:w-auto px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
                           <Plus size={16} /> {t('new_project')}
                         </button>
                       )}
@@ -805,7 +805,7 @@ export default function CompanyDashboard() {
                           <h3 className="text-xl font-bold text-text-primary mb-2">Noch keine Projekte</h3>
                           <p className="text-text-muted mb-6">Erstelle dein erstes Projekt, um loszulegen.</p>
                           {canCreateProjects && (
-                            <button onClick={() => setIsNewProjectModalOpen(true)} className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2"><Plus size={16} /> {t('create_project')}</button>
+                            <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2"><Plus size={16} /> {t('create_project')}</button>
                           )}
                         </div>
                       )}
