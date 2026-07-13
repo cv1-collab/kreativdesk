@@ -93,7 +93,8 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow read: if isSystemAdmin() || isSameCompany(companyId);
       allow update: if isSystemAdmin() || isCompanyOwner(companyId);
-      allow create, delete: if isSystemAdmin();
+      allow create: if isSystemAdmin() || (request.auth != null && request.resource.data.ownerId == request.auth.uid);
+      allow delete: if isSystemAdmin();
     }
 
     match /users/{userId} {
@@ -102,7 +103,7 @@ service cloud.firestore {
         (request.auth.uid == userId || isCompanyOwner(resource.data.companyId)) &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'companyId', 'plan', 'hasActiveSubscription', 'stripeCustomerId', 'subscriptionId', 'subscriptionStatus', 'trialEndsAt']) || isSystemAdmin() || (isCompanyOwner(resource.data.companyId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'updatedAt'])))
       );
-      allow create: if isSystemAdmin();
+      allow create: if isSystemAdmin() || (request.auth != null && request.auth.uid == userId);
       allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
     }
 
@@ -113,11 +114,11 @@ service cloud.firestore {
     match /projects/{projectId} {
       allow read, update: if isSystemAdmin() || isSameCompany(resource.data.companyId);
       allow delete: if isSystemAdmin() || canDeleteProject(resource.data.companyId);
-      allow create: if isSystemAdmin() || canCreateProject(request.resource.data.companyId);
+      allow create: if isSystemAdmin() || canCreateProject(request.resource.data.companyId) || (request.auth != null && request.resource.data.ownerId == request.auth.uid);
     }
     match /projectMembers/{memberId} {
       allow read, update, delete: if isSystemAdmin() || isSameCompany(resource.data.companyId);
-      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId);
+      allow create: if isSystemAdmin() || isSameCompany(request.resource.data.companyId) || (request.auth != null && request.resource.data.userId == request.auth.uid);
     }
     match /companyUsers/{userId} {
       allow read: if isSystemAdmin() || isSameCompany(resource.data.companyId);
@@ -126,13 +127,13 @@ service cloud.firestore {
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || canManageUsers(resource.data.companyId))
       );
       allow delete: if isSystemAdmin() || canManageUsers(resource.data.companyId);
-      allow create: if isSystemAdmin() || (isSameCompany(request.resource.data.companyId) && canManageUsers(request.resource.data.companyId));
+      allow create: if isSystemAdmin() || (isSameCompany(request.resource.data.companyId) && canManageUsers(request.resource.data.companyId)) || request.auth != null;
     }
     
     match /financeData/{docId} { 
       allow read, update: if isSystemAdmin() || canViewFinance(resource.data.companyId);
       allow delete: if isSystemAdmin() || isCompanyOwner(resource.data.companyId);
-      allow create: if isSystemAdmin() || canViewFinance(request.resource.data.companyId); 
+      allow create: if isSystemAdmin() || canViewFinance(request.resource.data.companyId) || request.auth != null; 
     }
     
     match /timeEntries/{entryId} {

@@ -94,6 +94,14 @@ export default function CompanyDashboard() {
   
   const { startTour } = useTour();
 
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit'>('dashboard');
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationRef = useRef<HTMLDivElement>(null);
+
+  const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
+  const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
+
   useEffect(() => {
     const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
     const isOnboardingActive = !currentUser?.hasCompletedOnboarding && userRole !== 'super_admin';
@@ -105,14 +113,6 @@ export default function CompanyDashboard() {
       return () => clearTimeout(timer);
     }
   }, [currentUser, startTour, userRole]);
-
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit'>('dashboard');
-  const [userProfile, setUserProfile] = useState<any>(null);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const notificationRef = useRef<HTMLDivElement>(null);
-
-  const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
-  const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
   const { hasPermission } = usePermissions();
   const { limits } = useSubscriptionLimits();
   const canSeeFinances = hasPermission('canViewFinance');
