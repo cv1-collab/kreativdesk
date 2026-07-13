@@ -445,6 +445,10 @@ export default function BIMViewer() {
 
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  
+  const { theme } = useTheme(); 
+  const { projects, isDemoMode, demoData } = useProject() as any;
+  const activeProject = projects?.find((p: any) => p.id === projectId);
 
   useEffect(() => {
     if (isDemoMode) return;
@@ -523,10 +527,6 @@ export default function BIMViewer() {
   const [isTouring, setIsTouring] = useState(false);
   
   const { addToast } = useToast();
-  const { theme } = useTheme(); 
-  const { projects, isDemoMode, demoData } = useProject() as any;
-  
-  const activeProject = projects?.find((p: any) => p.id === projectId);
 
   const [customModels, setCustomModels] = useState<any[]>([]);
   const [activeModelId, setActiveModelId] = useState<string>(() => {
