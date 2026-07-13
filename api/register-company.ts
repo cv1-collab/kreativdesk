@@ -12,7 +12,7 @@ if (getApps().length === 0) {
   });
 }
 
-import { demoTemplates } from '../src/utils/demoTemplates';
+import { demoTemplates } from '../src/utils/demoTemplates.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
