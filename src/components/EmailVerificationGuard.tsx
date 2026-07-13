@@ -3,6 +3,7 @@ import { Mail, CheckCircle2, Loader2, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { cn } from '../utils';
+import { auth } from '../firebase';
 
 interface EmailVerificationGuardProps {
   children: React.ReactNode;
@@ -33,7 +34,7 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
     if (!currentUser || !currentUser.email) return;
     setIsResending(true);
     try {
-      const token = await currentUser.getIdToken();
+      const token = await auth.currentUser?.getIdToken();
       const name = currentUser.email.split('@')[0];
       
       const response = await fetch('/api/send-webhook', {

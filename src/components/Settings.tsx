@@ -301,7 +301,7 @@ const handlePasswordReset = async () => {
 
     setIsDeletingAccount(true);
     try {
-      const token = await currentUser.getIdToken();
+      const token = await auth.currentUser?.getIdToken();
       
       const response = await fetch('/api/delete-account', {
         method: 'POST',
