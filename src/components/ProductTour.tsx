@@ -146,7 +146,7 @@ export default function ProductTour() {
 
   return (
     <JoyrideComponent
-      run={isTourRunning && steps.length > 0}
+      run={isTourRunning && steps.length > 0 && currentUser?.emailVerified !== false}
       steps={steps}
       callback={handleJoyrideCallback}
       continuous

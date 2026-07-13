@@ -12,47 +12,7 @@ if (getApps().length === 0) {
   });
 }
 
-const demoTemplates = {
-  construction: {
-    project: { name: 'Einfamilienhaus Muster', description: 'Neubau Einfamilienhaus in Holzbauweise.', siteLocation: 'Musterstrasse 12, 8000 Zürich' },
-    financeGroups: [
-      {
-        pos: '100', title: 'Planung & Bewilligungen',
-        items: [
-          { pos: '101', title: 'Architekturleistungen', description: 'Vorprojekt bis Ausführungsplanung', unit: 'Pausch.', qty: 1, unitPrice: 85000, type: 'cost' },
-          { pos: '102', title: 'Bauingenieur', description: 'Statik und Baugrube', unit: 'Pausch.', qty: 1, unitPrice: 18500, type: 'cost' }
-        ]
-      },
-      {
-        pos: '200', title: 'Rohbau',
-        items: [
-          { pos: '201', title: 'Aushub & Baumeister', description: 'Fundament, Bodenplatte, Wände UG', unit: 'Pausch.', qty: 1, unitPrice: 145000, type: 'cost' },
-          { pos: '202', title: 'Holzbau', description: 'Elementbau Wände & Dach', unit: 'Pausch.', qty: 1, unitPrice: 280000, type: 'cost' }
-        ]
-      }
-    ],
-    tasks: [
-      { id: 't1', title: 'Baueingabe', daysOffsetStart: 0, daysOffsetEnd: 30, progress: 100, status: 'Abgeschlossen', color: 'bg-blue-500' },
-      { id: 't2', title: 'Aushub', daysOffsetStart: 45, daysOffsetEnd: 60, progress: 50, status: 'In Bearbeitung', color: 'bg-orange-500' },
-      { id: 't3', title: 'Rohbau / Holzbau', daysOffsetStart: 60, daysOffsetEnd: 90, progress: 0, status: 'Geplant', color: 'bg-purple-500' },
-      { id: 't4', title: 'Innenausbau', daysOffsetStart: 90, daysOffsetEnd: 150, progress: 0, status: 'Geplant', color: 'bg-green-500' }
-    ],
-    smartMarkers: [
-      { id: 'm1', title: 'Baustart', daysOffset: 45, color: 'bg-green-500' },
-      { id: 'm2', title: 'Aufrichte', daysOffset: 90, color: 'bg-blue-500' }
-    ],
-    pitchDeck: {
-      slides: [
-        { id: 's1', title: 'Projekt Vision', content: 'Ein modernes und nachhaltiges Zuhause für die Zukunft.', layout: 'split', order_index: 0, imageUrl: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2000&auto=format&fit=crop' },
-        { id: 's2', title: 'Architektur', content: 'Klare Linien, viel Tageslicht und natürliche Materialien prägen den Entwurf.', layout: 'full_image', order_index: 1, imageUrl: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=2000&auto=format&fit=crop' }
-      ]
-    },
-    defects: [
-      { title: 'Kratzer im Fensterglas', description: 'Fensterfront Südseite hat einen ca. 5cm langen Kratzer.', priority: 'Mittel', status: 'Offen', trade: 'Fensterbauer', location: 'EG Wohnzimmer', imageUrl: '' },
-      { title: 'Steckdose ohne Strom', description: 'Steckdose neben der Tür funktioniert nicht.', priority: 'Hoch', status: 'In Bearbeitung', trade: 'Elektriker', location: 'OG Schlafzimmer', imageUrl: '' }
-    ]
-  }
-};
+import { demoTemplates } from '../src/utils/demoTemplates';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -202,11 +162,55 @@ export default async function handler(req: any, res: any) {
         });
       }
 
-      await db.collection('documents').doc(`doc_${Date.now()}`).set({
-        companyId: newCompanyId, projectId: newProjectId, name: 'Projekt-Übersicht.pdf', category: 'plans', 
-        url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2000&auto=format&fit=crop', 
-        type: 'application/pdf', size: '2.4 MB', isFolder: false, ownerId: uid, createdAt: now
-      });
+      // Documents
+      if (tpl.documents) {
+        for (let i = 0; i < tpl.documents.length; i++) {
+          const doc = tpl.documents[i];
+          await db.collection('documents').doc(`doc_${newProjectId}_${i}`).set({
+            companyId: newCompanyId, projectId: newProjectId, name: doc.name, category: doc.category || 'plans', 
+            url: doc.url || '', type: doc.type || (doc.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'), 
+            size: '2.4 MB', isFolder: false, ownerId: uid, createdAt: now
+          });
+        }
+      }
+
+      // Transactions
+      if (tpl.transactions) {
+        for (let i = 0; i < tpl.transactions.length; i++) {
+          const tx = tpl.transactions[i];
+          await db.collection('transactions').doc(`tx_${newProjectId}_${i}`).set({
+            id: tx.id, companyId: newCompanyId, projectId: newProjectId, createdBy: uid,
+            category: tx.category, amount: tx.amount, date: tx.date || now,
+            description: tx.description, title: tx.title, status: tx.status, createdAt: now
+          });
+        }
+      }
+
+      // Time Entries
+      if (tpl.timeEntries) {
+        for (let i = 0; i < tpl.timeEntries.length; i++) {
+          const te = tpl.timeEntries[i];
+          await db.collection('timeEntries').doc(`te_${newProjectId}_${i}`).set({
+            id: te.id, companyId: newCompanyId, projectId: newProjectId, userId: uid,
+            description: te.description, hours: te.hours, date: te.date || now, createdAt: now
+          });
+        }
+      }
+
+      // Additional Members (Mock)
+      if (tpl.members) {
+        for (let i = 0; i < tpl.members.length; i++) {
+          const m = tpl.members[i];
+          const fakeUserId = `demo_user_${i}`;
+          await db.collection('users').doc(fakeUserId).set({
+            email: m.email, name: m.name, role: m.role, companyId: newCompanyId,
+            photoURL: m.photoURL, createdAt: now
+          });
+          await db.collection('projectMembers').doc(`pm-${newProjectId}-${fakeUserId}`).set({
+            companyId: newCompanyId, projectId: newProjectId, userId: fakeUserId, role: m.role, joinedAt: now
+          });
+        }
+      }
 
       await db.collection('whiteboards').doc(newProjectId).set({
         companyId: newCompanyId, projectId: newProjectId, elements: '[]', createdAt: now
