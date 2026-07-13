@@ -102,7 +102,7 @@ export default function CompanyDashboard() {
     }
   }, [currentUser, startTour]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit'>('dashboard');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -547,7 +547,7 @@ export default function CompanyDashboard() {
         action: 'PROJECT_DELETED',
         userId: currentUser.uid,
         companyId: safeCompanyId,
-        details: { projectId }
+        details: `projectId: ${projectId}`
       });
       
       addToast(t('delete_completed'), 'success');
