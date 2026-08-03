@@ -435,9 +435,9 @@ export default function CompanyDashboard() {
   const handleDeleteProject = async (projectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveDropdownId(null);
-    if (!db || !currentUser || !window.confirm(t('confirm_delete'))) return;
+    if (!currentUser || !window.confirm(t('confirm_delete'))) return;
     try {
-      await deleteDoc(doc(db, 'projects', projectId));
+      await supabase.from('projects').delete().eq('id', projectId);
       
       const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
       await logAuditAction({
@@ -450,7 +450,10 @@ export default function CompanyDashboard() {
       });
       
       addToast(t('delete_completed'), 'success');
-    } catch (err) { addToast(t('upload_failed'), 'error'); }
+    } catch (err) { 
+      console.error(err);
+      addToast(t('upload_failed'), 'error'); 
+    }
   };
 
   const handleCreateFolder = async (e: React.FormEvent) => {

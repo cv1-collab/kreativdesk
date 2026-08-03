@@ -1,30 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FolderOpen, Trash2, Loader2 } from 'lucide-react';
-import { db } from '../../firebase';
-import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../../lib/supabase';
 
 export default function AdminProjectsTab() {
   const [search, setSearch] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(collection(db, 'projects'), (snapshot) => {
-      const loaded = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        // 🔥 NEU: Wir filtern das Demo-Projekt heraus, damit niemand es aus Versehen löscht!
-        .filter((proj: any) => proj.companyId !== 'demo-company');
-        
-      setProjects(loaded);
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error("Error fetching projects for admin:", err);
+    } finally {
       setIsLoading(false);
-    });
-    return () => unsub();
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+
+    const channel = supabase
+      .channel('admin-projects-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+        fetchProjects();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleDeleteProject = async (projectId: string) => {
     if (!window.confirm("Achtung: Soll dieses Projekt wirklich gelöscht werden?")) return;
-    try { await deleteDoc(doc(db, 'projects', projectId)); } catch (error) { console.error("Fehler beim Löschen", error); }
+    try { 
+      await supabase.from('projects').delete().eq('id', projectId);
+      await fetchProjects();
+    } catch (error) { 
+      console.error("Fehler beim Löschen", error); 
+    }
   };
 
   const filtered = projects.filter(p => (p.name?.toLowerCase() || '').includes(search.toLowerCase()));
