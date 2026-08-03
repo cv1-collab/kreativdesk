@@ -77,8 +77,6 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
-  const functions = getFunctions(getApp(), 'europe-west1');
-
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());

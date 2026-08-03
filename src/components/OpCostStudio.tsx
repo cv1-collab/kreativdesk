@@ -7,6 +7,7 @@ import { Landmark, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, F
 import { useLanguage } from '../contexts/LanguageContext';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import UniversalPDFStudio from './UniversalPDFStudio';
+import { callGeminiAPI } from '../utils/geminiClient';
 import { cn } from '../utils';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -66,7 +67,6 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language } = useLanguage();
-  const functions = getFunctions(getApp(), 'europe-west1');
 
   const [opCostData, setOpCostData] = useState({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
   const [opCostReceipts, setOpCostReceipts] = useState<string[]>([]);
@@ -84,17 +84,22 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
     setIsAnalyzingAI(true);
     addToast('KI analysiert Beleg...', 'info');
     try {
-      const analyzeReceipt = httpsCallable(functions, 'analyzeReceipt');
-      const result = await analyzeReceipt({ base64Image: base64Data, imageUrl: imageUrl, mimeType });
-      const aiData: any = result.data;
-      
-      const vendorName = aiData.vendor || aiData.merchant || aiData.company || aiData.description || '';
-      const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
-      const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
-
-      setOpCostData(prev => ({ ...prev, amount: cleanAmount || prev.amount, description: vendorName || prev.description, date: aiData.date || prev.date }));
-      addToast('Beleg automatisch ausgefüllt!', 'success');
-    } catch (error) { addToast('Konnte Beleg nicht lesen.', 'error'); } finally { setIsAnalyzingAI(false); }
+      if (!base64Data) throw new Error("No image data");
+      const prompt = "Analysiere diese Quittung. Antworte NUR im JSON Format: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string, \"date\": string}";
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
+        { text: prompt }
+      ]);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const aiData = JSON.parse(jsonMatch[0]);
+        const vendorName = aiData.vendor || aiData.merchant || aiData.company || aiData.description || '';
+        const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
+        const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
+        setOpCostData(prev => ({ ...prev, amount: cleanAmount || prev.amount, description: vendorName || prev.description, date: aiData.date || prev.date }));
+        addToast('Beleg analysiert!', 'success');
+      }
+    } catch (err) { addToast('KI-Analyse fehlgeschlagen', 'error'); } finally { setIsAnalyzingAI(false); }
   };
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

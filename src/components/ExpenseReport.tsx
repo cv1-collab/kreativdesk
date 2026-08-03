@@ -10,6 +10,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
 
 import { supabase } from '../lib/supabase';
+import { callGeminiAPI } from '../utils/geminiClient';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -93,8 +94,6 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
-  const functions = getFunctions(getApp(), 'europe-west1');
-
   const [headerData, setHeaderData] = useState({ userId: currentUser?.uid || '', date: new Date().toISOString().split('T')[0], projectId: '' });
   const [positions, setPositions] = useState<any[]>([{ id: '1', category: 'Verpflegung', description: '', amount: '' }]);
   const [receipts, setReceipts] = useState<string[]>([]);
@@ -117,38 +116,41 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    if (!sessionId) return;
-  }, [sessionId, t]);
-
   const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string) => {
     setIsAnalyzingAI(true);
     addToast(t('analyzing_ai'), 'info');
     try {
-      const result = await analyzeReceipt({ base64Image: base64Data, imageUrl: imageUrl, mimeType });
-      const aiData = result.data as any;
-      
-      const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
-      const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
-      const desc = aiData.vendor || aiData.merchant || aiData.description || '';
+      if (!base64Data) throw new Error("No image data");
+      const prompt = "Analysiere diese Quittung. Antworte NUR im JSON Format: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
+      const response = await callGeminiAPI('gemini-2.0-flash', [
+        { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
+        { text: prompt }
+      ]);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const aiData = JSON.parse(jsonMatch[0]);
+        const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
+        const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
+        const desc = aiData.vendor || aiData.merchant || aiData.description || '';
 
-      if (cleanAmount || desc) {
-         setPositions(prev => {
-           const newPos = [...prev];
-           const lastIdx = newPos.length - 1;
-           if (!newPos[lastIdx].amount && !newPos[lastIdx].description) {
-             newPos[lastIdx] = { ...newPos[lastIdx], amount: cleanAmount || newPos[lastIdx].amount, description: desc || newPos[lastIdx].description };
-           } else {
-             newPos.push({ id: Date.now().toString(), category: 'Verpflegung', description: desc, amount: cleanAmount });
-           }
-           return newPos;
-         });
-         addToast('Beleg analysiert!', 'success');
+        if (cleanAmount || desc) {
+           setPositions(prev => {
+             const newPos = [...prev];
+             const lastIdx = newPos.length - 1;
+             if (!newPos[lastIdx].amount && !newPos[lastIdx].description) {
+               newPos[lastIdx] = { ...newPos[lastIdx], amount: cleanAmount || newPos[lastIdx].amount, description: desc || newPos[lastIdx].description };
+             } else {
+               newPos.push({ id: Date.now().toString(), category: 'Verpflegung', description: desc, amount: cleanAmount });
+             }
+             return newPos;
+           });
+           addToast('Beleg analysiert!', 'success');
+        }
       }
-    } catch (error) {
-      addToast('Fehler bei der KI-Analyse', 'error');
-    } finally {
-      setIsAnalyzingAI(false);
+    } catch (err) { 
+      addToast(t('save_error'), 'error'); 
+    } finally { 
+      setIsAnalyzingAI(false); 
     }
   };
 

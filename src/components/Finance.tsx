@@ -23,6 +23,7 @@ import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
+import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
 
@@ -312,7 +313,6 @@ export default function Finance() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   const { theme } = useTheme();
-  const functions = getFunctions(getApp(), 'europe-west1');
   const tooltipContentStyle = { backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', borderColor: theme === 'dark' ? '#27272a' : '#e4e4e7', color: theme === 'dark' ? '#fafafa' : '#09090b', borderRadius: '8px' };
   
   const { activeProjectId, projects, projectMembers, timeEntries, addTimeEntry, isDemoMode, demoData } = useProject() as any;
@@ -753,9 +753,18 @@ export default function Finance() {
   const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string) => {
     setIsAnalyzingAI(true); addToast(t('analyzing_ai'), 'info');
     try {
-      const analyzeReceipt = httpsCallable(functions, 'analyzeReceipt');
-      const result = await analyzeReceipt({ base64Image: base64Data, imageUrl: imageUrl, mimeType });
-      applyAiData(result.data); addToast(t('receipt_live_received'), 'success');
+      if (!base64Data) throw new Error("No image data");
+      const prompt = "Analysiere diese Quittung. Antworte NUR im JSON Format: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
+        { text: prompt }
+      ]);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const aiData = JSON.parse(jsonMatch[0]);
+        applyAiData(aiData);
+        addToast(t('receipt_live_received'), 'success');
+      }
     } catch (error) { addToast(t('ai_failed'), 'error'); } finally { setIsAnalyzingAI(false); }
   };
 

@@ -369,18 +369,23 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     setIsAnalyzingImage(true);
     addToast(t('ai_analyzing_defects'), 'info');
     try {
-      const analyzeDefect = httpsCallable(functions, 'analyzeDefect');
-      const result = await analyzeDefect({ base64Image: base64Data, mimeType });
-      const aiData = result.data as any;
-      
-      setCurrentDefect(prev => ({
-        ...prev, 
-        title: prev.title || aiData.title || "Schaden/Mangel erkannt", 
-        description: prev.description || aiData.description || "Potenzieller Mangel.", 
-        trade: prev.trade || aiData.trade || "Baumeister / Gipser", 
-        priority: aiData.priority || "High"
-      }));
-      addToast("KI hat das Bild analysiert!", "success");
+      const prompt = "Analysiere dieses Mangel-Foto vom Bau. Antworte NUR im JSON Format: {\"title\": string, \"description\": string, \"trade\": string, \"priority\": \"High\"}";
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
+        { text: prompt }
+      ]);
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const aiData = JSON.parse(jsonMatch[0]);
+        setCurrentDefect(prev => ({
+          ...prev, 
+          title: prev.title || aiData.title || "Schaden/Mangel erkannt", 
+          description: prev.description || aiData.description || "Potenzieller Mangel.", 
+          trade: prev.trade || aiData.trade || "Baumeister / Gipser", 
+          priority: aiData.priority || "High"
+        }));
+        addToast("KI hat das Bild analysiert!", "success");
+      }
     } catch (error) {
       addToast(t('error_ai_analysis'), "error");
     } finally {
