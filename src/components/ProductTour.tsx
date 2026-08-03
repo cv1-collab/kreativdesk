@@ -1,13 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import JoyrideModule from 'react-joyride';
-import type { Step } from 'react-joyride';
+import { Joyride, Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
-
-const JoyrideComponent: any = (JoyrideModule as any).default || JoyrideModule;
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
@@ -118,10 +115,10 @@ export default function ProductTour() {
     }
   };
 
-  if (!isTourRunning || typeof JoyrideComponent !== 'function' || steps.length === 0) return null;
+  if (!isTourRunning || steps.length === 0) return null;
 
   return (
-    <JoyrideComponent
+    <Joyride
       run={isTourRunning && steps.length > 0}
       steps={steps}
       continuous
