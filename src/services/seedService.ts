@@ -40,6 +40,8 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
 export async function seedDemoProjectToSupabase(companyId: string, ownerId: string, templateType: string = 'construction') {
   if (!companyId || !ownerId) return null;
 
+  await ensureDefaultCompanyFolders(companyId, ownerId);
+
   const template = (demoTemplates as any)[templateType] || demoTemplates.construction;
   const projData = template.project || {};
 
@@ -49,7 +51,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     .from('projects')
     .select('id')
     .eq('company_id', companyId)
-    .eq('name', projData.name || 'Quartier Neubau Süd')
+    .or(`name.eq."${projData.name || 'Quartier Neubau Süd'}",name.eq."Demo: BAU",name.eq."Bauprojekt"`)
     .maybeSingle();
 
   if (existingProj) {
@@ -77,21 +79,43 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     projId = newProj.id;
   }
 
-  // 2. Seed Team Members (Avatars)
+  // 2. Seed Demo Team Members & Profiles (Avatars)
   if (Array.isArray(template.members)) {
     for (const m of template.members) {
+      const demoUserId = `demo_user_${m.name.toLowerCase().replace(/\s+/g, '_')}`;
+
+      // Ensure profile exists with photoURL / avatar
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', demoUserId)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        await supabase.from('profiles').insert({
+          id: demoUserId,
+          email: m.email,
+          name: m.name,
+          role: 'member',
+          company_id: companyId,
+          photo_url: m.photoURL || '',
+          created_at: new Date().toISOString()
+        });
+      }
+
+      // Add to project_members
       const { data: existingMem } = await supabase
         .from('project_members')
         .select('id')
         .eq('company_id', companyId)
         .eq('project_id', projId)
-        .eq('user_id', m.name)
+        .eq('user_id', demoUserId)
         .maybeSingle();
 
       if (!existingMem) {
         await supabase.from('project_members').insert({
           project_id: projId,
-          user_id: m.name,
+          user_id: demoUserId,
           company_id: companyId
         });
       }
@@ -173,7 +197,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
           amount: Math.abs(tx.amount),
           category: tx.category || 'Baustellenkosten',
           description: tx.description,
-          date: tx.date.split('T')[0],
+          date: tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0],
           status: tx.status || 'Bezahlt',
           project_id: projId,
           owner_id: ownerId,

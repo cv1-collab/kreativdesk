@@ -18,6 +18,7 @@ import OpCostStudio from './OpCostStudio';
 import DashboardOverviewTab from './DashboardOverviewTab';
 import TeamCrmTab from './TeamCrmTab';
 import DocumentsTab from './DocumentsTab';
+import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders } from '../services/seedService';
 import AgendaTab from './AgendaTab';
 import LeadsTab from './LeadsTab';
 import TemplatesTab from './TemplatesTab';
@@ -217,6 +218,8 @@ export default function CompanyDashboard() {
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
     const fetchData = async () => {
+      await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+
       const { data: docs } = await supabase
         .from('documents')
         .select('*')
@@ -303,26 +306,13 @@ export default function CompanyDashboard() {
     addToast(`Erstelle Demo Projekt...`, 'info');
 
     try {
-      const demoData = (demoTemplates as any)[type] || demoTemplates.construction;
-      const { data: newProj, error } = await supabase
-        .from('projects')
-        .insert({
-          name: demoData.project?.name || 'Demo: BAU',
-          description: demoData.project?.description || 'Interaktives Testprojekt',
-          status: 'active',
-          company_id: safeCompanyId,
-          owner_id: currentUser.uid
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const projId = await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, type);
 
       setIsNewProjectModalOpen(false);
       setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
       addToast('Demo Projekt erfolgreich geladen!', 'success');
-      if (newProj) {
-        handleProjectClick(newProj.id);
+      if (projId) {
+        handleProjectClick(projId);
       }
     } catch (err) {
       console.error(err);

@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
+import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders } from '../services/seedService';
 
 export interface Project { id: string; name: string; description: string; status: 'active' | 'planning' | 'completed'; role: 'owner' | 'admin' | 'viewer'; createdAt: string; ownerId: string; companyId: string; memberIds?: string[]; }
 export interface CompanyUser { id: string; name: string; email: string; role: 'Admin' | 'Internal' | 'External Planner' | 'Client'; department?: string; hourlyRate?: number; avatar?: string; ownerId: string; companyId: string; }
@@ -34,13 +35,24 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if (!currentUser?.companyId) return;
 
     try {
-      const { data: projs, error } = await supabase
+      await ensureDefaultCompanyFolders(currentUser.companyId, currentUser.uid);
+
+      let { data: projs } = await supabase
         .from('projects')
         .select('*')
         .eq('company_id', currentUser.companyId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      // If company has 0 projects, seed default demo project automatically
+      if (!projs || projs.length === 0) {
+        await seedDemoProjectToSupabase(currentUser.companyId, currentUser.uid, 'construction');
+        const { data: seededProjs } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .order('created_at', { ascending: false });
+        projs = seededProjs || [];
+      }
 
       if (projs) {
         const mappedProjects: Project[] = projs.map(p => ({
@@ -89,24 +101,77 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, [currentUser?.companyId]);
 
+  const fetchProjectDetails = useCallback(async () => {
+    if (!currentUser?.companyId) return;
+
+    try {
+      // Members
+      const { data: mems } = await supabase
+        .from('project_members')
+        .select('*')
+        .eq('company_id', currentUser.companyId);
+
+      if (mems) {
+        setProjectMembers(mems.map(m => ({
+          id: m.id,
+          projectId: m.project_id,
+          userId: m.user_id,
+          companyId: m.company_id
+        })));
+      }
+
+      // Defects
+      const { data: defs } = await supabase
+        .from('defects')
+        .select('*')
+        .eq('company_id', currentUser.companyId);
+
+      if (defs) {
+        setDefects(defs.map(d => ({
+          id: d.id,
+          title: d.prompt || d.title || 'Mangel',
+          description: d.description || '',
+          status: d.status || 'Offen',
+          priority: d.severity || 'Medium',
+          assignee: d.assignee || '',
+          date: d.created_at ? d.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          trade: d.trade || 'Allgemein',
+          location: d.location || 'Baustelle',
+          imageUrl: d.image_url || '',
+          ownerId: d.owner_id || currentUser.uid,
+          companyId: d.company_id,
+          projectId: d.project_id
+        })));
+      }
+    } catch (err) {
+      console.error("Error fetching project details:", err);
+    }
+  }, [currentUser?.companyId, currentUser?.uid]);
+
   useEffect(() => {
     if (!currentUser?.companyId) return;
 
     fetchProjects();
     fetchCompanyUsers();
+    fetchProjectDetails();
 
-    // Supabase Realtime subscription for projects
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
         fetchProjects();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, () => {
+        fetchProjectDetails();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'defects' }, () => {
+        fetchProjectDetails();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser?.companyId, fetchProjects, fetchCompanyUsers]);
+  }, [currentUser?.companyId, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
 
   const addProject = async (projectData: any) => {
     if (!currentUser?.companyId) return;
@@ -153,11 +218,19 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addProjectMember = async (projectId: string, memberData: any) => {
-    // Member added
+    if (!currentUser?.companyId) return;
+    await supabase.from('project_members').insert({
+      project_id: projectId,
+      user_id: memberData.userId,
+      company_id: currentUser.companyId
+    });
+    fetchProjectDetails();
   };
 
   const removeProjectMember = async (projectId: string, userId: string) => {
-    // Member removed
+    if (!currentUser?.companyId) return;
+    await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId);
+    fetchProjectDetails();
   };
 
   const addTimeEntry = async (entryData: any) => {
