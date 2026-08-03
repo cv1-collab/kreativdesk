@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import * as JoyridePkg from 'react-joyride';
+import JoyrideModule from 'react-joyride';
 import type { Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
 
-const JoyrideComponent: any = (JoyridePkg as any).Joyride || (JoyridePkg as any)['default'] || JoyridePkg;
+const JoyrideComponent: any = (JoyrideModule as any).default || JoyrideModule;
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();

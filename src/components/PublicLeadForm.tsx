@@ -4,8 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { CheckCircle2, Building2, User, Mail, Phone, MessageSquare, Send, Loader2, Camera, QrCode } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, onSnapshot, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
 
 // === LOKALE ÜBERSETZUNGEN ===
@@ -188,15 +187,19 @@ export default function PublicLeadForm() {
     setSuccessMsg(null);
     
     try {
-      await addDoc(collection(db, 'leads'), {
-        ...formData,
-        companyId: companyId || 'kreativ-desk-website',
+      await supabase.from('leads').insert({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        company: formData.company,
+        email: formData.email,
+        phone: formData.phone,
+        message: formData.message,
+        company_id: companyId || 'kreativ-desk-website',
         source: 'Landingpage B2B Request',
         status: 'New',
-        createdAt: serverTimestamp(),
+        created_at: new Date().toISOString()
       });
 
-      // 🔥 Trigger Webhook
       if (companyId) {
         fetch('/api/send-webhook', {
           method: 'POST',

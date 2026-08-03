@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAI } from '../contexts/AIContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
+
 import { collection, query, where, getDocs, addDoc, and, or } from 'firebase/firestore';
 import { callGeminiAPI, callGeminiChatAPI } from '../utils/geminiClient';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -75,41 +76,26 @@ export default function AIConcierge() {
 
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-    if (isOpen && currentUser && !projectContext && db && safeCompanyId) {
+    if (isOpen && currentUser && !projectContext && safeCompanyId) {
       const fetchContext = async () => {
         try {
-          const txQuery = query(collection(db, 'transactions'), where('companyId', '==', safeCompanyId));
-          const eventsQuery = query(
-            collection(db, 'calendarEvents'),
-            and(
-              where('companyId', '==', safeCompanyId),
-              or(
-                where('visibility', 'in', ['public', 'company']),
-                where('ownerId', '==', currentUser?.uid || '')
-              )
-            )
-          );
-          const defectsQuery = query(collection(db, 'defects'), where('companyId', '==', safeCompanyId));
+          const { data: transactions } = await supabase.from('transactions').select('*').eq('company_id', safeCompanyId);
+          const { data: defects } = await supabase.from('defects').select('*').eq('company_id', safeCompanyId);
+
+          const txs = transactions || [];
+          const defs = defects || [];
+
+          const totalSpent = txs.filter((t: any) => t.amount < 0).reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+          const criticalDefects = defs.filter((d: any) => d.priority === 'Critical').length;
           
-          const [txSnap, eventsSnap, defectsSnap] = await Promise.all([
-            getDocs(txQuery), getDocs(eventsQuery), getDocs(defectsQuery)
-          ]);
-          
-          const transactions = txSnap.docs.map(d => d.data());
-          const events = eventsSnap.docs.map(d => d.data());
-          const defects = defectsSnap.docs.map(d => d.data());
-          
-          const totalSpent = transactions.filter((t: any) => t.amount < 0).reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
-          const criticalDefects = defects.filter((d: any) => d.priority === 'Critical').length;
-          
-          setProjectContext({ transactions, events, defects, totalSpent, criticalDefects });
+          setProjectContext({ transactions: txs, defects: defs, totalSpent, criticalDefects });
         } catch (error) {
           console.error("Failed to fetch AI context", error);
         }
       };
       fetchContext();
     }
-  }, [isOpen, currentUser, projectContext, db, activeProjectId]);
+  }, [isOpen, currentUser, projectContext, activeProjectId]);
 
   useEffect(() => {
     const handleOpenAI = () => setIsOpen(true);

@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
-import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, addDoc, deleteDoc, updateDoc, query, where, getDocs, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../lib/supabase';
 import { 
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus, 
   ChevronLeft, ChevronRight, Video, Download, X, 
@@ -271,41 +269,38 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [printType, setPrintType] = useState<'rapport' | 'agenda'>('rapport');
 
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser?.companyId) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    
-    // 1. Termine
-    const qEvents = query(
-      collection(db, 'calendarEvents'),
-      and(
-        where('companyId', '==', safeCompanyId),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser?.uid || '')
-        )
-      )
-    );
-    const unsubEvents = onSnapshot(qEvents, 
-      (snap) => setCalendarEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-    
-    // 2. Zeiteinträge (Rapporte)
-    const qTime = query(collection(db, 'timeEntries'), where('companyId', '==', safeCompanyId));
-    const unsubTime = onSnapshot(qTime,
-      (snap) => {
-        const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-        entries.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime());
-        setLocalTimeEntries(entries);
+
+    const fetchData = async () => {
+      try {
+        const { data: events } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .eq('company_id', safeCompanyId);
+
+        if (events) setCalendarEvents(events);
+
+        const { data: times } = await supabase
+          .from('time_entries')
+          .select('*')
+          .eq('company_id', safeCompanyId)
+          .order('created_at', { ascending: false });
+
+        if (times) setLocalTimeEntries(times);
+
+        const { data: users } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('company_id', safeCompanyId);
+
+        if (users) setRealUsers(users);
+      } catch (err) {
+        console.error("AgendaTab fetch data error:", err);
       }
-    );
-    
-    // 3. User
-    const qUsers = query(collection(db, 'users'), where('companyId', '==', safeCompanyId));
-    const unsubUsers = onSnapshot(qUsers,
-      (snap) => setRealUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    );
-    
-    return () => { unsubEvents(); unsubTime(); unsubUsers(); };
+    };
+
+    fetchData();
   }, [currentUser]);
 
   const safeRealUsers = Array.isArray(realUsers) ? realUsers : [];

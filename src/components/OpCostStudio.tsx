@@ -8,7 +8,7 @@ import { Landmark, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, F
 import { useLanguage } from '../contexts/LanguageContext';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import UniversalPDFStudio from './UniversalPDFStudio';
-import { db, storage } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '../utils';

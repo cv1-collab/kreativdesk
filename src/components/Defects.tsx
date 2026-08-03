@@ -13,7 +13,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject, Defect } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { db, storage, functions } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { doc, updateDoc, setDoc, deleteDoc, collection, query, where, onSnapshot, getDocs, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';

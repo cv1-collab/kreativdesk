@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, setDoc, doc, serverTimestamp, getDoc, addDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useVideoCall } from '../contexts/VideoCallContext';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, Users } from 'lucide-react';
 import { cn } from '../utils';
@@ -111,16 +110,13 @@ export default function GuestMeet() {
     // Lead Capture (Optional)
     if (meetingCompanyId && guestEmail.trim()) {
       try {
-        await addDoc(collection(db, 'leads'), {
-          firstName: guestName,
-          lastName: '',
+        await supabase.from('leads').insert({
+          first_name: guestName,
           email: guestEmail,
-          company: '',
-          phone: '',
           status: 'New',
           source: 'Video Call Guest',
-          companyId: meetingCompanyId,
-          createdAt: serverTimestamp()
+          company_id: meetingCompanyId,
+          created_at: new Date().toISOString()
         });
       } catch (err) {
         console.error('Failed to save lead:', err);

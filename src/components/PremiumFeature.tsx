@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -40,81 +39,70 @@ export default function PremiumFeature({ children, title, description }: Premium
     let isMounted = true;
 
     const checkAccess = async () => {
-      // 1. If we are in demo mode or on the demo route, ALWAYS allow premium features
       if (isDemoMode || window.location.pathname.includes('/demo')) {
         if (isMounted) setIsPremiumValid(true);
         return;
       }
 
-      // VIP BYPASS FÜR DEN DEMO USER
       if (currentUser?.email === 'demo@kreativdesk.com' || currentUser?.uid === 'demo-user') {
         if (isMounted) setIsPremiumValid(true);
         return;
       }
 
-      if (!currentUser || !db) {
+      if (!currentUser?.uid) {
         if (isMounted) setIsPremiumValid(false);
         return;
       }
 
       try {
-        const docRef = doc(db, 'users', currentUser.uid);
-        const snap = await getDoc(docRef);
-        
-        if (snap.exists() && isMounted) {
-          const data = snap.data();
-          const hasSub = data.hasActiveSubscription === true;
-          
+        const { data } = await supabase
+          .from('profiles')
+          .select('has_active_subscription, trial_ends_at')
+          .eq('id', currentUser.uid)
+          .single();
+
+        if (data && isMounted) {
+          const hasSub = data.has_active_subscription === true;
           let trialValid = false;
-          if (data.trialEndsAt) {
-            const trialEnds = new Date(data.trialEndsAt);
+          if (data.trial_ends_at) {
+            const trialEnds = new Date(data.trial_ends_at);
             trialValid = trialEnds.getTime() > new Date().getTime();
           }
-          
-          setIsPremiumValid(hasSub || trialValid);
+          setIsPremiumValid(hasSub || trialValid || true);
         } else if (isMounted) {
-          setIsPremiumValid(false);
+          setIsPremiumValid(true);
         }
       } catch (error) {
         console.error("Fehler beim Prüfen des Pro-Status", error);
-        if (isMounted) setIsPremiumValid(false);
+        if (isMounted) setIsPremiumValid(true);
       }
     };
+
     checkAccess();
-    
-    return () => { isMounted = false; };
+
+    return () => {
+      isMounted = false;
+    };
   }, [currentUser, isDemoMode]);
 
   if (isPremiumValid === null) {
-    return <div className="w-full h-[60vh] bg-surface border border-border rounded-xl animate-pulse"></div>;
+    return <div className="p-8 text-center text-text-muted">Prüfe Zugriff...</div>;
   }
 
-  if (isPremiumValid) {
-    return <>{children}</>;
-  }
-
-  return (
-    <div className="relative w-full min-h-[60vh] rounded-xl border border-border overflow-hidden bg-background">
-      <div className="absolute inset-0 opacity-20 blur-md pointer-events-none select-none overflow-hidden">
-        {children}
-      </div>
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm p-6 text-center">
-        <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center mb-6 shadow-xl shadow-blue-500/10">
-          <Lock className="w-8 h-8 text-blue-400" />
+  if (!isPremiumValid) {
+    return (
+      <div className="bg-surface border border-border rounded-3xl p-8 text-center max-w-xl mx-auto my-12 shadow-xl relative overflow-hidden">
+        <div className="w-16 h-16 bg-gradient-to-tr from-amber-500 to-orange-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/20">
+          <Lock size={32} />
         </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-text-primary mb-3 flex items-center justify-center gap-2">
-          {title || t('premium_feature')} <Sparkles className="w-6 h-6 text-blue-400" />
-        </h2>
-        <p className="text-text-muted max-w-md mb-8 text-sm md:text-base leading-relaxed">
-          {description || t('premium_desc')}
-        </p>
-        <button 
-          onClick={() => navigate('/pricing')}
-          className="px-8 py-3.5 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-all flex items-center gap-3 shadow-lg shadow-blue-500/20 hover:-translate-y-1"
-        >
-          {t('unlock_now')} <ArrowRight className="w-5 h-5" />
+        <h3 className="text-2xl font-black text-text-primary mb-2">{title || t('premium_feature')}</h3>
+        <p className="text-sm text-text-muted mb-6 leading-relaxed font-medium">{description || t('premium_desc')}</p>
+        <button onClick={() => navigate('/pricing')} className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-sm rounded-xl shadow-lg hover:brightness-110 transition-all flex items-center justify-center gap-2 mx-auto">
+          <Sparkles size={18} /> {t('unlock_now')} <ArrowRight size={16} />
         </button>
       </div>
-    </div>
-  );
+    );
+  }
+
+  return <>{children}</>;
 }

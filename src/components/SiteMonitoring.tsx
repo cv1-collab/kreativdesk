@@ -11,8 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useProject } from '../contexts/ProjectContext';
-import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 // === LOKALE ÜBERSETZUNGEN (COLOCATION) ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -191,13 +190,14 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       return;
     }
 
-    if (!activeProject || !linkModal || !db) return;
+    if (!activeProject || !linkModal) return;
     
     setIsSavingLink(true);
     try {
-      await updateDoc(doc(db, 'projects', activeProject.id), {
+      await supabase.from('projects').update({
         [linkModal.type]: linkModal.url
-      });
+      }).eq('id', activeProject.id);
+
       addToast(t('integration_linked_success'), "success");
       setLinkModal(null);
     } catch (error) {

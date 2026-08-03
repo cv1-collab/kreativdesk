@@ -2,10 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { CreditCard, ExternalLink, Loader2, Filter, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '../../utils';
-import { db } from '../../firebase';
-import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { useToast } from '../../contexts/ToastContext';
+import { supabase } from '../../lib/supabase';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -37,32 +34,28 @@ export default function AdminSalesTab() {
   const [selectedTrx, setSelectedTrx] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const fetchTransactions = async () => {
+    try {
+      const { data } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+      if (data) setTransactions(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(collection(db, 'transactions'), (snapshot) => {
-      const allTrx = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter((trx: any) => 
-            trx.category !== 'Kreditorenrechnung' && 
-            trx.category !== 'Expense' &&
-            !trx.description?.toLowerCase().includes('akonto')
-        );
-        
-      setTransactions(allTrx);
-    });
-    return () => unsub();
+    fetchTransactions();
   }, []);
 
   const handleSaveTrx = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTrx || !db) return;
+    if (!selectedTrx) return;
     setIsSubmitting(true);
     try {
-      await updateDoc(doc(db, 'transactions', selectedTrx.id), {
-        status: selectedTrx.status
-      });
+      await supabase.from('transactions').update({ status: selectedTrx.status }).eq('id', selectedTrx.id);
       addToast(t('status_updated'), 'success');
       setIsModalOpen(false);
+      fetchTransactions();
     } catch (err) {
       addToast('Fehler beim Speichern', 'error');
     } finally {

@@ -20,8 +20,7 @@ import NotificationCenter from './NotificationCenter';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db } from '../firebase';
-import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useTour } from '../contexts/TourContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -65,22 +64,12 @@ export default function AdminDashboard() {
   }, [location.search, navigate]);
 
   useEffect(() => {
-    if (!db || !currentUser?.companyId) return;
-    const unsub = onSnapshot(doc(db, 'companies', currentUser.companyId), (docSnap) => {
-      if (docSnap.exists()) {
-        setKdCompany({ id: docSnap.id, ...docSnap.data() });
-      }
-    });
-    return () => unsub();
-  }, [currentUser]);
-
-  useEffect(() => {
-    if (!db || !checkIsSuperAdmin(currentUser?.email)) return;
-    const q = query(collection(db, 'leads'), where('companyId', '==', 'kreativ-desk-website'), where('status', '==', 'New'));
-    const unsub = onSnapshot(q, (snapshot) => {
-      setNewLeadsCount(snapshot.docs.length);
-    });
-    return () => unsub();
+    if (!checkIsSuperAdmin(currentUser?.email)) return;
+    const fetchLeadsCount = async () => {
+      const { data } = await supabase.from('leads').select('id').eq('status', 'New');
+      if (data) setNewLeadsCount(data.length);
+    };
+    fetchLeadsCount();
   }, [currentUser]);
 
   const navItems = [

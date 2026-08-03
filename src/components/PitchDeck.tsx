@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import { collection, onSnapshot, query, where, and, or } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -131,32 +130,44 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       return;
     }
 
-    if (!currentUser || !currentUser.companyId || !db) return;
+    if (!currentUser?.companyId) return;
     
-    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-    const q = query(
-      collection(db, 'slides'), 
-      and(
-        where('projectId', '==', currentProjectId),
-        where('companyId', '==', safeCompanyId),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser?.uid || '')
-        )
-      )
-    );
+    const fetchSlides = async () => {
+      try {
+        const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+        const { data } = await supabase
+          .from('slides')
+          .select('*')
+          .eq('project_id', currentProjectId)
+          .eq('company_id', safeCompanyId)
+          .order('order_index', { ascending: true });
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const loadedSlides = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Slide));
-      loadedSlides.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-      setSlides(loadedSlides);
-      if (loadedSlides.length > 0 && !activeSlideId) {
-        setActiveSlideId(loadedSlides[0].id);
+        if (data) {
+          const loadedSlides: Slide[] = data.map(d => ({
+            id: d.id,
+            title: d.title || '',
+            content: d.content || '',
+            imageUrl: d.image_url || d.imageUrl,
+            order_index: d.order_index || 0,
+            ownerId: d.owner_id,
+            projectId: d.project_id,
+            layout: d.layout || 'split',
+            fontSize: d.font_size || 18,
+            dataPayload: d.data_payload
+          }));
+          setSlides(loadedSlides);
+          if (loadedSlides.length > 0 && !activeSlideId) {
+            setActiveSlideId(loadedSlides[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching slides:", err);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
-    
-    return () => unsub();
+    };
+
+    fetchSlides();
   }, [currentUser, currentProjectId, activeSlideId]);
 
   useEffect(() => {

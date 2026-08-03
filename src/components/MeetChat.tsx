@@ -7,7 +7,7 @@ import {
 import { cn } from '../utils';
 import { callGeminiAPI, callGeminiEmbedAPI } from '../utils/geminiClient';
 import { useAuth } from '../contexts/AuthContext';
-import { db, storage } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import { collection, query, orderBy, onSnapshot, serverTimestamp, Timestamp, setDoc, doc, where, getDocs, getDoc, addDoc, and, or } from 'firebase/firestore';

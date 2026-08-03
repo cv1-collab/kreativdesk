@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scale, FileText, Upload, CheckCircle2, Loader2, Shield, Activity, AlertTriangle } from 'lucide-react';
-import { db, storage } from '../../firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
 
 export default function AdminLegalTab() {
@@ -15,110 +13,122 @@ export default function AdminLegalTab() {
   const privacyRef = useRef<HTMLInputElement>(null);
   const betaRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(doc(db, 'systemConfig', 'legalDocuments'), (snap) => {
-      if (snap.exists()) {
-        setLegalDocs(snap.data());
+  const fetchLegalDocs = async () => {
+    try {
+      const { data } = await supabase
+        .from('system_config')
+        .select('data')
+        .eq('id', 'legal_documents')
+        .single();
+
+      if (data?.data) {
+        setLegalDocs(data.data);
       }
-    });
-    return () => unsub();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchLegalDocs();
   }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
     const file = e.target.files?.[0];
-    if (!file || !db) return;
+    if (!file) return;
     
     setUploading(docType);
     try {
-      const storageRef = ref(storage, `system/legal/${docType}_${Date.now()}.pdf`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const path = `legal/${docType}_${Date.now()}.pdf`;
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file);
+      if (uploadErr) throw uploadErr;
+
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const url = publicUrlData.publicUrl;
       
-      await setDoc(doc(db, 'systemConfig', 'legalDocuments'), {
+      const newDocs = {
+        ...legalDocs,
         [docType]: {
           url: url,
           updatedAt: new Date().toISOString(),
           name: file.name
         }
-      }, { merge: true });
-      
-      addToast(`${docType} erfolgreich aktualisiert!`, 'success');
+      };
+
+      await supabase
+        .from('system_config')
+        .upsert({
+          id: 'legal_documents',
+          data: newDocs
+        });
+
+      setLegalDocs(newDocs);
+      addToast('Rechtsdokument erfolgreich aktualisiert!', 'success');
     } catch (error) {
-      addToast(`Fehler beim Upload von ${docType}`, 'error');
+      console.error("Upload-Fehler:", error);
+      addToast('Fehler beim Hochladen des Dokuments.', 'error');
     } finally {
       setUploading(null);
     }
   };
 
-  const renderDocCard = (title: string, desc: string, docType: string, icon: any, inputRef: any) => {
-    const docData = legalDocs[docType];
-    
-    return (
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm flex flex-col relative overflow-hidden group">
-        <div className="flex items-start justify-between mb-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shrink-0">
-            {icon}
-          </div>
-          {docData?.url && (
-            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
-              <CheckCircle2 size={12}/> Online
-            </span>
-          )}
-        </div>
-        
-        <h3 className="font-bold text-lg text-text-primary mb-1">{title}</h3>
-        <p className="text-sm text-text-muted mb-6 flex-1">{desc}</p>
-        
-        {docData?.updatedAt && (
-          <div className="text-xs text-text-muted mb-4 pb-4 border-b border-border/50">
-            Letztes Update: {new Date(docData.updatedAt).toLocaleDateString('de-CH')}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 mt-auto">
-          <input type="file" accept="application/pdf" className="hidden" ref={inputRef} onChange={(e) => handleUpload(e, docType)} />
-          <button 
-            onClick={() => inputRef.current?.click()} 
-            disabled={uploading === docType}
-            className="flex-1 py-2.5 bg-background border border-border hover:border-blue-500 text-text-primary rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-          >
-            {uploading === docType ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {docData?.url ? 'Aktualisieren' : 'Hochladen'}
-          </button>
-          
-          {docData?.url && (
-            <a 
-              href={docData.url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="p-2.5 bg-surface border border-border hover:bg-white/5 text-text-muted hover:text-text-primary rounded-lg transition-colors"
-            >
-              <FileText size={18} />
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="bg-surface border border-border rounded-xl p-6 shadow-sm mb-8">
-        <h2 className="text-xl font-bold flex items-center gap-3 text-text-primary mb-2">
-          <Scale className="text-blue-500" size={24} /> Legal & Compliance
-        </h2>
-        <p className="text-text-muted text-sm">
-          Lade hier die offiziellen rechtlichen Dokumente deiner SaaS-Plattform hoch. Sobald du ein PDF hochlädst, 
-          wird es automatisch für alle Nutzer auf der Plattform aktualisiert.[cite: 29, 33, 34]
+      <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
+        <h3 className="text-xl font-black text-text-primary mb-2 flex items-center gap-2">
+          <Scale className="text-blue-500" size={24} />
+          Rechtliches & Compliance (AGB / AVV)
+        </h3>
+        <p className="text-text-muted text-sm font-medium mb-6">
+          Lade hier die verbindlichen PDF-Dokumente für AGB, AVV und Datenschutz hoch. 
         </p>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {renderDocCard('AGB (GTC)', 'Allgemeine Geschäftsbedingungen für die Nutzung der Plattform.', 'agb', <Scale size={24}/>, agbRef)}
-        {renderDocCard('AVV (DPA)', 'Auftragsverarbeitungsvertrag gemäß DSGVO/revDSG für die Datenverarbeitung.', 'avv', <Shield size={24}/>, avvRef)}
-        {renderDocCard('SLA', 'Service Level Agreement (Garantierte Uptime & Support-Antwortzeiten).', 'sla', <Activity size={24}/>, privacyRef)}
-        {renderDocCard('Beta Terms', 'Haftungsausschluss für die Early Access / Beta-Phase.', 'beta', <AlertTriangle size={24}/>, betaRef)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[
+            { id: 'agb', title: 'Allgemeine Geschäftsbedingungen (AGB)', ref: agbRef },
+            { id: 'avv', title: 'Auftragsverarbeitungsvertrag (AVV)', ref: avvRef },
+            { id: 'privacy', title: 'Datenschutzerklärung', ref: privacyRef },
+            { id: 'beta', title: 'Nutzungsbedingungen Beta', ref: betaRef }
+          ].map((item) => (
+            <div key={item.id} className="bg-background border border-border/50 p-5 rounded-2xl flex flex-col justify-between gap-4">
+              <div>
+                <div className="font-bold text-text-primary text-sm mb-1">{item.title}</div>
+                <div className="text-xs text-text-muted">
+                  {legalDocs[item.id] ? `Aktuell: ${legalDocs[item.id].name}` : 'Kein Dokument hinterlegt.'}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-border/50 pt-3">
+                <input 
+                  type="file" 
+                  accept="application/pdf" 
+                  ref={item.ref} 
+                  className="hidden" 
+                  onChange={(e) => handleUpload(e, item.id)} 
+                />
+                <button 
+                  onClick={() => item.ref.current?.click()}
+                  disabled={uploading === item.id}
+                  className="px-4 py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+                >
+                  {uploading === item.id ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                  PDF hochladen
+                </button>
+
+                {legalDocs[item.id]?.url && (
+                  <a 
+                    href={legalDocs[item.id].url} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1"
+                  >
+                    <FileText size={14} /> Ansehen
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

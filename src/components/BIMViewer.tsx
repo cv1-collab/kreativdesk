@@ -22,7 +22,7 @@ import { IFCLoader } from 'web-ifc-three/IFCLoader';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, setDoc, addDoc, collection, query, where, getDocs, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { storage, db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature } from '../utils/planFeatures';
 import { useToast } from '../contexts/ToastContext';

@@ -5,7 +5,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import PremiumFeature from './PremiumFeature';
-import { db, storage } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp, writeBatch, addDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 

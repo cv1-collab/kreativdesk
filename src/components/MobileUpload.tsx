@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { db, storage } from '../firebase'; // Pfad ggf. anpassen
+import { supabase } from '../lib/supabase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { UploadCloud, CheckCircle2, Loader2, Camera } from 'lucide-react';

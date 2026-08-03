@@ -15,7 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import PremiumFeature from './PremiumFeature';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
-import { db, storage } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, onSnapshot, updateDoc, deleteDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata } from 'firebase/storage';
 

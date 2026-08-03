@@ -17,8 +17,7 @@ import {
   Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle
 } from 'lucide-react';
 import { cn } from '../utils';
-import { db } from '../firebase';
-import { collection, query, where, onSnapshot, and, or } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -99,72 +98,33 @@ export default function Layout() {
   };
 
   useEffect(() => {
-    if (!projectId || !currentUser || !currentUser.companyId || !db) return;
-    let docs: any[] = [];
-    let defs: any[] = [];
-    let evts: any[] = [];
-    
-    const updateNotifs = () => {
-      const combined = [...docs, ...defs, ...evts]
-        .filter(item => item && item.time) 
-        .sort((a, b) => parseTime(b.time) - parseTime(a.time))
-        .slice(0, 15);
-      setNotifications(combined);
-      setHasUnread(combined.some(item => parseTime(item.time) > lastSeen));
+    if (!currentUser?.companyId) return;
+
+    const fetchNotifs = async () => {
+      try {
+        const { data: docs } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .limit(10);
+
+        if (docs) {
+          const formatted = docs.map(d => ({
+            id: d.id,
+            type: 'doc',
+            title: language === 'de' ? 'Neues Dokument' : 'New Document',
+            desc: d.name || 'Unbenannt',
+            time: d.created_at || new Date().toISOString()
+          }));
+          setNotifications(formatted);
+        }
+      } catch (e) {
+        console.error(e);
+      }
     };
 
-    const unsubDocs = onSnapshot(query(collection(db, 'documents'), where('companyId', '==', currentUser.companyId), where('ownerId', '==', currentUser.uid)), (snap) => {
-      docs = snap.docs.map(d => {
-         const data = d.data();
-         if (data.projectId !== projectId || data.isFolder) return null; 
-         return { id: d.id, type: 'doc', title: language === 'de' ? 'Neues Dokument' : 'New Document', desc: data.name || 'Unbenannt', time: data.createdAt || data.uploadedAt || new Date().toISOString() };
-      }).filter(Boolean);
-      updateNotifs();
-    });
-
-    const unsubDefs = onSnapshot(query(collection(db, 'defects'), where('companyId', '==', currentUser.companyId), where('ownerId', '==', currentUser.uid)), (snap) => {
-      defs = snap.docs.map(d => {
-         const data = d.data();
-         if (data.projectId !== projectId) return null; 
-         return { id: d.id, type: 'defect', title: language === 'de' ? 'Mangel erfasst' : 'Defect logged', desc: data.title || data.description || 'Unbenannt', time: data.createdAt || data.date || new Date().toISOString() };
-      }).filter(Boolean);
-      updateNotifs();
-    });
-
-    const unsubEvts = onSnapshot(query(
-      collection(db, 'calendarEvents'),
-      and(
-        where('companyId', '==', currentUser.companyId),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser.uid)
-        )
-      )
-    ), (snap) => {
-      evts = snap.docs.map(d => {
-         const data = d.data();
-         return { id: d.id, type: 'event', title: language === 'de' ? 'Neuer Termin' : 'New Event', desc: data.title || 'Termin', time: data.createdAt || new Date(data.timestamp || Date.now()).toISOString(), data };
-      }).filter(Boolean);
-      
-      snap.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          const createdAt = data.createdAt ? new Date(data.createdAt).getTime() : data.timestamp;
-          if (createdAt && Date.now() - createdAt < 15000) {
-            addToast(
-              language === 'de' ? `Neuer Termin: ${data.title || 'Kalendereintrag'}` : `New Event: ${data.title || 'Calendar Entry'}`,
-              'info',
-              { label: language === 'de' ? 'Ansehen' : 'View', onClick: () => navigate(`/app/project/${data.projectId || projectId || 'internal'}/agenda`) }
-            );
-          }
-        }
-      });
-      
-      updateNotifs();
-    });
-
-    return () => { unsubDocs(); unsubDefs(); unsubEvts(); };
-  }, [projectId, currentUser, language, lastSeen]);
+    fetchNotifs();
+  }, [currentUser?.companyId, language]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

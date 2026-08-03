@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Palette, Upload, Loader2, Image as ImageIcon, AlertTriangle, Building2, PaintBucket, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
-import { db, storage } from '../../firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../../lib/supabase';
 import { cn } from '../../utils';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -41,103 +39,82 @@ export default function AdminBrandTab() {
 
   useEffect(() => {
     const fetchConfig = async () => {
-      const snap = await getDoc(doc(db, 'systemConfig', 'globalMaster'));
-      if (snap.exists()) setConfig(prev => ({ ...prev, ...snap.data() }));
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', 'global_master')
+          .single();
+
+        if (data?.data) setConfig(prev => ({ ...prev, ...data.data }));
+      } catch (e) {
+        console.error(e);
+      }
     };
     fetchConfig();
   }, []);
 
-  const saveConfig = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await setDoc(doc(db, 'systemConfig', 'globalMaster'), config, { merge: true });
+      await supabase
+        .from('system_config')
+        .upsert({
+          id: 'global_master',
+          data: config,
+          is_maintenance: config.isMaintenance
+        });
       addToast(t('branding_saved'), 'success');
-    } catch (err) { addToast('Error', 'error'); } finally { setIsSubmitting(false); }
+    } catch (e) {
+      console.error(e);
+      addToast('Fehler beim Speichern', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 max-w-5xl mx-auto pb-24">
-      <div className="flex flex-col md:flex-row md:items-center justify-between bg-surface border border-border p-6 rounded-2xl shadow-sm gap-4">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <form onSubmit={handleSave} className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-6">
         <div>
-          <h2 className="text-xl font-bold flex items-center gap-2 text-text-primary"><Palette className="text-pink-500" size={24} /> {t('global_branding')}</h2>
-          <p className="text-sm text-text-muted mt-1 font-medium">{t('branding_desc')}</p>
+          <h3 className="text-xl font-black text-text-primary mb-1 flex items-center gap-2">
+            <Palette className="text-blue-500" size={24} />
+            {t('global_branding')}
+          </h3>
+          <p className="text-text-muted text-sm font-medium">{t('branding_desc')}</p>
         </div>
-      </div>
 
-      <form onSubmit={saveConfig} className="space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* STAMMDATEN */}
-          <div className="bg-surface border border-border rounded-2xl p-5 md:p-6 space-y-6 shadow-sm">
-            <h3 className="font-bold text-sm text-text-primary flex items-center gap-2 uppercase tracking-widest"><Building2 size={16} className="text-blue-500"/> {t('master_data')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('company_name')}</label>
-                <input value={config.companyName} onChange={e => setConfig({...config, companyName: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('address')}</label>
-                <input value={config.address} onChange={e => setConfig({...config, address: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-medium text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('zip')}</label>
-                <input value={config.zipCode} onChange={e => setConfig({...config, zipCode: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('city')}</label>
-                <input value={config.city} onChange={e => setConfig({...config, city: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('email')}</label>
-                <input type="email" value={config.email} onChange={e => setConfig({...config, email: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('phone')}</label>
-                <input type="tel" value={config.phone} onChange={e => setConfig({...config, phone: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('website')}</label>
-                <input type="url" value={config.website} onChange={e => setConfig({...config, website: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('uid')}</label>
-                <input value={config.uid} onChange={e => setConfig({...config, uid: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner uppercase" />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('iban')}</label>
-                <input value={config.iban} onChange={e => setConfig({...config, iban: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-text-primary focus:border-blue-500 outline-none shadow-inner uppercase" />
-              </div>
-            </div>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('company_name')}</label>
+            <input 
+              type="text" 
+              value={config.companyName} 
+              onChange={(e) => setConfig({ ...config, companyName: e.target.value })}
+              className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary"
+            />
           </div>
 
-          <div className="space-y-6">
-            {/* LOGO & FARBE */}
-            <div className="bg-surface border border-border rounded-2xl p-5 md:p-6 space-y-6 shadow-sm">
-              <h3 className="font-bold text-sm text-text-primary flex items-center gap-2 uppercase tracking-widest"><PaintBucket size={16} className="text-pink-500"/> {t('design')}</h3>
-              <div className="flex items-center gap-6">
-                 <div className="w-24 h-24 rounded-2xl bg-background border-2 border-dashed border-border/50 flex items-center justify-center shrink-0 overflow-hidden relative group">
-                    {config.masterLogo ? <img src={config.masterLogo} className="w-full h-full object-contain p-2" /> : <ImageIcon size={32} className="text-text-muted opacity-30" />}
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Upload size={20} className="text-white"/></div>
-                 </div>
-                 <div className="flex-1 space-y-3">
-                   <p className="text-xs text-text-muted font-medium">{t('upload_desc')}</p>
-                   <div>
-                     <label className="text-[10px] font-black text-text-muted uppercase mb-1 block">{t('accent_color')}</label>
-                     <div className="flex items-center gap-3 bg-background border border-border/50 rounded-xl p-2 shadow-inner">
-                       <input type="color" value={config.accentColor} onChange={e => setConfig({...config, accentColor: e.target.value})} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
-                       <input type="text" value={config.accentColor} onChange={e => setConfig({...config, accentColor: e.target.value})} className="flex-1 bg-transparent text-sm font-mono font-bold text-text-primary outline-none uppercase" />
-                     </div>
-                   </div>
-                 </div>
-              </div>
+          <div className="flex items-center justify-between p-4 bg-background border border-border/50 rounded-2xl">
+            <div>
+              <div className="font-bold text-text-primary text-sm">{t('maintenance')}</div>
+              <div className="text-xs text-text-muted">{t('maintenance_desc')}</div>
             </div>
+            <button 
+              type="button" 
+              onClick={() => setConfig({ ...config, isMaintenance: !config.isMaintenance })}
+              className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all", config.isMaintenance ? "bg-amber-500 text-white" : "bg-surface border border-border text-text-muted")}
+            >
+              {config.isMaintenance ? t('active') : t('inactive')}
+            </button>
           </div>
         </div>
 
-        <div className="flex justify-end sticky bottom-4 z-50">
-           <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-10 py-4 bg-pink-600 text-white rounded-2xl text-sm font-bold shadow-2xl shadow-pink-900/40 hover:bg-pink-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-             {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />} {t('save_branding')}
-           </button>
+        <div className="pt-4 border-t border-border flex justify-end">
+          <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20">
+            {isSubmitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('save_branding')}
+          </button>
         </div>
       </form>
     </div>

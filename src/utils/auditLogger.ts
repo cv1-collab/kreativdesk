@@ -1,5 +1,4 @@
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
 
 export type AuditAction = 
   | 'PROJECT_CREATED' 
@@ -17,19 +16,21 @@ export interface AuditLogEntry {
   action: AuditAction;
   details: string | any;
   timestamp?: string;
-  resourceId?: string; // e.g., projectId or documentId
+  resourceId?: string;
 }
 
 /**
- * Logs an action to the auditLogs collection for compliance and governance.
+ * Logs an action to Supabase audit_logs table.
  */
 export async function logAuditAction(entry: AuditLogEntry) {
   try {
-    if (!db) return;
-    const auditRef = collection(db, 'auditLogs');
-    await addDoc(auditRef, {
-      ...entry,
-      timestamp: entry.timestamp || new Date().toISOString()
+    await supabase.from('audit_logs').insert({
+      company_id: entry.companyId,
+      user_id: entry.userId,
+      user_email: entry.userEmail,
+      action: entry.action,
+      details: typeof entry.details === 'object' ? JSON.stringify(entry.details) : entry.details,
+      created_at: entry.timestamp || new Date().toISOString()
     });
   } catch (error) {
     console.error('Failed to write audit log:', error);

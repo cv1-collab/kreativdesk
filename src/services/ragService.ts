@@ -1,5 +1,4 @@
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { callGeminiEmbedAPI } from '../utils/geminiClient';
 
 // Hilfsfunktion: Berechnet die mathematische Ähnlichkeit zwischen zwei Texten
@@ -17,7 +16,7 @@ function cosineSimilarity(vecA: number[], vecB: number[]) {
 }
 
 /**
- * Sucht in der Firestore-Datenbank nach dem relevantesten Dokumenten-Ausschnitt für eine Frage.
+ * Sucht in der Supabase-Datenbank nach dem relevantesten Dokumenten-Ausschnitt für eine Frage.
  */
 export async function queryRagStore(queryText: string, companyId: string) {
   try {
@@ -25,35 +24,41 @@ export async function queryRagStore(queryText: string, companyId: string) {
     const response = await callGeminiEmbedAPI('text-embedding-004', queryText);
     const queryVector = response.embedding;
 
-    // 2. Alle Vektoren des Mandanten aus Firestore laden
-    const q = query(collection(db, 'embeddings'), where('companyId', '==', companyId));
-    const snapshot = await getDocs(q);
+    // 2. Alle Vektoren des Mandanten aus Supabase laden
+    const { data: embeddings } = await supabase
+      .from('embeddings')
+      .select('*')
+      .eq('company_id', companyId);
+
+    if (!embeddings) return null;
 
     let bestMatchText = "";
     let bestFileName = "";
     let highestScore = -1;
 
     // 3. Vektoren vergleichen und den besten Treffer finden
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if (data.vector) {
-        const score = cosineSimilarity(queryVector, data.vector);
-        // Wir suchen den absoluten Top-Treffer (könnte man auf Top 3 erweitern)
+    embeddings.forEach(item => {
+      if (item.vector) {
+        const score = cosineSimilarity(queryVector, item.vector);
         if (score > highestScore) {
           highestScore = score;
-          bestMatchText = data.text;
-          bestFileName = data.fileName;
+          bestMatchText = item.text;
+          bestFileName = item.file_name || item.fileName;
         }
       }
     });
 
-    // Wenn die Übereinstimmung hoch genug ist (> 0.5 ist ein guter Richtwert)
-    if (highestScore > 0.5) {
-      return { text: bestMatchText, source: bestFileName, score: highestScore };
+    if (highestScore > 0.45) { // Schwellenwert für Relevanz
+      return {
+        text: bestMatchText,
+        fileName: bestFileName,
+        score: highestScore
+      };
     }
-    return null; // Kein relevantes Wissen gefunden
-  } catch (err) {
-    console.error("RAG Query Error:", err);
+
+    return null;
+  } catch (error) {
+    console.error("RAG Query Error:", error);
     return null;
   }
 }

@@ -1,7 +1,6 @@
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useEffect, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Wrench, ShieldAlert } from 'lucide-react';
@@ -14,52 +13,35 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!db) return;
-    
-    const unsub = onSnapshot(doc(db, 'systemConfig', 'globalMaster'), 
-      (docSnap) => {
-        if (docSnap.exists()) {
-          setIsMaintenance(docSnap.data().isMaintenance || false);
-        }
-      },
-      (error) => {
-        // Fehler abfangen, da normale User keinen Zugriff auf dieses Admin-Dokument haben.
-        // Die Funktion darf nicht komplett leer sein, um den Vite-Minifier-Absturz zu verhindern.
-        console.warn("Wartungs-Check blockiert (Erwartetes Verhalten für normale User)");
+    const checkMaintenance = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('is_maintenance')
+          .eq('id', 'global_master')
+          .single();
+
+        if (data) setIsMaintenance(data.is_maintenance || false);
+      } catch (err) {
+        // Expected fallback
       }
-    );
-    
-    return () => unsub();
+    };
+
+    checkMaintenance();
   }, []);
 
-  // Prüfen, ob der Nutzer der Super-Admin ist
   const isAdmin = checkIsSuperAdmin(currentUser?.email);
-  
-  // Public Routes (Login) müssen immer erreichbar sein, damit sich der Admin einloggen kann!
   const isPublicRoute = location.pathname === '/login' || location.pathname === '/';
 
   if (isMaintenance && !isAdmin && !isPublicRoute) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
-        
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 flex flex-col items-center max-w-lg">
-          <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-3xl flex items-center justify-center mb-8 border border-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.2)]">
-            <Wrench size={48} className="animate-pulse" />
+      <div className="fixed inset-0 z-[9999] bg-background flex items-center justify-center p-6 text-center">
+        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-w-md bg-surface border border-border p-8 rounded-3xl shadow-2xl space-y-4">
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-2">
+            <Wrench size={32} />
           </div>
-          
-          <h1 className="text-4xl font-bold text-text-primary tracking-tight mb-4">System Update</h1>
-          <p className="text-text-muted text-lg leading-relaxed mb-8">
-            Kreativ-Desk OS wird aktuell gewartet und optimiert, um dir ein noch besseres Erlebnis zu bieten. Wir sind in Kürze wieder für dich da.
-          </p>
-
-          <div className="flex items-center gap-2 text-xs font-bold text-red-500 uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-full">
-            <ShieldAlert size={14} /> Wartungsmodus aktiv
-          </div>
-
-          <button onClick={() => navigate('/login')} className="mt-12 text-sm text-text-muted hover:text-text-primary transition-colors underline underline-offset-4">
-            Admin Login
-          </button>
+          <h2 className="text-2xl font-black text-text-primary">System-Wartung aktiv</h2>
+          <p className="text-sm text-text-muted">Kreativ Desk wird derzeit gewartet. Wir sind in Kürze wieder für dich da.</p>
         </motion.div>
       </div>
     );

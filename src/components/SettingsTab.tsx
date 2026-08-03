@@ -10,7 +10,7 @@ import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { db, storage } from '../firebase'; // auth wurde hier entfernt, da wir jetzt Vercel nutzen
+import { supabase } from '../lib/supabase';
 import { doc, updateDoc, collection, addDoc, serverTimestamp, setDoc, getDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage, STORAGE_LIMITS } from '../utils/storageGuard';

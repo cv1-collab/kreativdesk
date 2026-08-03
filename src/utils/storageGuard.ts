@@ -1,5 +1,4 @@
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase } from '../lib/supabase';
 
 export const STORAGE_LIMITS = {
   'Starter': 5 * 1024 * 1024 * 1024,
@@ -13,14 +12,17 @@ export const STORAGE_LIMITS = {
 
 export const checkStorageLimit = async (companyId: string, fileSize: number): Promise<boolean> => {
   try {
-    const compRef = doc(db, 'companies', companyId);
-    const compSnap = await getDoc(compRef);
-    if (!compSnap.exists()) return true; 
+    const { data } = await supabase
+      .from('companies')
+      .select('plan, storage_used')
+      .eq('id', companyId)
+      .single();
+
+    if (!data) return true; 
     
-    const data = compSnap.data();
     const plan = data.plan || 'Free Trial';
     const limit = STORAGE_LIMITS[plan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'];
-    const currentUsed = data.storageUsed || 0;
+    const currentUsed = data.storage_used || 0;
     
     return (currentUsed + fileSize) <= limit;
   } catch (error) {
@@ -31,10 +33,17 @@ export const checkStorageLimit = async (companyId: string, fileSize: number): Pr
 
 export const incrementStorage = async (companyId: string, fileSize: number): Promise<void> => {
   try {
-    const compRef = doc(db, 'companies', companyId);
-    await updateDoc(compRef, {
-      storageUsed: increment(fileSize)
-    });
+    const { data } = await supabase
+      .from('companies')
+      .select('storage_used')
+      .eq('id', companyId)
+      .single();
+
+    const currentUsed = data?.storage_used || 0;
+    await supabase
+      .from('companies')
+      .update({ storage_used: currentUsed + fileSize })
+      .eq('id', companyId);
   } catch (error) {
     console.error("Fehler beim Aktualisieren des Storage-Zählers:", error);
   }
@@ -42,17 +51,19 @@ export const incrementStorage = async (companyId: string, fileSize: number): Pro
 
 export const decrementStorage = async (companyId: string, fileSize: number): Promise<void> => {
   try {
-    const compRef = doc(db, 'companies', companyId);
-    // Don't let it go below 0 just in case
-    const compSnap = await getDoc(compRef);
-    if (!compSnap.exists()) return;
-    
-    const currentUsed = compSnap.data().storageUsed || 0;
+    const { data } = await supabase
+      .from('companies')
+      .select('storage_used')
+      .eq('id', companyId)
+      .single();
+
+    const currentUsed = data?.storage_used || 0;
     const newUsed = Math.max(0, currentUsed - fileSize);
     
-    await updateDoc(compRef, {
-      storageUsed: newUsed
-    });
+    await supabase
+      .from('companies')
+      .update({ storage_used: newUsed })
+      .eq('id', companyId);
   } catch (error) {
     console.error("Fehler beim Verringern des Storage-Zählers:", error);
   }

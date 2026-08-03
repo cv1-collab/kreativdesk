@@ -11,8 +11,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db } from '../firebase';
-import { collection, addDoc, onSnapshot, query, deleteDoc, doc, where, orderBy } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {

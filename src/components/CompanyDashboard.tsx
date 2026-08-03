@@ -35,7 +35,7 @@ import {
 import { cn } from '../utils';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db, storage } from '../firebase';
+
 import { collection, onSnapshot, doc, addDoc, deleteDoc, query, updateDoc, where, setDoc, writeBatch, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { PLAN_FEATURES, PlanTier } from '../utils/planFeatures';

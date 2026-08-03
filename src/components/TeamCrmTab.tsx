@@ -11,9 +11,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
-import { db, storage } from '../firebase';
-import { doc, collection, addDoc, setDoc, onSnapshot, query, where, deleteDoc, updateDoc, getDocs } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePermissions } from '../hooks/usePermissions';

@@ -3,34 +3,23 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
-import { db, storage } from '../firebase';
-import { collection, onSnapshot, doc, deleteDoc, addDoc, query, where, serverTimestamp, updateDoc, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
-import { motion, AnimatePresence } from 'motion/react';
+import { supabase } from '../lib/supabase';
 import { useParams, useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import { 
-  Database, Building2, Briefcase, FolderOpen, FileText, Upload, Trash2, 
-  Download, ChevronRight, Loader2, X, FolderPlus, Eye, ArrowLeft, Lock, Globe
+  FolderOpen, FileText, Upload, Trash2, 
+  Download, Loader2, Search
 } from 'lucide-react';
-import { cn } from '../utils';
 
-// === LOKALE ÜBERSETZUNGEN (COLOCATION) ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
-    document_hub: 'Document Hub', cloud_storage_desc: 'Manage all project files, plans, and documents centrally in the cloud.', categories: 'Categories',
-    company: 'Company', projects: 'Projects', new_folder: 'New Folder', folder_name: 'Folder Name', cancel: 'Cancel', create_folder: 'Create Folder',
-    upload: 'Upload', upload_failed: 'Action failed.', completed: 'Successful', confirm_delete: 'Delete this item?',
-    files: 'Files', name: 'Name', size: 'Size', date: 'Date', actions: 'Actions', no_files: 'No files found.',
-    preview: 'Preview', download: 'Download', delete: 'Delete'
+    document_hub: 'Document Hub', cloud_storage_desc: 'Manage all project files, plans, and documents centrally in the cloud.',
+    upload: 'Upload', upload_failed: 'Action failed.', confirm_delete: 'Delete this item?',
+    files: 'Files', name: 'Name', size: 'Size', date: 'Date', actions: 'Actions', no_files: 'No files found.'
   },
   de: {
-    document_hub: 'Datenraum', cloud_storage_desc: 'Verwalte alle Projektdateien, Pläne und Dokumente zentral in der Cloud.', categories: 'Kategorien',
-    company: 'Unternehmen', projects: 'Projekte', new_folder: 'Neuer Ordner', folder_name: 'Ordner Name', cancel: 'Abbrechen', create_folder: 'Ordner erstellen',
-    upload: 'Upload', upload_failed: 'Aktion fehlgeschlagen.', completed: 'Erfolgreich', confirm_delete: 'Dieses Element wirklich löschen?',
-    files: 'Dateien', name: 'Name', size: 'Größe', date: 'Datum', actions: 'Aktionen', no_files: 'Keine Dateien gefunden.',
-    preview: 'Vorschau', download: 'Download', delete: 'Löschen'
+    document_hub: 'Datenraum', cloud_storage_desc: 'Verwalte alle Projektdateien, Pläne und Dokumente zentral in der Cloud.',
+    upload: 'Hochladen', upload_failed: 'Aktion fehlgeschlagen.', confirm_delete: 'Dieses Element wirklich löschen?',
+    files: 'Dateien', name: 'Name', size: 'Größe', date: 'Datum', actions: 'Aktionen', no_files: 'Keine Dateien gefunden.'
   }
 };
 
@@ -41,327 +30,138 @@ function formatBytes(bytes: number) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-// 🔥 FIX: propProjectId wird nun korrekt unterstützt
 export default function Documents({ projectId: propProjectId }: { projectId?: string }) {
-  const { currentUser } = useAuth();
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
-  const { projects, activeProjectId, isDemoMode, demoData } = useProject() as any;
+  const activeProjId = propProjectId || routeProjectId;
+
+  const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
-  const navigate = useNavigate();
-
-  // 🔥 FIX: Zieht die ID aus Prop (Demo), URL oder Context!
-  const currentProjectId = propProjectId || routeProjectId || activeProjectId;
-
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
-  useEffect(() => { setPortalNode(document.body); }, []);
-
   const [documents, setDocuments] = useState<any[]>([]);
-  const [currentFolderId, setCurrentFolderId] = useState<string>('root');
-  const [folderHistory, setFolderHistory] = useState<{id: string, name: string}[]>([]);
-  
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const fetchDocuments = async () => {
+    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
-  // 🔥 FIX: Single-Query ohne CompanyId, um Composite-Index-Fehler in der Demo zu vermeiden
-  useEffect(() => {
-    if (!db || !currentProjectId) return;
+    try {
+      let query = supabase.from('documents').select('*').eq('company_id', safeCompanyId);
+      if (activeProjId) query = query.eq('project_id', activeProjId);
 
-    if (isDemoMode && demoData) {
-       let docs = (demoData.documents || []).map((d:any) => ({ id: d.id, name: d.name, size: '2.4 MB', type: 'application/pdf', isFolder: d.isFolder, folderId: d.folderId || 'root', createdAt: new Date().toISOString() }));
-       docs = docs.filter((d: any) => {
-          const docFolderId = (d.folderId && d.folderId !== '') ? d.folderId : 'root';
-          return docFolderId === currentFolderId;
-       });
-       setDocuments(docs);
-       return;
+      const { data } = await query.order('created_at', { ascending: false });
+      if (data) setDocuments(data);
+    } catch (err) {
+      console.error(err);
     }
+  };
 
-    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-    const q = query(
-      collection(db, 'documents'),
-      and(
-        where('projectId', '==', currentProjectId),
-        where('companyId', '==', safeCompanyId),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser?.uid || '')
-        )
-      )
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      let docs = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
-      docs = docs.filter((d: any) => {
-         const docFolderId = (d.folderId && d.folderId !== '') ? d.folderId : 'root';
-         const isVisible = d.visibility === 'company' || d.ownerId === (currentUser?.uid || '');
-         return docFolderId === currentFolderId && isVisible;
-      });
-      setDocuments(docs);
-    }, (err) => console.error("Docs Snapshot Error:", err));
-
-    return () => unsub();
-  }, [currentProjectId, currentFolderId]);
+  useEffect(() => {
+    fetchDocuments();
+  }, [currentUser, activeProjId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser || !currentUser.uid || !currentProjectId) return;
-    
+    if (!file || !currentUser) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+
     setIsUploading(true);
-    
     try {
-      const isAllowed = await checkStorageLimit(safeCompanyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploading(false);
-        return;
-      }
+      const filePath = `documents/${safeCompanyId}/${Date.now()}_${file.name}`;
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(filePath, file);
+      if (uploadErr) throw uploadErr;
 
-      const storageRef = ref(storage, `${safeCompanyId}/documents/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
-      
-      await incrementStorage(safeCompanyId, file.size);
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
 
-      await addDoc(collection(db, 'documents'), {
+      await supabase.from('documents').insert({
         name: file.name,
-        url: downloadUrl,
-        size: formatBytes(file.size),
+        file_url: publicUrlData.publicUrl,
+        url: publicUrlData.publicUrl,
+        size: file.size,
         type: file.type,
-        ownerId: currentUser.uid,
-        companyId: safeCompanyId,
-        projectId: currentProjectId,
-        folderId: currentFolderId === 'root' ? currentProjectId : currentFolderId, 
-        category: 'projects',
-        isFolder: false,
-        visibility: 'company',
-        createdAt: serverTimestamp()
+        project_id: activeProjId || null,
+        company_id: safeCompanyId,
+        owner_id: currentUser.uid,
+        created_at: new Date().toISOString()
       });
 
-      // Notification erstellen
-      await addDoc(collection(db, 'notifications'), { 
-        title: 'Neues Dokument', 
-        message: `${file.name} wurde hochgeladen.`, 
-        type: 'document', 
-        isRead: false, 
-        visibility: 'owner', 
-        companyId: safeCompanyId, 
-        ownerId: currentUser.uid, 
-        projectId: currentProjectId,
-        createdAt: new Date().toISOString() 
-      });
-
-      addToast(t('upload') + ' ' + t('completed'), 'success');
-    } catch (error) { addToast(t('upload_failed'), 'error'); } 
-    finally { setIsUploading(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
-  };
-
-  const handleCreateFolder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFolderName.trim() || !currentUser || !currentUser.uid || !currentProjectId) return;
-    
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-
-    try {
-      await addDoc(collection(db, 'documents'), {
-        name: newFolderName,
-        isFolder: true,
-        ownerId: currentUser.uid,
-        companyId: safeCompanyId,
-        projectId: currentProjectId,
-        folderId: currentFolderId === 'root' ? currentProjectId : currentFolderId,
-        category: 'projects',
-        visibility: 'company',
-        createdAt: serverTimestamp()
-      });
-      setNewFolderName('');
-      setIsNewFolderModalOpen(false);
-      addToast(t('completed'), 'success');
-    } catch (err) { addToast(t('upload_failed'), 'error'); }
-  };
-
-  const handleDelete = async (docObj: any) => {
-    if (!window.confirm(t('confirm_delete'))) return;
-    try {
-      await deleteDoc(doc(db, 'documents', docObj.id));
-      if (docObj.url && !docObj.isFolder) {
-        const fileRef = ref(storage, docObj.url);
-        await deleteObject(fileRef).catch(console.error);
-
-        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-        let byteSize = 0;
-        if (docObj.size) {
-          if (typeof docObj.size === 'number') {
-            byteSize = docObj.size;
-          } else if (typeof docObj.size === 'string') {
-            const val = parseFloat(docObj.size);
-            if (!isNaN(val)) {
-              if (docObj.size.includes('GB')) byteSize = val * 1024 * 1024 * 1024;
-              else if (docObj.size.includes('MB')) byteSize = val * 1024 * 1024;
-              else if (docObj.size.includes('KB')) byteSize = val * 1024;
-              else byteSize = val;
-            }
-          }
-        }
-        if (byteSize > 0 && safeCompanyId) {
-          await decrementStorage(safeCompanyId, Math.floor(byteSize));
-        }
-      }
-      addToast(t('completed'), 'success');
-    } catch (err) { addToast(t('upload_failed'), 'error'); }
-  };
-
-  const toggleVisibility = async (docObj: any) => {
-    try {
-      const newVisibility = docObj.visibility === 'private' ? 'company' : 'private';
-      await updateDoc(doc(db, 'documents', docObj.id), { visibility: newVisibility });
-      addToast(t('completed'), 'success');
+      addToast('Datei erfolgreich hochgeladen', 'success');
+      fetchDocuments();
     } catch (err) {
       addToast(t('upload_failed'), 'error');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const navigateToFolder = (folderId: string, folderName: string) => {
-    setFolderHistory([...folderHistory, { id: currentFolderId, name: folderName }]);
-    setCurrentFolderId(folderId);
-  };
-
-  const navigateBack = () => {
-    if (folderHistory.length > 0) {
-      const newHistory = [...folderHistory];
-      const prev = newHistory.pop();
-      setFolderHistory(newHistory);
-      setCurrentFolderId(prev!.id);
-    } else {
-      navigate(`/project/${currentProjectId}`);
+  const handleDelete = async (id: string) => {
+    if (!window.confirm(t('confirm_delete'))) return;
+    try {
+      await supabase.from('documents').delete().eq('id', id);
+      addToast("Datei gelöscht", "info");
+      fetchDocuments();
+    } catch (err) {
+      addToast(t('upload_failed'), "error");
     }
   };
-
-  const displayItems = documents.sort((a, b) => {
-    if (a.isFolder && !b.isFolder) return -1;
-    if (!a.isFolder && b.isFolder) return 1;
-    return a.name.localeCompare(b.name);
-  });
 
   return (
-    <div className="absolute inset-0 bg-background flex flex-col pointer-events-auto">
-      
-      {/* HEADER */}
-      <div className="h-16 flex items-center justify-between px-6 border-b border-border bg-surface shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={navigateBack} className="p-2 hover:bg-background rounded-lg text-text-muted hover:text-text-primary transition-colors border border-transparent hover:border-border"><ArrowLeft size={20} /></button>
-          <div className="flex items-center gap-2 text-sm font-bold text-text-muted">
-             <Database size={16} className="text-accent-ai" />
-             <span>{t('document_hub')}</span>
-             {folderHistory.map((fh, idx) => (
-                <React.Fragment key={idx}>
-                  <ChevronRight size={14} className="opacity-50" />
-                  <span className="text-text-primary">{fh.name}</span>
-                </React.Fragment>
-             ))}
-          </div>
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="flex justify-between items-center bg-surface border border-border p-6 rounded-3xl shadow-sm">
+        <div>
+          <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
+            <FolderOpen className="text-blue-500" size={24} />
+            {t('document_hub')}
+          </h3>
+          <p className="text-text-muted text-sm font-medium">{t('cloud_storage_desc')}</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button onClick={() => setIsNewFolderModalOpen(true)} className="px-4 py-2 bg-background border border-border text-text-primary rounded-lg text-sm font-bold hover:bg-surface transition-colors flex items-center gap-2 shadow-sm">
-             <FolderPlus size={16} /> {t('new_folder')}
-          </button>
+        <div>
           <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-          <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold hover:bg-accent-ai/90 disabled:opacity-50 transition-colors flex items-center gap-2">
-             {isUploading ? <Loader2 size={16} className="animate-spin"/> : <Upload size={16} />} {t('upload')}
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            disabled={isUploading}
+            className="px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2"
+          >
+            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+            {t('upload')}
           </button>
         </div>
       </div>
 
-      {/* CONTENT */}
-      <div className="flex-1 overflow-y-auto p-6 bg-background custom-scrollbar">
-        <div className="bg-surface border border-border rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead className="text-[10px] uppercase tracking-wider text-text-muted bg-surface/50 border-b border-border">
-              <tr>
-                <th className="px-6 py-4 font-bold">{t('name')}</th>
-                <th className="px-6 py-4 font-bold">{t('size')}</th>
-                <th className="px-6 py-4 font-bold">{t('date')}</th>
-                <th className="px-6 py-4 text-right font-bold">{t('actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {displayItems.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-12 text-center text-text-muted font-bold">{t('no_files')}</td></tr>
-              ) : (
-                displayItems.map((doc) => (
-                  <tr key={doc.id} onClick={() => doc.isFolder && navigateToFolder(doc.id, doc.name)} className={cn("hover:bg-background transition-colors group", doc.isFolder ? "cursor-pointer" : "")}>
-                    <td className="px-6 py-4 flex items-center gap-4">
-                      <div className="relative">
-                        <div className={cn("p-2.5 rounded-lg shrink-0", doc.isFolder ? "bg-orange-500/10 text-orange-500" : "bg-surface border border-border text-text-muted")}>
-                          {doc.isFolder ? <FolderOpen size={20} className="fill-orange-500/20" /> : <FileText size={20} />}
-                        </div>
-                        {/* Red Dot if it's a new file (within 24 hours) */}
-                        {!doc.isFolder && doc.createdAt && (Date.now() - (doc.createdAt?.seconds ? doc.createdAt.seconds * 1000 : new Date(doc.createdAt).getTime()) < 24 * 60 * 60 * 1000) && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-surface animate-pulse"></div>
-                        )}
-                      </div>
-                      <div className="font-bold text-text-primary text-[15px] group-hover:text-accent-ai transition-colors flex items-center gap-2">
-                        {doc.name}
-                        {doc.visibility === 'private' && <span title="Privat" className="flex items-center"><Lock size={12} className="text-red-500" /></span>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-text-muted font-mono text-xs">{doc.isFolder ? '--' : doc.size}</td>
-                    <td className="px-6 py-4 text-text-muted font-medium text-xs">{doc.createdAt?.toDate ? doc.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString()}</td>
-                    <td className="px-6 py-4 text-right flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                      {!doc.isFolder && (
-                        <>
-                          {doc.ownerId === currentUser?.uid && (
-                            <button onClick={(e) => { e.stopPropagation(); toggleVisibility(doc); }} className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-accent-ai transition-colors opacity-0 group-hover:opacity-100" title={doc.visibility === 'private' ? 'Privat (Klick für Öffentlich)' : 'Öffentlich (Klick für Privat)'}>
-                              {doc.visibility === 'private' ? <Lock size={16} className="text-red-500" /> : <Globe size={16} />}
-                            </button>
-                          )}
-                          <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-blue-500 transition-colors opacity-0 group-hover:opacity-100" title={t('preview')} onClick={e => e.stopPropagation()}><Eye size={16} /></a>
-                          <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 text-text-muted hover:text-emerald-500 hover:bg-background rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('download')}><Download size={16} /></a>
-                        </>
-                      )}
-                      <button onClick={(e) => { e.stopPropagation(); handleDelete(doc); }} className="p-2 hover:bg-red-500/10 rounded-lg text-text-muted hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" title={t('delete')}><Trash2 size={16} /></button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
+        <div className="divide-y divide-border/50">
+          {documents.length === 0 ? (
+            <div className="text-center py-12 text-text-muted">{t('no_files')}</div>
+          ) : (
+            documents.map(doc => (
+              <div key={doc.id} className="py-3 px-4 flex items-center justify-between hover:bg-background/50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <FileText className="text-blue-500 shrink-0" size={20} />
+                  <div>
+                    <div className="font-bold text-sm text-text-primary">{doc.name}</div>
+                    <div className="text-xs text-text-muted">{formatBytes(doc.size)}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {doc.url && (
+                    <a href={doc.url} target="_blank" rel="noreferrer" className="p-2 text-text-muted hover:text-blue-500">
+                      <Download size={16} />
+                    </a>
+                  )}
+                  <button onClick={() => handleDelete(doc.id)} className="p-2 text-text-muted hover:text-red-500">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
-
-      {portalNode && createPortal(
-        <AnimatePresence>
-          {isNewFolderModalOpen && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden relative">
-                <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
-                  <h3 className="font-bold text-text-primary flex items-center gap-2"><FolderPlus size={18} className="text-accent-ai" /> {t('new_folder')}</h3>
-                  <button onClick={() => setIsNewFolderModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors p-1 bg-background rounded border border-border"><X size={20}/></button>
-                </div>
-                <form onSubmit={handleCreateFolder} className="p-6 space-y-6">
-                  <div>
-                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('folder_name')}</label>
-                    <input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} required autoFocus className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none font-bold text-text-primary shadow-inner" placeholder="Ordner eingeben..." />
-                  </div>
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button type="button" onClick={() => setIsNewFolderModalOpen(false)} className="px-5 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors border border-border rounded-lg">{t('cancel')}</button>
-                    <button type="submit" disabled={!newFolderName.trim()} className="px-6 py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all active:scale-95">{t('create_folder')}</button>
-                  </div>
-                </form>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        portalNode
-      )}
     </div>
   );
 }

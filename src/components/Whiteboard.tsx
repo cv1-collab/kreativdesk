@@ -33,7 +33,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { db, storage } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { collection, onSnapshot, doc, setDoc, deleteDoc, query, where, addDoc, getDocs, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';

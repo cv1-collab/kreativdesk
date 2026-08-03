@@ -19,10 +19,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 
-// FIREBASE IMPORTS
-import { db, storage } from '../firebase';
-import { doc, getDoc, setDoc, addDoc, collection, query, where, getDocs, onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+// SUPABASE IMPORT
+import { supabase } from '../lib/supabase';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -398,19 +396,25 @@ export default function Calendar() {
        return;
     }
 
-    // --- REGULÄRER FIREBASE FETCH FÜR ECHTE USER ---
-    if (!currentProjectId || !db || !currentUser?.companyId) return;
+    // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
+    if (!currentProjectId || !currentUser?.companyId) return;
     hasLoadedInitial.current = false;
     const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
 
-    const unsub = onSnapshot(doc(db, 'projectSchedules', scheduleDocId), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.schedules && data.schedules.length > 0) {
-          setSchedules(data.schedules);
+    const fetchSchedule = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', `schedule_${scheduleDocId}`)
+          .single();
+
+        if (data?.data?.schedules && data.data.schedules.length > 0) {
+          const scheds = data.data.schedules;
+          setSchedules(scheds);
           if (!hasLoadedInitial.current) {
-            const activeId = data.activeScheduleId || data.schedules[0].id;
-            const target = data.schedules.find((s: Schedule) => s.id === activeId) || data.schedules[0];
+            const activeId = data.data.activeScheduleId || scheds[0].id;
+            const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
             setActiveScheduleId(target.id);
             setScheduleName(target.name || 'Masterplan');
             setGanttTasks(target.ganttTasks?.length ? target.ganttTasks : DEFAULT_TASKS);
@@ -419,15 +423,22 @@ export default function Calendar() {
             setTargetYear(target.targetYear || new Date().getFullYear());
             hasLoadedInitial.current = true;
           }
+        } else {
+          const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: t('master_plan'), targetYear: new Date().getFullYear(), ganttTasks: DEFAULT_TASKS, smartMarkers: DEFAULT_MARKERS, shapes: [] };
+          setSchedules([defaultSchedule]);
+          await supabase.from('system_config').upsert({
+            id: `schedule_${scheduleDocId}`,
+            data: { schedules: [defaultSchedule], activeScheduleId: defaultSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId }
+          });
         }
-      } else {
-        const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: t('master_plan'), targetYear: new Date().getFullYear(), ganttTasks: DEFAULT_TASKS, smartMarkers: DEFAULT_MARKERS, shapes: [] };
-        setSchedules([defaultSchedule]);
-        setDoc(doc(db, 'projectSchedules', scheduleDocId), { schedules: [defaultSchedule], activeScheduleId: defaultSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId });
+      } catch (err) {
+        console.error("Calendar schedule error:", err);
+      } finally {
+        setIsInitialLoad(false);
       }
-      setIsInitialLoad(false);
-    });
-    return () => unsub();
+    };
+
+    fetchSchedule();
   }, [currentProjectId, currentUser, isDemoMode, demoData]);
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);

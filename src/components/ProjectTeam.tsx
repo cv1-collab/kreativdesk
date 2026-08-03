@@ -7,8 +7,7 @@ import {
   Users, UserPlus, Search, X, Shield, Mail, Building2, Loader2, Trash2
 } from 'lucide-react';
 import { cn } from '../utils';
-import { db } from '../firebase';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 

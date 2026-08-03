@@ -13,9 +13,7 @@ import {
 import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
-import { db, storage } from '../firebase';
-import { collection, query, where, getDocs, onSnapshot, doc, getDoc, addDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -156,42 +154,43 @@ export default function Dashboard() {
       return;
     }
     
-    if (!currentUser?.companyId || !db || !activeProject?.id) return;
+    if (!currentUser?.companyId || !activeProject?.id) return;
     
     const fetchData = async () => {
       try {
-        const docQ = query(
-          collection(db, 'documents'), 
-          where('companyId', '==', currentUser.companyId), // <-- Sicher
-          where('projectId', '==', activeProject.id)
-        );
-        const docSnap = await getDocs(docQ);
-        const docs = docSnap.docs.map(d => ({ id: d.id, type: 'document', title: d.data().name, date: d.data().createdAt || d.data().uploadedAt || new Date().toISOString() }));
+        const { data: docsData } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .eq('project_id', activeProject.id);
+
+        const docs = (docsData || []).map(d => ({ id: d.id, type: 'document', title: d.name, date: d.created_at || new Date().toISOString() }));
         setDocumentsCount(docs.length);
 
-        const timeQ = query(
-          collection(db, 'timeEntries'), 
-          where('companyId', '==', currentUser.companyId), // <-- Sicher
-          where('projectId', '==', activeProject.id)
-        );
-        const timeSnap = await getDocs(timeQ);
-        const times = timeSnap.docs.map(d => ({ id: d.id, type: 'time', title: `${d.data().hours}h: ${d.data().description}`, date: d.data().date || new Date().toISOString() }));
+        const { data: timesData } = await supabase
+          .from('time_entries')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .eq('project_id', activeProject.id);
+
+        const times = (timesData || []).map(d => ({ id: d.id, type: 'time', title: `${d.hours}h: ${d.description}`, date: d.created_at || new Date().toISOString() }));
 
         setRecentActivities([...docs, ...times].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8));
 
-        const financeSnap = await getDoc(doc(db, 'financeData', `finance_${activeProject.id}`));
-        if (financeSnap.exists()) setVersions(financeSnap.data().versions || []);
-      } catch (e) { console.error(e); }
+        const { data: txsData } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .eq('project_id', activeProject.id);
+
+        if (txsData) setTransactions(txsData);
+      } catch (err) {
+        console.error("Dashboard fetch data error:", err);
+      }
     };
+
     fetchData();
-    
-    const qTx = query(
-      collection(db, 'transactions'), 
-      where('companyId', '==', currentUser.companyId), // <-- Sicher
-      where('projectId', '==', activeProject.id)
-    );
-    return onSnapshot(qTx, (snap) => setTransactions(snap.docs.map(d => d.data())));
-  }, [currentUser, activeProject?.id]);
+  }, [currentUser, activeProject?.id, isDemoMode, demoData]);
 
   const generateAIInsights = async () => {
     setIsGeneratingInsights(true);
