@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import * as JoyrideModule from 'react-joyride';
+import * as JoyridePkg from 'react-joyride';
 import type { Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -7,14 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
 
-const getJoyrideComponent = () => {
-  if (typeof JoyrideModule === 'function') return JoyrideModule;
-  if (typeof (JoyrideModule as any)?.default === 'function') return (JoyrideModule as any).default;
-  if (typeof (JoyrideModule as any)?.Joyride === 'function') return (JoyrideModule as any).Joyride;
-  return null;
-};
-
-const JoyrideComponent = getJoyrideComponent();
+const JoyrideComponent: any = (JoyridePkg as any).Joyride || (JoyridePkg as any).default || JoyridePkg;
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
@@ -89,7 +82,7 @@ export default function ProductTour() {
         create('.tour-admin-tenants', isGerman ? 'Mandanten-Hub' : 'Tenant Hub', isGerman ? 'Steuere Lizenzen, Limits und Sicherheitsfreigaben aller registrierten Firmen in deinem Ökosystem.' : 'Control licenses and security for all registered companies.', Users),
         create('.tour-admin-sales', isGerman ? 'Stripe-Integration' : 'Stripe Integration', isGerman ? 'Verwalte globale Abonnements, Zahlungsströme und das gesamte System-Cashflow-Ledger.' : 'Manage global subscriptions and the system cashflow ledger.', DollarSign),
         create('.tour-admin-brand', isGerman ? 'White-Labeling' : 'White-Labeling', isGerman ? 'Passe Logos, Typografie und Farb-Themes an die Corporate Identity deiner Kunden an.' : 'Customize logos and color themes for white-label clients.', Sparkles),
-        create('.tour-admin-support', isGerman ? 'Support-Desk' : 'Support Desk', isGerman ? 'Alle User-Tickets fließen hier zusammen. Priorisiere und löse Probleme direkt im System.' : 'Manage and resolve all user support tickets centrally.', Target),
+        create('.tour-admin-support', isGerman ? 'Support-Desk' : 'Support Desk', isGerman ? 'Alle User-Tickets fließen hier zusammen. Priorisiere und löse Probleme direkt im System.' : 'Manage and resolve all support tickets centrally.', Target),
         create('.tour-admin-api', isGerman ? 'Webhook-Control' : 'Webhook Control', isGerman ? 'Konfiguriere API-Keys und Zapier-Schnittstellen für externe Systemintegrationen.' : 'Configure API keys and webhooks for external integrations.', Settings),
         create('.tour-admin-system', isGerman ? 'Live-Terminal' : 'Live Terminal', isGerman ? 'Verfolge Datenbank-Transaktionen und System-Logs in Echtzeit.' : 'Track database transactions and system logs in real-time.', LayoutDashboard)
       ];
@@ -97,7 +90,7 @@ export default function ProductTour() {
       potentialSteps = [
         create('body', isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', isGerman ? 'Das ist deine ganzheitliche Plattform für Spatial Design und Business-Management.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for design and business.', Sparkles, 'center', true),
         create('.tour-dashboard', isGerman ? 'Der globale Puls' : 'Global Pulse', isGerman ? 'Hier fließen Projektstatus, Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', LayoutDashboard),
-        create('.tour-projects', isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Projekte. Ein Klick bringt dich tief in die spezifischen 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase),
+        create('.tour-projects', isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Projekte. Ein Klick brings dich tief in die spezifischen 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase),
         create('.tour-create-project-btn', isGerman ? 'Dein erstes Projekt' : 'Your First Project', isGerman ? 'Eröffne jetzt dein erstes Projekt! TIPP: Nenne das Projekt "Demo: BAU", um unser interaktives Testprojekt zu laden. Darin siehst du sofort, wie alle Module (3D, Chat, Tasks) live ineinandergreifen.' : 'Create your first project now! TIP: Name it "Demo: BAU" to load our interactive test project.', Sparkles),
         create('.tour-finance', isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', isGerman ? 'Überwache den gesamten Cashflow, Betriebskosten (OpEx) und globale Budgets.' : 'Monitor global cashflow, operating expenses, and budgets.', DollarSign),
         create('.tour-documents', isGerman ? 'Zentrales Firmen-Archiv' : 'Company Archive', isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud structure for HR docs, contracts, and assets.', Folder),
@@ -130,7 +123,7 @@ export default function ProductTour() {
     }
   };
 
-  if (!isTourRunning || !JoyrideComponent || steps.length === 0) return null;
+  if (!isTourRunning || typeof JoyrideComponent !== 'function' || steps.length === 0) return null;
 
   return (
     <JoyrideComponent

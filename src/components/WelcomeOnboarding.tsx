@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { auth, db, storage } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../lib/supabase';
 import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
 import { useTour } from '../contexts/TourContext';
 
@@ -14,7 +12,6 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
   const [step, setStep] = useState(1);
 
   useEffect(() => {
-    // Stoppe die Tour sofort, solange dieses Fenster sichtbar ist, um Überlappungen zu verhindern!
     stopTour();
     
     if (currentUser?.name && currentUser.name !== 'Neues Teammitglied') {
@@ -42,47 +39,44 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
     setIsSubmitting(true);
     try {
       let photoURL = currentUser?.photoURL;
+      const userId = currentUser?.id || currentUser?.uid;
       
-      if (avatar) {
-        // Gleiche Storage-Struktur wie in SettingsTab für User-Avatare
-        const storageRef = ref(storage, `avatars/${currentUser.uid}_${Date.now()}`);
-        await uploadBytes(storageRef, avatar);
-        photoURL = await getDownloadURL(storageRef);
+      if (avatar && userId) {
+        const fileExt = avatar.name.split('.').pop();
+        const filePath = `avatars/${userId}_${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatar, { upsert: true });
+          
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          photoURL = urlData.publicUrl;
+        }
       }
 
-      // currentUser.id referenziert oft die Doc ID in companyUsers
-      // currentUser.uid ist die Auth-UID
-      const userId = currentUser.id || currentUser.uid;
-      
-      const updates = {
-        name,
-        photoURL,
-        hasCompletedOnboarding: true,
-        updatedAt: new Date().toISOString()
-      };
-
-      // 1. Update in companyUsers
-      const companyUserDocRef = doc(db, 'companyUsers', userId); 
-      try {
-        await updateDoc(companyUserDocRef, updates);
-      } catch(e) { console.log('companyUser update skipped (might not exist yet)') }
-      
-      // 2. Update in users (wichtig für den globalen AuthContext!)
-      if (currentUser.uid) {
-        const globalUserDocRef = doc(db, 'users', currentUser.uid);
-        try {
-          await updateDoc(globalUserDocRef, updates);
-        } catch(e) { console.log('user update skipped') }
+      if (userId) {
+        await supabase
+          .from('profiles')
+          .update({
+            name,
+            photo_url: photoURL,
+            has_completed_onboarding: true
+          })
+          .eq('id', userId);
       }
 
-      setStep(3); // Zeige Erfolgs-Screen kurz an
+      setStep(3);
       setTimeout(() => {
-        const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
-        if (!hasSeenTourLocal) {
-          localStorage.setItem(`tour_trigger_pending_${currentUser?.uid}`, 'true');
+        if (currentUser?.uid) {
+          const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
+          if (!hasSeenTourLocal) {
+            localStorage.setItem(`tour_trigger_pending_${currentUser?.uid}`, 'true');
+          }
         }
         onComplete();
-      }, 2000);
+      }, 1500);
     } catch (error) {
       console.error("Error updating profile:", error);
     } finally {
@@ -93,80 +87,89 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
   return (
     <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md flex items-center justify-center p-4">
       <div className="bg-surface border border-border shadow-2xl rounded-2xl w-full max-w-md overflow-hidden relative">
-        <div className="h-2 bg-gradient-to-r from-accent-ai to-emerald-500 w-full" />
-        
-        {step === 1 && (
-          <div className="p-8 text-center">
-            <div className="w-16 h-16 bg-accent-ai/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="text-accent-ai" size={32} />
-            </div>
-            <h2 className="text-2xl font-black text-text-primary mb-2">Willkommen im Team!</h2>
-            <p className="text-text-muted mb-8 leading-relaxed">
-              Wir freuen uns, dass du da bist. Bevor du startest, richte kurz dein Profil ein, damit deine Kollegen dich sofort erkennen.
-            </p>
-            <button 
-              onClick={() => setStep(2)}
-              className="w-full py-3.5 bg-accent-ai text-white font-bold rounded-xl shadow-lg hover:bg-accent-ai/90 transition-all active:scale-95"
-            >
-              Profil einrichten
-            </button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <form onSubmit={handleSubmit} className="p-8">
-            <h3 className="text-xl font-bold text-text-primary mb-6 text-center">Dein Profil</h3>
-            
-            <div className="flex flex-col items-center mb-8 relative">
-              <div className="w-24 h-24 rounded-full border-4 border-background shadow-xl overflow-hidden bg-background relative group">
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-400">
-                    <Camera size={32} />
-                  </div>
-                )}
-                <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-opacity">
-                  <Camera size={24} />
-                  <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-                </label>
+        <div className="p-6 text-center">
+          {step === 1 && (
+            <div>
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
+                <Sparkles size={32} />
               </div>
-              <p className="text-xs text-text-muted mt-3">Klicke auf das Bild, um ein Foto hochzuladen</p>
+              <h2 className="text-2xl font-black text-text-primary mb-2">Willkommen im Team!</h2>
+              <p className="text-text-muted text-sm mb-6">
+                Wir freuen uns, dass du da bist. Bevor du startest, richte kurz dein Profil ein, damit deine Kollegen dich sofort erkennen.
+              </p>
+              <button
+                onClick={() => setStep(2)}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+              >
+                Profil einrichten
+              </button>
             </div>
+          )}
 
-            <div className="space-y-4 mb-8">
+          {step === 2 && (
+            <form onSubmit={handleSubmit} className="space-y-6 text-left">
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-text-primary mb-1">Dein Profil</h3>
+                <p className="text-text-muted text-xs">Lade ein Foto hoch und überprüfe deinen Namen.</p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center gap-3">
+                <div className="relative group">
+                  <div className="w-24 h-24 rounded-full border-2 border-border overflow-hidden bg-surface-hover flex items-center justify-center text-text-muted">
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="Avatar Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-2xl font-bold">{name.charAt(0).toUpperCase() || 'U'}</span>
+                    )}
+                  </div>
+                  <label className="absolute bottom-0 right-0 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full cursor-pointer shadow-md transition-colors">
+                    <Camera size={16} />
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs font-bold text-text-muted mb-1.5 uppercase tracking-wider">Vor- und Nachname</label>
-                <input 
-                  type="text" 
+                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">
+                  Vollständiger Name
+                </label>
+                <input
+                  type="text"
+                  required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-3 text-text-primary focus:border-accent-ai outline-none transition-all shadow-inner font-medium"
-                  placeholder="Max Mustermann"
-                  required
+                  placeholder="z.B. Anna Muster"
+                  className="w-full px-4 py-2.5 bg-surface-hover border border-border rounded-xl text-text-primary focus:outline-none focus:border-blue-500 transition-colors text-sm"
                 />
               </div>
-            </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting || !name.trim()}
-              className="w-full py-3.5 bg-text-primary text-background font-bold rounded-xl shadow-lg hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Speichern & Loslegen'}
-            </button>
-          </form>
-        )}
+              <button
+                type="submit"
+                disabled={isSubmitting || !name.trim()}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Speichere...</span>
+                  </>
+                ) : (
+                  <span>Profil speichern & Starten</span>
+                )}
+              </button>
+            </form>
+          )}
 
-        {step === 3 && (
-          <div className="p-12 text-center flex flex-col items-center">
-            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mb-6 animate-bounce shadow-[0_0_40px_rgba(16,185,129,0.4)]">
-              <Check className="text-white" size={40} />
+          {step === 3 && (
+            <div className="py-8">
+              <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 animate-bounce">
+                <Check size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-text-primary mb-2">Alles bereit!</h3>
+              <p className="text-text-muted text-sm">Dein Profil wurde erfolgreich eingerichtet. Viel Spaß mit Kreativ Desk!</p>
             </div>
-            <h2 className="text-2xl font-black text-text-primary">Profil gespeichert!</h2>
-            <p className="text-text-muted mt-2">Dein Workspace wird geladen...</p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
