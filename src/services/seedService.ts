@@ -65,7 +65,6 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
         status: 'active',
         company_id: companyId,
         owner_id: ownerId,
-        site_location: { location: projData.siteLocation || 'Zürich' },
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
