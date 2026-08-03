@@ -151,15 +151,15 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
           const parsed = JSON.parse(jsonMatch[1]);
           if (parsed.action === 'CREATE_TASK') {
             if (activeProjectId) {
-              await addDoc(collection(db, 'defects'), {
+              await supabase.from('defects').insert({
                 title: parsed.title,
                 description: parsed.description,
-                projectId: activeProjectId,
-                companyId: currentUser?.companyId || 'global',
-                ownerId: currentUser?.uid || 'unknown',
+                project_id: activeProjectId,
+                company_id: currentUser?.companyId || 'global',
+                owner_id: currentUser?.uid || 'unknown',
                 status: 'open',
                 priority: 'Medium',
-                createdAt: new Date().toISOString()
+                created_at: new Date().toISOString()
               });
               aiText = aiText.replace(jsonMatch[0], '').trim();
               if (!aiText) aiText = "Aufgabe wurde erfolgreich im aktuellen Projekt erstellt!";

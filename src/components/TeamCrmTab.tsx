@@ -106,20 +106,24 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const [realUsers, setRealUsers] = useState<any[]>([]);
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const q = query(collection(db, 'users'), where('companyId', '==', safeCompanyId));
-    const unsub = onSnapshot(q, (snap) => setRealUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    return () => unsub();
+    const fetchUsers = async () => {
+      const { data } = await supabase.from('users').select('*').eq('company_id', safeCompanyId);
+      if (data) setRealUsers(data);
+    };
+    fetchUsers();
   }, [currentUser]);
 
   const [crmUsers, setCrmUsers] = useState<any[]>([]);
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const q = query(collection(db, 'companyUsers'), where('companyId', '==', safeCompanyId));
-    const unsub = onSnapshot(q, (snap) => setCrmUsers(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    return () => unsub();
+    const fetchCrmUsers = async () => {
+      const { data } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
+      if (data) setCrmUsers(data);
+    };
+    fetchCrmUsers();
   }, [currentUser]);
 
   const vcfInputRef = useRef<HTMLInputElement>(null);
@@ -148,37 +152,20 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
-    if (!db || !isAddModalOpen) return;
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', vcardSessionId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (data.contactData) {
-            setNewContact((prev: any) => ({ ...prev, ...data.contactData, status: 'neu' }));
-            addToast(t('vcard_received'), 'success');
-          }
-          deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error);
-        }
-      });
-    });
-    return () => unsub();
+    if (!isAddModalOpen) return;
   }, [vcardSessionId, isAddModalOpen, t]);
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
 
-  // 🔥 NEU: Der Master-Key zum Löschen von Geister-Usern!
   const handleDeleteContact = async (contactId: string) => {
     if (window.confirm(t('delete_user_confirm'))) {
       try {
         const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
         
-        // Versucht das saubere Offboarding
         await offboardCompanyUser(contactId, safeCompanyId);
         
-        // Zwingt Firebase dazu, die Geister-Einträge auch direkt aus den Basis-Tabellen zu werfen!
-        await deleteDoc(doc(db, 'users', contactId));
-        await deleteDoc(doc(db, 'companyUsers', contactId));
+        await supabase.from('users').delete().eq('id', contactId);
+        await supabase.from('company_users').delete().eq('id', contactId);
         
         await logAuditAction({
           action: 'USER_REMOVED',
@@ -191,14 +178,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         addToast(t('delete') + ' ' + t('completed'), 'success');
       } catch (error) { 
         addToast(t('upload_failed'), 'error'); 
-        console.error("Delete Error:", error);
       }
     }
   };
 
   const handleUpdateStatus = async (contactId: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, 'companyUsers', contactId), { status: newStatus });
+      await supabase.from('company_users').update({ status: newStatus }).eq('id', contactId);
       if (selectedContact?.id === contactId) setSelectedContact({ ...selectedContact, status: newStatus });
       addToast(t('save') + ' ' + t('completed'), 'success');
     } catch (error) { addToast(t('upload_failed'), 'error'); }
@@ -209,7 +195,6 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  // 🔥 NEU: Auch der Batch-Delete (Auswählen & Löschen) ignoriert jetzt den "Real User" Lock
   const handleBatchDelete = async () => {
     const deletableIds = selectedIds.filter(id => id !== currentUser?.uid);
     if (deletableIds.length === 0) { addToast(t('select_external_to_delete'), 'info'); return; }
@@ -219,8 +204,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
         await Promise.all(deletableIds.map(async (id) => {
           await offboardCompanyUser(id, safeCompanyId);
-          await deleteDoc(doc(db, 'users', id));
-          await deleteDoc(doc(db, 'companyUsers', id));
+          await supabase.from('users').delete().eq('id', id);
+          await supabase.from('company_users').delete().eq('id', id);
         }));
         
         setSelectedIds([]); 
@@ -237,7 +222,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const updatableIds = selectedIds.filter(id => id !== currentUser?.uid);
     if (updatableIds.length === 0) return;
     try {
-      await Promise.all(updatableIds.map(id => updateDoc(doc(db, 'companyUsers', id), { status: newStatus })));
+      await Promise.all(updatableIds.map(id => supabase.from('company_users').update({ status: newStatus }).eq('id', id)));
       setSelectedIds([]); setIsSelectionMode(false);
       addToast(`${updatableIds.length} ${t('contacts_updated')}`, 'success');
     } catch (e) { addToast(t('upload_failed'), 'error'); }
@@ -245,8 +230,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      await setDoc(doc(db, 'users', userId), { role: newRole }, { merge: true });
-      await setDoc(doc(db, 'companyUsers', userId), { role: newRole }, { merge: true });
+      await supabase.from('users').update({ role: newRole }).eq('id', userId);
+      await supabase.from('company_users').update({ role: newRole }).eq('id', userId);
       addToast(`${t('role')} "${newRole}" ${t('completed')}`, 'success');
     } catch (error) { addToast(t('upload_failed'), 'error'); }
   };
@@ -306,19 +291,20 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       if (photoURL) contactData.photoURL = photoURL;
 
       if (newContact.id) {
-        await updateDoc(doc(db, 'companyUsers', newContact.id), contactData);
+        await supabase.from('company_users').update(contactData).eq('id', newContact.id);
         setSelectedContact((prev: any) => prev ? { ...prev, ...contactData } : null);
         addToast(t('save') + ' ' + t('completed'), 'success');
       } else {
         contactData.role = newContact.isExternal ? null : 'employee';
         contactData.createdAt = new Date().toISOString();
-        const docRef = await addDoc(collection(db, 'companyUsers'), contactData);
+        const { data: created } = await supabase.from('company_users').insert(contactData).select().single();
+        const docId = created ? created.id : `user-${Date.now()}`;
         
         await logAuditAction({
           action: 'USER_INVITED',
           userId: currentUser.uid,
           companyId: safeCompanyId,
-          details: { invitedUserId: docRef.id, isExternal: newContact.isExternal }
+          details: { invitedUserId: docId, isExternal: newContact.isExternal }
         });
         
         // Trigger Make.com Webhook für die Einladungs-E-Mail
@@ -533,14 +519,18 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   };
 
   const ensureFolder = async (folderName: string) => {
-    if (!currentUser || !currentUser.uid) return '';
+    if (!currentUser || !currentUser.uid) return 'root';
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const docsRef = collection(db, 'documents');
-    const folderQ = query(docsRef, where('name', '==', folderName), where('isFolder', '==', true), where('projectId', '==', 'global'), where('companyId', '==', safeCompanyId));
-    const folderSnap = await getDocs(folderQ);
-    if (!folderSnap.empty) return folderSnap.docs[0].id;
-    const newFolderRef = await addDoc(docsRef, { name: folderName, isFolder: true, category: 'company', ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', createdAt: new Date().toISOString() });
-    return newFolderRef.id;
+    const { data: existing } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('name', folderName)
+      .eq('is_folder', true)
+      .eq('company_id', safeCompanyId)
+      .single();
+    if (existing) return existing.id;
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().single();
+    return newF ? newF.id : 'root';
   };
 
   const executeStudioPDFExportCloud = async () => {
@@ -553,15 +543,17 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const fileName = `CRM_Report_${Date.now()}.pdf`;
       const pdfBlobOut = pdf.output('blob');
 
-      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, pdfBlobOut);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, pdfBlobOut, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
       const targetFolderId = await ensureFolder("04_SALES");
 
-      await addDoc(collection(db, 'documents'), {
-        name: fileName, url: downloadUrl, projectId: 'global', folderId: targetFolderId, category: 'company', 
-        ownerId: currentUser.uid, companyId: safeCompanyId, type: 'application/pdf', size: (pdfBlobOut.size / (1024 * 1024)).toFixed(2) + ' MB', 
-        isFolder: false, createdAt: new Date().toISOString()
+      await supabase.from('documents').insert({
+        name: fileName, url: downloadUrl, project_id: 'global', folder_id: targetFolderId, category: 'company', 
+        owner_id: currentUser.uid, company_id: safeCompanyId, type: 'application/pdf', size: (pdfBlobOut.size / (1024 * 1024)).toFixed(2) + ' MB', 
+        is_folder: false, created_at: new Date().toISOString()
       });
 
       addToast(t('pdf_exported'), 'success'); setIsPrintModalOpen(false);

@@ -89,13 +89,13 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     try {
       const newUserId = `user-${Date.now()}`;
       
-      await setDoc(doc(db, 'companyUsers', newUserId), { 
+      await supabase.from('company_users').insert({ 
         id: newUserId, 
         name: newUserName, 
         email: newUserEmail, 
         role: newUserCompanyRole,
-        ownerId: currentUser.uid,
-        companyId: currentUser.companyId 
+        owner_id: currentUser.uid,
+        company_id: currentUser.companyId 
       });
       
       await addProjectMember(currentProjectId, {
@@ -186,7 +186,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <select value={member.projectRole} onChange={(e) => setDoc(doc(db, 'projectMembers', member.id), { projectRole: e.target.value }, { merge: true })} className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer">
+                      <select value={member.projectRole} onChange={(e) => supabase.from('project_members').update({ project_role: e.target.value }).eq('id', member.id)} className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer">
                         <option value="Viewer">{t('viewer_role')}</option><option value="Editor">{t('editor_role')}</option><option value="Admin">{t('admin_role')}</option><option value="Owner">{t('owner_role')}</option>
                       </select>
                     </td>

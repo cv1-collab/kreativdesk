@@ -63,24 +63,20 @@ export default function AgendaRapport() {
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
-    if (!db || !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
 
-    const q = query(
-      collection(db, 'timeEntries'), 
-      where('companyId', '==', currentUser.companyId),
-      orderBy('date', 'desc')
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      setTimeEntries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const fetchEntries = async () => {
+      const { data } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('company_id', currentUser.companyId)
+        .order('date', { ascending: false });
+      if (data) setTimeEntries(data);
       setLoading(false);
-    }, (error) => {
-      console.error("Snapshot error:", error);
-      setLoading(false);
-    });
+    };
 
-    return () => unsub();
-  }, [currentUser]);
+    fetchEntries();
+  }, [currentUser?.companyId]);
 
   if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="animate-spin text-accent-ai" /></div>;
 

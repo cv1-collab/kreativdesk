@@ -25,13 +25,13 @@ export default function MobileUpload() {
       const downloadUrl = await getDownloadURL(storageRef);
 
       // 2. STRIKTE PARAMETER: Wir funken die URL inkl. exakter Metadaten an den Desktop
-      await addDoc(collection(db, 'temp_receipts'), {
-        sessionId: sessionId,
+      await supabase.from('temp_receipts').insert({
+        session_id: sessionId,
         url: downloadUrl,
-        mimeType: file.type || 'application/octet-stream',
-        size: file.size, // Exakte Bytes!
-        fileName: file.name,
-        timestamp: new Date().toISOString()
+        mime_type: file.type || 'application/octet-stream',
+        size: file.size,
+        file_name: file.name,
+        created_at: new Date().toISOString()
       });
 
       setIsSuccess(true);

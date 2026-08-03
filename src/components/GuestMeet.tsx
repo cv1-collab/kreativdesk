@@ -50,11 +50,11 @@ export default function GuestMeet() {
     // Check if meeting exists
     const checkMeeting = async () => {
       try {
-        const callDoc = await getDoc(doc(db, 'videoCalls', joinId));
-        if (!callDoc.exists()) {
+        const { data: callDoc } = await supabase.from('video_calls').select('*').eq('id', joinId).single();
+        if (!callDoc) {
           setError('Dieses Meeting existiert nicht oder wurde bereits beendet.');
         } else {
-          setMeetingCompanyId(callDoc.data().companyId || null);
+          setMeetingCompanyId(callDoc.company_id || null);
         }
       } catch (err) {
         console.error(err);
@@ -68,32 +68,27 @@ export default function GuestMeet() {
   useEffect(() => {
     if (!isJoined || !joinId) return;
     
-    const q = query(collection(db, `videoCalls/${joinId}/chatMessages`), orderBy('timestamp', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          sender: data.sender || 'Unknown',
-          avatar: data.avatar || 'U',
-          time: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: data.text
-        };
-      }));
-      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-    });
-    
-    return () => unsubscribe();
+    const fetchChat = async () => {
+      const { data } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('call_id', joinId)
+        .order('created_at', { ascending: true });
+      if (data) {
+        setMessages(data.map(d => ({
+          id: d.id,
+          sender: d.sender || 'Unknown',
+          avatar: d.avatar || 'U',
+          time: new Date(d.created_at || d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: d.text
+        })));
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      }
+    };
+    fetchChat();
   }, [isJoined, joinId]);
 
   // Handle Video Streams
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(e => console.warn(e));
-    }
-  }, [localStream]);
-
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
@@ -133,15 +128,14 @@ export default function GuestMeet() {
     
     try {
       const msgId = `msg-${Date.now()}`;
-      await setDoc(doc(db, `videoCalls/${joinId}/chatMessages`, msgId), {
+      await supabase.from('chat_messages').insert({
         id: msgId,
+        call_id: joinId,
         sender: guestName,
         avatar: guestName.substring(0, 2).toUpperCase(),
-        senderId: 'guest-' + Date.now(),
-        timestamp: Date.now(),
-        text,
-        createdAt: serverTimestamp(),
-        isGuest: true
+        sender_id: 'guest-' + Date.now(),
+        text: text,
+        created_at: new Date().toISOString()
       });
     } catch (err) {
       console.error('Failed to send message:', err);

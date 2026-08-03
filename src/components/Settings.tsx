@@ -117,27 +117,26 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!currentUser || !db) return;
-    const unsub = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+    if (!currentUser) return;
+    const fetchUser = async () => {
+      const { data } = await supabase.from('users').select('*').eq('id', currentUser.uid).single();
+      if (data) {
         setDbData(data);
         setPhone(data.phone || '');
         setStreet(data.street || '');
-        setZipCity(data.zipCity || '');
+        setZipCity(data.zip_city || data.zipCity || '');
       }
       setIsLoadingDB(false);
-    });
-    return () => unsub();
+    };
+    fetchUser();
   }, [currentUser]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !db) return;
+    if (!currentUser) return;
     setIsUpdatingProfile(true);
     try {
-      await updateProfile(currentUser, { displayName });
-      await setDoc(doc(db, 'users', currentUser.uid), { phone, street, zipCity, updatedAt: new Date().toISOString() }, { merge: true });
+      await supabase.from('users').update({ phone, street, zip_city: zipCity, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       setProfileSuccess(true);
       addToast(t('upload_success'), 'success');
       setTimeout(() => setProfileSuccess(false), 3000);
@@ -148,17 +147,14 @@ export default function Settings() {
     }
   };
 
-  // Ersetze deine handlePasswordReset Funktion in Settings.tsx hiermit:
-
-const handlePasswordReset = async () => {
+  const handlePasswordReset = async () => {
     if (!currentUser?.email) return;
     setIsSendingReset(true);
     try {
-      // WICHTIG: Das ruft nun dein Vercel-Backend auf, nicht Firebase direkt!
       const response = await fetch('/api/send-webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: "reset",  email: currentUser.email })
+        body: JSON.stringify({ type: "reset", email: currentUser.email })
       });
 
       if (!response.ok) throw new Error('Webhook fehlgeschlagen');
@@ -178,11 +174,12 @@ const handlePasswordReset = async () => {
     if (!file || !currentUser) return;
     setIsUploadingPhoto(true);
     try {
-      const fileRef = ref(storage, `avatars/${currentUser.uid}`);
-      await uploadBytes(fileRef, file);
-      const photoURL = await getDownloadURL(fileRef);
-      await updateProfile(currentUser, { photoURL });
-      await setDoc(doc(db, 'users', currentUser.uid), { photoURL, updatedAt: new Date().toISOString() }, { merge: true });
+      const filePath = `avatars/${currentUser.uid}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const photoURL = pubData.publicUrl;
+      await supabase.from('users').update({ photo_url: photoURL, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       addToast(t('upload_success'), 'success');
     } catch (error) {
       addToast(t('upload_failed'), 'error');
@@ -191,21 +188,18 @@ const handlePasswordReset = async () => {
     }
   };
 
-  // +++ FIX 1.3: Sicheres Stripe Portal Routing +++
   const handleManageSubscription = async () => {
-    if (!dbData?.stripeCustomerId) return; // Kein Fallback mehr auf die UID!
+    if (!dbData?.stripeCustomerId) return;
     
     setIsPortalLoading(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/create-portal-session', {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ type: "reset", 
-          customerId: dbData.stripeCustomerId, // Sichere Übergabe
+          customerId: dbData.stripeCustomerId,
           returnUrl: window.location.origin + '/app' 
         })
       });
@@ -225,28 +219,19 @@ const handlePasswordReset = async () => {
 
   const handleExportData = async () => {
     addToast(t('export_started'), 'info');
-    if (!currentUser || !db) return;
+    if (!currentUser) return;
 
     try {
       const safeCompanyId = (currentUser as any).companyId || dbData?.companyId || `comp_${currentUser.uid}`;
       const exportData: any = { accountInfo: dbData, projects: [], documents: [] };
 
-      const qProjects = query(collection(db, 'projects'), where('companyId', '==', safeCompanyId));
-      const snapProjects = await getDocs(qProjects);
-      exportData.projects = snapProjects.docs.map(d => d.data());
+      const { data: projects } = await supabase.from('projects').select('*').eq('company_id', safeCompanyId);
+      exportData.projects = projects || [];
 
-      const qDocs = query(
-        collection(db, 'documents'),
-        and(
-          where('companyId', '==', safeCompanyId),
-          or(
-            where('visibility', 'in', ['public', 'company']),
-            where('ownerId', '==', currentUser.uid)
-          )
-        )
-      );
-      const snapDocs = await getDocs(qDocs);
-      exportData.documents = snapDocs.docs.map(d => d.data());
+      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId);
+      exportData.documents = docs || [];
+
+      // 1. Initialize JSZip
 
       // 1. Initialize JSZip
       const zip = new JSZip();

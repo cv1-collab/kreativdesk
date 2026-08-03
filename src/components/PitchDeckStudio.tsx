@@ -166,7 +166,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const updated = { ...deckSettings, ...newSettings };
     setDeckSettings(updated);
     if (activeProject?.id && activeProject.id !== 'global' && !activeProject.id.startsWith('demo-')) {
-       updateDoc(doc(db, 'projects', activeProject.id), { deckSettings: updated }).catch(e => console.error("Error saving deck settings:", e));
+       supabase.from('projects').update({ deck_settings: updated }).eq('id', activeProject.id);
     }
   };
 
@@ -184,42 +184,20 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   }, [activeSlide?.id]); 
 
   useEffect(() => {
-    if (!currentUser || !currentUser.companyId || !db) return;
+    if (!currentUser || !currentUser.companyId) return;
     
     const targetId = projectId || importProjectId;
-    let q;
-    
     const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-    if (targetId && targetId !== 'global') {
-      q = query(
-        collection(db, 'slides'),
-        and(
-          where('projectId', '==', targetId),
-          where('companyId', '==', safeCompanyId),
-          or(
-            where('visibility', 'in', ['public', 'company']),
-            where('ownerId', '==', currentUser?.uid || '')
-          )
-        )
-      );
-    } else {
-      q = query(
-        collection(db, 'slides'),
-        and(
-          where('companyId', '==', safeCompanyId),
-          or(
-            where('visibility', 'in', ['public', 'company']),
-            where('ownerId', '==', currentUser?.uid || '')
-          )
-        )
-      );
-    }
+    
+    const fetchSlides = async () => {
+      let query = supabase.from('slides').select('*').eq('company_id', safeCompanyId);
+      if (targetId && targetId !== 'global') {
+        query = query.eq('project_id', targetId);
+      }
+      const { data: loadedSlides } = await query;
+      const slidesArr = loadedSlides ? (loadedSlides as any[]) : [];
 
-    const unsub = onSnapshot(q, async (snapshot) => {
-      const loadedSlides = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Slide));
-
-      // Auto-Seed Demo Pitch Deck if empty
-      if (loadedSlides.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
+      if (slidesArr.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
         try {
           const demoSlides = [
             { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", type: 'title', order_index: 0 },
@@ -238,25 +216,23 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           }));
 
           await supabase.from('slides').upsert(slidesToInsert);
-          loadedSlides.push(...(slidesToInsert as any[]));
+          slidesArr.push(...slidesToInsert);
         } catch(e) { console.error("Error seeding demo deck", e); }
       }
 
-      loadedSlides.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-      setSlides(loadedSlides);
+      slidesArr.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      setSlides(slidesArr);
       
       setActiveSlideId(currentId => {
-        if (!currentId && loadedSlides.length > 0) return loadedSlides[0].id;
-        if (currentId && !loadedSlides.find(s => s.id === currentId) && loadedSlides.length > 0) return loadedSlides[0].id;
+        if (!currentId && slidesArr.length > 0) return slidesArr[0].id;
+        if (currentId && !slidesArr.find(s => s.id === currentId) && slidesArr.length > 0) return slidesArr[0].id;
         return currentId;
       });
       
       setIsLoading(false);
-    }, (error) => {
-      setIsLoading(false);
-    });
-    
-    return () => unsub();
+    };
+
+    fetchSlides();
   }, [currentUser, projectId, importProjectId]);
 
   const handleLocalUpdate = (field: 'title' | 'content', value: string) => {
@@ -266,7 +242,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
     updateTimeoutRef.current = setTimeout(() => {
       if (activeSlide && !isPreviewMode) {
-        updateDoc(doc(db, 'slides', activeSlide.id), { [field]: value });
+        supabase.from('slides').update({ [field]: value }).eq('id', activeSlide.id);
       }
     }, 500); 
   };
@@ -290,13 +266,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
       const newDoc = {
-        name: file.name, url: downloadUrl, size: (file.size / 1024 / 1024).toFixed(2) + ' MB', type: file.type,
-        ownerId: currentUser.uid, companyId: currentUser.companyId,
-        projectId: targetId, category: 'projects', isFolder: false, createdAt: new Date().toISOString()
+        name: file.name, url: downloadUrl, file_url: downloadUrl, size: `${Math.round(file.size / 1024)} KB`, type: file.type,
+        owner_id: currentUser.uid, company_id: currentUser.companyId,
+        project_id: targetId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
       };
-      const docRef = await addDoc(collection(db, 'documents'), newDoc);
-      setAvailableMedia([{ id: docRef.id, ...newDoc }, ...availableMedia]);
-      setSelectedMediaIds([docRef.id]); 
+      const { data: created } = await supabase.from('documents').insert(newDoc).select().single();
+      const docId = created ? created.id : `doc-${Date.now()}`;
+      setAvailableMedia([{ id: docId, ...newDoc }, ...availableMedia]);
+      setSelectedMediaIds([docId]); 
       addToast('Bild erfolgreich hochgeladen', 'success');
     } catch (err) {
       addToast('Upload fehlgeschlagen', 'error');
@@ -491,34 +468,36 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     setIsSavingToCloud(true);
     try {
       const targetId = projectId || importProjectId || 'global';
-      const folderQ = query(
-        collection(db, 'documents'), 
-        where('companyId', '==', currentUser.companyId),
-        where('projectId', '==', targetId), 
-        where('isFolder', '==', true), 
-        where('name', '==', 'Pitch Decks')
-      );
-      const folderSnap = await getDocs(folderQ);
+      const { data: existingFolder } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('company_id', currentUser.companyId)
+        .eq('project_id', targetId)
+        .eq('is_folder', true)
+        .eq('name', 'Pitch Decks')
+        .single();
       let targetFolderId = 'root';
       
-      if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
+      if (existingFolder) { targetFolderId = existingFolder.id; } 
       else {
-         const newFolderRef = await addDoc(collection(db, 'documents'), {
-            name: 'Pitch Decks', isFolder: true, projectId: targetId, folderId: 'root', parentId: 'root', 
-            ownerId: currentUser.uid, companyId: currentUser.companyId, category: 'projects', createdAt: new Date().toISOString()
-         });
-         targetFolderId = newFolderRef.id;
+         const { data: newF } = await supabase.from('documents').insert({
+            name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', parent_id: 'root', 
+            owner_id: currentUser.uid, company_id: currentUser.companyId, category: 'projects', created_at: new Date().toISOString()
+         }).select().single();
+         if (newF) targetFolderId = newF.id;
       }
 
-      const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${Date.now()}_Projekt_Report.pdf`);
-      await uploadBytes(storageRef, pdfBlob);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${currentUser.companyId}/pdf_exports/${Date.now()}_Projekt_Report.pdf`;
+      const { error: upErr } = await supabase.storage.from('documents').upload(filePath, pdfBlob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
       
-      await addDoc(collection(db, 'documents'), {
-        name: `Status_Report_${new Date().toISOString().split('T')[0]}.pdf`, size: (pdfBlob.size / (1024 * 1024)).toFixed(2) + ' MB', 
-        type: 'application/pdf', url: downloadUrl, fileUrl: downloadUrl, projectId: targetId, folderId: targetFolderId, 
-        parentId: targetFolderId, category: 'projects', isFolder: false, ownerId: currentUser.uid, companyId: currentUser.companyId,
-        createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString()
+      await supabase.from('documents').insert({
+        name: `Status_Report_${new Date().toISOString().split('T')[0]}.pdf`, size: `${Math.round(pdfBlob.size / 1024)} KB`, 
+        type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, project_id: targetId, folder_id: targetFolderId, 
+        parent_id: targetFolderId, category: 'projects', is_folder: false, owner_id: currentUser.uid, company_id: currentUser.companyId,
+        created_at: new Date().toISOString(), uploaded_at: new Date().toISOString()
       });
       addToast(t('upload_success'), 'success'); 
       setIsPdfModalOpen(false);
@@ -527,7 +506,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string) => {
-    if (!currentUser || !currentUser.companyId || !db) return;
+    if (!currentUser || !currentUser.companyId) return;
     const targetId = projectId || importProjectId;
     const newId = `slide-${Date.now()}`;
     const newSlide: Slide = {
@@ -536,7 +515,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       layout, fontSize: 18, dataPayload, ...(imageUrl && { imageUrl })
     };
     try {
-      await setDoc(doc(db, 'slides', newId), { ...newSlide, createdAt: serverTimestamp() });
+      await supabase.from('slides').insert({ ...newSlide, created_at: new Date().toISOString() });
       setActiveSlideId(newId);
       setShowAddMenu(false);
     } catch (error) { addToast(t('error_create'), "error"); }
@@ -544,8 +523,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const handleDeleteSlide = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (!db || !window.confirm(t('delete_slide_confirm'))) return;
-    try { await deleteDoc(doc(db, 'slides', id)); if (activeSlideId === id) setActiveSlideId(slides[0]?.id || null); } 
+    if (!window.confirm(t('delete_slide_confirm'))) return;
+    try { await supabase.from('slides').delete().eq('id', id); if (activeSlideId === id) setActiveSlideId(slides[0]?.id || null); } 
     catch (error) { addToast(globalT('error'), "error"); }
   };
 
@@ -553,9 +532,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (slides.length === 0) return;
     if (!window.confirm(t('delete_all_confirm'))) return;
     try {
-      const batch = writeBatch(db);
-      slides.forEach(slide => batch.delete(doc(db, 'slides', slide.id)));
-      await batch.commit();
+      await supabase.from('slides').delete().in('id', slides.map(s => s.id));
       setSlides([]); setActiveSlideId(null); addToast(t('deck_cleared'), 'success');
     } catch (error) { addToast(t('error_delete'), 'error'); }
   };
@@ -566,9 +543,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const newSlides = [...slides];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     [newSlides[index], newSlides[targetIndex]] = [newSlides[targetIndex], newSlides[index]];
-    const batch = writeBatch(db);
-    newSlides.forEach((s, i) => batch.update(doc(db, 'slides', s.id), { order_index: i }));
-    await batch.commit();
+    await Promise.all(newSlides.map((s, i) => supabase.from('slides').update({ order_index: i }).eq('id', s.id)));
   };
 
   const handleGenerateBudgetSlide = async () => {
@@ -589,10 +564,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
            });
         }
       } else {
-        const docSnap = await getDoc(doc(db, 'financeData', `finance_${targetId}`));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
+        const { data } = await supabase.from('finance_data').select('*').eq('id', `finance_${targetId}`).single();
+        if (data) {
+          const activeVersion = data.versions?.find((v:any) => v.id === data.active_version_id) || data.versions?.[0];
           if (activeVersion && activeVersion.groups && activeVersion.groups.length > 0) {
             budgetGroups = activeVersion.groups.map((g: any) => {
               const groupTotal = g.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
@@ -632,10 +606,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
            });
         }
       } else {
-        const docSnap = await getDoc(doc(db, 'calendars', targetId));
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const tasks = data.ganttTasks || [];
+        const { data } = await supabase.from('project_schedules').select('*').eq('id', targetId).single();
+        if (data) {
+          const tasks = data.schedules?.[0]?.ganttTasks || [];
           if (tasks.length > 0) {
             const sortedTasks = [...tasks].sort((a:any, b:any) => new Date(a.start).getTime() - new Date(b.start).getTime());
             milestones = sortedTasks.map((t: any) => ({
@@ -725,14 +698,9 @@ const handleGenerateTeamSlide = async () => {
     setMediaPickerType({ folderId: mediaType, title, action, meta });
     setIsMediaLoading(true);
     try {
-      const q = query(
-        collection(db, 'documents'), 
-        where('companyId', '==', currentUser.companyId),
-        where('projectId', '==', targetId)
-      );
-      const snap = await getDocs(q);
-      const docs = snap.docs.map(d => ({id: d.id, ...(d.data() as any)})).filter((d:any) => (d.url || d.fileUrl) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
-      setAvailableMedia(docs.map((d: any) => ({...d, url: d.url || d.fileUrl})));
+      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId).eq('project_id', targetId);
+      const filteredDocs = (docs || []).filter((d:any) => (d.url || d.file_url) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
+      setAvailableMedia(filteredDocs.map((d: any) => ({...d, url: d.url || d.file_url})));
     } catch(e) { addToast(t('error_load'), "error"); }
     finally { setIsMediaLoading(false); }
   };
@@ -746,7 +714,7 @@ const handleGenerateTeamSlide = async () => {
          if (currentSlide && currentSlide.dataPayload?.members) {
            const newMembers = [...currentSlide.dataPayload.members];
            newMembers[memberIdx].photoURL = selectedMedia.url;
-           await updateDoc(doc(db, 'slides', slideId), { dataPayload: { ...currentSlide.dataPayload, members: newMembers } });
+           await supabase.from('slides').update({ dataPayload: { ...currentSlide.dataPayload, members: newMembers } }).eq('id', slideId);
            addToast('Bild aktualisiert!', 'success');
          }
        }
@@ -775,7 +743,7 @@ const handleGenerateTeamSlide = async () => {
 
   const upc = (field: keyof Slide, value: any) => {
     if (!isPreviewMode && activeSlide) {
-      updateDoc(doc(db, 'slides', activeSlide.id), { [field]: value });
+      supabase.from('slides').update({ [field]: value }).eq('id', activeSlide.id);
     }
   };
 
@@ -1086,16 +1054,6 @@ const handleGenerateTeamSlide = async () => {
                      </div>
                    ))}
                  </div>
-                 
-                 {activeSlide && !isPreviewMode && (
-                   <div className="pt-4 border-t border-white/10">
-                     <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-lg p-1">
-                        {[{ id: 'title-only', icon: Type }, { id: 'split', icon: Columns }, { id: 'image-focus', icon: ImageIcon }, { id: 'text-only', icon: Layout }].map((l) => (
-                          <button type="button" key={l.id} onClick={() => updateDoc(doc(db, 'slides', activeSlide.id), { layout: l.id })} className={cn("flex-1 py-3 flex justify-center rounded-md transition-colors", activeSlide.layout === l.id ? "bg-white/10 text-white" : "text-white/50")}><l.icon size={18} /></button>
-                        ))}
-                     </div>
-                   </div>
-                 )}
               </div>
             )}
 
@@ -1247,14 +1205,14 @@ const handleGenerateTeamSlide = async () => {
                   <div className="h-6 w-px bg-border mx-1"></div>
                   <div className="flex flex-row bg-background border border-border rounded-lg p-0.5">
                     {[{ id: 'title-only', icon: Type }, { id: 'split', icon: Columns }, { id: 'image-focus', icon: ImageIcon }, { id: 'text-only', icon: Layout }].map((l) => (
-                      <button type="button" key={l.id} onClick={() => updateDoc(doc(db, 'slides', activeSlide.id), { layout: l.id })} className={cn("p-1.5 rounded-md transition-all", activeSlide.layout === l.id ? "bg-surface border border-border text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}><l.icon size={14} /></button>
+                      <button type="button" key={l.id} onClick={() => supabase.from('slides').update({ layout: l.id }).eq('id', activeSlide.id)} className={cn("p-1.5 rounded-md transition-all", activeSlide.layout === l.id ? "bg-surface border border-border text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}><l.icon size={14} /></button>
                     ))}
                   </div>
                   
                   <div className="flex flex-row items-center bg-background border border-border rounded-lg p-0.5">
-                    <button type="button" onClick={() => updateDoc(doc(db, 'slides', activeSlide.id), { fontSize: Math.max(10, (activeSlide.fontSize || 18) - 2) })} className="p-1.5 text-text-muted hover:text-text-primary"><Minus size={14} /></button>
+                    <button type="button" onClick={() => supabase.from('slides').update({ font_size: Math.max(10, (activeSlide.fontSize || 18) - 2) }).eq('id', activeSlide.id)} className="p-1.5 text-text-muted hover:text-text-primary"><Minus size={14} /></button>
                     <span className="text-xs font-bold w-6 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
-                    <button type="button" onClick={() => updateDoc(doc(db, 'slides', activeSlide.id), { fontSize: Math.min(120, (activeSlide.fontSize || 18) + 2) })} className="p-1.5 text-text-muted hover:text-text-primary"><Plus size={14} /></button>
+                    <button type="button" onClick={() => supabase.from('slides').update({ font_size: Math.min(120, (activeSlide.fontSize || 18) + 2) }).eq('id', activeSlide.id)} className="p-1.5 text-text-muted hover:text-text-primary"><Plus size={14} /></button>
                   </div>
                 </div>
               )}

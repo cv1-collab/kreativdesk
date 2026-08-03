@@ -225,31 +225,35 @@ export default function Dashboard() {
   const tooltipContentStyle = { backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', borderColor: theme === 'dark' ? '#27272a' : '#e4e4e7', color: theme === 'dark' ? '#fafafa' : '#09090b', borderRadius: '8px' };
   const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 
-  // === MANDANTENSICHERHEIT BEIM SPEICHERN ===
   const handleSavePdfToCloud = async (blob: Blob) => {
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Executive_Summary_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
-      await addDoc(collection(db, 'documents'), { 
+      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
+      await supabase.from('documents').insert({ 
         name: fileName, 
         url: downloadUrl, 
-        fileUrl: downloadUrl, 
-        size: formatBytes(blob.size), 
+        file_url: downloadUrl, 
+        size: `${Math.round(blob.size / 1024)} KB`, 
         type: 'application/pdf', 
-        ownerId: currentUser.uid,
-        companyId: currentUser.companyId, // <-- Mandanten-Zuweisung 
-        uploadedBy: currentUser.uid, 
-        createdAt: new Date().toISOString(), 
-        uploadedAt: new Date().toISOString(), 
-        isFolder: false, 
-        projectId: activeProject?.id, 
-        category: 'projects' 
+        owner_id: currentUser.uid,
+        company_id: currentUser.companyId,
+        uploaded_by: currentUser.uid, 
+        created_at: new Date().toISOString(), 
+        uploaded_at: new Date().toISOString(), 
+        is_folder: false, 
+        category: 'company', 
+        date: new Date().toLocaleDateString('de-CH')
       });
-      addToast('Erfolgreich exportiert', 'success'); setIsPdfStudioOpen(false);
-    } catch (error) { addToast('Fehler beim Export', 'error'); }
+      addToast(t('saved_cloud'), 'success');
+      setIsPdfStudioOpen(false);
+    } catch (error) {
+      addToast('Fehler beim Speichern in der Cloud', 'error');
+    }
   };
 
   return (

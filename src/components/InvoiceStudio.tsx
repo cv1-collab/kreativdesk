@@ -142,66 +142,52 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
     } else {
       if (!currentUser || !currentUser.companyId) return;
       try {
-        const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
-        await uploadBytes(storageRef, blob);
-        const url = await getDownloadURL(storageRef);
+        const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        const url = pubData.publicUrl;
         
-        let targetFolderId = '';
+        let targetFolderId = 'root';
         let targetCategory = 'projects';
         let targetProjectId: string | null = activeProjectId;
 
         if (activeProjectId === 'global') {
             targetCategory = 'company';
             targetProjectId = 'global';
-            const folderQ = query(
-              collection(db, 'documents'), 
-              and(
-                where('companyId', '==', currentUser.companyId), 
-                where('name', '==', '01_FINANZEN'), 
-                where('isFolder', '==', true), 
-                where('folderId', '==', 'root'),
-                or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-              )
-            );
-            const folderSnap = await getDocs(folderQ);
-            if (!folderSnap.empty) {
-                targetFolderId = folderSnap.docs[0].id;
+            const { data: existingFolder } = await supabase
+              .from('documents')
+              .select('id')
+              .eq('company_id', currentUser.companyId)
+              .eq('name', '01_FINANZEN')
+              .eq('is_folder', true)
+              .single();
+
+            if (existingFolder) {
+                targetFolderId = existingFolder.id;
             } else {
-                const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: currentUser.companyId, createdAt: new Date().toISOString() });
-                targetFolderId = newFolderRef.id;
+                const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: currentUser.companyId, created_at: new Date().toISOString() }).select().single();
+                if (newF) targetFolderId = newF.id;
             }
         } 
 
-        // FIX: size: blob.size integriert
-        await addDoc(collection(db, 'documents'), { 
+        await supabase.from('documents').insert({ 
           name: fileName, 
           url: url, 
-          fileUrl: url, 
+          file_url: url, 
           type: 'application/pdf', 
-          size: blob.size, 
-          isFolder: false, 
-          ownerId: currentUser.uid, 
-          companyId: currentUser.companyId, 
-          projectId: targetProjectId, 
-          folderId: targetFolderId, 
+          size: `${Math.round(blob.size / 1024)} KB`, 
+          is_folder: false, 
+          owner_id: currentUser.uid, 
+          company_id: currentUser.companyId, 
+          project_id: targetProjectId, 
+          folder_id: targetFolderId, 
           category: targetCategory, 
-          uploadedAt: new Date().toISOString() 
+          uploaded_at: new Date().toISOString() 
         });
         
-        await addDoc(collection(db, 'transactions'), { date: formData.date, description: `${type === 'invoice' ? 'Rechnung' : 'Offerte'}: ${formData.invoiceNumber}`, category: type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', amount: total, status: type === 'invoice' ? 'Offen' : 'Draft', ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: activeProjectId, url: url });
+        await supabase.from('transactions').insert({ date: formData.date, description: `${type === 'invoice' ? 'Rechnung' : 'Offerte'}: ${formData.invoiceNumber}`, category: type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', amount: total, status: type === 'invoice' ? 'Offen' : 'Draft', owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: activeProjectId, url: url });
         
-        // FIX: visibility: 'owner' integriert
-        await addDoc(collection(db, 'notifications'), { 
-          title: type === 'invoice' ? 'Neue Rechnung' : 'Neue Offerte', 
-          message: `${fileName} wurde erfolgreich erstellt.`, 
-          type: 'document', 
-          isRead: false, 
-          visibility: 'owner', 
-          companyId: currentUser.companyId, 
-          ownerId: currentUser.uid, 
-          createdAt: new Date().toISOString() 
-        });
-
         addToast('Erfolgreich gespeichert', 'success');
         onClose();
       } catch (e) {

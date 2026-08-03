@@ -117,14 +117,14 @@ export default function MeetChat() {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
           const finalStr = event.results[i][0].transcript.trim();
-          if (finalStr && (callId || joinCallId) && currentUser?.companyId && db) {
-             addDoc(collection(db, `videoCalls/${callId || joinCallId}/chatMessages`), {
+          if (finalStr && (callId || joinCallId) && currentUser?.companyId) {
+             supabase.from('chat_messages').insert({
                 sender: currentUser.displayName || 'Teilnehmer',
                 text: finalStr,
-                isTranscript: true,
-                timestamp: serverTimestamp(),
-                projectId: projectId || activeProjectId || 'global',
-                companyId: currentUser.companyId
+                is_transcript: true,
+                timestamp: Date.now(),
+                project_id: projectId || activeProjectId || 'global',
+                company_id: currentUser.companyId
              }).catch(console.error);
           }
         } else {
@@ -205,65 +205,40 @@ export default function MeetChat() {
     if (joinId && callStatus === 'idle' && !hasAutoJoined.current) {
       hasAutoJoined.current = true;
       const autoConnect = async () => {
-        const callDoc = await getDoc(doc(db, 'videoCalls', joinId));
-        if (callDoc.exists()) await joinCall(joinId);
-        else await startCall([], joinId);
+        await startCall([], joinId);
       };
       autoConnect();
     }
   }, [activeProjectId, setActiveProject, callStatus, joinCall, startCall]);
 
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.companyId) return;
+    if (!currentUser || !currentUser.companyId) return;
     
-    let q;
-    if (isInCall && (callId || joinCallId)) {
-      q = query(collection(db, `videoCalls/${callId || joinCallId}/chatMessages`), orderBy('timestamp', 'asc'));
-    } else {
-      q = query(
-        collection(db, 'chatMessages'), 
-        where('companyId', '==', currentUser.companyId), 
-        where('projectId', '==', projectId || activeProjectId || 'global'), 
-        orderBy('timestamp', 'asc')
-      );
-    }
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id, sender: data.sender || 'Unknown', avatar: data.avatar || 'U',
-          time: new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: data.text, isAI: data.isAI, reference: data.reference, createdAt: data.createdAt
-        };
-      }));
-    });
-    return () => unsubscribe();
-  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId]);
+    const fetchChatMessages = async () => {
+      const { data: msgs } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('company_id', currentUser.companyId)
+        .order('created_at', { ascending: true });
 
-  useEffect(() => {
-    if (!db || !currentUser || !currentUser.companyId) return;
-    const q = query(
-      collection(db, 'calendarEvents'),
-      and(
-        where('companyId', '==', currentUser.companyId),
-        where('type', '==', 'call'),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser.uid)
-        )
-      )
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const calls = snapshot.docs.map(doc => doc.data())
-        .filter((c: any) => c.projectId === (projectId || activeProjectId || 'global') || c.projectId === 'internal')
-        .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
-      
-      const relevantCalls = calls.filter(c => new Date(`${c.date}T${c.time}`).getTime() >= Date.now() - (2 * 60 * 60 * 1000));
-      setUpcomingCalls(relevantCalls);
-    });
-    return () => unsubscribe();
-  }, [currentUser, projectId, activeProjectId]);
+      if (msgs) {
+        setMessages(msgs.map(d => ({
+          id: d.id, sender: d.sender || 'Unknown', avatar: d.avatar || 'U',
+          time: new Date(d.created_at || d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: d.text, isAI: d.is_ai, reference: d.reference, createdAt: d.created_at
+        })));
+      }
+    };
+
+    fetchChatMessages();
+
+    const channel = supabase
+      .channel('chat-msg-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `company_id=eq.${currentUser.companyId}` }, fetchChatMessages)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId]);
 
   useEffect(() => {
     if (localVideoRef.current && localStream && !isScreenSharing) {
@@ -323,32 +298,24 @@ export default function MeetChat() {
 
   const handleFileAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser?.companyId || !db) return;
+    if (!file || !currentUser?.companyId) return;
     
     setIsUploadingFile(true);
     try {
-      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploadingFile(false);
-        return;
-      }
-      
       const fileName = `${Date.now()}_${file.name}`;
-      const storageRef = ref(storage, `${currentUser.companyId}/chat_attachments/${fileName}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, file.size);
+      const filePath = `${currentUser.companyId}/chat_attachments/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const url = pubData.publicUrl;
       
       const senderName = currentUser?.email?.split('@')[0] || 'User';
       const avatarInitials = senderName.substring(0, 2).toUpperCase();
-      const msgId = `msg-${Date.now()}`;
       
-      const collectionPath = (isInCall && (callId || joinCallId)) ? `videoCalls/${callId || joinCallId}/chatMessages` : 'chatMessages';
-      await setDoc(doc(db, collectionPath, msgId), {
-        id: msgId, sender: senderName, avatar: avatarInitials, senderId: currentUser.uid,
-        companyId: currentUser.companyId, 
-        projectId: projectId || activeProjectId || 'global', timestamp: Date.now(), text: `Dateianhang: ${file.name}`, fileUrl: url, createdAt: serverTimestamp()
+      await supabase.from('chat_messages').insert({
+        sender: senderName, avatar: avatarInitials, sender_id: currentUser.uid,
+        company_id: currentUser.companyId, 
+        project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: `Dateianhang: ${file.name}`, file_url: url, created_at: new Date().toISOString()
       });
       
     } catch (err) {
@@ -362,7 +329,7 @@ export default function MeetChat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !db || !currentUser?.companyId) return;
+    if (!newMessage.trim() || !currentUser?.companyId) return;
     
     const userMessage = newMessage;
     const senderName = currentUser?.email?.split('@')[0] || 'User';
@@ -370,48 +337,19 @@ export default function MeetChat() {
     setNewMessage('');
     
     try {
-      const msgId = `msg-${Date.now()}`;
-      const collectionPath = (isInCall && (callId || joinCallId)) ? `videoCalls/${callId || joinCallId}/chatMessages` : 'chatMessages';
-      await setDoc(doc(db, collectionPath, msgId), {
-        id: msgId, sender: senderName, avatar: avatarInitials, senderId: currentUser.uid,
-        companyId: currentUser.companyId, 
-        projectId: projectId || activeProjectId || 'global', timestamp: Date.now(), text: userMessage, createdAt: serverTimestamp()
+      await supabase.from('chat_messages').insert({
+        sender: senderName, avatar: avatarInitials, sender_id: currentUser.uid,
+        company_id: currentUser.companyId, 
+        project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: userMessage, created_at: new Date().toISOString()
       });
       
       if (userMessage.toLowerCase().includes('@ai') || userMessage.includes('?')) {
         setIsAITyping(true);
         let knowledgeContext = '';
         try {
-          const queryEmbeddingResult = await callGeminiEmbedAPI('gemini-embedding-2-preview', [userMessage]);
-          const queryEmbedding = queryEmbeddingResult.embeddings?.[0]?.values;
-          const q = query(collection(db, 'knowledgeDocs'), where('companyId', '==', currentUser.companyId));
-          const querySnapshot = await getDocs(q);
-          const docs = querySnapshot.docs.map((d: any) => d.data());
-          
-          if (docs.length > 0 && queryEmbedding) {
-            const allChunks: { text: string, title: string, score: number }[] = [];
-            docs.forEach(doc => {
-              if (doc.chunks && Array.isArray(doc.chunks)) {
-                doc.chunks.forEach((chunk: any) => {
-                  if (chunk.embedding) {
-                    let dotProduct = 0, normA = 0, normB = 0;
-                    for (let i = 0; i < queryEmbedding.length; i++) {
-                      dotProduct += queryEmbedding[i] * chunk.embedding[i];
-                      normA += queryEmbedding[i] * queryEmbedding[i];
-                      normB += chunk.embedding[i] * chunk.embedding[i];
-                    }
-                    allChunks.push({ text: chunk.text, title: doc.title, score: (normA === 0 || normB === 0) ? 0 : dotProduct / (Math.sqrt(normA) * Math.sqrt(normB)) });
-                  }
-                });
-              } else if (doc.content) {
-                allChunks.push({ text: doc.content.substring(0, 1500), title: doc.title, score: 0.5 });
-              }
-            });
-            allChunks.sort((a, b) => b.score - a.score);
-            const topChunks = allChunks.slice(0, 3);
-            if (topChunks.length > 0) {
-              knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${topChunks.map(c => `--- Document: ${c.title} ---\n${c.text}\n`).join('\n')}`;
-            }
+          const { data: docs } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId);
+          if (docs && docs.length > 0) {
+            knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${docs.slice(0, 3).map(c => `--- Document: ${c.name} ---\n${c.url}\n`).join('\n')}`;
           }
         } catch (err) { console.error('Knowledge search fail', err); }
 
@@ -428,12 +366,11 @@ export default function MeetChat() {
           responseText = responseText.replace(refMatch[0], '').trim();
         }
 
-        const aiMsgId = `msg-${Date.now()}`;
-        await setDoc(doc(db, 'chatMessages', aiMsgId), {
-          id: aiMsgId, sender: 'AI Concierge', avatar: 'AI', senderId: currentUser.uid,
-          companyId: currentUser.companyId, 
-          projectId: projectId || activeProjectId || 'global', timestamp: Date.now(), text: responseText, isAI: true,
-          reference: reference || null, createdAt: serverTimestamp()
+        await supabase.from('chat_messages').insert({
+          sender: 'AI Concierge', avatar: 'AI', sender_id: currentUser.uid,
+          company_id: currentUser.companyId, 
+          project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: responseText, is_ai: true,
+          reference: reference || null, created_at: new Date().toISOString()
         });
       }
     } catch (error: any) { console.error('AI chat fail', error); } finally { setIsAITyping(false); }
@@ -453,34 +390,33 @@ export default function MeetChat() {
 
   const handleScheduleCall = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCallEvent.title || !newCallEvent.date || !currentUser || !currentUser.companyId || !db) return;
+    if (!newCallEvent.title || !newCallEvent.date || !currentUser || !currentUser.companyId) return;
     try {
       const eventId = `evt-${Date.now()}`;
       const targetProjectId = projectId || activeProjectId || 'internal';
       
-      await setDoc(doc(db, 'calendarEvents', eventId), {
+      await supabase.from('calendar_events').insert({
         ...newCallEvent,
         type: 'call',
         id: eventId,
-        ownerId: currentUser.uid,
-        companyId: currentUser.companyId, 
-        projectId: targetProjectId,
+        owner_id: currentUser.uid,
+        company_id: currentUser.companyId, 
+        project_id: targetProjectId,
         participants: newCallEvent.participants || [],
         timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
-        createdAt: new Date().toISOString(),
-        meetingLink: `/project/${targetProjectId}/meet?join=${generatedMeetingId}`
+        created_at: new Date().toISOString(),
+        meeting_link: `/project/${targetProjectId}/meet?join=${generatedMeetingId}`
       });
       
       setIsScheduleModalOpen(false);
       setNewCallEvent({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] });
       
-      const msgId = `msg-${Date.now()}`;
       const sysMsgText = language === 'de' ? `Ein neuer Video-Call "${newCallEvent.title}" wurde für den ${newCallEvent.date} um ${newCallEvent.time} Uhr geplant.` : `A new video call "${newCallEvent.title}" has been scheduled for ${newCallEvent.date} at ${newCallEvent.time}.`;
 
-      await setDoc(doc(db, 'chatMessages', msgId), {
-        id: msgId, sender: 'System', avatar: 'SYS', senderId: currentUser.uid,
-        companyId: currentUser.companyId, 
-        projectId: projectId || activeProjectId || 'global', timestamp: Date.now(), text: sysMsgText, createdAt: serverTimestamp()
+      await supabase.from('chat_messages').insert({
+        sender: 'System', avatar: 'SYS', sender_id: currentUser.uid,
+        company_id: currentUser.companyId, 
+        project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: sysMsgText, created_at: new Date().toISOString()
       });
       addToast(t('schedule') + ' ' + t('completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }

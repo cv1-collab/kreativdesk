@@ -221,67 +221,44 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   useEffect(() => {
     if (!currentProjectId) return;
 
-    // 🔥 DEMO-MODUS SCHUTZSCHILD: Lädt die perfekten Dummy-Mängel!
+    // 🔥 DEMO-MODUS SCHUTZSCHILD: 
     if (currentProjectId === 'demo-1') {
       setDefects(DEMO_DEFECTS);
       return;
     }
 
-    if (!db) return;
-    const q = query(
-      collection(db, 'defects'), 
-      where('projectId', '==', currentProjectId)
-    );
-    const unsub = onSnapshot(q, (snap) => setDefects(snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Defect))));
-    return () => unsub();
+    if (!currentProjectId) return;
+    const fetchDefects = async () => {
+      const { data: defs } = await supabase
+        .from('defects')
+        .select('*')
+        .eq('project_id', currentProjectId);
+      if (defs) setDefects(defs as any);
+    };
+
+    fetchDefects();
+
+    const channel = supabase
+      .channel('defects-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'defects', filter: `project_id=eq.${currentProjectId}` }, fetchDefects)
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [currentProjectId]);
 
   useEffect(() => {
-    if (!db || !uploadSessionId || !showQrScanner) return;
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', uploadSessionId));
-    const unsub = onSnapshot(q, async (snapshot) => {
-      snapshot.docChanges().forEach(async (change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (data.url || data.base64Image) {
-            let base64ToProcess = data.base64Image;
-            let mimeToProcess = data.mimeType || 'image/jpeg';
-            if (!base64ToProcess && data.url) {
-               try {
-                  const res = await fetch(data.url);
-                  const blob = await res.blob();
-                  mimeToProcess = blob.type;
-                  const base64Str = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
-                  });
-                  base64ToProcess = base64Str.split(',')[1];
-               } catch(e) { console.error('Fetch error', e); }
-            }
-            if (data.url) setCurrentDefect(prev => ({ ...prev, imageUrl: data.url }));
-            setShowQrScanner(false);
-            addToast('Bild vom Smartphone empfangen! KI analysiert...', 'success');
-            await processDefectImageWithAI(base64ToProcess || null, mimeToProcess);
-            deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error);
-          }
-        }
-      });
-    });
-    return () => unsub();
+    if (!uploadSessionId || !showQrScanner) return;
   }, [uploadSessionId, showQrScanner, addToast]);
 
   const handleDropLogic = async (id: string, status: string) => {
     if (!id) return;
 
-    // Lokaler State Update für die interaktive Demo!
     if (currentProjectId === 'demo-1') {
       setDefects(prev => prev.map(d => d.id === id ? { ...d, status } : d));
       return;
     }
 
-    if (!db) return;
-    try { await updateDoc(doc(db, 'defects', id), { status }); } 
+    try { await supabase.from('defects').update({ status }).eq('id', id); } 
     catch (error) { addToast('Fehler', 'error'); }
   };
 
@@ -313,7 +290,6 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleSaveDefect = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Lokaler State Update für die interaktive Demo!
     if (currentProjectId === 'demo-1') {
        setIsSubmitting(true);
        setTimeout(() => {
@@ -332,19 +308,19 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
        return;
     }
 
-    if (!currentUser || !currentUser.companyId || !db || !currentProjectId) return;
+    if (!currentUser || !currentUser.companyId || !currentProjectId) return;
     setIsSubmitting(true);
     try {
       if (editingId) { 
-        await updateDoc(doc(db, 'defects', editingId), { ...currentDefect }); 
+        await supabase.from('defects').update({ ...currentDefect }).eq('id', editingId); 
       } else { 
         const newId = `DEF-${Date.now()}`; 
-        await setDoc(doc(db, 'defects', newId), { 
+        await supabase.from('defects').insert({ 
           ...currentDefect, 
           id: newId, 
-          projectId: currentProjectId, 
-          ownerId: currentUser.uid, 
-          companyId: currentUser.companyId, 
+          project_id: currentProjectId, 
+          owner_id: currentUser.uid, 
+          company_id: currentUser.companyId, 
           date: new Date().toISOString().split('T')[0] 
         }); 
       }
@@ -368,9 +344,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         return;
     }
 
-    if (!db) return;
     try { 
-      await deleteDoc(doc(db, 'defects', id)); 
+      await supabase.from('defects').delete().eq('id', id); 
       addToast(t('delete') + ' ' + t('completed'), 'success'); 
     } catch (error) { 
       addToast('Fehler beim Löschen', 'error'); 
@@ -443,58 +418,57 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Maengelliste_${activeProject?.name || 'Projekt'}_${Date.now()}.pdf`;
-      const storageReference = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageReference, blob);
-      const downloadUrl = await getDownloadURL(storageReference);
+      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
       
-      let targetFolderId = '';
+      let targetFolderId = 'root';
       if (currentProjectId) {
-        const folderQ = query(
-          collection(db, 'documents'), 
-          where('companyId', '==', currentUser.companyId),
-          where('name', '==', 'Mängel & Tickets'), 
-          where('isFolder', '==', true), 
-          where('projectId', '==', currentProjectId)
-        );
-        const folderSnap = await getDocs(folderQ);
-        
-        if (!folderSnap.empty) { 
-          targetFolderId = folderSnap.docs[0].id; 
-        } else { 
-          const newFolderRef = await addDoc(collection(db, 'documents'), { 
-            name: 'Mängel & Tickets', 
-            isFolder: true, 
-            category: 'projects', 
-            projectId: currentProjectId, 
-            ownerId: currentUser.uid, 
-            companyId: currentUser.companyId,
-            createdAt: new Date().toISOString() 
-          }); 
-          targetFolderId = newFolderRef.id; 
+        const { data: existingFolder } = await supabase
+          .from('documents')
+          .select('id')
+          .eq('company_id', currentUser.companyId)
+          .eq('name', 'Mängel & Tickets')
+          .eq('project_id', currentProjectId)
+          .single();
+
+        if (existingFolder) {
+          targetFolderId = existingFolder.id;
+        } else {
+          const { data: newF } = await supabase.from('documents').insert({
+            name: 'Mängel & Tickets',
+            is_folder: true,
+            category: 'projects',
+            project_id: currentProjectId,
+            owner_id: currentUser.uid,
+            company_id: currentUser.companyId,
+            created_at: new Date().toISOString()
+          }).select().single();
+          if (newF) targetFolderId = newF.id;
         }
       }
       
-      await addDoc(collection(db, 'documents'), { 
+      await supabase.from('documents').insert({ 
         name: fileName, 
         url: downloadUrl, 
-        fileUrl: downloadUrl, 
-        size: formatBytes(blob.size), 
+        file_url: downloadUrl, 
+        size: `${Math.round(blob.size / 1024)} KB`, 
         type: 'application/pdf', 
-        ownerId: currentUser.uid, 
-        companyId: currentUser.companyId,
-        uploadedBy: currentUser.uid, 
-        createdAt: new Date().toISOString(), 
-        uploadedAt: new Date().toISOString(), 
-        isFolder: false, 
-        projectId: currentProjectId || null, 
-        folderId: targetFolderId || null, 
-        category: 'projects',
-        date: new Date().toLocaleDateString('de-CH')
+        owner_id: currentUser.uid, 
+        company_id: currentUser.companyId,
+        uploaded_by: currentUser.uid, 
+        created_at: new Date().toISOString(), 
+        uploaded_at: new Date().toISOString(), 
+        is_folder: false, 
+        project_id: currentProjectId || null, 
+        folder_id: targetFolderId || null, 
+        category: 'projects'
       });
-      
-      addToast(t('saved_cloud'), 'success');
+      addToast(t('upload_success'), 'success');
       setIsPdfStudioOpen(false);
-    } catch (error) {
+    } catch (e) {
       addToast('Fehler beim Speichern in der Cloud', 'error');
     }
   };

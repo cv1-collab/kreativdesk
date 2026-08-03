@@ -249,12 +249,10 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       return;
     }
 
-    if (!activeProject || !db) return;
+    if (!activeProject) return;
     setIsSavingLink(true);
     try {
-      await updateDoc(doc(db, 'projects', activeProject.id), {
-        siteLocation: locationInput
-      });
+      await supabase.from('projects').update({ site_location: locationInput }).eq('id', activeProject.id);
       addToast(t('location_saved'), "success");
       setIsWeatherModalOpen(false);
     } catch (error) {

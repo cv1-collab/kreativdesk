@@ -442,9 +442,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     // ==========================================
-    // ☁️ REGULÄRE FIREBASE-LOGIK (Live-App)
+    // ☁️ REGULÄRE SUPABASE-LOGIK (Live-App)
     // ==========================================
-    if (!currentProjectId || !db) return;
+    if (!currentProjectId) return;
 
     if (currentProjectId === 'demo-1') {
        const mockPlan = {
@@ -468,25 +468,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-    const q = query(
-      collection(db, 'cad_plans'), 
-      and(
-        where('projectId', '==', currentProjectId),
-        where('companyId', '==', safeCompanyId),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser?.uid || '')
-        )
-      )
-    );
-    return onSnapshot(q, (snap) => {
-      let plans = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (currentUser && currentUser.companyId) {
-        plans = plans.filter((p: any) => p.companyId === currentUser.companyId);
-      }
-      
-      // 🔥 LÖSUNG: Wenn das Testprojekt noch keinen Plan hat, zeigen wir den Dummy-Plan!
-      if (plans.length === 0) {
+    const fetchPlans = async () => {
+      const { data: plans } = await supabase
+        .from('cad_plans')
+        .select('*')
+        .eq('project_id', currentProjectId)
+        .eq('company_id', safeCompanyId);
+
+      if (plans && plans.length > 0) {
+        setProjectPlans(plans as any);
+        if (!activePlanId) loadPlanDataToEditor(plans[0]);
+      } else {
         const fallbackPlan = {
           id: 'system-fallback-plan',
           projectId: currentProjectId,
@@ -501,13 +493,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           activeLayerId: 'default'
         };
         setProjectPlans([fallbackPlan]);
-        if (!activePlanId || activePlanId === 'system-fallback-plan') loadPlanDataToEditor(fallbackPlan);
-      } else {
-        setProjectPlans(plans);
-        if (!activePlanId || activePlanId === 'system-fallback-plan') loadPlanDataToEditor(plans[0]);
+        if (!activePlanId) loadPlanDataToEditor(fallbackPlan);
       }
-    });
-  }, [currentProjectId, currentUser, isDemoMode, demoData, activePlanId, activeProject]);
+    };
+    fetchPlans();
+  }, [currentProjectId, currentUser]);
 
   const loadPlanDataToEditor = (planData: any) => {
     setActivePlanId(planData.id);
@@ -636,18 +626,19 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         return;
       }
 
-      const storageRef = ref(storage, `${currentUser?.companyId}/cad_plans/${Date.now()}_${finalFileName}`);
-      await uploadBytes(storageRef, finalFileToUpload);
-      const url = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, finalFileToUpload.size);
+      const filePath = `${currentUser?.companyId}/cad_plans/${Date.now()}_${finalFileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, finalFileToUpload, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const url = pubData.publicUrl;
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
       reader.readAsDataURL(finalFileToUpload);
 
-      const newPlan = { projectId: currentProjectId, companyId: currentUser?.companyId, planName: finalFileName, planImage: url, paperFormat: 'A3', paperOrientation: 'landscape', planScale: 50, elements: [], layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }], activeLayerId: 'default' };
-      const docRef = await addDoc(collection(db, 'cad_plans'), newPlan);
-      loadPlanDataToEditor({ id: docRef.id, ...newPlan });
+      const newPlan = { project_id: currentProjectId, company_id: currentUser?.companyId, plan_name: finalFileName, plan_image: url, paper_format: 'A3', paper_orientation: 'landscape', plan_scale: 50, elements: [], layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }], active_layer_id: 'default' };
+      const { data: createdPlan } = await supabase.from('cad_plans').insert(newPlan).select().single();
+      if (createdPlan) loadPlanDataToEditor({ id: createdPlan.id, ...newPlan });
     } catch (e) {
       addToast(t('upload_failed'), "error");
     } finally { setIsUploading(false); event.target.value = ''; }
@@ -682,17 +673,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          finalFileName = finalFileToUpload.name;
       }
 
-      const isAllowed = await checkStorageLimit(currentUser.companyId, finalFileToUpload.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploadingOverlay(false);
-        return;
-      }
-
-      const storageRef = ref(storage, `${currentUser?.companyId}/cad_plans/overlay_${Date.now()}_${finalFileName}`);
-      await uploadBytes(storageRef, finalFileToUpload);
-      const url = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, finalFileToUpload.size);
+      const filePath = `${currentUser?.companyId}/cad_plans/overlay_${Date.now()}_${finalFileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, finalFileToUpload, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const url = pubData.publicUrl;
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
@@ -717,7 +702,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (!activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht überschrieben werden. Lade bitte einen eigenen Plan hoch.", "info");
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'cad_plans', activePlanId), { elements, layers, activeLayerId, updatedAt: new Date().toISOString() });
+      await supabase.from('cad_plans').update({ elements, layers, active_layer_id: activeLayerId, updated_at: new Date().toISOString() }).eq('id', activePlanId);
       addToast(t('save') + " ok", "success");
     } finally { setIsSaving(false); }
   };
@@ -725,18 +710,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const handleDeletePlan = async () => {
     if (activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht gelöscht werden.", "info");
     if (activePlanId && window.confirm(t('confirm_delete_plan'))) {
-      if (planImage && planImage.includes('firebase')) {
-        try {
-          const fileRef = ref(storage, planImage);
-          const meta = await getMetadata(fileRef).catch(() => null);
-          await deleteObject(fileRef).catch(console.error);
-          if (meta && meta.size && currentUser?.companyId) {
-            await decrementStorage(currentUser.companyId, Number(meta.size));
-          }
-        } catch (e) { console.error("Error deleting plan image from storage:", e); }
-      }
-      
-      await deleteDoc(doc(db, 'cad_plans', activePlanId));
+      await supabase.from('cad_plans').delete().eq('id', activePlanId);
       setPlanImage(null); setActivePlanId(null);
     }
   };
@@ -1103,31 +1077,26 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `PlanExport_${(planName || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
-      const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        return;
-      }
+      const filePath = `${currentUser?.companyId}/documents/${currentUser.uid}/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
 
-      const storageRef = ref(storage, `${currentUser?.companyId}/documents/${currentUser.uid}/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, blob.size);
-
-      await addDoc(collection(db, 'documents'), {
+      await supabase.from('documents').insert({
         name: fileName,
         url: downloadUrl,
-        fileUrl: downloadUrl,
-        projectId: currentProjectId,
+        file_url: downloadUrl,
+        project_id: currentProjectId,
         category: currentProjectId === 'global' ? 'company' : 'projects', 
-        ownerId: currentUser.uid,
-        companyId: currentUser.companyId,
-        uploadedBy: currentUser.uid,
+        owner_id: currentUser.uid,
+        company_id: currentUser.companyId,
+        uploaded_by: currentUser.uid,
         type: 'application/pdf',
-        size: formatBytes(blob.size), 
-        isFolder: false,
-        createdAt: new Date().toISOString(), 
-        uploadedAt: new Date().toISOString(),
+        size: `${Math.round(blob.size / 1024)} KB`,
+        is_folder: false,
+        created_at: new Date().toISOString(), 
+        uploaded_at: new Date().toISOString(),
         date: new Date().toLocaleDateString('de-CH')
       });
 
@@ -1146,7 +1115,6 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     newPin.isSynced = true; 
     setElements([...elements, newPin]);
 
-    // 🔥 Offline-Weiche
     if (isDemoMode) {
       addToast(t('defect_saved'), 'success'); 
       setDefectPrompt(null);
@@ -1154,38 +1122,33 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       return;
     }
     
-    if (currentUser && currentUser.companyId && db) {
+    if (currentUser && currentUser.companyId) {
       try {
         let imageUrl = '';
-        if (defectPrompt.file && storage) {
-          const isAllowed = await checkStorageLimit(currentUser.companyId, defectPrompt.file.size);
-          if (!isAllowed) {
-            addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-            setIsSavingDefect(false);
-            return;
+        if (defectPrompt.file) {
+          const filePath = `${currentUser?.companyId}/pdf_exports/${defectPrompt.file.name}`;
+          const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, defectPrompt.file, { upsert: true });
+          if (!upErr) {
+            const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+            imageUrl = pubData.publicUrl;
           }
-
-          const storageRef = ref(storage, `${currentUser?.companyId}/pdf_exports/${defectPrompt.file.name}`);
-          await uploadBytes(storageRef, defectPrompt.file); 
-          imageUrl = await getDownloadURL(storageRef);
-          await incrementStorage(currentUser.companyId, defectPrompt.file.size);
         }
 
-        await setDoc(doc(db, 'defects', newPin.id), { 
+        await supabase.from('defects').upsert({ 
           id: newPin.id, 
           title: newPin.description, 
           status: 'To Do', 
           priority: 'High', 
           assignee: 'Unassigned', 
           date: new Date().toISOString().split('T')[0], 
-          createdAt: new Date().toISOString(), 
+          created_at: new Date().toISOString(), 
           trade: 'Planung', 
           location: `2D Plan (${planName || 'Unbenannt'})`, 
           description: `Erfasst im 2D Plan Editor.`, 
-          imageUrl: imageUrl, 
-          ownerId: currentUser.uid, 
-          companyId: currentUser.companyId,
-          projectId: currentProjectId 
+          image_url: imageUrl, 
+          owner_id: currentUser.uid, 
+          company_id: currentUser.companyId,
+          project_id: currentProjectId 
         });
 
         addToast(t('defect_saved'), 'success'); 

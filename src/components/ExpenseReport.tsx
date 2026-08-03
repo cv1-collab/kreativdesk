@@ -118,45 +118,13 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
   }, []);
 
   useEffect(() => {
-    if (!db || !sessionId) return;
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', sessionId));
-    const unsub = onSnapshot(q, async (snapshot) => {
-      snapshot.docChanges().forEach(async (change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          const imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
-          if (imgSrc) setReceipts(prev => prev.includes(imgSrc) ? prev : [...prev, imgSrc]);
-          
-          if (imgSrc) {
-            let base64ToProcess = data.base64Image;
-            let mimeToProcess = data.mimeType || 'image/jpeg';
-            if (!base64ToProcess && data.url) {
-               try {
-                  const res = await fetch(data.url);
-                  const blob = await res.blob();
-                  mimeToProcess = blob.type;
-                  const base64Str = await new Promise<string>((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(blob);
-                  });
-                  base64ToProcess = base64Str.split(',')[1];
-               } catch(e) { console.error('Fetch receipt error', e); }
-            }
-            await processImageWithAI(base64ToProcess || null, data.url || null, mimeToProcess);
-          }
-          deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error);
-        }
-      });
-    });
-    return () => unsub();
-  }, [sessionId]);
+    if (!sessionId) return;
+  }, [sessionId, t]);
 
   const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string) => {
     setIsAnalyzingAI(true);
     addToast(t('analyzing_ai'), 'info');
     try {
-      const analyzeReceipt = httpsCallable(functions, 'analyzeReceipt');
       const result = await analyzeReceipt({ base64Image: base64Data, imageUrl: imageUrl, mimeType });
       const aiData = result.data as any;
       
@@ -231,61 +199,34 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
     try {
-      const isAllowed = await checkStorageLimit(safeCompanyId, blob.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsSubmitting(false);
-        return;
-      }
       const fileName = `Spesen_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const finalPdfUrl = await getDownloadURL(storageRef);
-      await incrementStorage(safeCompanyId, blob.size);
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const finalPdfUrl = pubData.publicUrl;
 
-      let targetFolderId = '';
-      const folderQ = query(
-        collection(db, 'documents'), 
-        and(
-          where('companyId', '==', safeCompanyId), 
-          where('name', '==', '01_FINANZEN'), 
-          where('isFolder', '==', true), 
-          where('folderId', '==', 'root'),
-          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-        )
-      );
-      const folderSnap = await getDocs(folderQ);
-      if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
-      else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }
-
-      await addDoc(collection(db, 'transactions'), { 
-        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', projectId: headerData.projectId || 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...receipts], createdAt: new Date().toISOString() 
-      });
-
-      // FIX: size: blob.size integriert
-      await addDoc(collection(db, 'documents'), { 
-        name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'application/pdf', size: blob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() 
-      });
-
-      // Fallback-Schleife für Kamera/Bild-Belege der Spesen (inkl. size)
-      for (let i = 0; i < receipts.length; i++) {
-        if (receipts[i].startsWith('data:image')) {
-          const fetchRes = await fetch(receipts[i]); const imgBlob = await fetchRes.blob();
-          const isImgAllowed = await checkStorageLimit(safeCompanyId, imgBlob.size);
-          if (!isImgAllowed) {
-             addToast('Speicherplatz-Limit erreicht (Belege)! Bitte upgrade.', 'error');
-             continue;
-          }
-          const imgRef = ref(storage, `${safeCompanyId}/documents/Spesen_Beleg_${Date.now()}_${i}.png`);
-          await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
-          await incrementStorage(safeCompanyId, imgBlob.size);
-          
-          await addDoc(collection(db, 'documents'), { name: `Spesen_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'image/png', size: imgBlob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
-        }
+      let targetFolderId = 'root';
+      const { data: existingFolder } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('company_id', safeCompanyId)
+        .eq('name', '01_FINANZEN')
+        .eq('is_folder', true)
+        .single();
+      if (existingFolder) { targetFolderId = existingFolder.id; } 
+      else { 
+        const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().single(); 
+        if (newF) targetFolderId = newF.id; 
       }
 
-      // FIX: visibility: 'owner' integriert
-      await addDoc(collection(db, 'notifications'), { title: 'Neue Spesenabrechnung', message: `${fileName} wurde in 01_FINANZEN abgelegt.`, type: 'document', isRead: false, visibility: 'owner', companyId: safeCompanyId, ownerId: currentUser.uid, createdAt: new Date().toISOString() });
+      await supabase.from('transactions').insert({ 
+        type: 'expense', amount: totalAmount, category: 'Spesen', description: `Spesenabrechnung (${positions.length} Positionen)`, date: headerData.date, status: 'Pending', project_id: headerData.projectId || 'global', owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...receipts], created_at: new Date().toISOString() 
+      });
+
+      await supabase.from('documents').insert({ 
+        name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString() 
+      });
 
       addToast(t('ext_costs_booked'), "success"); 
       setIsPdfStudioOpen(false);

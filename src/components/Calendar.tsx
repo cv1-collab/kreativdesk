@@ -443,20 +443,20 @@ export default function Calendar() {
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    // 🔥 AUTO-SAVE BLOCKIEREN IM DEMO MODUS
-    if (isDemoMode || isInitialLoad || !activeScheduleId || !db || !currentUser?.companyId) return;
+    if (isDemoMode || isInitialLoad || !activeScheduleId || !currentUser?.companyId) return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
     autoSaveTimeout.current = setTimeout(() => {
       setSchedules(prevSchedules => {
          const updated = prevSchedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
          const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-         setDoc(doc(db, 'projectSchedules', scheduleDocId), { schedules: updated, activeScheduleId, companyId: currentUser.companyId }, { merge: true });
+         supabase.from('project_schedules').upsert({ id: scheduleDocId, schedules: updated, active_schedule_id: activeScheduleId, company_id: currentUser.companyId });
          return updated;
       });
     }, 1000);
     return () => clearTimeout(autoSaveTimeout.current!);
   }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, isDemoMode]);
+
   const setTargetYearHelper = (year: number) => {
     setTargetYear(year);
   };
@@ -476,47 +476,50 @@ export default function Calendar() {
 
   const handleCreateSchedule = () => {
     const name = window.prompt("Name des Zeitplans:", "Neuer Plan");
-    if (!name || !db || !currentUser?.companyId) return;
+    if (!name || !currentUser?.companyId) return;
     const newSchedule: Schedule = { id: `s-${Date.now()}`, name, targetYear: new Date().getFullYear(), ganttTasks: [], smartMarkers: [], shapes: [] };
     const updatedSchedules = [...schedules, newSchedule];
     setSchedules(updatedSchedules);
     const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-    setDoc(doc(db, 'projectSchedules', scheduleDocId), { 
+    supabase.from('project_schedules').upsert({ 
+      id: scheduleDocId,
       schedules: updatedSchedules, 
-      activeScheduleId: newSchedule.id,
-      companyId: currentUser.companyId
-    }, { merge: true });
+      active_schedule_id: newSchedule.id,
+      company_id: currentUser.companyId
+    });
     handleSwitchSchedule(newSchedule.id, updatedSchedules);
     setIsLibraryOpen(false);
   };
 
   const handleRenameSchedule = (id: string, currentName: string) => {
     const newName = window.prompt(t('rename'), currentName);
-    if (newName && newName !== currentName && db && currentUser?.companyId) {
+    if (newName && newName !== currentName && currentUser?.companyId) {
       const newSchedules = schedules.map(s => s.id === id ? { ...s, name: newName } : s);
       setSchedules(newSchedules);
       if (id === activeScheduleId) setDocHeader(prev => ({ ...prev, title: newName }));
       const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-      setDoc(doc(db, 'projectSchedules', scheduleDocId), { 
+      supabase.from('project_schedules').upsert({ 
+        id: scheduleDocId,
         schedules: newSchedules, 
-        activeScheduleId,
-        companyId: currentUser.companyId
-      }, { merge: true });
+        active_schedule_id: activeScheduleId,
+        company_id: currentUser.companyId
+      });
     }
   };
 
   const handleDeleteSchedule = (id: string) => {
     if (schedules.length <= 1) return addToast("Mindestens ein Plan muss bestehen bleiben.", "error");
-    if (window.confirm(t('confirm_delete')) && db && currentUser?.companyId) {
+    if (window.confirm(t('confirm_delete')) && currentUser?.companyId) {
       const newSchedules = schedules.filter(s => s.id !== id);
       const newActive = activeScheduleId === id ? newSchedules[0].id : activeScheduleId;
       setSchedules(newSchedules);
       const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-      setDoc(doc(db, 'projectSchedules', scheduleDocId), { 
+      supabase.from('project_schedules').upsert({ 
+        id: scheduleDocId,
         schedules: newSchedules, 
-        activeScheduleId: newActive,
-        companyId: currentUser.companyId
-      }, { merge: true });
+        active_schedule_id: newActive,
+        company_id: currentUser.companyId
+      });
       if (activeScheduleId === id) handleSwitchSchedule(newActive!, newSchedules);
     }
   };
@@ -569,20 +572,19 @@ export default function Calendar() {
   };
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return '';
-    const folderQ = query(
-      collection(db, 'documents'), 
-      where('name', '==', folderName), 
-      where('isFolder', '==', true), 
-      where('projectId', '==', currentProjectId),
-      where('companyId', '==', currentUser.companyId)
-    );
-    const folderSnap = await getDocs(folderQ);
-    if (!folderSnap.empty) return folderSnap.docs[0].id;
-    const newFolderRef = await addDoc(collection(db, 'documents'), {
-      name: folderName, isFolder: true, category: docCategory, ownerId: currentUser.uid, projectId: currentProjectId, companyId: currentUser.companyId, createdAt: new Date().toISOString()
-    });
-    return newFolderRef.id;
+    if (!currentUser || !currentUser.companyId || !currentProjectId) return 'root';
+    const { data: existing } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('name', folderName)
+      .eq('project_id', currentProjectId)
+      .eq('company_id', currentUser.companyId)
+      .single();
+    if (existing) return existing.id;
+    const { data: newF } = await supabase.from('documents').insert({
+      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, project_id: currentProjectId, company_id: currentUser.companyId, created_at: new Date().toISOString()
+    }).select().single();
+    return newF ? newF.id : 'root';
   };
 
   const handlePdfLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -598,36 +600,36 @@ export default function Calendar() {
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Projektplan_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
 
       const docCategory = currentProjectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolderLocal("Kalender & Zeitpläne", docCategory);
 
-      await addDoc(collection(db, 'documents'), {
+      await supabase.from('documents').insert({
         name: fileName,
         url: downloadUrl,
-        fileUrl: downloadUrl,
-        projectId: currentProjectId,
-        folderId: targetFolderId, 
+        file_url: downloadUrl,
+        project_id: currentProjectId,
+        folder_id: targetFolderId, 
         category: docCategory, 
-        ownerId: currentUser.uid,
-        companyId: currentUser.companyId,
-        uploadedBy: currentUser.uid,
+        owner_id: currentUser.uid,
+        company_id: currentUser.companyId,
+        uploaded_by: currentUser.uid,
         type: 'application/pdf',
-        size: formatBytes(blob.size), 
-        isFolder: false,
-        createdAt: new Date().toISOString(), 
-        uploadedAt: new Date().toISOString(),
+        size: `${Math.round(blob.size / 1024)} KB`, 
+        is_folder: false,
+        created_at: new Date().toISOString(),
+        uploaded_at: new Date().toISOString(),
         date: new Date().toLocaleDateString('de-CH')
       });
-
-      addToast(t('saved_cloud'), 'success');
+      addToast(t('pdf_saved'), 'success');
       setIsPdfStudioOpen(false);
-    } catch (error) {
-      console.error(error);
-      addToast(t('export_error') || 'Export Fehler', 'error');
+    } catch (e) {
+      addToast(t('upload_failed'), 'error');
     }
   };
 

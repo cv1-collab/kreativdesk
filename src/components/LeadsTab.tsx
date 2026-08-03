@@ -486,14 +486,14 @@ export default function LeadsTab() {
 
     try {
       const contactData = {
-        firstName: lead.firstName || '', lastName: lead.lastName || '',
+        first_name: lead.firstName || '', last_name: lead.lastName || '',
         email: lead.email || '', phone: lead.phone || '',
         company: lead.company || '', description: lead.message || '',
-        status: 'Neu', isExternal: true, createdAt: new Date().toISOString(),
-        companyId: safeCompanyId
+        status: 'Neu', is_external: true, created_at: new Date().toISOString(),
+        company_id: safeCompanyId
       };
-      await addDoc(collection(db, 'companyUsers'), contactData);
-      await updateDoc(doc(db, 'leads', lead.id), { status: 'Converted' });
+      await supabase.from('company_users').insert(contactData);
+      await supabase.from('leads').update({ status: 'Converted' }).eq('id', lead.id);
       addToast('Lead in CRM übertragen!', 'success');
       if (editingLead?.id === lead.id) setIsModalOpen(false);
     } catch(e) { 
@@ -516,28 +516,25 @@ export default function LeadsTab() {
 
     try {
       const fileName = `Leads_Report_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
       
-      const folderQ = query(
-        collection(db, 'documents'), 
-        and(
-          where('companyId', '==', safeCompanyId), 
-          where('projectId', '==', 'global'), 
-          where('name', '==', '04_SALES'), 
-          where('isFolder', '==', true),
-          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-        )
-      );
-      const folderSnap = await getDocs(folderQ);
-      let targetFolderId = 'root';
-      if (!folderSnap.empty) targetFolderId = folderSnap.docs[0].id;
+      const { data: existingFolder } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('company_id', safeCompanyId)
+        .eq('project_id', 'global')
+        .eq('name', '04_SALES')
+        .single();
+      let targetFolderId = existingFolder ? existingFolder.id : 'root';
       
-      await addDoc(collection(db, 'documents'), {
-        name: `Leads_Report_${new Date().toISOString().split('T')[0]}.pdf`, url: downloadUrl, projectId: 'global', folderId: targetFolderId, 
-        category: 'company', ownerId: currentUser.uid, companyId: safeCompanyId, type: 'application/pdf', size: formatBytes(blob.size), 
-        isFolder: false, createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString()
+      await supabase.from('documents').insert({
+        name: `Leads_Report_${new Date().toISOString().split('T')[0]}.pdf`, url: downloadUrl, project_id: 'global', folder_id: targetFolderId, 
+        category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, 
+        is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString()
       });
       addToast(t('pdf_exported'), 'success'); 
       setIsPdfStudioOpen(false);

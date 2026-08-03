@@ -344,11 +344,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Fehler', 'error'); return; } 
     
     try {
-      await addDoc(collection(db, 'timeEntries'), {
-        userId: timeEntryForm.userId, projectId: timeEntryForm.projectId, date: timeEntryForm.date, 
-        hours: finalHours, description: timeEntryForm.description, hourlyRate: timeEntryForm.hourlyRate, 
-        isBillable: timeEntryForm.isBillable, createdAt: new Date().toISOString(),
-        companyId: safeCompanyId, ownerId: currentUser.uid
+      await supabase.from('time_entries').insert({
+        user_id: timeEntryForm.userId, project_id: timeEntryForm.projectId, date: timeEntryForm.date, 
+        hours: finalHours, description: timeEntryForm.description, hourly_rate: timeEntryForm.hourlyRate, 
+        is_billable: timeEntryForm.isBillable, created_at: new Date().toISOString(),
+        company_id: safeCompanyId, owner_id: currentUser.uid
       });
       if (timeTrackingMode === 'timer') { setTimerSeconds(0); setIsTimerRunning(false); }
       setTimeEntryForm({ ...timeEntryForm, hours: 0, description: '' }); 
@@ -374,24 +374,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         return;
       }
 
-      // 🔥 FIX: Deep Linking ?join= Parameter setzen
-      const eventData = { 
-        ...newEvent, createdAt: new Date().toISOString(), 
-        meetingLink: newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?join=meet-${Date.now()}` : null,
-        companyId: safeCompanyId, ownerId: currentUser.uid
-      };
-      await addDoc(collection(db, 'calendarEvents'), eventData);
-      
-      // Notifications System Trigger
-      await addDoc(collection(db, 'notifications'), {
-        title: 'Neuer Termin',
-        message: `Der Termin "${newEvent.title}" wurde erstellt.`,
-        type: 'event',
-        isRead: false,
-        visibility: 'company',
-        companyId: safeCompanyId,
-        ownerId: currentUser.uid,
-        createdAt: new Date().toISOString()
+      await supabase.from('calendar_events').insert({ 
+        ...newEvent, created_at: new Date().toISOString(), 
+        meeting_link: newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?join=meet-${Date.now()}` : null,
+        company_id: safeCompanyId, owner_id: currentUser.uid, project_id: newEvent.projectId
       });
 
       setIsEventModalOpen(false);
@@ -404,14 +390,14 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     e.preventDefault();
     if (!selectedEvent || !selectedEvent.projectId) return;
     try {
-      await updateDoc(doc(db, 'calendarEvents', selectedEvent.id), {
+      await supabase.from('calendar_events').update({
         title: selectedEvent.title,
         date: selectedEvent.date,
         time: selectedEvent.time,
         description: selectedEvent.description || '',
-        projectId: selectedEvent.projectId,
+        project_id: selectedEvent.projectId,
         participants: selectedEvent.participants || []
-      });
+      }).eq('id', selectedEvent.id);
       addToast(t('completed'), 'success');
       setSelectedEvent(null);
     } catch (err) { addToast('Fehler', 'error'); }
@@ -421,7 +407,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     e.stopPropagation();
     if (window.confirm(t('delete') + '?')) {
       try { 
-        await deleteDoc(doc(db, 'calendarEvents', eventId)); 
+        await supabase.from('calendar_events').delete().eq('id', eventId); 
         addToast(t('delete') + ' ' + t('completed'), 'success'); 
         setSelectedEvent(null);
       } 
@@ -433,7 +419,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     e.preventDefault();
     const eventId = e.dataTransfer.getData('text/plain');
     if (eventId) {
-      try { await updateDoc(doc(db, 'calendarEvents', eventId), { date: newDateStr }); addToast(t('completed'), 'success'); } 
+      try { await supabase.from('calendar_events').update({ date: newDateStr }).eq('id', eventId); addToast(t('completed'), 'success'); } 
       catch (err) { addToast('Fehler', 'error'); }
     }
   };
@@ -446,6 +432,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     } catch (err) {
       addToast('Error', 'error');
     }
+  };
+
+  const renderCalendarGrid = () => {
+    return null;
   };
 
   const renderMonthGrid = () => {
@@ -488,14 +478,18 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   };
 
   const ensureFolder = async (folderName: string) => {
-    if (!currentUser || !currentUser.uid) return '';
+    if (!currentUser || !currentUser.uid) return 'root';
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const docsRef = collection(db, 'documents');
-    const folderQ = query(docsRef, where('name', '==', folderName), where('isFolder', '==', true), where('projectId', '==', 'global'), where('companyId', '==', safeCompanyId));
-    const folderSnap = await getDocs(folderQ);
-    if (!folderSnap.empty) return folderSnap.docs[0].id;
-    const newFolderRef = await addDoc(docsRef, { name: folderName, isFolder: true, category: 'company', ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', createdAt: new Date().toISOString() });
-    return newFolderRef.id;
+    const { data: existing } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('name', folderName)
+      .eq('is_folder', true)
+      .eq('company_id', safeCompanyId)
+      .single();
+    if (existing) return existing.id;
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().single();
+    return newF ? newF.id : 'root';
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
@@ -503,22 +497,25 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     try {
       const fileName = `${printType === 'rapport' ? 'Rapport' : 'Agenda'}_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
       const targetFolderId = await ensureFolder("01_FINANZEN");
-      await addDoc(collection(db, 'documents'), {
+      await supabase.from('documents').insert({
         name: fileName,
         url: downloadUrl,
-        projectId: 'global',
-        folderId: targetFolderId,
+        file_url: downloadUrl,
+        project_id: 'global',
+        folder_id: targetFolderId,
         category: 'company',
-        ownerId: currentUser.uid,
-        companyId: safeCompanyId,
+        owner_id: currentUser.uid,
+        company_id: safeCompanyId,
         type: 'application/pdf',
-        size: formatBytes(blob.size),
-        isFolder: false,
-        createdAt: new Date().toISOString()
+        size: `${Math.round(blob.size / 1024)} KB`,
+        is_folder: false,
+        created_at: new Date().toISOString()
       });
       addToast(t('pdf_exported'), 'success');
       setIsPdfStudioOpen(false);
@@ -530,7 +527,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const handleDeleteTimeEntry = async (entryId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm(t('delete') + '?')) {
-      try { await deleteDoc(doc(db, 'timeEntries', entryId)); addToast(t('delete') + ' ' + t('completed'), 'success'); } 
+      try { await supabase.from('time_entries').delete().eq('id', entryId); addToast(t('delete') + ' ' + t('completed'), 'success'); } 
       catch (err) { addToast('Fehler', 'error'); }
     }
   };

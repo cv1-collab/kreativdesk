@@ -102,33 +102,7 @@ export default function PublicLeadForm() {
 
   // Listener für Smartphone-Daten
   useEffect(() => {
-    if (!db || !sessionId || isMobileOrTablet) return;
-    
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', sessionId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (data.contactData) {
-            const cd = data.contactData;
-            
-            setFormData(prev => ({
-              ...prev,
-              firstName: cd.firstName || prev.firstName,
-              lastName: cd.lastName || prev.lastName,
-              company: cd.company || prev.company,
-              email: cd.email || prev.email,
-              phone: cd.phone || prev.phone
-            }));
-            
-            setSuccessMsg(t('scan_success'));
-            setShowQR(false); 
-          }
-          deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error);
-        }
-      });
-    });
-    return () => unsub();
+    if (!sessionId || isMobileOrTablet) return;
   }, [sessionId, isMobileOrTablet, t]);
 
   const mobileFileInputRef = useRef<HTMLInputElement>(null);

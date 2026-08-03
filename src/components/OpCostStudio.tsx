@@ -127,44 +127,28 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         return;
       }
       const fileName = `Buchung_ExtKosten_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const finalPdfUrl = await getDownloadURL(storageRef);
-      await incrementStorage(safeCompanyId, blob.size);
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const finalPdfUrl = pubData.publicUrl;
 
-      let targetFolderId = '';
-      const folderQ = query(
-        collection(db, 'documents'), 
-        and(
-          where('companyId', '==', safeCompanyId), 
-          where('name', '==', '01_FINANZEN'), 
-          where('isFolder', '==', true), 
-          where('folderId', '==', 'root'),
-          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-        )
-      );
-      const folderSnap = await getDocs(folderQ);
-      if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; } 
-      else { const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() }); targetFolderId = newFolderRef.id; }
-
-      await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
-      
-      // FIX: size: blob.size integriert
-      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'application/pdf', size: blob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
-
-      for (let i = 0; i < opCostReceipts.length; i++) {
-        if (opCostReceipts[i].startsWith('data:image')) {
-          const fetchRes = await fetch(opCostReceipts[i]); const imgBlob = await fetchRes.blob();
-          const imgRef = ref(storage, `${safeCompanyId}/documents/Original_Ext_Beleg_${Date.now()}_${i}.png`);
-          await uploadBytes(imgRef, imgBlob); const imgUrl = await getDownloadURL(imgRef);
-          
-          // FIX: size: imgBlob.size integriert
-          await addDoc(collection(db, 'documents'), { name: `Original_Beleg_${Date.now()}_${i}.png`, url: imgUrl, fileUrl: imgUrl, type: 'image/png', size: imgBlob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
-        }
+      let targetFolderId = 'root';
+      const { data: existingFolder } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('company_id', safeCompanyId)
+        .eq('name', '01_FINANZEN')
+        .single();
+      if (existingFolder) { targetFolderId = existingFolder.id; } 
+      else { 
+        const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().single(); 
+        if (newF) targetFolderId = newF.id; 
       }
 
-      // FIX: visibility: 'owner' integriert
-      await addDoc(collection(db, 'notifications'), { title: 'Neuer Finanzbeleg', message: `${fileName} wurde in 01_FINANZEN abgelegt.`, type: 'document', isRead: false, visibility: 'owner', companyId: safeCompanyId, ownerId: currentUser.uid, createdAt: new Date().toISOString() });
+      await supabase.from('transactions').insert({ type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', project_id: 'global', owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...opCostReceipts], created_at: new Date().toISOString() });
+      
+      await supabase.from('documents').insert({ name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString() });
 
       addToast('Externe Kosten verbucht', "success"); 
       onClose();

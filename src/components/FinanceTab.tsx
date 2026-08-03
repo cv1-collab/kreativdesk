@@ -100,20 +100,46 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const opCategories = ['AHV / Sozialleistungen', 'Pensionskasse (BVG)', 'SUVA / Versicherungen', 'Steuern & MWST', 'Treuhand & Beratung', 'Miete & Infrastruktur', 'Software & Lizenzen', 'Fremdleistungen & Subunternehmer', 'Fahrzeuge & Mobilität', 'Marketing & Akquise'];
 
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     
-    // Fetch transactions
-    const q = query(collection(db, 'transactions'), where('companyId', '==', safeCompanyId));
-    const unsub = onSnapshot(q, (snap) => setTransactions(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())));
-    
-    // Fetch projects
-    const pq = query(collection(db, 'projects'), where('companyId', '==', safeCompanyId));
-    const unsubP = onSnapshot(pq, (snap) => {
-      setProjects(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-    });
+    const fetchData = async () => {
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('company_id', safeCompanyId)
+        .order('created_at', { ascending: false });
 
-    return () => { unsub(); unsubP(); };
+      if (txs) {
+        setTransactions(txs.map(t => ({
+          ...t,
+          projectId: t.project_id,
+          companyId: t.company_id,
+          ownerId: t.owner_id,
+          receiptUrls: t.receipt_urls || []
+        } as Transaction)));
+      }
+
+      const { data: projs } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('company_id', safeCompanyId);
+
+      if (projs) {
+        setProjects(projs as any);
+      }
+    };
+
+    fetchData();
+
+    const channel = supabase
+      .channel('finance-tab-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [currentUser]);
 
   // Rest of applyAiData etc.
@@ -128,46 +154,34 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     setIsAnalyzingAI(true);
     addToast(t('analyzing_ai'), 'info');
     try {
-      const analyzeReceipt = httpsCallable(functions, 'analyzeReceipt');
-      const result = await analyzeReceipt({ base64Image: base64Data, imageUrl: imageUrl, mimeType });
-      applyAiData(result.data);
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gemini-2.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: "Analysiere diesen Beleg und gib JSON zurück: { vendor, amount, date, category }" },
+                base64Data ? { inlineData: { mimeType, data: base64Data } } : { text: imageUrl }
+              ]
+            }
+          ]
+        })
+      });
+      const resData = await response.json();
+      applyAiData(resData);
       addToast(t('receipt_live_received'), 'success');
     } catch (error) { addToast(t('ai_failed'), 'error'); } finally { setIsAnalyzingAI(false); }
   };
 
   useEffect(() => {
-    if (!db || !opCostSessionId || !showOpCostModal) return;
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', opCostSessionId));
-    const unsub = onSnapshot(q, async (snapshot) => { 
-      snapshot.docChanges().forEach(async (change) => { 
-        if (change.type === 'added') { 
-          const data = change.doc.data(); 
-          const imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
-          if (imgSrc) { setOpCostReceipts(prev => prev.includes(imgSrc) ? prev : [...prev, imgSrc]); } 
-          const extData = data.receiptData || data.extractedData;
-          if (extData && (extData.total || extData.amount || extData.vendor || extData.merchant)) {
-            applyAiData(extData); deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error); return;
-          }
-          if (imgSrc) {
-            let base64ToProcess = data.base64Image; let mimeToProcess = data.mimeType || 'image/jpeg';
-            if (!base64ToProcess && data.url) {
-              try {
-                const res = await fetch(data.url); const blob = await res.blob(); mimeToProcess = blob.type;
-                const base64Str = await new Promise<string>((resolve) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result as string); reader.readAsDataURL(blob); });
-                base64ToProcess = base64Str.split(',')[1];
-              } catch(e) { console.warn("CORS Block: Sende URL."); }
-            }
-            await processImageWithAI(base64ToProcess || null, data.url || null, mimeToProcess);
-          }
-          deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error); 
-        } 
-      }); 
-    });
-    return () => unsub();
+    if (!opCostSessionId || !showOpCostModal) return;
   }, [opCostSessionId, showOpCostModal]);
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => { try { await updateDoc(doc(db, 'transactions', id), { status: newStatus }); addToast(t('status_updated'), "success"); } catch (e) { addToast(t('update_error'), "error"); } };
-  const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => { e.stopPropagation(); if (window.confirm(t('confirm_delete'))) { try { await deleteDoc(doc(db, 'transactions', id)); addToast(t('entry_deleted'), "success"); } catch (e) { addToast(t('delete_error'), "error"); } } };
+  const handleUpdateStatus = async (id: string, newStatus: string) => { try { await supabase.from('transactions').update({ status: newStatus }).eq('id', id); addToast(t('status_updated'), "success"); } catch (e) { addToast(t('update_error'), "error"); } };
+  const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => { e.stopPropagation(); if (window.confirm(t('confirm_delete'))) { try { await supabase.from('transactions').delete().eq('id', id); addToast(t('entry_deleted'), "success"); } catch (e) { addToast(t('delete_error'), "error"); } } };
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -194,76 +208,37 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     
     try {
       const fileName = `Buchung_${opCostData.category.replace(/\s/g,'_')}_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${safeCompanyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const finalPdfUrl = await getDownloadURL(storageRef);
+      const storagePath = `${safeCompanyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(storagePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
+      const finalPdfUrl = pubData.publicUrl;
 
-      let targetFolderId = '';
-      const folderQ = query(
-        collection(db, 'documents'), 
-        and(
-          where('companyId', '==', safeCompanyId), 
-          where('name', '==', '01_FINANZEN'), 
-          where('isFolder', '==', true), 
-          where('folderId', '==', 'root'),
-          or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-        )
-      );
-      const folderSnap = await getDocs(folderQ);
-      if (!folderSnap.empty) {
-        targetFolderId = folderSnap.docs[0].id;
+      let targetFolderId = 'root';
+      const { data: existingFolder } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('company_id', safeCompanyId)
+        .eq('name', '01_FINANZEN')
+        .single();
+
+      if (existingFolder) {
+        targetFolderId = existingFolder.id;
       } else {
-        const newFolderRef = await addDoc(collection(db, 'documents'), { name: '01_FINANZEN', isFolder: true, category: 'company', projectId: 'global', folderId: 'root', ownerId: currentUser.uid, companyId: safeCompanyId, createdAt: new Date().toISOString() });
-        targetFolderId = newFolderRef.id;
+        const { data: newF } = await supabase.from('documents').insert({
+          name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString()
+        }).select().single();
+        if (newF) targetFolderId = newF.id;
       }
 
-      await addDoc(collection(db, 'transactions'), { type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', projectId: 'global', ownerId: currentUser.uid, companyId: safeCompanyId, receiptUrls: [finalPdfUrl, ...opCostReceipts], createdAt: new Date().toISOString() });
+      await supabase.from('transactions').insert({
+        type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', project_id: 'global', owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...opCostReceipts], created_at: new Date().toISOString()
+      });
       
-      // FIX: size: blob.size ist jetzt hier drin!
-      await addDoc(collection(db, 'documents'), { name: fileName, url: finalPdfUrl, fileUrl: finalPdfUrl, type: 'application/pdf', size: blob.size, isFolder: false, ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', folderId: targetFolderId, category: 'company', uploadedAt: new Date().toISOString() });
+      await supabase.from('documents').insert({
+        name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString()
+      });
 
-      for (let i = 0; i < opCostReceipts.length; i++) {
-        const src = opCostReceipts[i];
-        if (!src) continue;
-
-        try {
-          // Löst ALLE Edge-Cases: Wandelt Base64 UND Mobile-URLs in ein sauberes lokales Blob um
-          const fetchRes = await fetch(src); 
-          const fileBlob = await fetchRes.blob();
-          
-          // Strikte MIME-Type und Extension Extraktion für die Bauakte
-          const mimeType = fileBlob.type || 'application/octet-stream';
-          const ext = mimeType.split('/')[1] || (mimeType.includes('pdf') ? 'pdf' : 'png');
-          const finalFileName = `Beleg_Scan_${Date.now()}_${i}.${ext}`;
-
-          // Sauber in den Firmen-Tresor hochladen
-          const fileRef = ref(storage, `${safeCompanyId}/documents/${finalFileName}`);
-          await uploadBytes(fileRef, fileBlob); 
-          const finalFileUrl = await getDownloadURL(fileRef);
-          
-          // Perfekter Datenbank-Eintrag in die Bauakte (documents)
-          await addDoc(collection(db, 'documents'), { 
-            name: finalFileName, 
-            url: finalFileUrl, 
-            fileUrl: finalFileUrl, 
-            type: mimeType, 
-            size: fileBlob.size, // Exakte Byte-Größe, verhindert UI-Crashes beim Rendern!
-            isFolder: false, 
-            ownerId: currentUser.uid, 
-            companyId: safeCompanyId, 
-            projectId: 'global', 
-            folderId: targetFolderId, 
-            category: 'company', 
-            uploadedAt: new Date().toISOString() 
-          });
-        } catch (err) {
-          console.error("Fehler beim Verarbeiten des Belegs:", err);
-        }
-      }
-      
-      // Die Notification (inkl. visibility: 'owner')
-      await addDoc(collection(db, 'notifications'), { title: 'Neuer Finanzbeleg', message: `${fileName} wurde in 01_FINANZEN abgelegt.`, type: 'document', isRead: false, visibility: 'owner', companyId: safeCompanyId, ownerId: currentUser.uid, createdAt: new Date().toISOString() });      
-      
       addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
     } catch (error) { addToast(t('save_error'), "error"); } finally { setIsSubmitting(false); }
   };

@@ -188,7 +188,7 @@ export default function CompanyDashboard() {
   useEffect(() => setIsMounted(true), []);
 
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
     const sysFolders = [
@@ -200,13 +200,12 @@ export default function CompanyDashboard() {
     sysFolders.forEach(async (f) => {
       try {
         const folderId = `sys_${safeCompanyId}_${f.id}`;
-        const folderRef = doc(db, 'documents', folderId);
-        await setDoc(folderRef, { 
-          id: folderId, name: f.name, isFolder: true, category: 'company', 
-          ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', 
-          createdAt: new Date().toISOString(), isSystem: true,
-          folderId: 'root'
-        }, { merge: true });
+        await supabase.from('documents').upsert({
+          id: folderId, name: f.name, is_folder: true, category: 'company',
+          owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global',
+          created_at: new Date().toISOString(), is_system: true,
+          folder_id: 'root'
+        });
       } catch (e) {
         console.error("System Folder Error:", e);
       }
@@ -214,46 +213,42 @@ export default function CompanyDashboard() {
   }, [currentUser, language]);
 
   useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
-    const qDocs = query(
-      collection(db, 'documents'),
-      and(
-        where('companyId', '==', safeCompanyId),
-        or(
-          where('visibility', 'in', ['public', 'company']),
-          where('ownerId', '==', currentUser.uid)
-        )
-      )
-    );
-    const unsubDocs = onSnapshot(qDocs, (snap) => {
-      setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    
-    const unsubUser = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
-      if (docSnap.exists()) setUserProfile(docSnap.data());
-    });
-    
-    const qLeads = query(collection(db, 'leads'), where('companyId', '==', safeCompanyId));
-    const unsubLeads = onSnapshot(qLeads, (snap) => {
-      setCollectedLeads(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    
-    const qNotifs = query(
-      collection(db, 'notifications'), 
-      where('companyId', '==', safeCompanyId), 
-      where('userId', '==', currentUser.uid)
-    );
-    const unsubNotifs = onSnapshot(qNotifs, (snap) => {
-      setUnreadNotifications(snap.docs.filter(doc => doc.data().read === false).length);
-    });
+    const fetchData = async () => {
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('company_id', safeCompanyId);
 
-    return () => { 
-      unsubDocs(); 
-      unsubLeads(); 
-      unsubNotifs(); 
-      unsubUser(); 
+      if (docs) {
+        setAllDocuments(docs.map(d => ({ ...d, isFolder: d.is_folder, folderId: d.folder_id, fileUrl: d.url })));
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.uid)
+        .single();
+      if (profile) setUserProfile(profile);
+
+      const { data: leads } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('company_id', safeCompanyId);
+      if (leads) setCollectedLeads(leads);
+    };
+
+    fetchData();
+
+    const channel = supabase
+      .channel('company-dash-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
   }, [currentUser]);
 
@@ -459,12 +454,12 @@ export default function CompanyDashboard() {
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !currentUser || !currentUser.uid || !newFolderName) return;
+    if (!currentUser || !currentUser.uid || !newFolderName) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     try {
-      await addDoc(collection(db, 'documents'), {
-        name: newFolderName, isFolder: true, category: activeDocCategory === 'root' ? 'company' : activeDocCategory,
-        ownerId: currentUser.uid, companyId: safeCompanyId, projectId: 'global', createdAt: new Date().toISOString()
+      await supabase.from('documents').insert({
+        name: newFolderName, is_folder: true, category: activeDocCategory === 'root' ? 'company' : activeDocCategory,
+        owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString()
       });
       setNewFolderName('');
       setIsNewFolderModalOpen(false);
@@ -474,32 +469,34 @@ export default function CompanyDashboard() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser || !currentUser.uid || !db || !activeFolderId) return;
+    if (!file || !currentUser || !currentUser.uid || !activeFolderId) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     if (!currentFolder) return addToast("Fehler: Bitte einen Ordner auswählen.", 'error');
 
     addToast(`Upload: ${file.name}...`, 'info');
     try {
-      const storageRef = ref(storage, `${currentUser.companyId}/documents/${currentUser.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const fileName = `${safeCompanyId}/documents/${currentUser.uid}/${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const downloadUrl = pubData.publicUrl;
       const docType = file.type || file.name.split('.').pop()?.toLowerCase() || 'unknown';
       const sizeText = formatBytes(file.size);
       
-      await addDoc(collection(db, 'documents'), {
-        name: file.name, url: downloadUrl, fileUrl: downloadUrl, type: docType, size: sizeText,
-        isFolder: false, folderId: activeFolderId, parentId: activeFolderId, category: currentFolder.category,
-        ownerId: currentUser.uid, companyId: safeCompanyId, uploadedBy: currentUser.uid,
-        projectId: (currentFolder as any)?.isProject ? currentFolder.id : 'global', createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+      await supabase.from('documents').insert({
+        name: file.name, url: downloadUrl, file_url: downloadUrl, type: docType, size: sizeText,
+        is_folder: false, folder_id: activeFolderId, parent_id: activeFolderId, category: currentFolder.category,
+        owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid,
+        project_id: (currentFolder as any)?.isProject ? currentFolder.id : 'global', created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
       addToast(t('upload_success'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }
   };
 
   const handleDeleteDocument = async (id: string, isFolder: boolean) => {
-    if (!db || !window.confirm(t('confirm_delete'))) return;
+    if (!window.confirm(t('confirm_delete'))) return;
     try {
-      await deleteDoc(doc(db, 'documents', id));
+      await supabase.from('documents').delete().eq('id', id);
       if (activeFolderId === id) setActiveFolderId(null);
       addToast(t('delete_completed'), 'success');
     } catch (err) { addToast(t('upload_failed'), 'error'); }

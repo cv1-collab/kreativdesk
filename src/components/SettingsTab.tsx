@@ -118,13 +118,14 @@ export default function SettingsTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Profildaten laden
+  // Profildaten laden
   useEffect(() => {
-    if (!db || !currentUser?.companyId) return;
-    const unsub = onSnapshot(doc(db, 'companies', currentUser.companyId), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
+    if (!currentUser?.companyId) return;
+    const fetchCompany = async () => {
+      const { data } = await supabase.from('companies').select('*').eq('id', currentUser.companyId).single();
+      if (data) {
         setAgencyName(data.name || '');
-        setContactPerson(data.contactPerson || '');
+        setContactPerson(data.contact_person || data.contactPerson || '');
         setEmail(data.email || '');
         setPhone(data.phone || '');
         setWebsite(data.website || '');
@@ -134,47 +135,32 @@ export default function SettingsTab() {
         setZipCode(data.zip || '');
         setCity(data.city || '');
         setIban(data.iban || '');
-        setWebhookUrl(data.webhookUrl || '');
-        setLogoUrl(data.logoUrl || '');
-        setPrimaryColor(data.primaryColor || '#10b981');
-        setTermsPdfUrl(data.termsPdfUrl || '');
-        setPrivacyPdfUrl(data.privacyPdfUrl || '');
-        setSlackIntegration(data.integrations?.slack || false);
-        setBexioIntegration(data.integrations?.bexio || false);
-        setSlackWebhookUrl(data.integrations?.slackWebhookUrl || '');
-        setBexioApiToken(data.integrations?.bexioApiToken || '');
-        
-        // Abo Daten
+        setWebhookUrl(data.webhook_url || data.webhookUrl || '');
+        setLogoUrl(data.logo_url || data.logoUrl || '');
+        setPrimaryColor(data.primary_color || data.primaryColor || '#10b981');
+        setTermsPdfUrl(data.terms_pdf_url || data.termsPdfUrl || '');
+        setPrivacyPdfUrl(data.privacy_pdf_url || data.privacyPdfUrl || '');
         setCompanyPlan(data.plan || 'Free Trial');
-        setMaxSeats(data.maxSeats || 1);
-        setUsedSeats(data.usedSeats || 1);
-        setStorageUsed(data.storageUsed || 0);
       }
-    });
-    return () => unsub();
+    };
+    fetchCompany();
   }, [currentUser?.companyId]);
 
   // Einstellungen speichern
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, 'companies', currentUser.companyId), {
+      await supabase.from('companies').update({
         name: agencyName,
-        contactPerson, email, phone, website,
+        contact_person: contactPerson, email, phone, website,
         uid: uidNumber, vat: vatNumber,
         address, zip: zipCode, city,
-        iban, webhookUrl,
-        primaryColor,
-        integrations: { 
-          slack: slackIntegration, 
-          bexio: bexioIntegration,
-          slackWebhookUrl,
-          bexioApiToken
-        },
-        updatedAt: new Date().toISOString()
-      });
+        iban, webhook_url: webhookUrl,
+        primary_color: primaryColor,
+        updated_at: new Date().toISOString()
+      }).eq('id', currentUser.companyId);
       addToast('Einstellungen erfolgreich gespeichert!', 'success');
     } catch (error) { addToast('Fehler beim Speichern', 'error'); } 
     finally { setIsSaving(false); }
@@ -183,20 +169,15 @@ export default function SettingsTab() {
   // Logo hochladen
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !storage || !currentUser?.companyId) return;
+    if (!file || !currentUser?.companyId) return;
     setIsUploadingLogo(true);
     try {
-      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploadingLogo(false);
-        return;
-      }
-      const logoRef = ref(storage, `${currentUser.companyId}/company_assets/logo_${Date.now()}`);
-      await uploadBytes(logoRef, file);
-      const downloadUrl = await getDownloadURL(logoRef);
-      await incrementStorage(currentUser.companyId, file.size);
-      await updateDoc(doc(db, 'companies', currentUser.companyId), { logoUrl: downloadUrl });
+      const filePath = `${currentUser.companyId}/company_assets/logo_${Date.now()}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
+      await supabase.from('companies').update({ logo_url: downloadUrl }).eq('id', currentUser.companyId);
       setLogoUrl(downloadUrl);
     } catch (error) { addToast('Fehler beim Logo-Upload', 'error'); } 
     finally { setIsUploadingLogo(false); }
@@ -204,24 +185,18 @@ export default function SettingsTab() {
 
   const handleTermsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !storage || !currentUser?.companyId) return;
+    if (!file || !currentUser?.companyId) return;
     setIsUploadingTerms(true);
     try {
-      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploadingTerms(false);
-        return;
-      }
-      const termsRef = ref(storage, `${currentUser.companyId}/company_assets/terms_${Date.now()}.pdf`);
-      await uploadBytes(termsRef, file);
-      const downloadUrl = await getDownloadURL(termsRef);
-      await incrementStorage(currentUser.companyId, file.size);
-      await updateDoc(doc(db, 'companies', currentUser.companyId), { termsPdfUrl: downloadUrl });
+      const filePath = `${currentUser.companyId}/company_assets/terms_${Date.now()}.pdf`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
+      await supabase.from('companies').update({ terms_pdf_url: downloadUrl }).eq('id', currentUser.companyId);
       setTermsPdfUrl(downloadUrl);
       addToast('AGB erfolgreich hochgeladen', 'success');
     } catch (error) {
-      console.error(error);
       addToast('Fehler beim Upload', 'error');
     } finally {
       setIsUploadingTerms(false);
@@ -231,25 +206,18 @@ export default function SettingsTab() {
 
   const handlePrivacyUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !storage || !currentUser?.companyId) return;
+    if (!file || !currentUser?.companyId) return;
     setIsUploadingPrivacy(true);
     try {
-      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploadingPrivacy(false);
-        return;
-      }
-      const storageRef = ref(storage, `${currentUser.companyId}/privacy_policies/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, file.size);
-      
-      await updateDoc(doc(db, 'companies', currentUser.companyId), { privacyPdfUrl: downloadUrl });
+      const filePath = `${currentUser.companyId}/privacy_policies/${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
+      await supabase.from('companies').update({ privacy_pdf_url: downloadUrl }).eq('id', currentUser.companyId);
       setPrivacyPdfUrl(downloadUrl);
       addToast('Datenschutzrichtlinie erfolgreich hochgeladen', 'success');
     } catch (error) {
-      console.error(error);
       addToast('Fehler beim Upload', 'error');
     } finally {
       setIsUploadingPrivacy(false);
@@ -299,7 +267,7 @@ export default function SettingsTab() {
 
   const handleExportData = async () => {
     addToast('Datenexport gestartet...', 'info');
-    if (!currentUser || !db) return;
+    if (!currentUser) return;
 
     try {
       const safeCompanyId = currentUser.companyId;
@@ -307,16 +275,11 @@ export default function SettingsTab() {
       
       const exportData: any = { accountInfo: {}, projects: [], documents: [] };
 
-      const qProjects = query(collection(db, 'projects'), where('companyId', '==', safeCompanyId));
-      const snapProjects = await getDocs(qProjects);
-      exportData.projects = snapProjects.docs.map(d => d.data());
+      const { data: projects } = await supabase.from('projects').select('*').eq('company_id', safeCompanyId);
+      exportData.projects = projects || [];
 
-      const qDocs = query(
-        collection(db, 'documents'),
-        where('companyId', '==', safeCompanyId)
-      );
-      const snapDocs = await getDocs(qDocs);
-      exportData.documents = snapDocs.docs.map(d => d.data());
+      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId);
+      exportData.documents = docs || [];
 
       // 1. Initialize JSZip
       const zip = new JSZip();
@@ -327,7 +290,7 @@ export default function SettingsTab() {
 
       // 3. Fetch physical files and add to ZIP
       const dateienFolder = zip.folder("Dateien");
-      const filesToDownload = exportData.documents.filter((d: any) => !d.isFolder && d.fileUrl);
+      const filesToDownload = exportData.documents.filter((d: any) => !d.is_folder && (d.file_url || d.url));
 
       if (filesToDownload.length > 0) {
         addToast(`Lade ${filesToDownload.length} Dateien für den Export herunter...`, 'info');
@@ -336,7 +299,7 @@ export default function SettingsTab() {
       let downloadedCount = 0;
       for (const doc of filesToDownload) {
         try {
-          const response = await fetch(doc.fileUrl);
+          const response = await fetch(doc.file_url || doc.url);
           if (response.ok) {
             const blob = await response.blob();
             const fileName = doc.name || `file_${downloadedCount}`;
@@ -372,16 +335,12 @@ export default function SettingsTab() {
     try {
       addToast('Account wird gelöscht...', 'info');
       
-      // Soft-Delete auf Company Ebene
-      await updateDoc(doc(db, 'companies', currentUser.companyId), {
-        isDeleted: true,
-        deletedAt: new Date().toISOString(),
+      await supabase.from('companies').update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
         status: 'archived',
-        deletedBy: currentUser.uid
-      });
-
-      // Wir könnten hier auch Stripe Subscription canceln falls benötigt, 
-      // aber normalerweise macht das ein Cloud Function Cleanup Script
+        deleted_by: currentUser.uid
+      }).eq('id', currentUser.companyId);
 
       await logout();
       addToast('Account erfolgreich gelöscht.', 'success');
@@ -713,25 +672,26 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
 
   useEffect(() => {
     if (!currentUser?.companyId) return;
-    const unsub = onSnapshot(doc(db, 'companySettings', currentUser.companyId), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setActive(d.screensaverActive ?? false);
-        setTimeoutVal(d.screensaverTimeout ?? 5);
-        setImage(d.screensaverImage || defaultImage); // Fallback auf Default, wenn in DB leer
+    const fetchSettings = async () => {
+      const { data: d } = await supabase.from('company_settings').select('*').eq('company_id', currentUser.companyId).single();
+      if (d) {
+        setActive(d.screensaver_active ?? false);
+        setTimeoutVal(d.screensaver_timeout ?? 5);
+        setImage(d.screensaver_image || defaultImage);
       }
-    });
-    return () => unsub();
+    };
+    fetchSettings();
   }, [currentUser]);
 
   const handleSave = async () => {
     if (!currentUser?.companyId) return;
     try {
-      await setDoc(doc(db, 'companySettings', currentUser.companyId), {
-        screensaverActive: active,
-        screensaverTimeout: Number(timeout),
-        screensaverImage: image
-      }, { merge: true });
+      await supabase.from('company_settings').upsert({
+        company_id: currentUser.companyId,
+        screensaver_active: active,
+        screensaver_timeout: Number(timeout),
+        screensaver_image: image
+      });
       addToast('Screensaver gespeichert!', 'success');
     } catch (err) { addToast('Fehler beim Speichern', 'error'); } 
   };
@@ -741,18 +701,13 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
     if (!file || !currentUser?.companyId) return;
     setIsUploading(true);
     try {
-      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploading(false);
-        return;
-      }
-      const r = ref(storage, `screensaver/${currentUser.companyId}_${Date.now()}`);
-      await uploadBytes(r, file);
-      const url = await getDownloadURL(r);
-      await incrementStorage(currentUser.companyId, file.size);
+      const filePath = `screensaver/${currentUser.companyId}_${Date.now()}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const url = pubData.publicUrl;
       setImage(url);
-      await setDoc(doc(db, 'companySettings', currentUser.companyId), { screensaverImage: url }, { merge: true });
+      await supabase.from('company_settings').upsert({ company_id: currentUser.companyId, screensaver_image: url });
       addToast('Hintergrundbild hochgeladen!', 'success');
     } catch (err) { addToast('Upload fehlgeschlagen', 'error'); } 
     finally { setIsUploading(false); }
@@ -817,13 +772,11 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   useEffect(() => {
     const fetchTeam = async () => {
-      if (!db || !currentUser?.companyId) return;
+      if (!currentUser?.companyId) return;
       setIsLoading(true);
       try {
-        const q = query(collection(db, 'users'), where('companyId', '==', currentUser.companyId));
-        const snapshot = await getDocs(q);
-        const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setTeamMembers(members);
+        const { data: members } = await supabase.from('users').select('*').eq('company_id', currentUser.companyId);
+        if (members) setTeamMembers(members);
       } catch (err) {
         console.error("Error fetching team", err);
       } finally {
@@ -835,9 +788,8 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', userId), {
-        [field]: !currentValue
-      });
+      const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
+      await supabase.from('users').update({ [colName]: !currentValue }).eq('id', userId);
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: !currentValue } : m));
       addToast('Berechtigung aktualisiert', 'success');
     } catch (err) {

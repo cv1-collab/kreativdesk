@@ -537,7 +537,7 @@ export default function BIMViewer() {
   const mainInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!db || !projectId || !activeModelId || !currentUser?.companyId) return;
+    if (!projectId || !activeModelId || !currentUser?.companyId) return;
 
     if (activeModelId === 'default') {
       const cached = sessionStorage.getItem(`bim_cache_${projectId}_default`);
@@ -573,39 +573,29 @@ export default function BIMViewer() {
 
     if (isDemoMode) return;
 
-    const q = query(
-      collection(db, 'defects'), 
-      where('companyId', '==', currentUser.companyId),
-      where('projectId', '==', projectId)
-    );
+    const fetchDefects = async () => {
+      const { data } = await supabase.from('defects').select('*').eq('company_id', currentUser.companyId).eq('project_id', projectId);
+      if (data) {
+        const loadedPins: any[] = [];
+        data.forEach(d => {
+          if (d.model_id === activeModelId && d.title) {
+             loadedPins.push({
+               id: d.id,
+               position: new THREE.Vector3(d.pos_x || 0, d.pos_y || 0, d.pos_z || 0),
+               normal: new THREE.Vector3(0, 1, 0),
+               title: d.title,
+               description: d.description || '',
+               status: d.status || 'To Do',
+               modelId: d.model_id 
+             });
+          }
+        });
+        setDefectPins(loadedPins); 
+      }
+    };
 
-    const unsub = onSnapshot(q, (snap) => {
-      const loadedPins: any[] = [];
-      snap.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.modelId === activeModelId && data.title) {
-           loadedPins.push({
-             id: doc.id,
-             position: new THREE.Vector3(data.posX || 0, data.posY || 0, data.posZ || 0),
-             normal: new THREE.Vector3(0, 1, 0),
-             title: data.title,
-             description: data.description || '',
-             status: data.status || 'To Do',
-             modelId: data.modelId 
-           });
-        }
-      });
-      setDefectPins(loadedPins); 
-    });
-
-    setSelectedId(null);
-    setDefectPrompt(null);
-    setAuditMode(false);
-    setIsTouring(false);
-    setAuditReport(null);
-
-    return () => unsub();
-  }, [activeModelId, projectId, currentUser, isDemoMode]);
+    fetchDefects();
+  }, [projectId, activeModelId, currentUser, isDemoMode]);
 
   useEffect(() => {
     if (activeModelId === 'default') {
@@ -647,43 +637,33 @@ export default function BIMViewer() {
       return;
     }
 
-    if (!projectId || !db || !currentUser?.companyId) return;
-    const q = query(
-      collection(db, 'documents'), 
-      where('companyId', '==', currentUser.companyId),
-      where('projectId', '==', projectId)
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const allDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const models = allDocs.filter(d => {
-        const type = String((d as any).type || '').toLowerCase();
-        const name = String((d as any).name || '').toLowerCase();
-        return ['obj', 'gltf', 'glb', 'dae', 'ifc', 'dwg', 'fbx', '3d model'].includes(type) ||
-               name.endsWith('.obj') || name.endsWith('.gltf') || name.endsWith('.glb') || 
-               name.endsWith('.dae') || name.endsWith('.ifc') || name.endsWith('.dwg') || name.endsWith('.fbx');
-      });
-      setCustomModels(models);
-    });
-    return () => unsub();
+    if (!projectId || !currentUser?.companyId) return;
+    const fetchModels = async () => {
+      const { data } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId).eq('project_id', projectId);
+      if (data) {
+        const models = data.filter(d => {
+          const type = String(d.type || '').toLowerCase();
+          const name = String(d.name || '').toLowerCase();
+          return ['obj', 'gltf', 'glb', 'dae', 'ifc', 'dwg', 'fbx', '3d model'].includes(type) ||
+                 name.endsWith('.obj') || name.endsWith('.gltf') || name.endsWith('.glb') || 
+                 name.endsWith('.dae') || name.endsWith('.ifc') || name.endsWith('.dwg') || name.endsWith('.fbx');
+        });
+        setCustomModels(models);
+      }
+    };
+    fetchModels();
   }, [projectId, currentUser, isDemoMode]);
 
   const ensureFolder = async (folderName: string, docCategory: string) => {
     if (!currentUser?.companyId || !projectId) return '';
-    const folderQ = query(
-      collection(db, 'documents'), 
-      where('name', '==', folderName), 
-      where('isFolder', '==', true), 
-      where('projectId', '==', projectId),
-      where('companyId', '==', currentUser.companyId)
-    );
-    const folderSnap = await getDocs(folderQ);
-    if (!folderSnap.empty) return folderSnap.docs[0].id;
-    const newFolderRef = await addDoc(collection(db, 'documents'), { 
-      name: folderName, isFolder: true, category: docCategory, 
-      ownerId: currentUser.uid, companyId: currentUser.companyId,
-      projectId: projectId, createdAt: new Date().toISOString() 
-    });
-    return newFolderRef.id;
+    const { data: existing } = await supabase.from('documents').select('id').eq('name', folderName).eq('is_folder', true).eq('project_id', projectId).eq('company_id', currentUser.companyId).single();
+    if (existing) return existing.id;
+    const { data: newF } = await supabase.from('documents').insert({ 
+      name: folderName, is_folder: true, category: docCategory, 
+      owner_id: currentUser.uid, company_id: currentUser.companyId,
+      project_id: projectId, created_at: new Date().toISOString() 
+    }).select().single();
+    return newF ? newF.id : '';
   };
 
   const handleSelect = (id: string, details?: any) => { setSelectedId(id); if (details) { setSelectedDetails(details); } else { setSelectedDetails(null); } };
@@ -708,24 +688,21 @@ export default function BIMViewer() {
       return;
     }
 
-    if (currentUser && currentUser.companyId && db) {
+    if (currentUser && currentUser.companyId) {
       try {
         const base64DataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
         let imageUrl = '';
-        if (storage && base64DataUrl) {
+        if (base64DataUrl) {
           const blob = new Blob([new Uint8Array(atob(base64DataUrl.split(',')[1]).split('').map(c => c.charCodeAt(0)))], {type: 'image/png'});
-          const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
-          if (!isAllowed) {
-            addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-            return;
+          const imgPath = `${currentUser.companyId}/defects/${newPin.id}.png`;
+          const { error: upErr } = await supabase.storage.from('avatars').upload(imgPath, blob, { upsert: true });
+          if (!upErr) {
+            const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(imgPath);
+            imageUrl = pubData.publicUrl;
           }
-          const storageRef = ref(storage, `${currentUser!.companyId}/defects/${newPin.id}.png`);
-          await uploadBytes(storageRef, blob);
-          imageUrl = await getDownloadURL(storageRef);
-          await incrementStorage(currentUser.companyId, blob.size);
         }
         
-        await setDoc(doc(db, 'defects', newPin.id), { 
+        await supabase.from('defects').insert({ 
           id: newPin.id, 
           title: desc || 'Neuer Mangel', 
           status: 'To Do', 
@@ -735,14 +712,14 @@ export default function BIMViewer() {
           trade: 'Architektur', 
           location: `3D Model`, 
           description: `Erfasst im 3D-Viewer.`, 
-          imageUrl: imageUrl || '', 
-          ownerId: currentUser.uid, 
-          companyId: currentUser.companyId, 
-          projectId: projectId,
-          modelId: activeModelId, 
-          posX: point.x,
-          posY: point.y,
-          posZ: point.z
+          image_url: imageUrl || '', 
+          owner_id: currentUser.uid, 
+          company_id: currentUser.companyId, 
+          project_id: projectId,
+          model_id: activeModelId, 
+          pos_x: point.x,
+          pos_y: point.y,
+          pos_z: point.z
         });
         addToast(t('defect_saved'), 'success');
       } catch (err) { 
@@ -871,30 +848,22 @@ export default function BIMViewer() {
     }
   };
 
-  const handleSaveRenderToCloud = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!generatedImage || !currentUser || !projectId) return;
+  const handleSaveRenderToCloud = async () => {
+    if (!generatedImage || !currentUser?.companyId) return;
     setIsUploading(true);
     try {
-      const base64Data = generatedImage.split(',')[1];
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-      const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' });
-      const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploading(false);
-        return;
-      }
+      const res = await fetch(generatedImage);
+      const blob = await res.blob();
       const fileName = `AI_Render_${activeStyle}_${Date.now()}.png`;
-      const storageRef = ref(storage, `${currentUser!.companyId}/ai_renders/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, blob.size);
+      const filePath = `${currentUser.companyId}/ai_renders/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
+
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("KI Renderings", docCategory);
-      await addDoc(collection(db, 'documents'), { name: fileName, url: downloadUrl, fileUrl: downloadUrl, projectId: projectId, folderId: targetFolderId, ownerId: currentUser.uid, uploadedBy: currentUser.uid, companyId: currentUser.companyId, type: 'image/png', size: formatBytes(blob.size), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: projectId, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: currentUser.companyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       addToast(t('render_saved'), 'success'); setShowRenderModal(false); setGeneratedImage(null);
     } catch (err) { addToast(t('error_saving_cloud'), 'error'); } finally { setIsUploading(false); }
   };
@@ -908,35 +877,31 @@ export default function BIMViewer() {
   const handleSavePdfToCloud = async (blob: Blob) => {
     try {
       if (!currentUser || !currentUser.companyId) return;
-      const isAllowed = await checkStorageLimit(currentUser.companyId, blob.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        return;
-      }
       const fileName = `BIM_Report_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser!.companyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, blob.size);
+      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("03_PLANUNG", docCategory);
 
-      await addDoc(collection(db, 'documents'), {
+      await supabase.from('documents').insert({
         name: fileName,
         url: downloadUrl,
-        fileUrl: downloadUrl,
-        projectId: projectId,
-        folderId: targetFolderId, 
+        file_url: downloadUrl,
+        project_id: projectId,
+        folder_id: targetFolderId, 
         category: docCategory, 
-        ownerId: currentUser!.uid,
-        uploadedBy: currentUser!.uid,
-        companyId: currentUser!.companyId,
+        owner_id: currentUser.uid,
+        uploaded_by: currentUser.uid,
+        company_id: currentUser.companyId,
         type: 'application/pdf',
         size: formatBytes(blob.size), 
-        isFolder: false,
-        createdAt: new Date().toISOString(), 
-        uploadedAt: new Date().toISOString(),
+        is_folder: false,
+        created_at: new Date().toISOString(), 
+        uploaded_at: new Date().toISOString(),
         date: new Date().toLocaleDateString('de-CH')
       });
 
@@ -951,32 +916,7 @@ export default function BIMViewer() {
   const handleDeleteModel = async (model: any) => {
     if (!window.confirm(t('confirm_delete_model'))) return;
     try {
-      await deleteDoc(doc(db, 'documents', model.id));
-      
-      if (model.url) {
-        const fileRef = ref(storage, model.url);
-        await deleteObject(fileRef).catch(console.error);
-
-        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
-        let byteSize = 0;
-        if (model.size) {
-          if (typeof model.size === 'number') {
-            byteSize = model.size;
-          } else if (typeof model.size === 'string') {
-            const val = parseFloat(model.size);
-            if (!isNaN(val)) {
-              if (model.size.includes('GB')) byteSize = val * 1024 * 1024 * 1024;
-              else if (model.size.includes('MB')) byteSize = val * 1024 * 1024;
-              else if (model.size.includes('KB')) byteSize = val * 1024;
-              else byteSize = val;
-            }
-          }
-        }
-        if (byteSize > 0 && safeCompanyId) {
-          await decrementStorage(safeCompanyId, Math.floor(byteSize));
-        }
-      }
-
+      await supabase.from('documents').delete().eq('id', model.id);
       if (activeModelId === model.id) setActiveModelId('default');
     } catch (err) { addToast(t('error_processing_model'), 'error'); }
   };
@@ -1001,28 +941,23 @@ export default function BIMViewer() {
     addToast('Modell lädt in die Cloud...', 'info');
 
     try {
-      const isAllowed = await checkStorageLimit(currentUser.companyId, file.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploading(false);
-        return;
-      }
-      const storageRef = ref(storage, `${currentUser.companyId}/documents/${projectId}/3d_models_${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      await incrementStorage(currentUser.companyId, file.size);
+      const filePath = `${currentUser.companyId}/documents/${projectId}/3d_models_${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const url = pubData.publicUrl;
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const folderId = await ensureFolder("3D Modelle", docCategory);
 
-      const newDocRef = await addDoc(collection(db, 'documents'), {
-        name: file.name, url, fileUrl: url, projectId, folderId, type: fileExt,
-        category: docCategory, ownerId: currentUser.uid, uploadedBy: currentUser.uid, companyId: currentUser.companyId,
-        size: formatBytes(file.size), isFolder: false,
-        createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
-      });
+      const { data: createdDoc } = await supabase.from('documents').insert({
+        name: file.name, url, file_url: url, project_id: projectId, folder_id: folderId, type: fileExt,
+        category: docCategory, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: currentUser.companyId,
+        size: formatBytes(file.size), is_folder: false,
+        created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+      }).select().single();
 
-      setActiveModelId(newDocRef.id);
+      if (createdDoc) setActiveModelId(createdDoc.id);
       addToast(t('model_saved'), 'success');
     } catch (err) {
       console.error("Upload error:", err);

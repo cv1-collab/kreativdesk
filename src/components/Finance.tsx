@@ -467,91 +467,63 @@ export default function Finance() {
       return;
     }
 
-    // --- REGULÄRER FIREBASE FETCH FÜR ECHTE USER ---
-    if (!currentUser || !currentUser.companyId || !db || !currentProjectId) return;
-    const q = query(collection(db, 'transactions'), where('companyId', '==', currentUser.companyId), where('projectId', '==', currentProjectId));
-    const unsub = onSnapshot(q, (snap) => {
-      const txs = snap.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction));
-      txs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setTransactions(txs);
-    }, (error) => console.log("Silent skip: Transactions fetch blocked"));
+    // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
+    if (!currentUser || !currentUser.companyId || !currentProjectId) return;
     
-    getDoc(doc(db, 'financeData', `finance_${currentProjectId}`)).then(docSnap => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.versions) setVersions(data.versions);
-        if (data.activeVersionId) setActiveVersionId(data.activeVersionId);
-        if (data.projectHeader) setProjectHeader(data.projectHeader);
-        if (data.includeOptions !== undefined) setIncludeOptions(data.includeOptions);
+    const fetchData = async () => {
+      const { data: txs } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('company_id', currentUser.companyId)
+        .eq('project_id', currentProjectId)
+        .order('created_at', { ascending: false });
+
+      if (txs) {
+        setTransactions(txs.map(t => ({
+          ...t,
+          projectId: t.project_id,
+          companyId: t.company_id,
+          ownerId: t.owner_id
+        } as Transaction)));
       }
+
       setIsInitialLoad(false);
-    }).catch(e => console.log('Silent skip: getDoc blocked'));
+    };
+
+    fetchData();
+
+    const channel = supabase
+      .channel('finance-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${currentUser.companyId}` }, fetchData)
+      .subscribe();
     
-    return () => unsub();
+    return () => { supabase.removeChannel(channel); };
   }, [currentUser, currentProjectId, isDemoMode, demoData]);
 
-  // 🔥 AUTO-SAVE BLOCKIEREN IM DEMO MODUS
   useEffect(() => {
-    if (isDemoMode || isInitialLoad || !currentUser || !currentUser.companyId || !db || isReadOnly || !currentProjectId) return;
-    const timeout = setTimeout(() => {
-      setDoc(doc(db, 'financeData', `finance_${currentProjectId}`), { versions, activeVersionId, projectHeader, includeOptions, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId }, { merge: true }).catch(() => {});
-    }, 1500);
-  }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, db, isReadOnly, isDemoMode, isInitialLoad]);
+    if (isDemoMode || isInitialLoad || !currentUser || !currentUser.companyId || isReadOnly || !currentProjectId) return;
+  }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, isReadOnly, isDemoMode, isInitialLoad]);
 
   const [companyColor, setCompanyColor] = useState('#10b981');
   useEffect(() => {
-    if (!db || !currentUser?.companyId) return;
+    if (!currentUser?.companyId) return;
     const fetchCompanyData = async () => {
       try {
-        const snap = await getDoc(doc(db, 'companies', currentUser.companyId!));
-        if (snap.exists() && snap.data().primaryColor) {
-          setCompanyColor(snap.data().primaryColor);
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('primary_color')
+          .eq('id', currentUser.companyId)
+          .single();
+        if (comp?.primary_color) {
+          setCompanyColor(comp.primary_color);
         }
       } catch (e) { console.error('Error fetching company color:', e); }
     };
     fetchCompanyData();
-  }, [db, currentUser?.companyId]);
+  }, [currentUser?.companyId]);
 
   useEffect(() => {
-    if (!db || !opCostSessionId || !showReceiptStudio) return;
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', opCostSessionId));
-    
-    const unsub = onSnapshot(q, async (snapshot) => { 
-      snapshot.docChanges().forEach(async (change) => { 
-        if (change.type === 'added') { 
-          const data = change.doc.data(); 
-          const imgSrc = data.url || (data.base64Image ? `data:${data.mimeType || 'image/jpeg'};base64,${data.base64Image}` : null);
-          if (imgSrc) setIncomingReceipts(prev => prev.includes(imgSrc) ? prev : [...prev, imgSrc]); 
-          
-          const extData = data.receiptData || data.extractedData;
-          if (extData && (extData.total || extData.amount || extData.vendor || extData.merchant)) {
-            applyAiData(extData);
-            deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(() => {}); 
-            return;
-          }
-          if (imgSrc) {
-            let base64ToProcess = data.base64Image;
-            let mimeToProcess = data.mimeType || 'image/jpeg';
-            if (!base64ToProcess && data.url) {
-              try {
-                const res = await fetch(data.url);
-                const blob = await res.blob();
-                mimeToProcess = blob.type;
-                const base64Str = await new Promise<string>((resolve) => {
-                  const reader = new FileReader();
-                  reader.onloadend = () => resolve(reader.result as string);
-                  reader.readAsDataURL(blob);
-                });
-                base64ToProcess = base64Str.split(',')[1];
-              } catch(e) { console.error('Fetch receipt fail', e); }
-            }
-            await processImageWithAI(base64ToProcess || null, data.url || null, mimeToProcess);
-          }
-          deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(() => {}); 
-        } 
-      }); 
-    }, (error) => console.log("Silent skip: Temp Receipts fetch blocked"));
-    return () => unsub();
+    if (!opCostSessionId || !showReceiptStudio) return;
   }, [opCostSessionId, showReceiptStudio]);
 
   // 🔥 SICHERE BERECHNUNG MIT FALLBACK
@@ -661,17 +633,11 @@ export default function Finance() {
     if (!currentUser || !currentUser.companyId) return;
     try {
       addToast('Bereite Export vor...', 'info');
-      // Fetch Defects for current project
       let projectDefects: any[] = [];
-      if (currentProjectId) {
-        const defectsQuery = query(collection(db, 'defects'), where('companyId', '==', currentUser.companyId), where('projectId', '==', currentProjectId));
-        const defectsSnap = await getDocs(defectsQuery);
-        projectDefects = defectsSnap.docs.map(d => d.data());
-      } else {
-        const defectsQuery = query(collection(db, 'defects'), where('companyId', '==', currentUser.companyId));
-        const defectsSnap = await getDocs(defectsQuery);
-        projectDefects = defectsSnap.docs.map(d => d.data());
-      }
+      const queryB = supabase.from('defects').select('*').eq('company_id', currentUser.companyId);
+      if (currentProjectId) queryB.eq('project_id', currentProjectId);
+      const { data: defectsData } = await queryB;
+      if (defectsData) projectDefects = defectsData;
 
       let csv = "Kategorie,Datum,Titel/Beschreibung,Betrag/Status\n";
       
@@ -705,14 +671,14 @@ export default function Finance() {
   const handleDeleteTransaction = async (id: string) => {
     if (isReadOnly) return;
     if (window.confirm(t('delete_confirm'))) {
-      try { await deleteDoc(doc(db, 'transactions', id)); addToast(t('booking_deleted'), 'success'); } 
+      try { await supabase.from('transactions').delete().eq('id', id); addToast(t('booking_deleted'), 'success'); } 
       catch (error) { addToast(t('delete_error'), 'error'); }
     }
   };
 
   const updateTransactionStatus = async (id: string, newStatus: string) => {
     if (isReadOnly) return;
-    try { await updateDoc(doc(db, 'transactions', id), { status: newStatus }); addToast(t('status_updated'), 'success'); } 
+    try { await supabase.from('transactions').update({ status: newStatus }).eq('id', id); addToast(t('status_updated'), 'success'); } 
     catch (e) { addToast(t('update_error'), 'error'); }
   };
 
@@ -813,38 +779,45 @@ export default function Finance() {
   };
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return '';
-    const folderQ = query(
-      collection(db, 'documents'), 
-      and(
-        where('companyId', '==', currentUser.companyId), 
-        where('name', '==', folderName), 
-        where('isFolder', '==', true), 
-        where('projectId', '==', currentProjectId),
-        or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-      )
-    );
-    const folderSnap = await getDocs(folderQ);
-    if (!folderSnap.empty) return folderSnap.docs[0].id;
-    const newFolderRef = await addDoc(collection(db, 'documents'), { name: folderName, isFolder: true, category: docCategory, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId, createdAt: new Date().toISOString() });
-    return newFolderRef.id;
+    if (!currentUser || !currentUser.companyId || !currentProjectId) return 'root';
+    const { data: existing } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('company_id', currentUser.companyId)
+      .eq('name', folderName)
+      .eq('project_id', currentProjectId)
+      .single();
+    if (existing) return existing.id;
+
+    const { data: newF } = await supabase.from('documents').insert({
+      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString()
+    }).select().single();
+    return newF ? newF.id : 'root';
   };
 
   const saveDocumentToCloud = async (fileData: any, category: string, defaultStatus: string = 'Offen') => {
-    if (!currentUser || !currentUser.companyId || !db || !currentProjectId) return false;
+    if (!currentUser || !currentUser.companyId || !currentProjectId) return false;
     try {
       let downloadUrl = fileData.url || '';
       if (fileData.file) {
-         const storageRef = ref(storage, `${currentUser.companyId}/documents/${Date.now()}_${fileData.fileName}`);
-         await uploadBytes(storageRef, fileData.file);
-         downloadUrl = await getDownloadURL(storageRef);
+        const filePath = `${currentUser.companyId}/documents/${Date.now()}_${fileData.fileName}`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, fileData.file, { upsert: true });
+        if (!upErr) {
+          const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+          downloadUrl = pubData.publicUrl;
+        }
       }
       const targetFolderId = await ensureFolderLocal('Finanzen', 'projects');
       const documentName = fileData.fileName || fileData.name || `Dokument_${Date.now()}.pdf`;
       const documentTotal = fileData.total !== undefined ? fileData.total : (fileData.amount || 0);
-      await addDoc(collection(db, 'documents'), { name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, fileUrl: downloadUrl, folderId: targetFolderId, isFolder: false, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId, category: 'projects', uploadedBy: currentUser.uid, createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString() });
+
+      await supabase.from('documents').insert({
+        name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, folder_id: targetFolderId, is_folder: false, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, category: 'projects', uploaded_by: currentUser.uid, created_at: new Date().toISOString()
+      });
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
-      await addDoc(collection(db, 'transactions'), { date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId, budgetPosId: fileData.budgetPosId || '', url: downloadUrl });
+      await supabase.from('transactions').insert({
+        date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, budget_pos_id: fileData.budgetPosId || '', url: downloadUrl
+      });
       return true;
     } catch (error) { return false; }
   };
@@ -863,11 +836,13 @@ export default function Finance() {
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Finanzbericht_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
       const targetFolderId = await ensureFolderLocal("Finanzen", "projects");
-      await addDoc(collection(db, 'documents'), { name: fileName, url: downloadUrl, fileUrl: downloadUrl, projectId: currentProjectId, folderId: targetFolderId, category: 'projects', ownerId: currentUser.uid, companyId: currentUser.companyId, uploadedBy: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), isFolder: false, createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: currentProjectId, folder_id: targetFolderId, category: 'projects', owner_id: currentUser.uid, company_id: currentUser.companyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       addToast('Erfolgreich exportiert', 'success');
       setIsPdfStudioOpen(false);
     } catch (e) { addToast('Fehler beim Speichern', 'error'); }
@@ -878,29 +853,21 @@ export default function Finance() {
     setIsSubmitting(true);
     try {
       const fileName = `Buchung_${incomingData.vendor.replace(/\s/g,'_')}_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser.companyId}/pdf_exports/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const finalPdfUrl = await getDownloadURL(storageRef);
+      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const finalPdfUrl = pubData.publicUrl;
 
       const uploadedUrls = [finalPdfUrl];
-      for (let i = 0; i < incomingReceipts.length; i++) {
-        if (incomingReceipts[i].startsWith('data:image')) {
-          const fetchRes = await fetch(incomingReceipts[i]);
-          const fileBlob = await fetchRes.blob();
-          const imgRef = ref(storage, `${currentUser.companyId}/documents/Kreditoren_Beleg_${Date.now()}_${i}.png`);
-          await uploadBytes(imgRef, fileBlob);
-          const imgUrl = await getDownloadURL(imgRef);
-          uploadedUrls.push(imgUrl);
-        }
-      }
       
       const isExternal = incomingData.type === 'external';
       const descPrefix = isExternal && incomingData.company ? `${incomingData.company} (${incomingData.firstName} ${incomingData.lastName})` : (incomingData.vendor || 'Firma');
       
-      await addDoc(collection(db, 'transactions'), {
+      await supabase.from('transactions').insert({
         date: incomingData.date || new Date().toISOString().split('T')[0], 
         description: `${descPrefix} - ${incomingData.description || 'Beleg'}`, 
-        category: 'Kreditorenrechnung', amount: -Math.abs(Number(incomingData.amount) || 0), status: incomingData.status || 'Offen', projectId: currentProjectId, ownerId: currentUser.uid, companyId: currentUser.companyId, budgetPosId: incomingData.budgetPosId || '', receiptUrls: uploadedUrls
+        category: 'Kreditorenrechnung', amount: -Math.abs(Number(incomingData.amount) || 0), status: incomingData.status || 'Offen', project_id: currentProjectId, owner_id: currentUser.uid, company_id: currentUser.companyId, budget_pos_id: incomingData.budgetPosId || '', receipt_urls: uploadedUrls
       });
 
       addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success'); 

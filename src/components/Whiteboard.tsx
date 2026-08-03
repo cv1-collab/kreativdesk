@@ -185,13 +185,17 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   }, [bgImageSrc]);
 
   useEffect(() => {
-    if (currentUser && currentUser.companyId && db) {
-      const q = query(collection(db, 'audioNotes'), where('companyId', '==', currentUser.companyId), where('ownerId', '==', currentUser.uid));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const notes = snapshot.docs.map(doc => doc.data()).sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        setAudioNotes(notes);
-      });
-      return () => unsubscribe();
+    if (currentUser && currentUser.companyId) {
+      const fetchNotes = async () => {
+        const { data } = await supabase
+          .from('audio_notes')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .eq('owner_id', currentUser.uid)
+          .order('created_at', { ascending: false });
+        if (data) setAudioNotes(data);
+      };
+      fetchNotes();
     }
   }, [currentUser]);
 
@@ -500,40 +504,39 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const ensureFolder = async (folderName: string, docCategory: string) => {
     if (!currentUser || !currentUser.companyId) return '';
     const currentProjectId = activeProject?.id || 'global';
-    const folderQ = query(
-      collection(db, 'documents'), 
-      and(
-        where('companyId', '==', currentUser.companyId), 
-        where('name', '==', folderName), 
-        where('isFolder', '==', true), 
-        where('projectId', '==', currentProjectId),
-        or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-      )
-    );
-    const folderSnap = await getDocs(folderQ);
-    if (!folderSnap.empty) return folderSnap.docs[0].id;
-    const newFolderRef = await addDoc(collection(db, 'documents'), { name: folderName, isFolder: true, category: docCategory, ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: currentProjectId, createdAt: new Date().toISOString() });
-    return newFolderRef.id;
+    const { data: existingFolder } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('company_id', currentUser.companyId)
+      .eq('name', folderName)
+      .eq('is_folder', true)
+      .single();
+    if (existingFolder) return existingFolder.id;
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().single();
+    return newF ? newF.id : '';
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Whiteboard_${(activeProject?.name || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
-      const storageRef = ref(storage, `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`);
-      await uploadBytes(storageRef, blob);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const filePath = `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadUrl = pubData.publicUrl;
+
       const docCategory = activeProject?.id === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("Whiteboards", docCategory);
-      await addDoc(collection(db, 'documents'), {
-        name: fileName, url: downloadUrl, fileUrl: downloadUrl, projectId: activeProject?.id || null, folderId: targetFolderId, category: docCategory, ownerId: currentUser.uid, companyId: currentUser.companyId, uploadedBy: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), isFolder: false, createdAt: new Date().toISOString(), uploadedAt: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+      await supabase.from('documents').insert({
+        name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: activeProject?.id || null, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
       addToast(t('saved_cloud'), 'success'); setIsPdfStudioOpen(false);
     } catch (error) { console.error(error); addToast('Fehler beim Speichern in der Cloud.', 'error'); }
   };
 
   const handleSaveToCloud = async () => {
-    if (!stageRef.current || !currentUser || !currentUser.companyId || !db) return;
+    if (!stageRef.current || !currentUser || !currentUser.companyId) return;
     setIsSavingToCloud(true); 
     setSelectedShapeId(null); 
     
@@ -544,44 +547,35 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           if (!dataUrl) throw new Error("Konnte Bild nicht erstellen");
           
           const fileName = `Whiteboard_Skizze_${new Date().getTime()}.png`;
-          const storageReference = ref(storage, `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`);
+          const filePath = `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`;
           
           const fetchRes = await fetch(dataUrl); 
           const blob = await fetchRes.blob();
           
-          await uploadBytes(storageReference, blob);
-          const downloadUrl = await getDownloadURL(storageReference);
+          const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+          if (upErr) throw upErr;
+          const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+          const downloadUrl = pubData.publicUrl;
           
           let targetFolderId = '';
           if (projectId) {
-            try {
-              const folderQ = query(
-                collection(db, 'documents'), 
-                and(
-                  where('companyId', '==', currentUser.companyId), 
-                  where('name', '==', `Projekt: ${activeProject?.name || 'Unbenannt'}`), 
-                  where('isFolder', '==', true),
-                  or(where('visibility', 'in', ['company', 'public']), where('ownerId', '==', currentUser.uid))
-                )
-              );
-              const folderSnap = await getDocs(folderQ);
-              if (!folderSnap.empty) { targetFolderId = folderSnap.docs[0].id; }
-            } catch (e) { console.error(e); }
+            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', currentUser.companyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).single();
+            if (existingF) targetFolderId = existingF.id;
           }
           
-          await addDoc(collection(db, 'documents'), {
+          await supabase.from('documents').insert({
             name: fileName, 
             url: downloadUrl, 
-            fileUrl: downloadUrl, 
+            file_url: downloadUrl, 
             size: formatBytes(blob.size), 
             type: 'image/png', 
-            ownerId: currentUser.uid, 
-            companyId: currentUser.companyId, 
-            createdAt: new Date().toISOString(), 
-            uploadedAt: new Date().toISOString(), 
-            isFolder: false, 
-            projectId: projectId || null, 
-            folderId: targetFolderId || null, 
+            owner_id: currentUser.uid, 
+            company_id: currentUser.companyId, 
+            created_at: new Date().toISOString(), 
+            uploaded_at: new Date().toISOString(), 
+            is_folder: false, 
+            project_id: projectId || null, 
+            folder_id: targetFolderId || null, 
             category: 'projects'
           });
           
@@ -617,7 +611,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   };
 
   const handleSendToSlides = async () => {
-    if (!stageRef.current || !currentUser || !currentUser.companyId || !db) return;
+    if (!stageRef.current || !currentUser || !currentUser.companyId) return;
     setIsSending(true); setSendSuccess(false); setSelectedShapeId(null);
     try {
       setTimeout(async () => {
@@ -625,19 +619,20 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         if (!uri) return;
         
         const fileName = `PitchDeck_Slide_${Date.now()}.jpg`;
-        const storageReference = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/${fileName}`);
+        const filePath = `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/${fileName}`;
         const fetchRes = await fetch(uri); 
         const blob = await fetchRes.blob();
-        await uploadBytes(storageReference, blob);
-        const downloadUrl = await getDownloadURL(storageReference);
+        await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
+        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        const downloadUrl = pubData.publicUrl;
 
         const id = `wb-${Date.now()}`;
-        await setDoc(doc(db, 'whiteboardExports', id), { 
+        await supabase.from('whiteboard_exports').insert({ 
           id, 
-          imageUrl: downloadUrl, 
-          ownerId: currentUser.uid, 
-          companyId: currentUser.companyId, 
-          createdAt: new Date().toISOString() 
+          image_url: downloadUrl, 
+          owner_id: currentUser.uid, 
+          company_id: currentUser.companyId, 
+          created_at: new Date().toISOString() 
         });
         
         setIsSending(false); setSendSuccess(true); setTimeout(() => setSendSuccess(false), 3000);
@@ -677,9 +672,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
               
               const result = JSON.parse(resultText); 
               const id = `an-${Date.now()}`;
-              await setDoc(doc(db, 'audioNotes', id), {
+              await supabase.from('audio_notes').insert({
                 id, title: `Field Note ${new Date().toLocaleDateString()}`, time: 'Gerade eben', duration: `0:${recordingTime.toString().padStart(2, '0')}`,
-                aiSummary: result.summary || 'Summary failed.', transcription: result.transcription || 'Transcription failed.', audioData: base64Audio, ownerId: currentUser.uid, companyId: currentUser.companyId, createdAt: new Date().toISOString()
+                ai_summary: result.summary || 'Summary failed.', transcription: result.transcription || 'Transcription failed.', audio_data: base64Audio, owner_id: currentUser.uid, company_id: currentUser.companyId, created_at: new Date().toISOString()
               });
               setActiveNoteId(id); resolve();
             } catch (error: any) { addToast(t('ai_error'), "error"); resolve(); } 
@@ -694,7 +689,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation();
     if (window.confirm(t('confirm_delete_note'))) {
-      try { await deleteDoc(doc(db, 'audioNotes', noteId)); if (activeNoteId === noteId) setActiveNoteId(null); addToast(t('note_deleted'), 'success'); } 
+      try { await supabase.from('audio_notes').delete().eq('id', noteId); if (activeNoteId === noteId) setActiveNoteId(null); addToast(t('note_deleted'), 'success'); } 
       catch (err) { addToast(globalT('error'), 'error'); }
     }
   };
