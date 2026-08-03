@@ -14,6 +14,7 @@ export interface Defect { id: string; title: string; status: string; priority: s
 interface ProjectContextType {
   projects: Project[]; activeProjectId: string | null; companyUsers: CompanyUser[]; projectMembers: any[]; timeEntries: TimeEntry[]; defects: Defect[];
   setActiveProject: (id: string | null) => void; addProject: (project: any) => Promise<void>; removeProject: (id: string) => Promise<void>;
+  updateProjectStatus: (id: string, status: string) => Promise<void>;
   addCompanyUser: (user: any) => Promise<void>; updateCompanyUser: (id: string, user: any) => Promise<void>; removeCompanyUser: (id: string) => Promise<void>;
   addProjectMember: (projectId: string, memberData: any) => Promise<void>; removeProjectMember: (projectId: string, userId: string) => Promise<void>;
   addTimeEntry: (entry: any) => Promise<void>; isDemoMode: boolean; demoData: any;
@@ -214,6 +215,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     await fetchProjects();
   };
 
+  const updateProjectStatus = async (id: string, status: string) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, status: status as any } : p));
+    try {
+      await supabase.from('projects').update({ status }).eq('id', id);
+    } catch (err) {
+      console.error("Fehler beim Aktualisieren des Projektstatus:", err);
+    }
+    await fetchProjects();
+  };
+
   const addCompanyUser = async (userData: any) => {
     fetchCompanyUsers();
   };
@@ -249,7 +260,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ 
       projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects, 
-      setActiveProject: setActiveProjectId, addProject, removeProject, addCompanyUser, 
+      setActiveProject: setActiveProjectId, addProject, removeProject, updateProjectStatus, addCompanyUser, 
       updateCompanyUser, removeCompanyUser, addProjectMember, removeProjectMember, 
       addTimeEntry,
       isDemoMode: false,

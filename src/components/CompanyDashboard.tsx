@@ -90,7 +90,7 @@ export default function CompanyDashboard() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT?.(key) || key;
   
   const { currentUser, logout = async () => {} } = useAuth() || {};
-  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject } = useProject() as any;
+  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject, updateProjectStatus } = useProject() as any;
   const navigate = useNavigate();
   
   const { startTour } = useTour();
@@ -158,15 +158,16 @@ export default function CompanyDashboard() {
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState('');
 
   // --- ARCHIV-LOGIK ---
-  const [activeProjectFilter, setActiveProjectFilter] = useState<'active' | string>('active');
+  const [activeProjectFilter, setActiveProjectFilter] = useState<'active' | 'archived' | string>('active');
 
   const safeProjects = Array.isArray(projects) ? projects : [];
 
   const archiveYears = useMemo(() => {
     const years = new Set<string>();
     safeProjects.forEach((p: any) => {
-      if (p.status === 'archived' && p.createdAt) {
-        const year = new Date(p.createdAt).getFullYear().toString();
+      if (p.status === 'archived') {
+        const dateStr = p.createdAt || p.created_at || p.updatedAt || p.updated_at;
+        const year = dateStr ? new Date(dateStr).getFullYear().toString() : new Date().getFullYear().toString();
         years.add(year);
       }
     });
@@ -175,11 +176,15 @@ export default function CompanyDashboard() {
 
   const filteredProjects = useMemo(() => {
     if (activeProjectFilter === 'active') {
-      return safeProjects.filter((p: any) => p.status === 'active');
+      return safeProjects.filter((p: any) => p.status === 'active' || !p.status || p.status === 'planning');
+    } else if (activeProjectFilter === 'archived') {
+      return safeProjects.filter((p: any) => p.status === 'archived');
     } else {
       return safeProjects.filter((p: any) => {
-        if (p.status !== 'archived' || !p.createdAt) return false;
-        return new Date(p.createdAt).getFullYear().toString() === activeProjectFilter;
+        if (p.status !== 'archived') return false;
+        const dateStr = p.createdAt || p.created_at || p.updatedAt || p.updated_at;
+        const year = dateStr ? new Date(dateStr).getFullYear().toString() : new Date().getFullYear().toString();
+        return year === activeProjectFilter;
       });
     }
   }, [safeProjects, activeProjectFilter]);
@@ -398,16 +403,24 @@ export default function CompanyDashboard() {
     e.stopPropagation();
     setActiveDropdownId(null);
     
-    const newStatus = currentStatus === 'active' ? 'archived' : 'active';
+    const newStatus = currentStatus === 'archived' ? 'active' : 'archived';
     try {
-      await supabase
-        .from('projects')
-        .update({ status: newStatus })
-        .eq('id', projectId);
+      if (updateProjectStatus) {
+        await updateProjectStatus(projectId, newStatus);
+      } else {
+        await supabase
+          .from('projects')
+          .update({ status: newStatus })
+          .eq('id', projectId);
+      }
 
       addToast(currentLang === 'de' ? `Projekt ${newStatus === 'archived' ? 'archiviert' : 'aktiviert'}` : `Project ${newStatus}`, 'success');
       
-      if (newStatus === 'active') setActiveProjectFilter('active');
+      if (newStatus === 'archived') {
+        setActiveProjectFilter('archived');
+      } else {
+        setActiveProjectFilter('active');
+      }
     } catch (err) {
       console.error(err);
       addToast(t('upload_failed'), 'error');
@@ -626,27 +639,39 @@ export default function CompanyDashboard() {
                       <button 
                         onClick={() => setActiveProjectFilter('active')}
                         className={cn(
-                          "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border",
+                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border cursor-pointer",
                           activeProjectFilter === 'active' 
                             ? "bg-accent-ai text-white border-accent-ai shadow-md" 
                             : "bg-surface text-text-muted border-border hover:bg-white/5"
                         )}
                       >
-                        {t('active_projects')}
+                        <Building2 size={14} /> {t('active_projects')} ({safeProjects.filter((p: any) => p.status === 'active' || !p.status || p.status === 'planning').length})
                       </button>
                       
-                      {archiveYears.map(year => (
+                      <button 
+                        onClick={() => setActiveProjectFilter('archived')}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border cursor-pointer",
+                          activeProjectFilter === 'archived' || archiveYears.includes(activeProjectFilter)
+                            ? "bg-amber-500 text-white border-amber-500 shadow-md" 
+                            : "bg-surface text-text-muted border-border hover:bg-white/5"
+                        )}
+                      >
+                        <Archive size={14} /> {t('archived')} ({safeProjects.filter((p: any) => p.status === 'archived').length})
+                      </button>
+
+                      {archiveYears.length > 1 && archiveYears.map(year => (
                         <button 
                           key={year}
                           onClick={() => setActiveProjectFilter(year)}
                           className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border",
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border cursor-pointer",
                             activeProjectFilter === year 
                               ? "bg-zinc-700 text-white border-zinc-600 shadow-md" 
-                              : "bg-surface text-text-muted border-border hover:bg-white/5"
+                              : "bg-surface/50 text-text-muted border-border hover:bg-white/5"
                           )}
                         >
-                          <Archive size={14} /> {t('archive')} {year}
+                          {year}
                         </button>
                       ))}
                     </div>
@@ -663,7 +688,7 @@ export default function CompanyDashboard() {
                                   <div className="absolute right-0 mt-1 w-48 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-[100] py-1">
                                     
                                     <button onClick={(e) => handleArchiveProject(p.id, p.status, e)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-text-primary hover:bg-white/5 flex items-center gap-2 transition-colors">
-                                      {p.status === 'active' ? <><Archive size={16}/> {t('archive_project')}</> : <><RotateCcw size={16}/> {t('unarchive_project')}</>}
+                                      {p.status === 'archived' ? <><RotateCcw size={16}/> {t('unarchive_project')}</> : <><Archive size={16}/> {t('archive_project')}</>}
                                     </button>
                                     
                                     <button onClick={(e) => handleDeleteProject(p.id, e)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-red-500 hover:bg-red-500/10 flex items-center gap-2 transition-colors">
@@ -676,18 +701,31 @@ export default function CompanyDashboard() {
                           </div>
                           <div className="flex-1"><h3 className="font-bold text-base md:text-lg text-text-primary mb-1 group-hover:text-accent-ai transition-colors line-clamp-2">{p.name}</h3><p className="text-text-muted text-xs md:text-sm line-clamp-2">{p.description || t('no_description')}</p></div>
                           <div className="mt-4 pt-4 border-t border-border flex items-center justify-between shrink-0">
-                            <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border", p.status === 'active' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20")}>{p.status === 'active' ? t('active') : t('archived')}</span>
-                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{t('created_at')}: {new Date(p.createdAt).toLocaleDateString('de-CH')}</span>
+                            <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border", p.status === 'active' || !p.status || p.status === 'planning' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20")}>{p.status === 'archived' ? t('archived') : t('active')}</span>
+                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{t('created_at')}: {new Date(p.createdAt || p.created_at || Date.now()).toLocaleDateString('de-CH')}</span>
                           </div>
                         </div>
                       ))}
                       {filteredProjects.length === 0 && (
                         <div className="col-span-full py-16 text-center border-2 border-dashed border-border rounded-2xl bg-surface/50">
-                          <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-50" />
-                          <h3 className="text-xl font-bold text-text-primary mb-2">Noch keine Projekte</h3>
-                          <p className="text-text-muted mb-6">Erstelle dein erstes Projekt, um loszulegen.</p>
-                          {canCreateProjects && (
-                            <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2"><Plus size={16} /> {t('create_project')}</button>
+                          {activeProjectFilter === 'active' ? (
+                            <>
+                              <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-50" />
+                              <h3 className="text-xl font-bold text-text-primary mb-2">Noch keine aktiven Projekte</h3>
+                              <p className="text-text-muted mb-6">Erstelle dein erstes Projekt, um loszulegen.</p>
+                              {canCreateProjects && (
+                                <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2"><Plus size={16} /> {t('create_project')}</button>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <Archive size={48} className="mx-auto text-amber-500 mb-4 opacity-70" />
+                              <h3 className="text-xl font-bold text-text-primary mb-2">Keine archivierten Projekte</h3>
+                              <p className="text-text-muted mb-6">Du hast derzeit keine archivierten Projekte.</p>
+                              <button onClick={() => setActiveProjectFilter('active')} className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2">
+                                Zu aktiven Projekten
+                              </button>
+                            </>
                           )}
                         </div>
                       )}
