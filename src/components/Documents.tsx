@@ -8,7 +8,7 @@ import {
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
   Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles 
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -379,9 +379,9 @@ export default function Documents() {
                 </div>
 
                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  {!item.is_folder && (item.url || item.file_url) && (
+                  {!item.is_folder && !!sanitizeUrl(item.url || item.file_url) && (
                     <a 
-                      href={item.url || item.file_url} 
+                      href={sanitizeUrl(item.url || item.file_url)} 
                       target="_blank" 
                       rel="noreferrer" 
                       className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border"

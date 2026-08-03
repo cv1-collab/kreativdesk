@@ -13,7 +13,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -1153,7 +1153,7 @@ export default function Finance() {
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-text-primary">{tx.description}</span>
-                                {tx.url && <a href={tx.url} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14}/></a>}
+                                {!!sanitizeUrl(tx.url) && <a href={sanitizeUrl(tx.url)} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14}/></a>}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-xs text-text-muted font-medium">
@@ -1733,7 +1733,7 @@ export default function Finance() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-text-primary">{tx.description}</span>
-                              {tx.url && <a href={tx.url} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14}/></a>}
+                              {!!sanitizeUrl(tx.url) && <a href={sanitizeUrl(tx.url)} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14}/></a>}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-xs text-text-muted font-medium">

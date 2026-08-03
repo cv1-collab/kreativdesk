@@ -8,7 +8,7 @@ import {
   Calendar, Sparkles
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -344,7 +344,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(quote.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {quote.url && <a href={quote.url} target="_blank" rel="noopener noreferrer" className="p-1 text-blue-500 hover:bg-blue-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
+                        {!!sanitizeUrl(quote.url) && <a href={sanitizeUrl(quote.url)} target="_blank" rel="noopener noreferrer" className="p-1 text-blue-500 hover:bg-blue-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={quote.status} onChange={(e) => handleUpdateStatus(quote.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", quote.status === 'Angenommen' || quote.status === 'Approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Angenommen" className="bg-surface">Angenommen</option><option value="Abgelehnt" className="bg-surface">Abgelehnt</option>
                         </select>
@@ -373,7 +373,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(inv.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {inv.url && <a href={inv.url} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
+                        {!!sanitizeUrl(inv.url) && <a href={sanitizeUrl(inv.url)} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={inv.status} onChange={(e) => handleUpdateStatus(inv.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", inv.status === 'Bezahlt' || inv.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
                         </select>
@@ -402,7 +402,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(exp.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {exp.receiptUrls?.[0] && <a href={exp.receiptUrls[0]} target="_blank" rel="noopener noreferrer" className="p-1 text-orange-500 hover:bg-orange-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
+                        {!!sanitizeUrl(exp.receiptUrls?.[0]) && <a href={sanitizeUrl(exp.receiptUrls[0])} target="_blank" rel="noopener noreferrer" className="p-1 text-orange-500 hover:bg-orange-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={exp.status} onChange={(e) => handleUpdateStatus(exp.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", exp.status === 'Bezahlt' || exp.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
                         </select>
@@ -431,7 +431,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(op.amount)).toFixed(2)}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {op.receiptUrls?.[0] && <a href={op.receiptUrls[0]} target="_blank" rel="noopener noreferrer" className="p-1 text-purple-500 hover:bg-purple-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
+                        {!!sanitizeUrl(op.receiptUrls?.[0]) && <a href={sanitizeUrl(op.receiptUrls[0])} target="_blank" rel="noopener noreferrer" className="p-1 text-purple-500 hover:bg-purple-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
                         <select value={op.status} onChange={(e) => handleUpdateStatus(op.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", op.status === 'Bezahlt' || op.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-purple-500/10 text-purple-500 border-purple-500/20")}>
                           <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
                         </select>
