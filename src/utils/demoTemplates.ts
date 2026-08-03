@@ -8,25 +8,25 @@ export const demoTemplates: Record<string, any> = {
       description: 'Zentrale Bauleitung, Mängelmanagement und Budgetkontrolle für das Wohnquartier. Fokus auf Termin- und Kostentreue.',
       status: 'active',
       siteLocation: 'Zürich',
-      imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
-      planUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
+      imageUrl: '/demo-assets/bau_kamera.jpg',
+      planUrl: '/demo-assets/bau_pitch_render.jpg'
     },
     bim: { useDefaultModel: true, url: '' }, 
-    camera: { url: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80' },
+    camera: { url: '/demo-assets/bau_kamera.jpg' },
     
     documents: [
-      { name: 'Grundriss_EG_Freigabe.jpg', category: 'plans', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80' },
-      { name: 'Statik_Bericht_Phase2.pdf', category: 'contracts', url: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80' }
+      { name: 'Grundriss_EG_Freigabe.pdf', category: 'plans', url: '/demo-assets/bau_grundriss_eg.pdf' },
+      { name: 'Visualisierung_Projekt.jpg', category: 'plans', url: '/demo-assets/bau_pitch_render.jpg' }
     ],
 
     members: [
-      { name: 'Sarah Meier', role: 'Lead Architect (Intern)', email: 'sarah@kreativ-desk.ch', phone: '+41 79 123 45 67', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
-      { name: 'Michael Chen', role: 'Bauleiter (Intern)', email: 'michael@kreativ-desk.ch', phone: '+41 78 987 65 43', photoURL: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' },
-      { name: 'Elena Rossi', role: 'Bauingenieurin (Intern)', email: 'elena@kreativ-desk.ch', phone: '+41 76 543 21 09', photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' },
+      { name: 'Sarah Meier', role: 'Lead Architect (Intern)', email: 'sarah@kreativ-desk.ch', phone: '+41 79 123 45 67', photoURL: '/demo-assets/avatar_sarah.jpg' },
+      { name: 'Michael Chen', role: 'Bauleiter (Intern)', email: 'michael@kreativ-desk.ch', phone: '+41 78 987 65 43', photoURL: '/demo-assets/avatar_michael.jpg' },
+      { name: 'Elena Rossi', role: 'Bauingenieurin (Intern)', email: 'elena@kreativ-desk.ch', phone: '+41 76 543 21 09', photoURL: '/demo-assets/avatar_elena.jpg' },
     ],
 
     defects: [
-      { title: 'Riss im Sichtbeton Achse B', description: 'Haarriss im Treppenhaus, statisch unbedenklich aber optischer Mangel.', priority: 'Hoch', status: 'Offen', trade: 'Baumeister', location: 'EG, Haus A', imageUrl: 'https://images.unsplash.com/photo-1517646287270-a5a9ca602e5c?auto=format&fit=crop&w=800&q=80' },
+      { title: 'Riss im Sichtbeton Achse B', description: 'Haarriss im Treppenhaus, statisch unbedenklich aber optischer Mangel.', priority: 'Hoch', status: 'Offen', trade: 'Baumeister', location: 'EG, Haus A', imageUrl: '/demo-assets/mangel_betonriss.jpg' },
       { title: 'Fensterdichtung beschädigt', description: 'Feuchtigkeitseintritt an Nordfassade.', priority: 'Mittel', status: 'In Arbeit', trade: 'Fensterbau', location: '1. OG, Raum 104', imageUrl: '' }
     ],
     

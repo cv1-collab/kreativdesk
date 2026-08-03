@@ -49,7 +49,7 @@ const DEMO_DEFECTS: any[] = [
     trade: 'Baumeister',
     location: 'Wohnen / Essen',
     dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
-    imageUrl: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?auto=format&fit=crop&w=800&q=80'
+    imageUrl: '/demo-assets/mangel_betonriss.jpg'
   },
   {
     id: 'demo-def-2',

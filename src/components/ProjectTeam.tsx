@@ -46,9 +46,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const t = (key: string) => localTranslations[currentLang]?.[key] || (typeof globalT === 'function' ? globalT(key) : key);
   
   const DEFAULT_DEMO_USERS = [
-    { id: 'm-1', userId: 'm-1', name: 'Sarah Meier', email: 'sarah@kreativ-desk.ch', role: 'Internal', projectRole: 'Owner', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
-    { id: 'm-2', userId: 'm-2', name: 'Michael Chen', email: 'michael@kreativ-desk.ch', role: 'Internal', projectRole: 'Admin', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' },
-    { id: 'm-3', userId: 'm-3', name: 'Elena Rossi', email: 'elena@kreativ-desk.ch', role: 'Internal', projectRole: 'Editor', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' }
+    { id: 'm-1', userId: 'm-1', name: 'Sarah Meier', email: 'sarah@kreativ-desk.ch', role: 'Internal', projectRole: 'Owner', avatar: '/demo-assets/avatar_sarah.jpg' },
+    { id: 'm-2', userId: 'm-2', name: 'Michael Chen', email: 'michael@kreativ-desk.ch', role: 'Internal', projectRole: 'Admin', avatar: '/demo-assets/avatar_michael.jpg' },
+    { id: 'm-3', userId: 'm-3', name: 'Elena Rossi', email: 'elena@kreativ-desk.ch', role: 'Internal', projectRole: 'Editor', avatar: '/demo-assets/avatar_elena.jpg' }
   ];
 
   const currentProjectId = propProjectId || projectId || activeProjectId;
