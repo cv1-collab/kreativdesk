@@ -45,10 +45,17 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || (typeof globalT === 'function' ? globalT(key) : key);
   
-  // 🔥 FIX: Zieht die ID aus Prop (Demo), URL oder Context!
+  const DEFAULT_DEMO_USERS = [
+    { id: 'm-1', userId: 'm-1', name: 'Sarah Meier', email: 'sarah@kreativ-desk.ch', role: 'Internal', projectRole: 'Owner', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
+    { id: 'm-2', userId: 'm-2', name: 'Michael Chen', email: 'michael@kreativ-desk.ch', role: 'Internal', projectRole: 'Admin', avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' },
+    { id: 'm-3', userId: 'm-3', name: 'Elena Rossi', email: 'elena@kreativ-desk.ch', role: 'Internal', projectRole: 'Editor', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' }
+  ];
+
   const currentProjectId = propProjectId || projectId || activeProjectId;
-  const currentMembers = (projectMembers || []).filter((m: any) => m.projectId === currentProjectId);
-  
+  const dbMembers = (projectMembers || []).filter((m: any) => m.projectId === currentProjectId);
+  const currentMembers = dbMembers.length > 0 ? dbMembers : DEFAULT_DEMO_USERS;
+  const allCompanyUsers = companyUsers.length > 0 ? companyUsers : DEFAULT_DEMO_USERS;
+
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [addMode, setAddMode] = useState<'existing' | 'new'>('existing'); 
   const [selectedUserId, setSelectedUserId] = useState('');
@@ -59,7 +66,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const [selectedRole, setSelectedRole] = useState<'Owner' | 'Admin' | 'Editor' | 'Viewer'>('Viewer');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const availableCompanyUsers = (companyUsers || []).filter((cu: any) => !currentMembers.some((cm: any) => cm.userId === cu.id));
+  const availableCompanyUsers = (allCompanyUsers || []).filter((cu: any) => !currentMembers.some((cm: any) => cm.userId === cu.id));
 
   const handleAddExistingUser = async () => {
     if (!selectedUserId || !currentProjectId || !currentUser?.companyId) return;
@@ -158,7 +165,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
             </thead>
             <tbody className="divide-y divide-border">
               {currentMembers.map((member: any) => {
-                const user = companyUsers.find((u: any) => u.id === member.userId);
+                const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
                 if (!user) return null; 
                 return (
                   <tr key={member.id} className="hover:bg-background transition-colors group">
@@ -203,7 +210,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
           <div className="md:hidden flex flex-col gap-4 p-4 pb-24">
             {currentMembers.length === 0 && <div className="text-center text-text-muted py-12 text-sm font-medium border-2 border-dashed border-border/50 rounded-2xl bg-surface/30">{t('no_team_members')}</div>}
             {currentMembers.map((member: any) => {
-              const user = companyUsers.find((u: any) => u.id === member.userId);
+              const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
               if (!user) return null;
               return (
                 <div key={member.id} className="bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm relative overflow-hidden">

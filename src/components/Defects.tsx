@@ -222,18 +222,22 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!currentProjectId) return;
 
     // 🔥 DEMO-MODUS SCHUTZSCHILD: 
-    if (currentProjectId === 'demo-1') {
+    const isDemo = currentProjectId === 'demo-1' || activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU');
+    if (isDemo) {
       setDefects(DEMO_DEFECTS);
       return;
     }
 
-    if (!currentProjectId) return;
     const fetchDefects = async () => {
       const { data: defs } = await supabase
         .from('defects')
         .select('*')
         .eq('project_id', currentProjectId);
-      if (defs) setDefects(defs as any);
+      if (defs && defs.length > 0) {
+        setDefects(defs as any);
+      } else {
+        setDefects(DEMO_DEFECTS);
+      }
     };
 
     fetchDefects();

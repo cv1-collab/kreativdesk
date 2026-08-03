@@ -1184,7 +1184,7 @@ export default function BIMViewer() {
                 <div className="absolute inset-0 pt-12 z-0 overflow-hidden bg-background">
                   <Canvas 
                     camera={{ position: [15, 12, 15], fov: 50 }} 
-                    gl={{ preserveDrawingBuffer: !isMobile, powerPreference: isMobile ? "low-power" : "high-performance", antialias: !isMobile }} 
+                    gl={{ preserveDrawingBuffer: true, powerPreference: "high-performance", antialias: true, failIfMajorPerformanceCaveat: false }} 
                     ref={canvasRef}
                     onPointerMissed={() => { if(!measureMode && !defectMode) setSelectedId(null); }}
                   >

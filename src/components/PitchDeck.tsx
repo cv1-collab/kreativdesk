@@ -76,9 +76,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   useEffect(() => {
     if (!currentProjectId) return;
 
-    if (currentProjectId.startsWith('demo-')) {
+    const loadDemoSlides = () => {
       const tpl = demoTemplates.construction;
-      
       const dynamicSlides: Slide[] = [
         {
           id: `demo-slide-1`, title: tpl.project?.name || 'Projekt', content: tpl.project?.description || '',
@@ -122,11 +121,14 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         }
       ];
 
-      setTimeout(() => {
-        setSlides(dynamicSlides);
-        setActiveSlideId(dynamicSlides[0].id);
-        setIsLoading(false);
-      }, 0);
+      setSlides(dynamicSlides);
+      setActiveSlideId(dynamicSlides[0].id);
+      setIsLoading(false);
+    };
+
+    const isDemo = currentProjectId.startsWith('demo-') || activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU');
+    if (isDemo) {
+      loadDemoSlides();
       return;
     }
 
@@ -142,33 +144,31 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           .eq('company_id', safeCompanyId)
           .order('order_index', { ascending: true });
 
-        if (data) {
+        if (data && data.length > 0) {
           const loadedSlides: Slide[] = data.map(d => ({
             id: d.id,
             title: d.title || '',
             content: d.content || '',
             imageUrl: d.image_url || d.imageUrl,
-            order_index: d.order_index || 0,
-            ownerId: d.owner_id,
-            projectId: d.project_id,
             layout: d.layout || 'split',
-            fontSize: d.font_size || 18,
-            dataPayload: d.data_payload
+            order_index: d.order_index || 0,
+            ownerId: d.owner_id || currentUser.uid,
+            projectId: d.project_id
           }));
           setSlides(loadedSlides);
-          if (loadedSlides.length > 0 && !activeSlideId) {
-            setActiveSlideId(loadedSlides[0].id);
-          }
+          if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
+        } else {
+          loadDemoSlides();
         }
-      } catch (err) {
-        console.error("Error fetching slides:", err);
+      } catch (e) {
+        loadDemoSlides();
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchSlides();
-  }, [currentUser, currentProjectId, activeSlideId]);
+  }, [currentUser, currentProjectId]);
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
