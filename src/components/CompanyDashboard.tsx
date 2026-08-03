@@ -296,7 +296,6 @@ export default function CompanyDashboard() {
   }, [safeAllDocs]);
 
   const handleLogout = async () => { try { await logout(); navigate('/login'); } catch (error) { console.error('Failed to log out'); } };
-
   const handleProjectClick = (projectId: string) => {
     if (!setActiveProject) return;
     addToast(t('loading_project'), 'info');
@@ -305,166 +304,33 @@ export default function CompanyDashboard() {
   };
 
   const handleCreateDemoProject = async (type: string = 'construction') => {
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
     addToast(`Erstelle Demo Projekt...`, 'info');
 
     try {
-      const batch = writeBatch(db);
-      const projectId = `prj-demo-${Date.now()}`;
-      const demoData = demoTemplates.construction;
+      const demoData = (demoTemplates as any)[type] || demoTemplates.construction;
+      const { data: newProj, error } = await supabase
+        .from('projects')
+        .insert({
+          name: demoData.project?.name || 'Demo: BAU',
+          description: demoData.project?.description || 'Interaktives Testprojekt',
+          status: 'active',
+          company_id: safeCompanyId,
+          owner_id: currentUser.uid
+        })
+        .select()
+        .single();
 
-      const newProj = {
-        id: projectId, name: demoData.project.name, description: demoData.project.description, status: demoData.project.status,
-        siteLocation: demoData.project.siteLocation || '', imageUrl: demoData.project.imageUrl || '', planUrl: demoData.project.planUrl || '',
-        cam1Url: demoData.camera?.url || '',
-        createdAt: new Date().toISOString(), ownerId: currentUser.uid, companyId: safeCompanyId, memberIds: [currentUser.uid]
-      };
-      batch.set(doc(db, 'projects', projectId), newProj);
+      if (error) throw error;
 
-      const memberId = `pm-${projectId}-${currentUser.uid}`;
-      batch.set(doc(db, 'projectMembers', memberId), {
-        id: memberId, projectId, companyId: safeCompanyId, userId: currentUser.uid, userEmail: currentUser.email, projectRole: 'owner', companyRole: userRole, joinedAt: new Date().toISOString()
-      });
-
-      const now = new Date().toISOString();
-
-      if (demoData.members) {
-        demoData.members.forEach((m: any) => {
-          // Determine a deterministic UID so creating multiple demo projects doesn't clutter the CRM
-          const fakeUid = `demo-uid-${m.email.replace(/[^a-zA-Z0-9]/g, '-')}`;
-          const pmId = `pm-${projectId}-${fakeUid}`;
-          batch.set(doc(db, 'projectMembers', pmId), {
-            id: pmId, projectId, companyId: safeCompanyId, userId: fakeUid, userEmail: m.email, 
-            name: m.name, role: m.role, photoURL: m.photoURL || '', phone: m.phone || '',
-            projectRole: 'member', companyRole: 'employee', joinedAt: now
-          });
-          // Also create the user in companyUsers so they show up in the team tab!
-          // Using a deterministic ID ensures we just overwrite/update the existing demo user instead of cloning
-          batch.set(doc(db, 'companyUsers', fakeUid), {
-            id: fakeUid, companyId: safeCompanyId, email: m.email, name: m.name,
-            role: m.role.includes('Intern') ? 'Internal' : 'External Planner',
-            avatar: m.photoURL || '', createdAt: now, ownerId: currentUser.uid
-          });
-        });
-      }
-
-      if (demoData.financeGroups) {
-        batch.set(doc(db, 'financeData', `finance_${projectId}`), {
-          projectId: projectId, companyId: safeCompanyId, activeVersionId: 'v1',
-          versions: [{
-            id: 'v1', name: 'Startbudget', createdAt: now, status: 'approved',
-            groups: demoData.financeGroups.map((g: any, gIdx: number) => ({
-              id: `g_${gIdx}`, pos: g.pos, title: g.title,
-              items: g.items.map((i: any, iIdx: number) => ({
-                id: `item_${gIdx}_${iIdx}`, pos: i.pos, title: i.title, description: i.description || '',
-                unit: i.unit || 'Pausch.', qty: i.qty || 1, unitPrice: i.unitPrice || 0,
-                type: i.type || 'cost',
-                total: (i.qty || 1) * (i.unitPrice || 0)
-              }))
-            }))
-          }]
-        });
-      } else {
-        batch.set(doc(db, 'financeData', `finance_${projectId}`), {
-          projectId: projectId, companyId: safeCompanyId, activeVersionId: 'v1',
-          versions: [{
-            id: 'v1', name: 'Startbudget', createdAt: now, status: 'approved',
-            groups: [{ id: 'g1', pos: '100', title: 'Projektbudget', items: [] }]
-          }]
-        });
-      }
-
-      // 2. Schedule Data (Calendar)
-      if (demoData.tasks || demoData.smartMarkers) {
-        batch.set(doc(db, 'projectSchedules', `schedule_${projectId}`), {
-          projectId: projectId, companyId: safeCompanyId, ownerId: currentUser.uid,
-          name: 'Initialer Projektplan', createdAt: now, isPublic: false,
-          tasks: (demoData.tasks || []).map((t: any) => {
-            const start = new Date(Date.now() + (t.daysOffsetStart || 0) * 86400000).toISOString().split('T')[0];
-            const end = new Date(Date.now() + (t.daysOffsetEnd || 0) * 86400000).toISOString().split('T')[0];
-            return { id: t.id, title: t.title, startDate: start, endDate: end, progress: t.progress || 0, status: t.status || 'Geplant', color: t.color };
-          }),
-          smartMarkers: (demoData.smartMarkers || []).map((m: any) => {
-            const date = new Date(Date.now() + (m.daysOffset || 0) * 86400000).toISOString().split('T')[0];
-            return { id: m.id, date: date, label: m.title, color: m.color };
-          })
-        });
-      }
-
-      // 3. Pitch Deck Slides
-      if (demoData.pitchDeck && demoData.pitchDeck.slides) {
-        for (const slide of demoData.pitchDeck.slides) {
-          batch.set(doc(db, 'slides', `slide_${projectId}_${slide.id}`), {
-            title: slide.title, content: slide.content || '', 
-            projectId: projectId, companyId: safeCompanyId, ownerId: currentUser.uid, 
-            layout: slide.layout || 'split', order_index: slide.order_index || 0, 
-            imageUrl: slide.imageUrl || '',
-            fontSize: slide.fontSize || 36, createdAt: now
-          });
-        }
-      }
-
-      // 4. Defects
-      if (demoData.defects) {
-        for (let i = 0; i < demoData.defects.length; i++) {
-          const d = demoData.defects[i];
-          let status = d.status || 'To Do';
-          if (status === 'In Arbeit' || status === 'Aktiv') status = 'In Progress';
-          if (status === 'Offen') status = 'To Do';
-          if (status === 'Erledigt') status = 'Done';
-          
-          batch.set(doc(db, 'defects', `defect_${projectId}_${i}`), {
-            title: d.title, description: d.description || '', projectId: projectId, companyId: safeCompanyId, reporterId: currentUser.uid,
-            priority: d.priority || 'Medium', status: status, trade: d.trade || '', location: d.location || '',
-            imageUrl: d.imageUrl || '', createdAt: now
-          });
-        }
-      }
-
-      if (demoData.documents && demoData.documents.length > 0) {
-        demoData.documents.forEach((d: any, idx: number) => {
-          const docId = `doc_${projectId}_${idx}`;
-          batch.set(doc(db, 'documents', docId), {
-            companyId: safeCompanyId, projectId: projectId, name: d.name, category: d.category || 'documents',
-            url: d.url, fileUrl: d.url, type: d.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
-            size: d.size || '1.2 MB', isFolder: false, ownerId: currentUser.uid, createdAt: now
-          });
-        });
-      } else {
-        batch.set(doc(db, 'documents', `doc_${Date.now()}`), {
-          companyId: safeCompanyId, projectId: projectId, name: 'Projekt-Übersicht.pdf', category: 'plans', 
-          url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2000&auto=format&fit=crop', 
-          type: 'application/pdf', size: '2.4 MB', isFolder: false, ownerId: currentUser.uid, createdAt: now
-        });
-      }
-
-      if (demoData.transactions) {
-        demoData.transactions.forEach((tx: any, idx: number) => {
-          batch.set(doc(db, 'transactions', `tx_${projectId}_${idx}`), {
-            ...tx, projectId, companyId: safeCompanyId, createdAt: now
-          });
-        });
-      }
-
-      if (demoData.timeEntries) {
-        demoData.timeEntries.forEach((te: any, idx: number) => {
-          batch.set(doc(db, 'timeEntries', `time_${projectId}_${idx}`), {
-            ...te, projectId, companyId: safeCompanyId, userId: currentUser.uid, createdAt: now
-          });
-        });
-      }
-
-      batch.set(doc(db, 'whiteboardExports', projectId), {
-        companyId: safeCompanyId, projectId: projectId, elements: '[]', createdAt: now
-      });
-
-      await batch.commit();
       setIsNewProjectModalOpen(false);
       setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
       addToast('Demo Projekt erfolgreich geladen!', 'success');
-      handleProjectClick(projectId);
+      if (newProj) {
+        handleProjectClick(newProj.id);
+      }
     } catch (err) {
       console.error(err);
       addToast('Fehler beim Laden des Demos', 'error');
@@ -487,7 +353,7 @@ export default function CompanyDashboard() {
     
     if (maxLimit === -1) return true; // Unlimited
     
-    const activeProjectsCount = projects.filter((p: any) => p.status !== 'archived').length;
+    const activeProjectsCount = safeProjects.filter((p: any) => p.status !== 'archived').length;
     
     if (activeProjectsCount >= maxLimit) {
       window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
@@ -498,7 +364,7 @@ export default function CompanyDashboard() {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !currentUser || !currentUser.uid) return;
+    if (!currentUser || !currentUser.uid) return;
     
     // Check Limits BEFORE creation
     if (!checkProjectLimit()) return;
@@ -517,38 +383,50 @@ export default function CompanyDashboard() {
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
     setIsSubmitting(true);
     try {
-      const id = `prj-${Date.now()}`;
-      const newProj = {
-        id, name: newProjectData.name, description: newProjectData.description, status: newProjectData.status,
-        createdAt: new Date().toISOString(), ownerId: currentUser.uid, companyId: safeCompanyId, memberIds: [currentUser.uid]
-      };
-      await setDoc(doc(db, 'projects', id), newProj);
-      const memberId = `pm-${id}-${currentUser.uid}`;
-      await setDoc(doc(db, 'projectMembers', memberId), {
-        id: memberId, projectId: id, companyId: safeCompanyId, userId: currentUser.uid, userEmail: currentUser.email, projectRole: newProjectData.role, companyRole: userRole, joinedAt: new Date().toISOString()
-      });
+      const { data: newProj, error } = await supabase
+        .from('projects')
+        .insert({
+          name: newProjectData.name,
+          description: newProjectData.description || '',
+          status: newProjectData.status || 'active',
+          company_id: safeCompanyId,
+          owner_id: currentUser.uid
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
       setIsNewProjectModalOpen(false);
       setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
       addToast(t('upload_success'), 'success');
-      handleProjectClick(id);
-    } catch (err) { addToast(t('upload_failed'), 'error'); } 
-    finally { setIsSubmitting(false); }
+      if (newProj) {
+        handleProjectClick(newProj.id);
+      }
+    } catch (err) { 
+      console.error(err);
+      addToast(t('upload_failed'), 'error'); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleArchiveProject = async (projectId: string, currentStatus: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveDropdownId(null);
-    if (!db) return;
     
     const newStatus = currentStatus === 'active' ? 'archived' : 'active';
     try {
-      await updateDoc(doc(db, 'projects', projectId), {
-        status: newStatus
-      });
+      await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', projectId);
+
       addToast(currentLang === 'de' ? `Projekt ${newStatus === 'archived' ? 'archiviert' : 'aktiviert'}` : `Project ${newStatus}`, 'success');
       
       if (newStatus === 'active') setActiveProjectFilter('active');
     } catch (err) {
+      console.error(err);
       addToast(t('upload_failed'), 'error');
     }
   };
