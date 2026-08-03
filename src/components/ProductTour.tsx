@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
 
-const JoyrideComponent: any = (JoyridePkg as any).Joyride || (JoyridePkg as any).default || JoyridePkg;
+const JoyrideComponent: any = (JoyridePkg as any).Joyride || (JoyridePkg as any)['default'] || JoyridePkg;
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
@@ -90,7 +90,7 @@ export default function ProductTour() {
       potentialSteps = [
         create('body', isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', isGerman ? 'Das ist deine ganzheitliche Plattform für Spatial Design und Business-Management.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for design and business.', Sparkles, 'center', true),
         create('.tour-dashboard', isGerman ? 'Der globale Puls' : 'Global Pulse', isGerman ? 'Hier fließen Projektstatus, Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', LayoutDashboard),
-        create('.tour-projects', isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Projekte. Ein Klick brings dich tief in die spezifischen 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase),
+        create('.tour-projects', isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Projekte. Ein Klick bringt dich tief in die spezifischen 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase),
         create('.tour-create-project-btn', isGerman ? 'Dein erstes Projekt' : 'Your First Project', isGerman ? 'Eröffne jetzt dein erstes Projekt! TIPP: Nenne das Projekt "Demo: BAU", um unser interaktives Testprojekt zu laden. Darin siehst du sofort, wie alle Module (3D, Chat, Tasks) live ineinandergreifen.' : 'Create your first project now! TIP: Name it "Demo: BAU" to load our interactive test project.', Sparkles),
         create('.tour-finance', isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', isGerman ? 'Überwache den gesamten Cashflow, Betriebskosten (OpEx) und globale Budgets.' : 'Monitor global cashflow, operating expenses, and budgets.', DollarSign),
         create('.tour-documents', isGerman ? 'Zentrales Firmen-Archiv' : 'Company Archive', isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud structure for HR docs, contracts, and assets.', Folder),

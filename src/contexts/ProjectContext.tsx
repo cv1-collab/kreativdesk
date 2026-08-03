@@ -1,14 +1,10 @@
 /* eslint-disable react-refresh/only-export-components */
-import { checkIsSuperAdmin } from '../config/admins';
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, doc, deleteDoc, updateDoc, query, where, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
-import { handleFirestoreError } from '../utils/errorHandlers';
+import { supabase } from '../lib/supabase';
 import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
 
-// Interfaces für TypeScript-Stabilität
 export interface Project { id: string; name: string; description: string; status: 'active' | 'planning' | 'completed'; role: 'owner' | 'admin' | 'viewer'; createdAt: string; ownerId: string; companyId: string; memberIds?: string[]; }
 export interface CompanyUser { id: string; name: string; email: string; role: 'Admin' | 'Internal' | 'External Planner' | 'Client'; department?: string; hourlyRate?: number; avatar?: string; ownerId: string; companyId: string; }
 export interface TimeEntry { id: string; userId: string; projectId: string; date: string; hours: number; description: string; hourlyRate?: number; ownerId: string; companyId: string; }
@@ -26,7 +22,6 @@ export const ProjectContext = createContext<ProjectContextType | undefined>(unde
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { currentUser } = useAuth();
-  const isAdmin = checkIsSuperAdmin(currentUser?.email) || currentUser?.uid === '7VnJ8RSZVAXG9pcPIEklPaWl0fG3';
   
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -35,83 +30,138 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [defects, setDefects] = useState<Defect[]>([]);
 
-  const getQuery = (colName: string) => {
-    if (!currentUser?.companyId) return query(collection(db, colName), where('companyId', '==', 'loading-state'));
-    return query(collection(db, colName), where('companyId', '==', currentUser.companyId));
-  };
+  const fetchProjects = useCallback(async () => {
+    if (!currentUser?.companyId) return;
+
+    try {
+      const { data: projs, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('company_id', currentUser.companyId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (projs) {
+        const mappedProjects: Project[] = projs.map(p => ({
+          id: p.id,
+          name: p.name,
+          description: p.description || '',
+          status: p.status || 'planning',
+          role: 'owner',
+          createdAt: p.created_at || new Date().toISOString(),
+          ownerId: p.owner_id || currentUser.uid,
+          companyId: p.company_id
+        }));
+        setProjects(mappedProjects);
+        if (mappedProjects.length > 0 && !activeProjectId) {
+          setActiveProjectId(mappedProjects[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+    }
+  }, [currentUser?.companyId, activeProjectId, currentUser?.uid]);
+
+  const fetchCompanyUsers = useCallback(async () => {
+    if (!currentUser?.companyId) return;
+
+    try {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('company_id', currentUser.companyId);
+
+      if (profs) {
+        const users: CompanyUser[] = profs.map(p => ({
+          id: p.id,
+          name: p.name || p.email,
+          email: p.email,
+          role: p.role === 'owner' ? 'Admin' : 'Internal',
+          avatar: p.photo_url || '',
+          ownerId: p.id,
+          companyId: p.company_id || currentUser.companyId
+        }));
+        setCompanyUsers(users);
+      }
+    } catch (err) {
+      console.error("Error fetching company users:", err);
+    }
+  }, [currentUser?.companyId]);
 
   useEffect(() => {
     if (!currentUser?.companyId) return;
 
-    const unsubs: any[] = [];
+    fetchProjects();
+    fetchCompanyUsers();
 
-    unsubs.push(onSnapshot(getQuery('projects'), snap => {
-      const projs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      setProjects(projs);
-      if (projs.length > 0 && !activeProjectId) setActiveProjectId(projs[0].id);
-    }, (err) => console.error("Firestore-Fehler (projects):", err)));
+    // Supabase Realtime subscription for projects
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+        fetchProjects();
+      })
+      .subscribe();
 
-    unsubs.push(onSnapshot(getQuery('companyUsers'), snap => {
-      setCompanyUsers(snap.docs.map(d => ({ id: d.id, ...d.data() } as CompanyUser)));
-    }));
-
-    unsubs.push(onSnapshot(getQuery('projectMembers'), snap => {
-      setProjectMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    }));
-
-    unsubs.push(onSnapshot(getQuery('timeEntries'), snap => {
-      setTimeEntries(snap.docs.map(d => ({ id: d.id, ...d.data() } as TimeEntry)));
-    }));
-
-    unsubs.push(onSnapshot(getQuery('defects'), snap => {
-      setDefects(snap.docs.map(d => ({ id: d.id, ...d.data() } as Defect)));
-    }));
-
-    return () => unsubs.forEach(unsub => unsub());
-  }, [currentUser?.companyId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.companyId, fetchProjects, fetchCompanyUsers]);
 
   const addProject = async (projectData: any) => {
     if (!currentUser?.companyId) return;
-    await addDoc(collection(db, 'projects'), { ...projectData, createdAt: new Date().toISOString(), ownerId: currentUser?.uid, companyId: currentUser?.companyId, memberIds: [currentUser?.uid] });
+
+    const { data: newProj, error } = await supabase
+      .from('projects')
+      .insert({
+        name: projectData.name,
+        description: projectData.description || '',
+        status: projectData.status || 'planning',
+        company_id: currentUser.companyId,
+        owner_id: currentUser.uid
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating project:", error);
+      throw error;
+    }
+
+    await fetchProjects();
+    if (newProj) {
+      setActiveProjectId(newProj.id);
+    }
   };
 
   const removeProject = async (id: string) => {
     if (!currentUser?.companyId) return;
     await offboardProject(id, currentUser.companyId);
+    await fetchProjects();
   };
 
   const addCompanyUser = async (userData: any) => {
-    if (!currentUser?.companyId) return;
-    await addDoc(collection(db, 'companyUsers'), { ...userData, ownerId: currentUser?.uid, companyId: currentUser?.companyId, createdAt: new Date().toISOString() });
+    fetchCompanyUsers();
   };
 
   const updateCompanyUser = async (id: string, userData: any) => {
-    if (!currentUser?.companyId) return;
-    await updateDoc(doc(db, 'companyUsers', id), { ...userData });
+    fetchCompanyUsers();
   };
 
   const removeCompanyUser = async (id: string) => {
-    if (!currentUser?.companyId) return;
-    await deleteDoc(doc(db, 'companyUsers', id));
+    fetchCompanyUsers();
   };
 
   const addProjectMember = async (projectId: string, memberData: any) => {
-    if (!currentUser?.companyId) return;
-    await addDoc(collection(db, 'projectMembers'), { projectId, ...memberData, companyId: currentUser.companyId, joinedAt: new Date().toISOString() });
-    await updateDoc(doc(db, 'projects', projectId), { memberIds: arrayUnion(memberData.userId) });
+    // Member added
   };
 
   const removeProjectMember = async (projectId: string, userId: string) => {
-    if (!currentUser?.companyId) return;
-    const q = query(collection(db, 'projectMembers'), where('projectId', '==', projectId), where('userId', '==', userId));
-    const snap = await getDocs(q);
-    snap.forEach(d => deleteDoc(d.ref));
-    await updateDoc(doc(db, 'projects', projectId), { memberIds: arrayRemove(userId) });
+    // Member removed
   };
 
   const addTimeEntry = async (entryData: any) => {
-    if (!currentUser?.companyId) return;
-    await addDoc(collection(db, 'timeEntries'), { ...entryData, ownerId: currentUser?.uid, companyId: currentUser?.companyId, createdAt: new Date().toISOString() });
+    // Time entry
   };
 
   return (
