@@ -662,7 +662,7 @@ const handleGenerateTeamSlide = async () => {
           // Avatare für die Demo erzwingen
           teamMembers = tpl.members.map((m: any) => ({
              ...m,
-             photoURL: m.photoURL || `/demo-assets/avatar_${m.name.split(' ')[0].toLowerCase()}.jpg`
+             photoURL: m.photoURL || m.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80'
           }));
         }
     } else {
