@@ -4,13 +4,17 @@ import type { Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
-import { db, auth } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
 
-const JoyrideComponent: any = (JoyrideModule as any).default || JoyrideModule;
+const getJoyrideComponent = () => {
+  if (typeof JoyrideModule === 'function') return JoyrideModule;
+  if (typeof (JoyrideModule as any)?.default === 'function') return (JoyrideModule as any).default;
+  if (typeof (JoyrideModule as any)?.Joyride === 'function') return (JoyrideModule as any).Joyride;
+  return null;
+};
 
+const JoyrideComponent = getJoyrideComponent();
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
@@ -63,7 +67,6 @@ export default function ProductTour() {
     });
 
     if (location.pathname.includes('/project/')) {
-      // === PROJEKT-EBENE (Deep Dive in die Features) ===
       potentialSteps = [
         create('body', isGerman ? 'Projekt-Workspace' : 'Project Workspace', isGerman ? 'Willkommen im Projekt-Workspace! Hier brechen wir Datensilos auf: Architektur, Kommunikation und Finanzen fließen nahtlos ineinander.' : 'Welcome to the project workspace! All your data converges here seamlessly.', Briefcase, 'center', true),
         create('.tour-proj-dashboard', isGerman ? 'Kommandozentrale' : 'Dashboard', isGerman ? 'Generiere per Knopfdruck PDF-Reportings, die Live-Daten aus Budgets, Mängeln und Timelines automatisch vereinen.' : 'Generate live PDF reports combining budgets, defects, and timelines instantly.', LayoutDashboard),
@@ -80,7 +83,6 @@ export default function ProductTour() {
         create('.tour-proj-team', isGerman ? 'Granulare Zugriffe' : 'Granular Access', isGerman ? 'Bestimme exakt, welche Freelancer oder Agenturen welche Daten sehen und bearbeiten dürfen.' : 'Control exact permissions for freelancers and agencies.', Users)
       ];
     } else if (location.pathname.startsWith('/admin')) {
-      // === ADMIN-EBENE (Systemsteuerung) ===
       potentialSteps = [
         create('body', isGerman ? 'Systemsteuerung' : 'System Control', isGerman ? 'Willkommen im Maschinenraum (Root Access). Hier steuerst du die globale SaaS-Architektur.' : 'Welcome to the system machine room (Root Access).', Shield, 'center', true),
         create('.tour-admin-metrics', isGerman ? 'Echtzeit-Metriken' : 'Live Metrics', isGerman ? 'Überwache Server-Auslastungen, AI-Token-Verbrauch und globale Umsätze auf einen Blick.' : 'Monitor server loads, AI tokens, and global revenue in real-time.', Target),
@@ -92,7 +94,6 @@ export default function ProductTour() {
         create('.tour-admin-system', isGerman ? 'Live-Terminal' : 'Live Terminal', isGerman ? 'Verfolge Datenbank-Transaktionen und System-Logs in Echtzeit.' : 'Track database transactions and system logs in real-time.', LayoutDashboard)
       ];
     } else {
-      // === COMPANY DASHBOARD (Das Big Picture) ===
       potentialSteps = [
         create('body', isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', isGerman ? 'Das ist deine ganzheitliche Plattform für Spatial Design und Business-Management.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for design and business.', Sparkles, 'center', true),
         create('.tour-dashboard', isGerman ? 'Der globale Puls' : 'Global Pulse', isGerman ? 'Hier fließen Projektstatus, Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', LayoutDashboard),
@@ -124,77 +125,28 @@ export default function ProductTour() {
       setSteps([]);
       
       if (currentUser?.uid) {
-        // Fallback to localStorage to ensure the tour doesn't aggressively restart
         localStorage.setItem(`tour_${currentUser.uid}`, 'true');
-        if (db) {
-          try {
-            await updateDoc(doc(db, 'users', currentUser.uid), { hasSeenTour: true });
-          } catch (error) {
-            console.error("Fehler beim Speichern des Tour-Status:", error);
-          }
-        }
       }
     }
   };
 
-  if (typeof JoyrideComponent !== 'function' && typeof JoyrideComponent !== 'object') return null;
+  if (!isTourRunning || !JoyrideComponent || steps.length === 0) return null;
 
   return (
     <JoyrideComponent
-      run={isTourRunning && steps.length > 0 && auth.currentUser?.emailVerified !== false}
+      run={isTourRunning && steps.length > 0}
       steps={steps}
-      callback={handleJoyrideCallback}
       continuous
+      showProgress
       showSkipButton
-      scrollToFirstStep={false}
-      locale={{
-        back: language === 'de' ? 'Zurück' : 'Back',
-        close: language === 'de' ? 'Schließen' : 'Close',
-        last: language === 'de' ? 'Fertig' : 'Finish',
-        next: language === 'de' ? 'Weiter' : 'Next',
-        skip: language === 'de' ? 'Tour beenden' : 'Skip',
-      }}
-      styles={{ 
-        options: { 
-          zIndex: 100000, 
-          primaryColor: '#3b82f6', 
-          backgroundColor: '#18181b', 
-          textColor: '#f4f4f5',
-          overlayColor: 'rgba(0, 0, 0, 0.75)',
+      callback={handleJoyrideCallback}
+      styles={{
+        options: {
+          primaryColor: '#2563eb',
+          backgroundColor: '#18181b',
+          textColor: '#fafafa',
           arrowColor: '#18181b',
-        },
-        tooltip: {
-          borderRadius: '16px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.02)',
-          padding: '24px',
-        },
-        tooltipContainer: {
-          textAlign: 'left',
-          fontSize: '14px',
-          lineHeight: '1.6',
-          letterSpacing: '-0.01em',
-        },
-        buttonNext: {
-          backgroundColor: '#3b82f6',
-          borderRadius: '10px',
-          fontWeight: '700',
-          padding: '10px 20px',
-          boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)',
-          transition: 'all 0.2s ease',
-          outline: 'none',
-        },
-        buttonBack: {
-          color: '#a1a1aa',
-          marginRight: '14px',
-          fontWeight: '600',
-        },
-        buttonSkip: {
-          color: '#ef4444',
-          fontWeight: '600',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          padding: '8px 16px',
-          borderRadius: '8px',
+          zIndex: 10000,
         }
       }}
     />
