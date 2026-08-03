@@ -8,9 +8,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
-import { db, storage } from '../firebase';
-import { onSnapshot, query, where, collection, doc, deleteDoc, addDoc, updateDoc, getDocs, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -301,36 +299,43 @@ export default function LeadsTab() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    if (!db || !currentUser || !currentUser.uid) return;
+  const fetchLeads = async () => {
+    if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
-    const q = query(collection(db, 'leads'), where('companyId', '==', safeCompanyId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      loaded.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-      setCollectedLeads(loaded);
-    });
-    return () => unsub();
-  }, [currentUser]);
+    try {
+      const { data } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('company_id', safeCompanyId)
+        .order('created_at', { ascending: false });
+
+      if (data) {
+        const mapped = data.map(d => ({
+          id: d.id,
+          firstName: d.first_name || d.name || '',
+          lastName: d.last_name || '',
+          company: d.company || '',
+          email: d.email || '',
+          phone: d.phone || '',
+          zipCode: d.zip_code || '',
+          city: d.city || '',
+          message: d.message || '',
+          status: d.status || 'New',
+          source: d.source || 'Webseite',
+          date: d.created_at ? new Date(d.created_at).toLocaleDateString('de-CH') : '',
+          companyId: d.company_id
+        }));
+        setCollectedLeads(mapped);
+      }
+    } catch (err) {
+      console.error("Error fetching leads:", err);
+    }
+  };
 
   useEffect(() => {
-    if (!db || leadTab !== 'scanner' || isMobileOrTablet) return; 
-    const q = query(collection(db, 'temp_receipts'), where('sessionId', '==', vcardSessionId));
-    const unsub = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (data.contactData) {
-            setScannedData(prev => ({ ...prev, ...data.contactData }));
-            addToast(t('vcard_received'), 'success');
-          }
-          deleteDoc(doc(db, 'temp_receipts', change.doc.id)).catch(console.error);
-        }
-      });
-    });
-    return () => unsub();
-  }, [vcardSessionId, leadTab, isMobileOrTablet, addToast, t]);
+    fetchLeads();
+  }, [currentUser]);
 
   const handleMobileCardScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -386,26 +391,24 @@ export default function LeadsTab() {
     
     setIsSubmittingScanner(true);
     try {
-      const newLead = {
-        firstName: scannedData.firstName,
-        lastName: scannedData.lastName,
+      await supabase.from('leads').insert({
+        first_name: scannedData.firstName,
+        last_name: scannedData.lastName,
         company: scannedData.company,
         email: scannedData.email,
         phone: scannedData.phone,
-        zipCode: scannedData.zipCity,
+        zip_code: scannedData.zipCity,
         message: scannedData.description,
         source: 'Visitenkarte / Event',
-        projectType: 'Akquise',
         status: 'New',
-        date: new Date().toLocaleDateString('de-CH'),
-        ownerId: currentUser.uid,
-        companyId: safeCompanyId
-      };
+        owner_id: currentUser.uid,
+        company_id: safeCompanyId
+      });
 
-      await addDoc(collection(db, 'leads'), { ...newLead, createdAt: new Date().toISOString() });
       addToast(t('scanned_lead_saved'), 'success');
       setScannedData({ firstName: '', lastName: '', company: '', email: '', phone: '', street: '', zipCity: '', description: '' });
       setLeadTab('leads');
+      fetchLeads();
     } catch (error) {
       addToast(t('save_lead_error'), 'error');
     } finally {
@@ -420,18 +423,25 @@ export default function LeadsTab() {
 
     setIsSubmittingScanner(true);
     try {
-      const newLead = { 
-        ...leadForm, 
-        date: new Date().toLocaleDateString('de-CH'), 
+      await supabase.from('leads').insert({
+        first_name: leadForm.firstName,
+        last_name: leadForm.lastName,
+        company: leadForm.company,
+        email: leadForm.email,
+        phone: leadForm.phone,
+        zip_code: leadForm.zipCode,
+        city: leadForm.city,
+        message: leadForm.message,
+        source: leadForm.source || 'Webseite',
         status: 'New',
-        ownerId: currentUser.uid,
-        companyId: safeCompanyId
-      }; 
-      
-      await addDoc(collection(db, 'leads'), { ...newLead, createdAt: new Date().toISOString() });
+        owner_id: currentUser.uid,
+        company_id: safeCompanyId
+      });
+
       setLeadForm({ firstName: '', lastName: '', company: '', email: '', phone: '', website: '', zipCode: '', city: '', projectType: 'Planung', source: 'Webseite', message: '' }); 
       setLeadTab('leads'); 
       addToast(t('lead_saved'), 'success'); 
+      fetchLeads();
     } catch (error) {
       addToast(t('save_lead_error'), 'error');
     } finally {
@@ -442,9 +452,10 @@ export default function LeadsTab() {
   const handleDeleteLead = async (id: string) => { 
     if (window.confirm(t('delete_user_confirm'))) { 
       try {
-        await deleteDoc(doc(db, 'leads', id));
+        await supabase.from('leads').delete().eq('id', id);
         addToast(t('delete') + ' ' + t('completed'), 'info'); 
         if (editingLead?.id === id) setIsModalOpen(false);
+        fetchLeads();
       } catch (error) {
         addToast(t('upload_failed'), 'error');
       }
@@ -458,12 +469,13 @@ export default function LeadsTab() {
 
   const handleSaveLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingLead || !db) return;
+    if (!editingLead) return;
     setIsSubmittingScanner(true);
     try {
-      await updateDoc(doc(db, 'leads', editingLead.id), { status: editingLead.status || 'Neu' });
+      await supabase.from('leads').update({ status: editingLead.status || 'Neu' }).eq('id', editingLead.id);
       addToast(t('save') + ' ' + t('completed'), 'success'); 
       setIsModalOpen(false);
+      fetchLeads();
     } catch (error) { addToast(t('upload_failed'), 'error'); } 
     finally { setIsSubmittingScanner(false); }
   };
