@@ -57,7 +57,7 @@ export const printElementToPdf = async (element: HTMLElement, title: string = 'D
           if (document.body.contains(iframe)) {
             document.body.removeChild(iframe);
           }
-          resolve(); // Wichtig: Signal zum Speichern in Firebase
+          resolve(); // Wichtig: Signal zum Speichern in Supabase
         }, 500);
       }, 1000);
     } catch (error) {

@@ -1,33 +1,10 @@
 import 'dotenv/config';
-import admin from 'firebase-admin';
+import { createClient } from '@supabase/supabase-js';
 
-// Initialisiere Firebase Admin
-function getFirebaseAdmin() {
-  if (admin.apps.length === 0) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0Z2Zyb2dicmtybGx6ZHd6ZHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODMzOTcsImV4cCI6MjEwMTA1OTM5N30.WHFlicuJoJ2xSevb2-HvWgPml8Rwz28fTOFppQkvlYE';
 
-    if (!projectId || !clientEmail || !privateKey) {
-      console.warn('Fehler: Firebase Admin API keys fehlen in der .env Datei.');
-      process.exit(1);
-    }
-
-    privateKey = privateKey.replace(/\\n/g, '\n');
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      })
-    });
-    console.log('Firebase Admin initialisiert.');
-  }
-  return admin;
-}
-
-const firebaseAdmin = getFirebaseAdmin();
-const db = firebaseAdmin.firestore();
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 const DEMO_AVATARS = [
   '/demo-assets/avatar_sarah.jpg',
@@ -38,22 +15,24 @@ const DEMO_AVATARS = [
 async function assignAvatars() {
   try {
     console.log('Suche nach CRM Kontakten ohne Avatar...');
-    const usersRef = db.collection('companyUsers');
-    const snapshot = await usersRef.get();
+    const { data: contacts, error } = await supabase.from('contacts').select('*');
+    if (error) throw error;
     
     let updatedCount = 0;
     let avatarIndex = 0;
 
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      // Wenn kein Foto vorhanden ist, fügen wir eins der Demo-Bilder hinzu
-      if (!data.photoURL && !data.avatar) {
+    for (const contact of (contacts || [])) {
+      if (!contact.photo_url && !contact.avatar) {
         const assignedAvatar = DEMO_AVATARS[avatarIndex % DEMO_AVATARS.length];
-        await doc.ref.update({
-          photoURL: assignedAvatar,
-          avatar: assignedAvatar
-        });
-        console.log(`- Avatar zugewiesen für: ${data.name || 'Unbekannt'} -> ${assignedAvatar}`);
+        await supabase
+          .from('contacts')
+          .update({
+            photo_url: assignedAvatar,
+            avatar: assignedAvatar
+          })
+          .eq('id', contact.id);
+
+        console.log(`- Avatar zugewiesen für: ${contact.name || 'Unbekannt'} -> ${assignedAvatar}`);
         avatarIndex++;
         updatedCount++;
       }
