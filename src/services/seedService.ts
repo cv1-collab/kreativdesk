@@ -12,15 +12,15 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
   ];
 
   for (const f of defaultFolders) {
-    const { data: existing } = await supabase
+    const { data: existingList } = await supabase
       .from('documents')
       .select('id')
       .eq('company_id', companyId)
       .eq('name', f.name)
       .eq('is_folder', true)
-      .maybeSingle();
+      .limit(1);
 
-    if (!existing) {
+    if (!existingList || existingList.length === 0) {
       await supabase.from('documents').insert({
         name: f.name,
         is_folder: true,
@@ -47,15 +47,18 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
 
   // 1. Create or get Demo Project
   let projId: string = '';
-  const { data: existingProj } = await supabase
+  const { data: existingProjs } = await supabase
     .from('projects')
-    .select('id')
+    .select('id, name')
     .eq('company_id', companyId)
-    .or(`name.eq."${projData.name || 'Quartier Neubau Süd'}",name.eq."Demo: BAU",name.eq."Bauprojekt"`)
-    .maybeSingle();
+    .limit(10);
 
-  if (existingProj) {
-    projId = existingProj.id;
+  const foundProj = (existingProjs || []).find((p: any) => 
+    p.name.includes('Quartier') || p.name.includes('BAU') || p.name.includes('Bau') || p.name === projData.name
+  ) || existingProjs?.[0];
+
+  if (foundProj) {
+    projId = foundProj.id;
   } else {
     const { data: newProj, error } = await supabase
       .from('projects')

@@ -32,24 +32,25 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [defects, setDefects] = useState<Defect[]>([]);
 
   const fetchProjects = useCallback(async () => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
     try {
-      await ensureDefaultCompanyFolders(currentUser.companyId, currentUser.uid);
+      await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
 
       let { data: projs } = await supabase
         .from('projects')
         .select('*')
-        .eq('company_id', currentUser.companyId)
+        .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
       // If company has 0 projects, seed default demo project automatically
       if (!projs || projs.length === 0) {
-        await seedDemoProjectToSupabase(currentUser.companyId, currentUser.uid, 'construction');
+        await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, 'construction');
         const { data: seededProjs } = await supabase
           .from('projects')
           .select('*')
-          .eq('company_id', currentUser.companyId)
+          .eq('company_id', safeCompanyId)
           .order('created_at', { ascending: false });
         projs = seededProjs || [];
       }
@@ -76,13 +77,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [currentUser?.companyId, activeProjectId, currentUser?.uid]);
 
   const fetchCompanyUsers = useCallback(async () => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
     try {
       const { data: profs } = await supabase
         .from('profiles')
         .select('*')
-        .eq('company_id', currentUser.companyId);
+        .eq('company_id', safeCompanyId);
 
       if (profs) {
         const users: CompanyUser[] = profs.map(p => ({
@@ -92,24 +94,24 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           role: p.role === 'owner' ? 'Admin' : 'Internal',
           avatar: p.photo_url || '',
           ownerId: p.id,
-          companyId: p.company_id || currentUser.companyId
+          companyId: p.company_id || safeCompanyId
         }));
         setCompanyUsers(users);
       }
     } catch (err) {
       console.error("Error fetching company users:", err);
     }
-  }, [currentUser?.companyId]);
+  }, [currentUser]);
 
   const fetchProjectDetails = useCallback(async () => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
 
     try {
-      // Members
       const { data: mems } = await supabase
         .from('project_members')
         .select('*')
-        .eq('company_id', currentUser.companyId);
+        .eq('company_id', safeCompanyId);
 
       if (mems) {
         setProjectMembers(mems.map(m => ({
@@ -120,24 +122,23 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      // Defects
       const { data: defs } = await supabase
         .from('defects')
         .select('*')
-        .eq('company_id', currentUser.companyId);
+        .eq('company_id', safeCompanyId);
 
       if (defs) {
         setDefects(defs.map(d => ({
           id: d.id,
-          title: d.prompt || d.title || 'Mangel',
-          description: d.description || '',
-          status: d.status || 'Offen',
-          priority: d.severity || 'Medium',
+          title: d.title,
+          status: d.status,
+          priority: d.priority || 'Medium',
           assignee: d.assignee || '',
-          date: d.created_at ? d.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          trade: d.trade || 'Allgemein',
-          location: d.location || 'Baustelle',
-          imageUrl: d.image_url || '',
+          date: d.created_at || new Date().toISOString(),
+          trade: d.trade || '',
+          location: d.location || '',
+          description: d.description || '',
+          imageUrl: d.image_url,
           ownerId: d.owner_id || currentUser.uid,
           companyId: d.company_id,
           projectId: d.project_id
@@ -146,7 +147,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error fetching project details:", err);
     }
-  }, [currentUser?.companyId, currentUser?.uid]);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser?.companyId) return;

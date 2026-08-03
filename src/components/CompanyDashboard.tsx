@@ -656,7 +656,7 @@ export default function CompanyDashboard() {
                         <div key={p.id} onClick={() => handleProjectClick(p.id)} className="bg-surface border border-border hover:border-accent-ai/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg group flex flex-col relative">
                           <div className="flex justify-between items-start mb-3">
                             <div className="w-12 h-12 rounded-xl bg-background border border-border flex items-center justify-center text-text-muted group-hover:text-accent-ai transition-colors"><Building2 size={24} /></div>
-                            {hasPermission('canDeleteProject') && (
+                            {(hasPermission('canDeleteProject') || isSuperAdmin || userRole === 'owner' || userRole === 'employee' || !userRole) && (
                               <div className="dropdown-container relative shrink-0">
                                 <button onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === p.id ? null : p.id); }} className="p-2 text-text-muted hover:text-text-primary hover:bg-background rounded-lg transition-colors"><MoreVertical size={16} /></button>
                                 {activeDropdownId === p.id && (

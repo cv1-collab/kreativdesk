@@ -199,7 +199,7 @@ export default function Documents() {
     setCurrentFolderId(newPath[newPath.length - 1].id);
   };
 
-  const currentItems = documents.filter(doc => {
+  const filteredItems = documents.filter(doc => {
     if (activeTab === 'company') {
       const isCompanyCategory = doc.category === 'company' || !doc.project_id || doc.project_id === 'global';
       if (currentFolderId === 'root') {
@@ -213,6 +213,15 @@ export default function Documents() {
       }
       return isProjectCategory && doc.folder_id === currentFolderId;
     }
+  });
+
+  const seenFolderNames = new Set<string>();
+  const currentItems = filteredItems.filter(doc => {
+    if (doc.is_folder) {
+      if (seenFolderNames.has(doc.name)) return false;
+      seenFolderNames.add(doc.name);
+    }
+    return true;
   });
 
   return (
