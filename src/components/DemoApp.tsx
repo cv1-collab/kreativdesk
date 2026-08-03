@@ -32,35 +32,35 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
     name: template.project?.name || 'Quartier Neubau Süd',
     companyId: 'demo-company',
     // Team & Kamera
-    memberIds: template.members.map((m: any) => m.email || m.id), 
+    memberIds: template.members.map((m: any) => m.email || m.id),
     cam1Url: template.camera?.url || '',
-    
+
     // 🔥 NEU: Wir injizieren die Finanzen, Timelines und Meilensteine aus dem Template!
     financeGroups: template.financeGroups || [],
     tasks: template.tasks || [],
     smartMarkers: template.smartMarkers || [],
-    
+
     ...template.project
   };
 
   const mockCompanyUsers = template.members.map((m: any) => ({
-     id: m.email || m.id, 
-     name: m.name, 
-     email: m.email, 
-     role: m.role.includes('Intern') ? 'Internal' : 'External Planner',
-     department: m.role, 
-     avatar: m.photoURL || m.avatar, 
-     ownerId: 'demo', 
-     companyId: 'demo-company'
+    id: m.email || m.id,
+    name: m.name,
+    email: m.email,
+    role: m.role.includes('Intern') ? 'Internal' : 'External Planner',
+    department: m.role,
+    avatar: m.photoURL || m.avatar,
+    ownerId: 'demo',
+    companyId: 'demo-company'
   }));
 
   const mockProjectMembers = template.members.map((m: any) => ({
-     id: `pm-${m.email || m.id}`, 
-     projectId: 'demo-1', 
-     userId: m.email || m.id, 
-     companyId: 'demo-company', 
-     role: m.role, 
-     joinedAt: new Date().toISOString()
+    id: `pm-${m.email || m.id}`,
+    projectId: 'demo-1',
+    userId: m.email || m.id,
+    companyId: 'demo-company',
+    role: m.role,
+    joinedAt: new Date().toISOString()
   }));
 
   return (
@@ -72,10 +72,10 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
       timeEntries: [],
       // 🔥 NEU: Auch die Mängel aus dem Template durchreichen
       defects: template.defects || [],
-      
-      setActiveProject: () => {}, addProject: async () => {}, removeProject: async () => {}, 
-      addCompanyUser: async () => {}, updateCompanyUser: async () => {}, removeCompanyUser: async () => {}, 
-      addProjectMember: async () => {}, removeProjectMember: async () => {}, addTimeEntry: async () => {},
+
+      setActiveProject: () => { }, addProject: async () => { }, removeProject: async () => { }, updateProjectStatus: async () => { },
+      addCompanyUser: async () => { }, updateCompanyUser: async () => { }, removeCompanyUser: async () => { },
+      addProjectMember: async () => { }, removeProjectMember: async () => { }, addTimeEntry: async () => { },
       isDemoMode: true,
       demoData: template
     }}>
@@ -108,7 +108,7 @@ export default function DemoApp({ activeTab }: DemoAppProps) {
           {activeTab === 'calendar' && <CalendarComponent />}
           {activeTab === 'finance' && <Finance />}
           {activeTab === 'bim' && <BIMViewer />}
-          {activeTab === 'plans' && <PlanEditorViewer />} 
+          {activeTab === 'plans' && <PlanEditorViewer />}
           {activeTab === 'meet' && <MeetChat />}
           {activeTab === 'crm' && <CRM />}
           {activeTab === 'documents' && <Documents />}
