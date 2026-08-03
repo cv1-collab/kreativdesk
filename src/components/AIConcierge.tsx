@@ -7,7 +7,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
-import { collection, query, where, getDocs, addDoc, and, or } from 'firebase/firestore';
+
 import { callGeminiAPI, callGeminiChatAPI } from '../utils/geminiClient';
 import { useLanguage } from '../contexts/LanguageContext';
 

@@ -7,9 +7,6 @@ import {
   Trash2, ExternalLink 
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { updateProfile, deleteUser } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { doc, setDoc, onSnapshot, deleteDoc, collection, query, where, getDocs, and, or } from 'firebase/firestore';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';

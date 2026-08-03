@@ -3,16 +3,13 @@ import { createPortal } from 'react-dom';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getApp } from 'firebase/app';
+
 import QRCode from 'react-qr-code';
 import { Receipt, Plus, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
 
 import { supabase } from '../lib/supabase';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';

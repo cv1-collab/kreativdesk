@@ -10,10 +10,6 @@ import {
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getApp } from 'firebase/app';
 import { useLanguage } from '../contexts/LanguageContext';
 
 // NATIVE PDF ENGINE IMPORTS

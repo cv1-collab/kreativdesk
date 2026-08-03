@@ -20,8 +20,6 @@ import { cn } from '../utils';
 
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { doc, setDoc, addDoc, collection, query, where, getDocs, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature } from '../utils/planFeatures';
@@ -774,17 +772,18 @@ export default function BIMViewer() {
       const dataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
       
       let uploadedImageUrl = undefined;
-      if (dataUrl && currentUser && storage) {
+      if (dataUrl && currentUser) {
         try {
-          const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
           const fetchRes = await fetch(dataUrl);
           const blob = await fetchRes.blob();
-          const fileName = `tmp_render_3d_${Date.now()}.png`;
-          const storageRef = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
-          await uploadBytes(storageRef, blob);
-          uploadedImageUrl = await getDownloadURL(storageRef);
-        } catch (err) {
-          console.error("Failed to upload temp snapshot", err);
+          const fileName = `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp_3d_${Date.now()}.png`;
+          const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
+          if (!upErr) {
+            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+            uploadedImageUrl = data.publicUrl;
+          }
+        } catch (e) {
+          console.warn("Snapshot upload failed, falling back to data URL:", e);
         }
       }
 

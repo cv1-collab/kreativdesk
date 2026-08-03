@@ -34,8 +34,6 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, where, addDoc, getDocs, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import PremiumFeature from './PremiumFeature';
@@ -421,17 +419,18 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     try {
       let uploadedImageUrl = undefined;
       
-      if (sketchDataUrl && currentUser && storage) {
+      if (sketchDataUrl && currentUser) {
         try {
-          const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
           const fetchRes = await fetch(sketchDataUrl);
           const blob = await fetchRes.blob();
-          const fileName = `tmp_render_wb_${Date.now()}.png`;
-          const storageRef = ref(storage, `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp/${fileName}`);
-          await uploadBytes(storageRef, blob);
-          uploadedImageUrl = await getDownloadURL(storageRef);
-        } catch (err) {
-          console.error("Failed to upload temp sketch", err);
+          const fileName = `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp_${Date.now()}.png`;
+          const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
+          if (!upErr) {
+            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+            uploadedImageUrl = data.publicUrl;
+          }
+        } catch (e) {
+          console.warn("Storage upload failed, falling back to data URL:", e);
         }
       }
 

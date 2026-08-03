@@ -6,8 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import PremiumFeature from './PremiumFeature';
 import { supabase } from '../lib/supabase';
-import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp, writeBatch, addDoc, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Sparkles, Image as ImageIcon, X, Download, Plus, Trash2, 
   MonitorPlay, Layout, Type, Columns, Maximize2, 
@@ -223,8 +221,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       // Auto-Seed Demo Pitch Deck if empty
       if (loadedSlides.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
         try {
-          const { writeBatch, doc } = await import('firebase/firestore');
-          const batch = writeBatch(db);
           const demoSlides = [
             { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", type: 'title', order_index: 0 },
             { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", type: 'text', order_index: 1 },
@@ -232,16 +228,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             { title: "Projekt-Budget", content: "", type: 'budget', order_index: 3 },
           ];
           
-          for (let i = 0; i < demoSlides.length; i++) {
-            const slideId = `slide-demo-${targetId}-${i}`;
-            const s = demoSlides[i];
-            const slideData = {
-              ...s, projectId: targetId, companyId: currentUser.companyId, ownerId: currentUser.uid, createdAt: new Date().toISOString()
-            };
-            batch.set(doc(db, 'slides', slideId), slideData);
-            loadedSlides.push({ ...slideData, id: slideId } as Slide);
-          }
-          await batch.commit();
+          const slidesToInsert = demoSlides.map((s, i) => ({
+            id: `slide-demo-${targetId}-${i}`,
+            ...s,
+            project_id: targetId,
+            company_id: currentUser.companyId,
+            owner_id: currentUser.uid,
+            created_at: new Date().toISOString()
+          }));
+
+          await supabase.from('slides').upsert(slidesToInsert);
+          loadedSlides.push(...(slidesToInsert as any[]));
         } catch(e) { console.error("Error seeding demo deck", e); }
       }
 

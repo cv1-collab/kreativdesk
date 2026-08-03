@@ -1,16 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getApp } from 'firebase/app';
+
 import QRCode from 'react-qr-code';
 import { Landmark, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, FileText, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import UniversalPDFStudio from './UniversalPDFStudio';
-import { supabase } from '../lib/supabase';
-import { collection, onSnapshot, query, where, doc, updateDoc, deleteDoc, addDoc, getDocs, and, or } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { cn } from '../utils';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
