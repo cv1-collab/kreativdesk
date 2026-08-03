@@ -103,16 +103,28 @@ export default function CompanyDashboard() {
   const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
 
   useEffect(() => {
-    const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
-    const isOnboardingActive = !currentUser?.hasCompletedOnboarding && userRole !== 'super_admin';
-    
-    if (!isOnboardingActive && currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined) && !hasSeenTourLocal) {
-      const timer = setTimeout(() => {
-        startTour();
-      }, 500);
-      return () => clearTimeout(timer);
+    if (currentUser?.uid) {
+      const triggerPendingKey = `tour_trigger_pending_${currentUser.uid}`;
+      const hasSeen = currentUser.hasSeenTour === true || localStorage.getItem(`tour_${currentUser.uid}`) === 'true';
+      
+      if (hasSeen) {
+        localStorage.removeItem(triggerPendingKey);
+        return;
+      }
+
+      if (localStorage.getItem(triggerPendingKey) === 'true') {
+        localStorage.removeItem(triggerPendingKey);
+        localStorage.setItem(`tour_${currentUser.uid}`, 'true');
+        if (db) {
+          updateDoc(doc(db, 'users', currentUser.uid), { hasSeenTour: true }).catch(console.error);
+        }
+        const timer = setTimeout(() => {
+          startTour();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [currentUser, startTour, userRole]);
+  }, [currentUser, startTour]);
   const { hasPermission } = usePermissions();
   const { limits } = useSubscriptionLimits();
   const canSeeFinances = hasPermission('canViewFinance');
@@ -645,7 +657,7 @@ export default function CompanyDashboard() {
 
   return (
     <div className="flex h-[100dvh] bg-background text-text-primary relative w-full overflow-hidden">
-      {currentUser && !currentUser.hasCompletedOnboarding && userRole !== 'super_admin' && (
+      {currentUser && !currentUser.hasCompletedOnboarding && currentUser.hasSeenTour !== true && userRole !== 'super_admin' && (
         <WelcomeOnboarding 
           currentUser={currentUser} 
           onComplete={() => {

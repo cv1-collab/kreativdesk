@@ -200,9 +200,13 @@ const handlePasswordReset = async () => {
     
     setIsPortalLoading(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/create-portal-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ type: "reset", 
           customerId: dbData.stripeCustomerId, // Sichere Übergabe
           returnUrl: window.location.origin + '/app' 

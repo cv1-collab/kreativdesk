@@ -9,11 +9,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 // 2. Firebase Admin initialisieren
 if (!admin.apps.length) {
+  let pk = process.env.FIREBASE_PRIVATE_KEY;
+  if (pk) {
+    pk = pk.replace(/\\n/g, '\n');
+    if (pk.startsWith('"') && pk.endsWith('"')) {
+      pk = pk.substring(1, pk.length - 1);
+    }
+  }
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey: pk,
     }),
   });
 }

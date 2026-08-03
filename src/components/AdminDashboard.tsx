@@ -47,15 +47,6 @@ export default function AdminDashboard() {
   const { language, toggleLanguage, t: globalT } = useLanguage();
   const { startTour } = useTour();
 
-  useEffect(() => {
-    const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
-    if (currentUser && (currentUser.hasSeenTour === false || currentUser.hasSeenTour === undefined) && !hasSeenTourLocal) {
-      const timer = setTimeout(() => {
-        startTour();
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [currentUser, startTour]);
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 

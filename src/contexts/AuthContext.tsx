@@ -1,12 +1,17 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { User, onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'; 
-import { auth, db, isConfigured } from '../firebase';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { Role } from '../config/permissions';
 
-export interface AppUser extends User {
+export interface AppUser {
+  id: string;
+  uid: string;
+  email?: string;
   name?: string;
+  displayName?: string;
+  photoURL?: string;
+  emailVerified?: boolean;
   role?: Role;
   hasActiveSubscription?: boolean;
   stripeCustomerId?: string;
@@ -42,160 +47,184 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const claimSyncAttempted = useRef(false);
-
-  const syncCustomClaims = async (user: User, companyId: string) => {
+  const fetchOrCreateUserProfile = async (user: User) => {
     try {
-      const token = await user.getIdToken();
-      await fetch('/api/set-tenant-claim', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ uid: user.uid, companyId })
-      });
-      await user.getIdToken(true); // Erzwingt den Refresh des Tokens
-      console.log("Tenant Claims erfolgreich synchronisiert!");
-    } catch (error) {
-      console.error("Fehler beim Claim-Sync:", error);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Fehler beim Laden des Profils:', error);
+      }
+
+      if (profile) {
+        let companyId = profile.company_id;
+
+        if (!companyId) {
+          const { data: newCompany, error: compError } = await supabase
+            .from('companies')
+            .insert({
+              name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+              plan: 'Free Trial',
+              max_seats: 1,
+              used_seats: 1,
+              owner_id: user.id
+            })
+            .select()
+            .single();
+
+          if (!compError && newCompany) {
+            companyId = newCompany.id;
+            await supabase
+              .from('profiles')
+              .update({ company_id: companyId })
+              .eq('id', user.id);
+          }
+        }
+
+        const userName = profile.name || user.email?.split('@')[0] || 'User';
+
+        const appUser: AppUser = {
+          id: user.id,
+          uid: user.id,
+          email: user.email,
+          name: userName,
+          displayName: userName,
+          photoURL: '',
+          emailVerified: true,
+          role: (profile.role as Role) || 'owner',
+          hasActiveSubscription: profile.has_active_subscription ?? true,
+          stripeCustomerId: profile.stripe_customer_id,
+          plan: profile.plan || 'Free Trial',
+          companyId: companyId,
+          trialEndsAt: profile.trial_ends_at,
+          canViewFinance: profile.can_view_finance ?? true,
+          canApproveBudget: profile.can_approve_budget ?? true,
+          hasSeenTour: profile.has_seen_tour ?? false,
+          hasCompletedOnboarding: profile.has_completed_onboarding ?? false
+        };
+
+        setUserRole(appUser.role || 'owner');
+        setCurrentUser(appUser);
+      } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteToken = urlParams.get('invite');
+
+        let targetCompanyId: string | null = null;
+        let targetRole: Role = 'owner';
+        let isInvitedUser = false;
+
+        if (inviteToken) {
+          const { data: invite } = await supabase
+            .from('invites')
+            .select('*')
+            .eq('token', inviteToken)
+            .eq('status', 'pending')
+            .maybeSingle();
+
+          if (invite) {
+            targetCompanyId = invite.company_id;
+            targetRole = (invite.role as Role) || 'employee';
+            isInvitedUser = true;
+
+            await supabase
+              .from('invites')
+              .update({
+                status: 'used',
+                used_by: user.id,
+                used_at: new Date().toISOString()
+              })
+              .eq('id', invite.id);
+          }
+        }
+
+        const trialEndDate = new Date();
+        trialEndDate.setDate(trialEndDate.getDate() + 30);
+
+        if (!isInvitedUser) {
+          const { data: newCompany } = await supabase
+            .from('companies')
+            .insert({
+              name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+              plan: 'Free Trial',
+              max_seats: 1,
+              used_seats: 1,
+              owner_id: user.id
+            })
+            .select()
+            .single();
+
+          if (newCompany) {
+            targetCompanyId = newCompany.id;
+          }
+        }
+
+        const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Teammitglied';
+
+        const newProfile = {
+          id: user.id,
+          email: user.email || '',
+          name: userName,
+          role: targetRole,
+          company_id: targetCompanyId,
+          has_active_subscription: true,
+          trial_ends_at: isInvitedUser ? null : trialEndDate.toISOString(),
+          has_seen_tour: false
+        };
+
+        await supabase.from('profiles').insert(newProfile);
+
+        const appUser: AppUser = {
+          id: user.id,
+          uid: user.id,
+          email: user.email,
+          name: userName,
+          displayName: userName,
+          photoURL: '',
+          emailVerified: true,
+          role: targetRole,
+          companyId: targetCompanyId || undefined,
+          hasActiveSubscription: true,
+          trialEndsAt: newProfile.trial_ends_at || undefined,
+          canViewFinance: true,
+          canApproveBudget: true,
+          hasSeenTour: false,
+          hasCompletedOnboarding: false
+        };
+
+        setUserRole(targetRole);
+        setCurrentUser(appUser);
+      }
+    } catch (err) {
+      console.error('Fehler in AuthContext:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!isConfigured || !auth) {
-      setTimeout(() => setLoading(false), 0);
-      return;
-    }
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && db) {
-        try {
-          const docRef = doc(db, 'users', user.uid);
-          const docSnap = await getDoc(docRef);
-
-          if (docSnap.exists()) {
-            let userData = docSnap.data() as AppUser;
-            const tokenResult = await user.getIdTokenResult();
-            
-            // 🔥 DER ENTSCHEIDENDE FIX: 
-            // Erkennt, wenn du die DB manuell änderst und zwingt das System zur Heilung!
-            if (tokenResult.claims.companyId !== userData.companyId && userData.companyId) {
-              if (!claimSyncAttempted.current) {
-                claimSyncAttempted.current = true;
-                console.log("Token Claim veraltet. Führe Auto-Heal aus...");
-                await syncCustomClaims(user, userData.companyId);
-              }
-            }
-
-            if (!userData.companyId) {
-              const newCompanyId = `comp_${user.uid}`;
-              await updateDoc(docRef, { companyId: newCompanyId });
-              
-              await setDoc(doc(db, 'companies', newCompanyId), {
-                id: newCompanyId,
-                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
-                plan: 'Free Trial',
-                maxSeats: 1,
-                usedSeats: 1,
-                ownerId: user.uid,
-                createdAt: new Date().toISOString()
-              });
-              
-              if (!claimSyncAttempted.current) {
-                claimSyncAttempted.current = true;
-                await syncCustomClaims(user, newCompanyId);
-              }
-              userData = { ...userData, companyId: newCompanyId };
-            }
-
-            setUserRole((userData.role as Role) || 'owner');
-            const appUser = Object.assign(Object.create(Object.getPrototypeOf(user)), user, userData);
-            setCurrentUser(appUser);
-          } else {
-            // === NEUER USER FLOW ===
-            const urlParams = new URLSearchParams(window.location.search);
-            const inviteToken = urlParams.get('invite');
-
-            let targetCompanyId = `comp_${user.uid}`;
-            let targetRole = 'owner';
-            let isInvitedUser = false;
-
-            if (inviteToken) {
-              const inviteRef = doc(db, 'invites', inviteToken);
-              const inviteSnap = await getDoc(inviteRef);
-
-              if (inviteSnap.exists() && inviteSnap.data().status === 'pending') {
-                targetCompanyId = inviteSnap.data().companyId;
-                targetRole = 'employee';
-                isInvitedUser = true;
-
-                await updateDoc(inviteRef, {
-                  status: 'used',
-                  usedBy: user.uid,
-                  usedAt: new Date().toISOString()
-                });
-              }
-            }
-
-            const trialEndDate = new Date();
-            trialEndDate.setDate(trialEndDate.getDate() + 30);
-
-            const newUserData = {
-              uid: user.uid,
-              email: user.email,
-              name: user.displayName || user.email?.split('@')[0] || 'Teammitglied',
-              role: targetRole as Role,
-              companyId: targetCompanyId,
-              hasActiveSubscription: true, 
-              trialEndsAt: isInvitedUser ? undefined : trialEndDate.toISOString(),
-              createdAt: new Date().toISOString(),
-              hasSeenTour: false
-            };
-            
-            await setDoc(docRef, newUserData);
-
-            if (!isInvitedUser) {
-              await setDoc(doc(db, 'companies', targetCompanyId), {
-                id: targetCompanyId,
-                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
-                plan: 'Free Trial',
-                maxSeats: 1,
-                usedSeats: 1,
-                ownerId: user.uid,
-                createdAt: new Date().toISOString()
-              });
-            } else {
-              const compRef = doc(db, 'companies', targetCompanyId);
-              const compSnap = await getDoc(compRef);
-              if (compSnap.exists()) {
-                 await updateDoc(compRef, { usedSeats: (compSnap.data().usedSeats || 0) + 1 });
-              }
-            }
-
-            if (!claimSyncAttempted.current) {
-              claimSyncAttempted.current = true;
-              await syncCustomClaims(user, targetCompanyId);
-            }
-
-            setUserRole(targetRole as Role);
-            const appUser = Object.assign(Object.create(Object.getPrototypeOf(user)), user, newUserData);
-            setCurrentUser(appUser);
-          }
-        } catch (err: any) {
-          console.error("Auth Fetch Error:", err);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session: Session | null) => {
+      if (session?.user) {
+        fetchOrCreateUserProfile(session.user);
       } else {
-        setUserRole(null);
         setCurrentUser(null);
+        setUserRole(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const logout = () => signOut(auth!);
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setUserRole(null);
+  };
 
   return (
     <AuthContext.Provider value={{ currentUser, userRole, loading, logout }}>

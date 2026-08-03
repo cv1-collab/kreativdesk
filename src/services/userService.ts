@@ -1,47 +1,32 @@
-import { db } from '../firebase';
-import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 /**
  * Entfernt einen User sicher aus dem gesamten System.
- * Führt alle Löschungen und Neuzuweisungen als atomaren Batch aus.
  */
 export const offboardCompanyUser = async (userId: string, companyId: string) => {
   if (!userId || !companyId) throw new Error("Fehlende IDs für das Offboarding.");
 
-  const batch = writeBatch(db);
-
   try {
-    // 1. User-Profil löschen
-    const userRef = doc(db, 'users', userId);
-    batch.delete(userRef);
+    // 1. User-Profil löschen (Profiles)
+    await supabase.from('profiles').delete().eq('id', userId).eq('company_id', companyId);
 
-    // 2. Aus allen Projekten entfernen
-    const pmQuery = query(collection(db, 'projectMembers'), where('userId', '==', userId), where('companyId', '==', companyId));
-    const pmDocs = await getDocs(pmQuery);
-    pmDocs.forEach(d => batch.delete(d.ref));
+    // 2. Aus allen Projekten entfernen (falls project_members Existenz hat)
+    await supabase.from('project_members').delete().eq('user_id', userId).eq('company_id', companyId);
 
     // 3. Mängel (Defects) neutralisieren
-    const defectsQuery = query(collection(db, 'defects'), where('assigneeId', '==', userId), where('companyId', '==', companyId));
-    const defectsDocs = await getDocs(defectsQuery);
-    defectsDocs.forEach(d => {
-      batch.update(d.ref, { 
-        assigneeId: 'unassigned', 
-        assigneeName: 'Nicht zugewiesen' 
-      });
-    });
+    await supabase
+      .from('defects')
+      .update({ assignee_id: 'unassigned', assignee_name: 'Nicht zugewiesen' })
+      .eq('assignee_id', userId)
+      .eq('company_id', companyId);
 
     // 4. Leads neutralisieren
-    const leadsQuery = query(collection(db, 'leads'), where('assigneeId', '==', userId), where('companyId', '==', companyId));
-    const leadsDocs = await getDocs(leadsQuery);
-    leadsDocs.forEach(d => {
-      batch.update(d.ref, { 
-        assigneeId: 'unassigned',
-        assigneeName: 'Nicht zugewiesen'
-      });
-    });
+    await supabase
+      .from('leads')
+      .update({ assignee_id: 'unassigned', assignee_name: 'Nicht zugewiesen' })
+      .eq('assignee_id', userId)
+      .eq('company_id', companyId);
 
-    // Transaktion ausführen
-    await batch.commit();
     return { success: true };
   } catch (error) {
     console.error("Offboarding fehlgeschlagen:", error);

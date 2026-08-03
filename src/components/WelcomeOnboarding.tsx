@@ -6,7 +6,7 @@ import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
 import { useTour } from '../contexts/TourContext';
 
 export default function WelcomeOnboarding({ currentUser, onComplete }: { currentUser: any, onComplete: () => void }) {
-  const { startTour, stopTour } = useTour();
+  const { stopTour } = useTour();
   const [name, setName] = useState(currentUser?.name || '');
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>(currentUser?.photoURL || '');
@@ -79,7 +79,7 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
       setTimeout(() => {
         const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
         if (!hasSeenTourLocal) {
-          startTour();
+          localStorage.setItem(`tour_trigger_pending_${currentUser?.uid}`, 'true');
         }
         onComplete();
       }, 2000);

@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, Navigate, useSearchParams } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, sendEmailVerification } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, increment } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Layers } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { demoTemplates } from '../utils/demoTemplates';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -20,8 +17,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     confirm_password_placeholder: 'Confirm your password', create_account: 'Create Account',
     already_have_account: 'Already have an account?', sign_in: 'Sign in', or_continue: 'Or continue with',
     google: 'Google', password_mismatch: 'Passwords do not match', signup_error: 'Failed to create an account.',
-    google_error: 'Failed to sign up with Google.', firebase_error: 'Firebase is not configured.',
-    agree_terms: 'I agree to the', terms_of_service: 'Terms of Service', and: 'and', privacy_policy: 'Privacy Policy'
+    google_error: 'Failed to sign up with Google.', agree_terms: 'I agree to the', terms_of_service: 'Terms of Service', and: 'and', privacy_policy: 'Privacy Policy'
   },
   de: {
     create_workspace: 'Erstelle deinen Workspace', start_journey: 'Starte deine Reise mit Kreativ-Desk OS',
@@ -33,8 +29,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     confirm_password_placeholder: 'Passwort erneut eingeben', create_account: 'Account erstellen',
     already_have_account: 'Bereits einen Account?', sign_in: 'Anmelden', or_continue: 'Oder fortfahren mit',
     google: 'Google', password_mismatch: 'Passwörter stimmen nicht überein', signup_error: 'Fehler beim Erstellen des Accounts.',
-    google_error: 'Fehler bei der Google-Registrierung.', firebase_error: 'Firebase ist nicht konfiguriert.',
-    agree_terms: 'Ich akzeptiere die', terms_of_service: 'AGB', and: 'und', privacy_policy: 'Datenschutzerklärung (AVV)'
+    google_error: 'Fehler bei der Google-Registrierung.', agree_terms: 'Ich akzeptiere die', terms_of_service: 'AGB', and: 'und', privacy_policy: 'Datenschutzerklärung (AVV)'
   }
 };
 
@@ -46,7 +41,6 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  // 🔥 NEU: State für die AGB-Checkbox
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,169 +55,52 @@ export default function Signup() {
     return <Navigate to="/app" />;
   }
 
-  const processInvite = async (uid: string, userEmail: string | null, token: string) => {
-    try {
-      const inviteRef = doc(db, 'invites', token);
-      const inviteSnap = await getDoc(inviteRef);
-      if (inviteSnap.exists() && inviteSnap.data().status === 'pending') {
-        const inviteData = inviteSnap.data();
-        
-        if (inviteData.type === 'enterprise_workspace') {
-          return inviteData;
-        }
-
-        const companyId = inviteData.companyId;
-
-        // Create user doc
-        const now = new Date().toISOString();
-        await setDoc(doc(db, 'users', uid), {
-          email: userEmail, createdAt: now, role: inviteData.role || 'Internal', companyId: companyId,
-          hasActiveSubscription: true, hasSeenTour: false 
-        });
-
-        // Add to company members (if there's a companyUsers collection or similar, or just update seats)
-        const companyRef = doc(db, 'companies', companyId);
-        await updateDoc(companyRef, {
-          usedSeats: increment(1)
-        });
-
-        // Mark invite as accepted
-        await updateDoc(inviteRef, {
-          status: 'accepted',
-          acceptedBy: uid,
-          acceptedAt: now
-        });
-
-        return companyId;
-      }
-    } catch (e) {
-      console.error('Error processing invite:', e);
-    }
-    return null;
-  };
-
-  const generateOnboardingData = async (uid: string, userEmail: string | null, enterpriseData?: any) => {
-    const newCompanyId = `comp_${uid}`;
-    const newProjectId = `proj_${Date.now()}`;
-    const now = new Date().toISOString();
-    const trialEndDate = new Date((new Date()).getTime() + (30 * 24 * 60 * 60 * 1000));
-    
-    const tpl = demoTemplates.construction;
-    
-    const isEnterprise = !!enterpriseData;
-    const plan = isEnterprise ? 'Enterprise' : 'Expert Trial';
-    const maxSeats = isEnterprise ? 50 : 1;
-    const companyName = enterpriseData?.companyName || `${userEmail?.split('@')[0] || 'User'}s Workspace`;
-
-    await setDoc(doc(db, 'users', uid), {
-      email: userEmail, createdAt: now, role: 'owner', companyId: newCompanyId,
-      hasActiveSubscription: true, plan: plan, trialEndsAt: trialEndDate.toISOString(), hasSeenTour: false 
-    });
-
-    await setDoc(doc(db, 'companies', newCompanyId), {
-      id: newCompanyId, name: companyName, plan: plan,
-      maxSeats: maxSeats, usedSeats: 1, ownerId: uid, trialEndsAt: trialEndDate.toISOString(), createdAt: now
-    });
-
-  };
-
-  // 🔥 NEU: Zentrale Funktion, um den Welcome Webhook anzufunken
-  const triggerWelcomeWebhook = async (email: string | null, uid: string, token: string) => {
-    if (!email) return;
-    try {
-      const name = email.split('@')[0];
-      await fetch('/api/send-webhook', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ type: "welcome",  email, name, uid })
-      });
-    } catch (err) {
-      console.error("Welcome Webhook Fehler:", err);
-    }
-  };
-
   async function handleGoogleSignUp() {
-    if (!auth || !db) return setError(t('firebase_error'));
-    if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.'); // Validation
+    if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.');
     
     try {
       setError(''); setLoading(true);
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-
-      if (!userDocSnap.exists()) {
-        const token = await userCredential.user.getIdToken();
-        const response = await fetch('/api/register-company', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ type: "welcome",  uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
-        });
-
-        if (!response.ok) {
-          console.warn('Server registration failed, falling back to client-side onboarding');
-          await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/app`
         }
-
-        // 🔥 TRIGGER FÜR DEN WEBHOOK BEI GOOGLE SIGNUP
-        const tokenForWebhook = await userCredential.user.getIdToken();
-        await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
-
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        await userCredential.user.getIdToken(true);
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        await userCredential.user.getIdToken(true);
-      }
-      navigate('/app');
-    } catch (error) { setError(t('google_error')); } finally { setLoading(false); }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(t('google_error'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!auth || !db) return setError(t('firebase_error'));
     if (password !== passwordConfirm) return setError(t('password_mismatch'));
-    if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.'); // Validation
+    if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.');
 
     try {
       setError(''); setLoading(true);
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const token = await userCredential.user.getIdToken();
-      const response = await fetch('/api/register-company', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ type: "welcome",  uid: userCredential.user.uid, email: userCredential.user.email, inviteToken: inviteToken || null })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/app`,
+          data: {
+            inviteToken: inviteToken || null
+          }
+        }
       });
 
-      if (!response.ok) {
-        console.warn('Server registration failed, falling back to client-side onboarding');
-        await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
-      }
+      if (error) throw error;
 
-      // 🔥 TRIGGER FÜR DEN WEBHOOK BEI EMAIL SIGNUP
-      const tokenForWebhook = await userCredential.user.getIdToken();
-      await triggerWelcomeWebhook(userCredential.user.email, userCredential.user.uid, tokenForWebhook);
-
-      // Webhook handles the email sending via Make.com!
-      // await sendEmailVerification(userCredential.user); // Removed to prevent auth/too-many-requests collision
-      addToast('Bitte überprüfe dein E-Mail-Postfach, um deinen Account zu verifizieren.', 'success');
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      await userCredential.user.getIdToken(true);
-      
+      addToast('Account erfolgreich erstellt! Du wirst weitergeleitet...', 'success');
       navigate('/app');
-    } catch (error: any) { setError(t('signup_error')); } finally { setLoading(false); }
+    } catch (err: any) {
+      setError(err.message || t('signup_error'));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -257,7 +134,6 @@ export default function Signup() {
                 <input type="password" required value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} className="block w-full rounded-xl border-0 bg-[#18181b] py-2.5 text-[#fafafa] shadow-sm ring-1 ring-inset ring-[#27272a] placeholder:text-[#52525b] focus:ring-2 focus:ring-inset focus:ring-blue-500 sm:text-sm sm:leading-6 px-4 transition-all" placeholder={t('confirm_password_placeholder')} />
               </div>
 
-              {/* 🔥 NEU: Die zwingende AGB & DSGVO Checkbox */}
               <div className="flex items-start gap-3 mt-4">
                 <div className="flex h-6 items-center">
                   <input
@@ -293,7 +169,7 @@ export default function Signup() {
               </div>
             </div>
 
-            <p className="mt-8 text-center text-sm text-[#a1a1aa]">{t('already_have_account')} <Link to="/login" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">{t('sign_in')}</Link></p>
+            <p className="mt-8 text-center text-sm text-[#a1a1aa]">{t('already_have_account')} <Link to="/login" className="font-medium text-[#fafafa] hover:underline transition-colors">{t('sign_in')}</Link></p>
           </div>
         </div>
       </div>

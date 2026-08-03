@@ -31,16 +31,6 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit 
-          runtimeCaching: [
-            {
-              urlPattern: /^https:\/\/firebase\.googleapis\.com\/.*$/,
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'firebase-auth-cache',
-                expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 }
-              }
-            }
-          ]
         }
       })
     ],
@@ -52,7 +42,12 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
-        // Alias entfernt, um ENOENT-Abstürze zu verhindern
+        'firebase/app': path.resolve(__dirname, 'src/lib/firebaseMock.ts'),
+        'firebase/auth': path.resolve(__dirname, 'src/lib/firebaseMock.ts'),
+        'firebase/firestore': path.resolve(__dirname, 'src/lib/firebaseMock.ts'),
+        'firebase/storage': path.resolve(__dirname, 'src/lib/firebaseMock.ts'),
+        'firebase/functions': path.resolve(__dirname, 'src/lib/firebaseMock.ts'),
+        'firebase/app-check': path.resolve(__dirname, 'src/lib/firebaseMock.ts'),
       },
     },
     server: {
@@ -67,7 +62,6 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'esnext',
-      // +++ ABSOLUTE STABILITÄT: Minifizierung deaktiviert +++
       minify: false,
       commonjsOptions: {
         transformMixedEsModules: true,
@@ -76,15 +70,14 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor-core': ['react', 'react-dom', 'react-router-dom'],
-            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/functions'],
-            'vendor-ui': ['lucide-react', 'motion/react', 'clsx', 'tailwind-merge'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-ui': ['lucide-react', 'clsx', 'tailwind-merge'],
             'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei'],
             'vendor-charts': ['recharts']
-            // vendor-pdf bleibt entfernt für sauberes dynamisches Resolving
           }
         }
       },
-      chunkSizeWarningLimit: 3000 // Limit hochgesetzt, da Dateien ohne Minifier logischerweise größer sind
+      chunkSizeWarningLimit: 3000
     }
   };
 });

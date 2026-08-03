@@ -16,16 +16,16 @@ import { auth } from '../firebase';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
-  // @ts-expect-error - mismatch in fal-ai types
-  requestMiddleware: [
-    async (request: any) => {
-      if (auth.currentUser) {
-        const token = await auth.currentUser.getIdToken();
-        request.headers.set('Authorization', `Bearer ${token}`);
-      }
-      return request;
+  requestMiddleware: async (request: any) => {
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      request.headers = {
+        ...request.headers,
+        Authorization: `Bearer ${token}`
+      };
     }
-  ]
+    return request;
+  }
 });
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';

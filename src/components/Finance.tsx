@@ -21,6 +21,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { db, storage } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, getDoc, getDocs, addDoc, query, where, deleteDoc, updateDoc, and, or } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -309,6 +310,8 @@ export default function Finance() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const canViewFinance = hasPermission('canViewFinance');
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -327,6 +330,19 @@ export default function Finance() {
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
+
+  if (isMounted && !canViewFinance) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-background text-text-primary">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4 animate-bounce" />
+        <h1 className="text-2xl font-bold mb-2">Zugriff verweigert</h1>
+        <p className="text-text-muted mb-6">Sie haben keine Berechtigung, die Finanzen dieses Projekts einzusehen.</p>
+        <button onClick={() => navigate(`/project/${currentProjectId}`)} className="px-6 py-2.5 bg-accent-ai text-white rounded-lg font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+          Zurück zum Projekt
+        </button>
+      </div>
+    );
+  }
 
   const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'control' | 'cashflow'>('overview');
   const [timeFilter, setTimeFilter] = useState<'all' | 'year' | 'month' | 'today'>('all');

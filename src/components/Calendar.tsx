@@ -17,6 +17,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext'; 
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 // FIREBASE IMPORTS
 import { db, storage } from '../firebase';
@@ -268,7 +269,9 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
 export default function Calendar() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { projects, isDemoMode, demoData } = useProject() as any;
+  const { projects, isDemoMode: projectIsDemoMode, demoData } = useProject() as any;
+  const { hasPermission } = usePermissions();
+  const isDemoMode = projectIsDemoMode || !hasPermission('canCreateProject');
   const { addToast } = useToast();
   const { theme } = useTheme(); 
   const { currentUser } = useAuth();
@@ -366,7 +369,7 @@ export default function Calendar() {
   // === MULTI-TENANT & GLOBAL SILO FIX ===
   useEffect(() => {
     // 🔥 DEMO-BRÜCKE: Lade den Terminplan aus deinem Template!
-    if (isDemoMode && demoData) {
+    if (projectIsDemoMode && demoData) {
        hasLoadedInitial.current = true;
        setTimeout(() => setIsInitialLoad(false), 0);
        const today = new Date();

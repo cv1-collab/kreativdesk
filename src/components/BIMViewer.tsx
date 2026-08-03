@@ -44,7 +44,10 @@ fal.config({
   requestMiddleware: async (request: any) => {
     if (auth.currentUser) {
       const token = await auth.currentUser.getIdToken();
-      request.headers.set('Authorization', `Bearer ${token}`);
+      request.headers = {
+        ...request.headers,
+        Authorization: `Bearer ${token}`
+      };
     }
     return request;
   }

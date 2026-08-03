@@ -27,6 +27,9 @@ function getFirebaseAdmin() {
 
     try {
       privateKey = privateKey.replace(/\\n/g, '\n');
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.substring(1, privateKey.length - 1);
+      }
       admin.initializeApp({
         credential: admin.credential.cert({
           projectId,

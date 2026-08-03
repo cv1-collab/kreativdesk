@@ -1,12 +1,9 @@
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Command, Loader2, X, ArrowLeft } from 'lucide-react';
-import { handleFirestoreError, OperationType } from '../utils/errorHandlers';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -23,10 +20,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     login_error: 'Failed to log in. Please check your credentials.', google_error: 'Failed to log in with Google.',
     reset_error: 'Failed to send reset email.', sync_waiting: 'Account created but waiting for data sync...',
     boot_1: 'Initializing AI Core...', boot_2: 'Syncing CAD & Finance Modules...',
-    boot_3: 'Establishing Secure Connection...', boot_4: 'Loading Workspace...',
-    demo_const_name: 'New Housing Estate South', demo_const_desc: 'Site management, defect tracking, and cost control.',
-    demo_const_group: 'BKP 200 Building', demo_const_item: 'Master Builder Works',
-    demo_slide_title: 'Welcome to Kreativ Desk', demo_slide_content: 'This is your interactive demo project.\nUse the navigation to explore all features.'
+    boot_3: 'Establishing Secure Connection...', boot_4: 'Loading Workspace...'
   },
   de: {
     welcome_back: 'Willkommen zurück', access_workspace: 'Greife auf deinen Kreativ-Desk Workspace zu',
@@ -41,10 +35,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     login_error: 'Fehler bei der Anmeldung. Bitte Zugangsdaten prüfen.', google_error: 'Fehler bei der Google-Anmeldung.',
     reset_error: 'Fehler beim Senden der E-Mail.', sync_waiting: 'Account erstellt, warte auf Datensynchronisation...',
     boot_1: 'KI-Kern initialisieren...', boot_2: 'CAD & Finanzmodule synchronisieren...',
-    boot_3: 'Sichere Verbindung herstellen...', boot_4: 'Workspace laden...',
-    demo_const_name: 'Neubau Wohnsiedlung Süd', demo_const_desc: 'Bauleitung, Mängelmanagement und Kostenkontrolle.',
-    demo_const_group: 'BKP 200 Gebäude', demo_const_item: 'Baumeisterarbeiten',
-    demo_slide_title: 'Willkommen bei Kreativ Desk', demo_slide_content: 'Dies ist dein interaktives Demoprojekt.\nNutze die Navigation, um alle Funktionen kennenzulernen.'
+    boot_3: 'Sichere Verbindung herstellen...', boot_4: 'Workspace laden...'
   }
 };
 
@@ -67,7 +58,6 @@ export default function Login() {
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
-  const navigate = useNavigate();
   const { currentUser } = useAuth();
 
   if (currentUser && !loading) {
@@ -85,92 +75,36 @@ export default function Login() {
     }, 800);
   };
 
-  const generateOnboardingData = async (uid: string, userEmail: string | null) => {
-    const newCompanyId = `comp_${uid}`;
-    const newProjectId = `proj_${Date.now()}`;
-    const timestamp = new Date().toISOString();
-    const trialEndDate = new Date((new Date()).getTime() + (30 * 24 * 60 * 60 * 1000));
-
-    await setDoc(doc(db, 'users', uid), {
-      email: userEmail, createdAt: timestamp, role: 'owner', companyId: newCompanyId,
-      hasActiveSubscription: true, plan: 'Expert Trial', trialEndsAt: trialEndDate.toISOString(), hasSeenTour: false 
-    });
-
-    await setDoc(doc(db, 'companies', newCompanyId), {
-      id: newCompanyId, name: `${userEmail?.split('@')[0] || 'User'}s Workspace`, plan: 'Expert Trial',
-      maxSeats: 1, usedSeats: 1, ownerId: uid, trialEndsAt: trialEndDate.toISOString(), createdAt: timestamp
-    });
-
-    await setDoc(doc(db, 'projects', newProjectId), {
-      id: newProjectId, name: t('demo_const_name'), description: t('demo_const_desc'),
-      companyId: newCompanyId, ownerId: uid, status: 'active', createdAt: timestamp
-    });
-
-    await setDoc(doc(db, 'financeData', `finance_${newProjectId}`), {
-      projectId: newProjectId, companyId: newCompanyId, activeVersionId: 'v1',
-      versions: [{
-        id: 'v1', name: 'Startbudget', createdAt: timestamp,
-        groups: [{
-          id: 'g1', pos: '100', title: t('demo_const_group'),
-          items: [{ id: 'i1', pos: '101', title: t('demo_const_item'), amount: 1, price: 15000, total: 15000, type: 'service' }]
-        }]
-      }]
-    });
-
-    await setDoc(doc(db, 'slides', `slide_${Date.now()}`), {
-      title: t('demo_slide_title'), content: t('demo_slide_content'), projectId: newProjectId,
-      companyId: newCompanyId, ownerId: uid, layout: 'title-only', order_index: 0, fontSize: 36, createdAt: timestamp
-    });
-  };
-
   async function handleGoogleLogin() {
-    if (!auth || !db) return setError('Firebase is not configured.');
     try {
       setError(''); setLoading(true);
-      const provider = new GoogleAuthProvider();
-      const userCredential = await signInWithPopup(auth, provider);
-      
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      const userDocSnap = await getDoc(userDocRef);
-      
-      if (!userDocSnap.exists()) {
-        await generateOnboardingData(userCredential.user.uid, userCredential.user.email);
-        try {
-          const token = await userCredential.user.getIdToken();
-          await fetch('/api/set-tenant-claim', {
-            method: 'POST', 
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ type: "reset",  uid: userCredential.user.uid, companyId: `comp_${userCredential.user.uid}` })
-          });
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          await userCredential.user.getIdToken(true);
-        } catch (e) { console.error('Tenant claim fail', e); }
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        await userCredential.user.getIdToken(true);
-      }
-      startBootSequence();
-    } catch (error) {
-      setError(t('google_error')); setLoading(false);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/app`
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setError(t('google_error')); 
+      setLoading(false);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!auth) return setError('Firebase auth is not initialized.');
     try {
       setError(''); setLoading(true);
-      const userCred = await signInWithEmailAndPassword(auth, email, password);
-      if (userCred.user) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        await userCred.user.getIdToken(true);
-      }
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
       startBootSequence();
-    } catch (error: any) {
-      setError(t('login_error')); setLoading(false);
+    } catch (err: any) {
+      setError(t('login_error')); 
+      setLoading(false);
     }
   }
 
@@ -179,14 +113,13 @@ export default function Login() {
     try {
       setResetMessage(''); setResetError(''); setResetLoading(true);
       
-      const response = await fetch('/api/send-webhook', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: "reset",  email: resetEmail })
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/settings`
       });
 
-      if (!response.ok) throw new Error('Webhook fehlgeschlagen');
+      if (error) throw error;
       setResetMessage(t('reset_success'));
-    } catch (error: any) {
+    } catch (err: any) {
       setResetError(t('reset_error'));
     } finally {
       setResetLoading(false);

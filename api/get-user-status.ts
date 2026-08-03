@@ -5,11 +5,18 @@ import Stripe from 'stripe'; // NEU: Wir brauchen Stripe hier für den Live-Sync
 
 // 1. Firebase Admin Initialisierung
 if (getApps().length === 0) {
+  let pk = process.env.FIREBASE_PRIVATE_KEY;
+  if (pk) {
+    pk = pk.replace(/\\n/g, '\n');
+    if (pk.startsWith('"') && pk.endsWith('"')) {
+      pk = pk.substring(1, pk.length - 1);
+    }
+  }
   initializeApp({
     credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey: pk,
     }),
   });
 }
@@ -30,6 +37,24 @@ export default async function handler(req: any, res: any) {
 
   if (!uid) {
     return res.status(400).json({ error: 'UID missing' });
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+  const auth = getAuth();
+  let decodedToken;
+  try {
+    decodedToken = await auth.verifyIdToken(idToken);
+  } catch (err) {
+    return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+  }
+
+  if (decodedToken.uid !== uid) {
+    return res.status(403).json({ error: 'Forbidden: UID mismatch' });
   }
 
   try {

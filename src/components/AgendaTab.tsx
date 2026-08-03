@@ -15,6 +15,7 @@ import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -240,6 +241,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
+  const canWriteTimeAndEvents = hasPermission('canCreateProject');
   const { language, t: globalT } = useLanguage();
   const { projects: contextProjects, isDemoMode } = useProject() as any; 
 
@@ -546,9 +549,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         </div>
         
         <div className="hidden lg:flex gap-2">
-          <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-md text-sm font-bold transition-colors shadow-sm">
-            <Download size={14} /> {t('rapport')} PDF
-          </button>
+          {canWriteTimeAndEvents && (
+            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-md text-sm font-bold transition-colors shadow-sm">
+              <Download size={14} /> {t('rapport')} PDF
+            </button>
+          )}
           <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-md text-sm font-bold transition-colors shadow-sm">
             <Download size={14} /> {t('agenda')} PDF
           </button>
@@ -558,130 +563,134 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* LINKE SPALTE (1/3): ZEITERFASSUNG */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          <div className="bg-surface border border-border/50 rounded-xl p-6 shadow-sm h-fit">
-            <div className="flex items-center justify-between mb-4"><h3 className="font-semibold flex items-center gap-2 text-text-primary"><Clock size={18} className="text-accent-ai" /> {t('book_time')}</h3></div>
+        {canWriteTimeAndEvents && (
+          <div className="lg:col-span-1 flex flex-col gap-6">
+            <div className="bg-surface border border-border/50 rounded-xl p-6 shadow-sm h-fit">
+              <div className="flex items-center justify-between mb-4"><h3 className="font-semibold flex items-center gap-2 text-text-primary"><Clock size={18} className="text-accent-ai" /> {t('book_time')}</h3></div>
 
-            <div className="flex p-1 bg-background border border-border/50 rounded-lg mb-5">
-              <button type="button" onClick={() => setTimeTrackingMode('manual')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeTrackingMode === 'manual' ? "bg-surface shadow-sm text-text-primary" : "text-text-muted hover:text-text-primary")}>{t('manual')}</button>
-              <button type="button" onClick={() => setTimeTrackingMode('timer')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeTrackingMode === 'timer' ? "bg-surface shadow-sm text-text-primary" : "text-text-muted hover:text-text-primary")}>{t('live_timer')}</button>
-            </div>
-
-            <form onSubmit={handleLogTime} className="space-y-5">
-              {timeTrackingMode === 'timer' && (
-                <div className="text-center py-6 bg-background rounded-xl border border-border/50 mb-4 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="text-5xl font-bold tracking-tight text-text-primary mb-6">{formatTimerTime(timerSeconds)}</div>
-                  <div className="flex justify-center gap-4">
-                    <button type="button" onClick={() => setIsTimerRunning(!isTimerRunning)} className={cn("w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg", isTimerRunning ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-accent-ai text-white shadow-accent-ai/20")}>
-                      {isTimerRunning ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
-                    </button>
-                    <button type="button" onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className="w-14 h-14 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center transition-transform hover:scale-105">
-                      <Square size={24} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex p-1 bg-background border border-border/50 rounded-lg mb-2">
-                <button type="button" onClick={() => setTimeEntryForm({...timeEntryForm, type: 'internal', userId: ''})} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'internal' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
-                <button type="button" onClick={() => setTimeEntryForm({...timeEntryForm, type: 'external', userId: ''})} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'external' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('external_partner')}</button>
+              <div className="flex p-1 bg-background border border-border/50 rounded-lg mb-5">
+                <button type="button" onClick={() => setTimeTrackingMode('manual')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeTrackingMode === 'manual' ? "bg-surface shadow-sm text-text-primary" : "text-text-muted hover:text-text-primary")}>{t('manual')}</button>
+                <button type="button" onClick={() => setTimeTrackingMode('timer')} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeTrackingMode === 'timer' ? "bg-surface shadow-sm text-text-primary" : "text-text-muted hover:text-text-primary")}>{t('live_timer')}</button>
               </div>
 
-              {timeEntryForm.type === 'internal' ? (
+              <form onSubmit={handleLogTime} className="space-y-5">
+                {timeTrackingMode === 'timer' && (
+                  <div className="text-center py-6 bg-background rounded-xl border border-border/50 mb-4 animate-in fade-in zoom-in-95 duration-200">
+                    <div className="text-5xl font-bold tracking-tight text-text-primary mb-6">{formatTimerTime(timerSeconds)}</div>
+                    <div className="flex justify-center gap-4">
+                      <button type="button" onClick={() => setIsTimerRunning(!isTimerRunning)} className={cn("w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg", isTimerRunning ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-accent-ai text-white shadow-accent-ai/20")}>
+                        {isTimerRunning ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+                      </button>
+                      <button type="button" onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className="w-14 h-14 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center transition-transform hover:scale-105">
+                        <Square size={24} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex p-1 bg-background border border-border/50 rounded-lg mb-2">
+                  <button type="button" onClick={() => setTimeEntryForm({...timeEntryForm, type: 'internal', userId: ''})} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'internal' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
+                  <button type="button" onClick={() => setTimeEntryForm({...timeEntryForm, type: 'external', userId: ''})} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'external' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('external_partner')}</button>
+                </div>
+
+                {timeEntryForm.type === 'internal' ? (
+                  <div className="space-y-2">
+                    <select required value={timeEntryForm.userId} onChange={e => { const user = allContacts.find((u: any) => u.id === e.target.value); setTimeEntryForm({ ...timeEntryForm, userId: e.target.value, hourlyRate: user?.hourlyRate || 0 }); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
+                      <option value="" className="bg-surface">{t('select_employee')}</option>
+                      {internalTeam.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface">{formatName(u)}</option>))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <select required value={timeEntryForm.userId} onChange={e => { const user = allContacts.find((u: any) => u.id === e.target.value); setTimeEntryForm({ ...timeEntryForm, userId: e.target.value, hourlyRate: user?.hourlyRate || 0 }); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
+                      <option value="" className="bg-surface">{t('select_contact')}</option>
+                      {externalContacts.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface">{formatName(u)}</option>))}
+                    </select>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
-                  <select required value={timeEntryForm.userId} onChange={e => { const user = allContacts.find((u: any) => u.id === e.target.value); setTimeEntryForm({ ...timeEntryForm, userId: e.target.value, hourlyRate: user?.hourlyRate || 0 }); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
-                    <option value="" className="bg-surface">{t('select_employee')}</option>
-                    {internalTeam.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface">{formatName(u)}</option>))}
+                  <select required value={timeEntryForm.projectId} onChange={e => setTimeEntryForm({...timeEntryForm, projectId: e.target.value})} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
+                    <option value="" className="bg-surface">{t('project_cost_center')}</option>
+                    <optgroup label={t('client_projects')} className="bg-surface text-text-muted font-bold">
+                        {safeProjects.map((p: any) => (<option key={p.id} value={p.id} className="text-text-primary font-medium bg-surface">{p.name}</option>))}
+                    </optgroup>
+                    <optgroup label={t('internal_cost_centers')} className="bg-surface text-text-muted font-bold">
+                        {Object.entries(internalProjectsMap).map(([id, label]) => <option key={id} value={id} className="text-text-primary font-medium bg-surface">{label}</option>)}
+                    </optgroup>
                   </select>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <select required value={timeEntryForm.userId} onChange={e => { const user = allContacts.find((u: any) => u.id === e.target.value); setTimeEntryForm({ ...timeEntryForm, userId: e.target.value, hourlyRate: user?.hourlyRate || 0 }); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
-                    <option value="" className="bg-surface">{t('select_contact')}</option>
-                    {externalContacts.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface">{formatName(u)}</option>))}
-                  </select>
+
+                {timeTrackingMode === 'manual' && (
+                  <>
+                    <div className="space-y-2"><input type="date" required value={timeEntryForm.date} onChange={e => setTimeEntryForm({...timeEntryForm, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary" /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <input type="number" step="0.25" min="0.25" required value={timeEntryForm.hours || ''} onChange={e => setTimeEntryForm({...timeEntryForm, hours: parseFloat(e.target.value)})} className="w-full bg-background border border-border/50 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-accent-ai [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.0" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-bold pointer-events-none">{t('hours')}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-bold pointer-events-none">CHF</span>
+                          <input type="number" step="1" min="0" required value={timeEntryForm.hourlyRate || ''} onChange={e => setTimeEntryForm({...timeEntryForm, hourlyRate: parseFloat(e.target.value)})} className="w-full bg-background border border-border/50 rounded-md pl-12 pr-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-2"><input type="text" required value={timeEntryForm.description} onChange={e => setTimeEntryForm({...timeEntryForm, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary" placeholder={t('activity_desc')} /></div>
+                
+                <div className="flex items-center justify-between p-3 bg-background border border-border/50 rounded-lg">
+                  <label className="text-sm font-bold text-text-primary">{t('billable_to_client')}</label>
+                  <button type="button" onClick={() => setTimeEntryForm({...timeEntryForm, isBillable: !timeEntryForm.isBillable})} className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", timeEntryForm.isBillable ? "bg-emerald-500" : "bg-zinc-600")}>
+                    <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white transition-transform", timeEntryForm.isBillable ? "translate-x-6" : "translate-x-1")} />
+                  </button>
                 </div>
-              )}
-              
-              <div className="space-y-2">
-                <select required value={timeEntryForm.projectId} onChange={e => setTimeEntryForm({...timeEntryForm, projectId: e.target.value})} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
-                  <option value="" className="bg-surface">{t('project_cost_center')}</option>
-                  <optgroup label={t('client_projects')} className="bg-surface text-text-muted font-bold">
-                      {safeProjects.map((p: any) => (<option key={p.id} value={p.id} className="text-text-primary font-medium bg-surface">{p.name}</option>))}
-                  </optgroup>
-                  <optgroup label={t('internal_cost_centers')} className="bg-surface text-text-muted font-bold">
-                      {Object.entries(internalProjectsMap).map(([id, label]) => <option key={id} value={id} className="text-text-primary font-medium bg-surface">{label}</option>)}
-                  </optgroup>
-                </select>
-              </div>
 
-              {timeTrackingMode === 'manual' && (
-                <>
-                  <div className="space-y-2"><input type="date" required value={timeEntryForm.date} onChange={e => setTimeEntryForm({...timeEntryForm, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary" /></div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <input type="number" step="0.25" min="0.25" required value={timeEntryForm.hours || ''} onChange={e => setTimeEntryForm({...timeEntryForm, hours: parseFloat(e.target.value)})} className="w-full bg-background border border-border/50 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-accent-ai [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.0" />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-bold pointer-events-none">{t('hours')}</span>
+                <button type="submit" disabled={timeTrackingMode === 'timer' && timerSeconds < 60} className="w-full py-2.5 bg-accent-ai text-white rounded-md text-sm font-bold hover:bg-accent-ai/90 disabled:opacity-50 transition-colors shadow-lg shadow-accent-ai/20 mt-2">{t('book_time_entry')}</button>
+              </form>
+            </div>
+
+            <div className="bg-surface border border-border/50 rounded-xl p-6 shadow-sm flex-1 min-h-[300px] overflow-hidden flex flex-col">
+              <h3 className="font-semibold text-sm mb-4 text-text-muted uppercase tracking-widest">{t('recent_bookings')}</h3>
+              <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                {localTimeEntries.slice(0, 10).map((entry: any) => {
+                  const user = allContacts.find((u: any) => u.id === entry.userId);
+                  const project = safeProjects.find((p: any) => p.id === entry.projectId);
+                  const projectName = project?.name || internalProjectsMap[entry.projectId] || t('unknown');
+                  return (
+                    <div key={entry.id} className="p-3 bg-background border border-border/50 rounded-lg flex justify-between items-center group hover:border-accent-ai/30 transition-colors">
+                      <div className="overflow-hidden">
+                        <div className="font-bold text-sm text-text-primary truncate">{projectName}</div>
+                        <div className="text-xs text-text-muted truncate mt-0.5">{entry.date} | {formatName(user)}</div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="font-bold text-accent-ai">{entry.hours}{t('hours')}</div>
+                        <button onClick={(e) => handleDeleteTimeEntry(entry.id, e)} className="text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"><Trash2 size={14}/></button>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-bold pointer-events-none">CHF</span>
-                        <input type="number" step="1" min="0" required value={timeEntryForm.hourlyRate || ''} onChange={e => setTimeEntryForm({...timeEntryForm, hourlyRate: parseFloat(e.target.value)})} className="w-full bg-background border border-border/50 rounded-md pl-12 pr-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-2"><input type="text" required value={timeEntryForm.description} onChange={e => setTimeEntryForm({...timeEntryForm, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary" placeholder={t('activity_desc')} /></div>
-              
-              <div className="flex items-center justify-between p-3 bg-background border border-border/50 rounded-lg">
-                <label className="text-sm font-bold text-text-primary">{t('billable_to_client')}</label>
-                <button type="button" onClick={() => setTimeEntryForm({...timeEntryForm, isBillable: !timeEntryForm.isBillable})} className={cn("relative inline-flex h-6 w-11 items-center rounded-full transition-colors", timeEntryForm.isBillable ? "bg-emerald-500" : "bg-zinc-600")}>
-                  <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white transition-transform", timeEntryForm.isBillable ? "translate-x-6" : "translate-x-1")} />
-                </button>
+                  );
+                })}
+                {localTimeEntries.length === 0 && <div className="text-center py-6 text-sm text-text-muted">{t('no_times_recorded')}</div>}
               </div>
-
-              <button type="submit" disabled={timeTrackingMode === 'timer' && timerSeconds < 60} className="w-full py-2.5 bg-accent-ai text-white rounded-md text-sm font-bold hover:bg-accent-ai/90 disabled:opacity-50 transition-colors shadow-lg shadow-accent-ai/20 mt-2">{t('book_time_entry')}</button>
-            </form>
-          </div>
-
-          <div className="bg-surface border border-border/50 rounded-xl p-6 shadow-sm flex-1 min-h-[300px] overflow-hidden flex flex-col">
-            <h3 className="font-semibold text-sm mb-4 text-text-muted uppercase tracking-widest">{t('recent_bookings')}</h3>
-            <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
-              {localTimeEntries.slice(0, 10).map((entry: any) => {
-                const user = allContacts.find((u: any) => u.id === entry.userId);
-                const project = safeProjects.find((p: any) => p.id === entry.projectId);
-                const projectName = project?.name || internalProjectsMap[entry.projectId] || t('unknown');
-                return (
-                  <div key={entry.id} className="p-3 bg-background border border-border/50 rounded-lg flex justify-between items-center group hover:border-accent-ai/30 transition-colors">
-                    <div className="overflow-hidden">
-                      <div className="font-bold text-sm text-text-primary truncate">{projectName}</div>
-                      <div className="text-xs text-text-muted truncate mt-0.5">{entry.date} | {formatName(user)}</div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="font-bold text-accent-ai">{entry.hours}{t('hours')}</div>
-                      <button onClick={(e) => handleDeleteTimeEntry(entry.id, e)} className="text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"><Trash2 size={14}/></button>
-                    </div>
-                  </div>
-                );
-              })}
-              {localTimeEntries.length === 0 && <div className="text-center py-6 text-sm text-text-muted">{t('no_times_recorded')}</div>}
             </div>
           </div>
-        </div>
+        )}
 
         {/* RECHTE SPALTE (2/3): KALENDER */}
-        <div className="lg:col-span-2 flex flex-col bg-surface border border-border/50 rounded-xl shadow-sm overflow-hidden h-auto lg:h-[800px]">
+        <div className={cn("flex flex-col bg-surface border border-border/50 rounded-xl shadow-sm overflow-hidden h-auto lg:h-[800px]", canWriteTimeAndEvents ? "lg:col-span-2" : "lg:col-span-3")}>
           <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0">
             <div className="flex items-center gap-4">
               <button onClick={() => { if(currentMonth === 0) { setCurrentMonth(11); setTargetYearCalendar(targetYearCalendar-1); } else { setCurrentMonth(currentMonth-1); } }} className="p-1 hover:bg-background rounded text-text-muted"><ChevronLeft/></button>
               <h2 className="text-lg font-bold min-w-[150px] text-center text-text-primary">{new Intl.DateTimeFormat(currentLang === 'de' ? 'de-DE' : 'en-US', { month: 'long', year: 'numeric' }).format(new Date(targetYearCalendar, currentMonth))}</h2>
               <button onClick={() => { if(currentMonth === 11) { setCurrentMonth(0); setTargetYearCalendar(targetYearCalendar+1); } else { setCurrentMonth(currentMonth+1); } }} className="p-1 hover:bg-background rounded text-text-muted"><ChevronRight/></button>
             </div>
-            <button onClick={() => setIsEventModalOpen(true)} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Plus size={16}/> {t('schedule_appointment')}</button>
+            {canWriteTimeAndEvents && (
+              <button onClick={() => setIsEventModalOpen(true)} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Plus size={16}/> {t('schedule_appointment')}</button>
+            )}
           </div>
 
           <div className="grid grid-cols-7 bg-background/50 border-b border-border/50 shrink-0">

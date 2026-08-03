@@ -3,8 +3,15 @@ import { verifyAuth } from '../_auth';
 export default async function handler(req: any, res: any) {
   const targetUrl = req.headers['x-fal-target-url'];
   
-  if (!targetUrl) {
+  if (!targetUrl || typeof targetUrl !== 'string') {
     return res.status(400).json({ error: 'Missing x-fal-target-url header' });
+  }
+
+  // Mitigate SSRF: Only allow connections to official fal.ai domains
+  if (!targetUrl.startsWith('https://queue.fal.run/') && 
+      !targetUrl.startsWith('https://fal.run/') && 
+      !targetUrl.startsWith('https://rest.alpha.fal.run/')) {
+    return res.status(403).json({ error: 'Forbidden target URL' });
   }
 
   try {

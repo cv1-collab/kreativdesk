@@ -1,51 +1,29 @@
-import 'dotenv/config'; // Läd die .env Datei für den Server
+import 'dotenv/config'; // Lädt die .env Datei für den Server
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import Stripe from 'stripe';
-import admin from 'firebase-admin';
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import registerCompanyHandler from './api/register-company';
+// === SUPABASE ADMIN INIT ===
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-// === FIREBASE ADMIN INIT ===
-function getFirebaseAdmin() {
-  if (getApps().length === 0) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-    if (!projectId || !clientEmail || !privateKey) {
-      console.warn('Firebase Admin API keys missing. Some features might not work.');
-      return null;
-    }
-
-    try {
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      initializeApp({
-        credential: cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        })
-      });
-      console.log('Firebase Admin initialized perfectly!');
-    } catch (error) {
-      console.error('Error initializing Firebase Admin:', error);
-      return null;
-    }
-  }
-  return admin;
+if (!supabaseServiceKey) {
+  console.warn('⚠️ SUPABASE_SERVICE_ROLE_KEY fehlt in der .env Datei. Admin-Funktionen könnten fehlschlagen.');
 }
 
-const firebaseAdmin = getFirebaseAdmin();
-const db = firebaseAdmin ? getFirestore() : null;
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // === STRIPE INIT ===
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -64,78 +42,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/register-company', registerCompanyHandler);
-
-  // --- 0. TENANT CLAIM (Sitzplatz-Architektur) ---
-  app.post('/api/set-tenant-claim', async (req, res) => {
-    try {
-      const { uid, companyId } = req.body;
-      if (!uid || !companyId) return res.status(400).json({ error: 'Missing uid or companyId' });
-      if (!firebaseAdmin) return res.status(500).json({ error: 'Firebase Admin not initialized' });
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized: Missing or invalid token' });
-      }
-
-      const idToken = authHeader.split('Bearer ')[1];
-      let decodedToken;
-      try {
-        decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
-      } catch (err) {
-        return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
-      }
-
-      const SUPER_ADMIN_EMAILS = [
-        'cv1@gmx.ch',
-        'carlo@vesciodesign.ch'
-      ];
-
-      if (decodedToken.uid !== uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
-        return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
-      }
-
-      // ++ SICHERHEITSLOGIK ++
-      let assignedRole = 'owner'; // Default: Wenn er seiner EIGENEN Firma beitritt, ist er Owner.
-
-      if (decodedToken.uid === uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
-        if (companyId !== `comp_${uid}`) {
-          const invitesSnapshot = await firebaseAdmin.firestore().collection('invites')
-            .where('email', '==', decodedToken.email)
-            .where('companyId', '==', companyId)
-            .where('status', '==', 'pending')
-            .get();
-            
-          if (invitesSnapshot.empty) {
-            return res.status(403).json({ error: 'Forbidden: Invalid or missing invite for this company' });
-          } else {
-            assignedRole = invitesSnapshot.docs[0].data().role || 'Mitarbeiter';
-          }
-        }
-      }
-
-      try {
-        const userRecord = await firebaseAdmin.auth().getUser(uid);
-        const currentClaims = userRecord.customClaims || {};
-
-        await firebaseAdmin.auth().setCustomUserClaims(uid, {
-          ...currentClaims,
-          companyId: companyId,
-          role: assignedRole
-        });
-
-        res.status(200).json({ success: true, message: `Tenant claim ${companyId} and role ${assignedRole} set for user ${uid}` });
-      } catch (error: any) {
-        console.error("Custom Claim Error:", error);
-        res.status(500).json({ error: 'Failed to set custom claims', details: error.message });
-      }
-    } catch (error: any) {
-      console.error("Custom Claim Error:", error);
-      res.status(500).json({ error: 'Failed to set custom claims', details: error.message });
-    }
-  });
-
-  // --- 0.1 AUTH MIDDLEWARE ---
+  // --- 0. AUTH MIDDLEWARE ---
   const verifyAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -143,16 +50,18 @@ async function startServer() {
     }
     const idToken = authHeader.split('Bearer ')[1];
     try {
-      if (!firebaseAdmin) throw new Error('Firebase Admin not initialized');
-      const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
-      (req as any).user = decodedToken;
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(idToken);
+      if (error || !user) {
+        return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
+      }
+      (req as any).user = { ...user, uid: user.id };
       next();
     } catch (err) {
       return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
     }
   };
 
-  // --- 0.2 SUBSCRIPTION MIDDLEWARE (Zero-Trust Security for AI & Premium Endpoints) ---
+  // --- 0.1 SUBSCRIPTION MIDDLEWARE ---
   const verifySubscription = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     try {
       const user = (req as any).user;
@@ -163,16 +72,17 @@ async function startServer() {
         return next();
       }
 
-      if (!db) return res.status(500).json({ error: 'Database not connected' });
-      const userDoc = await db.collection('users').doc(user.uid).get();
-      if (!userDoc.exists) return res.status(403).json({ error: 'Forbidden: User not found' });
-      
-      const userData = userDoc.data();
-      if (userData?.hasActiveSubscription === false) {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', user.uid)
+        .maybeSingle();
+
+      if (profile && profile.has_active_subscription === false) {
         return res.status(403).json({ error: 'Forbidden: Active subscription required.' });
       }
       
-      (req as any).dbUser = userData; // Attach DB user data for routes to use if needed
+      (req as any).dbUser = profile;
       next();
     } catch (err) {
       console.error('Subscription verification failed:', err);
@@ -180,10 +90,13 @@ async function startServer() {
     }
   };
 
-  // --- 1. STRIPE CHECKOUT SESSION (Kugelsicher mit priceId & Gutscheinen) ---
-  app.post('/api/create-checkout-session', async (req, res) => {
+  // --- 1. STRIPE CHECKOUT SESSION ---
+  app.post('/api/create-checkout-session', verifyAuth, async (req, res) => {
     try {
-      const { email, planName, uid, priceId } = req.body;
+      const { planName, priceId } = req.body;
+      const user = (req as any).user;
+      const uid = user.uid;
+      const email = user.email;
       const domainURL = req.headers.origin || 'http://localhost:3000';
 
       if (!priceId) return res.status(400).json({ error: 'Missing Stripe priceId' });
@@ -193,11 +106,11 @@ async function startServer() {
         mode: 'subscription',
         customer_email: email,
         client_reference_id: uid,
-        allow_promotion_codes: true, // Gutscheine aktiviert
+        allow_promotion_codes: true,
         line_items: [{ price: priceId, quantity: 1 }],
         success_url: `${domainURL}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planName}`,
         cancel_url: `${domainURL}/pricing?canceled=true`,
-        metadata: { firebaseUID: uid, plan: planName }
+        metadata: { supabaseUID: uid, plan: planName }
       });
       res.json({ url: session.url });
     } catch (error: any) {
@@ -207,10 +120,19 @@ async function startServer() {
   });
 
   // --- 2. STRIPE CUSTOMER PORTAL ---
-  app.post('/api/create-portal-session', async (req, res) => {
+  app.post('/api/create-portal-session', verifyAuth, async (req, res) => {
     try {
-      const { customerId } = req.body;
-      if (!customerId) return res.status(400).json({ error: 'Customer ID missing' });
+      const user = (req as any).user;
+      const uid = user.uid;
+
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('stripe_customer_id')
+        .eq('id', uid)
+        .maybeSingle();
+
+      const customerId = profile?.stripe_customer_id;
+      if (!customerId) return res.status(400).json({ error: 'Stripe customer ID missing on account' });
       
       const domainURL = req.headers.origin || 'http://localhost:3000';
       const portalSession = await stripe.billingPortal.sessions.create({
@@ -219,6 +141,7 @@ async function startServer() {
       });
       res.json({ url: portalSession.url });
     } catch (error: any) {
+      console.error('Portal Session Error:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -227,45 +150,51 @@ async function startServer() {
   app.get('/api/get-user-status', async (req, res) => {
     try {
       const { userId } = req.query;
-      if (!userId || typeof userId !== 'string' || !db) return res.status(400).json({ error: 'Invalid config' });
+      if (!userId || typeof userId !== 'string') return res.status(400).json({ error: 'Invalid userId' });
 
-      const userDocRef = db.collection('users').doc(userId);
-      const userDoc = await userDocRef.get();
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-      if (!userDoc.exists) {
-        const newCompanyId = `comp_${userId}`;
+      if (!profile) {
         const timestamp = new Date();
         const trialEndDate = new Date(timestamp.getTime() + (30 * 24 * 60 * 60 * 1000));
 
-        const newUserData = {
+        const { data: newCompany } = await supabaseAdmin
+          .from('companies')
+          .insert({
+            name: `Workspace ${userId.substring(0, 5)}`,
+            plan: 'Expert Trial',
+            max_seats: 1,
+            used_seats: 1,
+            owner_id: userId
+          })
+          .select()
+          .single();
+
+        const newProfileData = {
+          id: userId,
           email: 'unknown@user.com',
           role: 'owner',
-          companyId: newCompanyId,
-          hasActiveSubscription: true,
+          company_id: newCompany?.id || null,
+          has_active_subscription: true,
           plan: 'Expert Trial',
-          trialEndsAt: trialEndDate.toISOString(),
-          createdAt: timestamp.toISOString()
+          trial_ends_at: trialEndDate.toISOString(),
+          created_at: timestamp.toISOString()
         };
-        await userDocRef.set(newUserData);
-        await db.collection('companies').doc(newCompanyId).set({
-          id: newCompanyId,
-          name: `Workspace ${userId.substring(0,5)}`,
-          plan: 'Expert Trial',
-          maxSeats: 1,
-          usedSeats: 1,
-          ownerId: userId,
-          trialEndsAt: trialEndDate.toISOString(),
-          createdAt: timestamp.toISOString()
-        });
-        return res.json(newUserData);
+
+        await supabaseAdmin.from('profiles').insert(newProfileData);
+        return res.json(newProfileData);
       }
-      res.json(userDoc.data());
+      res.json(profile);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });
 
-  // --- 4. STRIPE WEBHOOK (INKLUSIVE KÜNDIGUNGS-FIX 1.2) ---
+  // --- 4. STRIPE WEBHOOK ---
   app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'] as string;
     let event;
@@ -275,67 +204,78 @@ async function startServer() {
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // A) Kauf abgeschlossen
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as any;
-      const userId = session.client_reference_id || session.metadata?.firebaseUID;
+      const userId = session.client_reference_id || session.metadata?.supabaseUID || session.metadata?.firebaseUID;
       const planName = session.metadata?.plan || 'Pro';
 
-      if (userId && db) {
+      if (userId) {
         try {
-          const userRef = db.collection('users').doc(userId);
-          await userRef.update({ 
-            hasActiveSubscription: true, 
-            plan: planName,
-            stripeCustomerId: session.customer,
-            subscriptionId: session.subscription,
-            subscriptionStatus: 'active'
-          });
-          const userData = (await userRef.get()).data();
-          if (userData?.companyId) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({ 
+              has_active_subscription: true, 
+              plan: planName,
+              stripe_customer_id: session.customer
+            })
+            .eq('id', userId);
+
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('company_id')
+            .eq('id', userId)
+            .maybeSingle();
+
+          if (profile?.company_id) {
             let newMaxSeats = 1;
             const p = planName.toLowerCase();
             if (p.includes('studio')) newMaxSeats = 5;
             else if (p.includes('agency')) newMaxSeats = 15;
             else if (p.includes('enterprise')) newMaxSeats = 30;
             
-            await db.collection('companies').doc(userData.companyId).update({ plan: planName, maxSeats: newMaxSeats });
+            await supabaseAdmin
+              .from('companies')
+              .update({ plan: planName, max_seats: newMaxSeats })
+              .eq('id', profile.company_id);
           }
-        } catch (error) { console.error(error); }
+        } catch (error) { console.error('Stripe Webhook Update Error:', error); }
       }
     } 
-    // B) Kündigung / Zahlungsausfall (Der Fix)
     else if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as any;
       const customerId = subscription.customer;
 
-      if (db && customerId) {
+      if (customerId) {
         try {
-          const usersRef = db.collection('users');
-          const snapshot = await usersRef.where('stripeCustomerId', '==', customerId).get();
+          const { data: profiles } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('stripe_customer_id', customerId);
 
-          if (!snapshot.empty) {
-            const userDoc = snapshot.docs[0];
-            const userData = userDoc.data();
-
-            await userDoc.ref.update({
-              hasActiveSubscription: false,
-              subscriptionStatus: 'canceled',
-              plan: 'Free Trial',
-              updatedAt: new Date()
-            });
-
-            if (userData.companyId) {
-              await db.collection('companies').doc(userData.companyId).update({
+          if (profiles && profiles.length > 0) {
+            const userProfile = profiles[0];
+            await supabaseAdmin
+              .from('profiles')
+              .update({
+                has_active_subscription: false,
                 plan: 'Free Trial',
-                maxSeats: 1,
-                updatedAt: new Date()
-              });
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', userProfile.id);
+
+            if (userProfile.company_id) {
+              await supabaseAdmin
+                .from('companies')
+                .update({
+                  plan: 'Free Trial',
+                  max_seats: 1
+                })
+                .eq('id', userProfile.company_id);
             }
             console.log(`Server.ts: Abo-Kündigung erfolgreich verarbeitet für Customer ${customerId}`);
           }
         } catch (error) {
-          console.error(`Server.ts: Firebase Write Error bei Kündigung:`, error);
+          console.error(`Server.ts: Supabase Write Error bei Kündigung:`, error);
         }
       }
     }
@@ -348,14 +288,16 @@ async function startServer() {
     try {
       const { companyId, leadData } = req.body;
       if (!companyId || !leadData) return res.status(400).json({ error: 'Missing data' });
-      if (!firebaseAdmin) return res.status(500).json({ error: 'Firebase Admin not initialized' });
 
-      // Fetch company profile
-      const companySnap = await firebaseAdmin.firestore().collection('companies').doc(companyId).get();
-      if (!companySnap.exists) return res.status(404).json({ error: 'Company not found' });
+      const { data: company } = await supabaseAdmin
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (!company) return res.status(404).json({ error: 'Company not found' });
       
-      const companyData = companySnap.data();
-      const webhookUrl = companyData?.webhookUrl;
+      const webhookUrl = company.webhook_url;
 
       if (webhookUrl) {
          await fetch(webhookUrl, {
@@ -364,8 +306,6 @@ async function startServer() {
            body: JSON.stringify({ ...leadData, event: 'new_lead' })
          });
          console.log(`Lead Webhook erfolgreich gesendet an: ${webhookUrl}`);
-      } else {
-         console.log(`Kein Webhook für Company ${companyId} hinterlegt.`);
       }
 
       res.status(200).json({ success: true });
@@ -375,15 +315,13 @@ async function startServer() {
     }
   });
 
-  // --- 5.1 WELCOME WEBHOOK (MAKE.COM / n8n) ---
+  // --- 5.1 WELCOME WEBHOOK ---
   app.post('/api/send-welcome-webhook', verifyAuth, async (req, res) => {
     try {
       const { email, name, uid } = req.body;
       if (!email) return res.status(400).json({ error: 'Email missing' });
-      if (!firebaseAdmin) return res.status(500).json({ error: 'Firebase Admin not initialized' });
 
       const formattedName = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Neuer Nutzer';
-      const verificationLink = await firebaseAdmin.auth().generateEmailVerificationLink(email);
       const webhookUrl = process.env.WELCOME_WEBHOOK_URL; 
       
       if (webhookUrl) {
@@ -394,13 +332,10 @@ async function startServer() {
              email,
              name: formattedName,
              uid,
-             verificationLink, 
-             source: 'interacTV'
+             source: 'KreativDesk'
            })
          });
          console.log(`Welcome Webhook erfolgreich gesendet an: ${email}`);
-      } else {
-         console.warn('Achtung: WELCOME_WEBHOOK_URL ist nicht in der .env hinterlegt!');
       }
 
       res.status(200).json({ success: true });
@@ -410,29 +345,31 @@ async function startServer() {
     }
   });
 
-  // --- 6. PASSWORD RESET WEBHOOK (MAKE.COM / n8n) ---
+  // --- 6. PASSWORD RESET WEBHOOK ---
   app.post('/api/send-reset-webhook', verifyAuth, async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: 'Email missing' });
-      if (!firebaseAdmin) return res.status(500).json({ error: 'Firebase Admin not initialized' });
 
-      const resetLink = await firebaseAdmin.auth().generatePasswordResetLink(email);
+      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: email
+      });
+
+      const resetLink = data?.properties?.action_link;
       const webhookUrl = process.env.RESET_WEBHOOK_URL; 
       
-      if (webhookUrl) {
+      if (webhookUrl && resetLink) {
          await fetch(webhookUrl, {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({
              email,
              resetLink, 
-             source: 'interacTV'
+             source: 'KreativDesk'
            })
          });
          console.log(`Reset Webhook erfolgreich gesendet an: ${email}`);
-      } else {
-         console.warn('Achtung: RESET_WEBHOOK_URL ist nicht in der .env hinterlegt!');
       }
 
       res.status(200).json({ success: true });
@@ -442,55 +379,7 @@ async function startServer() {
     }
   });
 
-  // --- 6.1 EXTERNAL CAMERA WEBHOOK ---
-  app.post('/api/webhook/camera-defect', async (req, res) => {
-    try {
-      const { projectId, companyId, imageUrl, description, cameraName, secret } = req.body;
-      
-      // Basic security check
-      const expectedSecret = process.env.CAMERA_WEBHOOK_SECRET || 'kreativ-desk-camera-123';
-      if (secret !== expectedSecret) {
-        return res.status(401).json({ error: 'Unauthorized: Invalid secret token' });
-      }
-
-      if (!projectId || !companyId) {
-        return res.status(400).json({ error: 'Missing projectId or companyId' });
-      }
-
-      if (!firebaseAdmin || !db) {
-        return res.status(500).json({ error: 'Firebase Admin not initialized' });
-      }
-
-      // Create a defect document in the global 'defects' collection
-      const newDefect = {
-        projectId,
-        companyId,
-        ownerId: 'system_camera',
-        title: `⚠️ Camera Alert: ${cameraName || 'Site Camera'}`,
-        description: description || 'Automated safety alert detected by camera AI.',
-        imageUrl: imageUrl || '',
-        status: 'To Do',
-        priority: 'Critical',
-        trade: 'Sicherheit / Überwachung',
-        location: cameraName || 'Site',
-        date: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-
-      const docRef = await db.collection('defects').add(newDefect);
-      
-      // Set the generated ID onto the document to match the frontend schema
-      await docRef.update({ id: docRef.id });
-
-      console.log(`Camera defect ticket created successfully: ${docRef.id}`);
-      res.status(200).json({ success: true, defectId: docRef.id });
-    } catch (error: any) {
-      console.error("Camera Webhook Error:", error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // --- 7. GEMINI AI PROXY (Sicherheit für den API Key) ---
+  // --- 7. GEMINI AI PROXY ---
   app.post('/api/generate', verifyAuth, verifySubscription, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 
@@ -524,7 +413,6 @@ async function startServer() {
       const ai = new GoogleGenAI({ apiKey });
       const { prompt } = req.body;
 
-      // Note: We use Imagen 3 for text-to-image generation
       const response = await ai.models.generateImages({
         model: 'imagen-3.0-generate-001',
         prompt: prompt || 'A creative architectural design',
@@ -546,7 +434,7 @@ async function startServer() {
     }
   });
 
-// --- 7b. GEMINI AI EMBEDDING PROXY ---
+  // --- 7b. GEMINI AI EMBEDDING PROXY ---
   app.post('/api/embed', verifyAuth, verifySubscription, async (req, res) => {
     try {
       const apiKey = process.env.GEMINI_API_KEY; 

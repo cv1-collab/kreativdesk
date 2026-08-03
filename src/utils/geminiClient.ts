@@ -1,10 +1,9 @@
-import { auth } from '../firebase';
+import { supabase } from '../lib/supabase';
 
 export async function callGeminiAPI(model: string, contents: any, config?: any) {
-  let token = '';
-  if (auth.currentUser) {
-    token = await auth.currentUser.getIdToken();
-  }
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
   const response = await fetch('/api/generate', {
     method: 'POST',
     headers: { 
@@ -22,10 +21,7 @@ export async function callGeminiAPI(model: string, contents: any, config?: any) 
   return await response.json();
 }
 
-
-
 export async function callGeminiChatAPI(model: string, message: string, history: any[] = [], config?: any) {
-  // Wir wandeln den bisherigen Chat-Verlauf und die neue Nachricht in das standardisierte 'contents'-Format um
   const contents = [
     ...history,
     { role: 'user', parts: [{ text: message }] }
@@ -36,10 +32,9 @@ export async function callGeminiChatAPI(model: string, message: string, history:
 }
 
 export async function callGeminiEmbedAPI(model: string, contents: any) {
-  let token = '';
-  if (auth.currentUser) {
-    token = await auth.currentUser.getIdToken();
-  }
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token || '';
+
   const response = await fetch('/api/embed', {
     method: 'POST',
     headers: { 

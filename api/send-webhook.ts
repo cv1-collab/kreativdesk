@@ -2,11 +2,18 @@ import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
 if (getApps().length === 0) {
+  let pk = process.env.FIREBASE_PRIVATE_KEY;
+  if (pk) {
+    pk = pk.replace(/\\n/g, '\n');
+    if (pk.startsWith('"') && pk.endsWith('"')) {
+      pk = pk.substring(1, pk.length - 1);
+    }
+  }
   initializeApp({
     credential: cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey: pk,
     }),
   });
 }

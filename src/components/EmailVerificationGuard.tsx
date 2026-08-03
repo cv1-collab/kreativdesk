@@ -22,8 +22,9 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
       return;
     }
 
-    // Wenn der Nutzer seine E-Mail noch nicht bestätigt hat, wird er gesperrt
-    if (!currentUser.emailVerified) {
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // Wenn der Nutzer seine E-Mail noch nicht bestätigt hat, wird er gesperrt (ausgenommen Localhost für Entwickler-Tests)
+    if (!currentUser.emailVerified && !isLocalhost) {
       setIsLocked(true);
     } else {
       setIsLocked(false);

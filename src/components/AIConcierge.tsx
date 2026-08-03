@@ -68,6 +68,11 @@ export default function AIConcierge() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // Reset context on project change so it re-fetches
+  useEffect(() => {
+    setProjectContext(null);
+  }, [activeProjectId]);
+
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
     if (isOpen && currentUser && !projectContext && db && safeCompanyId) {
@@ -104,7 +109,7 @@ export default function AIConcierge() {
       };
       fetchContext();
     }
-  }, [isOpen, currentUser, projectContext, db]);
+  }, [isOpen, currentUser, projectContext, db, activeProjectId]);
 
   useEffect(() => {
     const handleOpenAI = () => setIsOpen(true);

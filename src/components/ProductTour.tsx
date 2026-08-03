@@ -9,14 +9,8 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { useLocation } from 'react-router-dom';
 import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
 
-// VITE ESM Kompatibilität
-let JoyrideComponent: any = JoyrideModule;
-if (typeof JoyrideModule !== 'function') {
-  JoyrideComponent = (JoyrideModule as any)['default'] || (JoyrideModule as any).Joyride;
-}
-if (typeof JoyrideComponent === 'object' && !JoyrideComponent.$$typeof) {
-  JoyrideComponent = Object.values(JoyrideModule).find(val => typeof val === 'function') || (() => null);
-}
+const JoyrideComponent: any = (JoyrideModule as any).default || JoyrideModule;
+
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
