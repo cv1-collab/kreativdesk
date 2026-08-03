@@ -1,6 +1,5 @@
-// webhook.ts
 import Stripe from 'stripe';
-import admin from 'firebase-admin';
+import { supabaseAdmin } from './_auth.js';
 
 export const config = {
   api: { bodyParser: false },
@@ -12,38 +11,6 @@ async function buffer(readable: any) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
   }
   return Buffer.concat(chunks);
-}
-
-function getFirebaseAdmin() {
-  if (!admin.apps.length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-    if (!projectId || !clientEmail || !privateKey) {
-      console.error('Missing individual Firebase credentials');
-      return null;
-    }
-
-    try {
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-        privateKey = privateKey.substring(1, privateKey.length - 1);
-      }
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        })
-      });
-      console.log('Firebase initialized perfectly!');
-    } catch (error) {
-      console.error('Error initializing Firebase with individual keys:', error);
-      return null;
-    }
-  }
-  return admin;
 }
 
 export default async function handler(req: any, res: any) {
@@ -67,118 +34,99 @@ export default async function handler(req: any, res: any) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  const db = getFirebaseAdmin()?.firestore();
-  if (!db) return res.status(500).send('Firebase Admin Error');
-
   // --- 1. LOGIK BEI KAUF / NEUEM ABO ---
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session;
-    const uid = session.client_reference_id || session.metadata?.firebaseUID;
+    const uid = session.client_reference_id || session.metadata?.supabaseUID || session.metadata?.firebaseUID;
     const planName = session.metadata?.plan || 'Pro';
 
     if (uid) {
       try {
-        // User-Status aktivieren
-        await db.collection('users').doc(uid).set({
-          hasActiveSubscription: true,
-          subscriptionId: session.subscription as string,
-          stripeCustomerId: session.customer as string,
+        await supabaseAdmin.from('profiles').update({
+          has_active_subscription: true,
+          subscription_id: session.subscription as string,
+          stripe_customer_id: session.customer as string,
           plan: planName,
-          subscriptionStatus: 'active',
-          updatedAt: new Date()
-        }, { merge: true });
+          subscription_status: 'active',
+          updated_at: new Date().toISOString()
+        }).eq('id', uid);
 
-        // Company-Seats aktualisieren
-        const userDoc = await db.collection('users').doc(uid).get();
-        if (userDoc.exists) {
-          const userData = userDoc.data();
-          if (userData?.companyId) {
-            let newMaxSeats = 1;
-            const planLower = planName.toLowerCase();
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('company_id')
+          .eq('id', uid)
+          .single();
 
-            if (planLower.includes('studio')) {
-              newMaxSeats = 5;
-            } else if (planLower.includes('agency')) {
-              newMaxSeats = 15;
-            } else if (planLower.includes('enterprise')) {
-              newMaxSeats = 30;
-            } else if (planLower.includes('starter') || planLower.includes('pro') || planLower.includes('expert')) {
-              newMaxSeats = 1;
-            }
+        if (profile?.company_id) {
+          let newMaxSeats = 1;
+          const planLower = planName.toLowerCase();
+          if (planLower.includes('studio')) newMaxSeats = 5;
+          else if (planLower.includes('agency')) newMaxSeats = 15;
+          else if (planLower.includes('enterprise')) newMaxSeats = 30;
 
-            await db.collection('companies').doc(userData.companyId).set({
-              plan: planName,
-              maxSeats: newMaxSeats,
-              updatedAt: new Date()
-            }, { merge: true });
-          }
+          await supabaseAdmin.from('companies').update({
+            plan: planName,
+            max_seats: newMaxSeats,
+            updated_at: new Date().toISOString()
+          }).eq('id', profile.company_id);
         }
-        console.log(`Success! Updated user ${uid} and company seats`);
       } catch (error) {
-        console.error(`Firebase Write Error:`, error);
+        console.error(`Supabase Write Error:`, error);
       }
     }
   } 
   
-  // --- 2. LOGIK BEI KÜNDIGUNG / ZAHLUNGSAUSFALL (DER FIX!) ---
+  // --- 2. LOGIK BEI KÜNDIGUNG ---
   else if (event.type === 'customer.subscription.deleted') {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
 
     try {
-      // User anhand der Stripe Customer ID suchen
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('stripeCustomerId', '==', customerId).get();
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('stripe_customer_id', customerId);
 
-      if (!snapshot.empty) {
-        const userDoc = snapshot.docs[0];
-        const userData = userDoc.data();
+      if (profiles && profiles.length > 0) {
+        const profile = profiles[0];
 
-        // Zugang sofort sperren
-        await userDoc.ref.update({
-          hasActiveSubscription: false,
-          subscriptionStatus: 'canceled',
+        await supabaseAdmin.from('profiles').update({
+          has_active_subscription: false,
+          subscription_status: 'canceled',
           plan: 'Free Trial',
-          updatedAt: new Date()
-        });
+          updated_at: new Date().toISOString()
+        }).eq('id', profile.id);
 
-        // Team-Sitze der Firma wieder auf 1 reduzieren
-        if (userData.companyId) {
-          await db.collection('companies').doc(userData.companyId).update({
+        if (profile.company_id) {
+          await supabaseAdmin.from('companies').update({
             plan: 'Free Trial',
-            maxSeats: 1,
-            updatedAt: new Date()
-          });
+            max_seats: 1,
+            updated_at: new Date().toISOString()
+          }).eq('id', profile.company_id);
         }
-        console.log(`Abo-Kündigung erfolgreich verarbeitet. User & Company für Customer ${customerId} gesperrt.`);
-      } else {
-        console.warn(`Kündigung empfangen, aber kein User mit CustomerID ${customerId} gefunden.`);
       }
     } catch (error) {
-      console.error(`Firebase Write Error bei Kündigung:`, error);
+      console.error(`Supabase Write Error bei Kündigung:`, error);
     }
   }
 
-  // --- 3. LOGIK BEI PLAN-ÄNDERUNGEN (UPGRADE/DOWNGRADE IM PORTAL) ---
+  // --- 3. LOGIK BEI PLAN-ÄNDERUNGEN ---
   else if (event.type === 'customer.subscription.updated') {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
 
-    // Wir holen uns die erste Price-ID aus den Items, um herauszufinden, welcher Plan das ist.
-    // Dafür rufen wir die Stripe API auf, um das Product zu inspizieren (falls nicht im metadata).
     try {
       const priceId = subscription.items.data[0]?.price?.id;
       let planName = 'Starter';
       let maxSeats = 1;
       
-      // Das Mapping von Price IDs (Wie in stripeClient.ts) zu Plan-Namen
       const PRICING_MATRIX: Record<string, {name: string, seats: number}> = {
-        'price_1TdyXhQTfAtOGrggdoSEPjWr': {name: 'Starter', seats: 1}, // Monthly
-        'price_1TdyYYQTfAtOGrggNecH3ItP': {name: 'Starter', seats: 1}, // Yearly
-        'price_1TcizpQTfAtOGrggKGYLMG4c': {name: 'Pro', seats: 1}, // Monthly
-        'price_1TdyU4QTfAtOGrggIvnyXe2j': {name: 'Pro', seats: 1}, // Yearly
-        'price_1TdyaEQTfAtOGrggpbWcVles': {name: 'Expert', seats: 1}, // Monthly
-        'price_1TdyaxQTfAtOGrggbeJBPDFY': {name: 'Expert', seats: 1}, // Yearly
+        'price_1TdyXhQTfAtOGrggdoSEPjWr': {name: 'Starter', seats: 1},
+        'price_1TdyYYQTfAtOGrggNecH3ItP': {name: 'Starter', seats: 1},
+        'price_1TcizpQTfAtOGrggKGYLMG4c': {name: 'Pro', seats: 1},
+        'price_1TdyU4QTfAtOGrggIvnyXe2j': {name: 'Pro', seats: 1},
+        'price_1TdyaEQTfAtOGrggpbWcVles': {name: 'Expert', seats: 1},
+        'price_1TdyaxQTfAtOGrggbeJBPDFY': {name: 'Expert', seats: 1},
       };
 
       if (priceId && PRICING_MATRIX[priceId]) {
@@ -186,34 +134,33 @@ export default async function handler(req: any, res: any) {
         maxSeats = PRICING_MATRIX[priceId].seats;
       }
 
-      // Falls die Subscription gekündigt wird (cancel_at_period_end = true), Status auf 'active' lassen, bis sie deleted wird
       const status = subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status;
-      
-      const usersRef = db.collection('users');
-      const snapshot = await usersRef.where('stripeCustomerId', '==', customerId).get();
 
-      if (!snapshot.empty) {
-        const userDoc = snapshot.docs[0];
-        const userData = userDoc.data();
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('stripe_customer_id', customerId);
 
-        await userDoc.ref.update({
-          hasActiveSubscription: status === 'active',
-          subscriptionStatus: status,
+      if (profiles && profiles.length > 0) {
+        const profile = profiles[0];
+
+        await supabaseAdmin.from('profiles').update({
+          has_active_subscription: status === 'active',
+          subscription_status: status,
           plan: planName,
-          updatedAt: new Date()
-        });
+          updated_at: new Date().toISOString()
+        }).eq('id', profile.id);
 
-        if (userData.companyId) {
-          await db.collection('companies').doc(userData.companyId).update({
+        if (profile.company_id) {
+          await supabaseAdmin.from('companies').update({
             plan: planName,
-            maxSeats: maxSeats,
-            updatedAt: new Date()
-          });
+            max_seats: maxSeats,
+            updated_at: new Date().toISOString()
+          }).eq('id', profile.company_id);
         }
-        console.log(`Subscription Updated für Customer ${customerId} zu Plan ${planName}.`);
       }
     } catch (error) {
-      console.error(`Firebase Write Error bei Subscription Update:`, error);
+      console.error(`Supabase Write Error bei Subscription Update:`, error);
     }
   }
 

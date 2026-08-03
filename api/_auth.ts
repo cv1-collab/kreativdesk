@@ -1,34 +1,12 @@
-import admin from 'firebase-admin';
+import { createClient } from '@supabase/supabase-js';
 
-export function getFirebaseAdmin() {
-  if (!admin.apps.length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0Z2Zyb2dicmtybGx6ZHd6ZHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODMzOTcsImV4cCI6MjEwMTA1OTM5N30.WHFlicuJoJ2xSevb2-HvWgPml8Rwz28fTOFppQkvlYE';
 
-    if (!projectId || !clientEmail || !privateKey) {
-      console.error('Missing individual Firebase credentials');
-      return null;
-    }
+export const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
-    try {
-      privateKey = privateKey.replace(/\\n/g, '\n');
-      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-        privateKey = privateKey.substring(1, privateKey.length - 1);
-      }
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        })
-      });
-    } catch (error) {
-      console.error('Error initializing Firebase:', error);
-      return null;
-    }
-  }
-  return admin;
+export function getSupabaseAdmin() {
+  return supabaseAdmin;
 }
 
 export async function verifyAuth(req: any) {
@@ -38,31 +16,23 @@ export async function verifyAuth(req: any) {
   }
   
   const token = authHeader.split('Bearer ')[1];
-  const adminInstance = getFirebaseAdmin();
-  if (!adminInstance) return null;
 
   try {
-    const decodedToken = await adminInstance.auth().verifyIdToken(token);
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) return null;
     
     const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-    if (SUPER_ADMINS.includes(decodedToken.email?.toLowerCase() || '')) {
-      return decodedToken;
+    if (SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
+      return user;
     }
 
-    const db = adminInstance.firestore();
-    const userDoc = await db.collection('users').doc(decodedToken.uid).get();
-    if (!userDoc.exists) {
-      console.error('User not found in database');
-      return null;
-    }
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
-    const userData = userDoc.data();
-    if (userData?.hasActiveSubscription === false) {
-      console.error('Active subscription required');
-      return null;
-    }
-
-    return { ...decodedToken, plan: userData?.plan };
+    return { ...user, plan: profile?.plan, companyId: profile?.company_id };
   } catch (error) {
     console.error('Auth verification failed:', error);
     return null;

@@ -36,7 +36,7 @@ export default async function handler(req: any, res: any) {
       cancel_url: `${domainURL}/pricing?canceled=true`,
       
       metadata: {
-        firebaseUID: uid,
+        supabaseUID: uid,
         plan: planName
       }
     });

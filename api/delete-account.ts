@@ -1,55 +1,10 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import Stripe from 'stripe';
-import * as admin from 'firebase-admin';
+import { supabaseAdmin } from './_auth.js';
 
-// 1. Stripe initialisieren
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16' as any,
+  apiVersion: '2025-02-24.acacia' as any,
 });
-
-// 2. Firebase Admin initialisieren
-if (!admin.apps.length) {
-  let pk = process.env.FIREBASE_PRIVATE_KEY;
-  if (pk) {
-    pk = pk.replace(/\\n/g, '\n');
-    if (pk.startsWith('"') && pk.endsWith('"')) {
-      pk = pk.substring(1, pk.length - 1);
-    }
-  }
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: pk,
-    }),
-  });
-}
-const db = admin.firestore();
-const auth = admin.auth();
-
-async function deleteQueryBatch(query: admin.firestore.Query, resolve: any) {
-  const snapshot = await query.get();
-  const batchSize = snapshot.size;
-  if (batchSize === 0) {
-    resolve();
-    return;
-  }
-  const batch = db.batch();
-  snapshot.docs.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-  await batch.commit();
-  process.nextTick(() => {
-    deleteQueryBatch(query, resolve);
-  });
-}
-
-async function deleteCollectionByCompanyId(collectionName: string, companyId: string) {
-  const q = db.collection(collectionName).where('companyId', '==', companyId).limit(500);
-  return new Promise((resolve, reject) => {
-    deleteQueryBatch(q, resolve).catch(reject);
-  });
-}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -64,69 +19,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const token = authHeader.split('Bearer ')[1];
-    const decodedToken = await auth.verifyIdToken(token);
-    const uid = decodedToken.uid;
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    const userRef = db.collection('users').doc(uid);
-    const userDoc = await userRef.get();
+    const uid = user.id;
 
-    if (!userDoc.exists) {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('*')
+      .eq('id', uid)
+      .single();
+
+    if (!profile) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const userData = userDoc.data();
-    const { stripeCustomerId, role, companyId } = userData || {};
+    const { stripe_customer_id: stripeCustomerId, role, company_id: companyId } = profile;
 
-    // 1. STRIPE: Cancel any active subscriptions
+    // 1. STRIPE: Cancel active subscriptions
     if (stripeCustomerId) {
-      console.log(`Canceling subscriptions for customer: ${stripeCustomerId}`);
       const subscriptions = await stripe.subscriptions.list({
         customer: stripeCustomerId,
         status: 'active',
       });
       for (const sub of subscriptions.data) {
         await stripe.subscriptions.cancel(sub.id);
-        console.log(`Canceled subscription ${sub.id}`);
-      }
-      
-      const trialingSubs = await stripe.subscriptions.list({
-        customer: stripeCustomerId,
-        status: 'trialing',
-      });
-      for (const sub of trialingSubs.data) {
-        await stripe.subscriptions.cancel(sub.id);
-        console.log(`Canceled trialing subscription ${sub.id}`);
       }
     }
 
-    // 2. ORPHANED DATA: Cascading delete if user is owner
+    // 2. Cascading delete if user is owner
     if ((role === 'owner' || role === 'Owner') && companyId) {
-      console.log(`User is owner of company ${companyId}. Deleting all associated data...`);
-      
-      const collectionsToDelete = [
-        'projects',
-        'projectMembers',
-        'companyUsers',
-        'timeEntries',
-        'defects',
-        'documents',
-        'leads',
-        'temp_receipts',
-        'invites'
-      ];
-
-      for (const coll of collectionsToDelete) {
-        await deleteCollectionByCompanyId(coll, companyId);
+      const tables = ['projects', 'time_entries', 'defects', 'documents', 'leads', 'invites', 'goals'];
+      for (const table of tables) {
+        await supabaseAdmin.from(table).delete().eq('company_id', companyId);
       }
-      
-      // Delete the company document itself
-      await db.collection('companies').doc(companyId).delete();
+      await supabaseAdmin.from('companies').delete().eq('id', companyId);
     }
 
-    // 3. FIREBASE: Delete user document and auth record
-    console.log(`Deleting user document and auth for ${uid}`);
-    await userRef.delete();
-    await auth.deleteUser(uid);
+    // 3. SUPABASE: Delete profile and auth user
+    await supabaseAdmin.from('profiles').delete().eq('id', uid);
+    await supabaseAdmin.auth.admin.deleteUser(uid);
 
     return res.status(200).json({ success: true, message: 'Account and associated data deleted successfully.' });
 

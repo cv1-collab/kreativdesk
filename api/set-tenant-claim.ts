@@ -1,23 +1,4 @@
-import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-
-if (getApps().length === 0) {
-  let pk = process.env.FIREBASE_PRIVATE_KEY;
-  if (pk) {
-    pk = pk.replace(/\\n/g, '\n');
-    if (pk.startsWith('"') && pk.endsWith('"')) {
-      pk = pk.substring(1, pk.length - 1);
-    }
-  }
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: pk,
-    }),
-  });
-}
+import { supabaseAdmin } from './_auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -36,62 +17,30 @@ export default async function handler(req: any, res: any) {
   }
 
   const idToken = authHeader.split('Bearer ')[1];
-  const auth = getAuth();
-  const db = getFirestore();
-  let decodedToken;
   
   try {
-    decodedToken = await auth.verifyIdToken(idToken);
-  } catch (err) {
-    return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
-  }
-
-  const SUPER_ADMIN_EMAILS = [
-    'cv1@gmx.ch',
-    'carlo@vesciodesign.ch'
-  ];
-
-  if (decodedToken.uid !== uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
-    return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
-  }
-
-  // ++ SICHERHEITSLOGIK ++
-  let assignedRole = 'owner'; // Default: Wenn er seiner EIGENEN Firma beitritt, ist er Owner.
-
-  if (decodedToken.uid === uid && !SUPER_ADMIN_EMAILS.includes(decodedToken.email?.toLowerCase() || '')) {
-    if (companyId !== `comp_${uid}`) {
-      // Er versucht einer fremden Firma beizutreten. Hat er ein Invite?
-      const invitesSnapshot = await db.collection('invites')
-        .where('email', '==', decodedToken.email)
-        .where('companyId', '==', companyId)
-        .where('status', '==', 'pending')
-        .get();
-        
-      if (invitesSnapshot.empty) {
-        console.error(`Sicherheitsverletzung: Nutzer ${uid} versuchte ohne Invite der Firma ${companyId} beizutreten.`);
-        return res.status(403).json({ error: 'Forbidden: Invalid or missing invite for this company' });
-      } else {
-        // Invite existiert, Rolle übernehmen
-        assignedRole = invitesSnapshot.docs[0].data().role || 'Mitarbeiter';
-      }
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(idToken);
+    if (error || !user) {
+      return res.status(401).json({ error: 'Unauthorized: Token verification failed' });
     }
-  }
 
-  try {
-    // Hole bestehende Claims, um nichts zu überschreiben
-    const userRecord = await auth.getUser(uid);
-    const currentClaims = userRecord.customClaims || {};
+    const SUPER_ADMIN_EMAILS = [
+      'cv1@gmx.ch',
+      'carlo@vesciodesign.ch'
+    ];
 
-    // Brenne die companyId und die role in das Token
-    await auth.setCustomUserClaims(uid, {
-      ...currentClaims,
-      companyId: companyId,
-      role: assignedRole
-    });
+    if (user.id !== uid && !SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '')) {
+      return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
+    }
 
-    return res.status(200).json({ success: true, message: `Tenant claim ${companyId} and role ${assignedRole} set for user ${uid}` });
-  } catch (error: any) {
-    console.error("Custom Claim Error:", error);
-    return res.status(500).json({ error: 'Failed to set custom claims', details: error.message });
+    await supabaseAdmin
+      .from('profiles')
+      .update({ company_id: companyId })
+      .eq('id', uid);
+
+    return res.status(200).json({ success: true, companyId });
+
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
 }
