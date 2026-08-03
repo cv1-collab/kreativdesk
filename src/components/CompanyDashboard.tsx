@@ -90,7 +90,7 @@ export default function CompanyDashboard() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT?.(key) || key;
   
   const { currentUser, logout = async () => {} } = useAuth() || {};
-  const { projects = [], companyUsers = [], setActiveProject = () => {} } = useProject() as any;
+  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject } = useProject() as any;
   const navigate = useNavigate();
   
   const { startTour } = useTour();
@@ -116,9 +116,7 @@ export default function CompanyDashboard() {
       if (localStorage.getItem(triggerPendingKey) === 'true') {
         localStorage.removeItem(triggerPendingKey);
         localStorage.setItem(`tour_${currentUser.uid}`, 'true');
-        if (db) {
-          updateDoc(doc(db, 'users', currentUser.uid), { hasSeenTour: true }).catch(console.error);
-        }
+        supabase.from('profiles').update({ has_seen_tour: true }).eq('id', currentUser.uid).then();
         const timer = setTimeout(() => {
           startTour();
         }, 1000);
@@ -437,7 +435,11 @@ export default function CompanyDashboard() {
     setActiveDropdownId(null);
     if (!currentUser || !window.confirm(t('confirm_delete'))) return;
     try {
-      await supabase.from('projects').delete().eq('id', projectId);
+      if (typeof removeProject === 'function') {
+        await removeProject(projectId);
+      } else {
+        await supabase.from('projects').delete().eq('id', projectId);
+      }
       
       const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
       await logAuditAction({

@@ -16,12 +16,7 @@ export default function ProductTour() {
   const { currentUser } = useAuth();
   const [steps, setSteps] = useState<Step[]>([]);
 
-  useEffect(() => {
-    if (isTourRunning) {
-      stopTour();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+
 
   useEffect(() => {
     if (!isTourRunning) {

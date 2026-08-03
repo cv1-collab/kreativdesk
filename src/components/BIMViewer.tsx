@@ -37,16 +37,16 @@ import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@reac
 
 import { fal } from "@fal-ai/client";
 
-import { auth } from '../firebase';
+import { supabase } from '../lib/supabase';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
   requestMiddleware: async (request: any) => {
-    if (auth.currentUser) {
-      const token = await auth.currentUser.getIdToken();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
       request.headers = {
         ...request.headers,
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${session.access_token}`
       };
     }
     return request;

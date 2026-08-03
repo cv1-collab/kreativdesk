@@ -3,8 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useAuth } from './AuthContext';
 import { useProject } from './ProjectContext';
 import { useToast } from './ToastContext';
-import { db } from '../firebase';
-import { collection, doc, addDoc, updateDoc, onSnapshot, setDoc, getDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 
 const servers = {
   iceServers: [
@@ -99,33 +98,28 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {
     if (!safeCompanyId || !currentUser?.uid) return;
-    const mountTime = Date.now();
-    const q = query(collection(db, 'videoCalls'), where('companyId', '==', safeCompanyId));
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          if (!data.createdAt) return;
-          const callTime = new Date(data.createdAt).getTime();
-
-          if (callTime > mountTime - 10000 && data.callerId !== currentUser.uid) {
-            const isTargeted = data.targetUserIds && data.targetUserIds.length > 0;
-            const amITargeted = isTargeted && data.targetUserIds.includes(currentUser.uid);
-
-            if (!isTargeted || amITargeted) {
-              setIncomingCall({
-                id: change.doc.id,
-                projectId: data.projectId,
-                callerName: data.callerName || 'Ein Teammitglied',
-                targetUserIds: data.targetUserIds || []
-              });
-            }
+    const channel = supabase
+      .channel(`company-calls-${safeCompanyId}`)
+      .on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
+        if (payload.callerId !== currentUser.uid) {
+          const isTargeted = payload.targetUserIds && payload.targetUserIds.length > 0;
+          const amITargeted = isTargeted && payload.targetUserIds.includes(currentUser.uid);
+          if (!isTargeted || amITargeted) {
+            setIncomingCall({
+              id: payload.callId,
+              projectId: payload.projectId,
+              callerName: payload.callerName || 'Ein Teammitglied',
+              targetUserIds: payload.targetUserIds || []
+            });
           }
         }
-      });
-    });
-    return () => unsub();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [safeCompanyId, currentUser?.uid]);
 
   const setupMediaSources = async () => {
