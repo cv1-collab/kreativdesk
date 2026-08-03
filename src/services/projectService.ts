@@ -1,10 +1,10 @@
 import { supabase } from '../lib/supabase';
 
 /**
- * Löscht ein Projekt aus dem System.
+ * Löscht ein Projekt und alle seine Untereinträge aus dem System.
  */
-export const offboardProject = async (projectId: string, companyId: string) => {
-  if (!projectId || !companyId) throw new Error("Fehlende IDs für die Projekt-Löschung.");
+export const offboardProject = async (projectId: string, companyId?: string) => {
+  if (!projectId) throw new Error("Fehlende Projekt-ID für die Löschung.");
 
   try {
     // 1. Delete child table records to prevent Foreign Key constraint errors
@@ -15,15 +15,19 @@ export const offboardProject = async (projectId: string, companyId: string) => {
     await supabase.from('slides').delete().eq('project_id', projectId);
     await supabase.from('transactions').delete().eq('project_id', projectId);
     await supabase.from('time_entries').delete().eq('project_id', projectId);
+    await supabase.from('system_config').delete().eq('id', `schedule_${projectId}`);
 
-    // 2. Delete main project record
+    // 2. Delete main project record by ID directly
     const { error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', projectId)
-      .eq('company_id', companyId);
+      .eq('id', projectId);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Fehler beim Löschen des Hauptprojekts:", error);
+      throw error;
+    }
+
     console.log(`Projekt ${projectId} erfolgreich gelöscht.`);
     return { success: true };
   } catch (error) {

@@ -201,8 +201,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const removeProject = async (id: string) => {
-    if (!currentUser?.companyId) return;
-    await offboardProject(id, currentUser.companyId);
+    try {
+      const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? `comp_${currentUser.uid}` : '');
+      await offboardProject(id, safeCompanyId);
+    } catch (err) {
+      console.error("Fehler beim Löschen des Projekts:", err);
+    }
+    setProjects(prev => prev.filter(p => p.id !== id));
+    if (activeProjectId === id) {
+      setActiveProjectId(null);
+    }
     await fetchProjects();
   };
 

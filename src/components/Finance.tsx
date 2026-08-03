@@ -436,7 +436,7 @@ export default function Finance() {
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
     // 🔥 DEMO-BRÜCKE: Lade Daten aus deinem Template!
-    if (isDemoMode && demoData) {
+    if ((isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-')) && demoData) {
       if (demoData.financeGroups) {
          setVersions([{ id: 'demo-v1', name: 'Originalbudget', vatRate: 8.1, status: 'approved', groups: demoData.financeGroups }]);
          setActiveVersionId('demo-v1');
