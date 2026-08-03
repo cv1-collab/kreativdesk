@@ -19,10 +19,10 @@ export default function Screensaver() {
     const fetchConfig = async () => {
       try {
         const { data } = await supabase
-          .from('companies')
+          .from('company_settings')
           .select('screensaver_active, screensaver_image, screensaver_timeout')
-          .eq('id', currentUser.companyId || currentUser.uid)
-          .single();
+          .eq('company_id', currentUser.companyId || currentUser.uid)
+          .maybeSingle();
 
         if (data) {
           setConfig({

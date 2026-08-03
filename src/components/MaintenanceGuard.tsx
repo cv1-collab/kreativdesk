@@ -19,7 +19,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
           .from('system_config')
           .select('is_maintenance')
           .eq('id', 'global_master')
-          .single();
+          .maybeSingle();
 
         if (data) setIsMaintenance(data.is_maintenance || false);
       } catch (err) {
