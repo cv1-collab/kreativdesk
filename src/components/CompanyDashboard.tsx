@@ -1,5 +1,6 @@
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { supabase } from '../lib/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useProject } from '../contexts/ProjectContext';
