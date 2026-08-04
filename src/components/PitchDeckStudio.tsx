@@ -569,14 +569,15 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
            });
         }
       } else {
-        const { data } = await supabase.from('finance_data').select('*').eq('id', `finance_${targetId}`).single();
+        const { data: finConfig } = await supabase.from('system_config').select('data').eq('id', `finance_${targetId}`).maybeSingle();
+        const data = finConfig?.data;
         if (data) {
-          const activeVersion = data.versions?.find((v:any) => v.id === data.active_version_id) || data.versions?.[0];
+          const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
           if (activeVersion && activeVersion.groups && activeVersion.groups.length > 0) {
             budgetGroups = activeVersion.groups.map((g: any) => {
-              const groupTotal = g.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+              const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || (item.qty * item.unitPrice) || 0), 0);
               totalBudget += groupTotal;
-              return { pos: g.pos, title: g.title, total: groupTotal, items: g.items.slice(0, 3) };
+              return { pos: g.pos, title: g.title, total: groupTotal, items: (g.items || []).slice(0, 3) };
             });
           }
         }

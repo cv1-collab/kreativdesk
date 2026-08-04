@@ -93,8 +93,8 @@ export const demoTemplates: Record<string, any> = {
     },
     
     transactions: [
-      { id: 'tx1', category: 'Kreditorenrechnung', amount: -15000, date: new Date(Date.now() - 5*86400000).toISOString(), description: 'Rodung und Abtransport von Sträuchern', title: 'Rechnung Baumeister', status: 'Bezahlt' },
-      { id: 'tx2', category: 'Kreditorenrechnung', amount: -18000, date: new Date(Date.now() - 12*86400000).toISOString(), description: 'Baggerarbeiten inkl. Entsorgung und Transport', title: 'Abbruch', status: 'Bezahlt' },
+      { id: 'tx1', category: 'Kreditorenrechnung', amount: -15000, date: new Date(Date.now() - 5*86400000).toISOString(), description: 'Rodung und Abtransport von Sträuchern', title: 'Rechnung Baumeister', status: 'Bezahlt', budgetPosId: 'i111' },
+      { id: 'tx2', category: 'Kreditorenrechnung', amount: -18000, date: new Date(Date.now() - 12*86400000).toISOString(), description: 'Baggerarbeiten inkl. Entsorgung und Transport', title: 'Abbruch', status: 'Bezahlt', budgetPosId: 'i112' },
       { id: 'tx3', category: 'Debitorenrechnung', amount: 80000, date: new Date(Date.now() - 2*86400000).toISOString(), description: 'Akontozahlung Bauherr Phase 1', title: 'Akonto Phase 1', status: 'Bezahlt' }
     ],
 

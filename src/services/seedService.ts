@@ -1,6 +1,55 @@
 import { supabase } from '../lib/supabase';
 import { demoTemplates } from '../utils/demoTemplates';
 
+export function generateDemoTransactions(financeGroups: any[], projectId: string, companyId: string, ownerId: string) {
+  const dummyTxs: any[] = [];
+  let txId = 1;
+  let totalPlan = 0;
+  const today = new Date();
+
+  if (Array.isArray(financeGroups)) {
+    financeGroups.forEach((g: any) => {
+      (g.items || []).forEach((item: any) => {
+        const itemTotal = item.total || ((item.qty || item.quantity || 0) * (item.unitPrice || 0));
+        totalPlan += itemTotal;
+        if (txId % 2 !== 0) {
+          const pastDate = new Date(today);
+          pastDate.setDate(today.getDate() - (txId * 3));
+          dummyTxs.push({
+            project_id: projectId,
+            company_id: companyId,
+            owner_id: ownerId,
+            description: `Teilrechnung: ${item.title || item.description}`,
+            category: 'Kreditorenrechnung',
+            amount: -(itemTotal * 0.65),
+            status: 'Bezahlt',
+            budget_pos_id: item.id,
+            date: pastDate.toISOString().split('T')[0],
+            created_at: pastDate.toISOString()
+          });
+        }
+        txId++;
+      });
+    });
+  }
+
+  const revDate = new Date(today);
+  revDate.setDate(today.getDate() - 2);
+  dummyTxs.push({
+    project_id: projectId,
+    company_id: companyId,
+    owner_id: ownerId,
+    description: 'Akontozahlung Bauherr Phase 1',
+    category: 'Debitorenrechnung',
+    amount: totalPlan > 0 ? totalPlan * 0.7 : 721595,
+    status: 'Bezahlt',
+    date: revDate.toISOString().split('T')[0],
+    created_at: revDate.toISOString()
+  });
+
+  return dummyTxs;
+}
+
 export async function getOrCreateRealCompanyId(companyId: string, ownerId: string): Promise<string> {
   if (!ownerId) return companyId;
 
@@ -217,7 +266,48 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     }
   }
 
-  // 5. Seed Transactions (Intentionally empty so global company finances start 100% clean with 0 CHF)
+  // 5. Seed Transactions & Time Entries
+  const demoTxs = generateDemoTransactions(template.financeGroups || [], projId, realCompanyId, ownerId);
+  for (const tx of demoTxs) {
+    const { data: existingTx } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('company_id', realCompanyId)
+      .eq('project_id', projId)
+      .eq('description', tx.description)
+      .maybeSingle();
+
+    if (!existingTx) {
+      await supabase.from('transactions').insert(tx);
+    }
+  }
+
+  if (Array.isArray(template.timeEntries)) {
+    for (const te of template.timeEntries) {
+      const { data: existingTe } = await supabase
+        .from('time_entries')
+        .select('id')
+        .eq('company_id', realCompanyId)
+        .eq('project_id', projId)
+        .eq('description', te.description)
+        .maybeSingle();
+
+      if (!existingTe) {
+        await supabase.from('time_entries').insert({
+          company_id: realCompanyId,
+          project_id: projId,
+          owner_id: ownerId,
+          user_id: ownerId,
+          description: te.description,
+          hours: te.hours,
+          hourly_rate: te.hourlyRate || 150,
+          date: te.date || new Date().toISOString().split('T')[0],
+          is_billable: true,
+          created_at: new Date().toISOString()
+        });
+      }
+    }
+  }
 
   // 6. Seed Pitch Deck Slides
   if (template.pitchDeck && Array.isArray(template.pitchDeck.slides)) {
@@ -306,11 +396,14 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
   const financeConfigId = `finance_${projId}`;
   const { data: existingFinance } = await supabase
     .from('system_config')
-    .select('id')
+    .select('id, data')
     .eq('id', financeConfigId)
     .maybeSingle();
 
-  if (!existingFinance && Array.isArray(template.financeGroups)) {
+  const existingGroups = existingFinance?.data?.versions?.[0]?.groups;
+  const hasGroups = Array.isArray(existingGroups) && existingGroups.length > 0;
+
+  if ((!existingFinance || !hasGroups) && Array.isArray(template.financeGroups)) {
     const demoVersion = {
       id: `v-approved-${projId}`,
       name: 'Originalbudget',

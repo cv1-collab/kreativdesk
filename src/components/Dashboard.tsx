@@ -14,6 +14,8 @@ import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
+import { demoTemplates } from '../utils/demoTemplates';
+import { generateDemoTransactions } from '../services/seedService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -177,13 +179,68 @@ export default function Dashboard() {
 
         setRecentActivities([...docs, ...times].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8));
 
+        const projName = (activeProject?.name || '').toLowerCase();
+        const isBau = projName.includes('bau') || projName.includes('quartier') || projName.includes('demo') || activeProject.id === 'demo-1';
+
         const { data: txsData } = await supabase
           .from('transactions')
           .select('*')
           .eq('company_id', currentUser.companyId)
           .eq('project_id', activeProject.id);
 
-        if (txsData) setTransactions(txsData);
+        if (txsData && txsData.length > 0) {
+          setTransactions(txsData);
+        } else if (isBau) {
+          const dummyTxs = generateDemoTransactions(demoTemplates.construction?.financeGroups || [], activeProject.id, currentUser.companyId, currentUser.uid);
+          setTransactions(dummyTxs);
+          (async () => {
+            for (const tx of dummyTxs) {
+              await supabase.from('transactions').insert(tx);
+            }
+          })();
+        }
+
+        const { data: finConfig } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', `finance_${activeProject.id}`)
+          .maybeSingle();
+
+        const hasValidGroups = Array.isArray(finConfig?.data?.versions) &&
+          finConfig.data.versions.length > 0 &&
+          Array.isArray(finConfig.data.versions[0]?.groups) &&
+          finConfig.data.versions[0].groups.length > 0;
+
+        if (finConfig?.data && hasValidGroups) {
+          setVersions(finConfig.data.versions);
+        } else if (isBau) {
+          const initGroups = demoTemplates.construction?.financeGroups || [];
+          const initVersion = {
+            id: `v-approved-${activeProject.id}`,
+            name: 'Originalbudget',
+            vatRate: 8.1,
+            status: 'approved',
+            groups: initGroups
+          };
+          setVersions([initVersion]);
+          await supabase.from('system_config').upsert({
+            id: `finance_${activeProject.id}`,
+            data: {
+              versions: [initVersion],
+              activeVersionId: initVersion.id,
+              projectHeader: {
+                project: activeProject.name || 'Projektbudget',
+                client: 'Bauherrschaft AG',
+                date: new Date().toISOString().split('T')[0],
+                version: 'Originalbudget'
+              },
+              includeOptions: false,
+              ownerId: currentUser.uid,
+              companyId: currentUser.companyId,
+              projectId: activeProject.id
+            }
+          });
+        }
       } catch (err) {
         console.error("Dashboard fetch data error:", err);
       }

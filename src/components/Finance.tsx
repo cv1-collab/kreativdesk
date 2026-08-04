@@ -24,6 +24,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
 import { demoTemplates } from '../utils/demoTemplates';
+import { generateDemoTransactions } from '../services/seedService';
 import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -479,13 +480,31 @@ export default function Finance() {
         .eq('project_id', currentProjectId)
         .order('created_at', { ascending: false });
 
-      if (txs) {
+      const projName = (activeProject?.name || '').toLowerCase();
+      const isBau = projName.includes('bau') || projName.includes('quartier') || projName.includes('demo') || currentProjectId === 'demo-1';
+
+      if (txs && txs.length > 0) {
         setTransactions(txs.map(t => ({
           ...t,
           projectId: t.project_id,
           companyId: t.company_id,
           ownerId: t.owner_id
         } as Transaction)));
+      } else if (isBau) {
+        const dummyTxs = generateDemoTransactions(demoTemplates.construction?.financeGroups || [], currentProjectId, currentUser.companyId, currentUser.uid);
+        setTransactions(dummyTxs.map(t => ({
+          ...t,
+          projectId: t.project_id,
+          companyId: t.company_id,
+          ownerId: t.owner_id
+        } as Transaction)));
+
+        // Persist to Supabase asynchronously
+        (async () => {
+          for (const tx of dummyTxs) {
+            await supabase.from('transactions').insert(tx);
+          }
+        })();
       }
 
       // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG
@@ -495,7 +514,12 @@ export default function Finance() {
         .eq('id', `finance_${currentProjectId}`)
         .maybeSingle();
 
-      if (finConfig?.data) {
+      const hasValidGroups = Array.isArray(finConfig?.data?.versions) &&
+        finConfig.data.versions.length > 0 &&
+        Array.isArray(finConfig.data.versions[0]?.groups) &&
+        finConfig.data.versions[0].groups.length > 0;
+
+      if (finConfig?.data && hasValidGroups) {
         if (Array.isArray(finConfig.data.versions) && finConfig.data.versions.length > 0) {
           setVersions(finConfig.data.versions);
         }
@@ -509,8 +533,9 @@ export default function Finance() {
           setIncludeOptions(finConfig.data.includeOptions);
         }
       } else {
-        // FALLBACK: Clean empty state for new projects and new users
-        const isBau = activeProject?.name?.toLowerCase().includes('demo: bau') || currentProjectId === 'demo-1';
+        // FALLBACK: If budget is missing or empty, populate template groups for Bau/demo projects
+        const projName = (activeProject?.name || '').toLowerCase();
+        const isBau = projName.includes('bau') || projName.includes('quartier') || projName.includes('demo') || currentProjectId === 'demo-1';
         const initGroups = isBau ? (demoTemplates.construction?.financeGroups || []) : [];
         const initVersion: BudgetVersion = {
           id: `v-approved-${currentProjectId}`,
@@ -534,7 +559,7 @@ export default function Finance() {
             activeVersionId: initVersion.id,
             projectHeader: {
               project: activeProject?.name || 'Projektbudget',
-              client: 'Kunde',
+              client: 'Bauherrschaft AG',
               date: new Date().toISOString().split('T')[0],
               version: 'Originalbudget'
             },
