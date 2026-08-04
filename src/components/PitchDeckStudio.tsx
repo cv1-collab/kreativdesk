@@ -201,27 +201,37 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       ]
       Antworte NUR mit dem reinen JSON-Code, ohne Markdown-Formatierung!`;
 
-      const aiRes = await callGeminiAPI(prompt);
-      const cleaned = aiRes.replace(/```json/g, '').replace(/```/g, '').trim();
+      const aiRes = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
+      const cleaned = (typeof aiRes === 'string' ? aiRes : JSON.stringify(aiRes)).replace(/```json/g, '').replace(/```/g, '').trim();
       const generatedSlides = JSON.parse(cleaned);
 
       if (Array.isArray(generatedSlides) && generatedSlides.length > 0) {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         const targetId = projectId || importProjectId || 'global';
 
-        const newSlideObjects = generatedSlides.map((s, idx) => ({
+        const newSlideObjects: Slide[] = generatedSlides.map((s, idx) => ({
           id: `slide-ai-${Date.now()}-${idx}`,
           title: s.title || `Folie ${idx + 1}`,
           content: s.content || '',
           layout: s.layout || 'split',
           order_index: slides.length + idx,
-          company_id: safeCompanyId,
-          owner_id: currentUser?.uid,
-          project_id: targetId,
+          ownerId: currentUser?.uid || '',
+          companyId: safeCompanyId,
+          projectId: targetId,
           created_at: new Date().toISOString()
         }));
 
-        await supabase.from('slides').insert(newSlideObjects as any);
+        await supabase.from('slides').insert(newSlideObjects.map(s => ({
+          id: s.id,
+          title: s.title,
+          content: s.content,
+          layout: s.layout,
+          order_index: s.order_index,
+          company_id: s.companyId,
+          owner_id: s.ownerId,
+          project_id: s.projectId,
+          created_at: (s as any).created_at
+        })));
         setSlides(prev => [...prev, ...newSlideObjects]);
         if (newSlideObjects.length > 0) setActiveSlideId(newSlideObjects[0].id);
         setIsAiGeneratorOpen(false);
