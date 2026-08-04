@@ -137,26 +137,27 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
             </h3>
             <button onClick={() => setActiveTab('projects')} className="text-xs font-bold text-blue-500 hover:underline">Alle anzeigen</button>
           </div>
-          {chartData.length === 0 ? (
-            <div className="py-12 text-center text-text-muted font-medium text-sm">Keine aktiven Projekte.</div>
-          ) : (
-            <div className="h-56 relative flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={chartData} innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value">
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-black text-text-primary">{projects.length}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Projekte</span>
+          {(() => {
+            const displayData = chartData.length > 0 ? chartData : [{ name: 'Inaktiv', value: 1, color: 'rgba(156, 163, 175, 0.2)' }];
+            return (
+              <div className="h-56 relative flex items-center justify-center">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={displayData} innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value">
+                      {displayData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-black text-text-primary">{projects.length}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Projekte</span>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
