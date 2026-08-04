@@ -275,6 +275,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
   const [isGeneratingAIRapport, setIsGeneratingAIRapport] = useState(false);
   const [aiRapportModalOpen, setAiRapportModalOpen] = useState(false);
+  const [aiRapportText, setAiRapportText] = useState<string>('');
   const filteredEvents = calendarEvents.filter(e => {
     if (selectedTypeFilter !== 'all' && e.type !== selectedTypeFilter) return false;
     if (selectedProjectFilter !== 'all' && (e.projectId || e.project_id) !== selectedProjectFilter) return false;
