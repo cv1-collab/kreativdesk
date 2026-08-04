@@ -4,7 +4,11 @@ import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
-import { Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, Camera, Video, MonitorPlay } from 'lucide-react';
+import { 
+  Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
+  Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
+  Camera, Video, MonitorPlay, Box, Layers
+} from 'lucide-react';
 
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
@@ -13,7 +17,7 @@ export default function ProductTour() {
   const { currentUser } = useAuth();
   const [steps, setSteps] = useState<Step[]>([]);
 
-
+  const isGerman = language === 'de';
 
   useEffect(() => {
     if (!isTourRunning) {
@@ -21,80 +25,109 @@ export default function ProductTour() {
       return;
     }
 
-    const isGerman = language === 'de';
-    let potentialSteps: Step[] = [];
-
-    const create = (target: string, title: string, content: string, IconComponent: any, placement: any = 'right', disableBeacon = false): any => ({
-      target, 
-      content: (
-        <div className="flex flex-col gap-3 p-1 text-left">
-          <div className="flex items-center gap-3 border-b border-border/50 pb-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 flex items-center justify-center shrink-0">
+    const buildStepContent = (
+      stepNum: number, 
+      total: number, 
+      title: string, 
+      content: string, 
+      IconComponent: any, 
+      proTip?: string
+    ) => (
+      <div className="flex flex-col gap-3 p-1 text-left max-w-sm">
+        <div className="flex items-center justify-between border-b border-border/50 pb-3 mb-1">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-md">
               <IconComponent size={20} className="text-accent-ai" />
             </div>
-            <span className="font-bold text-lg text-text-primary leading-tight">{title}</span>
-          </div>
-          <p className="text-sm text-text-muted leading-relaxed font-medium">{content}</p>
-          {target !== 'body' && (
-            <div className="mt-2 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-3 items-start">
-              <Sparkles size={16} className="text-blue-400 shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-300/90 font-medium leading-relaxed">
-                {isGerman ? 'Interaktives Modul: Klicke auf dieses Element, um tiefere Funktionen und Automatisierungen freizuschalten.' : 'Interactive Module: Click this element to unlock deeper features and automations.'}
-              </p>
+            <div>
+              <span className="font-bold text-base text-text-primary leading-tight block">{title}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-accent-ai">
+                {isGerman ? `Schritt ${stepNum} von ${total}` : `Step ${stepNum} of ${total}`}
+              </span>
             </div>
-          )}
+          </div>
         </div>
-      ),
-      placement, disableBeacon,
+        <p className="text-xs text-text-muted leading-relaxed font-medium">{content}</p>
+        {proTip && (
+          <div className="mt-2 bg-accent-ai/10 border border-accent-ai/20 rounded-xl p-3 flex gap-2.5 items-start">
+            <Sparkles size={16} className="text-accent-ai shrink-0 mt-0.5" />
+            <p className="text-[11px] text-accent-ai/90 font-medium leading-relaxed">
+              <strong className="block mb-0.5 text-accent-ai font-bold">{isGerman ? 'Pro-Tipp:' : 'Pro Tip:'}</strong>
+              {proTip}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+
+    const createStep = (
+      target: string, 
+      stepNum: number, 
+      total: number, 
+      title: string, 
+      content: string, 
+      IconComponent: any, 
+      proTip?: string,
+      placement: any = 'right', 
+      disableBeacon = false
+    ): Step => ({
+      target, 
+      content: buildStepContent(stepNum, total, title, content, IconComponent, proTip),
+      placement, 
+      disableBeacon,
       disableScrolling: true,
       disableScrollParentFix: true,
       floaterProps: { disableAnimation: true }
     });
 
+    let newSteps: Step[] = [];
+
     if (location.pathname.includes('/project/')) {
-      potentialSteps = [
-        create('body', isGerman ? 'Projekt-Workspace' : 'Project Workspace', isGerman ? 'Willkommen im Projekt-Workspace! Hier brechen wir Datensilos auf: Architektur, Kommunikation und Finanzen fließen nahtlos ineinander.' : 'Welcome to the project workspace! All your data converges here seamlessly.', Briefcase, 'center', true),
-        create('.tour-proj-dashboard', isGerman ? 'Kommandozentrale' : 'Dashboard', isGerman ? 'Generiere per Knopfdruck PDF-Reportings, die Live-Daten aus Budgets, Mängeln und Timelines automatisch vereinen.' : 'Generate live PDF reports combining budgets, defects, and timelines instantly.', LayoutDashboard),
-        create('.tour-proj-finance', isGerman ? 'Integriertes Ledger' : 'Finance Ledger', isGerman ? 'Erfasse Spesen und Rechnungen direkt hier. Alles synchronisiert sich vollautomatisch mit dem globalen Firmenbudget.' : 'Integrated Ledger. Syncs automatically with your global company budget.', DollarSign),
-        create('.tour-proj-calendar', isGerman ? 'Smart Calendar' : 'Smart Calendar', isGerman ? 'Plane Meilensteine und verknüpfe Deadlines direkt mit Aufgaben. Keine isolierten Termine mehr.' : 'Plan milestones and link deadlines directly to tasks.', Calendar),
-        create('.tour-proj-bim', isGerman ? 'Spatial Design im Web' : 'Web Spatial Design', isGerman ? 'Lade IFC-Modelle hoch und betrachte die 3D-Architektur interaktiv direkt im Browser – ohne externe Software.' : 'Upload IFC models and view 3D architecture directly in your browser.', Target),
-        create('.tour-proj-cad', isGerman ? 'Ausführungsplanung' : 'CAD Planning', isGerman ? 'Verwalte hochauflösende 2D-Grundrisse und vektorbasierte Schnitte für dein Team.' : 'Manage high-res 2D floor plans and vector cuts.', Folder),
-        create('.tour-proj-defects', isGerman ? 'Mängel-Tracking' : 'Defect Tracking', isGerman ? 'Setze Pins direkt auf deine Pläne. Das System erstellt automatisch Tickets und delegiert sie an Partner.' : 'Drop pins on plans to automatically create and delegate defect tickets.', Target),
-        create('.tour-proj-camera', isGerman ? 'Bau-Kamera' : 'Site Camera', isGerman ? 'Verfolge den realen Baufortschritt oder Messeaufbau über Live-Feeds und Zeitraffer-Aufnahmen.' : 'Monitor site progress via live feeds and time-lapse.', Camera),
-        create('.tour-proj-whiteboard', isGerman ? 'AI-Whiteboard' : 'AI Whiteboard', isGerman ? 'Skizziere Layouts in Echtzeit mit dem Team und nutze die Gemini-KI, um visuelle Konzepte direkt per Prompt zu generieren.' : 'Real-time whiteboard with integrated AI concept generation.', Sparkles),
-        create('.tour-proj-meet', isGerman ? 'Seamless Communication' : 'Video Meetings', isGerman ? 'Starte Video-Calls direkt im System. Externe Partner betreten den Raum simpel per Link.' : 'Start video calls instantly. External partners join via simple links.', Video),
-        create('.tour-proj-docs', isGerman ? 'Bauakte' : 'Project Docs', isGerman ? 'Ein hochsicherer, verschlüsselter Datenraum für Verträge und Assets. Logisch und chronologisch verknüpft.' : 'Secure data room for contracts and assets.', Folder),
-        create('.tour-proj-pitch', isGerman ? 'Pitch Deck Studio' : 'Pitch Deck Studio', isGerman ? 'Nutze die Projektdaten, um hochprofessionelle, visuelle Präsentationen für deine Kunden zu rendern.' : 'Create highly professional visual presentations for clients.', MonitorPlay),
-        create('.tour-proj-team', isGerman ? 'Granulare Zugriffe' : 'Granular Access', isGerman ? 'Bestimme exakt, welche Freelancer oder Agenturen welche Daten sehen und bearbeiten dürfen.' : 'Control exact permissions for freelancers and agencies.', Users)
+      const total = 13;
+      newSteps = [
+        createStep('body', 1, total, isGerman ? 'Projekt-Workspace' : 'Project Workspace', isGerman ? 'Willkommen in deiner zentralen Baustellen- & Projektzentrale! Hier fließen Architektur, Termine, Budgets und Team-Kollaboration nahtlos zusammen.' : 'Welcome to your central project workspace! Architecture, schedules, budgets, and collaboration converge here.', Briefcase, isGerman ? 'Nutze die Tabs links zur schnellen Navigation zwischen den Fachbereichen.' : 'Use the left sidebar tabs for rapid navigation.', 'center', true),
+        createStep('.tour-proj-dashboard', 2, total, isGerman ? 'Kommandozentrale' : 'Dashboard', isGerman ? 'Generiere per Knopfdruck PDF-Reportings, die Live-Daten aus Budgets, Mängeln und Timelines automatisch vereinen.' : 'Generate live PDF reports combining budgets, defects, and timelines instantly.', LayoutDashboard, isGerman ? 'Exportiere druckreife Bautagebücher direkt im Universal PDF Studio.' : 'Export print-ready reports in the Universal PDF Studio.', 'right'),
+        createStep('.tour-proj-finance', 3, total, isGerman ? 'Integriertes Projekt-Ledger' : 'Finance Ledger', isGerman ? 'Erfasse Baustellen-Spesen und Rechnungen direkt hier. Alles synchronisiert sich vollautomatisch mit den BKP-Kosten-Gruppen.' : 'Integrated Ledger. Syncs automatically with cost groups and global company budget.', DollarSign, isGerman ? 'Demo-Projekte laden automatisch realistische BKP 1-9 Budgetgruppen.' : 'Demo projects load realistic BKP budget structures automatically.', 'right'),
+        createStep('.tour-proj-calendar', 4, total, isGerman ? 'Smart Calendar & Gantt' : 'Smart Calendar', isGerman ? 'Plane Meilensteine, Bauphasen und verknüpfe Deadlines direkt mit Aufgaben. Keine isolierten Termine mehr.' : 'Plan milestones and link deadlines directly to tasks.', Calendar, isGerman ? 'Wechsle zwischen Gantt-Chart und Kalenderansicht.' : 'Switch effortlessly between Gantt chart and calendar view.', 'right'),
+        createStep('.tour-proj-bim', 5, total, isGerman ? '3D BIM Viewer im Browser' : 'Web 3D BIM Viewer', isGerman ? 'Lade IFC-Modelle hoch und betrachte die 3D-Architektur interaktiv direkt im Browser – ohne teure CAD-Software.' : 'Upload IFC models and view 3D architecture directly in your browser.', Box, isGerman ? 'Klicke auf 3D-Bauteile, um sofort Geometrie- & Materialdaten einzusehen.' : 'Click 3D elements to inspect geometry & material parameters.', 'right'),
+        createStep('.tour-proj-cad', 6, total, isGerman ? '2D Pläne & Ausführung' : '2D CAD Plans', isGerman ? 'Verwalte hochauflösende 2D-Grundrisse und vektorbasierte Schnittzeichnungen für Bauleiter und Handwerker.' : 'Manage high-res 2D floor plans and vector cuts.', Folder, isGerman ? 'Mängel lassen sich zentimetergenau als PIN auf dem Plan platzieren.' : 'Drop pinpoint defects directly on 2D floor plans.', 'right'),
+        createStep('.tour-proj-defects', 7, total, isGerman ? 'Mängel- & Ticket-Tracking' : 'Defect Tracking', isGerman ? 'Erfasse Baumängel inklusive Fotos. Das PWA-System speichert Daten auf der Baustelle auch offline und synchronisiert bei Verbindung.' : 'Record defect tickets with photos. Offline sync handles field data seamlessly.', Target, isGerman ? 'Mängel lassen sich auf dem Smartphone oder iPad offline aufnehmen.' : 'Record defects on mobile/iPad even without active internet connection.', 'right'),
+        createStep('.tour-proj-camera', 8, total, isGerman ? 'Bau-Kamera & Zeitraffer' : 'Site Camera', isGerman ? 'Verfolge den realen Baufortschritt oder Messeaufbau über Live-Feeds und Zeitraffer-Aufnahmen.' : 'Monitor site progress via live feeds and time-lapse snapshots.', Camera, isGerman ? 'Dokumentiere den Fortschritt stündlich für Bauherren.' : 'Document hourly construction milestones for stakeholders.', 'right'),
+        createStep('.tour-proj-whiteboard', 9, total, isGerman ? 'AI-Whiteboard' : 'AI Whiteboard', isGerman ? 'Skizziere Layouts in Echtzeit mit dem Team und nutze die Gemini-KI, um visuelle Konzepte direkt per Prompt zu generieren.' : 'Real-time whiteboard with integrated AI concept generation.', Sparkles, isGerman ? 'Generiere Moodboards per KI-Prompt direkt auf dem Board.' : 'Generate visual moodboards via AI prompts directly on canvas.', 'right'),
+        createStep('.tour-proj-meet', 10, total, isGerman ? 'Nahtlose Kommunikation' : 'Video Meetings', isGerman ? 'Starte Video-Calls und Bau-Besprechungen direkt im System. Externe Partner betreten den Raum simpel per Einladungs-Link.' : 'Start video calls instantly. External partners join via simple magic links.', Video, isGerman ? 'Integriertes Chat & Filesharing während des Calls.' : 'Integrated chat and document sharing during video calls.', 'right'),
+        createStep('.tour-proj-docs', 11, total, isGerman ? 'Digitale Bauakte' : 'Project Docs', isGerman ? 'Ein hochsicherer, verschlüsselter Datenraum für Verträge, Pläne und Baufein-Protokolle.' : 'Secure data room for contracts and construction assets.', Folder, isGerman ? 'Mit integrierter Volltext-Suche und Vorschau-Funktion.' : 'Built-in full-text search and instant file previews.', 'right'),
+        createStep('.tour-proj-pitch', 12, total, isGerman ? 'Pitch Deck Studio' : 'Pitch Deck Studio', isGerman ? 'Nutze die Live-Projektdaten, um hochprofessionelle, visuelle Präsentationen für deine Kunden zu rendern.' : 'Create highly professional visual presentations for clients.', MonitorPlay, isGerman ? 'Interaktive Slides für Investoren und Bauherren.' : 'Interactive slide decks for investors and clients.', 'right'),
+        createStep('.tour-proj-team', 13, total, isGerman ? 'Granulare Rechteverwaltung' : 'Granular Access', isGerman ? 'Bestimme exakt, welche Bauleiter, Subunternehmer oder Bauherren welche Daten sehen und bearbeiten dürfen.' : 'Control exact permissions for contractors and partners.', Users, isGerman ? 'Setze Rollen auf Owner, Admin, Editor oder Viewer.' : 'Assign explicit Owner, Admin, Editor, or Viewer roles.', 'right')
       ];
     } else if (location.pathname.startsWith('/admin')) {
-      potentialSteps = [
-        create('body', isGerman ? 'Systemsteuerung' : 'System Control', isGerman ? 'Willkommen im Maschinenraum (Root Access). Hier steuerst du die globale SaaS-Architektur.' : 'Welcome to the system machine room (Root Access).', Shield, 'center', true),
-        create('.tour-admin-metrics', isGerman ? 'Echtzeit-Metriken' : 'Live Metrics', isGerman ? 'Überwache Server-Auslastungen, AI-Token-Verbrauch und globale Umsätze auf einen Blick.' : 'Monitor server loads, AI tokens, and global revenue in real-time.', Target),
-        create('.tour-admin-tenants', isGerman ? 'Mandanten-Hub' : 'Tenant Hub', isGerman ? 'Steuere Lizenzen, Limits und Sicherheitsfreigaben aller registrierten Firmen in deinem Ökosystem.' : 'Control licenses and security for all registered companies.', Users),
-        create('.tour-admin-sales', isGerman ? 'Stripe-Integration' : 'Stripe Integration', isGerman ? 'Verwalte globale Abonnements, Zahlungsströme und das gesamte System-Cashflow-Ledger.' : 'Manage global subscriptions and the system cashflow ledger.', DollarSign),
-        create('.tour-admin-brand', isGerman ? 'White-Labeling' : 'White-Labeling', isGerman ? 'Passe Logos, Typografie und Farb-Themes an die Corporate Identity deiner Kunden an.' : 'Customize logos and color themes for white-label clients.', Sparkles),
-        create('.tour-admin-support', isGerman ? 'Support-Desk' : 'Support Desk', isGerman ? 'Alle User-Tickets fließen hier zusammen. Priorisiere und löse Probleme direkt im System.' : 'Manage and resolve all support tickets centrally.', Target),
-        create('.tour-admin-api', isGerman ? 'Webhook-Control' : 'Webhook Control', isGerman ? 'Konfiguriere API-Keys und Zapier-Schnittstellen für externe Systemintegrationen.' : 'Configure API keys and webhooks for external integrations.', Settings),
-        create('.tour-admin-system', isGerman ? 'Live-Terminal' : 'Live Terminal', isGerman ? 'Verfolge Datenbank-Transaktionen und System-Logs in Echtzeit.' : 'Track database transactions and system logs in real-time.', LayoutDashboard)
+      const total = 8;
+      newSteps = [
+        createStep('body', 1, total, isGerman ? 'Systemsteuerung (Root Access)' : 'System Control', isGerman ? 'Willkommen im Maschinenraum von Kreativ Desk. Hier verwaltest du die globale SaaS-Plattform, Mandanten und System-Logs.' : 'Welcome to the system machine room. Manage your global SaaS platform, tenants, and system logs.', Shield, isGerman ? 'Root-Zugriff ist nur für autorisierte Super-Admins freigeschaltet.' : 'Root access is restricted to authorized super administrators.', 'center', true),
+        createStep('.tour-admin-metrics', 2, total, isGerman ? 'Echtzeit-Metriken' : 'Live Metrics', isGerman ? 'Überwache aktiven Nutzerzuwachs, System-Umsatz und Datenbank-Auslastung auf einen Blick.' : 'Monitor user growth, system revenue, and database health in real time.', Target, isGerman ? 'Zeigt Live-Transaktionen aus dem Stripe Ledger an.' : 'Displays live transactions from your Stripe ledger.', 'right'),
+        createStep('.tour-admin-leads', 3, total, isGerman ? 'B2B Leads & Anfragen' : 'Lead Engine', isGerman ? 'Verwalte eingehende B2B-Anfragen von der Landingpage in Echtzeit.' : 'Manage incoming B2B requests from the landing page in real time.', Megaphone, isGerman ? 'Erhalte automatische Push-Signale bei neuen Leads.' : 'Receive live push signals when new leads arrive.', 'right'),
+        createStep('.tour-admin-tenants', 4, total, isGerman ? 'Mandanten- & Nutzer-Hub' : 'Tenant Hub', isGerman ? 'Steuere Lizenzen, Seat-Limits (`max_seats`) und Abo-Tarife aller registrierten Unternehmen.' : 'Control licenses, seat limits, and subscriptions for all companies.', Users, isGerman ? 'Passe Seat-Limits für Enterprise-Kunden manuell an.' : 'Adjust seat limits for enterprise clients on the fly.', 'right'),
+        createStep('.tour-admin-sales', 5, total, isGerman ? 'Stripe & Abrechnung' : 'Stripe Integration', isGerman ? 'Verwalte globale Abonnements, Zahlungsströme und manuelle Rechnungen.' : 'Manage global subscriptions, cashflows, and manual invoicing.', DollarSign, isGerman ? 'Direkter Sprung ins Stripe Customer Portal.' : 'Direct shortcut to Stripe Customer Portal.', 'right'),
+        createStep('.tour-admin-brand', 6, total, isGerman ? 'White-Label Branding' : 'White-Labeling', isGerman ? 'Passe Logos, Stammdaten und den globalen Wartungsmodus an.' : 'Customize master logos, corporate identity, and maintenance mode.', Sparkles, isGerman ? 'Wartungsmodus sperrt bei Wartungen reguläre Zugänge.' : 'Maintenance mode locks regular user sessions during updates.', 'right'),
+        createStep('.tour-admin-support', 7, total, isGerman ? 'Central Support Desk' : 'Support Desk', isGerman ? 'Alle Kundentickets fließen zentral hier zusammen und lassen sich priorisieren.' : 'Manage and resolve all customer support tickets centrally.', Target, isGerman ? 'Schneller Überblick über offene und gelöste Tickets.' : 'Clear overview of open vs resolved user tickets.', 'right'),
+        createStep('.tour-admin-api', 8, total, isGerman ? 'API-Keys & Webhooks' : 'API & Webhooks', isGerman ? 'Generiere API-Schlüssel für externe Systemintegrationen und Schnittstellen.' : 'Generate API keys and webhooks for external integrations.', Settings, isGerman ? 'API Keys lassen sich per Klick kopieren oder widerrufen.' : 'API keys can be copied or revoked in one click.', 'right')
       ];
     } else {
-      potentialSteps = [
-        create('body', isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', isGerman ? 'Das ist deine ganzheitliche Plattform für Spatial Design und Business-Management.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for design and business.', Sparkles, 'center', true),
-        create('.tour-dashboard', isGerman ? 'Der globale Puls' : 'Global Pulse', isGerman ? 'Hier fließen Projektstatus, Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', LayoutDashboard),
-        create('.tour-projects', isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Projekte. Ein Klick bringt dich tief in die spezifischen 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase),
-        create('.tour-create-project-btn', isGerman ? 'Dein erstes Projekt' : 'Your First Project', isGerman ? 'Eröffne jetzt dein erstes Projekt! TIPP: Nenne das Projekt "Demo: BAU", um unser interaktives Testprojekt zu laden. Darin siehst du sofort, wie alle Module (3D, Chat, Tasks) live ineinandergreifen.' : 'Create your first project now! TIP: Name it "Demo: BAU" to load our interactive test project.', Sparkles),
-        create('.tour-finance', isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', isGerman ? 'Überwache den gesamten Cashflow, Betriebskosten (OpEx) und globale Budgets.' : 'Monitor global cashflow, operating expenses, and budgets.', DollarSign),
-        create('.tour-documents', isGerman ? 'Zentrales Firmen-Archiv' : 'Company Archive', isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud structure for HR docs, contracts, and assets.', Folder),
-        create('.tour-templates', isGerman ? 'Workflow-Booster' : 'Workflow Booster', isGerman ? 'Speichere intelligente Textbausteine und Layout-Vorlagen, um Routineaufgaben zu automatisieren.' : 'Save text blocks and templates to automate routine tasks.', LayoutTemplate),
-        create('.tour-leads', isGerman ? 'Lead-Engine' : 'Lead Engine', isGerman ? 'Eingehende Kundenanfragen landen strukturiert und bearbeitbar direkt hier im System.' : 'Incoming client requests land here structured and ready to process.', Megaphone),
-        create('.tour-crm', isGerman ? 'Smart CRM' : 'Smart CRM', isGerman ? 'Das Zentrum deines Netzwerks. Lade Mitarbeiter und Partner per Magic Link direkt in dein Ökosystem ein.' : 'The core of your network. Invite team members via magic links.', Users),
-        create('.tour-agenda', isGerman ? 'Unternehmens-Timeline' : 'Company Timeline', isGerman ? 'Behalte Tagesrapporte, Verfügbarkeiten und die globale Agenda deines Teams im Blick.' : 'Track daily reports, availabilities, and the global team agenda.', Calendar),
-        create('.tour-settings', isGerman ? 'System-Steuerung' : 'System Control', isGerman ? 'Konfiguriere dein Firmenprofil, die MWST-Nummer und verwalte deine aktiven SaaS-Lizenzen.' : 'Configure company profiles, VAT, and active SaaS licenses.', Settings)
+      const total = 10;
+      newSteps = [
+        createStep('body', 1, total, isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', isGerman ? 'Willkommen bei Kreativ-Desk OS! Deine ganzheitliche Plattform für Spatial Design, Baustellen-Management und Unternehmens-Steuerung.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for spatial design, site management, and business control.', Sparkles, isGerman ? 'In wenigen Schritten entdeckst du die wichtigsten Funktionen.' : 'Discover all core capabilities in just a few quick steps.', 'center', true),
+        createStep('.tour-dashboard', 2, total, isGerman ? 'Der globale Puls' : 'Global Pulse', isGerman ? 'Hier fließen Projektstatus, offene Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', LayoutDashboard, isGerman ? 'Klicke auf die KPI-Karten, um direkt in die Details zu springen.' : 'Click KPI cards to jump directly into detailed views.', 'right'),
+        createStep('.tour-projects', 3, total, isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Bau- & Designprojekte. Ein Klick bringt dich tief in die 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase, isGerman ? 'Hier siehst du den Status und Fortschritt aller aktiven Projekte.' : 'View status and progress for all active project environments.', 'right'),
+        createStep('.tour-create-project-btn', 4, total, isGerman ? 'Erstes Projekt erstellen' : 'Your First Project', isGerman ? 'Eröffne dein erstes Projekt oder nutze unsere Vorlagen.' : 'Create your first project or launch our interactive template.', Sparkles, isGerman ? 'WICHTIGER TIPP: Nenne ein neues Projekt "Demo: BAU", um automatisch ein fertiges Testprojekt mit Budgets, 3D-Viewer und Mängeln zu laden!' : 'IMPORTANT TIP: Name a new project "Demo: BAU" to auto-seed realistic budget groups, 3D BIM assets, and defects!', 'right'),
+        createStep('.tour-finance', 5, total, isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', isGerman ? 'Überwache den gesamten Firmen-Cashflow, Betriebskosten (OpEx) und BKP-Kostenstellen.' : 'Monitor global cashflow, operating expenses, and budgets.', DollarSign, isGerman ? 'Erstelle professionelle Offerten und Rechnungen als PDF.' : 'Generate professional quotes and invoices as PDFs.', 'right'),
+        createStep('.tour-documents', 6, total, isGerman ? 'Firmen-Archiv & Assets' : 'Company Archive', isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud folder structure for HR docs, contracts, and branding assets.', Folder, isGerman ? 'Dokumente lassen sich kategorisieren und verschlüsselt speichern.' : 'Store and categorize assets with end-to-end cloud encryption.', 'right'),
+        createStep('.tour-templates', 7, total, isGerman ? 'Workflow-Booster' : 'Workflow Booster', isGerman ? 'Speichere intelligente Bausteine und Layout-Vorlagen, um Routineaufgaben zu automatisieren.' : 'Save templates and reusable blocks to automate routine work.', LayoutTemplate, isGerman ? 'Spare wertvolle Zeit bei wiederkehrenden Angeboten.' : 'Save time on recurring client offers and site protocols.', 'right'),
+        createStep('.tour-crm', 8, total, isGerman ? 'Team & Partner-Netzwerk' : 'Team Network', isGerman ? 'Das Zentrum deines Netzwerks. Lade Mitarbeiter und externe Partner per E-Mail in dein Ökosystem ein.' : 'The core of your network. Invite team members via magic links.', Users, isGerman ? 'Behalte den Überblick über verfügbare Lizenzen und Rollen.' : 'Keep track of available licenses and company roles.', 'right'),
+        createStep('.tour-agenda', 9, total, isGerman ? 'Unternehmens-Agenda' : 'Company Timeline', isGerman ? 'Behalte Tagesrapporte, Baustellen-Verfügbarkeiten und die globale Agenda deines Teams im Blick.' : 'Track daily reports, availabilities, and the global team agenda.', Calendar, isGerman ? 'Synchronisiere Termine nahtlos mit Projekten.' : 'Sync schedule entries directly with project milestones.', 'right'),
+        createStep('.tour-settings', 10, total, isGerman ? 'System-Einstellungen & Abos' : 'System Settings', isGerman ? 'Konfiguriere dein Firmenprofil, MWST-Stammdaten und verwalte deine aktiven Stripe-Lizenzen.' : 'Configure company profiles, VAT, and active SaaS licenses.', Settings, isGerman ? 'Hier kannst du jederzeit dein Abo upgraden oder verwalten.' : 'Upgrade or manage your subscription plan anytime.', 'right')
       ];
     }
 
-    setSteps(potentialSteps);
+    setSteps(newSteps);
   }, [isTourRunning, location.pathname, language]);
 
   const handleJoyrideCallback = async (data: any) => {
@@ -118,14 +151,52 @@ export default function ProductTour() {
         steps,
         continuous: true,
         showSkipButton: true,
+        showProgress: true,
+        locale: {
+          back: isGerman ? 'Zurück' : 'Back',
+          close: isGerman ? 'Schließen' : 'Close',
+          last: isGerman ? 'Tour Beenden' : 'Finish Tour',
+          next: isGerman ? 'Weiter' : 'Next',
+          skip: isGerman ? 'Überspringen' : 'Skip',
+        },
         callback: handleJoyrideCallback,
         styles: {
           options: {
-            primaryColor: '#2563eb',
+            primaryColor: '#3b82f6',
             backgroundColor: '#18181b',
-            textColor: '#fafafa',
+            textColor: '#f4f4f5',
             arrowColor: '#18181b',
-            zIndex: 10000,
+            overlayColor: 'rgba(0, 0, 0, 0.75)',
+            zIndex: 100000,
+          },
+          tooltip: {
+            borderRadius: '1.25rem',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            padding: '1.25rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+          },
+          tooltipContainer: {
+            textAlign: 'left',
+          },
+          buttonNext: {
+            backgroundColor: '#3b82f6',
+            borderRadius: '0.75rem',
+            padding: '0.5rem 1.25rem',
+            fontSize: '0.875rem',
+            fontWeight: '700',
+            color: '#ffffff',
+            boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)',
+          },
+          buttonBack: {
+            marginRight: '0.5rem',
+            color: '#a1a1aa',
+            fontSize: '0.875rem',
+            fontWeight: '600',
+          },
+          buttonSkip: {
+            color: '#a1a1aa',
+            fontSize: '0.875rem',
+            fontWeight: '600',
           }
         }
       } as any)}
