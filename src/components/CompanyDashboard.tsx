@@ -103,8 +103,14 @@ export default function CompanyDashboard() {
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
   const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
 
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
+    if (!currentUser || !currentUser.uid) return false;
+    const isCompleted = localStorage.getItem(`onboarding_completed_${currentUser.uid}`) === 'true';
+    return currentUser.hasCompletedOnboarding !== true && !isCompleted && !isSuperAdmin;
+  });
+
   useEffect(() => {
-    if (currentUser?.uid) {
+    if (currentUser?.uid && !showOnboarding) {
       const tourKey = `tour_completed_${currentUser.uid}`;
       const isCompleted = localStorage.getItem(tourKey) === 'true';
 
@@ -113,11 +119,11 @@ export default function CompanyDashboard() {
         supabase.from('profiles').update({ has_seen_tour: true }).eq('id', currentUser.uid).then();
         const timer = setTimeout(() => {
           startTour();
-        }, 1000);
+        }, 800);
         return () => clearTimeout(timer);
       }
     }
-  }, [currentUser, startTour]);
+  }, [currentUser, showOnboarding, startTour]);
   const { hasPermission } = usePermissions();
   const { limits } = useSubscriptionLimits();
   const canSeeFinances = hasPermission('canViewFinance');
@@ -534,11 +540,17 @@ export default function CompanyDashboard() {
 
   return (
     <div className="flex h-[100dvh] bg-background text-text-primary relative w-full overflow-hidden">
-      {currentUser && !currentUser.hasCompletedOnboarding && currentUser.hasSeenTour !== true && userRole !== 'super_admin' && (
+      {showOnboarding && currentUser && userRole !== 'super_admin' && (
         <WelcomeOnboarding 
           currentUser={currentUser} 
           onComplete={() => {
-            window.location.reload();
+            if (currentUser?.uid) {
+              localStorage.setItem(`onboarding_completed_${currentUser.uid}`, 'true');
+            }
+            setShowOnboarding(false);
+            setTimeout(() => {
+              startTour();
+            }, 600);
           }} 
         />
       )}

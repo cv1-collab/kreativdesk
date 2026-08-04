@@ -68,15 +68,12 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
       }
 
       setStep(3);
+      if (userId) {
+        localStorage.setItem(`onboarding_completed_${userId}`, 'true');
+      }
       setTimeout(() => {
-        if (currentUser?.uid) {
-          const hasSeenTourLocal = localStorage.getItem(`tour_${currentUser?.uid}`);
-          if (!hasSeenTourLocal) {
-            localStorage.setItem(`tour_trigger_pending_${currentUser?.uid}`, 'true');
-          }
-        }
         onComplete();
-      }, 1500);
+      }, 800);
     } catch (error) {
       console.error("Error updating profile:", error);
     } finally {
