@@ -10,7 +10,12 @@ scrubLocalStorageFileUrls();
 
 // Initialisiert den PWA Service Worker (Background Updates & Caching)
 if ('serviceWorker' in navigator) {
-  registerSW({ immediate: true });
+  registerSW({ 
+    onNeedRefresh() {
+      // Keine automatische Seiten-Neuaktualisierung erzwingen
+    },
+    onOfflineReady() {}
+  });
 }
 
 // +++ FIX: GLOBALER BUFFER POLYFILL FÜR PDF & WHITEBOARD +++
