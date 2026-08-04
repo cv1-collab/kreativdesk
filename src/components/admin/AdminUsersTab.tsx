@@ -92,11 +92,13 @@ export default function AdminUsersTab() {
         .from('profiles')
         .update({
           role: editingUser.role,
-          name: editingUser.name
+          name: editingUser.name,
+          plan: editingUser.plan || 'Pro',
+          has_active_subscription: editingUser.plan ? editingUser.plan !== 'Free Trial' : true
         })
         .eq('id', editingUser.id);
 
-      if (editingUser.company_id && (editingUser.role === 'owner' || editingUser.role === 'management')) {
+      if (editingUser.company_id) {
          await supabase
            .from('companies')
            .update({
@@ -239,6 +241,35 @@ export default function AdminUsersTab() {
                   <option value="employee">Mitarbeiter</option>
                   <option value="external">Externer Planer</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('plan')}</label>
+                <select 
+                  value={editingUser.plan || 'Pro'}
+                  onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 font-semibold"
+                >
+                  <option value="Free Trial">Free Trial</option>
+                  <option value="Starter">Starter (CHF 39 / Mon)</option>
+                  <option value="Pro">Pro (CHF 79 / Mon)</option>
+                  <option value="Expert">Expert (CHF 189 / Mon)</option>
+                  <option value="Studio">Kreativ Desk Studio (ab CHF 15'000)</option>
+                  <option value="Agency">Kreativ Desk Agency (CHF 25'000)</option>
+                  <option value="Enterprise">Kreativ Desk Enterprise (ab CHF 40'000)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('max_seats')}</label>
+                <input 
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={editingUser.maxSeats || 1}
+                  onChange={(e) => setEditingUser({ ...editingUser, maxSeats: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
+                />
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
