@@ -1081,10 +1081,27 @@ export default function BIMViewer() {
             </div>
           ) : measureMode ? (
             <div className="flex flex-col items-center justify-center border-2 border-dashed border-accent-ai/50 bg-accent-ai/5 rounded-lg p-5 text-center mt-2 flex-1">
-              <Ruler className="text-accent-ai mb-2" size={24} />
-              <p className="text-sm text-text-primary font-medium">{t('measurement_mode')}</p>
-              <p className="text-xs text-text-muted mt-1">{measurePoints.length === 0 ? t('click_point_start') : measurePoints.length === 1 ? t('click_second_point') : t('distance_calculated')}</p>
-              {measurePoints.length > 0 && (<button onClick={() => setMeasurePoints([])} className="mt-3 px-3 py-1.5 bg-background hover:bg-surface rounded-md text-xs border border-border text-text-primary transition-colors">Alle Messungen löschen</button>)}
+              <Ruler className="text-accent-ai mb-2 animate-bounce" size={24} />
+              <p className="text-sm text-text-primary font-bold">{t('measurement_mode')}</p>
+              <p className="text-xs text-text-muted mt-1">
+                {measurePoints.length === 0 ? t('click_point_start') : measurePoints.length === 1 ? t('click_second_point') : t('distance_calculated')}
+              </p>
+              {measurePoints.length >= 2 && (
+                <div className="mt-3 p-3 bg-surface border border-accent-ai/30 rounded-xl space-y-1 w-full">
+                  <div className="text-xs text-text-muted font-medium">Berechnete 3D-Distanz:</div>
+                  <div className="text-xl font-mono font-black text-accent-ai">
+                    {measurePoints[0].distanceTo(measurePoints[1]).toFixed(2)} m
+                  </div>
+                  <div className="text-xs font-mono text-text-muted font-bold">
+                    ({(measurePoints[0].distanceTo(measurePoints[1]) * 1000).toFixed(0)} mm)
+                  </div>
+                </div>
+              )}
+              {measurePoints.length > 0 && (
+                <button onClick={() => setMeasurePoints([])} className="mt-3 px-4 py-2 bg-background hover:bg-surface rounded-lg text-xs font-bold border border-border text-text-primary transition-all shadow-sm">
+                  Messung zurücksetzen
+                </button>
+              )}
             </div>
           ) : selectedDetails ? (
             <div className="space-y-3 animate-in fade-in mt-1 flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 pb-4">

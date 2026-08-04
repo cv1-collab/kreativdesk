@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { 
   AlertTriangle, LayoutGrid, List as ListIcon, Sparkles, Loader2, ChevronsUp, ChevronUp, 
   Equal, ChevronDown, Printer, BrainCircuit, Image as ImageIcon, Camera, X, Plus, 
-  Trash2, Smartphone, Eye, MapPin, AlignLeft, Edit2, Calendar, FileText 
+  Trash2, Smartphone, Eye, MapPin, AlignLeft, Edit2, Calendar, FileText, Mic
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
@@ -203,6 +203,36 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+
+  const startVoiceDictation = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addToast('Spracherkennung wird von diesem Browser nicht unterstützt.', 'info');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'de-DE';
+    recognition.interimResults = false;
+    recognition.onstart = () => {
+      setIsListening(true);
+      addToast('Spracherkennung gestartet. Spreche jetzt...', 'info');
+    };
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setCurrentDefect(prev => ({
+        ...prev,
+        description: prev.description ? `${prev.description} ${transcript}` : transcript
+      }));
+      addToast('Sprachaufnahme eingefügt!', 'success');
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+      addToast('Fehler bei der Spracherkennung', 'error');
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  };
 
   const [uploadSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/defect/${uploadSessionId}`;
@@ -676,7 +706,15 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                   <form id="defect-form" onSubmit={handleSaveDefect} className="space-y-6">
                     <div className="space-y-4">
                       <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 h-5 flex items-center">{t('title')}</label><input type="text" required value={currentDefect.title} onChange={e => setCurrentDefect({...currentDefect, title: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" placeholder="Kurzer, prägnanter Titel" autoFocus={!editingId} /></div>
-                      <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2 h-5"><AlignLeft size={14}/> {t('description')}</label><textarea value={currentDefect.description} onChange={e => setCurrentDefect({...currentDefect, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-medium text-text-primary focus:outline-none focus:border-accent-ai resize-none h-24 custom-scrollbar shadow-sm" placeholder="Details zum Mangel..." /></div>
+                      <div>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 h-5"><AlignLeft size={14}/> {t('description')}</label>
+                          <button type="button" onClick={startVoiceDictation} className={cn("px-2.5 py-1 text-xs rounded-lg font-bold flex items-center gap-1.5 transition-all border", isListening ? "bg-red-500 text-white animate-pulse border-red-500" : "bg-accent-ai/10 text-accent-ai border-accent-ai/20 hover:bg-accent-ai/20")}>
+                            <Mic size={14}/> {isListening ? 'Spreche jetzt...' : 'Diktieren'}
+                          </button>
+                        </div>
+                        <textarea value={currentDefect.description} onChange={e => setCurrentDefect({...currentDefect, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-medium text-text-primary focus:outline-none focus:border-accent-ai resize-none h-24 custom-scrollbar shadow-sm" placeholder="Details zum Mangel (oder per Sprache diktieren)..." />
+                      </div>
                     </div>
                     <div className="w-full h-px bg-border/50"></div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

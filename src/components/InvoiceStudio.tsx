@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import { generateSwissQRPayload, getSwissQRCodeUrl } from '../utils/qrBillGenerator';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   de: {
@@ -94,6 +95,32 @@ const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vat
         <View style={pdfStyles.totalsTotalRow}><Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{t('total').toUpperCase()}</Text><Text style={[pdfStyles.textBold, { fontSize: 12, color: settings.accentColor }]}>{formatCHF(total)}</Text></View>
       </View>
       <View style={pdfStyles.paymentInfo} wrap={false}><Text>{formData.paymentInfo}</Text></View>
+      
+      {/* SWISS QR-BILL SECTION */}
+      {type === 'invoice' && (
+        <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#000000', paddingTop: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} wrap={false}>
+          <View style={{ width: '60%' }}>
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000', marginBottom: 4 }}>Zahlteil / Section paiement (Swiss QR-Bill)</Text>
+            <Text style={{ fontSize: 8, color: '#4b5563', lineHeight: 1.4 }}>
+              Konto / IBAN: CH93 0076 2011 6238 5295 7{'\n'}
+              Währung / Currency: CHF • Betrag / Amount: CHF {formatCHF(total)}{'\n'}
+              Zahlbar durch / Payable by: {formData.recipient.split('\n')[0] || 'Kunde'}
+            </Text>
+          </View>
+          <PDFImage 
+            src={getSwissQRCodeUrl(generateSwissQRPayload({
+              iban: 'CH9300762011623852957',
+              creditor: { name: 'Kreativ-Desk Studio', postalCode: '8001', city: 'Zürich', country: 'CH' },
+              amount: total,
+              currency: 'CHF',
+              debtor: { name: formData.recipient.split('\n')[0] || 'Kunde', postalCode: '8000', city: 'Zürich', country: 'CH' },
+              unstructuredMessage: `Rechnung ${formData.invoiceNumber}`
+            }))} 
+            style={{ width: 85, height: 85, borderRadius: 4 }} 
+          />
+        </View>
+      )}
+
       <View style={{ position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 5 }} fixed><Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text></View>
     </Page>
   </Document>

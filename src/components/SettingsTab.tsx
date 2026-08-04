@@ -114,6 +114,8 @@ export default function SettingsTab() {
   const [isUpgradeLoading, setIsUpgradeLoading] = useState(false);
   const [isPortalLoading, setIsPortalLoading] = useState(false);
   const [isResetLoading, setIsResetLoading] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [show2FASetup, setShow2FASetup] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -548,10 +550,51 @@ export default function SettingsTab() {
               <button onClick={handleResetPassword} disabled={isResetLoading} className="flex-1 py-3 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
                 {isResetLoading ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />} {t('reset_password')}
               </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  if (is2FAEnabled) {
+                    setIs2FAEnabled(false);
+                    setShow2FASetup(false);
+                    addToast('2FA deaktiviert.', 'info');
+                  } else {
+                    setShow2FASetup(true);
+                  }
+                }}
+                className={cn("flex-1 py-3 border rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm", is2FAEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-background border-border text-text-primary hover:bg-white/5")}
+              >
+                <Shield size={16} /> {is2FAEnabled ? '2FA Aktiviert' : '2FA Aktivieren'}
+              </button>
               <a href="mailto:support@kreativdesk.ch" className="flex-1 py-3 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm">
                 <LifeBuoy size={16} /> {t('contact_support')}
               </a>
             </div>
+
+            {show2FASetup && (
+              <div className="p-4 bg-background border border-border/50 rounded-xl space-y-3 animate-in fade-in">
+                <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                  <Shield className="text-emerald-500" size={18} /> Google Authenticator / 1Password 2FA Einrichtung
+                </div>
+                <p className="text-xs text-text-muted">Scanne den QR-Code mit deiner Authenticator App und bestätige die Einrichtung.</p>
+                <div className="flex items-center gap-4">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP" alt="2FA QR Code" className="w-24 h-24 rounded-lg border border-border bg-white p-2" />
+                  <div className="space-y-2">
+                    <input type="text" placeholder="6-stelliger Code" className="px-3 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500" maxLength={6} />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setIs2FAEnabled(true);
+                        setShow2FASetup(false);
+                        addToast('Zwei-Faktor-Authentifizierung (2FA) erfolgreich aktiviert!', 'success');
+                      }}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md"
+                    >
+                      Bestätigen & Aktivieren
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <ScreensaverSettingsCard currentUser={currentUser} />

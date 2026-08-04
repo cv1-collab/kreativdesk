@@ -122,6 +122,42 @@ export default function API() {
           )}
         </div>
       </div>
+
+      {/* WEBHOOK AUTOMATION SECTION */}
+      <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-4">
+        <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
+          <Webhook className="text-emerald-500" size={24} />
+          {isDe ? 'Outgoing Webhooks (Slack / Teams / Zapier)' : 'Outgoing Webhooks'}
+        </h3>
+        <p className="text-text-muted text-sm font-medium">
+          {isDe ? 'Erhalte automatische Benachrichtigungen in Slack oder MS Teams, sobald Mängel, Rechnungen oder Leads erstellt werden.' : 'Receive automated alerts in Slack or MS Teams on new defects, invoices, or leads.'}
+        </p>
+
+        <div className="flex gap-3">
+          <input 
+            type="url" 
+            placeholder="https://hooks.slack.com/services/..." 
+            id="webhook-url-input"
+            className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary"
+          />
+          <button 
+            type="button" 
+            onClick={() => {
+              const input = document.getElementById('webhook-url-input') as HTMLInputElement;
+              if (input && input.value) {
+                const urls = JSON.parse(localStorage.getItem('kreativdesk_webhook_urls') || '[]');
+                urls.push(input.value);
+                localStorage.setItem('kreativdesk_webhook_urls', JSON.stringify(urls));
+                input.value = '';
+                addToast(isDe ? 'Webhook URL gespeichert!' : 'Webhook URL saved!', 'success');
+              }
+            }}
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20"
+          >
+            {isDe ? 'Webhook Speichern' : 'Save Webhook'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
