@@ -509,38 +509,41 @@ export default function Finance() {
           setIncludeOptions(finConfig.data.includeOptions);
         }
       } else {
-        // FALLBACK: Auto-populate demo budget plan if no budget version exists yet
-        const isBau = activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU') || currentProjectId === 'demo-1';
-        const initGroups = (isBau || !activeProject) ? (demoTemplates.construction?.financeGroups || []) : [];
-        if (initGroups.length > 0) {
-          const initVersion: BudgetVersion = {
-            id: `v-approved-${currentProjectId}`,
-            name: 'Originalbudget',
-            vatRate: 8.1,
-            status: 'approved',
-            groups: initGroups
-          };
-          setVersions([initVersion]);
-          setActiveVersionId(initVersion.id);
-          setProjectHeader(prev => ({ ...prev, project: activeProject?.name || 'Quartier Neubau Süd', version: 'Originalbudget' }));
-          await supabase.from('system_config').upsert({
-            id: `finance_${currentProjectId}`,
-            data: {
-              versions: [initVersion],
-              activeVersionId: initVersion.id,
-              projectHeader: {
-                project: activeProject?.name || 'Quartier Neubau Süd',
-                client: 'Bauherrschaft AG',
-                date: new Date().toISOString().split('T')[0],
-                version: 'Originalbudget'
-              },
-              includeOptions: false,
-              ownerId: currentUser.uid,
-              companyId: currentUser.companyId,
-              projectId: currentProjectId
-            }
-          });
-        }
+        // FALLBACK: Clean empty state for new projects and new users
+        const isBau = activeProject?.name?.toLowerCase().includes('demo: bau') || currentProjectId === 'demo-1';
+        const initGroups = isBau ? (demoTemplates.construction?.financeGroups || []) : [];
+        const initVersion: BudgetVersion = {
+          id: `v-approved-${currentProjectId}`,
+          name: 'Originalbudget',
+          vatRate: 8.1,
+          status: 'approved',
+          groups: initGroups
+        };
+        setVersions([initVersion]);
+        setActiveVersionId(initVersion.id);
+        setProjectHeader(prev => ({
+          ...prev,
+          project: activeProject?.name || 'Projektbudget',
+          client: activeProject?.company_name || 'Kunde',
+          version: 'Originalbudget'
+        }));
+        await supabase.from('system_config').upsert({
+          id: `finance_${currentProjectId}`,
+          data: {
+            versions: [initVersion],
+            activeVersionId: initVersion.id,
+            projectHeader: {
+              project: activeProject?.name || 'Projektbudget',
+              client: 'Kunde',
+              date: new Date().toISOString().split('T')[0],
+              version: 'Originalbudget'
+            },
+            includeOptions: false,
+            ownerId: currentUser.uid,
+            companyId: currentUser.companyId,
+            projectId: currentProjectId
+          }
+        });
       }
 
       setIsInitialLoad(false);
