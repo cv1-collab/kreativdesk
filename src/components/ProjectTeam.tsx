@@ -68,8 +68,22 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
   const availableCompanyUsers = (allCompanyUsers || []).filter((cu: any) => !currentMembers.some((cm: any) => cm.userId === cu.id));
 
+  const checkSeatLimit = (): boolean => {
+    if (!currentUser) return true;
+    const plan = currentUser.plan || 'Starter';
+    if (plan.includes('Trial') || plan === 'Expert' || plan === 'Enterprise' || plan === 'Studio' || plan === 'Agency') return true;
+    const maxSeats = plan === 'Starter' ? 3 : 10;
+    if (currentMembers.length >= maxSeats) {
+      addToast(`Seat-Limit (${maxSeats} Mitglieder) für deinen ${plan}-Plan erreicht.`, 'info');
+      window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
+      return false;
+    }
+    return true;
+  };
+
   const handleAddExistingUser = async () => {
     if (!selectedUserId || !currentProjectId || !currentUser?.companyId) return;
+    if (!checkSeatLimit()) return;
     setIsProcessing(true);
     try {
       const selectedUser = companyUsers.find((u: any) => u.id === selectedUserId);
@@ -92,6 +106,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
   const handleAddNewUser = async () => {
     if (!newUserName || !newUserEmail || !currentProjectId || !currentUser?.companyId) return;
+    if (!checkSeatLimit()) return;
     setIsProcessing(true);
     try {
       const newUserId = `user-${Date.now()}`;

@@ -258,7 +258,11 @@ export default function SettingsTab() {
   };
 
   const handleManageSubscription = async () => {
-    if (!currentUser?.stripeCustomerId) return;
+    if (!currentUser?.stripeCustomerId) {
+      addToast('Kein aktives Stripe-Abo gefunden. Wähle deinen Tarif aus.', 'info');
+      window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
+      return;
+    }
     setIsPortalLoading(true);
     try { await openCustomerPortal(currentUser.stripeCustomerId); } 
     catch (e) { addToast('Fehler beim Portal', 'error'); } 

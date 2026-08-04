@@ -14,6 +14,7 @@ import { useProject, Defect } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
+import { offlineSyncManager } from '../utils/offlineSyncManager';
 import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -251,6 +252,12 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   }, [currentProjectId]);
 
   useEffect(() => {
+    return offlineSyncManager.registerAutoSync((msg, type) => {
+      addToast(msg, type);
+    });
+  }, [addToast]);
+
+  useEffect(() => {
     if (!uploadSessionId || !showQrScanner) return;
   }, [uploadSessionId, showQrScanner, addToast]);
 
@@ -314,6 +321,28 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
 
     if (!currentUser || !currentUser.companyId || !currentProjectId) return;
     setIsSubmitting(true);
+
+    if (!offlineSyncManager.isOnline()) {
+      const offlineId = `DEF-OFFLINE-${Date.now()}`;
+      offlineSyncManager.saveOfflineDefect({
+        id: offlineId,
+        project_id: currentProjectId,
+        company_id: currentUser.companyId,
+        owner_id: currentUser.uid,
+        prompt: currentDefect.title || 'Mangel Baustelle',
+        description: currentDefect.description || '',
+        status: currentDefect.status || 'To Do',
+        severity: currentDefect.priority || 'High',
+        position: { x: 0, y: 1.5, z: 0 },
+        image_url: currentDefect.imageUrl || '',
+        created_at: new Date().toISOString()
+      });
+      setDefects(prev => [...prev, { ...currentDefect, id: offlineId, projectId: currentProjectId } as Defect]);
+      addToast('Mangel offline gespeichert! Wird automatisch synchronisiert sobald wieder online.', 'info');
+      setIsModalOpen(false);
+      setIsSubmitting(false);
+      return;
+    }
     try {
       if (editingId) { 
         await supabase.from('defects').update({ ...currentDefect }).eq('id', editingId); 
