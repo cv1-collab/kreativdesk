@@ -6,7 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Users, UserPlus, Search, X, Shield, Mail, Building2, Loader2, Trash2
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -172,8 +172,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-accent-ai/10 text-accent-ai flex items-center justify-center font-bold text-xs border border-accent-ai/20 shrink-0 overflow-hidden">
-                          {user.photoURL || user.avatar ? (
-                            <img src={user.photoURL || user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                          {!!sanitizeUrl(user.photoURL || user.avatar) ? (
+                            <img src={sanitizeUrl(user.photoURL || user.avatar)} alt={user.name} className="w-full h-full object-cover" />
                           ) : (
                             user.name?.charAt(0).toUpperCase() || 'U'
                           )}
@@ -217,8 +217,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-accent-ai/10 text-accent-ai flex items-center justify-center font-bold text-lg border border-accent-ai/20 overflow-hidden">
-                        {user.photoURL || user.avatar ? (
-                          <img src={user.photoURL || user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                        {!!sanitizeUrl(user.photoURL || user.avatar) ? (
+                          <img src={sanitizeUrl(user.photoURL || user.avatar)} alt={user.name} className="w-full h-full object-cover" />
                         ) : (
                           user.name?.charAt(0).toUpperCase() || 'U'
                         )}

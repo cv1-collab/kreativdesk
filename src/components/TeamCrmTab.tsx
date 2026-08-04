@@ -10,7 +10,7 @@ import {
   Edit2, Trash2, Contact, Download, CheckSquare, ListChecks, PenTool, Image as ImageIcon, ZoomOut, ZoomIn, Cloud
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -611,7 +611,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                   <div className="flex items-center gap-3 overflow-hidden">
                     {isSelectionMode && <div className={cn("w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors bg-surface", isChecked ? "bg-accent-ai border-accent-ai text-white" : "border-border")}>{isChecked && <CheckSquare size={12} />}</div>}
                     <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden shrink-0 border border-border/50", isTeam ? "bg-purple-500/10 text-purple-500" : "bg-blue-500/10 text-blue-500")}>
-                      {contact.photoURL ? <img src={contact.photoURL} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
+                      {!!sanitizeUrl(contact.photoURL) ? <img src={sanitizeUrl(contact.photoURL)} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
                     </div>
                     <div className="overflow-hidden"><div className={cn("font-bold text-sm truncate", (isSelected && !isSelectionMode) ? "text-accent-ai" : "text-text-primary")}>{formatName(contact)}</div><div className="text-xs text-text-muted truncate mt-0.5 font-medium">{contact.company || contact.email || t('no_company')}</div></div>
                   </div>
@@ -658,7 +658,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
               <div className="flex items-center gap-8 pt-2">
                 <div className="w-28 h-28 rounded-[2rem] bg-background border border-border flex items-center justify-center text-4xl font-bold text-text-muted shadow-sm overflow-hidden">
-                  {selectedContact.photoURL ? <img src={selectedContact.photoURL} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
+                  {!!sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-4xl font-bold text-text-primary tracking-tight">{formatName(selectedContact)}</h2>
@@ -726,7 +726,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                   <div className="lg:col-span-1 space-y-6">
                     <div className="bg-surface border border-border/50 rounded-xl p-6 flex flex-col items-center text-center shadow-sm">
                       <div onClick={() => avatarInputRef.current?.click()} className="relative w-24 h-24 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer group overflow-hidden mb-4 hover:border-accent-ai transition-colors">
-                        {avatarPreview ? <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={32} className="text-text-muted group-hover:text-accent-ai transition-colors" />}
+                        {!!sanitizeUrl(avatarPreview) ? <img src={sanitizeUrl(avatarPreview)} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={32} className="text-text-muted group-hover:text-accent-ai transition-colors" />}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={20} className="text-white"/></div>
                       </div>
                       <input type="file" accept="image/*" ref={avatarInputRef} onChange={handleAvatarSelect} className="hidden" />

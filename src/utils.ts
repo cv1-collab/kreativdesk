@@ -8,10 +8,10 @@ export function cn(...inputs: ClassValue[]) {
 export function sanitizeUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
   const trimmed = url.trim();
-  if (trimmed.startsWith('file:///')) {
+  if (trimmed.includes('file:///')) {
     if (trimmed.includes('demo-assets/')) {
-      const filename = trimmed.split('demo-assets/')[1];
-      return `/demo-assets/${filename}`;
+      const filename = trimmed.split('demo-assets/')[1]?.split('?')[0];
+      return filename ? `/demo-assets/${filename}` : '';
     }
     return '';
   }

@@ -6,7 +6,7 @@ import {
   Equal, ChevronDown, Printer, BrainCircuit, Image as ImageIcon, Camera, X, Plus, 
   Trash2, Smartphone, Eye, MapPin, AlignLeft, Edit2, Calendar, FileText 
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -655,9 +655,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                     <div className="w-full h-px bg-border/50"></div>
                     <div className="space-y-3 pb-8">
                       <label className="block text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><ImageIcon size={14}/> {t('photo')} / Beweisbild</label>
-                      {currentDefect.imageUrl ? (
+                      {!!sanitizeUrl(currentDefect.imageUrl) ? (
                         <div className="relative w-full h-48 rounded-xl overflow-hidden border border-border">
-                          <img src={currentDefect.imageUrl} alt="Uploaded" className="w-full h-full object-cover" />
+                          <img src={sanitizeUrl(currentDefect.imageUrl)} alt="Uploaded" className="w-full h-full object-cover" />
                           <button type="button" onClick={() => setCurrentDefect({...currentDefect, imageUrl: ''})} className="absolute top-3 right-3 p-3 bg-black/70 text-white rounded-lg hover:bg-red-500 transition-colors shadow-lg"><Trash2 size={18}/></button>
                         </div>
                       ) : (

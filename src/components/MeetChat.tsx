@@ -4,7 +4,7 @@ import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles,
   Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { callGeminiAPI, callGeminiEmbedAPI } from '../utils/geminiClient';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -500,7 +500,7 @@ export default function MeetChat() {
                         return (
                           <button key={user.id} onClick={() => toggleUserSelection(user.id)} className={cn("flex flex-col items-center gap-1 transition-all", isSelected ? "opacity-100 scale-110" : "opacity-50 hover:opacity-80 grayscale hover:grayscale-0")}>
                             <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white border-2", isSelected ? "border-accent-ai bg-accent-ai" : "border-border bg-surface")}>
-                              {user.avatar ? <img src={user.avatar} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
+                              {!!sanitizeUrl(user.avatar) ? <img src={sanitizeUrl(user.avatar)} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
                             </div>
                             <span className="text-[10px] font-bold text-text-muted">{user.name.split(' ')[0]}</span>
                           </button>
@@ -652,8 +652,8 @@ export default function MeetChat() {
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2"><span className={cn("text-sm font-bold", msg.isAI ? "text-accent-ai" : "text-text-primary")}>{msg.sender}</span><span className="text-[10px] font-medium text-text-muted">{msg.time}</span></div>
                     <p className="text-sm text-text-muted mt-1 leading-relaxed whitespace-pre-wrap font-medium">{msg.text}</p>
-                    {(msg as any).fileUrl && (
-                      <a href={(msg as any).fileUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-accent-ai hover:underline text-sm font-bold bg-accent-ai/10 px-3 py-1.5 rounded-lg border border-accent-ai/20 shadow-sm transition-all hover:bg-accent-ai/20">
+                    {!!sanitizeUrl((msg as any).fileUrl) && (
+                      <a href={sanitizeUrl((msg as any).fileUrl)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-accent-ai hover:underline text-sm font-bold bg-accent-ai/10 px-3 py-1.5 rounded-lg border border-accent-ai/20 shadow-sm transition-all hover:bg-accent-ai/20">
                         <LinkIcon size={14} /> Datei ansehen / herunterladen
                       </a>
                     )}
@@ -734,7 +734,7 @@ export default function MeetChat() {
                         />
                         <div className="flex items-center gap-2 overflow-hidden">
                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-accent-ai shrink-0">
-                             {user.avatar ? <img src={user.avatar} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
+                             {!!sanitizeUrl(user.avatar) ? <img src={sanitizeUrl(user.avatar)} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
                            </div>
                            <p className="text-xs font-bold truncate text-text-primary">{user.name}</p>
                         </div>
