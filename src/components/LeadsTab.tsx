@@ -301,7 +301,7 @@ export default function LeadsTab() {
 
   const fetchLeads = async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const { data } = await supabase
@@ -387,7 +387,7 @@ export default function LeadsTab() {
       addToast(t('name_email_required'), 'error');
       return;
     }
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     setIsSubmittingScanner(true);
     try {
@@ -419,7 +419,7 @@ export default function LeadsTab() {
   const handleSubmitLead = async (e: React.FormEvent) => { 
     e.preventDefault(); 
     if (!leadForm.firstName || !leadForm.email || !currentUser || !currentUser.uid) return; 
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     setIsSubmittingScanner(true);
     try {
@@ -482,7 +482,7 @@ export default function LeadsTab() {
 
   const handleConvertLead = async (lead: any) => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const contactData = {
@@ -512,7 +512,7 @@ export default function LeadsTab() {
 
   const handleSavePdfToCloud = async (blob: Blob) => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const fileName = `Leads_Report_${Date.now()}.pdf`;

@@ -34,7 +34,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const fetchProjects = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
@@ -84,7 +84,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const fetchCompanyUsers = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const { data: profs } = await supabase
@@ -111,7 +111,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const fetchProjectDetails = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const { data: mems } = await supabase
@@ -208,7 +208,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const removeProject = async (id: string) => {
     try {
-      const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? `comp_${currentUser.uid}` : '');
+      const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
       await offboardProject(id, safeCompanyId);
     } catch (err) {
       console.error("Fehler beim Löschen des Projekts:", err);

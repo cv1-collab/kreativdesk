@@ -198,7 +198,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
 
   const handleSaveToCloud = async (blob: Blob) => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
     try {
       const fileName = `Spesen_${Date.now()}.pdf`;

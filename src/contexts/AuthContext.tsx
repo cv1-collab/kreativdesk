@@ -67,24 +67,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         let companyId = profile.company_id;
 
         if (!companyId) {
-          const { data: newCompany, error: compError } = await supabase
+          const { data: existingComp } = await supabase
             .from('companies')
-            .insert({
-              name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
-              plan: 'Free Trial',
-              max_seats: 1,
-              used_seats: 1,
-              owner_id: user.id
-            })
-            .select()
-            .single();
+            .select('*')
+            .eq('owner_id', user.id)
+            .maybeSingle();
 
-          if (!compError && newCompany) {
-            companyId = newCompany.id;
-            await supabase
-              .from('profiles')
-              .update({ company_id: companyId })
-              .eq('id', user.id);
+          if (existingComp) {
+            companyId = existingComp.id;
+            await supabase.from('profiles').update({ company_id: companyId }).eq('id', user.id);
+          } else {
+            const { data: newCompany, error: compError } = await supabase
+              .from('companies')
+              .insert({
+                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+                plan: 'Free Trial',
+                max_seats: 1,
+                used_seats: 1,
+                owner_id: user.id
+              })
+              .select()
+              .single();
+
+            if (!compError && newCompany) {
+              companyId = newCompany.id;
+              await supabase
+                .from('profiles')
+                .update({ company_id: companyId })
+                .eq('id', user.id);
+            }
           }
         }
 
@@ -165,22 +176,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // 2. Organisation DANACH anlegen mit owner_id = user.id
         if (!isInvitedUser) {
-          const { data: newCompany } = await supabase
+          const { data: existingComp } = await supabase
             .from('companies')
-            .insert({
-              name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
-              plan: 'Free Trial',
-              max_seats: 1,
-              used_seats: 1,
-              owner_id: user.id
-            })
-            .select()
-            .single();
+            .select('*')
+            .eq('owner_id', user.id)
+            .maybeSingle();
 
-          if (newCompany) {
-            targetCompanyId = newCompany.id;
+          if (existingComp) {
+            targetCompanyId = existingComp.id;
             await supabase.from('profiles').update({ company_id: targetCompanyId }).eq('id', user.id);
             newProfile.company_id = targetCompanyId;
+          } else {
+            const { data: newCompany } = await supabase
+              .from('companies')
+              .insert({
+                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+                plan: 'Free Trial',
+                max_seats: 1,
+                used_seats: 1,
+                owner_id: user.id
+              })
+              .select()
+              .single();
+
+            if (newCompany) {
+              targetCompanyId = newCompany.id;
+              await supabase.from('profiles').update({ company_id: targetCompanyId }).eq('id', user.id);
+              newProfile.company_id = targetCompanyId;
+            }
           }
         }
 

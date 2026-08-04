@@ -99,7 +99,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     const fetchData = async () => {
       const { data: txs } = await supabase
@@ -201,7 +201,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
   const handleSaveToCloud = async (blob: Blob) => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
     
     try {

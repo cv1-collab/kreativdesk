@@ -15,7 +15,7 @@ export default function AuditLogsTab() {
     
     const fetchLogs = async () => {
       try {
-        const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+        const safeCompanyId = currentUser.companyId || currentUser.uid;
         const { data } = await supabase
           .from('audit_logs')
           .select('*')

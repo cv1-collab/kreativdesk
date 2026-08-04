@@ -75,7 +75,7 @@ export default function AIConcierge() {
   }, [activeProjectId]);
 
   useEffect(() => {
-    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     if (isOpen && currentUser && !projectContext && safeCompanyId) {
       const fetchContext = async () => {
         try {

@@ -467,7 +467,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
        return; 
     }
 
-    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     const fetchPlans = async () => {
       const { data: plans } = await supabase
         .from('cad_plans')

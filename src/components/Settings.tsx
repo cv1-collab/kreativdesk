@@ -223,7 +223,7 @@ export default function Settings() {
     if (!currentUser) return;
 
     try {
-      const safeCompanyId = (currentUser as any).companyId || dbData?.companyId || `comp_${currentUser.uid}`;
+      const safeCompanyId = (currentUser as any).companyId || dbData?.companyId || currentUser.uid;
       const exportData: any = { accountInfo: dbData, projects: [], documents: [] };
 
       const { data: projects } = await supabase.from('projects').select('*').eq('company_id', safeCompanyId);

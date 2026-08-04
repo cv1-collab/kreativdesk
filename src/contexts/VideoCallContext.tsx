@@ -93,7 +93,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [currentUser]);
 
-  const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? `comp_${currentUser.uid}` : '');
+  const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
 
   // INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {

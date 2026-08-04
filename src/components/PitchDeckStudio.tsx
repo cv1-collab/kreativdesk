@@ -187,7 +187,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (!currentUser || !currentUser.companyId) return;
     
     const targetId = projectId || importProjectId;
-    const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     
     const fetchSlides = async () => {
       let query = supabase.from('slides').select('*').eq('company_id', safeCompanyId);

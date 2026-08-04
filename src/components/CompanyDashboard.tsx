@@ -195,7 +195,7 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     const sysFolders = [
       { id: 'fin', name: t('folder_finance') }, { id: 'legal', name: t('folder_legal') }, { id: 'hr', name: t('folder_hr') },
@@ -220,7 +220,7 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     const fetchData = async () => {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
@@ -306,7 +306,7 @@ export default function CompanyDashboard() {
 
   const handleCreateDemoProject = async (type: string = 'construction') => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
     addToast(`Erstelle Demo Projekt...`, 'info');
 
@@ -368,7 +368,7 @@ export default function CompanyDashboard() {
       return handleCreateDemoProject(type);
     }
     
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
     try {
       const { data: newProj, error } = await supabase
@@ -438,7 +438,7 @@ export default function CompanyDashboard() {
         await supabase.from('projects').delete().eq('id', projectId);
       }
       
-      const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
       await logAuditAction({
         action: 'PROJECT_DELETED',
         userId: currentUser.uid,
@@ -458,7 +458,7 @@ export default function CompanyDashboard() {
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !currentUser.uid || !newFolderName) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
       await supabase.from('documents').insert({
         name: newFolderName, is_folder: true, category: activeDocCategory === 'root' ? 'company' : activeDocCategory,
@@ -473,7 +473,7 @@ export default function CompanyDashboard() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser || !currentUser.uid || !activeFolderId) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     if (!currentFolder) return addToast("Fehler: Bitte einen Ordner auswählen.", 'error');
 
     addToast(`Upload: ${file.name}...`, 'info');

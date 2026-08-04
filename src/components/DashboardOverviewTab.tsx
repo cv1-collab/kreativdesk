@@ -33,7 +33,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     const loadData = async () => {
       try {

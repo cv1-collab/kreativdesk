@@ -58,7 +58,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
 
   const fetchGoals = async () => {
     if (!currentUser?.companyId || !projectId) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       const { data } = await supabase
@@ -99,7 +99,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGoal.trim() || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       await supabase.from('goals').insert({

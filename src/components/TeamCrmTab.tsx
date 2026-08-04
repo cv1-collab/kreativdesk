@@ -109,7 +109,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     const fetchAllContacts = async () => {
       const { data: profilesData } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
@@ -168,7 +168,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const handleDeleteContact = async (contactId: string) => {
     if (window.confirm(t('delete_user_confirm'))) {
       try {
-        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         
         await offboardCompanyUser(contactId, safeCompanyId);
         
@@ -209,7 +209,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     
     if (window.confirm(`${deletableIds.length} ${t('confirm_delete_multiple')}`)) {
       try {
-        const safeCompanyId = currentUser?.companyId || `comp_${currentUser?.uid}`;
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         await Promise.all(deletableIds.map(async (id) => {
           await offboardCompanyUser(id, safeCompanyId);
           await supabase.from('users').delete().eq('id', id);
@@ -275,7 +275,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     if (!currentUser || !currentUser.uid) return;
     
     setIsSubmitting(true);
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       let photoURL = newContact.id ? selectedContact?.photoURL : null; 
@@ -532,7 +532,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const ensureFolder = async (folderName: string) => {
     if (!currentUser || !currentUser.uid) return 'root';
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     const { data: existing } = await supabase
       .from('documents')
       .select('id')
@@ -549,7 +549,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     if (!currentUser || !currentUser.uid) return;
     setIsUploadingToCloud(true);
     try {
-      const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
       await new Promise(r => setTimeout(r, 200)); 
       const pdf = await generateNativePdfDocument();
       const fileName = `CRM_Report_${Date.now()}.pdf`;

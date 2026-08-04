@@ -64,7 +64,7 @@ export default function Documents() {
 
   const fetchDocuments = async () => {
     if (!currentUser?.companyId) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
@@ -90,7 +90,7 @@ export default function Documents() {
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSeeding(true);
     addToast('Lade Demo-Projektdaten & Firmenordner...', 'info');
 
@@ -110,7 +110,7 @@ export default function Documents() {
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFolderName.trim() || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
       await supabase.from('documents').insert({
@@ -137,7 +137,7 @@ export default function Documents() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     setIsUploading(true);
     try {

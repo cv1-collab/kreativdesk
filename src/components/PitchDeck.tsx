@@ -136,7 +136,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     
     const fetchSlides = async () => {
       try {
-        const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+        const safeCompanyId = currentUser.companyId || currentUser.uid;
         const { data } = await supabase
           .from('slides')
           .select('*')

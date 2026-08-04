@@ -270,7 +270,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   useEffect(() => {
     if (!currentUser?.companyId) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     const fetchData = async () => {
       try {
@@ -338,7 +338,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const handleLogTime = async (e: React.FormEvent) => { 
     e.preventDefault(); 
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     const finalHours = timeTrackingMode === 'timer' ? Number((timerSeconds / 3600).toFixed(2)) : timeEntryForm.hours;
     if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Fehler', 'error'); return; } 
@@ -364,7 +364,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const handleSaveCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !currentUser.uid || !newEvent.title || !newEvent.date || !newEvent.projectId) { addToast('Fehler', 'error'); return; }
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     try {
       if (isDemoMode) {
@@ -479,7 +479,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const ensureFolder = async (folderName: string) => {
     if (!currentUser || !currentUser.uid) return 'root';
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     const { data: existing } = await supabase
       .from('documents')
       .select('id')
@@ -494,7 +494,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const handleSavePdfToCloud = async (blob: Blob) => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
       const fileName = `${printType === 'rapport' ? 'Rapport' : 'Agenda'}_${Date.now()}.pdf`;
       const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
