@@ -7,13 +7,15 @@ import { supabase } from '../lib/supabase';
 import { 
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus, 
   ChevronLeft, ChevronRight, Video, Download, X, 
-  FileText, Link as LinkIcon, Save, Edit3, Users
+  FileText, Link as LinkIcon, Save, Edit3, Users, Sparkles, Filter, AlertCircle, Calendar
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { downloadICSFile } from '../utils/icsGenerator';
+import { callGeminiAPI } from '../utils/geminiClient';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -268,6 +270,65 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [printType, setPrintType] = useState<'rapport' | 'agenda'>('rapport');
 
+  // FILTER & AI STATES
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
+  const [isGeneratingAIRapport, setIsGeneratingAIRapport] = useState(false);
+  const [aiRapportModalOpen, setAiRapportModalOpen] = useState(false);
+  const [aiRapportText, setAiRapportText] = useState('');
+
+  const handleExportICal = () => {
+    const eventsToExport = filteredEvents.map(e => ({
+      title: e.title,
+      description: e.description,
+      startDate: e.date,
+      startTime: e.time,
+      location: e.type === 'site-visit' ? 'Baustelle' : (e.meeting_link ? `${window.location.origin}${e.meeting_link}` : ''),
+      url: e.meeting_link ? `${window.location.origin}${e.meeting_link}` : undefined
+    }));
+
+    if (eventsToExport.length === 0) {
+      addToast('Keine Termine für den Export gefunden.', 'info');
+      return;
+    }
+
+    downloadICSFile(eventsToExport, `KreativDesk_Agenda_${new Date().toISOString().split('T')[0]}`);
+    addToast(`${eventsToExport.length} Termine als iCal (.ics) exportiert!`, 'success');
+  };
+
+  const handleGenerateAIRapport = async () => {
+    setIsGeneratingAIRapport(true);
+    addToast('Erstelle KI-Baustellenrapport...', 'info');
+    try {
+      const timeSummary = localTimeEntries.slice(0, 15).map(t => `- ${t.date}: ${t.hours}h (${t.description || 'Arbeit'})`).join('\n');
+      const eventSummary = calendarEvents.slice(0, 10).map(e => `- ${e.date} ${e.time}: ${e.title} (${e.type})`).join('\n');
+
+      const prompt = `Du bist ein erfahrener Schweizer Bauleiter & Projektmanager. Erstelle einen präzisen, professionellen Tages- & Wochen-Rapport (Zusammenfassung) für die Geschäftsleitung basierend auf folgenden Daten:
+      
+      ZEITERFASSUNGEN / STUNDEN:
+      ${timeSummary || 'Keine Zeiteinträge'}
+      
+      MEETINGS & BAUSTELLEN-TERMINE:
+      ${eventSummary || 'Keine Termine'}
+      
+      Gliedere den Bericht in:
+      1. 📌 Wichtigste Arbeitsfortschritte & Meilensteine
+      2. 🚨 Offene Punkte & Risiken
+      3. 🎯 Nächste Schritte
+      
+      Verwende Schweizer Rechtschreibung (ss statt ß).`;
+
+      const aiResponse = await callGeminiAPI(prompt);
+      setAiRapportText(aiResponse);
+      setAiRapportModalOpen(true);
+      setIsGeneratingAIRapport(false);
+    } catch (err) {
+      console.error("AI Rapport error:", err);
+      addToast('Fehler bei der KI-Generierung', 'error');
+      setIsGeneratingAIRapport(false);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser?.companyId) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -449,11 +510,19 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${targetYearCalendar}-${(currentMonth + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
-      const dayEvents = calendarEvents.filter(e => e.date === dateStr);
+      const dayEvents = filteredEvents.filter(e => e.date === dateStr);
+      const dayHours = dayWorkloadMap[dateStr] || 0;
 
       days.push(
-        <div key={d} onClick={() => { setNewEvent(prev => ({ ...prev, date: dateStr })); setIsEventModalOpen(true); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDropEvent(e, dateStr)} className="aspect-square md:aspect-auto md:min-h-[100px] bg-surface p-1 md:p-2 hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors group flex flex-col cursor-pointer overflow-hidden">
-          <span className="text-[10px] md:text-xs font-bold text-text-muted group-hover:text-text-primary">{d}</span>
+        <div key={d} onClick={() => { setNewEvent(prev => ({ ...prev, date: dateStr })); setIsEventModalOpen(true); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDropEvent(e, dateStr)} className="aspect-square md:aspect-auto md:min-h-[100px] bg-surface p-1 md:p-2 hover:bg-black/5 dark:hover:bg-white/[0.02] transition-colors group flex flex-col cursor-pointer overflow-hidden relative">
+          <div className="flex justify-between items-center w-full">
+            <span className="text-[10px] md:text-xs font-bold text-text-muted group-hover:text-text-primary">{d}</span>
+            {dayHours > 0 && (
+              <span className={cn("px-1 py-0.5 rounded text-[8px] font-black uppercase border", dayHours >= 8.5 ? "bg-red-500/10 text-red-500 border-red-500/30" : dayHours >= 7 ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/30")}>
+                {dayHours >= 8.5 ? '🔴' : dayHours >= 7 ? '🟡' : '🟢'} {dayHours}h
+              </span>
+            )}
+          </div>
           <div className="mt-0.5 md:mt-1 space-y-0.5 md:space-y-1 flex-1 overflow-hidden">
             {dayEvents.slice(0, 3).map(event => (
               <div 
@@ -540,15 +609,53 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           <p className="text-sm text-text-muted mt-1 font-medium">{t('agenda_desc')}</p>
         </div>
         
-        <div className="hidden lg:flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={handleExportICal} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+            <Download size={14} /> iCal Export (.ics)
+          </button>
+          <button onClick={handleGenerateAIRapport} disabled={isGeneratingAIRapport} className="flex items-center gap-2 px-3.5 py-2 bg-accent-ai/10 border border-accent-ai/20 text-accent-ai hover:bg-accent-ai/20 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50">
+            {isGeneratingAIRapport ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} KI-Baustellenrapport
+          </button>
           {canWriteTimeAndEvents && (
-            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-md text-sm font-bold transition-colors shadow-sm">
-              <Download size={14} /> {t('rapport')} PDF
+            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+              <FileText size={14} /> {t('rapport')} PDF
             </button>
           )}
-          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-md text-sm font-bold transition-colors shadow-sm">
-            <Download size={14} /> {t('agenda')} PDF
+          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+            <FileText size={14} /> {t('agenda')} PDF
           </button>
+        </div>
+      </div>
+
+      {/* QUICK FILTER BAR */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface border border-border/50 p-3 rounded-2xl shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-bold text-text-muted flex items-center gap-1.5 mr-2">
+            <Filter size={14}/> Quick-Filter:
+          </span>
+          {['all', 'meeting', 'call', 'site-visit'].map(tType => (
+            <button
+              key={tType}
+              type="button"
+              onClick={() => setSelectedTypeFilter(tType)}
+              className={cn("px-3 py-1.5 rounded-xl text-xs font-bold transition-all border", selectedTypeFilter === tType ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background border-border/50 text-text-muted hover:text-text-primary")}
+            >
+              {tType === 'all' ? 'Alle Termine' : tType === 'meeting' ? 'Meetings' : tType === 'call' ? 'Videocalls' : 'Baustelle'}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <select 
+            value={selectedProjectFilter}
+            onChange={e => setSelectedProjectFilter(e.target.value)}
+            className="px-3 py-1.5 bg-background border border-border/50 rounded-xl text-xs font-bold text-text-primary outline-none cursor-pointer"
+          >
+            <option value="all">Alle Projekte</option>
+            {safeProjects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -842,6 +949,31 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
               />
             )}
           </UniversalPDFStudio>
+
+          {/* AI RAPPORT MODAL */}
+          {aiRapportModalOpen && (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col overflow-hidden max-h-[85vh]">
+                <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+                  <h3 className="font-bold flex items-center gap-2 text-text-primary"><Sparkles className="text-accent-ai" size={18}/> KI-Baustellenrapport & Führungsbericht</h3>
+                  <button onClick={() => setAiRapportModalOpen(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18}/></button>
+                </div>
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                  <div className="text-sm text-text-primary whitespace-pre-wrap leading-relaxed bg-background/50 border border-border/50 p-5 rounded-xl font-medium">
+                    {aiRapportText}
+                  </div>
+                </div>
+                <div className="p-4 border-t border-border bg-surface flex justify-between items-center shrink-0">
+                  <button onClick={async () => { await navigator.clipboard.writeText(aiRapportText); addToast('Rapport in Zwischenablage kopiert!', 'success'); }} className="px-4 py-2 bg-background border border-border/50 text-text-primary rounded-xl text-xs font-bold hover:bg-white/5 transition-colors">
+                    Text Kopieren
+                  </button>
+                  <button onClick={() => setAiRapportModalOpen(false)} className="px-6 py-2 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:opacity-90 transition-opacity">
+                    Schliessen
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </>,
         portalNode
       )}
