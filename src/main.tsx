@@ -4,6 +4,9 @@ import {createRoot} from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import './index.css';
+import { scrubLocalStorageFileUrls } from './utils';
+
+scrubLocalStorageFileUrls();
 
 // Initialisiert den PWA Service Worker (Background Updates & Caching)
 if ('serviceWorker' in navigator) {

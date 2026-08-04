@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { sanitizeUrl } from '../utils';
 
 export default function Screensaver() {
   const { currentUser } = useAuth();
@@ -84,7 +85,7 @@ export default function Screensaver() {
       >
         <div 
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105"
-          style={{ backgroundImage: `url(${config.image})` }}
+          style={{ backgroundImage: sanitizeUrl(config.image) ? `url(${sanitizeUrl(config.image)})` : 'none' }}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
         </div>

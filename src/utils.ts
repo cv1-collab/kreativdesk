@@ -8,12 +8,34 @@ export function cn(...inputs: ClassValue[]) {
 export function sanitizeUrl(url?: string | null): string {
   if (!url || typeof url !== 'string') return '';
   const trimmed = url.trim();
-  if (trimmed.includes('file:///')) {
-    if (trimmed.includes('demo-assets/')) {
-      const filename = trimmed.split('demo-assets/')[1]?.split('?')[0];
+  const lower = trimmed.toLowerCase();
+  
+  if (lower.includes('file:') || lower.includes('/users/') || lower.includes('/desktop/')) {
+    if (lower.includes('demo-assets/')) {
+      const parts = trimmed.split(/demo-assets\//i);
+      const filename = parts[1]?.split('?')[0]?.split('#')[0];
       return filename ? `/demo-assets/${filename}` : '';
     }
     return '';
   }
   return trimmed;
+}
+
+export function scrubLocalStorageFileUrls() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      const val = localStorage.getItem(key);
+      if (val && (val.toLowerCase().includes('file:') || val.toLowerCase().includes('/users/'))) {
+        const cleaned = val
+          .replace(/file:\/\/\/[^\s"']+\/demo-assets\/([^\s"']+)/gi, '/demo-assets/$1')
+          .replace(/file:\/\/\/[^\s"']+/gi, '');
+        localStorage.setItem(key, cleaned);
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
 }
