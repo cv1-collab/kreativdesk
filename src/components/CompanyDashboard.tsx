@@ -105,21 +105,14 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     if (currentUser?.uid) {
-      const triggerPendingKey = `tour_trigger_pending_${currentUser.uid}`;
       const hasSeen = currentUser.hasSeenTour === true || localStorage.getItem(`tour_${currentUser.uid}`) === 'true';
       
-      if (hasSeen) {
-        localStorage.removeItem(triggerPendingKey);
-        return;
-      }
-
-      if (localStorage.getItem(triggerPendingKey) === 'true') {
-        localStorage.removeItem(triggerPendingKey);
+      if (!hasSeen) {
         localStorage.setItem(`tour_${currentUser.uid}`, 'true');
         supabase.from('profiles').update({ has_seen_tour: true }).eq('id', currentUser.uid).then();
         const timer = setTimeout(() => {
           startTour();
-        }, 1000);
+        }, 1200);
         return () => clearTimeout(timer);
       }
     }

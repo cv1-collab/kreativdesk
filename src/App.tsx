@@ -27,6 +27,7 @@ import ProductTour from './components/ProductTour';
 
 // +++ NEU: Globales Cookie Banner +++
 const CookieBanner = lazy(() => import('./components/CookieBanner'));
+const ResetPassword = lazy(() => import('./components/ResetPassword'));
 
 // +++ NEU: Der Trial Guard (Paywall) +++
 const TrialGuard = lazy(() => import('./components/TrialGuard'));
@@ -99,6 +100,7 @@ export default function App() {
                             <Route path="/" element={<LandingPage />} />
                             <Route path="/login" element={<Login />} />
                             <Route path="/signup" element={<Signup />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
                             <Route path="/pricing" element={<PricingPage />} />
                             <Route path="/success" element={<SuccessPage />} />
                             <Route path="/guest-meet/:joinId" element={<GuestMeet />} />

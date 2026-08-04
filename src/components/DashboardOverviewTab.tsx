@@ -140,7 +140,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
           {chartData.length === 0 ? (
             <div className="py-12 text-center text-text-muted font-medium text-sm">Keine aktiven Projekte.</div>
           ) : (
-            <div className="h-56">
+            <div className="h-56 relative flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={chartData} innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value">
@@ -151,6 +151,10 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
                   <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-black text-text-primary">{projects.length}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Projekte</span>
+              </div>
             </div>
           )}
         </div>

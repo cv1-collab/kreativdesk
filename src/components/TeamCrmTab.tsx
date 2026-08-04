@@ -105,25 +105,33 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [realUsers, setRealUsers] = useState<any[]>([]);
-  useEffect(() => {
-    if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const fetchUsers = async () => {
-      const { data } = await supabase.from('users').select('*').eq('company_id', safeCompanyId);
-      if (data) setRealUsers(data);
-    };
-    fetchUsers();
-  }, [currentUser]);
-
   const [crmUsers, setCrmUsers] = useState<any[]>([]);
+
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || `comp_${currentUser.uid}`;
-    const fetchCrmUsers = async () => {
-      const { data } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
-      if (data) setCrmUsers(data);
+    
+    const fetchAllContacts = async () => {
+      const { data: profilesData } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
+      const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
+      
+      const mappedProfiles = (profilesData || []).map(p => ({
+        id: p.id,
+        firstName: p.name?.split(' ')[0] || p.name || 'Team',
+        lastName: p.name?.split(' ').slice(1).join(' ') || '',
+        email: p.email,
+        company: p.company_name || 'Kreativ Desk',
+        status: 'team',
+        role: p.role || 'owner',
+        isExternal: false
+      }));
+
+      const combined = [...mappedProfiles, ...(crmData || [])];
+      setCrmUsers(combined);
+      setRealUsers(profilesData || []);
     };
-    fetchCrmUsers();
+
+    fetchAllContacts();
   }, [currentUser]);
 
   const vcfInputRef = useRef<HTMLInputElement>(null);
