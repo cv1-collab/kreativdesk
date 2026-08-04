@@ -524,6 +524,49 @@ export default function BIMViewer() {
   const [defectMode, setDefectMode] = useState(false);
   const [defectPins, setDefectPins] = useState<{position: THREE.Vector3, normal: THREE.Vector3, id: string, description: string}[]>([]);
   const [isTouring, setIsTouring] = useState(false);
+
+  // 3D CLIPPING PLANES & PITCH DECK SNAPSHOT STATES
+  const [clippingX, setClippingX] = useState<number>(20);
+  const [clippingY, setClippingY] = useState<number>(20);
+  const [clippingZ, setClippingZ] = useState<number>(20);
+  const [isClippingActive, setIsClippingActive] = useState<boolean>(false);
+
+  const handleSaveBimToPitchDeck = async () => {
+    let snapshotUrl = '';
+    if (typeof (window as any).captureBimSnapshot === 'function') {
+      snapshotUrl = (window as any).captureBimSnapshot();
+    }
+
+    if (!snapshotUrl) {
+      addToast('Kein 3D-Snapshot verfügbar.', 'error');
+      return;
+    }
+
+    addToast('Speichere 3D BIM Folie im Pitch Deck...', 'info');
+    try {
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      const targetProjectId = projectId || 'global';
+
+      const newSlide = {
+        id: `slide-bim-${Date.now()}`,
+        title: `3D BIM Modell: ${activeProject?.name || 'Projekt'}`,
+        content: `3D-Perspektive & Mängel-Audit. Erfasste Pins: ${defectPins.length}`,
+        layout: 'image-focus',
+        imageUrl: snapshotUrl,
+        order_index: 99,
+        company_id: safeCompanyId,
+        owner_id: currentUser?.uid,
+        project_id: targetProjectId,
+        created_at: new Date().toISOString()
+      };
+
+      await supabase.from('slides').insert(newSlide as any);
+      addToast('3D BIM Ansicht als Folie im Pitch Deck gespeichert!', 'success');
+    } catch (err) {
+      console.error("Save BIM to Pitch Deck error:", err);
+      addToast('Fehler beim Speichern der Folie', 'error');
+    }
+  };
   
   const { addToast } = useToast();
 
@@ -1182,12 +1225,16 @@ export default function BIMViewer() {
                     <div className="w-px h-4 bg-border mx-2"></div>
                     <button onClick={() => { setDefectMode(!defectMode); if (!defectMode) { setMeasureMode(false); setCameraMode('rotate'); } setSelectedId(null); }} className={cn("p-2 rounded-md transition-colors", defectMode ? "bg-red-500/20 text-red-500" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('defect_pin_mode')}><ShieldAlert size={18} /></button>
                     <button onClick={() => { setMeasureMode(!measureMode); if (!measureMode) { setDefectMode(false); setCameraMode('rotate'); } setMeasurePoints([]); setSelectedId(null); }} className={cn("p-2 rounded-md transition-colors", measureMode ? "bg-accent-ai/20 text-accent-ai" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('measurement_mode')}><Ruler size={18} /></button>
+                    <button onClick={() => setIsClippingActive(!isClippingActive)} className={cn("p-2 rounded-md transition-colors", isClippingActive ? "bg-purple-500/20 text-purple-400" : "text-text-muted hover:bg-background hover:text-text-primary")} title="3D-Schnitt-Ebenen (Cut Planes)"><PenTool size={18} /></button>
                     <div className="w-px h-4 bg-border mx-2 hidden sm:block"></div>
                     <button onClick={() => setIsExploded(!isExploded)} className={cn("p-2 rounded-md transition-colors hidden sm:block", isExploded ? "bg-accent-ai/20 text-accent-ai" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('exploded_view')}><SplitSquareVertical size={18} /></button>
                     <button onClick={() => setIsTouring(!isTouring)} className={cn("p-2 rounded-md transition-colors hidden sm:block", isTouring ? "bg-accent-ai/20 text-accent-ai" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('ai_site_tour')}><Video size={18} /></button>
                   </div>
                   
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
+                    <button onClick={handleSaveBimToPitchDeck} className="px-3 py-1.5 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-lg text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5">
+                      <ImageIcon size={14}/> Pitch Deck
+                    </button>
                     <button onClick={() => setActiveFloor(prev => prev === null ? 2 : (prev < 2 ? prev + 1 : null))} className="p-2 hover:bg-background rounded-md text-text-muted hover:text-text-primary transition-colors" title={t('floor_up')}><ArrowUp size={18} /></button>
                     <div className="px-2 text-xs font-medium text-text-muted w-12 sm:w-16 text-center">{activeFloor === null ? 'ALL' : `LVL ${activeFloor}`}</div>
                     <button onClick={() => setActiveFloor(prev => prev === null ? 0 : (prev > 0 ? prev - 1 : null))} className="p-2 hover:bg-background rounded-md text-text-muted hover:text-text-primary transition-colors" title={t('floor_down')}><ArrowDown size={18} /></button>
@@ -1195,6 +1242,28 @@ export default function BIMViewer() {
                     <button onClick={toggleFullscreen} className="p-2 hover:bg-background rounded-md text-text-muted hover:text-text-primary transition-colors" title={t('fullscreen')}><Maximize size={18} /></button>
                   </div>
                 </div>
+
+                {/* 3D CLIPPING PLANES CONTROL BAR */}
+                {isClippingActive && (
+                  <div className="absolute top-14 left-4 z-30 bg-surface/95 backdrop-blur-md border border-border p-3 rounded-2xl shadow-2xl flex flex-col gap-2.5 w-64 animate-in fade-in duration-200">
+                    <div className="flex justify-between items-center border-b border-border/50 pb-1.5">
+                      <span className="text-xs font-bold text-text-primary flex items-center gap-1.5"><PenTool size={14} className="text-purple-400"/> 3D-Schnitt-Ebenen</span>
+                      <button onClick={() => setIsClippingActive(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-bold text-text-muted"><span>X-Achse Schnittebene</span><span>{clippingX}m</span></div>
+                      <input type="range" min="-10" max="30" value={clippingX} onChange={e => setClippingX(Number(e.target.value))} className="w-full h-1 bg-background rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-bold text-text-muted"><span>Y-Achse Schnittebene</span><span>{clippingY}m</span></div>
+                      <input type="range" min="-5" max="25" value={clippingY} onChange={e => setClippingY(Number(e.target.value))} className="w-full h-1 bg-background rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-bold text-text-muted"><span>Z-Achse Schnittebene</span><span>{clippingZ}m</span></div>
+                      <input type="range" min="-10" max="30" value={clippingZ} onChange={e => setClippingZ(Number(e.target.value))} className="w-full h-1 bg-background rounded-lg appearance-none cursor-pointer accent-purple-500" />
+                    </div>
+                  </div>
+                )}
 
                 <div className="absolute inset-0 pt-12 z-0 overflow-hidden bg-background">
                   <Canvas 

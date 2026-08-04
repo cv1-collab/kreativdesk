@@ -403,6 +403,64 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [isSavingDefect, setIsSavingDefect] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
+  // TrueScale Calibrator & Pitch Deck Snapshot States
+  const [calibrationModalOpen, setCalibrationModalOpen] = useState(false);
+  const [calibrationMetersInput, setCalibrationMetersInput] = useState('5.0');
+  const [isCalibratingMode, setIsCalibratingMode] = useState(false);
+  const [calibrationLine, setCalibrationLine] = useState<{start: {x:number, y:number}, end: {x:number, y:number}} | null>(null);
+
+  const handleApplyScaleCalibration = () => {
+    if (!calibrationLine) return;
+    const knownMeters = parseFloat(calibrationMetersInput);
+    if (isNaN(knownMeters) || knownMeters <= 0) {
+      addToast('Bitte eine gültige Distanz eingeben', 'error');
+      return;
+    }
+
+    const dxReal_mm = (calibrationLine.end.x - calibrationLine.start.x) * paperW_mm;
+    const dyReal_mm = (calibrationLine.end.y - calibrationLine.start.y) * paperH_mm;
+    const lineDistanceOnPaper_mm = Math.sqrt(dxReal_mm * dxReal_mm + dyReal_mm * dyReal_mm);
+
+    if (lineDistanceOnPaper_mm > 0) {
+      const computedScaleRatio = Math.round((knownMeters * 1000) / lineDistanceOnPaper_mm);
+      setPlanScale(computedScaleRatio);
+      addToast(`TrueScale™ kalibriert auf 1:${computedScaleRatio}!`, 'success');
+    }
+
+    setCalibrationModalOpen(false);
+    setIsCalibratingMode(false);
+    setCalibrationLine(null);
+  };
+
+  const handleSaveSnapshotToPitchDeck = async () => {
+    if (!currentUser || !currentUser.companyId) return;
+    addToast('Speichere CAD-Folie im Pitch Deck...', 'info');
+
+    try {
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
+      const targetProjectId = currentProjectId || 'global';
+
+      const newSlide = {
+        id: `slide-cad-${Date.now()}`,
+        title: `CAD Plan: ${planName}`,
+        content: `TrueScale™ 1:${planScale} (${paperFormat} ${paperOrientation})`,
+        layout: 'image-focus',
+        imageUrl: planImage || dummySvgPlan,
+        order_index: 99,
+        company_id: safeCompanyId,
+        owner_id: currentUser.uid,
+        project_id: targetProjectId,
+        created_at: new Date().toISOString()
+      };
+
+      await supabase.from('slides').insert(newSlide as any);
+      addToast('CAD-Plan als Folie im Pitch Deck gespeichert!', 'success');
+    } catch (err) {
+      console.error("Save snapshot to Pitch Deck error:", err);
+      addToast('Fehler beim Speichern der Folie', 'error');
+    }
+  };
+
   const isLandscape = paperOrientation === 'landscape';
   const paperW_mm = isLandscape ? PAPER_DIMENSIONS[paperFormat].w : PAPER_DIMENSIONS[paperFormat].h;
   const paperH_mm = isLandscape ? PAPER_DIMENSIONS[paperFormat].h : PAPER_DIMENSIONS[paperFormat].w;
@@ -1195,6 +1253,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         )}
 
         <div className="flex items-center gap-3">
+          <button onClick={() => { setIsCalibratingMode(true); setCalibrationModalOpen(true); }} className="px-3.5 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5">
+            <Ruler size={14}/> TrueScale™ Kalibrieren
+          </button>
+          <button onClick={handleSaveSnapshotToPitchDeck} className="px-3.5 py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5">
+            <ImageIcon size={14}/> Pitch Deck
+          </button>
           <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-xl text-xs font-bold shadow-sm hover:bg-white/5 transition-colors">
             {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} {t('upload_plan')}
             <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading} className="hidden" />
@@ -1544,6 +1608,41 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           />
         )}
       </UniversalPDFStudio>
+
+      {/* TRUESCALE CALIBRATOR MODAL */}
+      {calibrationModalOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
+            <div className="flex justify-between items-center border-b border-border/50 pb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> TrueScale™ Maßstabs-Kalibrierung</h3>
+              <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={18}/></button>
+            </div>
+
+            <p className="text-xs text-text-muted leading-relaxed">
+              Zeichne eine Referenzlinie über eine bekannte Distanz (z.B. eine Wand) und gib den exakten Wert in Metern ein. Das CAD-System berechnet automatisch den Maßstab (1:50, 1:100 etc.).
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Bekannte Reallänge in Metern (m)</label>
+              <input 
+                type="number"
+                step="0.1"
+                value={calibrationMetersInput}
+                onChange={e => setCalibrationMetersInput(e.target.value)}
+                className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-purple-500"
+                placeholder="z.B. 5.0"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
+              <button type="button" onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">Abbrechen</button>
+              <button type="button" onClick={handleApplyScaleCalibration} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2">
+                <Check size={16} /> <span>Maßstab Kalibrieren</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
     </PremiumFeature>
   );

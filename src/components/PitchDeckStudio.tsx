@@ -12,12 +12,13 @@ import {
   ChevronUp, ChevronDown, Loader2, Settings, Eye, Users, DollarSign, 
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
-  Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight
+  Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { cn, sanitizeUrl } from '../utils';
 import { demoTemplates } from '../utils/demoTemplates';
+import { callGeminiAPI } from '../utils/geminiClient';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -148,6 +149,92 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   const [mobileTab, setMobileTab] = useState<'slides' | 'content' | 'design' | 'import'>('slides');
+
+  // AI DECK GENERATOR & PRESENTER MODE STATES
+  const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
+  const [aiPromptInput, setAiPromptInput] = useState('');
+  const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
+
+  const [isPresenterMode, setIsPresenterMode] = useState(false);
+  const [presenterIndex, setPresenterIndex] = useState(0);
+  const [presenterSeconds, setPresenterSeconds] = useState(0);
+
+  useEffect(() => {
+    let timer: any;
+    if (isPresenterMode) {
+      timer = setInterval(() => setPresenterSeconds(s => s + 1), 1000);
+    } else {
+      setPresenterSeconds(0);
+    }
+    return () => clearInterval(timer);
+  }, [isPresenterMode]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isPresenterMode) return;
+      if (e.key === 'ArrowRight' || e.key === 'Space') {
+        setPresenterIndex(i => Math.min(slides.length - 1, i + 1));
+      } else if (e.key === 'ArrowLeft') {
+        setPresenterIndex(i => Math.max(0, i - 1));
+      } else if (e.key === 'Escape') {
+        setIsPresenterMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPresenterMode, slides.length]);
+
+  const handleGenerateAIDeck = async () => {
+    if (!aiPromptInput.trim()) return;
+    setIsGeneratingAIDeck(true);
+    addToast('KI generiert Präsentation...', 'info');
+
+    try {
+      const prompt = `Erstelle ein professionelles Pitch-Deck für folgendes Thema / Briefing: "${aiPromptInput}".
+      Gib das Ergebnis als ein valides JSON-Array von 5 Folien zurück. Jedes Objekt im Array hat genau folgende Struktur:
+      [
+        { "title": "Folie 1 Titel", "content": "Stichpunkte oder Beschreibung...", "layout": "title-only" },
+        { "title": "Folie 2 Titel", "content": "Stichpunkte...", "layout": "split" },
+        { "title": "Folie 3 Thema", "content": "Details...", "layout": "text-only" },
+        { "title": "Folie 4 Daten", "content": "Finanzen & Meilensteine", "layout": "data-budget" },
+        { "title": "Folie 5 Fazit", "content": "Zusammenfassung & Nächste Schritte", "layout": "split" }
+      ]
+      Antworte NUR mit dem reinen JSON-Code, ohne Markdown-Formatierung!`;
+
+      const aiRes = await callGeminiAPI(prompt);
+      const cleaned = aiRes.replace(/```json/g, '').replace(/```/g, '').trim();
+      const generatedSlides = JSON.parse(cleaned);
+
+      if (Array.isArray(generatedSlides) && generatedSlides.length > 0) {
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        const targetId = projectId || importProjectId || 'global';
+
+        const newSlideObjects = generatedSlides.map((s, idx) => ({
+          id: `slide-ai-${Date.now()}-${idx}`,
+          title: s.title || `Folie ${idx + 1}`,
+          content: s.content || '',
+          layout: s.layout || 'split',
+          order_index: slides.length + idx,
+          company_id: safeCompanyId,
+          owner_id: currentUser?.uid,
+          project_id: targetId,
+          created_at: new Date().toISOString()
+        }));
+
+        await supabase.from('slides').insert(newSlideObjects as any);
+        setSlides(prev => [...prev, ...newSlideObjects]);
+        if (newSlideObjects.length > 0) setActiveSlideId(newSlideObjects[0].id);
+        setIsAiGeneratorOpen(false);
+        setAiPromptInput('');
+        addToast(`${newSlideObjects.length} KI-Folien generiert!`, 'success');
+      }
+    } catch (err) {
+      console.error("AI Deck Generation Error:", err);
+      addToast('Fehler bei der KI-Generierung', 'error');
+    } finally {
+      setIsGeneratingAIDeck(false);
+    }
+  };
 
   const [deckSettings, setDeckSettings] = useState<DeckSettings>({
     logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'swiss' 
@@ -1224,6 +1311,12 @@ const handleGenerateTeamSlide = async () => {
               )}
             </div>
             <div className="flex items-center gap-3">
+              <button type="button" onClick={() => setIsAiGeneratorOpen(true)} className="px-3.5 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-2 items-center shadow-md transition-all flex">
+                <Sparkles size={14}/> <span>KI Deck erstellen</span>
+              </button>
+              <button type="button" onClick={() => { setPresenterIndex(slides.findIndex(s => s.id === activeSlideId) || 0); setIsPresenterMode(true); }} disabled={slides.length === 0} className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-bold gap-2 items-center shadow-md disabled:opacity-50 transition-all flex">
+                <Play size={14}/> <span>Präsentationsmodus</span>
+              </button>
               <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-2 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex">
                  <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
               </button>
@@ -1372,6 +1465,78 @@ const handleGenerateTeamSlide = async () => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* FULLSCREEN PRESENTER MODE OVERLAY */}
+      {isPresenterMode && slides[presenterIndex] && (
+        <div className="fixed inset-0 z-[200000] bg-black text-white flex flex-col items-center justify-between p-6 select-none animate-in fade-in duration-200">
+          <div className="w-full flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-xs font-mono font-bold">
+                Folie {presenterIndex + 1} / {slides.length}
+              </span>
+              <span className="text-xs text-white/50 flex items-center gap-1.5 font-mono">
+                <Clock size={14}/> {Math.floor(presenterSeconds / 60)}m {presenterSeconds % 60}s
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-white/40">Nutze ← / → Pfeiltasten</span>
+              <button onClick={() => setIsPresenterMode(false)} className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors">
+                Beenden (Esc)
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 w-full flex items-center justify-center p-4">
+            <div style={{ width: 1000, height: 562, transform: 'scale(1.25)', transformOrigin: 'center' }} className="shadow-2xl rounded-xl overflow-hidden shrink-0 border border-white/20">
+              {renderSlideContent(slides[presenterIndex])}
+            </div>
+          </div>
+
+          <div className="w-full flex items-center justify-between border-t border-white/10 pt-4">
+            <button onClick={() => setPresenterIndex(i => Math.max(0, i - 1))} disabled={presenterIndex === 0} className="px-5 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+              <ChevronLeft size={16}/> Vorherige Folie
+            </button>
+            <div className="text-xs font-bold text-white/60">
+              {slides[presenterIndex].title}
+            </div>
+            <button onClick={() => setPresenterIndex(i => Math.min(slides.length - 1, i + 1))} disabled={presenterIndex === slides.length - 1} className="px-5 py-2.5 bg-accent-ai hover:bg-accent-ai/90 disabled:opacity-20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2">
+              Nächste Folie <ChevronRight size={16}/>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* AI DECK GENERATOR MODAL */}
+      {isAiGeneratorOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl p-6 space-y-5">
+            <div className="flex justify-between items-center border-b border-border/50 pb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><Sparkles className="text-purple-400" size={20}/> KI-Präsentations-Generator</h3>
+              <button onClick={() => setIsAiGeneratorOpen(false)} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={18}/></button>
+            </div>
+
+            <p className="text-xs text-text-muted">
+              Gib ein Thema, ein Projekt-Briefing oder Key-Facts ein. Gemini AI baut automatisch eine fertige Präsentation mit passenden Layouts.
+            </p>
+
+            <textarea
+              rows={4}
+              value={aiPromptInput}
+              onChange={e => setAiPromptInput(e.target.value)}
+              placeholder="z.B. Erstelle ein Architekten-Pitch-Deck für ein modernes Holzhaus in den Schweizer Alpen. Fokus auf Nachhaltigkeit, Baukosten und Zeitplan."
+              className="w-full bg-background border border-border/50 rounded-xl p-4 text-xs font-medium text-text-primary outline-none focus:border-purple-500 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
+              <button type="button" onClick={() => setIsAiGeneratorOpen(false)} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">Abbrechen</button>
+              <button type="button" onClick={handleGenerateAIDeck} disabled={isGeneratingAIDeck || !aiPromptInput.trim()} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
+                {isGeneratingAIDeck ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                <span>Deck generieren</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
     </PremiumFeature>
   );
