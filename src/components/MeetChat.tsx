@@ -53,7 +53,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; reference?: string; createdAt?: Timestamp; }
+interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; reference?: string; createdAt?: any; }
 
 export default function MeetChat() {
   const { projectId } = useParams();
@@ -125,7 +125,7 @@ export default function MeetChat() {
                 timestamp: Date.now(),
                 project_id: projectId || activeProjectId || 'global',
                 company_id: currentUser.companyId
-             }).catch(console.error);
+             }).then(({ error }) => { if (error) console.error(error); });
           }
         } else {
           interim += event.results[i][0].transcript;

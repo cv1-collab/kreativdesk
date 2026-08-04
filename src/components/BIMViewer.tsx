@@ -35,8 +35,6 @@ import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@reac
 
 import { fal } from "@fal-ai/client";
 
-import { supabase } from '../lib/supabase';
-
 fal.config({
   proxyUrl: "/api/fal/proxy",
   requestMiddleware: async (request: any) => {

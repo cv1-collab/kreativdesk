@@ -403,10 +403,17 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     
     setIsAnalyzingImage(true);
     try {
-      const storageRef = ref(storage, `${currentUser.companyId}/defects/temp_${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      setCurrentDefect(prev => ({ ...prev, imageUrl: url }));
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${currentUser.companyId || currentUser.uid}/defects/temp_${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('defects').upload(filePath, file, { upsert: true });
+      let url = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('defects').getPublicUrl(filePath);
+        url = urlData.publicUrl;
+      }
+      if (url) {
+        setCurrentDefect(prev => ({ ...prev, imageUrl: url }));
+      }
 
       const reader = new FileReader();
       reader.onloadend = async () => {

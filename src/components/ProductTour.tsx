@@ -119,21 +119,22 @@ export default function ProductTour() {
 
   return (
     <Joyride
-      run={isTourRunning && steps.length > 0}
-      steps={steps}
-      continuous
-      showProgress
-      showSkipButton
-      callback={handleJoyrideCallback}
-      styles={{
-        options: {
-          primaryColor: '#2563eb',
-          backgroundColor: '#18181b',
-          textColor: '#fafafa',
-          arrowColor: '#18181b',
-          zIndex: 10000,
+      {...({
+        run: isTourRunning && steps.length > 0,
+        steps,
+        continuous: true,
+        showSkipButton: true,
+        callback: handleJoyrideCallback,
+        styles: {
+          options: {
+            primaryColor: '#2563eb',
+            backgroundColor: '#18181b',
+            textColor: '#fafafa',
+            arrowColor: '#18181b',
+            zIndex: 10000,
+          }
         }
-      }}
+      } as any)}
     />
   );
 }

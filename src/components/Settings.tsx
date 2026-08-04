@@ -288,7 +288,8 @@ export default function Settings() {
 
     setIsDeletingAccount(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || '';
       
       const response = await fetch('/api/delete-account', {
         method: 'POST',
@@ -301,9 +302,7 @@ export default function Settings() {
         throw new Error('Fehler beim Löschen des Accounts');
       }
       
-      // Das Löschen via API kickt den Nutzer ohnehin serverseitig raus. 
-      // Wir navigieren sicherheitshalber zum Login.
-      auth.signOut();
+      await supabase.auth.signOut();
       navigate('/login');
     } catch (error: any) {
       console.error(error);

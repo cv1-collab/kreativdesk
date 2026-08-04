@@ -262,9 +262,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const targetId = projectId || importProjectId || 'global';
     setIsUploadingImage(true);
     try {
-      const storageRef = ref(storage, `${currentUser.companyId}/documents/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${currentUser.companyId}/documents/${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      let downloadUrl = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        downloadUrl = urlData.publicUrl;
+      }
       const newDoc = {
         name: file.name, url: downloadUrl, file_url: downloadUrl, size: `${Math.round(file.size / 1024)} KB`, type: file.type,
         owner_id: currentUser.uid, company_id: currentUser.companyId,

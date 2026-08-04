@@ -273,9 +273,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       let photoURL = newContact.id ? selectedContact?.photoURL : null; 
       
       if (avatarFile) {
-        const storageRef = ref(storage, `crm_avatars/${Date.now()}_${avatarFile.name}`);
-        await uploadBytes(storageRef, avatarFile);
-        photoURL = await getDownloadURL(storageRef);
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${safeCompanyId}/crm_avatars/${Date.now()}.${fileExt}`;
+        const { error: uploadErr } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+          photoURL = urlData.publicUrl;
+        }
       }
 
       const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(' ');

@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { CreditCard, ExternalLink, Loader2, Filter, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
+import { useToast } from '../../contexts/ToastContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {

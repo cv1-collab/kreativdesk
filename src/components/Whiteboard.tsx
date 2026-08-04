@@ -33,7 +33,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../lib/supabase';
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import PremiumFeature from './PremiumFeature';
@@ -231,19 +230,18 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
 
     setIsUploadingMedia(true);
     try {
-      // Sichere Benennung für den Cloud Storage
-      const fileName = `whiteboard_bg_${Date.now()}_${file.name}`;
-      const storageReference = ref(storage, `${currentUser.companyId}/whiteboardBackgrounds/${currentUser.uid}/${fileName}`);
-      
-      // Lade das Original-Bild in den Firebase Storage (Platz satt!)
-      await uploadBytes(storageReference, file);
-      
-      // Hole dir nur die saubere URL zurück
-      const downloadUrl = await getDownloadURL(storageReference);
-      
-      // Setze das Hintergrundbild auf die externe URL (Kein 5MB Text-String mehr)
-      setBgImageSrc(downloadUrl);
-      addToast('Bild erfolgreich eingefügt!', 'success');
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${currentUser.companyId}/whiteboardBackgrounds/${currentUser.uid}/${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      let downloadUrl = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        downloadUrl = urlData.publicUrl;
+      }
+      if (downloadUrl) {
+        setBgImageSrc(downloadUrl);
+        addToast('Bild erfolgreich eingefügt!', 'success');
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       addToast('Fehler beim Einfügen des Bildes.', 'error');

@@ -20,9 +20,14 @@ export default function MobileUpload() {
     try {
       // 1. EDGE CASE FIX: Umgehen des 1MB Firestore-Limits für moderne Smartphone-Kameras!
       // Wir laden die Datei direkt in den Storage hoch.
-      const storageRef = ref(storage, `temp_mobile_uploads/${sessionId}_${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
+      const fileExt = file.name.split('.').pop();
+      const filePath = `temp_mobile_uploads/${sessionId}_${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      let downloadUrl = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        downloadUrl = urlData.publicUrl;
+      }
 
       // 2. STRIKTE PARAMETER: Wir funken die URL inkl. exakter Metadaten an den Desktop
       await supabase.from('temp_receipts').insert({

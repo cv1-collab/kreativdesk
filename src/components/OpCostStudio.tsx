@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { supabase } from '../lib/supabase';
 
 import QRCode from 'react-qr-code';
 import { Landmark, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, FileText, Sparkles } from 'lucide-react';
