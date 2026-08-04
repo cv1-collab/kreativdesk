@@ -109,13 +109,23 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    
     const fetchAllContacts = async () => {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('*')
-        .or(`company_id.eq.${safeCompanyId},id.eq.${currentUser.uid}`);
+      let profilesData: any[] = [];
+      const companyId = currentUser.companyId;
+
+      if (companyId) {
+        const { data } = await supabase.from('profiles').select('*').eq('company_id', companyId);
+        profilesData = data || [];
+      }
+
+      if (!profilesData.some(p => p.id === currentUser.uid)) {
+        const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
+        if (myProfile) {
+          profilesData.push(myProfile);
+        }
+      }
+
+      const safeCompanyId = companyId || currentUser.uid;
       const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
       
       const mappedProfiles = (profilesData || []).map(p => ({

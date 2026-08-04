@@ -18,7 +18,7 @@ import OpCostStudio from './OpCostStudio';
 import DashboardOverviewTab from './DashboardOverviewTab';
 import TeamCrmTab from './TeamCrmTab';
 import DocumentsTab from './DocumentsTab';
-import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders } from '../services/seedService';
+import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders, getOrCreateRealCompanyId } from '../services/seedService';
 import AgendaTab from './AgendaTab';
 import LeadsTab from './LeadsTab';
 import TemplatesTab from './TemplatesTab';
@@ -368,7 +368,7 @@ export default function CompanyDashboard() {
       return handleCreateDemoProject(type);
     }
     
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const realCompanyId = await getOrCreateRealCompanyId(currentUser.companyId || '', currentUser.uid);
     setIsSubmitting(true);
     try {
       const { data: newProj, error } = await supabase
@@ -377,7 +377,7 @@ export default function CompanyDashboard() {
           name: newProjectData.name,
           description: newProjectData.description || '',
           status: newProjectData.status || 'active',
-          company_id: safeCompanyId,
+          company_id: realCompanyId,
           owner_id: currentUser.uid
         })
         .select()
