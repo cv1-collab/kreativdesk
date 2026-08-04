@@ -202,7 +202,7 @@ export default function CompanyDashboard() {
         await supabase.from('documents').upsert({
           id: folderId, name: f.name, is_folder: true, category: 'company',
           owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global',
-          created_at: new Date().toISOString(), is_system: true,
+          created_at: new Date().toISOString(),
           folder_id: 'root'
         });
       } catch (e) {
