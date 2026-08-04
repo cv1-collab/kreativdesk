@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { 
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus, 
   ChevronLeft, ChevronRight, Video, Download, X, 
-  FileText, Link as LinkIcon, Save, Edit3, Users, Sparkles, Filter, AlertCircle, Calendar
+  FileText, Link as LinkIcon, Save, Edit3, Users, Sparkles, Filter, AlertCircle, Calendar, Loader2
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -275,7 +275,19 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
   const [isGeneratingAIRapport, setIsGeneratingAIRapport] = useState(false);
   const [aiRapportModalOpen, setAiRapportModalOpen] = useState(false);
-  const [aiRapportText, setAiRapportText] = useState('');
+  const filteredEvents = calendarEvents.filter(e => {
+    if (selectedTypeFilter !== 'all' && e.type !== selectedTypeFilter) return false;
+    if (selectedProjectFilter !== 'all' && (e.projectId || e.project_id) !== selectedProjectFilter) return false;
+    return true;
+  });
+
+  const dayWorkloadMap = localTimeEntries.reduce((acc: Record<string, number>, entry: any) => {
+    const dateStr = entry.date;
+    if (dateStr) {
+      acc[dateStr] = (acc[dateStr] || 0) + (Number(entry.hours) || 0);
+    }
+    return acc;
+  }, {});
 
   const handleExportICal = () => {
     const eventsToExport = filteredEvents.map(e => ({
