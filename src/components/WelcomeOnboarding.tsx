@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
 import { useTour } from '../contexts/TourContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function WelcomeOnboarding({ currentUser, onComplete }: { currentUser: any, onComplete: () => void }) {
   const { stopTour } = useTour();
+  const { updateCurrentUser } = useAuth();
   const [name, setName] = useState(currentUser?.name || '');
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>(currentUser?.photoURL || '');
@@ -65,12 +67,11 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
             has_completed_onboarding: true
           })
           .eq('id', userId);
+        updateCurrentUser({ name, photoURL, hasCompletedOnboarding: true });
+        localStorage.setItem(`onboarding_completed_${userId}`, 'true');
       }
 
       setStep(3);
-      if (userId) {
-        localStorage.setItem(`onboarding_completed_${userId}`, 'true');
-      }
       setTimeout(() => {
         onComplete();
       }, 800);

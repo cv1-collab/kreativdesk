@@ -29,6 +29,8 @@ interface AuthContextType {
   userRole: Role | null;
   loading: boolean;
   logout: () => Promise<void>;
+  updateCurrentUser: (updates: Partial<AppUser>) => void;
+  refreshUserProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -36,6 +38,8 @@ export const AuthContext = createContext<AuthContextType>({
   userRole: null,
   loading: true,
   logout: async () => {},
+  updateCurrentUser: () => {},
+  refreshUserProfile: async () => {}
 });
 
 export function useAuth() {
@@ -224,6 +228,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const updateCurrentUser = (updates: Partial<AppUser>) => {
+    setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
+  };
+
+  const refreshUserProfile = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await fetchOrCreateUserProfile(session.user);
+    }
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
@@ -231,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, loading, logout }}>
+    <AuthContext.Provider value={{ currentUser, userRole, loading, logout, updateCurrentUser, refreshUserProfile }}>
       {!loading && children}
     </AuthContext.Provider>
   );
