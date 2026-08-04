@@ -430,7 +430,7 @@ export default function Calendar() {
             hasLoadedInitial.current = true;
           }
         } else {
-          const isBau = activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU') || currentProjectId === 'demo-1';
+          const isBau = project?.name?.includes('Quartier') || project?.name?.includes('Bau') || project?.name?.includes('BAU') || currentProjectId === 'demo-1';
           const today = new Date();
           let initTasks = DEFAULT_TASKS;
           let initMarkers = DEFAULT_MARKERS;
@@ -445,7 +445,7 @@ export default function Calendar() {
               return { id: m.id, date: date.toISOString().split('T')[0], label: m.title || m.label, color: m.color, style: m.style || 'solid' };
             });
           }
-          const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: activeProject?.name || t('master_plan'), targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
+          const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: project?.name || t('master_plan'), targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
           setSchedules([defaultSchedule]);
           setActiveScheduleId(defaultSchedule.id);
           setGanttTasks(initTasks);
