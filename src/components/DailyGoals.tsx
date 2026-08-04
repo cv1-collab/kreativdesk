@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Plus, Trash2, Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Plus, Trash2, Calendar as CalendarIcon, Clock, AlertCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { cn } from '../utils';
+import { callGeminiAPI } from '../utils/geminiClient';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -138,17 +139,83 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     }
   };
 
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const handleGenerateAiGoals = async () => {
+    setIsGeneratingAi(true);
+    try {
+      const prompt = `Erstelle genau 3 professionelle Tagesziele für ein Bau- / Architekturprojekt im Schweizer Standard. 
+Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elektriker bezüglich Trassees kontaktieren", "Lieferschein Beton kontrollieren"]. Kein Markdown.`;
+
+      const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
+      const cleaned = (typeof res === 'string' ? res : JSON.stringify(res)).replace(/```json/g, '').replace(/```/g, '').trim();
+      const suggestions: string[] = JSON.parse(cleaned);
+
+      if (Array.isArray(suggestions)) {
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        if (safeCompanyId) {
+          for (const title of suggestions) {
+            const goalId = `goal-${Date.now()}-${Math.random()}`;
+            await supabase.from('goals').insert({
+              id: goalId,
+              company_id: safeCompanyId,
+              project_id: projectId,
+              title,
+              priority: 'High',
+              completed: false,
+              created_at: new Date().toISOString()
+            });
+          }
+          fetchGoals();
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
+  const completedCount = goals.filter(g => g.completed).length;
+  const totalCount = goals.length;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
   return (
     <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-          <CheckCircle2 size={20} className="text-emerald-500" />
-          {t('daily_goals')}
-        </h3>
-        <button onClick={() => setIsAdding(!isAdding)} className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors">
-          <Plus size={16} /> {t('add_goal')}
-        </button>
+        <div>
+          <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
+            <CheckCircle2 size={20} className="text-emerald-500" />
+            {t('daily_goals')}
+          </h3>
+          <p className="text-xs text-text-muted mt-0.5 font-medium">
+            🎯 {completedCount} von {totalCount} Zielen erreicht ({progressPercent}%)
+          </p>
+        </div>
+        
+        <div className="flex gap-2">
+          <button 
+            onClick={handleGenerateAiGoals} 
+            disabled={isGeneratingAi}
+            className="p-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
+            title="KI-Tagesziele vorschlagen"
+          >
+            <Sparkles size={16} /> {isGeneratingAi ? '...' : 'KI-Ziele'}
+          </button>
+          <button onClick={() => setIsAdding(!isAdding)} className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors">
+            <Plus size={16} /> {t('add_goal')}
+          </button>
+        </div>
       </div>
+
+      {/* Fortschrittsbalken */}
+      {totalCount > 0 && (
+        <div className="w-full h-2 bg-background border border-border/50 rounded-full overflow-hidden mb-4">
+          <div 
+            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500 rounded-full"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      )}
 
       {isAdding && (
         <form onSubmit={handleAddGoal} className="mb-4 space-y-3 bg-background border border-border p-4 rounded-2xl">

@@ -3,6 +3,7 @@ import { Search, Book, PlayCircle, HelpCircle, MessageSquare, ChevronRight, File
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../utils';
+import { callGeminiAPI } from '../utils/geminiClient';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -85,6 +86,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [aiAnswer, setAiAnswer] = useState('');
+  const [isAskingAI, setIsAskingAI] = useState(false);
   const navigate = useNavigate();
   const { language, t: globalT } = useLanguage();
   
@@ -175,8 +178,36 @@ export default function HelpCenter() {
               ))}
               
               {searchQuery && faqs.filter(faq => faq.question.toLowerCase().includes(searchQuery.toLowerCase()) || faq.answer.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                <div className="text-center p-8 border border-dashed border-border rounded-xl text-text-muted">
-                  Keine Ergebnisse für "{searchQuery}" gefunden.
+                <div className="text-center p-8 border border-dashed border-border rounded-xl text-text-muted space-y-4">
+                  <p>Keine statischen FAQ-Ergebnisse für "{searchQuery}" gefunden.</p>
+                  <button
+                    onClick={async () => {
+                      setIsAskingAI(true);
+                      try {
+                        const prompt = `Du bist der Kundensupport-Assistent für Kreativ-Desk OS (Schweizer Projekt- und Bausoftware). Beantworte präzise auf Deutsch: "${searchQuery}"`;
+                        const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
+                        setAiAnswer(typeof res === 'string' ? res : JSON.stringify(res));
+                      } catch (err) {
+                        setAiAnswer("Entschuldigung, die KI-Antwort konnte nicht generiert werden.");
+                      } finally {
+                        setIsAskingAI(false);
+                      }
+                    }}
+                    disabled={isAskingAI}
+                    className="px-6 py-3 bg-accent-ai hover:bg-accent-ai/90 text-white font-bold rounded-xl flex items-center gap-2 mx-auto shadow-lg transition-all disabled:opacity-50"
+                  >
+                    <Sparkles size={18} />
+                    {isAskingAI ? 'KI antwortet...' : 'KI-Antwort für diese Frage generieren'}
+                  </button>
+
+                  {aiAnswer && (
+                    <div className="mt-4 p-6 bg-accent-ai/5 border border-accent-ai/20 rounded-xl text-left font-medium text-text-primary">
+                      <div className="flex items-center gap-2 font-bold text-accent-ai mb-2">
+                        <Sparkles size={16} /> KI-Concierge Antwort:
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm leading-relaxed">{aiAnswer}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

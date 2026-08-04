@@ -19,13 +19,14 @@ const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
 export default function GuestMeet() {
   const { joinId } = useParams<{ joinId: string }>();
   const navigate = useNavigate();
-  const [guestName, setGuestName] = useState('');
+  const [guestName, setGuestName] = useState(() => localStorage.getItem('kreativdesk_guest_name') || '');
   const [guestEmail, setGuestEmail] = useState('');
   const [meetingCompanyId, setMeetingCompanyId] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState('');
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -34,6 +35,20 @@ export default function GuestMeet() {
     localStream, remoteStreams, isMicOn, isCamOn, callStatus,
     joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall
   } = useVideoCall();
+
+  const handleToggleScreenShare = async () => {
+    try {
+      if (!isScreenSharing) {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        setIsScreenSharing(true);
+        stream.getVideoTracks()[0].onended = () => setIsScreenSharing(false);
+      } else {
+        setIsScreenSharing(false);
+      }
+    } catch (err) {
+      console.error("Screen share error:", err);
+    }
+  };
 
   // Validate Meeting ID
   useEffect(() => {
@@ -232,11 +247,14 @@ export default function GuestMeet() {
 
         {/* Controls */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-background/90 backdrop-blur-xl border border-border/50 p-2 rounded-2xl shadow-2xl z-30">
-          <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all", isMicOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")}>
+          <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all", isMicOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")} title="Mikrofon Umschalten">
             {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
           </button>
-          <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all", isCamOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")}>
+          <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all", isCamOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")} title="Kamera Umschalten">
             {isCamOn ? <Video size={20} /> : <VideoOff size={20} />}
+          </button>
+          <button onClick={handleToggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all", isScreenSharing ? "bg-emerald-500 text-white shadow-lg" : "bg-surface hover:bg-white/10 text-white")} title="Bildschirm Teilen">
+            <PhoneForwarded size={20} />
           </button>
           <div className="w-px h-8 bg-border/50 mx-1 md:mx-2"></div>
           <button onClick={handleLeave} className="px-4 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg flex items-center gap-2">

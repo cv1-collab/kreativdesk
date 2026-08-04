@@ -14,6 +14,7 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
   const [isLocked, setIsLocked] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [hasResent, setHasResent] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   useEffect(() => {
     if (!currentUser) {
@@ -40,6 +41,23 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
     }
   };
 
+  const handleCheckVerificationStatus = async () => {
+    setIsCheckingStatus(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email_confirmed_at) {
+        setIsLocked(false);
+        addToast('E-Mail-Adresse erfolgreich bestätigt!', 'success');
+      } else {
+        addToast('Noch nicht bestätigt. Bitte klicke auf den Link in deiner E-Mail.', 'info');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
   if (isLocked) {
     return (
       <div className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-xl flex items-center justify-center p-6 text-center">
@@ -50,14 +68,25 @@ export default function EmailVerificationGuard({ children }: EmailVerificationGu
           <h2 className="text-2xl font-black text-text-primary">E-Mail-Adresse bestätigen</h2>
           <p className="text-sm text-text-muted">Wir haben dir einen Bestätigungslink per E-Mail geschickt. Bitte klicke auf den Link, um deinen Kreativ Desk Account freizuschalten.</p>
           
-          <button 
-            onClick={handleResendVerification} 
-            disabled={isResending || hasResent} 
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
-          >
-            {isResending ? <Loader2 size={18} className="animate-spin" /> : hasResent ? <CheckCircle2 size={18} /> : <Send size={18} />}
-            {hasResent ? 'E-Mail gesendet!' : 'E-Mail erneut senden'}
-          </button>
+          <div className="space-y-2">
+            <button 
+              onClick={handleCheckVerificationStatus}
+              disabled={isCheckingStatus}
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2"
+            >
+              {isCheckingStatus ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+              Status jetzt prüfen
+            </button>
+
+            <button 
+              onClick={handleResendVerification} 
+              disabled={isResending || hasResent} 
+              className="w-full py-3 bg-surface hover:bg-white/5 border border-border text-text-primary font-bold text-sm rounded-xl transition-all flex items-center justify-center gap-2"
+            >
+              {isResending ? <Loader2 size={18} className="animate-spin" /> : hasResent ? <CheckCircle2 size={18} /> : <Send size={18} />}
+              {hasResent ? 'E-Mail gesendet!' : 'E-Mail erneut senden'}
+            </button>
+          </div>
         </div>
       </div>
     );
