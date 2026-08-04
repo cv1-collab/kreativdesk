@@ -94,13 +94,7 @@ export default function ProductTour() {
       ];
     }
 
-    const validSteps = potentialSteps.filter(s => {
-      if (s.target === 'body') return true;
-      const el = document.querySelector(s.target as string) as HTMLElement;
-      return el && el.offsetWidth > 0; 
-    });
-
-    setSteps(validSteps);
+    setSteps(potentialSteps);
   }, [isTourRunning, location.pathname, language]);
 
   const handleJoyrideCallback = async (data: any) => {

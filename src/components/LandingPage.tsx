@@ -138,6 +138,12 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    if (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
+      navigate('/reset-password' + window.location.hash + window.location.search);
+    }
+  }, [navigate]);
   const [isYearly, setIsYearly] = useState(true);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
