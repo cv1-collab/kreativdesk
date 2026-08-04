@@ -112,7 +112,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     const fetchAllContacts = async () => {
-      const { data: profilesData } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`company_id.eq.${safeCompanyId},id.eq.${currentUser.uid}`);
       const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
       
       const mappedProfiles = (profilesData || []).map(p => ({

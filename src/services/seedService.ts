@@ -1,8 +1,41 @@
 import { supabase } from '../lib/supabase';
 import { demoTemplates } from '../utils/demoTemplates';
 
+export async function getOrCreateRealCompanyId(companyId: string, ownerId: string): Promise<string> {
+  if (!ownerId) return companyId;
+
+  if (companyId) {
+    const { data: comp } = await supabase.from('companies').select('id').eq('id', companyId).maybeSingle();
+    if (comp?.id) return comp.id;
+  }
+
+  const { data: ownerComp } = await supabase.from('companies').select('id').eq('owner_id', ownerId).maybeSingle();
+  if (ownerComp?.id) {
+    await supabase.from('profiles').update({ company_id: ownerComp.id }).eq('id', ownerId);
+    return ownerComp.id;
+  }
+
+  const { data: newComp } = await supabase
+    .from('companies')
+    .insert({
+      name: 'Meine Organisation',
+      plan: 'Free Trial',
+      owner_id: ownerId
+    })
+    .select('id')
+    .single();
+
+  if (newComp?.id) {
+    await supabase.from('profiles').update({ company_id: newComp.id }).eq('id', ownerId);
+    return newComp.id;
+  }
+
+  return companyId;
+}
+
 export async function ensureDefaultCompanyFolders(companyId: string, ownerId: string) {
-  if (!companyId || !ownerId) return;
+  if (!ownerId) return;
+  const realCompanyId = await getOrCreateRealCompanyId(companyId, ownerId);
 
   const defaultFolders = [
     { name: '01_FINANZEN', category: 'company' },
@@ -15,7 +48,7 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
     const { data: existingList } = await supabase
       .from('documents')
       .select('id')
-      .eq('company_id', companyId)
+      .eq('company_id', realCompanyId)
       .eq('name', f.name)
       .eq('is_folder', true)
       .limit(1);
@@ -29,7 +62,7 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
         folder_id: 'root',
         owner_id: ownerId,
         uploaded_by: ownerId,
-        company_id: companyId,
+        company_id: realCompanyId,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString()
       });
@@ -38,9 +71,10 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
 }
 
 export async function seedDemoProjectToSupabase(companyId: string, ownerId: string, templateType: string = 'construction') {
-  if (!companyId || !ownerId) return null;
+  if (!ownerId) return null;
+  const realCompanyId = await getOrCreateRealCompanyId(companyId, ownerId);
 
-  await ensureDefaultCompanyFolders(companyId, ownerId);
+  await ensureDefaultCompanyFolders(realCompanyId, ownerId);
 
   const template = (demoTemplates as any)[templateType] || demoTemplates.construction;
   const projData = template.project || {};
@@ -50,7 +84,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
   const { data: existingProjs } = await supabase
     .from('projects')
     .select('id, name')
-    .eq('company_id', companyId)
+    .eq('company_id', realCompanyId)
     .limit(10);
 
   const foundProj = (existingProjs || []).find((p: any) => 
@@ -66,7 +100,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
         name: projData.name || 'Quartier Neubau Süd',
         description: projData.description || 'Zentrale Bauleitung, Mängelmanagement und Budgetkontrolle für das Wohnquartier.',
         status: 'active',
-        company_id: companyId,
+        company_id: realCompanyId,
         owner_id: ownerId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
