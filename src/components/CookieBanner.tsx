@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
+import { initGoogleAnalytics } from '../utils/analytics';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     cookie_title: 'We use cookies',
@@ -29,7 +31,9 @@ export default function CookieBanner() {
 
   useEffect(() => {
     const consent = localStorage.getItem('kreativ_cookie_consent');
-    if (!consent) {
+    if (consent === 'all') {
+      initGoogleAnalytics();
+    } else if (!consent) {
       setTimeout(() => setShowCookieBanner(true), 1500);
     }
   }, []);
@@ -38,8 +42,8 @@ export default function CookieBanner() {
     localStorage.setItem('kreativ_cookie_consent', type);
     setShowCookieBanner(false);
     
-    // ZUKÜNFTIGER ANKER: Hier wird Google Analytics / Tracking aktiviert
     if (type === 'all') {
+      initGoogleAnalytics();
       window.dispatchEvent(new CustomEvent('cookieConsentGranted'));
     }
   };
