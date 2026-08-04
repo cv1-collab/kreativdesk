@@ -78,7 +78,7 @@ export default function ProductTour() {
       disableScrolling: true,
       disableScrollParentFix: true,
       floaterProps: { disableAnimation: true }
-    });
+    } as any);
 
     let newSteps: Step[] = [];
 
