@@ -143,6 +143,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const trialEndDate = new Date();
         trialEndDate.setDate(trialEndDate.getDate() + 30);
 
+        const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Teammitglied';
+
+        // 1. Profil ZUERST anlegen (erfüllt den Foreign Key companies_owner_id_fkey)
+        const newProfile = {
+          id: user.id,
+          email: user.email || '',
+          name: userName,
+          role: targetRole,
+          company_id: null,
+          has_active_subscription: true,
+          trial_ends_at: isInvitedUser ? null : trialEndDate.toISOString(),
+          has_seen_tour: false
+        };
+
+        await supabase.from('profiles').upsert(newProfile);
+
+        // 2. Organisation DANACH anlegen mit owner_id = user.id
         if (!isInvitedUser) {
           const { data: newCompany } = await supabase
             .from('companies')
@@ -158,23 +175,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (newCompany) {
             targetCompanyId = newCompany.id;
+            await supabase.from('profiles').update({ company_id: targetCompanyId }).eq('id', user.id);
+            newProfile.company_id = targetCompanyId;
           }
         }
-
-        const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Teammitglied';
-
-        const newProfile = {
-          id: user.id,
-          email: user.email || '',
-          name: userName,
-          role: targetRole,
-          company_id: targetCompanyId,
-          has_active_subscription: true,
-          trial_ends_at: isInvitedUser ? null : trialEndDate.toISOString(),
-          has_seen_tour: false
-        };
-
-        await supabase.from('profiles').insert(newProfile);
 
         const appUser: AppUser = {
           id: user.id,
