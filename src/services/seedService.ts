@@ -236,5 +236,97 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     }
   }
 
+  // 7. Seed Schedule (Terminplan) to system_config
+  const scheduleConfigId = `schedule_${projId}`;
+  const { data: existingSchedule } = await supabase
+    .from('system_config')
+    .select('id')
+    .eq('id', scheduleConfigId)
+    .maybeSingle();
+
+  if (!existingSchedule) {
+    const today = new Date();
+    let mappedTasks: any[] = [];
+    if (Array.isArray(template.tasks)) {
+      mappedTasks = template.tasks.map((t: any) => {
+        const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 20);
+        const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 20);
+        return {
+          id: t.id,
+          title: t.title,
+          start: start.toISOString().split('T')[0],
+          end: end.toISOString().split('T')[0],
+          color: t.color,
+          status: t.status || 'in_planning'
+        };
+      });
+    }
+    let mappedMarkers: any[] = [];
+    if (Array.isArray(template.smartMarkers)) {
+      mappedMarkers = template.smartMarkers.map((m: any) => {
+        const date = new Date(today); date.setDate(date.getDate() + (m.daysOffset || 0) - 20);
+        return {
+          id: m.id,
+          date: date.toISOString().split('T')[0],
+          label: m.title || m.label,
+          color: m.color,
+          style: m.style || 'solid'
+        };
+      });
+    }
+    const demoSchedule = {
+      id: `s-${projId}`,
+      name: projData.name || 'Masterplan Bau',
+      targetYear: today.getFullYear(),
+      ganttTasks: mappedTasks,
+      smartMarkers: mappedMarkers,
+      shapes: []
+    };
+    await supabase.from('system_config').upsert({
+      id: scheduleConfigId,
+      data: {
+        schedules: [demoSchedule],
+        activeScheduleId: demoSchedule.id,
+        companyId: companyId,
+        projectId: projId
+      }
+    });
+  }
+
+  // 8. Seed Finance (Budgetplan) to system_config
+  const financeConfigId = `finance_${projId}`;
+  const { data: existingFinance } = await supabase
+    .from('system_config')
+    .select('id')
+    .eq('id', financeConfigId)
+    .maybeSingle();
+
+  if (!existingFinance && Array.isArray(template.financeGroups)) {
+    const demoVersion = {
+      id: `v-approved-${projId}`,
+      name: 'Originalbudget',
+      vatRate: 8.1,
+      status: 'approved',
+      groups: template.financeGroups
+    };
+    await supabase.from('system_config').upsert({
+      id: financeConfigId,
+      data: {
+        versions: [demoVersion],
+        activeVersionId: demoVersion.id,
+        projectHeader: {
+          project: projData.name || 'Quartier Neubau Süd',
+          client: 'Bauherrschaft AG',
+          date: new Date().toISOString().split('T')[0],
+          version: 'Originalbudget'
+        },
+        includeOptions: false,
+        ownerId: ownerId,
+        companyId: companyId,
+        projectId: projId
+      }
+    });
+  }
+
   return projId;
 }

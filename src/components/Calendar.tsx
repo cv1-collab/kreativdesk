@@ -21,6 +21,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 // SUPABASE IMPORT
 import { supabase } from '../lib/supabase';
+import { demoTemplates } from '../utils/demoTemplates';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -429,8 +430,26 @@ export default function Calendar() {
             hasLoadedInitial.current = true;
           }
         } else {
-          const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: t('master_plan'), targetYear: new Date().getFullYear(), ganttTasks: DEFAULT_TASKS, smartMarkers: DEFAULT_MARKERS, shapes: [] };
+          const isBau = activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU') || currentProjectId === 'demo-1';
+          const today = new Date();
+          let initTasks = DEFAULT_TASKS;
+          let initMarkers = DEFAULT_MARKERS;
+          if (isBau && demoTemplates.construction) {
+            initTasks = demoTemplates.construction.tasks.map((t: any) => {
+              const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 20);
+              const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 20);
+              return { id: t.id, title: t.title, start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0], color: t.color, status: t.status };
+            });
+            initMarkers = demoTemplates.construction.smartMarkers.map((m: any) => {
+              const date = new Date(today); date.setDate(date.getDate() + (m.daysOffset || 0) - 20);
+              return { id: m.id, date: date.toISOString().split('T')[0], label: m.title || m.label, color: m.color, style: m.style || 'solid' };
+            });
+          }
+          const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: activeProject?.name || t('master_plan'), targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
           setSchedules([defaultSchedule]);
+          setActiveScheduleId(defaultSchedule.id);
+          setGanttTasks(initTasks);
+          setSmartMarkers(initMarkers);
           await supabase.from('system_config').upsert({
             id: `schedule_${scheduleDocId}`,
             data: { schedules: [defaultSchedule], activeScheduleId: defaultSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId }

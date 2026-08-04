@@ -23,6 +23,7 @@ import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
+import { demoTemplates } from '../utils/demoTemplates';
 import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -487,6 +488,61 @@ export default function Finance() {
         } as Transaction)));
       }
 
+      // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG
+      const { data: finConfig } = await supabase
+        .from('system_config')
+        .select('data')
+        .eq('id', `finance_${currentProjectId}`)
+        .maybeSingle();
+
+      if (finConfig?.data) {
+        if (Array.isArray(finConfig.data.versions) && finConfig.data.versions.length > 0) {
+          setVersions(finConfig.data.versions);
+        }
+        if (finConfig.data.activeVersionId) {
+          setActiveVersionId(finConfig.data.activeVersionId);
+        }
+        if (finConfig.data.projectHeader) {
+          setProjectHeader(finConfig.data.projectHeader);
+        }
+        if (finConfig.data.includeOptions !== undefined) {
+          setIncludeOptions(finConfig.data.includeOptions);
+        }
+      } else {
+        // FALLBACK: Auto-populate demo budget plan if no budget version exists yet
+        const isBau = activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU') || currentProjectId === 'demo-1';
+        const initGroups = (isBau || !activeProject) ? (demoTemplates.construction?.financeGroups || []) : [];
+        if (initGroups.length > 0) {
+          const initVersion: BudgetVersion = {
+            id: `v-approved-${currentProjectId}`,
+            name: 'Originalbudget',
+            vatRate: 8.1,
+            status: 'approved',
+            groups: initGroups
+          };
+          setVersions([initVersion]);
+          setActiveVersionId(initVersion.id);
+          setProjectHeader(prev => ({ ...prev, project: activeProject?.name || 'Quartier Neubau Süd', version: 'Originalbudget' }));
+          await supabase.from('system_config').upsert({
+            id: `finance_${currentProjectId}`,
+            data: {
+              versions: [initVersion],
+              activeVersionId: initVersion.id,
+              projectHeader: {
+                project: activeProject?.name || 'Quartier Neubau Süd',
+                client: 'Bauherrschaft AG',
+                date: new Date().toISOString().split('T')[0],
+                version: 'Originalbudget'
+              },
+              includeOptions: false,
+              ownerId: currentUser.uid,
+              companyId: currentUser.companyId,
+              projectId: currentProjectId
+            }
+          });
+        }
+      }
+
       setIsInitialLoad(false);
     };
 
@@ -498,10 +554,30 @@ export default function Finance() {
       .subscribe();
     
     return () => { supabase.removeChannel(channel); };
-  }, [currentUser, currentProjectId, isDemoMode, demoData]);
+  }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject]);
 
+  // AUTO-SAVE TO SUPABASE SYSTEM_CONFIG ON BUDGET CHANGES
   useEffect(() => {
     if (isDemoMode || isInitialLoad || !currentUser || !currentUser.companyId || isReadOnly || !currentProjectId) return;
+    const timeout = setTimeout(async () => {
+      try {
+        await supabase.from('system_config').upsert({
+          id: `finance_${currentProjectId}`,
+          data: {
+            versions,
+            activeVersionId,
+            projectHeader,
+            includeOptions,
+            ownerId: currentUser.uid,
+            companyId: currentUser.companyId,
+            projectId: currentProjectId
+          }
+        });
+      } catch (e) {
+        console.error('Error saving finance system_config:', e);
+      }
+    }, 1500);
+    return () => clearTimeout(timeout);
   }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, isReadOnly, isDemoMode, isInitialLoad]);
 
   const [companyColor, setCompanyColor] = useState('#10b981');

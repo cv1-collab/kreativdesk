@@ -32,34 +32,34 @@ export const demoTemplates: Record<string, any> = {
     
     financeGroups: [
       {
-        pos: '100', title: '100 Vorbereitungsarbeiten',
+        id: 'g100', pos: '100', title: '100 Vorbereitungsarbeiten',
         items: [
-          { pos: '111', title: 'Terrainfreilegung', description: 'Rodung und Abtransport von Sträuchern', unit: 'Pausch.', qty: 1, unitPrice: 15000, type: 'cost' },
-          { pos: '112', title: 'Abbruch Gartenmauer', description: 'Baggerarbeiten inkl. Entsorgung und Transport', unit: 'Std.', qty: 120, unitPrice: 150, type: 'cost' }
+          { id: 'i111', pos: '111', title: 'Terrainfreilegung', description: 'Terrainfreilegung: Rodung und Abtransport von Sträuchern', unit: 'Pausch.', qty: 1, unitPrice: 15000, option: 0, total: 15000, type: 'cost' },
+          { id: 'i112', pos: '112', title: 'Abbruch Gartenmauer', description: 'Abbruch Gartenmauer: Baggerarbeiten inkl. Entsorgung und Transport', unit: 'Std.', qty: 120, unitPrice: 150, option: 0, total: 18000, type: 'cost' }
         ]
       },
       {
-        pos: '200', title: '200 Gebäude (Rohbau)',
+        id: 'g200', pos: '200', title: '200 Gebäude (Rohbau)',
         items: [
-          { pos: '211', title: 'Aushub & Fundament', description: 'Aushubarbeiten 1500m3 inkl. Betonbodenplatte', unit: 'm3', qty: 1500, unitPrice: 120, type: 'cost' },
-          { pos: '212', title: 'Betonwände & Decken', description: 'Sichtbetonwände giessen (EG bis 3. Obergeschoss)', unit: 'm3', qty: 850, unitPrice: 450, type: 'cost' }
+          { id: 'i211', pos: '211', title: 'Aushub & Fundament', description: 'Aushub & Fundament: Aushubarbeiten 1500m3 inkl. Betonbodenplatte', unit: 'm3', qty: 1500, unitPrice: 120, option: 0, total: 180000, type: 'cost' },
+          { id: 'i212', pos: '212', title: 'Betonwände & Decken', description: 'Betonwände & Decken: Sichtbetonwände giessen (EG bis 3. Obergeschoss)', unit: 'm3', qty: 850, unitPrice: 450, option: 0, total: 382500, type: 'cost' }
         ]
       },
       {
-        pos: '220', title: '220 Gebäudehülle (Fassade)',
+        id: 'g220', pos: '220', title: '220 Gebäudehülle (Fassade)',
         items: [
-          { pos: '221', title: 'Einbau Fenster', description: 'Holz-Metall-Fenster 3-fach verglast nach Mass', unit: 'Stk.', qty: 48, unitPrice: 1250, type: 'cost' },
-          { pos: '222', title: 'Einbau Aussentüren', description: 'Sicherheitstüren Eingang (Aluminium/Glas)', unit: 'Stk.', qty: 3, unitPrice: 3800, type: 'cost' }
+          { id: 'i221', pos: '221', title: 'Einbau Fenster', description: 'Einbau Fenster: Holz-Metall-Fenster 3-fach verglast nach Mass', unit: 'Stk.', qty: 48, unitPrice: 1250, option: 0, total: 60000, type: 'cost' },
+          { id: 'i222', pos: '222', title: 'Einbau Aussentüren', description: 'Einbau Aussentüren: Sicherheitstüren Eingang (Aluminium/Glas)', unit: 'Stk.', qty: 3, unitPrice: 3800, option: 0, total: 11400, type: 'cost' }
         ]
       },
       {
-        pos: '270', title: '270 Ausbau (Innen)',
+        id: 'g270', pos: '270', title: '270 Ausbau (Innen)',
         items: [
-          { pos: '271', title: 'Gipserarbeiten', description: 'Wände verputzen und glätten (Qualität Q3)', unit: 'm2', qty: 2400, unitPrice: 45, type: 'cost' },
-          { pos: '272', title: 'Malerarbeiten', description: 'Wände und Decken 2-fach gestrichen (RAL 9010)', unit: 'm2', qty: 2400, unitPrice: 28, type: 'cost' },
-          { pos: '281', title: 'Unterlagsboden', description: 'Zementunterlagsboden inkl. Trittschalldämmung', unit: 'm2', qty: 1200, unitPrice: 85, type: 'cost' },
-          { pos: '282', title: 'Parkettboden', description: 'Eichenparkett Landhausdiele verlegen, geölt', unit: 'm2', qty: 1200, unitPrice: 110, type: 'cost' },
-          { pos: '283', title: 'Einbau Innentüren', description: 'Holztüren stumpfeinschlagend, weiss lackiert', unit: 'Stk.', qty: 35, unitPrice: 850, type: 'cost' }
+          { id: 'i271', pos: '271', title: 'Gipserarbeiten', description: 'Gipserarbeiten: Wände verputzen und glätten (Qualität Q3)', unit: 'm2', qty: 2400, unitPrice: 45, option: 0, total: 108000, type: 'cost' },
+          { id: 'i272', pos: '272', title: 'Malerarbeiten', description: 'Malerarbeiten: Wände und Decken 2-fach gestrichen (RAL 9010)', unit: 'm2', qty: 2400, unitPrice: 28, option: 0, total: 67200, type: 'cost' },
+          { id: 'i281', pos: '281', title: 'Unterlagsboden', description: 'Unterlagsboden: Zementunterlagsboden inkl. Trittschalldämmung', unit: 'm2', qty: 1200, unitPrice: 85, option: 0, total: 102000, type: 'cost' },
+          { id: 'i282', pos: '282', title: 'Parkettboden', description: 'Parkettboden: Eichenparkett Landhausdiele verlegen, geölt', unit: 'm2', qty: 1200, unitPrice: 110, option: 0, total: 132000, type: 'cost' },
+          { id: 'i283', pos: '283', title: 'Einbau Innentüren', description: 'Einbau Innentüren: Holztüren stumpfeinschlagend, weiss lackiert', unit: 'Stk.', qty: 35, unitPrice: 850, option: 0, total: 29750, type: 'cost' }
         ]
       }
     ],
