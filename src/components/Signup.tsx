@@ -97,7 +97,9 @@ export default function Signup() {
       addToast('Account erfolgreich erstellt! Du wirst weitergeleitet...', 'success');
       navigate('/app');
     } catch (err: any) {
-      setError(err.message || t('signup_error'));
+      console.error("Signup error detail:", err);
+      const errMsg = typeof err?.message === 'string' ? err.message : (typeof err === 'string' ? err : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.');
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
