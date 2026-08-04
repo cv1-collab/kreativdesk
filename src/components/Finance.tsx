@@ -427,7 +427,10 @@ export default function Finance() {
   const [receiptType, setReceiptType] = useState<'expense' | 'external_cost'>('expense');
   const [incomingReceipts, setIncomingReceipts] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [incomingData, setIncomingData] = useState({ type: 'internal', vendor: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', description: '', amount: '', date: new Date().toISOString().split('T')[0], budgetPosId: '', status: 'Offen' });
+  const [incomingData, setIncomingData] = useState({ type: 'internal', vendor: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', description: '', amount: '', skontoRate: 0, date: new Date().toISOString().split('T')[0], budgetPosId: '', status: 'Offen' });
+  const [restKostenPrognose, setRestKostenPrognose] = useState<Record<string, number>>({});
+  const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [csvImportText, setCsvImportText] = useState('');
   const [timeData, setTimeData] = useState({ type: 'internal', userId: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', hours: 0, hourlyRate: 0, description: '', date: new Date().toISOString().split('T')[0] });
   const mobileCameraRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -724,13 +727,95 @@ export default function Finance() {
 
   const getBudgetDetails = (posId?: string) => {
     if (!posId) return null;
-    for (const v of versions) {
+        for (const v of versions) {
       for (const g of v.groups) {
         const item = g.items.find(i => i.id === posId);
         if (item) return { phase: g.title, item: `${item.pos} ${item.description}`, versionName: v.name };
       }
     }
     return null;
+  };
+
+  const overBudgetPositions = budgetGroups.flatMap(g => g.items.map(i => {
+    const actual = getAllTimeActualCostForItem(i.id);
+    const planned = i.total || ((i.qty || 0) * (i.unitPrice || 0));
+    const variance = actual - planned;
+    return { ...i, groupTitle: g.title, actual, planned, variance, isOver: variance > 0 };
+  })).filter(x => x.isOver);
+
+  const exportLedgerCSV = () => {
+    const headers = ['Datum', 'Kategorie', 'Beschreibung', 'Soll (Kosten CHF)', 'Haben (Umsatz CHF)', 'Saldo (CHF)', 'Status'];
+    const rows = displayLedger.map(tx => [
+      tx.date,
+      tx.category,
+      tx.description,
+      tx.amount < 0 ? Math.abs(tx.amount).toFixed(2) : '0.00',
+      tx.amount > 0 ? tx.amount.toFixed(2) : '0.00',
+      tx.balance ? tx.balance.toFixed(2) : '0.00',
+      tx.status || 'Gebucht'
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Hauptbuch_${projectHeader.project.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    addToast('Hauptbuch als CSV exportiert!', 'success');
+  };
+
+  const exportBudgetCSV = () => {
+    const headers = ['BKP/Pos', 'Phase/Gruppe', 'Bezeichnung', 'Menge', 'Einheit', 'Einheitspreis (CHF)', 'Total Netto (CHF)', 'Ist-Kosten (CHF)', 'Abweichung (CHF)'];
+    const rows: (string | number)[][] = [];
+    budgetGroups.forEach(g => {
+      rows.push([g.pos, g.title, '--- Gruppe Total ---', '', '', '', calculateGroupTotal(g).toFixed(2), getAllTimeActualCostForGroup(g).toFixed(2), (getAllTimeActualCostForGroup(g) - calculateGroupTotal(g)).toFixed(2)]);
+      g.items.forEach(i => {
+        const planned = i.total || ((i.qty || 0) * (i.unitPrice || 0));
+        const actual = getAllTimeActualCostForItem(i.id);
+        rows.push([i.pos, g.title, i.description, i.qty, i.unit, i.unitPrice.toFixed(2), planned.toFixed(2), actual.toFixed(2), (actual - planned).toFixed(2)]);
+      });
+    });
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Budgetplan_BKP_${projectHeader.project.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    addToast('Budgetplan als CSV exportiert!', 'success');
+  };
+
+  const handleImportCSV = () => {
+    if (!csvImportText.trim()) return;
+    try {
+      const lines = csvImportText.split('\n').map(l => l.trim()).filter(Boolean);
+      const newItems: BudgetItem[] = [];
+      lines.forEach((line, index) => {
+        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/^"/, '').replace(/"$/, ''));
+        if (parts.length >= 2) {
+          const pos = parts[0] || `${100 + index}`;
+          const description = parts[1] || 'Importierte Position';
+          const qty = parseFloat(parts[2]) || 1;
+          const unit = parts[3] || 'Stk';
+          const unitPrice = parseFloat(parts[4]) || 0;
+          const total = qty * unitPrice;
+          newItems.push({ id: `imp-${Date.now()}-${index}`, pos, description, qty, unit, unitPrice, option: 0, total });
+        }
+      });
+      if (newItems.length > 0) {
+        setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+          ...v,
+          groups: v.groups.length > 0 ? v.groups.map((g, idx) => idx === 0 ? { ...g, items: [...g.items, ...newItems] } : g) : [{ id: 'g-imp', pos: '100', title: 'Importierte Positionen', items: newItems }]
+        } : v));
+        addToast(`${newItems.length} BKP-Positionen aus CSV importiert!`, 'success');
+        setShowCsvImportModal(false);
+        setCsvImportText('');
+      } else {
+        addToast('Keine gültigen Zeilen im CSV gefunden.', 'error');
+      }
+    } catch (err) {
+      addToast('Fehler beim Parsen der CSV-Datei.', 'error');
+    }
   };
 
   const handleExportCSV = async () => {
@@ -1152,47 +1237,73 @@ export default function Finance() {
                )}
 
                {activeTab === 'control' && (
-                 <table className="w-full text-sm text-left border-collapse">
+                      <table className="w-full text-sm text-left border-collapse">
                     <thead className="bg-surface border-b border-border/50">
                       <tr>
                         <th className="px-4 py-3 w-16 text-text-muted uppercase tracking-wider">{t('pos')}</th>
-                        <th className="px-4 py-3 text-text-muted uppercase tracking-wider min-w-[200px]">{t('description')}</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('planned')}</th>
-                        <th className="px-4 py-3 text-right text-red-500 uppercase tracking-wider w-32">{t('actual_costs')}</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('variance')}</th>
+                        <th className="px-4 py-3 text-text-muted uppercase tracking-wider min-w-[180px]">{t('description')}</th>
+                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-28">{t('planned')}</th>
+                        <th className="px-4 py-3 text-right text-red-500 uppercase tracking-wider w-28">{t('actual_costs')}</th>
+                        <th className="px-4 py-3 text-right text-accent-ai uppercase tracking-wider w-36">Restkosten (Prognose)</th>
+                        <th className="px-4 py-3 text-right text-text-primary uppercase tracking-wider w-36">Voraussichtl. Total</th>
+                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-28">{t('variance')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
                       {approvedVersions.map((version) => (
                         <React.Fragment key={version.id}>
                           <tr className="bg-accent-ai/5">
-                            <td colSpan={5} className="px-4 py-2 font-bold text-xs uppercase text-accent-ai tracking-widest">{t('budget_supplement')} {version.name}</td>
+                            <td colSpan={7} className="px-4 py-2 font-bold text-xs uppercase text-accent-ai tracking-widest">{t('budget_supplement')} {version.name}</td>
                           </tr>
                           {version.groups.map(group => {
                             const plan = calculateGroupTotal(group);
                             const actual = getAllTimeActualCostForGroup(group);
-                            const diff = plan - actual;
+                            const groupRestkosten = group.items.reduce((sum, item) => sum + (restKostenPrognose[item.id] !== undefined ? restKostenPrognose[item.id] : Math.max(0, item.total - getAllTimeActualCostForItem(item.id))), 0);
+                            const forecastTotal = actual + groupRestkosten;
+                            const diff = plan - forecastTotal;
+                            const isGroupOver = actual > plan;
                             return (
                               <React.Fragment key={group.id}>
                                 <tr className="bg-surface/50 border-t border-border/50">
                                   <td className="px-4 py-3 font-bold text-text-primary">{group.pos}</td>
-                                  <td className="px-4 py-3 font-bold text-text-primary">{group.title}</td>
+                                  <td className="px-4 py-3 font-bold text-text-primary flex items-center gap-2">
+                                    {group.title}
+                                    {isGroupOver && <span className="px-2 py-0.5 text-[10px] bg-red-500 text-white font-bold rounded-md uppercase">🔴 Über Budget</span>}
+                                  </td>
                                   <td className="px-4 py-3 font-bold text-right text-text-primary">{formatCHF(plan)}</td>
                                   <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(actual)}</td>
+                                  <td className="px-4 py-3 font-bold text-right text-accent-ai">{formatCHF(groupRestkosten)}</td>
+                                  <td className="px-4 py-3 font-bold text-right text-text-primary">{formatCHF(forecastTotal)}</td>
                                   <td className={cn("px-4 py-3 font-bold text-right", diff < 0 ? "text-red-500" : "text-emerald-500")}>
                                     {diff >= 0 ? '+' : ''}{formatCHF(diff)}
                                   </td>
                                 </tr>
                                 {group.items.map(item => {
                                   const itemActual = getAllTimeActualCostForItem(item.id);
-                                  const itemDiff = item.total - itemActual;
+                                  const itemRest = restKostenPrognose[item.id] !== undefined ? restKostenPrognose[item.id] : Math.max(0, item.total - itemActual);
+                                  const itemForecast = itemActual + itemRest;
+                                  const itemDiff = item.total - itemForecast;
+                                  const isItemOver = itemActual > item.total;
                                   return (
-                                    <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                                    <tr key={item.id} className={cn("hover:bg-white/5 transition-colors", isItemOver ? "bg-red-500/5" : "")}>
                                       <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
-                                      <td className="px-4 py-2 text-text-primary font-medium">{item.description}</td>
+                                      <td className="px-4 py-2 text-text-primary font-medium flex items-center gap-2">
+                                        {item.description}
+                                        {isItemOver && <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">+CHF {formatCHF(itemActual - item.total)}</span>}
+                                      </td>
                                       <td className="px-4 py-2 text-right text-text-primary">{formatCHF(item.total)}</td>
-                                      <td className="px-4 py-2 text-right text-red-500">{itemActual > 0 ? formatCHF(itemActual) : '-'}</td>
-                                      <td className={cn("px-4 py-2 text-right font-medium", itemDiff < 0 ? "text-red-500" : "text-emerald-500")}>
+                                      <td className="px-4 py-2 text-right text-red-500 font-bold">{itemActual > 0 ? formatCHF(itemActual) : '-'}</td>
+                                      <td className="px-4 py-2 text-right">
+                                        <input 
+                                          type="number"
+                                          value={itemRest}
+                                          onChange={e => setRestKostenPrognose({ ...restKostenPrognose, [item.id]: parseFloat(e.target.value) || 0 })}
+                                          className="w-24 bg-background border border-border/50 rounded px-2 py-1 text-right font-mono text-xs text-accent-ai focus:border-accent-ai outline-none"
+                                          placeholder="0.00"
+                                        />
+                                      </td>
+                                      <td className="px-4 py-2 text-right font-bold text-text-primary">{formatCHF(itemForecast)}</td>
+                                      <td className={cn("px-4 py-2 text-right font-medium", itemDiff < 0 ? "text-red-500 font-bold" : "text-emerald-500")}>
                                         {itemDiff >= 0 ? '+' : ''}{formatCHF(itemDiff)}
                                       </td>
                                     </tr>
@@ -1208,6 +1319,8 @@ export default function Finance() {
                         <td className="px-4 py-3 font-bold text-orange-500">{t('internal_hours_time_tracking')} ({allTimeHours} h)</td>
                         <td className="px-4 py-3 font-bold text-right text-orange-500">-</td>
                         <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(allTimeHoursCost)}</td>
+                        <td className="px-4 py-3 font-bold text-right text-orange-500">0.00</td>
+                        <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(allTimeHoursCost)}</td>
                         <td className="px-4 py-3 font-bold text-right text-red-500">-{formatCHF(allTimeHoursCost)}</td>
                       </tr>
                     </tbody>
@@ -1216,6 +1329,12 @@ export default function Finance() {
                         <td colSpan={2} className="px-4 py-5 text-right font-black uppercase tracking-wider text-text-primary">{t('total_project_excl_vat')}</td>
                         <td className="px-4 py-5 text-right font-black text-text-primary">{formatCHF(overviewTotalBudget)}</td>
                         <td className="px-4 py-5 text-right font-black text-red-500">{formatCHF(totalActualCostsIncludingHoursAllTime)}</td>
+                        <td className="px-4 py-5 text-right font-black text-accent-ai">
+                          {formatCHF(approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + g.items.reduce((iSum, i) => iSum + (restKostenPrognose[i.id] !== undefined ? restKostenPrognose[i.id] : Math.max(0, i.total - getAllTimeActualCostForItem(i.id))), 0), 0), 0))}
+                        </td>
+                        <td className="px-4 py-5 text-right font-black text-text-primary">
+                          {formatCHF(totalActualCostsIncludingHoursAllTime + approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + g.items.reduce((iSum, i) => iSum + (restKostenPrognose[i.id] !== undefined ? restKostenPrognose[i.id] : Math.max(0, i.total - getAllTimeActualCostForItem(i.id))), 0), 0), 0))}
+                        </td>
                         <td className={cn("px-4 py-5 text-right font-black", (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? "text-red-500" : "text-emerald-500")}>
                           {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
                         </td>
@@ -1314,8 +1433,14 @@ export default function Finance() {
               <button onClick={() => setShowInvoiceModal(true)} className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm"><Send size={16} /> <span className="hidden sm:inline ml-2">{t('invoice')}</span></button>
             </div>
             <div className="hidden lg:block w-px h-6 bg-border/50 mx-1"></div>
-            <button onClick={handleExportCSV} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-2 h-[42px] shrink-0">
-               <Download size={16} /> <span className="hidden lg:inline">CSV Export</span>
+            <button onClick={exportLedgerCSV} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="Hauptbuch als CSV herunterladen">
+               <Download size={15} /> <span className="hidden sm:inline">Hauptbuch CSV</span>
+            </button>
+            <button onClick={exportBudgetCSV} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="BKP Budget als CSV herunterladen">
+               <Download size={15} /> <span className="hidden sm:inline">BKP Budget CSV</span>
+            </button>
+            <button onClick={() => setShowCsvImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-accent-ai/40 text-accent-ai rounded-lg text-xs font-bold hover:bg-accent-ai/10 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="BKP Positionen aus CSV importieren">
+               <Plus size={15} /> <span className="hidden sm:inline">BKP CSV Import</span>
             </button>
             {activeTab !== 'overview' && (
               <button onClick={() => setIsPdfStudioOpen(true)} className="hidden lg:flex px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-2 h-[42px] cursor-pointer shrink-0">
@@ -1369,7 +1494,28 @@ export default function Finance() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-0 pb-24 lg:pb-0 relative z-10">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-0 pb-24 lg:pb-0 relative z-10 space-y-4">
+        {/* OVER-BUDGET ALERT BANNER */}
+        {overBudgetPositions.length > 0 && (
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-red-500 text-white rounded-xl shadow-md shrink-0">
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <div className="font-bold text-sm text-red-500 flex items-center gap-2">
+                  ⚠️ Budget-Überschreitung erkannt ({overBudgetPositions.length} {overBudgetPositions.length === 1 ? 'Position' : 'Positionen'})
+                </div>
+                <div className="text-xs text-text-muted mt-0.5 font-medium line-clamp-1">
+                  Positionen über Soll-Budget: {overBudgetPositions.map(p => `${p.pos} (${p.description || p.groupTitle})`).join(' • ')}
+                </div>
+              </div>
+            </div>
+            <button onClick={() => setActiveTab('control')} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition-colors shrink-0 shadow-md">
+              In Zahlungskontrolle prüfen
+            </button>
+          </div>
+        )}
         
         {activeTab === 'overview' && (
           <div className="space-y-6 pt-4 lg:pt-0">
@@ -2050,16 +2196,31 @@ export default function Finance() {
                       <input type="text" value={incomingData.vendor} onChange={e => setIncomingData({...incomingData, vendor: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="Name des Lieferanten / Shops" />
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
-                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({...incomingData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({...incomingData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
-                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({...incomingData, amount: e.target.value})} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-4 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({...incomingData, amount: e.target.value})} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
+                        <select value={incomingData.skontoRate} onChange={e => setIncomingData({...incomingData, skontoRate: Number(e.target.value)})} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value={0} className="bg-surface">0% Skonto</option>
+                          <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
+                          <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
+                        </select>
                       </div>
                     </div>
+
+                    {incomingData.skontoRate > 0 && incomingData.amount && (
+                      <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
+                        <span>Skonto Abzug ({incomingData.skontoRate}%):</span>
+                        <span>Effektiv Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))}</span>
+                      </div>
+                    )}
 
                     <div>
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
@@ -2125,6 +2286,32 @@ export default function Finance() {
           />
         )}
       </AnimatePresence>
+
+      {isMounted && showCsvImportModal && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Plus className="text-accent-ai" size={18}/> BKP CSV-Import</h3>
+              <button onClick={() => setShowCsvImportModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18}/></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-text-muted">Füge CSV-Zeilen im Format <code>Pos;Bezeichnung;Menge;Einheit;Einheitspreis</code> ein:</p>
+              <textarea 
+                value={csvImportText} 
+                onChange={e => setCsvImportText(e.target.value)} 
+                className="w-full bg-background border border-border/50 rounded-xl p-4 text-xs font-mono text-text-primary outline-none focus:border-accent-ai resize-none h-44 custom-scrollbar" 
+                placeholder="211;Mauerarbeiten Ziegel;120;m2;85&#10;212;Betonarbeiten Fundament;15;m3;320"
+              />
+            </div>
+            <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
+              <button onClick={() => setShowCsvImportModal(false)} className="px-5 py-2 text-sm font-bold text-text-muted border border-border rounded-lg hover:text-text-primary transition-colors">{t('cancel')}</button>
+              <button onClick={handleImportCSV} disabled={!csvImportText.trim()} className="px-5 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50">
+                Positionen Importieren
+              </button>
+            </div>
+          </motion.div>
+        </div>, document.body
+      )}
 
     </motion.div>
   );
