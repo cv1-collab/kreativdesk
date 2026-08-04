@@ -68,6 +68,22 @@ const GlobalSuspenseFallback = () => (
   </div>
 );
 
+function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
+  React.useEffect(() => {
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    
+    if (
+      (hash.includes('type=recovery') || search.includes('type=recovery')) &&
+      !window.location.pathname.startsWith('/reset-password')
+    ) {
+      window.location.href = `/reset-password${search}${hash}`;
+    }
+  }, []);
+
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -78,7 +94,8 @@ export default function App() {
               <AIProvider>
                 <TourProvider>
                   <BrowserRouter>
-                    <VideoCallProvider>
+                    <RecoveryRedirectGuard>
+                      <VideoCallProvider>
 
                       <MaintenanceGuard>
                         <Screensaver />
@@ -164,7 +181,8 @@ export default function App() {
 
                       <Analytics />
                     </VideoCallProvider>
-                  </BrowserRouter>
+                  </RecoveryRedirectGuard>
+                </BrowserRouter>
                 </TourProvider>
               </AIProvider>
             </ProjectProvider>

@@ -217,32 +217,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     }
   }
 
-  // 5. Seed Transactions (Finanzen)
-  if (Array.isArray(template.transactions)) {
-    for (const tx of template.transactions) {
-      const { data: existingTx } = await supabase
-        .from('transactions')
-        .select('id')
-        .eq('company_id', realCompanyId)
-        .eq('description', tx.description)
-        .maybeSingle();
-
-      if (!existingTx) {
-        await supabase.from('transactions').insert({
-          type: tx.amount < 0 ? 'expense' : 'income',
-          amount: Math.abs(tx.amount),
-          category: tx.category || 'Baustellenkosten',
-          description: tx.description,
-          date: tx.date ? tx.date.split('T')[0] : new Date().toISOString().split('T')[0],
-          status: tx.status || 'Bezahlt',
-          project_id: projId,
-          owner_id: ownerId,
-          company_id: realCompanyId,
-          created_at: new Date().toISOString()
-        });
-      }
-    }
-  }
+  // 5. Seed Transactions (Intentionally empty so global company finances start 100% clean with 0 CHF)
 
   // 6. Seed Pitch Deck Slides
   if (template.pitchDeck && Array.isArray(template.pitchDeck.slides)) {
