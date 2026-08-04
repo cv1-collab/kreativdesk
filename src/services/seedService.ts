@@ -133,7 +133,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
           email: m.email,
           name: m.name,
           role: 'member',
-          company_id: companyId,
+          company_id: realCompanyId,
           photo_url: m.photoURL || '',
           created_at: new Date().toISOString()
         });
@@ -143,7 +143,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       const { data: existingMem } = await supabase
         .from('project_members')
         .select('id')
-        .eq('company_id', companyId)
+        .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('user_id', demoUserId)
         .maybeSingle();
@@ -152,7 +152,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
         await supabase.from('project_members').insert({
           project_id: projId,
           user_id: demoUserId,
-          company_id: companyId
+          company_id: realCompanyId
         });
       }
     }
@@ -164,7 +164,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       const { data: existingDoc } = await supabase
         .from('documents')
         .select('id')
-        .eq('company_id', companyId)
+        .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('name', d.name)
         .maybeSingle();
@@ -182,7 +182,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
           is_folder: false,
           owner_id: ownerId,
           uploaded_by: ownerId,
-          company_id: companyId,
+          company_id: realCompanyId,
           created_at: new Date().toISOString(),
           uploaded_at: new Date().toISOString()
         });
@@ -196,7 +196,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       const { data: existingDef } = await supabase
         .from('defects')
         .select('id')
-        .eq('company_id', companyId)
+        .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('prompt', def.title)
         .maybeSingle();
@@ -204,7 +204,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       if (!existingDef) {
         await supabase.from('defects').insert({
           project_id: projId,
-          company_id: companyId,
+          company_id: realCompanyId,
           owner_id: ownerId,
           prompt: def.title,
           description: def.description,
@@ -223,7 +223,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       const { data: existingTx } = await supabase
         .from('transactions')
         .select('id')
-        .eq('company_id', companyId)
+        .eq('company_id', realCompanyId)
         .eq('description', tx.description)
         .maybeSingle();
 
@@ -237,7 +237,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
           status: tx.status || 'Bezahlt',
           project_id: projId,
           owner_id: ownerId,
-          company_id: companyId,
+          company_id: realCompanyId,
           created_at: new Date().toISOString()
         });
       }
@@ -250,7 +250,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       const { data: existingSlide } = await supabase
         .from('slides')
         .select('id')
-        .eq('company_id', companyId)
+        .eq('company_id', realCompanyId)
         .eq('project_id', projId)
         .eq('title', s.title)
         .maybeSingle();
@@ -258,7 +258,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       if (!existingSlide) {
         await supabase.from('slides').insert({
           project_id: projId,
-          company_id: companyId,
+          company_id: realCompanyId,
           title: s.title,
           content: s.content,
           layout: s.layout,
@@ -321,7 +321,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       data: {
         schedules: [demoSchedule],
         activeScheduleId: demoSchedule.id,
-        companyId: companyId,
+        companyId: realCompanyId,
         projectId: projId
       }
     });
@@ -356,7 +356,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
         },
         includeOptions: false,
         ownerId: ownerId,
-        companyId: companyId,
+        companyId: realCompanyId,
         projectId: projId
       }
     });
