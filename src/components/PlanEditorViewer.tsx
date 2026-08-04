@@ -8,7 +8,7 @@ import {
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
   Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -1398,7 +1398,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               <div className="relative overflow-hidden bg-white shadow-2xl" style={{ width: `${internalW}px`, height: `${internalH}px` }}>
                 
                 {/* 1. HAUPTBILD */}
-                <img src={planImage} crossOrigin="anonymous" alt="Plan" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                <img src={sanitizeUrl(planImage)} crossOrigin="anonymous" alt="Plan" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
                 
                 {/* 2. OVERLAY BILDER (PERFORMANCE OPTIMIERT) */}
                 {allElementsToRender.map(el => {
@@ -1490,7 +1490,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors bg-background group">
                       {defectPrompt.preview ? (
                          <div className="relative w-full h-32 rounded-lg overflow-hidden border border-border">
-                            <img src={defectPrompt.preview} className="w-full h-full object-cover" alt="Preview" />
+                            <img src={sanitizeUrl(defectPrompt.preview)} className="w-full h-full object-cover" alt="Preview" />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white font-bold text-xs">
                                {language === 'de' ? 'Bild ändern' : 'Change Image'}
                             </div>

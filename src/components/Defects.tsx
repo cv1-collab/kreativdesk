@@ -549,9 +549,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                                  {defect.dueDate && <span className="flex items-center gap-1"><Calendar size={10}/> {new Date(defect.dueDate).toLocaleDateString()}</span>}
                                </div>
                             )}
-                            {defect.imageUrl && (
-                              <div className="w-full h-28 rounded-lg overflow-hidden mb-3 border border-border cursor-zoom-in group/image relative pointer-events-none" onClick={(e) => { e.stopPropagation(); setPreviewImage(defect.imageUrl as string); }}>
-                                <img src={defect.imageUrl} alt="Defect" className="w-full h-full object-cover group-hover/image:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.src = 'https://placehold.co/600x400/27272a/ffffff?text=Bild+nicht+verf%C3%BCgbar'; }}/>
+                            {!!sanitizeUrl(defect.imageUrl) && (
+                              <div className="w-full h-28 rounded-lg overflow-hidden mb-3 border border-border cursor-zoom-in group/image relative pointer-events-none" onClick={(e) => { e.stopPropagation(); setPreviewImage(sanitizeUrl(defect.imageUrl as string)); }}>
+                                <img src={sanitizeUrl(defect.imageUrl)} alt="Defect" className="w-full h-full object-cover group-hover/image:scale-105 transition-transform duration-300" onError={(e) => { e.currentTarget.src = 'https://placehold.co/600x400/27272a/ffffff?text=Bild+nicht+verf%C3%BCgbar'; }}/>
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/image:opacity-100 flex items-center justify-center transition-opacity"><Eye className="text-white" size={24} /></div>
                               </div>
                             )}

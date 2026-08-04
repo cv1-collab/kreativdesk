@@ -1994,7 +1994,7 @@ export default function Finance() {
                     <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
                        {incomingReceipts.map((src, i) => (
                           <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm group">
-                             <img src={src} className="w-full h-full object-cover" alt="Beleg" />
+                             <img src={sanitizeUrl(src)} className="w-full h-full object-cover" alt="Beleg" />
                              <button onClick={() => setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"><Trash2 size={14}/></button>
                           </div>
                        ))}

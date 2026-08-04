@@ -6,7 +6,7 @@ import {
   Users, HardHat, ShieldAlert, Plane, Scan, FileWarning, ArrowRightLeft, X, Link as LinkIcon, Loader2, Plus, Settings, MapPin,
   LayoutDashboard, AlertTriangle, FileText, Map, DollarSign, MonitorPlay, CalendarDays, BrainCircuit
 } from 'lucide-react';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
@@ -350,7 +350,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                     </button>
 
                     {(activeProject.cam1Url || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
-                       <img src={activeProject.cam1Url} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover z-0" alt="Cam 1" />
+                       <img src={sanitizeUrl(activeProject.cam1Url)} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover z-0" alt="Cam 1" />
                     ) : (
                        <iframe src={activeProject.cam1Url} className="absolute inset-0 w-full h-full border-none z-0" allow="autoplay; fullscreen" title="Cam 1" />
                     )}
@@ -383,7 +383,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                     </button>
 
                     {(activeProject.cam2Url || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
-                       <img src={activeProject.cam2Url} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover z-0" alt="Cam 2" />
+                       <img src={sanitizeUrl(activeProject.cam2Url)} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover z-0" alt="Cam 2" />
                     ) : (
                        <iframe src={activeProject.cam2Url} className="absolute inset-0 w-full h-full border-none z-0" allow="autoplay; fullscreen" title="Cam 2" />
                     )}
@@ -410,7 +410,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="relative rounded-xl overflow-hidden border border-border bg-black aspect-video flex items-center justify-center w-full">
                        {(activeProject.cam1Url || '').match(/\.(jpeg|jpg|gif|png)$/i) != null ? (
-                         <img src={activeProject.cam1Url} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none" alt="AI bg" />
+                         <img src={sanitizeUrl(activeProject.cam1Url)} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none" alt="AI bg" />
                        ) : (
                          <iframe src={activeProject.cam1Url} className="absolute inset-0 w-full h-full border-none opacity-50 pointer-events-none" />
                        )}

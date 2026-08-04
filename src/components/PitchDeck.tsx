@@ -6,7 +6,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio from './PitchDeckStudio';
 import { demoTemplates } from '../utils/demoTemplates';
@@ -328,14 +328,14 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             <div className="flex flex-row w-full h-full gap-10">
               <div style={{ fontSize: `${slide.fontSize || 18}px` }} className="w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar text-zinc-700">{slide.content}</div>
               <div className="w-1/2 h-full rounded-2xl overflow-hidden relative border-black/10 bg-black/5">
-                {slide.imageUrl ? <img src={slide.imageUrl} className="w-full h-full object-cover absolute pointer-events-none" /> : null}
+                {!!sanitizeUrl(slide.imageUrl) ? <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" /> : null}
               </div>
             </div>
           )}
           
           {slide.layout === 'image-focus' && (
             <div className="w-full h-full rounded-2xl overflow-hidden relative border-black/10 bg-black/5">
-              {slide.imageUrl ? <img src={slide.imageUrl} className="w-full h-full object-cover absolute pointer-events-none" /> : null}
+              {!!sanitizeUrl(slide.imageUrl) ? <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" /> : null}
             </div>
           )}
 
@@ -344,7 +344,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 {slide.dataPayload.defects.map((d:any, i:number) => (
                   <div key={i} className="flex flex-col rounded-xl overflow-hidden border border-zinc-200 bg-white">
                     <div className="h-40 bg-zinc-200 relative overflow-hidden shrink-0">
-                      {d.imageUrl ? <img src={d.imageUrl} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-zinc-100 text-zinc-400">Kein Bild</div>}
+                      {!!sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-zinc-100 text-zinc-400">Kein Bild</div>}
                       <div className={cn("absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white shadow-lg", d.status?.toLowerCase() === 'offen' ? 'bg-red-500' : 'bg-amber-500')}>{d.status}</div>
                     </div>
                     <div className="p-5 flex flex-col flex-1">
@@ -361,7 +361,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 {slide.dataPayload.members.map((m:any, i:number) => (
                   <div key={i} className="p-6 flex flex-col items-center text-center border rounded-3xl border-black/10 bg-black/5">
                     <div className="w-28 h-28 lg:w-32 lg:h-32 rounded-full mb-6 bg-zinc-200 overflow-hidden shrink-0 border-4 relative" style={{ borderColor: '#3b82f6' }}>
-                      {m.photoURL || m.avatar ? <img src={m.photoURL || m.avatar} className="w-full h-full object-cover pointer-events-none"/> : null}
+                      {!!sanitizeUrl(m.photoURL || m.avatar) ? <img src={sanitizeUrl(m.photoURL || m.avatar)} className="w-full h-full object-cover pointer-events-none"/> : null}
                     </div>
                     <div className={cn("font-bold text-xl truncate w-full", tc)}>{m.name}</div>
                     <div className="text-sm font-bold mb-4 truncate w-full text-blue-500">{m.role || 'Team'}</div>
@@ -375,7 +375,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           <span className="text-[10px] uppercase font-bold tracking-widest opacity-40" style={{ color: deckSettings.themeColor }}>{deckSettings.footerText}</span>
           <div className="flex items-center gap-4">
             <span className="text-[10px] uppercase font-bold tracking-widest opacity-40 text-black">KREATIV DESK</span>
-            {deckSettings.logoUrl && <img src={deckSettings.logoUrl} alt="Logo" className="h-6 object-contain opacity-80 pointer-events-none" />}
+            {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-6 object-contain opacity-80 pointer-events-none" />}
           </div>
         </div>
       </div>

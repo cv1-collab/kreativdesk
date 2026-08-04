@@ -6,7 +6,7 @@ import {
   Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -365,7 +365,7 @@ export default function SettingsTab() {
             {/* Logo */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 bg-background/30 p-4 rounded-xl border border-border/30">
               <div className="w-20 h-20 bg-background border border-border rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-inner relative group">
-                {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-contain p-2" /> : <ImageIcon size={28} className="text-text-muted" />}
+                {!!sanitizeUrl(logoUrl) ? <img src={sanitizeUrl(logoUrl)} alt="Logo" className="w-full h-full object-contain p-2" /> : <ImageIcon size={28} className="text-text-muted" />}
                 {isUploadingLogo && <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center"><Loader2 size={18} className="animate-spin text-accent-ai" /></div>}
               </div>
               <div className="space-y-2">

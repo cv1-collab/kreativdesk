@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 import { demoTemplates } from '../utils/demoTemplates';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -877,9 +877,9 @@ const handleGenerateTeamSlide = async () => {
                       !isPreviewMode && "border-2 border-dashed cursor-pointer",
                       isDarkTheme ? (!isPreviewMode ? "bg-black/20 border-white/10 hover:bg-black/40" : "") : (!isPreviewMode ? "bg-black/5 border-black/10 hover:bg-black/10" : "")
                    )}>
-                {slide.imageUrl ? (
+                {!!sanitizeUrl(slide.imageUrl) ? (
                    <>
-                     <img src={slide.imageUrl} className="w-full h-full object-cover absolute pointer-events-none" />
+                     <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
                      {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
                    </>
                 ) : (
@@ -895,9 +895,9 @@ const handleGenerateTeamSlide = async () => {
                     !isPreviewMode && "border-2 border-dashed cursor-pointer",
                     isDarkTheme ? (!isPreviewMode ? "bg-black/20 border-white/10 hover:bg-black/40" : "") : (!isPreviewMode ? "bg-black/5 border-black/10 hover:bg-black/10" : "")
                  )}>
-              {slide.imageUrl ? (
+              {!!sanitizeUrl(slide.imageUrl) ? (
                 <>
-                  <img src={slide.imageUrl} className="w-full h-full object-cover absolute pointer-events-none" />
+                  <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
                   {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
                 </>
               ) : (
@@ -911,7 +911,7 @@ const handleGenerateTeamSlide = async () => {
                 {slide.dataPayload.defects.map((d:any, i:number) => (
                   <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
                     <div className="h-40 bg-zinc-200 relative overflow-hidden shrink-0">
-                      {d.imageUrl ? <img src={d.imageUrl} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><ImageIcon size={32}/></div>}
+                      {!!sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><ImageIcon size={32}/></div>}
                       <div className={cn("absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white shadow-lg", d.status === 'offen' ? 'bg-red-500' : 'bg-amber-500')}>{d.status}</div>
                     </div>
                     <div className="p-5 flex flex-col flex-1"><div className="font-bold text-lg leading-tight mb-2 line-clamp-2">{d.title}</div><div className="text-xs font-bold opacity-60 flex justify-between mt-auto"><span>Ort: {d.location}</span><span className={d.priority === 'hoch' ? 'text-red-500' : ''}>Prio: {d.priority}</span></div></div>
@@ -925,7 +925,7 @@ const handleGenerateTeamSlide = async () => {
                 {slide.dataPayload.members.map((m:any, i:number) => (
                   <div key={i} className={cn("p-6 flex flex-col items-center text-center border rounded-3xl", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
                     <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("w-28 h-28 lg:w-32 lg:h-32 rounded-full mb-6 bg-zinc-800 overflow-hidden shrink-0 border-4 relative group", !isPreviewMode && "cursor-pointer")} style={{ borderColor: deckSettings.themeColor }}>
-                      {m.photoURL ? <img src={m.photoURL} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-8 text-zinc-500" size={40}/>}
+                      {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-8 text-zinc-500" size={40}/>}
                       {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"><Camera size={20} /></div>}
                     </div>
                     <div className={cn("font-bold text-xl truncate w-full", tc)}>{m.name}</div>
@@ -948,7 +948,7 @@ const handleGenerateTeamSlide = async () => {
                <span>{deckSettings.footerText}</span>
              )}
           </span>
-          {deckSettings.logoUrl && <img src={deckSettings.logoUrl} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />}
+          {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />}
         </div>
       </div>
     );
@@ -1280,7 +1280,7 @@ const handleGenerateTeamSlide = async () => {
                       if(selectedMediaIds.includes(m.id)) setSelectedMediaIds(selectedMediaIds.filter(i=>i!==m.id)); 
                       else setSelectedMediaIds(mediaPickerType.action === 'team' ? [m.id] : [...selectedMediaIds, m.id]);
                     }} className={cn("aspect-video rounded-xl overflow-hidden border-4 cursor-pointer relative hover:brightness-110 transition-all", selectedMediaIds.includes(m.id)?"border-accent-ai shadow-[0_0_15px_rgba(59,130,246,0.5)]":"border-transparent")}>
-                    <img src={m.url} className="w-full h-full object-cover"/>
+                    <img src={sanitizeUrl(m.url)} className="w-full h-full object-cover"/>
                     {selectedMediaIds.includes(m.id) && <div className="absolute inset-0 bg-accent-ai/20 flex items-center justify-center"><CheckSquare className="text-white drop-shadow-md" size={32} /></div>}
                   </div>
                 ))}

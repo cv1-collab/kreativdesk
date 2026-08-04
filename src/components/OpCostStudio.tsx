@@ -8,7 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { callGeminiAPI } from '../utils/geminiClient';
-import { cn } from '../utils';
+import { cn, sanitizeUrl } from '../utils';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -178,7 +178,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
               <div>
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3 flex items-center justify-between"><span>Belege / Fotos</span></h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                  {opCostReceipts.map((src, index) => (<div key={index} className="aspect-square rounded-lg border border-border/50 bg-surface relative group overflow-hidden"><img src={src} className="w-full h-full object-cover opacity-80" /><button onClick={() => setOpCostReceipts(opCostReceipts.filter((_, i) => i !== index))} className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={24} /></button></div>))}
+                  {opCostReceipts.map((src, index) => (<div key={index} className="aspect-square rounded-lg border border-border/50 bg-surface relative group overflow-hidden"><img src={sanitizeUrl(src)} className="w-full h-full object-cover opacity-80" /><button onClick={() => setOpCostReceipts(opCostReceipts.filter((_, i) => i !== index))} className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={24} /></button></div>))}
                   <button onClick={() => fileInputRef.current?.click()} disabled={isAnalyzingAI} className="aspect-square rounded-lg border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50"><ImageIcon size={24} className={cn("mb-2 transition-colors", isAnalyzingAI ? "text-purple-500" : "text-text-muted group-hover:text-purple-500")} /><span className={cn("text-[10px] font-medium text-center", isAnalyzingAI ? "text-purple-500" : "text-text-muted group-hover:text-purple-500")}>{isAnalyzingAI ? 'KI Analysiert...' : 'Upload'}</span></button>
                   <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
                   <div className="aspect-square rounded-lg border border-purple-500/30 bg-purple-500/10 flex flex-col items-center justify-center p-2 text-center group"><div className="bg-white p-1 rounded mb-1"><QRCode value={mobileUploadUrl} size={64} /></div><span className="text-[10px] font-bold text-purple-500 flex items-center gap-1"><Smartphone size={10}/> Live Scan</span></div>
