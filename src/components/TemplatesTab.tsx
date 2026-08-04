@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
-  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight
+  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../utils';
+import { callGeminiAPI } from '../utils/geminiClient';
+import { useToast } from '../contexts/ToastContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -52,10 +54,37 @@ export default function TemplatesTab({
   setShowOpCostModal
 }: TemplatesTabProps) {
   const { language, t: globalT } = useLanguage();
+  const { addToast } = useToast();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [generatedTemplate, setGeneratedTemplate] = useState('');
+
+  const handleGenerateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiPrompt.trim()) return;
+    setIsGeneratingAi(true);
+    try {
+      const prompt = `Erstelle eine professionelle Vertragsvorlage oder Dokumentenvorlage im Schweizer Standard für das Thema: "${aiPrompt}". Verwende klare Gliederungspunkte (1. Gegenstand, 2. Honorar/Kosten, 3. Termine, 4. Sonstiges).`;
+      const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
+      setGeneratedTemplate(typeof res === 'string' ? res : JSON.stringify(res));
+      addToast('KI-Vorlage generiert!', 'success');
+    } catch (err) {
+      addToast('Fehler bei der Generierung', 'error');
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
   const templates = [
+    { 
+      id: 'ai_gen', title: 'KI-Vorlage erstellen', desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.', 
+      icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'hover:border-amber-500/50 border-amber-500/30',
+      action: () => setIsAiModalOpen(true) 
+    },
     { 
       id: 'quote', title: t('quote'), desc: t('quote_desc'), 
       icon: FileSignature, color: 'text-blue-500', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/50',
@@ -74,7 +103,7 @@ export default function TemplatesTab({
     { 
       id: 'ext_costs', title: t('ext_costs'), desc: t('ext_costs_desc'), 
       icon: Landmark, color: 'text-purple-500', bg: 'bg-purple-500/10', border: 'hover:border-purple-500/50',
-      action: () => setShowOpCostModal(true) // 🔥 Jetzt ein Popup!
+      action: () => setShowOpCostModal(true)
     },
     { 
       id: 'pitch', title: t('pitch_deck'), desc: t('pitch_deck_desc'), 
@@ -117,6 +146,44 @@ export default function TemplatesTab({
           </div>
         ))}
       </div>
+
+      {/* KI-Vorlagen Modal */}
+      {isAiModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface border border-border p-6 rounded-3xl max-w-xl w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
+                <Sparkles className="text-amber-500" size={20} /> KI-Vorlage generieren
+              </h3>
+              <button onClick={() => setIsAiModalOpen(false)} className="p-2 text-text-muted hover:text-text-primary">✕</button>
+            </div>
+
+            <form onSubmit={handleGenerateTemplate} className="space-y-4">
+              <input
+                type="text"
+                placeholder="z.B. SIA 102 Honorarvertrag für Umbau MFH Zürcher Oberland..."
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm text-text-primary focus:border-amber-500 outline-none"
+              />
+              <button
+                type="submit"
+                disabled={isGeneratingAi}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isGeneratingAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                {isGeneratingAi ? 'Generiere Vorlage...' : 'Vorlage jetzt generieren'}
+              </button>
+            </form>
+
+            {generatedTemplate && (
+              <div className="p-4 bg-background border border-border rounded-2xl max-h-60 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary">
+                {generatedTemplate}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

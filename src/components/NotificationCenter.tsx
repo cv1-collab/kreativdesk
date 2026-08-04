@@ -95,6 +95,15 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
     } catch (error) { console.error(error); }
   };
 
+  const markAllNotificationsAsRead = async () => {
+    try {
+      if (currentUser?.companyId) {
+        await supabase.from('notifications').update({ is_read: true }).eq('company_id', currentUser.companyId);
+        setUserNotifications([]);
+      }
+    } catch (error) { console.error(error); }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -108,11 +117,23 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
         >
           <div>
             <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
-              <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-                <Bell size={20} className="text-blue-500" />
-                {t('system_notifications')}
-              </h3>
-              <button onClick={onClose} className="p-1 text-text-muted hover:text-text-primary rounded-lg"><X size={20} /></button>
+              <div className="flex items-center gap-2">
+                <Bell size={20} className="text-accent-ai" />
+                <h2 className="font-bold text-lg text-text-primary">{t('system_notifications')}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                {userNotifications.length > 0 && (
+                  <button 
+                    onClick={markAllNotificationsAsRead}
+                    className="text-xs text-accent-ai font-bold hover:underline"
+                  >
+                    Alle lesen
+                  </button>
+                )}
+                <button onClick={onClose} className="p-1 hover:bg-background rounded-lg text-text-muted hover:text-text-primary">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4 overflow-y-auto max-h-[75vh] pr-1">

@@ -773,6 +773,56 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
               <button onClick={() => setTool('rect')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'rect' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Rechteck"><Square size={16} /></button>
               <button onClick={() => setTool('circle')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'circle' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Kreis"><Circle size={16} /></button>
               <button onClick={() => setTool('text')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'text' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Text"><Type size={16} /></button>
+              <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
+              {/* STICKY NOTES PALETTE */}
+              <button onClick={() => {
+                addItemToActiveLayer({
+                  id: `sticky-${Date.now()}`,
+                  type: 'rect',
+                  x: 150,
+                  y: 150,
+                  width: 140,
+                  height: 140,
+                  fill: '#fef08a',
+                  stroke: '#eab308',
+                  strokeWidth: 2,
+                  cornerRadius: 8,
+                  text: 'Notiz...'
+                });
+                addToast('Notiz hinzugefügt', 'success');
+              }} className="w-6 h-6 rounded-md bg-yellow-200 border border-yellow-400 hover:scale-110 transition-transform shrink-0" title="Gelbe Notiz" />
+              <button onClick={() => {
+                addItemToActiveLayer({
+                  id: `sticky-${Date.now()}`,
+                  type: 'rect',
+                  x: 180,
+                  y: 180,
+                  width: 140,
+                  height: 140,
+                  fill: '#a5f3fc',
+                  stroke: '#06b6d4',
+                  strokeWidth: 2,
+                  cornerRadius: 8,
+                  text: 'Notiz...'
+                });
+                addToast('Notiz hinzugefügt', 'success');
+              }} className="w-6 h-6 rounded-md bg-cyan-200 border border-cyan-400 hover:scale-110 transition-transform shrink-0" title="Blaue Notiz" />
+              <button onClick={() => {
+                addItemToActiveLayer({
+                  id: `sticky-${Date.now()}`,
+                  type: 'rect',
+                  x: 210,
+                  y: 210,
+                  width: 140,
+                  height: 140,
+                  fill: '#fbcfe8',
+                  stroke: '#ec4899',
+                  strokeWidth: 2,
+                  cornerRadius: 8,
+                  text: 'Notiz...'
+                });
+                addToast('Notiz hinzugefügt', 'success');
+              }} className="w-6 h-6 rounded-md bg-pink-200 border border-pink-400 hover:scale-110 transition-transform shrink-0" title="Rosa Notiz" />
               <div className="w-px h-5 bg-border mx-1 shrink-0 hidden sm:block"></div>
               <button onClick={() => setShowFilters(!showFilters)} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 hidden sm:block", showFilters ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-white/5")} title={t('img_adjust')}><SlidersHorizontal size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>

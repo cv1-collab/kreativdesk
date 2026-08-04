@@ -542,7 +542,6 @@ export default function LeadsTab() {
       addToast(t('upload_failed'), 'error'); 
     } 
   };
-
   const safeLeads = Array.isArray(collectedLeads) ? collectedLeads : [];
   const filteredLeads = safeLeads.filter(l => l && (`${l.firstName || ''} ${l.lastName || ''} ${l.company || ''} ${l.email || ''}`).toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -560,7 +559,33 @@ export default function LeadsTab() {
             <LinkIcon size={16}/> {t('copy_link')}
           </button>
           
-          <div className="flex bg-surface border border-border/50 rounded-md p-1 shadow-sm">
+          <button onClick={() => setIsPdfStudioOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-md text-sm font-bold transition-colors">
+            <FileText size={16}/> PDF Report
+          </button>
+        </div>
+      </div>
+
+      {/* KANBAN PIPELINE STAGE OVERVIEW */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
+          <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Neu</div>
+          <div className="text-2xl font-black text-blue-500 mt-1">{safeLeads.filter(l => l.status === 'New' || l.status === 'Neu').length}</div>
+        </div>
+        <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
+          <div className="text-xs text-text-muted font-bold uppercase tracking-wider">In Bearbeitung</div>
+          <div className="text-2xl font-black text-amber-500 mt-1">{safeLeads.filter(l => l.status === 'Pending' || l.status === 'Kontaktiert').length}</div>
+        </div>
+        <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
+          <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Offerte Erstellt</div>
+          <div className="text-2xl font-black text-purple-500 mt-1">{safeLeads.filter(l => l.status === 'Quote' || l.status === 'Angebot').length}</div>
+        </div>
+        <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
+          <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Gewonnen</div>
+          <div className="text-2xl font-black text-emerald-500 mt-1">{safeLeads.filter(l => l.status === 'Converted' || l.status === 'Gewonnen').length}</div>
+        </div>
+      </div>
+
+      <div className="flex bg-surface border border-border/50 rounded-md p-1 shadow-sm">
             <button onClick={() => setLeadTab('form')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors", leadTab === 'form' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
               {t('preview')}
             </button>
@@ -577,8 +602,6 @@ export default function LeadsTab() {
               <Download size={14}/> PDF
             </button>
           )}
-        </div>
-      </div>
       
       {leadTab === 'form' && (
         <div className="bg-surface border border-border rounded-xl p-6 md:p-8 max-w-3xl mx-auto w-full relative overflow-hidden shadow-sm animate-in fade-in">

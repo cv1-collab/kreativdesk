@@ -102,10 +102,37 @@ export default function Screensaver() {
 
           <div className="flex justify-between items-end">
             <div>
-              <p className="text-xs uppercase tracking-widest text-white/60 font-bold mb-1">Workspace</p>
-              <h2 className="text-2xl font-bold">Kreativ Desk OS</h2>
+              <p className="text-xs uppercase tracking-widest text-white/60 font-bold mb-1">Workspace Status</p>
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                Kreativ Desk OS
+                <span className="text-xs px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-mono font-bold">
+                  🟢 Live Operational
+                </span>
+              </h2>
             </div>
-            <p className="text-xs text-white/50 animate-pulse">Klicken zum Beenden</p>
+            <div className="flex items-center gap-4">
+              <div className="flex gap-2">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setConfig(prev => ({ ...prev, image: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop' })); }}
+                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold backdrop-blur-md"
+                >
+                  Modern
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setConfig(prev => ({ ...prev, image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?q=80&w=2000&auto=format&fit=crop' })); }}
+                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold backdrop-blur-md"
+                >
+                  Baustelle
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setConfig(prev => ({ ...prev, image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2000&auto=format&fit=crop' })); }}
+                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold backdrop-blur-md"
+                >
+                  Minimalist
+                </button>
+              </div>
+              <p className="text-xs text-white/50 animate-pulse">Klicken zum Beenden</p>
+            </div>
           </div>
         </div>
       </motion.div>

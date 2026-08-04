@@ -13,6 +13,7 @@ export interface PDFSettings {
   logo: string | null;
   accentColor: string;
   footerText: string;
+  watermark?: 'NONE' | 'VERTRAULICH' | 'ENTWURF' | 'FREIGEGEBEN';
 }
 
 interface UniversalPDFStudioProps {
@@ -44,6 +45,7 @@ export default function UniversalPDFStudio({
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(defaultOrientation);
   const [logo, setLogo] = useState<string | null>(null);
   const [accentColor, setAccentColor] = useState(defaultAccentColor);
+  const [watermark, setWatermark] = useState<'NONE' | 'VERTRAULICH' | 'ENTWURF' | 'FREIGEGEBEN'>('NONE');
   const [footerText, setFooterText] = useState('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH'));
   
   const logoRef = useRef<HTMLInputElement>(null);
@@ -64,7 +66,7 @@ export default function UniversalPDFStudio({
 
   // Holt das dynamische React-PDF Dokument basierend auf den aktuellen Einstellungen
   const getDocument = () => {
-    return typeof children === 'function' ? children({ format, orientation, logo, accentColor, footerText }) : children;
+    return typeof children === 'function' ? children({ format, orientation, logo, accentColor, footerText, watermark }) : children;
   };
 
   // Generiert das Blob direkt aus dem React-PDF Dokument für Download/Upload

@@ -381,8 +381,8 @@ export default function MeetChat() {
     try {
       const context = messages.map(m => `${m.sender}${m.isTranscript ? ' (gesprochen)' : ''}: ${m.text}`).join('\n');
       const prompt = `Based on the following meeting chat and spoken transcript, generate a concise meeting summary with 3 bullet points of Action Items. Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
-      const response = await callGeminiAPI('gemini-2.5-flash', prompt);
-      setMeetingSummary(response.text || 'Summary generated.');
+      const response = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
+      setMeetingSummary(typeof response === 'string' ? response : (response.text || JSON.stringify(response)));
       setShowChat(true);
     } catch (error: any) { setMeetingSummary("Failed to generate summary."); } 
     finally { setIsGeneratingSummary(false); }

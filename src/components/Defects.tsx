@@ -605,7 +605,17 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                         {colDefects.map(defect => (
                           <div key={defect.id} draggable onDragStart={(e) => handleDragStart(e, defect.id)} onClick={() => { if (!wasDragged.current) openEditModal(defect); }} onTouchStart={(e) => handleTouchStart(e, defect)} onTouchMove={handleTouchMoveCancel} onTouchEnd={handleTouchMoveCancel} className={cn("bg-background border border-border rounded-xl p-4 cursor-grab active:cursor-grabbing hover:border-accent-ai/50 transition-colors shadow-sm group", activeDragDefect?.id === defect.id ? "opacity-40 scale-95" : "opacity-100")}>
                             <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-bold text-text-muted">{defect.id.slice(-6)}</span>
+                              <span className="text-[10px] font-bold text-text-muted flex items-center gap-1">
+                                {defect.id.slice(-6)}
+                                <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-bold uppercase", 
+                                  defect.priority === 'Critical' ? "bg-red-500/20 text-red-400 border border-red-500/40" :
+                                  defect.priority === 'High' ? "bg-orange-500/20 text-orange-400 border border-orange-500/40" :
+                                  defect.priority === 'Medium' ? "bg-amber-500/20 text-amber-400 border border-amber-500/40" :
+                                  "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                                )}>
+                                  {defect.priority === 'Critical' ? '🔴 Kritisch' : defect.priority === 'High' ? '🟠 Hoch' : defect.priority === 'Medium' ? '🟡 Mittel' : '🟢 Leicht'}
+                                </span>
+                              </span>
                               <button onClick={(e) => { e.stopPropagation(); handleDeleteDefect(defect.id); }} className="text-text-muted hover:text-red-500 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
                             </div>
                             <h4 className="font-bold text-sm text-text-primary mb-2 leading-tight pointer-events-none">{defect.title}</h4>

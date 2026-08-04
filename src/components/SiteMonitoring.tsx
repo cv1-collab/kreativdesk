@@ -150,6 +150,8 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
   const t = (key: string) => localTranslations[currentLang]?.[key] || (typeof languageCtx?.t === 'function' ? languageCtx.t(key) : key);
 
   const [previewCam, setPreviewCam] = useState<string | null>(null);
+  const [timelapseSpeed, setTimelapseSpeed] = useState<number>(1);
+  const [isTimelapsePlaying, setIsTimelapsePlaying] = useState<boolean>(false);
   
   const [linkModal, setLinkModal] = useState<{isOpen: boolean, type: 'droneUrl' | 'logisticsUrl' | 'accessUrl' | 'cam1Url' | 'cam2Url', url: string} | null>(null);
   const [isSavingLink, setIsSavingLink] = useState(false);
@@ -342,6 +344,24 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                       <button onClick={(e) => handleOpenLinkModal(e, 'cam1Url', activeProject.cam1Url)} className="text-white/60 hover:text-white transition-colors"><Settings size={14}/></button>
                     </div>
                     
+                    <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 z-20 flex items-center gap-1 bg-black/60 backdrop-blur-md p-1 rounded-xl border border-white/10 text-white text-xs">
+                      <button 
+                        onClick={() => setIsTimelapsePlaying(!isTimelapsePlaying)}
+                        className="px-2 py-1 bg-accent-ai text-white rounded-lg font-bold text-[10px] uppercase"
+                      >
+                        {isTimelapsePlaying ? 'Pause' : 'Timelapse ▶'}
+                      </button>
+                      {([0.5, 1, 2, 5] as const).map((spd) => (
+                        <button
+                          key={spd}
+                          onClick={() => setTimelapseSpeed(spd)}
+                          className={cn("px-1.5 py-0.5 rounded text-[10px] font-bold transition-all", timelapseSpeed === spd ? "bg-white text-black" : "text-white/70 hover:text-white")}
+                        >
+                          {spd}x
+                        </button>
+                      ))}
+                    </div>
+
                     <button 
                       onClick={() => setPreviewCam(activeProject.cam1Url)}
                       className="absolute bottom-2 right-2 md:bottom-4 md:right-4 z-20 p-2 md:p-3 bg-black/60 rounded-full text-white md:opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent-ai shadow-xl"
