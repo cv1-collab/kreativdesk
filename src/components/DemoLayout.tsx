@@ -171,12 +171,35 @@ export default function DemoLayout({ isDemoMode = false }: { isDemoMode?: boolea
         {/* HIER HÄNGT DAS SCHUTZSCHILD! */}
         <main 
           onClickCapture={handleGlobalClickCapture} 
-          className="flex-1 overflow-y-auto overflow-x-hidden relative custom-scrollbar bg-background z-10"
+          className="flex-1 overflow-y-auto overflow-x-hidden relative custom-scrollbar bg-background z-10 pb-16 md:pb-0"
         >
           {/* Deine ECHTE DemoApp - ohne eine einzige Zeile Code ändern zu müssen! */}
           <DemoApp activeTab={activeTab || 'overview'} />
         </main>
 
+        {/* SMARTPHONE BOTTOM BAR NAVIGATION FOR DEMO */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[90] bg-surface/95 backdrop-blur-2xl border-t border-border flex justify-around items-center px-2 py-2 shadow-2xl">
+          <button onClick={() => setActiveTab('overview')} className={cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", activeTab === 'overview' ? "text-brand-500 bg-brand-500/10" : "text-text-muted hover:text-text-primary")}>
+            <LayoutDashboard size={18} />
+            <span>Übersicht</span>
+          </button>
+          <button onClick={() => setActiveTab('defects')} className={cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", activeTab === 'defects' ? "text-brand-500 bg-brand-500/10" : "text-text-muted hover:text-text-primary")}>
+            <ShieldAlert size={18} />
+            <span>Mängel</span>
+          </button>
+          <button onClick={() => setActiveTab('calendar')} className={cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", activeTab === 'calendar' ? "text-brand-500 bg-brand-500/10" : "text-text-muted hover:text-text-primary")}>
+            <Calendar size={18} />
+            <span>Kalender</span>
+          </button>
+          <button onClick={() => setActiveTab('site')} className={cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", activeTab === 'site' ? "text-brand-500 bg-brand-500/10" : "text-text-muted hover:text-text-primary")}>
+            <Camera size={18} />
+            <span>Baustelle</span>
+          </button>
+          <button onClick={() => setActiveTab('documents')} className={cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", activeTab === 'documents' ? "text-brand-500 bg-brand-500/10" : "text-text-muted hover:text-text-primary")}>
+            <FileText size={18} />
+            <span>Akte</span>
+          </button>
+        </nav>
       </div>
     </div>
   );

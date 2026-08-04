@@ -11,17 +11,25 @@ export default function MobileUpload() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [isUploading, setIsUploading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !sessionId) return;
 
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+
     setIsUploading(true);
+    setUploadProgress(25);
     try {
-      // 1. EDGE CASE FIX: Umgehen des 1MB Firestore-Limits für moderne Smartphone-Kameras!
-      // Wir laden die Datei direkt in den Storage hoch.
       const fileExt = file.name.split('.').pop();
       const filePath = `temp_mobile_uploads/${sessionId}_${Date.now()}.${fileExt}`;
+      setUploadProgress(60);
       const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
       let downloadUrl = '';
       if (!uploadErr) {
@@ -29,7 +37,7 @@ export default function MobileUpload() {
         downloadUrl = urlData.publicUrl;
       }
 
-      // 2. STRIKTE PARAMETER: Wir funken die URL inkl. exakter Metadaten an den Desktop
+      setUploadProgress(90);
       await supabase.from('temp_receipts').insert({
         session_id: sessionId,
         url: downloadUrl,
@@ -39,6 +47,7 @@ export default function MobileUpload() {
         created_at: new Date().toISOString()
       });
 
+      setUploadProgress(100);
       setIsSuccess(true);
     } catch (error) {
       console.error('Upload Error:', error);
@@ -57,7 +66,25 @@ export default function MobileUpload() {
         </div>
 
         <h1 className="text-2xl font-black tracking-tight mb-2">Beleg scannen</h1>
-        <p className="text-[#a1a1aa] text-sm mb-8 font-medium">Lade ein Foto oder PDF deines Belegs hoch. Es erscheint sofort auf deinem Desktop.</p>
+        <p className="text-[#a1a1aa] text-sm mb-6 font-medium">Lade ein Foto oder PDF deines Belegs hoch. Es erscheint sofort auf deinem Desktop.</p>
+
+        {previewUrl && (
+          <div className="w-full h-40 rounded-2xl overflow-hidden mb-6 border border-[#27272a] shadow-inner">
+            <img src={previewUrl} alt="Vorschau" className="w-full h-full object-cover" />
+          </div>
+        )}
+
+        {isUploading && (
+          <div className="w-full space-y-2 mb-6">
+            <div className="w-full h-2 bg-[#27272a] rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-purple-500 transition-all duration-300 rounded-full"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-xs text-[#a1a1aa] font-mono">{uploadProgress}% hochgeladen...</p>
+          </div>
+        )}
 
         {isSuccess ? (
           <div className="flex flex-col items-center animate-in zoom-in duration-300">
