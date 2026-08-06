@@ -126,11 +126,17 @@ export default function CompanyDashboard() {
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
   const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
 
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(() => {
-    if (!currentUser || !currentUser.uid) return false;
+  const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!currentUser || !currentUser.uid) {
+      setShowOnboarding(false);
+      return;
+    }
     const isCompleted = localStorage.getItem(`onboarding_completed_${currentUser.uid}`) === 'true';
-    return currentUser.hasCompletedOnboarding !== true && !isCompleted && !isSuperAdmin;
-  });
+    const shouldShow = currentUser.hasCompletedOnboarding !== true && !isCompleted && !isSuperAdmin;
+    setShowOnboarding(shouldShow);
+  }, [currentUser, isSuperAdmin]);
 
   useEffect(() => {
     if (currentUser?.uid && !showOnboarding) {

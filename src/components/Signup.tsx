@@ -76,6 +76,7 @@ export default function Signup() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     if (password !== passwordConfirm) return setError(t('password_mismatch'));
     if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.');
 
