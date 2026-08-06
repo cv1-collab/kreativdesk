@@ -81,7 +81,7 @@ export default function PrivacyPolicy() {
                 <div>
                   <p>Dabei unterscheiden wir zwischen zwingend erforderlichen Diensten und optionalen Analyse-Tools:</p>
                   <ul className="list-disc pl-5 mt-2 space-y-2">
-                    <li><strong>Technisch notwendige Dienste (z. B. Google Firebase):</strong> Diese Technologien sind für den reibungslosen Betrieb der SaaS-Plattform unerlässlich. Sie steuern das Session-Management, die sichere Authentifizierung (Login) und essenzielle Sicherheitsmechanismen. Diese Datenverarbeitung erfolgt auf Basis unseres berechtigten Interesses an der Bereitstellung der Plattform.</li>
+                    <li><strong>Technisch notwendige Dienste (z. B. Supabase Cloud Architecture):</strong> Diese Technologien sind für den reibungslosen Betrieb der SaaS-Plattform unerlässlich. Sie steuern das Session-Management, die sichere Authentifizierung (Login) und essenzielle Sicherheitsmechanismen. Diese Datenverarbeitung erfolgt auf Basis unseres berechtigten Interesses an der Bereitstellung der Plattform.</li>
                     <li><strong>Analyse- und Performance-Tracking (z. B. Google Analytics):</strong> Diese Dienste helfen uns, aggregierte Daten über das Nutzerverhalten zu erheben, um Ladezeiten, UI/UX-Flows und Systemarchitektur zu verbessern. Der Einsatz dieser Tracking-Technologien erfolgt ausschließlich nach Ihrer ausdrücklichen Zustimmung (Opt-in).</li>
                   </ul>
                 </div>

@@ -3,7 +3,7 @@ export const fixPdfColors = (clonedDoc: Document) => {};
 
 /**
  * NATIVE IFRAME ENGINE (Vollständig & oklch-sicher)
- * Verhindert Abstürze bei modernen CSS-Farben und blockiert nicht die Firebase-Speicherung.
+ * Verhindert Abstürze bei modernen CSS-Farben und blockiert nicht die Supabase-Speicherung.
  */
 export const printElementToPdf = async (element: HTMLElement, title: string = 'Dokument') => {
   return new Promise<void>((resolve, reject) => {
