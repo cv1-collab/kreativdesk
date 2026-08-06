@@ -69,7 +69,7 @@ export default function ProductTour() {
       IconComponent: any, 
       proTip?: string,
       placement: any = 'right', 
-      disableBeacon = false
+      disableBeacon = true
     ): Step => ({
       target, 
       content: buildStepContent(stepNum, total, title, content, IconComponent, proTip),
@@ -112,22 +112,29 @@ export default function ProductTour() {
         createStep('.tour-admin-api', 8, total, isGerman ? 'API-Keys & Webhooks' : 'API & Webhooks', isGerman ? 'Generiere API-Schlüssel für externe Systemintegrationen und Schnittstellen.' : 'Generate API keys and webhooks for external integrations.', Settings, isGerman ? 'API Keys lassen sich per Klick kopieren oder widerrufen.' : 'API keys can be copied or revoked in one click.', 'right')
       ];
     } else {
-      const total = 10;
+      const total = 9;
       newSteps = [
         createStep('body', 1, total, isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', isGerman ? 'Willkommen bei Kreativ-Desk OS! Deine ganzheitliche Plattform für Spatial Design, Baustellen-Management und Unternehmens-Steuerung.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for spatial design, site management, and business control.', Sparkles, isGerman ? 'In wenigen Schritten entdeckst du die wichtigsten Funktionen.' : 'Discover all core capabilities in just a few quick steps.', 'center', true),
         createStep('.tour-dashboard', 2, total, isGerman ? 'Der globale Puls' : 'Global Pulse', isGerman ? 'Hier fließen Projektstatus, offene Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', LayoutDashboard, isGerman ? 'Klicke auf die KPI-Karten, um direkt in die Details zu springen.' : 'Click KPI cards to jump directly into detailed views.', 'right'),
         createStep('.tour-projects', 3, total, isGerman ? 'Portfolio-Management' : 'Portfolio Management', isGerman ? 'Verwalte all deine Bau- & Designprojekte. Ein Klick bringt dich tief in die 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', Briefcase, isGerman ? 'Hier siehst du den Status und Fortschritt aller aktiven Projekte.' : 'View status and progress for all active project environments.', 'right'),
-        createStep('.tour-create-project-btn', 4, total, isGerman ? 'Erstes Projekt erstellen' : 'Your First Project', isGerman ? 'Eröffne dein erstes Projekt oder nutze unsere Vorlagen.' : 'Create your first project or launch our interactive template.', Sparkles, isGerman ? 'WICHTIGER TIPP: Nenne ein neues Projekt "Demo: BAU", um automatisch ein fertiges Testprojekt mit Budgets, 3D-Viewer und Mängeln zu laden!' : 'IMPORTANT TIP: Name a new project "Demo: BAU" to auto-seed realistic budget groups, 3D BIM assets, and defects!', 'right'),
-        createStep('.tour-finance', 5, total, isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', isGerman ? 'Überwache den gesamten Firmen-Cashflow, Betriebskosten (OpEx) und BKP-Kostenstellen.' : 'Monitor global cashflow, operating expenses, and budgets.', DollarSign, isGerman ? 'Erstelle professionelle Offerten und Rechnungen als PDF.' : 'Generate professional quotes and invoices as PDFs.', 'right'),
-        createStep('.tour-documents', 6, total, isGerman ? 'Firmen-Archiv & Assets' : 'Company Archive', isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud folder structure for HR docs, contracts, and branding assets.', Folder, isGerman ? 'Dokumente lassen sich kategorisieren und verschlüsselt speichern.' : 'Store and categorize assets with end-to-end cloud encryption.', 'right'),
-        createStep('.tour-templates', 7, total, isGerman ? 'Workflow-Booster' : 'Workflow Booster', isGerman ? 'Speichere intelligente Bausteine und Layout-Vorlagen, um Routineaufgaben zu automatisieren.' : 'Save templates and reusable blocks to automate routine work.', LayoutTemplate, isGerman ? 'Spare wertvolle Zeit bei wiederkehrenden Angeboten.' : 'Save time on recurring client offers and site protocols.', 'right'),
+        createStep('.tour-finance', 4, total, isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', isGerman ? 'Überwache den gesamten Firmen-Cashflow, Betriebskosten (OpEx) und BKP-Kostenstellen.' : 'Monitor global cashflow, operating expenses, and budgets.', DollarSign, isGerman ? 'Erstelle professionelle Offerten und Rechnungen als PDF.' : 'Generate professional quotes and invoices as PDFs.', 'right'),
+        createStep('.tour-documents', 5, total, isGerman ? 'Firmen-Archiv & Assets' : 'Company Archive', isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud folder structure for HR docs, contracts, and branding assets.', Folder, isGerman ? 'Dokumente lassen sich kategorisieren und verschlüsselt speichern.' : 'Store and categorize assets with end-to-end cloud encryption.', 'right'),
+        createStep('.tour-templates', 6, total, isGerman ? 'Workflow-Booster' : 'Workflow Booster', isGerman ? 'Speichere intelligente Bausteine und Layout-Vorlagen, um Routineaufgaben zu automatisieren.' : 'Save templates and reusable blocks to automate routine work.', LayoutTemplate, isGerman ? 'Spare wertvolle Zeit bei wiederkehrenden Angeboten.' : 'Save time on recurring client offers and site protocols.', 'right'),
+        createStep('.tour-leads', 7, total, isGerman ? 'Leads & Kundenanfragen' : 'Lead Engine', isGerman ? 'Erfasse und verwalte Kundendaten und eingehende Projekt-Anfragen direkt im Workspace.' : 'Capture and manage inbound customer leads directly in your workspace.', Megaphone, isGerman ? 'Neue Leads lassen sich direkt in aktive Projekte umwandeln.' : 'Convert new leads into active project environments.', 'right'),
         createStep('.tour-crm', 8, total, isGerman ? 'Team & Partner-Netzwerk' : 'Team Network', isGerman ? 'Das Zentrum deines Netzwerks. Lade Mitarbeiter und externe Partner per E-Mail in dein Ökosystem ein.' : 'The core of your network. Invite team members via magic links.', Users, isGerman ? 'Behalte den Überblick über verfügbare Lizenzen und Rollen.' : 'Keep track of available licenses and company roles.', 'right'),
-        createStep('.tour-agenda', 9, total, isGerman ? 'Unternehmens-Agenda' : 'Company Timeline', isGerman ? 'Behalte Tagesrapporte, Baustellen-Verfügbarkeiten und die globale Agenda deines Teams im Blick.' : 'Track daily reports, availabilities, and the global team agenda.', Calendar, isGerman ? 'Synchronisiere Termine nahtlos mit Projekten.' : 'Sync schedule entries directly with project milestones.', 'right'),
-        createStep('.tour-settings', 10, total, isGerman ? 'System-Einstellungen & Abos' : 'System Settings', isGerman ? 'Konfiguriere dein Firmenprofil, MWST-Stammdaten und verwalte deine aktiven Stripe-Lizenzen.' : 'Configure company profiles, VAT, and active SaaS licenses.', Settings, isGerman ? 'Hier kannst du jederzeit dein Abo upgraden oder verwalten.' : 'Upgrade or manage your subscription plan anytime.', 'right')
+        createStep('.tour-settings', 9, total, isGerman ? 'System-Einstellungen & Abos' : 'System Settings', isGerman ? 'Konfiguriere dein Firmenprofil, MWST-Stammdaten und verwalte deine aktiven Stripe-Lizenzen.' : 'Configure company profiles, VAT, and active SaaS licenses.', Settings, isGerman ? 'Hier kannst du jederzeit dein Abo upgraden oder verwalten.' : 'Upgrade or manage your subscription plan anytime.', 'right')
       ];
     }
 
-    setSteps(newSteps);
+    const validSteps = newSteps.filter(step => {
+      if (typeof step.target === 'string') {
+        if (step.target === 'body') return true;
+        return !!document.querySelector(step.target);
+      }
+      return true;
+    });
+
+    setSteps(validSteps);
   }, [isTourRunning, location.pathname, language]);
 
   const handleJoyrideCallback = async (data: any) => {
@@ -138,6 +145,12 @@ export default function ProductTour() {
       
       if (currentUser?.uid) {
         localStorage.setItem(`tour_${currentUser.uid}`, 'true');
+        localStorage.setItem(`tour_completed_${currentUser.uid}`, 'true');
+        try {
+          await supabase.from('profiles').update({ has_seen_tour: true }).eq('id', currentUser.uid);
+        } catch (e) {
+          console.error('Error saving tour completion:', e);
+        }
       }
     }
   };

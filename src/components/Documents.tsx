@@ -199,7 +199,18 @@ export default function Documents() {
     setCurrentFolderId(newPath[newPath.length - 1].id);
   };
 
+  const legacyFolderMap: Record<string, string> = {
+    '02_VERTRÄGE': '02_RECHTLICHES',
+    '03_PERSONAL': '03_HR_MITARBEITER',
+  };
+
   const filteredItems = documents.filter(doc => {
+    if (doc.is_folder && legacyFolderMap[doc.name]) {
+      const canonicalName = legacyFolderMap[doc.name];
+      const hasCanonical = documents.some(d => d.is_folder && d.name === canonicalName);
+      if (hasCanonical) return false;
+    }
+
     if (activeTab === 'company') {
       const isCompanyCategory = doc.category === 'company' || !doc.project_id || doc.project_id === 'global';
       if (currentFolderId === 'root') {
@@ -216,12 +227,21 @@ export default function Documents() {
   });
 
   const seenFolderNames = new Set<string>();
-  const currentItems = filteredItems.filter(doc => {
+  const deduplicatedItems = filteredItems.filter(doc => {
     if (doc.is_folder) {
       if (seenFolderNames.has(doc.name)) return false;
       seenFolderNames.add(doc.name);
     }
     return true;
+  });
+
+  const currentItems = [...deduplicatedItems].sort((a, b) => {
+    if (a.is_folder && !b.is_folder) return -1;
+    if (!a.is_folder && b.is_folder) return 1;
+    if (a.is_folder && b.is_folder) {
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
   });
 
   return (

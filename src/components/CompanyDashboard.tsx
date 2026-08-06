@@ -99,6 +99,29 @@ export default function CompanyDashboard() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult.outcome === 'accepted') {
+        setDeferredPrompt(null);
+        addToast('App erfolgreich auf Ihrem Gerät installiert!', 'success');
+      }
+    } else {
+      addToast('Tipp auf iPhone/Safari: "Teilen" ➔ "Zum Home-Bildschirm" zum Installieren.', 'info');
+    }
+  };
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
   const userRole = isSuperAdmin ? 'owner' : (userProfile?.role || 'employee');
@@ -192,31 +215,6 @@ export default function CompanyDashboard() {
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
-
-  useEffect(() => {
-    if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-
-    const sysFolders = [
-      { id: 'fin', name: t('folder_finance') }, { id: 'legal', name: t('folder_legal') }, { id: 'hr', name: t('folder_hr') },
-      { id: 'sales', name: t('folder_sales') }, { id: 'mkt', name: t('folder_marketing') }, { id: 'ops', name: t('folder_operations') },
-      { id: 'assets', name: t('folder_assets') }, { id: 'plans', name: t('folder_plans') }, { id: 'docs', name: t('folder_documentation') }
-    ];
-
-    sysFolders.forEach(async (f) => {
-      try {
-        const folderId = `sys_${safeCompanyId}_${f.id}`;
-        await supabase.from('documents').upsert({
-          id: folderId, name: f.name, is_folder: true, category: 'company',
-          owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global',
-          created_at: new Date().toISOString(),
-          folder_id: 'root'
-        });
-      } catch (e) {
-        console.error("System Folder Error:", e);
-      }
-    });
-  }, [currentUser, language]);
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
@@ -601,6 +599,9 @@ export default function CompanyDashboard() {
              </h2>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm">
+              📱 <span className="hidden sm:inline">App installieren</span>
+            </button>
             <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm" title="Tour starten"><HelpCircle size={18} /></button>
             <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>

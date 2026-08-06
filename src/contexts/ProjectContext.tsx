@@ -73,14 +73,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           companyId: p.company_id
         }));
         setProjects(mappedProjects);
-        if (mappedProjects.length > 0 && !activeProjectId) {
-          setActiveProjectId(mappedProjects[0].id);
-        }
+        setActiveProjectId(prev => prev || (mappedProjects.length > 0 ? mappedProjects[0].id : null));
       }
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, [currentUser?.companyId, activeProjectId, currentUser?.uid]);
+  }, [currentUser?.companyId, currentUser?.uid]);
 
   const fetchCompanyUsers = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;

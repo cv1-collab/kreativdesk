@@ -82,28 +82,40 @@ export async function getOrCreateRealCompanyId(companyId: string, ownerId: strin
   return companyId;
 }
 
+const seededCompanyFoldersCache = new Set<string>();
+
 export async function ensureDefaultCompanyFolders(companyId: string, ownerId: string) {
-  if (!ownerId) return;
+  if (!ownerId || !companyId) return;
+  if (seededCompanyFoldersCache.has(companyId)) return;
+
   const realCompanyId = await getOrCreateRealCompanyId(companyId, ownerId);
+  seededCompanyFoldersCache.add(companyId);
+  seededCompanyFoldersCache.add(realCompanyId);
 
   const defaultFolders = [
     { name: '01_FINANZEN', category: 'company' },
-    { name: '02_VERTRÄGE', category: 'company' },
-    { name: '03_PERSONAL', category: 'company' },
-    { name: '04_MARKETING', category: 'company' }
+    { name: '02_RECHTLICHES', category: 'company' },
+    { name: '03_HR_MITARBEITER', category: 'company' },
+    { name: '04_SALES', category: 'company' },
+    { name: '05_MARKETING', category: 'company' },
+    { name: '06_OPERATIONS', category: 'company' },
+    { name: '07_ASSETS', category: 'company' },
+    { name: '08_PLÄNE', category: 'company' },
+    { name: '09_DOKUMENTATION', category: 'company' }
   ];
 
-  for (const f of defaultFolders) {
+  try {
     const { data: existingList } = await supabase
       .from('documents')
-      .select('id')
+      .select('name')
       .eq('company_id', realCompanyId)
-      .eq('name', f.name)
-      .eq('is_folder', true)
-      .limit(1);
+      .eq('is_folder', true);
 
-    if (!existingList || existingList.length === 0) {
-      await supabase.from('documents').insert({
+    const existingNames = new Set((existingList || []).map((f: any) => f.name));
+    const newFoldersToInsert = defaultFolders.filter(f => !existingNames.has(f.name));
+
+    if (newFoldersToInsert.length > 0) {
+      const records = newFoldersToInsert.map(f => ({
         name: f.name,
         is_folder: true,
         category: f.category,
@@ -114,8 +126,12 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
         company_id: realCompanyId,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString()
-      });
+      }));
+
+      await supabase.from('documents').insert(records);
     }
+  } catch (err) {
+    console.error('Error ensuring default company folders:', err);
   }
 }
 
