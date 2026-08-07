@@ -330,25 +330,36 @@ export default function SettingsTab() {
   };
 
   const handleDeleteCompany = async () => {
-    const confirmed = window.confirm('Bist du sicher, dass du diesen Account (und die Firma) unwiderruflich löschen möchtest? Dies kann nicht rückgängig gemacht werden.');
-    if (!confirmed || !currentUser || !currentUser.companyId) return;
+    const confirmed = window.confirm('Bist du sicher, dass du deinen Account, deine Firma und alle Daten unwiderruflich löschen möchtest? Dein Abo bei Stripe wird ebenfalls sofort gekündigt.');
+    if (!confirmed || !currentUser) return;
 
     try {
-      addToast('Account wird gelöscht...', 'info');
+      addToast('Account wird unwiderruflich gelöscht...', 'info');
       
-      await supabase.from('companies').update({
-        is_deleted: true,
-        deleted_at: new Date().toISOString(),
-        status: 'archived',
-        deleted_by: currentUser.uid
-      }).eq('id', currentUser.companyId);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      if (!token) throw new Error('Nicht authentifiziert');
+
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Fehler beim Löschen des Accounts');
+      }
 
       await logout();
-      addToast('Account erfolgreich gelöscht.', 'success');
+      addToast('Account und alle Daten wurden erfolgreich gelöscht.', 'success');
       navigate('/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete Error:", error);
-      addToast('Fehler beim Löschen des Accounts', 'error');
+      addToast(error.message || 'Fehler beim Löschen des Accounts', 'error');
     }
   };
 
