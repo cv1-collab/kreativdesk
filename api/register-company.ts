@@ -35,13 +35,22 @@ export default async function handler(req: any, res: any) {
     let isInvite = false;
 
     if (inviteToken) {
-      const { data: inviteData } = await supabaseAdmin
+      let { data: inviteData } = await supabaseAdmin
         .from('invites')
         .select('*')
-        .eq('id', inviteToken)
+        .eq('token', inviteToken)
         .single();
 
-      if (inviteData && inviteData.status === 'pending' && inviteData.email === email) {
+      if (!inviteData) {
+        const { data: byId } = await supabaseAdmin
+          .from('invites')
+          .select('*')
+          .eq('id', inviteToken)
+          .single();
+        inviteData = byId;
+      }
+
+      if (inviteData && inviteData.status === 'pending' && inviteData.email.toLowerCase() === email.toLowerCase()) {
         assignedCompanyId = inviteData.company_id || inviteData.companyId;
         assignedRole = inviteData.role || 'Mitarbeiter';
         isInvite = true;
@@ -50,7 +59,7 @@ export default async function handler(req: any, res: any) {
           status: 'accepted',
           accepted_by: uid,
           accepted_at: now
-        }).eq('id', inviteToken);
+        }).eq('id', inviteData.id);
       }
     }
 
