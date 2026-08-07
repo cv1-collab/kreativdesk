@@ -70,14 +70,12 @@ const GlobalSuspenseFallback = () => (
 
 function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
-    const hash = window.location.hash || '';
-    const search = window.location.search || '';
+    const fullUrl = window.location.href;
+    const isRecovery = fullUrl.includes('type=recovery') || fullUrl.includes('type%3Drecovery') || sessionStorage.getItem('is_password_recovery') === 'true';
     
-    if (
-      (hash.includes('type=recovery') || search.includes('type=recovery')) &&
-      !window.location.pathname.startsWith('/reset-password')
-    ) {
-      window.location.href = `/reset-password${search}${hash}`;
+    if (isRecovery && !window.location.pathname.startsWith('/reset-password')) {
+      sessionStorage.setItem('is_password_recovery', 'true');
+      window.location.href = `/reset-password${window.location.search}${window.location.hash}`;
     }
   }, []);
 

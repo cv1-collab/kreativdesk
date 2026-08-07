@@ -237,6 +237,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session: Session | null) => {
+      if (_event === 'PASSWORD_RECOVERY') {
+        sessionStorage.setItem('is_password_recovery', 'true');
+        if (!window.location.pathname.startsWith('/reset-password')) {
+          window.location.href = '/reset-password';
+          return;
+        }
+      }
+
       if (session?.user) {
         fetchOrCreateUserProfile(session.user);
       } else {

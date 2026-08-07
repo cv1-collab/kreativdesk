@@ -49,6 +49,7 @@ export default function ResetPassword() {
 
       if (error) throw error;
 
+      sessionStorage.removeItem('is_password_recovery');
       setSuccess(true);
       addToast(isGerman ? 'Passwort erfolgreich geändert!' : 'Password successfully updated!', 'success');
 

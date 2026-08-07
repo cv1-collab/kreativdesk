@@ -174,13 +174,7 @@ export default function PublicLeadForm() {
         created_at: new Date().toISOString()
       });
 
-      if (companyId) {
-        fetch('/api/send-webhook', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: "lead",  companyId, leadData: formData })
-        }).catch(err => console.error('Webhook trigger error:', err));
-      }
+
 
       setIsSubmitted(true);
     } catch (err) {
