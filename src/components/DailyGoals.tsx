@@ -66,17 +66,17 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         .from('goals')
         .select('*')
         .eq('company_id', safeCompanyId)
-        .eq('project_id', projectId)
         .order('created_at', { ascending: false });
 
       if (data) {
-        setGoals(data.map(d => ({
+        const filtered = data.filter(d => !d.project_id || d.project_id === projectId);
+        setGoals(filtered.map(d => ({
           id: d.id,
           title: d.title,
-          completed: d.completed || false,
+          completed: d.completed ?? d.current_value === 1,
           priority: d.priority || 'Medium',
           createdAt: d.created_at,
-          projectId: d.project_id
+          projectId: d.project_id || projectId
         })));
       }
     } catch (err) {
@@ -105,11 +105,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     try {
       await supabase.from('goals').insert({
         title: newGoal,
-        completed: false,
-        priority: priority,
-        project_id: projectId,
         company_id: safeCompanyId,
-        owner_id: currentUser.uid,
         created_at: new Date().toISOString()
       });
 

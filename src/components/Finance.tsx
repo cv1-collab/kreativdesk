@@ -505,7 +505,17 @@ export default function Finance() {
         // Persist to Supabase asynchronously
         (async () => {
           for (const tx of dummyTxs) {
-            await supabase.from('transactions').insert(tx);
+            await supabase.from('transactions').insert({
+              company_id: currentUser.companyId,
+              project_id: currentProjectId,
+              owner_id: currentUser.uid,
+              description: tx.description || tx.title || 'Demobuchung',
+              amount: tx.amount || 0,
+              category: tx.category || 'General',
+              type: tx.type || 'expense',
+              date: tx.date || new Date().toISOString().split('T')[0],
+              status: tx.status || 'Pending'
+            });
           }
         })();
       }
@@ -513,14 +523,15 @@ export default function Finance() {
       // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG
       const { data: finConfig } = await supabase
         .from('system_config')
-        .select('data')
+        .select('*')
         .eq('id', `finance_${currentProjectId}`)
         .maybeSingle();
 
-      const hasValidGroups = Array.isArray(finConfig?.data?.versions) &&
-        finConfig.data.versions.length > 0 &&
-        Array.isArray(finConfig.data.versions[0]?.groups) &&
-        finConfig.data.versions[0].groups.length > 0;
+      const configData = (finConfig as any)?.data || finConfig;
+      const hasValidGroups = Array.isArray(configData?.versions) &&
+        configData.versions.length > 0 &&
+        Array.isArray(configData.versions[0]?.groups) &&
+        configData.versions[0].groups.length > 0;
 
       if (finConfig?.data && hasValidGroups) {
         if (Array.isArray(finConfig.data.versions) && finConfig.data.versions.length > 0) {
@@ -1014,7 +1025,7 @@ export default function Finance() {
       });
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
       await supabase.from('transactions').insert({
-        date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, budget_pos_id: fileData.budgetPosId || '', url: downloadUrl
+        date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, receipt_urls: downloadUrl ? [downloadUrl] : []
       });
       return true;
     } catch (error) { return false; }
