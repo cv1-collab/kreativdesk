@@ -129,23 +129,25 @@ export default function CompanyDashboard() {
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!currentUser || !currentUser.uid) {
+    const userId = currentUser?.uid || currentUser?.id;
+    if (!userId) {
       setShowOnboarding(false);
       return;
     }
-    const isCompleted = localStorage.getItem(`onboarding_completed_${currentUser.uid}`) === 'true';
-    const shouldShow = currentUser.hasCompletedOnboarding !== true && !isCompleted && !isSuperAdmin;
+    const isCompleted = localStorage.getItem(`onboarding_completed_${userId}`) === 'true';
+    const shouldShow = currentUser.hasCompletedOnboarding !== true && !isCompleted;
     setShowOnboarding(shouldShow);
-  }, [currentUser, isSuperAdmin]);
+  }, [currentUser]);
 
   useEffect(() => {
-    if (currentUser?.uid && !showOnboarding) {
-      const tourKey = `tour_completed_${currentUser.uid}`;
+    const userId = currentUser?.uid || currentUser?.id;
+    if (userId && !showOnboarding) {
+      const tourKey = `tour_completed_${userId}`;
       const isCompleted = localStorage.getItem(tourKey) === 'true';
 
       if (!isCompleted && currentUser.hasSeenTour !== true) {
         localStorage.setItem(tourKey, 'true');
-        supabase.from('profiles').update({ has_seen_tour: true }).eq('id', currentUser.uid).then();
+        supabase.from('profiles').update({ has_seen_tour: true }).eq('id', userId).then();
         const timer = setTimeout(() => {
           startTour();
         }, 800);
@@ -848,6 +850,22 @@ export default function CompanyDashboard() {
       )}
 
       {/* MODALE POPUPS */}
+      {isMounted && showOnboarding && createPortal(
+        <WelcomeOnboarding 
+          currentUser={currentUser} 
+          onComplete={() => {
+            setShowOnboarding(false);
+            const userId = currentUser?.uid || currentUser?.id;
+            if (userId) {
+              localStorage.setItem(`onboarding_completed_${userId}`, 'true');
+            }
+            setTimeout(() => {
+              startTour();
+            }, 600);
+          }} 
+        />, 
+        document.body
+      )}
       {isMounted && showExpenseModal && createPortal(<ExpenseReport onClose={() => setShowExpenseModal(false)} onSave={() => setShowExpenseModal(false)} />, document.body)}
       {isMounted && showInvoiceModal && createPortal(<InvoiceStudio type="invoice" onClose={() => setShowInvoiceModal(false)} />, document.body)}
       {isMounted && showQuoteModal && createPortal(<InvoiceStudio type="quote" onClose={() => setShowQuoteModal(false)} />, document.body)}
