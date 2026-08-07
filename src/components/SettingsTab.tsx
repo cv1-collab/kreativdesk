@@ -227,23 +227,18 @@ export default function SettingsTab() {
     }
   };
 
-  // Passwort zurücksetzen (NEU: Verbunden mit Vercel & Make.com)
+  // Passwort zurücksetzen über Supabase Auth
   const handleResetPassword = async () => {
     if (!currentUser?.email) return;
     setIsResetLoading(true);
     try {
-      // WICHTIG: Hier rufen wir jetzt zwingend unsere eigene Vercel-API auf!
-      const response = await fetch('/api/send-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: "reset",  email: currentUser.email })
+      const { error } = await supabase.auth.resetPasswordForEmail(currentUser.email, {
+        redirectTo: `${window.location.origin}/reset-password`
       });
-
-      if (!response.ok) throw new Error('Webhook Request fehlgeschlagen');
-
+      if (error) throw error;
       addToast('Link zum Zurücksetzen gesendet!', 'success');
     } catch (error) { 
-      console.error("Webhook Fehler:", error);
+      console.error("Passwort-Reset Fehler:", error);
       addToast('Fehler beim Senden der E-Mail', 'error'); 
     } finally { 
       setIsResetLoading(false); 

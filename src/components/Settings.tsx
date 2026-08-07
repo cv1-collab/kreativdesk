@@ -152,14 +152,10 @@ export default function Settings() {
     if (!currentUser?.email) return;
     setIsSendingReset(true);
     try {
-      const response = await fetch('/api/send-webhook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: "reset", email: currentUser.email })
+      const { error } = await supabase.auth.resetPasswordForEmail(currentUser.email, {
+        redirectTo: `${window.location.origin}/reset-password`
       });
-
-      if (!response.ok) throw new Error('Webhook fehlgeschlagen');
-
+      if (error) throw error;
       setResetSuccess(true);
       addToast(t('password_reset_success'), 'success');
     } catch (error) {
