@@ -33,28 +33,28 @@ export default function ProductTour() {
       IconComponent: any, 
       proTip?: string
     ) => (
-      <div className="flex flex-col gap-3 p-1 text-left max-w-sm">
-        <div className="flex items-center justify-between border-b border-border/50 pb-3 mb-1">
+      <div className="flex flex-col gap-3 p-1 text-left max-w-sm text-white">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-1">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-md">
-              <IconComponent size={20} className="text-accent-ai" />
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-md text-blue-400">
+              <IconComponent size={20} />
             </div>
             <div>
-              <span className="font-bold text-base text-text-primary leading-tight block">{title}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-accent-ai">
+              <span className="font-extrabold text-base text-white leading-tight block">{title}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
                 {isGerman ? `Schritt ${stepNum} von ${total}` : `Step ${stepNum} of ${total}`}
               </span>
             </div>
           </div>
         </div>
-        <p className="text-xs text-text-muted leading-relaxed font-medium">{content}</p>
+        <p className="text-xs text-zinc-300 leading-relaxed font-normal">{content}</p>
         {proTip && (
-          <div className="mt-2 bg-accent-ai/10 border border-accent-ai/20 rounded-xl p-3 flex gap-2.5 items-start">
-            <Sparkles size={16} className="text-accent-ai shrink-0 mt-0.5" />
-            <p className="text-[11px] text-accent-ai/90 font-medium leading-relaxed">
-              <strong className="block mb-0.5 text-accent-ai font-bold">{isGerman ? 'Pro-Tipp:' : 'Pro Tip:'}</strong>
+          <div className="mt-2 bg-blue-950/60 border border-blue-500/30 rounded-xl p-3 flex gap-2.5 items-start">
+            <Sparkles size={16} className="text-blue-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] font-medium leading-relaxed text-zinc-300">
+              <strong className="block mb-0.5 text-blue-300 font-bold">{isGerman ? 'Pro-Tipp:' : 'Pro Tip:'}</strong>
               {proTip}
-            </p>
+            </div>
           </div>
         )}
       </div>

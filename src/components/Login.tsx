@@ -115,8 +115,14 @@ export default function Login() {
     if (loading) return;
     try {
       setError(''); setLoading(true);
+
+      const cleanEmail = email.trim();
+      if (currentUser && currentUser.email?.toLowerCase() !== cleanEmail.toLowerCase()) {
+        await supabase.auth.signOut();
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password
       });
 
