@@ -31,7 +31,8 @@ import {
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
   X, Shield, Moon, Sun, FolderOpen, Megaphone, Trash2, Landmark,
   DollarSign, LayoutDashboard, Bell, LayoutTemplate, Layers, BookOpen, CalendarDays,
-  Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw, Lightbulb
+  Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw, Lightbulb,
+  Monitor, Smartphone, Apple, Laptop, Download
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useTheme } from '../contexts/ThemeContext';
@@ -110,17 +111,23 @@ export default function CompanyDashboard() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
 
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
   const handleInstallApp = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choiceResult = await deferredPrompt.userChoice;
-      if (choiceResult.outcome === 'accepted') {
-        setDeferredPrompt(null);
-        addToast('App erfolgreich auf Ihrem Gerät installiert!', 'success');
+      try {
+        deferredPrompt.prompt();
+        const choiceResult = await deferredPrompt.userChoice;
+        if (choiceResult.outcome === 'accepted') {
+          setDeferredPrompt(null);
+          addToast('App erfolgreich auf Ihrem Gerät installiert!', 'success');
+          return;
+        }
+      } catch (e) {
+        console.error("Install prompt error:", e);
       }
-    } else {
-      addToast('Tipp auf iPhone/Safari: "Teilen" ➔ "Zum Home-Bildschirm" zum Installieren.', 'info');
     }
+    setIsInstallModalOpen(true);
   };
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
@@ -866,6 +873,74 @@ export default function CompanyDashboard() {
         />, 
         document.body
       )}
+      {/* APP INSTALL INSTRUCTION MODAL */}
+      {isMounted && isInstallModalOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#18181b] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6 text-white">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-500">
+                  <Laptop size={22} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-white">Kreativ Desk OS als Desktop-App nutzen</h3>
+                  <p className="text-xs text-zinc-400">Nutze Kreativ Desk OS wie eine native Software auf Mac, PC oder Smartphone</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsInstallModalOpen(false)} 
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Option 1: Chrome / Edge / Brave (Desktop) */}
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-bold text-blue-400">
+                    <Monitor size={18} /> macOS & Windows (Google Chrome / Edge)
+                  </div>
+                  <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">1-Klick App</span>
+                </div>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  Öffne <strong>kreativdesk.ch</strong> in Chrome oder Edge. Klicke oben rechts in der Adresszeile auf das kleine <strong>"App installieren"-Symbol</strong>. Kreativ Desk OS startet dann als eigenständige Desktop-Software ohne Browserleiste!
+                </p>
+              </div>
+
+              {/* Option 2: Safari on Mac */}
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-emerald-400">
+                  <Apple size={18} /> macOS Safari (Desktop Mac)
+                </div>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  Klicke ganz oben im Mac-Menü auf <strong>Ablage</strong> ➔ <strong>"Zum Dock hinzufügen..."</strong>. Kreativ Desk OS wird direkt als Mac-App in dein Dock gelegt!
+                </p>
+              </div>
+
+              {/* Option 3: iOS / Mobile */}
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-purple-400">
+                  <Smartphone size={18} /> iPhone, iPad & Android
+                </div>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  Tippe unten im Browser auf das <strong>Teilen-Symbol</strong> ➔ <strong>"Zum Home-Bildschirm"</strong>.
+                </p>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setIsInstallModalOpen(false)}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20"
+            >
+              Verstanden
+            </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {isMounted && showExpenseModal && createPortal(<ExpenseReport onClose={() => setShowExpenseModal(false)} onSave={() => setShowExpenseModal(false)} />, document.body)}
       {isMounted && showInvoiceModal && createPortal(<InvoiceStudio type="invoice" onClose={() => setShowInvoiceModal(false)} />, document.body)}
       {isMounted && showQuoteModal && createPortal(<InvoiceStudio type="quote" onClose={() => setShowQuoteModal(false)} />, document.body)}
