@@ -58,21 +58,40 @@ export default function Login() {
   const [resetError, setResetError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
 
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
+
+  React.useEffect(() => {
+    if (currentUser) {
+      const timer = setTimeout(() => {
+        setLoading(false);
+        if (checkIsSuperAdmin(currentUser.email)) {
+          navigate('/admin');
+        } else {
+          navigate('/app');
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser, navigate]);
 
   if (currentUser && !loading) {
     if (checkIsSuperAdmin(currentUser.email)) return <Navigate to="/admin" />;
     return <Navigate to="/app" />;
   }
 
-  const startBootSequence = () => {
+  const startBootSequence = (onComplete?: () => void) => {
     setBootStep(0);
     let step = 0;
     const interval = setInterval(() => {
       step++;
-      if (step < BOOT_SEQUENCE.length) setBootStep(step);
-      else clearInterval(interval);
-    }, 800);
+      if (step < BOOT_SEQUENCE.length) {
+        setBootStep(step);
+      } else {
+        clearInterval(interval);
+        if (onComplete) onComplete();
+      }
+    }, 300);
   };
 
   async function handleGoogleLogin() {
@@ -93,16 +112,26 @@ export default function Login() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
     try {
       setError(''); setLoading(true);
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) throw error;
-      startBootSequence();
+
+      startBootSequence(() => {
+        setLoading(false);
+        if (data?.user?.email && checkIsSuperAdmin(data.user.email)) {
+          navigate('/admin');
+        } else {
+          navigate('/app');
+        }
+      });
     } catch (err: any) {
+      console.error("Login error:", err);
       setError(t('login_error')); 
       setLoading(false);
     }
