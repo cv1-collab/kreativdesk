@@ -38,7 +38,10 @@ export default function Signup() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
+  const initialEmail = searchParams.get('email') || '';
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -47,9 +50,6 @@ export default function Signup() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-
-  const [searchParams] = useSearchParams();
-  const inviteToken = searchParams.get('invite');
 
   if (currentUser && !loading) {
     return <Navigate to="/app" />;

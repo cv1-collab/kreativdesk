@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Shield, UserCheck, Trash2, Loader2, Mail, X, CheckCircle2 } from 'lucide-react';
+import { Search, Shield, UserCheck, Trash2, Loader2, Mail, X, CheckCircle2, Copy, ExternalLink, Building2, Sparkles } from 'lucide-react';
 import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -37,6 +37,62 @@ export default function AdminUsersTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Preprovision VIP Concierge States
+  const [isPreprovisionOpen, setIsPreprovisionOpen] = useState(false);
+  const [companyName, setCompanyName] = useState('');
+  const [ceoName, setCeoName] = useState('');
+  const [ceoEmail, setCeoEmail] = useState('');
+  const [plan, setPlan] = useState('Enterprise');
+  const [maxSeats, setMaxSeats] = useState(5);
+  const [employeeEmailsStr, setEmployeeEmailsStr] = useState('');
+  const [seedDemoProject, setSeedDemoProject] = useState(true);
+  const [isPreprovisioning, setIsPreprovisioning] = useState(false);
+  const [createdVipLink, setCreatedVipLink] = useState('');
+
+  const handlePreprovisionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!companyName || !ceoEmail) return addToast('Bitte Firmenname und CEO E-Mail eingeben.', 'error');
+    setIsPreprovisioning(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const employeeEmails = employeeEmailsStr
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && s.includes('@'));
+
+      const response = await fetch('/api/preprovision-company', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          companyName,
+          ceoName,
+          ceoEmail,
+          plan,
+          maxSeats: Number(maxSeats),
+          employeeEmails,
+          seedDemoProject
+        })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.error || 'Fehler beim Erstellen');
+
+      setCreatedVipLink(resData.vipLink);
+      addToast('VIP Kunden-Workspace & Link erfolgreich erstellt!', 'success');
+      await fetchUsers();
+    } catch (err: any) {
+      console.error(err);
+      addToast(err.message || 'Fehler beim Einrichten', 'error');
+    } finally {
+      setIsPreprovisioning(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -136,6 +192,13 @@ export default function AdminUsersTab() {
             className="w-full pl-10 pr-4 py-2.5 bg-background border border-border/50 rounded-lg text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 shadow-sm transition-colors"
           />
         </div>
+
+        <button
+          onClick={() => setIsPreprovisionOpen(true)}
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 shrink-0"
+        >
+          <Shield size={16} /> 🚀 Kunde vorab einrichten (VIP Concierge)
+        </button>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
@@ -277,6 +340,205 @@ export default function AdminUsersTab() {
                 <button type="submit" disabled={isSubmitting} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20">{isSubmitting ? 'Speichere...' : t('save_changes')}</button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* VIP CONCIERGE PREPROVISION MODAL */}
+      {isPreprovisionOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6 text-white">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-500">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-white">VIP Concierge Akquise</h3>
+                  <p className="text-xs text-zinc-400">Neuen Kunden-Workspace vorab einrichten & Einladung generieren</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setIsPreprovisionOpen(false); setCreatedVipLink(''); }} 
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {createdVipLink ? (
+              <div className="space-y-5 animate-in zoom-in-95 duration-300">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center space-y-2">
+                  <CheckCircle2 size={32} className="text-emerald-500 mx-auto" />
+                  <h4 className="font-bold text-white text-base">Workspace & VIP-Link sind bereit!</h4>
+                  <p className="text-xs text-emerald-200">
+                    Schicke diesen persönlichen Einladungslink jetzt an <strong>{ceoName || companyName}</strong> ({ceoEmail}):
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Persönlicher VIP Einladungslink</label>
+                  <div className="flex items-center gap-2 bg-black/50 border border-white/10 rounded-xl p-2.5">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={createdVipLink} 
+                      className="bg-transparent text-xs text-blue-400 flex-1 outline-none font-mono"
+                    />
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdVipLink);
+                        addToast('VIP Link in Zwischenablage kopiert!', 'success');
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0"
+                    >
+                      <Copy size={14} /> Kopieren
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <a 
+                    href={`https://wa.me/?text=${encodeURIComponent(`Hallo ${ceoName || ''}, Ihr Kreativ-Desk OS Workspace für ${companyName} ist fertig eingerichtet! Hier ist Ihr persönlicher VIP-Zugangslink: ${createdVipLink}`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-600/20"
+                  >
+                    💬 Per WhatsApp
+                  </a>
+                  <a 
+                    href={`mailto:${ceoEmail}?subject=${encodeURIComponent(`Ihr Kreativ-Desk OS Workspace für ${companyName}`)}&body=${encodeURIComponent(`Hallo ${ceoName || ''},\n\nIhr eigener Kreativ-Desk OS Workspace für ${companyName} wurde fertig eingerichtet!\n\nHier ist Ihr persönlicher VIP-Link zum Starten:\n${createdVipLink}\n\nBeste Grüsse,\nKreativ Desk OS Team`)}`}
+                    className="py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-600/20"
+                  >
+                    ✉️ Per E-Mail
+                  </a>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setIsPreprovisionOpen(false);
+                    setCreatedVipLink('');
+                    setCompanyName('');
+                    setCeoName('');
+                    setCeoEmail('');
+                    setEmployeeEmailsStr('');
+                  }}
+                  className="w-full py-2.5 border border-white/10 rounded-xl text-xs font-bold text-zinc-300 hover:bg-white/5 transition-colors"
+                >
+                  Schliessen
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handlePreprovisionSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Firmenname der Kunden-Firma *</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="z.B. Muster Architekten AG"
+                    value={companyName}
+                    onChange={e => setCompanyName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">CEO / Ansprechpartner Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="z.B. Peter Muster"
+                      value={ceoName}
+                      onChange={e => setCeoName(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">CEO E-Mail Adresse *</label>
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="peter@muster.ch"
+                      value={ceoEmail}
+                      onChange={e => setCeoEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Abo / Plan</label>
+                    <select
+                      value={plan}
+                      onChange={e => setPlan(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white focus:outline-none focus:border-blue-500"
+                    >
+                      <option value="Enterprise">Enterprise (Full OS)</option>
+                      <option value="Pro">Pro (3D BIM & Mängel)</option>
+                      <option value="Expert">Expert (Finanzen & API)</option>
+                      <option value="Studio">Studio (CHF 15'000+)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Lizenzen (Seats)</label>
+                    <input 
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={maxSeats}
+                      onChange={e => setMaxSeats(Number(e.target.value))}
+                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Mitarbeiter E-Mails (Optional, Komma-getrennt)</label>
+                  <input 
+                    type="text" 
+                    placeholder="mitarbeiter1@muster.ch, mitarbeiter2@muster.ch"
+                    value={employeeEmailsStr}
+                    onChange={e => setEmployeeEmailsStr(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 text-xs font-mono"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                  <input 
+                    type="checkbox"
+                    id="seed-demo"
+                    checked={seedDemoProject}
+                    onChange={e => setSeedDemoProject(e.target.checked)}
+                    className="w-4 h-4 rounded border-zinc-700 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="seed-demo" className="text-xs font-medium text-blue-200 cursor-pointer">
+                    9 Firmenordner, Muster-Projekt & Baujournal vorab automatisch erstellen
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsPreprovisionOpen(false)} 
+                    className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isPreprovisioning} 
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                  >
+                    {isPreprovisioning ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                    {isPreprovisioning ? 'Erstelle Workspace...' : '🚀 VIP Link Generieren'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>,
         document.body
