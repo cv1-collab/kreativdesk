@@ -130,31 +130,31 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     const userId = currentUser?.uid || currentUser?.id;
-    if (!userId) {
+    if (!userId) return;
+
+    const onboardingKey = `onboarding_completed_${userId}`;
+    const tourKey = `tour_completed_${userId}`;
+
+    const onboardingDoneInStorage = localStorage.getItem(onboardingKey) === 'true';
+    const tourDoneInStorage = localStorage.getItem(tourKey) === 'true';
+
+    const needsOnboarding = currentUser.hasCompletedOnboarding !== true && !onboardingDoneInStorage;
+    const needsTour = currentUser.hasSeenTour !== true && !tourDoneInStorage;
+
+    if (needsOnboarding) {
+      setShowOnboarding(true);
+    } else if (needsTour) {
       setShowOnboarding(false);
-      return;
+      localStorage.setItem(tourKey, 'true');
+      supabase.from('profiles').update({ has_seen_tour: true }).eq('id', userId).then();
+      const timer = setTimeout(() => {
+        startTour();
+      }, 800);
+      return () => clearTimeout(timer);
+    } else {
+      setShowOnboarding(false);
     }
-    const isCompleted = localStorage.getItem(`onboarding_completed_${userId}`) === 'true';
-    const shouldShow = currentUser.hasCompletedOnboarding !== true && !isCompleted;
-    setShowOnboarding(shouldShow);
-  }, [currentUser]);
-
-  useEffect(() => {
-    const userId = currentUser?.uid || currentUser?.id;
-    if (userId && !showOnboarding) {
-      const tourKey = `tour_completed_${userId}`;
-      const isCompleted = localStorage.getItem(tourKey) === 'true';
-
-      if (!isCompleted && currentUser.hasSeenTour !== true) {
-        localStorage.setItem(tourKey, 'true');
-        supabase.from('profiles').update({ has_seen_tour: true }).eq('id', userId).then();
-        const timer = setTimeout(() => {
-          startTour();
-        }, 800);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [currentUser, showOnboarding, startTour]);
+  }, [currentUser, startTour]);
   const { hasPermission } = usePermissions();
   const { limits } = useSubscriptionLimits();
   const canSeeFinances = hasPermission('canViewFinance');
