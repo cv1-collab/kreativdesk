@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
 import { 
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
@@ -47,6 +48,9 @@ export default function Documents() {
   const { addToast } = useToast();
   const { activeProjectId } = useProject() as any;
   const { language, t: globalT } = useLanguage();
+  const { hasPermission } = usePermissions();
+  const canUpload = hasPermission('canUploadFiles');
+  const canDelete = hasPermission('canDeleteFiles');
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -266,23 +270,27 @@ export default function Documents() {
             {t('seed_demo_btn')}
           </button>
 
-          <button
-            onClick={() => setIsCreatingFolder(true)}
-            className="px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm"
-          >
-            <FolderPlus size={16} />
-            {t('new_folder')}
-          </button>
+          {canUpload && (
+            <>
+              <button
+                onClick={() => setIsCreatingFolder(true)}
+                className="px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm"
+              >
+                <FolderPlus size={16} />
+                {t('new_folder')}
+              </button>
 
-          <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-          <button 
-            onClick={() => fileInputRef.current?.click()} 
-            disabled={isUploading}
-            className="px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50"
-          >
-            {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {t('upload')}
-          </button>
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                disabled={isUploading}
+                className="px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50"
+              >
+                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                {t('upload')}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -411,13 +419,15 @@ export default function Documents() {
                     </a>
                   )}
 
-                  <button 
-                    onClick={() => handleDelete(item.id, item.is_folder)} 
-                    className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border"
-                    title="Löschen"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  {canDelete && (
+                    <button 
+                      onClick={() => handleDelete(item.id, item.is_folder)} 
+                      className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border"
+                      title="Löschen"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
