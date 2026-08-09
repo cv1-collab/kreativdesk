@@ -223,37 +223,6 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     }
   }
 
-  // 3. Seed Demo Documents / Plans
-  if (Array.isArray(template.documents)) {
-    for (const d of template.documents) {
-      const { data: existingDoc } = await supabase
-        .from('documents')
-        .select('id')
-        .eq('company_id', realCompanyId)
-        .eq('project_id', projId)
-        .eq('name', d.name)
-        .maybeSingle();
-
-      if (!existingDoc) {
-        await supabase.from('documents').insert({
-          name: d.name,
-          url: d.url,
-          file_url: d.url,
-          project_id: projId,
-          folder_id: 'root',
-          category: 'projects',
-          type: d.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
-          size: '1.2 MB',
-          is_folder: false,
-          owner_id: ownerId,
-          uploaded_by: ownerId,
-          company_id: realCompanyId,
-          created_at: new Date().toISOString(),
-          uploaded_at: new Date().toISOString()
-        });
-      }
-    }
-  }
 
   // 4. Seed Defects
   if (Array.isArray(template.defects)) {
