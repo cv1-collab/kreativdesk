@@ -4,6 +4,7 @@ import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { 
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
