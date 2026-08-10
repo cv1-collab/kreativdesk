@@ -174,6 +174,22 @@ export default function AdminUsersTab() {
     }
   };
 
+  const handleCleanupTestUsers = async () => {
+    if (!window.confirm('Möchtest du alle Demo- und Test-Nutzer löschen?')) return;
+    const testEmails = [
+      'kreativdesk999@yopmail.com', 'kreativdesk999@mailinator.com', 'kreativdesk12345@mailnesia.com',
+      'test3@example.com', 'unique_user_12345@mailto.plus', 'faxpad@mailto.plus', 'test@example.com', 'tester@kreativdesk.ch'
+    ];
+    try {
+      await supabase.from('profiles').delete().in('email', testEmails);
+      addToast('Test-Nutzer erfolgreich gelöscht!', 'success');
+      await fetchUsers();
+    } catch (err) {
+      console.error(err);
+      addToast('Fehler beim Bereinigen', 'error');
+    }
+  };
+
   const filtered = users.filter(u => 
     (u.name?.toLowerCase() || '').includes(search.toLowerCase()) || 
     (u.email?.toLowerCase() || '').includes(search.toLowerCase())
@@ -193,12 +209,20 @@ export default function AdminUsersTab() {
           />
         </div>
 
-        <button
-          onClick={() => setIsPreprovisionOpen(true)}
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 shrink-0"
-        >
-          <Shield size={16} /> 🚀 Kunde vorab einrichten (VIP Concierge)
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleCleanupTestUsers}
+            className="px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-sm"
+          >
+            Test-Nutzer löschen
+          </button>
+          <button
+            onClick={() => setIsPreprovisionOpen(true)}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 shrink-0"
+          >
+            <Shield size={16} /> 🚀 Kunde vorab einrichten (VIP Concierge)
+          </button>
+        </div>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">

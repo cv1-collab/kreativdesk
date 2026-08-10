@@ -53,14 +53,17 @@ export default function AdminSalesTab() {
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
-        const enriched = data.map(t => {
-          const prof = profileMap.get(t.user_id || t.owner_id);
-          return {
-            ...t,
-            userEmail: t.userEmail || t.user_email || prof?.email || prof?.name || t.company_name || 'Abonnent',
-            companyName: prof?.company_name || t.company_name || 'Kreativ Desk Organisation'
-          };
-        });
+        const enriched = data
+          .map(t => {
+            const prof = profileMap.get(t.user_id || t.owner_id);
+            const userEmail = t.userEmail || t.user_email || prof?.email || prof?.name || null;
+            return {
+              ...t,
+              userEmail: userEmail,
+              companyName: prof?.company_name || t.company_name || 'Kreativ Desk Organisation'
+            };
+          })
+          .filter(t => t.userEmail !== null && t.userEmail !== undefined && t.userEmail !== 'Unbekannt');
         setTransactions(enriched);
       } else {
         setTransactions([]);
