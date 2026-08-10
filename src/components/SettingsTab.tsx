@@ -230,9 +230,15 @@ export default function SettingsTab() {
         setPrivacyPdfUrl(data.privacy_pdf_url || data.privacyPdfUrl || '');
         setCompanyPlan(data.plan || 'Free Trial');
       }
+
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
+      const { count: cuCount } = await supabase.from('company_users').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
+      const { count: pCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
+      const totalSeats = Math.max(1, (cuCount || 0) + (pCount || 0));
+      setUsedSeats(totalSeats);
     };
     fetchCompany();
-  }, [currentUser?.companyId]);
+  }, [currentUser?.companyId, currentUser?.uid]);
 
   // Einstellungen speichern
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -919,11 +925,16 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   useEffect(() => {
     const fetchTeam = async () => {
-      if (!currentUser?.companyId) return;
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      if (!safeCompanyId) return;
       setIsLoading(true);
       try {
-        const { data: members } = await supabase.from('users').select('*').eq('company_id', currentUser.companyId);
-        if (members) setTeamMembers(members);
+        const { data: cuMembers } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
+        const { data: profMembers } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
+        const map = new Map();
+        (profMembers || []).forEach((p: any) => map.set(p.id || p.email, { ...p, role: p.role || 'owner' }));
+        (cuMembers || []).forEach((c: any) => map.set(c.id || c.email, { ...c, email: c.email || c.name }));
+        setTeamMembers(Array.from(map.values()));
       } catch (err) {
         console.error("Error fetching team", err);
       } finally {
@@ -931,12 +942,12 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
       }
     };
     fetchTeam();
-  }, [currentUser?.companyId]);
+  }, [currentUser?.companyId, currentUser?.uid]);
 
   const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
     try {
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
-      await supabase.from('users').update({ [colName]: !currentValue }).eq('id', userId);
+      await supabase.from('profiles').update({ [colName]: !currentValue }).eq('id', userId);
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: !currentValue } : m));
       addToast('Permissions updated', 'success');
     } catch (err) {

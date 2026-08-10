@@ -130,10 +130,24 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const safeCompanyId = companyId || currentUser.uid;
       const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
       
+      const mappedCrm = (crmData || []).map(u => ({
+        id: u.id,
+        firstName: u.first_name || u.firstName || u.name?.split(' ')[0] || u.name || '',
+        lastName: u.last_name || u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
+        name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
+        email: u.email || '',
+        phone: u.phone || '',
+        company: u.company || '',
+        status: u.status || 'neu',
+        role: u.role || 'employee',
+        isExternal: u.is_external !== false
+      }));
+
       const mappedProfiles = (profilesData || []).map(p => ({
         id: p.id,
         firstName: p.name?.split(' ')[0] || p.name || 'Team',
         lastName: p.name?.split(' ').slice(1).join(' ') || '',
+        name: p.name || p.email || 'Team Member',
         email: p.email,
         company: p.company_name || 'Kreativ Desk',
         status: 'team',
@@ -141,7 +155,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         isExternal: false
       }));
 
-      const combined = [...mappedProfiles, ...(crmData || [])];
+      const combinedMap = new Map();
+      mappedProfiles.forEach(p => { if (p.id || p.email) combinedMap.set(p.id || p.email, p); });
+      mappedCrm.forEach(c => { if (c.id || c.email) combinedMap.set(c.id || c.email, c); });
+
+      const combined = Array.from(combinedMap.values());
       setCrmUsers(combined);
       setRealUsers(profilesData || []);
     };
