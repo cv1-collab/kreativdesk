@@ -68,12 +68,15 @@ export default function TemplatesTab({
     if (!aiPrompt.trim()) return;
     setIsGeneratingAi(true);
     try {
-      const res = await callGeminiAPI('gemini-2.0-flash', [{ text: prompt }]);
+      const fullPrompt = `Erstelle eine professionelle Dokumentenvorlage / Briefvorlage im Schweizer Standard nach DIN 5008 (A4 Hochformat) für das Thema: "${aiPrompt}". 
+Verwende eine klare Gliederung mit Briefkopf, Betreffzeile, Anrede, Textinhalt und Grußformel. Schweizer Rechtschreibung (ss statt ß).`;
+      const res = await callGeminiAPI('gemini-2.0-flash', [{ text: fullPrompt }]);
       const outputText = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(res));
       setGeneratedTemplate(outputText);
       addToast('KI-Vorlage generiert!', 'success');
-    } catch (err) {
-      addToast('Fehler bei der Generierung', 'error');
+    } catch (err: any) {
+      console.error("AI Template Gen Error:", err);
+      addToast(`Fehler bei der Generierung: ${err?.message || 'Unbekannt'}`, 'error');
     } finally {
       setIsGeneratingAi(false);
     }

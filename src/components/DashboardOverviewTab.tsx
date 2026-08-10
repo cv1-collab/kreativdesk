@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 
+import { useProject } from '../contexts/ProjectContext';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { 
     good_morning: 'Good morning', daily_briefing: 'Here is your current workflow overview.', projects: 'Projects', 
@@ -21,15 +23,18 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
   const { currentUser } = useAuth();
+  const { projects: contextProjects } = useProject();
   const { language, t: globalT } = useLanguage();
   const { theme } = useTheme();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [projects, setProjects] = useState<any[]>([]);
+  const [dbProjects, setDbProjects] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+
+  const projects = (contextProjects && contextProjects.length > 0) ? contextProjects : dbProjects;
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
@@ -41,7 +46,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
           .from('projects')
           .select('*')
           .eq('company_id', safeCompanyId);
-        if (projs) setProjects(projs);
+        if (projs) setDbProjects(projs);
 
         const { data: lds } = await supabase
           .from('leads')

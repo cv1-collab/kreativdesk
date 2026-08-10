@@ -372,3 +372,5 @@ export function useProject() {
   }
   return context;
 }
+
+export const useProjects = useProject;
