@@ -34,7 +34,7 @@ export default function AdminLeadsTab() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel).catch(() => {});
     };
   }, []);
 

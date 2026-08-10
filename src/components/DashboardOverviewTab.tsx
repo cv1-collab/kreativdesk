@@ -75,7 +75,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel).catch(() => {});
     };
   }, [currentUser]);
 

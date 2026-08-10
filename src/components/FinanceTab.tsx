@@ -136,7 +136,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel).catch(() => {});
     };
   }, [currentUser]);
 

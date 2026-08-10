@@ -274,7 +274,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       .on('postgres_changes', { event: '*', schema: 'public', table: 'defects', filter: `project_id=eq.${currentProjectId}` }, fetchDefects)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (channel) supabase.removeChannel(channel).catch(() => {});
+    };
   }, [currentProjectId]);
 
   useEffect(() => {

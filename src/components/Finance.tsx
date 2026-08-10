@@ -595,7 +595,9 @@ export default function Finance() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${currentUser.companyId}` }, fetchData)
       .subscribe();
     
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (channel) supabase.removeChannel(channel).catch(() => {});
+    };
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject]);
 
   // AUTO-SAVE TO SUPABASE SYSTEM_CONFIG ON BUDGET CHANGES
