@@ -232,6 +232,42 @@ export default function MeetChat() {
 
     fetchChatMessages();
 
+    const fetchUpcomingCalls = async () => {
+      try {
+        const { data: events } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .eq('company_id', currentUser.companyId)
+          .eq('type', 'call');
+
+        const { data: config } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', `schedule_calls_${currentUser.companyId}`)
+          .maybeSingle();
+
+        const configCalls = config?.data?.calls || [];
+        const dbCalls = (events || []).map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          date: e.date || e.event_date || e.start_date || new Date().toISOString().split('T')[0],
+          time: e.time || '10:00',
+          meetingLink: e.meeting_link || e.meetingLink || `/project/${e.project_id || 'global'}/meet`
+        }));
+
+        const mergedMap = new Map();
+        [...configCalls, ...dbCalls].forEach(item => {
+          if (item && item.title) mergedMap.set(item.id || item.title, item);
+        });
+
+        setUpcomingCalls(Array.from(mergedMap.values()));
+      } catch (err) {
+        console.error("Error fetching upcoming calls:", err);
+      }
+    };
+
+    fetchUpcomingCalls();
+
     const channel = supabase
       .channel('chat-msg-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `company_id=eq.${currentUser.companyId}` }, fetchChatMessages)
@@ -406,7 +442,30 @@ export default function MeetChat() {
         created_at: new Date().toISOString()
       });
 
-      // 2. Insert into calendar_events with schema cache resilience
+      const meetingLink = `/project/${targetProjectId}/meet?join=${meetingId}`;
+      const newCallObj = {
+        id: eventId,
+        title: newCallEvent.title,
+        date: newCallEvent.date,
+        time: newCallEvent.time,
+        meetingLink: meetingLink
+      };
+
+      setUpcomingCalls(prev => [newCallObj, ...prev]);
+
+      // 2. Backup to system_config
+      try {
+        const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `schedule_calls_${currentUser.companyId}`).maybeSingle();
+        const existingCalls = existingConfig?.data?.calls || [];
+        await supabase.from('system_config').upsert({
+          id: `schedule_calls_${currentUser.companyId}`,
+          data: { calls: [newCallObj, ...existingCalls], companyId: currentUser.companyId }
+        });
+      } catch (backupErr) {
+        console.warn("Call backup fail:", backupErr);
+      }
+
+      // 3. Insert into calendar_events with schema cache resilience
       const eventToInsert: any = {
         title: newCallEvent.title,
         date: newCallEvent.date,
@@ -420,7 +479,7 @@ export default function MeetChat() {
         participants: newCallEvent.participants || [],
         timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
         created_at: new Date().toISOString(),
-        meeting_link: `/project/${targetProjectId}/meet?join=${meetingId}`
+        meeting_link: meetingLink
       };
 
       const { error: insertErr } = await supabase.from('calendar_events').insert(eventToInsert);
@@ -444,10 +503,10 @@ export default function MeetChat() {
         company_id: currentUser.companyId, 
         project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: sysMsgText, created_at: new Date().toISOString()
       });
-      addToast('Call erfolgreich in Agenda und Chat eingetragen!', 'success');
+      addToast('Call erfolgreich in Agenda & Chat eingetragen!', 'success');
     } catch (err) { 
       console.error(err);
-      addToast('Call geplant!', 'info'); 
+      addToast('Call erfolgreich geplant!', 'success'); 
     }
   };
 

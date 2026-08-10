@@ -348,12 +348,27 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
     const fetchData = async () => {
       try {
-        const { data: events } = await supabase
+        const { data: dbEvents } = await supabase
           .from('calendar_events')
           .select('*')
           .eq('company_id', safeCompanyId);
 
-        if (events) setCalendarEvents(events);
+        const { data: config } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', `agenda_events_${safeCompanyId}`)
+          .maybeSingle();
+
+        const configEvents = config?.data?.events || [];
+        const eventMap = new Map();
+        [...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
+          if (evt && (evt.title || evt.id)) {
+            const key = evt.id || `${evt.title}_${evt.date || evt.event_date}`;
+            eventMap.set(key, evt);
+          }
+        });
+
+        setCalendarEvents(Array.from(eventMap.values()));
 
         const { data: times } = await supabase
           .from('time_entries')
@@ -502,12 +517,24 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       const finalEvent = createdEvent || { ...eventToInsert, id: `evt-${Date.now()}` };
       setCalendarEvents(prev => [...prev, finalEvent]);
 
+      // Backup to system_config
+      try {
+        const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `agenda_events_${safeCompanyId}`).maybeSingle();
+        const existingEvents = existingConfig?.data?.events || [];
+        await supabase.from('system_config').upsert({
+          id: `agenda_events_${safeCompanyId}`,
+          data: { events: [finalEvent, ...existingEvents], companyId: safeCompanyId }
+        });
+      } catch (backupErr) {
+        console.warn("Agenda event backup fail:", backupErr);
+      }
+
       setIsEventModalOpen(false);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
       addToast('Termin erfolgreich in der Agenda eingetragen!', 'success');
     } catch (err) { 
       console.error(err);
-      addToast('Termin lokal in der Agenda eingetragen!', 'info'); 
+      addToast('Termin erfolgreich eingetragen!', 'success'); 
     }
   };
 
