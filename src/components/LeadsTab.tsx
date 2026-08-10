@@ -496,6 +496,7 @@ export default function LeadsTab() {
       await supabase.from('leads').update({ status: 'Converted' }).eq('id', lead.id);
       addToast('Lead in CRM übertragen!', 'success');
       if (editingLead?.id === lead.id) setIsModalOpen(false);
+      fetchLeads();
     } catch(e) { 
       addToast(t('upload_failed'), 'error'); 
     }

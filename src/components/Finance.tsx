@@ -871,14 +871,22 @@ export default function Finance() {
   const handleDeleteTransaction = async (id: string) => {
     if (isReadOnly) return;
     if (window.confirm(t('delete_confirm'))) {
-      try { await supabase.from('transactions').delete().eq('id', id); addToast(t('booking_deleted'), 'success'); } 
+      try { 
+        await supabase.from('transactions').delete().eq('id', id); 
+        setTransactions(prev => prev.filter(tx => tx.id !== id));
+        addToast(t('booking_deleted'), 'success'); 
+      } 
       catch (error) { addToast(t('delete_error'), 'error'); }
     }
   };
 
   const updateTransactionStatus = async (id: string, newStatus: string) => {
     if (isReadOnly) return;
-    try { await supabase.from('transactions').update({ status: newStatus }).eq('id', id); addToast(t('status_updated'), 'success'); } 
+    try { 
+      await supabase.from('transactions').update({ status: newStatus }).eq('id', id); 
+      setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
+      addToast(t('status_updated'), 'success'); 
+    } 
     catch (e) { addToast(t('update_error'), 'error'); }
   };
 

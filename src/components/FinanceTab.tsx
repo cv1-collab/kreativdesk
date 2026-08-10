@@ -178,8 +178,28 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     if (!opCostSessionId || !showOpCostModal) return;
   }, [opCostSessionId, showOpCostModal]);
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => { try { await supabase.from('transactions').update({ status: newStatus }).eq('id', id); addToast(t('status_updated'), "success"); } catch (e) { addToast(t('update_error'), "error"); } };
-  const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => { e.stopPropagation(); if (window.confirm(t('confirm_delete'))) { try { await supabase.from('transactions').delete().eq('id', id); addToast(t('entry_deleted'), "success"); } catch (e) { addToast(t('delete_error'), "error"); } } };
+  const handleUpdateStatus = async (id: string, newStatus: string) => { 
+    try { 
+      await supabase.from('transactions').update({ status: newStatus }).eq('id', id); 
+      setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
+      addToast(t('status_updated'), "success"); 
+    } catch (e) { 
+      addToast(t('update_error'), "error"); 
+    } 
+  };
+
+  const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => { 
+    e.stopPropagation(); 
+    if (window.confirm(t('confirm_delete'))) { 
+      try { 
+        await supabase.from('transactions').delete().eq('id', id); 
+        setTransactions(prev => prev.filter(tx => tx.id !== id));
+        addToast(t('entry_deleted'), "success"); 
+      } catch (e) { 
+        addToast(t('delete_error'), "error"); 
+      } 
+    } 
+  };
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

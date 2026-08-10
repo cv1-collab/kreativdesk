@@ -394,10 +394,25 @@ export default function MeetChat() {
     try {
       const eventId = `evt-${Date.now()}`;
       const targetProjectId = projectId || activeProjectId || 'internal';
+      const meetingId = generatedMeetingId || `meet-${Date.now()}`;
       
+      // 1. Pre-register video call so external links work
+      await supabase.from('video_calls').upsert({
+        id: meetingId,
+        project_id: targetProjectId,
+        company_id: currentUser.companyId,
+        caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
+        caller_id: currentUser.uid,
+        created_at: new Date().toISOString()
+      });
+
+      // 2. Insert into calendar_events
       await supabase.from('calendar_events').insert({
-        ...newCallEvent,
+        title: newCallEvent.title,
+        date: newCallEvent.date,
+        time: newCallEvent.time,
         type: 'call',
+        description: newCallEvent.description || '',
         id: eventId,
         owner_id: currentUser.uid,
         company_id: currentUser.companyId, 
@@ -405,7 +420,7 @@ export default function MeetChat() {
         participants: newCallEvent.participants || [],
         timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
         created_at: new Date().toISOString(),
-        meeting_link: `/project/${targetProjectId}/meet?join=${generatedMeetingId}`
+        meeting_link: `/project/${targetProjectId}/meet?join=${meetingId}`
       });
       
       setIsScheduleModalOpen(false);
@@ -513,14 +528,33 @@ export default function MeetChat() {
                     <button onClick={() => startCall(selectedUserIds)} className="w-full sm:w-auto px-6 py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
                       <PhoneCall size={16} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
-                    <button onClick={() => { 
+                    <button onClick={async () => { 
                       const newId = `meet-${Date.now()}`;
                       const joinUrl = `${window.location.origin}/guest-meet/${newId}`; 
                       navigator.clipboard.writeText(joinUrl); 
                       setCopiedLink(true); 
                       setTimeout(() => setCopiedLink(false), 2000); 
                       setJoinCallId(newId);
-                      addToast('Link kopiert! Sende ihn an externe Partner.', 'success');
+
+                      // Pre-register meeting in Supabase video_calls table
+                      try {
+                        const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
+                        const targetProjectId = projectId || activeProjectId || 'global';
+                        await supabase.from('video_calls').upsert({
+                          id: newId,
+                          project_id: targetProjectId,
+                          company_id: safeCompanyId,
+                          caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Host',
+                          caller_id: currentUser?.uid,
+                          created_at: new Date().toISOString()
+                        });
+                      } catch (err) {
+                        console.error('Failed to pre-register call in Supabase:', err);
+                      }
+
+                      // Start call so host is in the room
+                      await startCall(selectedUserIds, newId);
+                      addToast('Link kopiert & Call gestartet!', 'success');
                     }} className="w-full sm:w-auto px-5 py-2.5 bg-surface border border-border/80 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-all flex items-center justify-center gap-2 shadow-sm">
                       {copiedLink ? <CheckCircle2 size={16} className="text-emerald-500" /> : <LinkIcon size={16} />} 
                       <span className="inline">{t('external_link')}</span>

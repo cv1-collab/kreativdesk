@@ -294,10 +294,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleDropLogic = async (id: string, status: string) => {
     if (!id) return;
 
-    if (currentProjectId === 'demo-1') {
-      setDefects(prev => prev.map(d => d.id === id ? { ...d, status } : d));
-      return;
-    }
+    setDefects(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+
+    if (currentProjectId === 'demo-1') return;
 
     try { await supabase.from('defects').update({ status }).eq('id', id); } 
     catch (error) { addToast('Fehler', 'error'); }
@@ -375,17 +374,20 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     }
     try {
       if (editingId) { 
-        await supabase.from('defects').update({ ...currentDefect }).eq('id', editingId); 
+        await supabase.from('defects').update({ ...currentDefect }).eq('id', editingId);
+        setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
       } else { 
         const newId = `DEF-${Date.now()}`; 
-        await supabase.from('defects').insert({ 
+        const newDefectItem = { 
           ...currentDefect, 
           id: newId, 
           project_id: currentProjectId, 
           owner_id: currentUser.uid, 
           company_id: currentUser.companyId, 
           date: new Date().toISOString().split('T')[0] 
-        }); 
+        };
+        await supabase.from('defects').insert(newDefectItem); 
+        setDefects(prev => [...prev, { ...newDefectItem, projectId: currentProjectId } as Defect]);
       }
       setIsModalOpen(false); 
       setCurrentDefect(DEFAULT_DEFECT); 
@@ -401,8 +403,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleDeleteDefect = async (id: string) => {
     if (!window.confirm(t('delete_confirm'))) return;
 
+    setDefects(prev => prev.filter(d => d.id !== id));
+
     if (currentProjectId === 'demo-1') {
-        setDefects(prev => prev.filter(d => d.id !== id));
         addToast(t('delete') + ' ' + t('completed'), 'success');
         return;
     }

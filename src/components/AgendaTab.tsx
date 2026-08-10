@@ -441,40 +441,82 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     try {
-      if (isDemoMode) {
-        setIsEventModalOpen(false);
-        setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
-        addToast(t('completed'), 'success');
-        return;
+      const callMeetingId = newEvent.type === 'call' ? `meet-${Date.now()}` : null;
+      const meetingLink = newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?join=${callMeetingId}` : null;
+
+      // 1. If it's a video call, pre-register in video_calls so external link works
+      if (callMeetingId) {
+        try {
+          await supabase.from('video_calls').upsert({
+            id: callMeetingId,
+            project_id: newEvent.projectId,
+            company_id: safeCompanyId,
+            caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
+            caller_id: currentUser.uid,
+            created_at: new Date().toISOString()
+          });
+        } catch (callErr) {
+          console.error("Failed to pre-register video call:", callErr);
+        }
       }
 
-      await supabase.from('calendar_events').insert({ 
-        ...newEvent, created_at: new Date().toISOString(), 
-        meeting_link: newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?join=meet-${Date.now()}` : null,
-        company_id: safeCompanyId, owner_id: currentUser.uid, project_id: newEvent.projectId
-      });
+      // 2. Insert into calendar_events
+      const eventToInsert = {
+        title: newEvent.title,
+        date: newEvent.date,
+        time: newEvent.time,
+        type: newEvent.type,
+        description: newEvent.description || '',
+        participants: newEvent.participants || [],
+        created_at: new Date().toISOString(), 
+        meeting_link: meetingLink,
+        company_id: safeCompanyId, 
+        owner_id: currentUser.uid, 
+        project_id: newEvent.projectId
+      };
+
+      const { data: createdEvent, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
+
+      if (error) throw error;
+
+      const finalEvent = createdEvent || { ...eventToInsert, id: `evt-${Date.now()}` };
+      setCalendarEvents(prev => [...prev, finalEvent]);
 
       setIsEventModalOpen(false);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
       addToast(t('completed'), 'success');
-    } catch (err) { addToast('Fehler', 'error'); }
+    } catch (err) { 
+      console.error(err);
+      addToast('Fehler beim Speichern des Termins', 'error'); 
+    }
   };
 
   const handleUpdateCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEvent || !selectedEvent.projectId) return;
+    if (!selectedEvent || (!selectedEvent.projectId && !selectedEvent.project_id)) return;
+    const projId = selectedEvent.projectId || selectedEvent.project_id;
     try {
-      await supabase.from('calendar_events').update({
+      const updateData = {
         title: selectedEvent.title,
         date: selectedEvent.date,
         time: selectedEvent.time,
         description: selectedEvent.description || '',
-        project_id: selectedEvent.projectId,
+        project_id: projId,
         participants: selectedEvent.participants || []
-      }).eq('id', selectedEvent.id);
+      };
+
+      const { data: updatedEvent, error } = await supabase.from('calendar_events').update(updateData).eq('id', selectedEvent.id).select().single();
+      
+      if (error) throw error;
+      const finalUpdated = updatedEvent || { ...selectedEvent, ...updateData };
+      setCalendarEvents(prev => prev.map(ev => ev.id === selectedEvent.id ? finalUpdated : ev));
+
       addToast(t('completed'), 'success');
       setSelectedEvent(null);
-    } catch (err) { addToast('Fehler', 'error'); }
+    } catch (err) { 
+      console.error(err);
+      addToast('Fehler beim Aktualisieren', 'error'); 
+    }
   };
 
   const handleDeleteCalendarEvent = async (eventId: string, e: React.MouseEvent) => {
@@ -482,6 +524,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (window.confirm(t('delete') + '?')) {
       try { 
         await supabase.from('calendar_events').delete().eq('id', eventId); 
+        setCalendarEvents(prev => prev.filter(ev => ev.id !== eventId));
         addToast(t('delete') + ' ' + t('completed'), 'success'); 
         setSelectedEvent(null);
       } 
@@ -493,7 +536,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     e.preventDefault();
     const eventId = e.dataTransfer.getData('text/plain');
     if (eventId) {
-      try { await supabase.from('calendar_events').update({ date: newDateStr }).eq('id', eventId); addToast(t('completed'), 'success'); } 
+      try { 
+        await supabase.from('calendar_events').update({ date: newDateStr }).eq('id', eventId); 
+        setCalendarEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr } : ev));
+        addToast(t('completed'), 'success'); 
+      } 
       catch (err) { addToast('Fehler', 'error'); }
     }
   };
