@@ -52,9 +52,10 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   ];
 
   const currentProjectId = propProjectId || projectId || activeProjectId;
+  const isDemo = currentProjectId === 'demo-1';
   const dbMembers = (projectMembers || []).filter((m: any) => m.projectId === currentProjectId);
-  const currentMembers = dbMembers.length > 0 ? dbMembers : DEFAULT_DEMO_USERS;
-  const allCompanyUsers = companyUsers.length > 0 ? companyUsers : DEFAULT_DEMO_USERS;
+  const currentMembers = dbMembers.length > 0 ? dbMembers : (isDemo ? DEFAULT_DEMO_USERS : []);
+  const allCompanyUsers = companyUsers.length > 0 ? companyUsers : (isDemo ? DEFAULT_DEMO_USERS : []);
 
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [addMode, setAddMode] = useState<'existing' | 'new'>('existing'); 

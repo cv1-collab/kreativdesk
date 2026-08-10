@@ -323,9 +323,9 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                  </div>
 
                  <div className="bg-surface border border-border rounded-xl p-3 md:p-4 shadow-sm relative overflow-hidden flex flex-col justify-between">
-                   <div className="flex items-center justify-between mb-2"><span className="text-text-muted text-xs md:text-sm font-medium flex items-center gap-1 truncate pr-1"><Scan size={12} className="hidden sm:inline"/> Personal</span><Users className="text-purple-400 shrink-0" size={16}/></div>
-                   <div className="text-xl md:text-2xl font-bold text-text-primary">42</div>
-                   <p className="text-[9px] md:text-xs text-text-muted mt-1 leading-tight">{t('as_per_rfid_log')}</p>
+                    <div className="flex items-center justify-between mb-2"><span className="text-text-muted text-xs md:text-sm font-medium flex items-center gap-1 truncate pr-1"><Scan size={12} className="hidden sm:inline"/> Personal</span><Users className="text-purple-400 shrink-0" size={16}/></div>
+                    <div className="text-xl md:text-2xl font-bold text-text-primary">{currentProjectId === 'demo-1' ? '42' : '0'}</div>
+                    <p className="text-[9px] md:text-xs text-text-muted mt-1 leading-tight">{t('as_per_rfid_log')}</p>
                  </div>
               </div>
 

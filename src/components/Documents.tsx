@@ -206,6 +206,7 @@ export default function Documents() {
   const legacyFolderMap: Record<string, string> = {
     '02_VERTRÄGE': '02_RECHTLICHES',
     '03_PERSONAL': '03_HR_MITARBEITER',
+    '04_MARKETING': '05_MARKETING',
   };
 
   const filteredItems = documents.filter(doc => {

@@ -537,21 +537,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         setProjectPlans(plans as any);
         if (!activePlanId) loadPlanDataToEditor(plans[0]);
       } else {
-        const fallbackPlan = {
-          id: 'system-fallback-plan',
-          projectId: currentProjectId,
-          companyId: currentUser?.companyId || 'fallback-company',
-          planName: 'Muster-Grundriss (System)',
-          planImage: dummySvgPlan, 
-          paperFormat: 'A3',
-          paperOrientation: 'landscape',
-          planScale: 50,
-          elements: [],
-          layers: [{ id: 'default', name: 'Architektur', visible: true, locked: false, opacity: 1 }],
-          activeLayerId: 'default'
-        };
-        setProjectPlans([fallbackPlan]);
-        if (!activePlanId) loadPlanDataToEditor(fallbackPlan);
+        setProjectPlans([]);
+        setActivePlanId(null);
+        setPlanImage(null);
+        setPlanName('');
+        setElements([]);
       }
     };
     fetchPlans();

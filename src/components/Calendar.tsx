@@ -367,8 +367,8 @@ export default function Calendar() {
 
   // === MULTI-TENANT & GLOBAL SILO FIX ===
   useEffect(() => {
-    // 🔥 DEMO-BRÜCKE: Lade den Terminplan aus deinem Template!
-    if ((projectIsDemoMode || currentProjectId === 'demo-1' || currentProjectId.startsWith('demo-') || currentProjectId === 'global') && demoData) {
+    // DEMO-MODUS: Nur für echtes Demo-Projekt demo-1
+    if ((currentProjectId === 'demo-1') && demoData) {
        hasLoadedInitial.current = true;
        setIsInitialLoad(false);
        const today = new Date();
@@ -423,18 +423,18 @@ export default function Calendar() {
             const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
             setActiveScheduleId(target.id);
             setScheduleName(target.name || 'Masterplan');
-            setGanttTasks(target.ganttTasks?.length ? target.ganttTasks : DEFAULT_TASKS);
-            setSmartMarkers(target.smartMarkers?.length ? target.smartMarkers : DEFAULT_MARKERS);
+            setGanttTasks(target.ganttTasks || []);
+            setSmartMarkers(target.smartMarkers || []);
             setShapes(target.shapes || []);
             setTargetYear(target.targetYear || new Date().getFullYear());
             hasLoadedInitial.current = true;
           }
         } else {
-          const isBau = project?.name?.includes('Quartier') || project?.name?.includes('Bau') || project?.name?.includes('BAU') || currentProjectId === 'demo-1';
+          const isDemo = currentProjectId === 'demo-1';
           const today = new Date();
-          let initTasks = DEFAULT_TASKS;
-          let initMarkers = DEFAULT_MARKERS;
-          if (isBau && demoTemplates.construction) {
+          let initTasks: GanttTask[] = [];
+          let initMarkers: SmartMarker[] = [];
+          if (isDemo && demoTemplates.construction) {
             initTasks = demoTemplates.construction.tasks.map((t: any) => {
               const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 20);
               const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 20);
@@ -445,14 +445,15 @@ export default function Calendar() {
               return { id: m.id, date: date.toISOString().split('T')[0], label: m.title || m.label, color: m.color, style: m.style || 'solid' };
             });
           }
-          const defaultSchedule: Schedule = { id: `s-${Date.now()}`, name: project?.name || t('master_plan'), targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
-          setSchedules([defaultSchedule]);
-          setActiveScheduleId(defaultSchedule.id);
           setGanttTasks(initTasks);
           setSmartMarkers(initMarkers);
+          setShapes([]);
+          const initialSchedule: Schedule = { id: `s-${Date.now()}`, name: 'Masterplan', targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
+          setSchedules([initialSchedule]);
+          setActiveScheduleId(initialSchedule.id);
           await supabase.from('system_config').upsert({
             id: `schedule_${scheduleDocId}`,
-            data: { schedules: [defaultSchedule], activeScheduleId: defaultSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId }
+            data: { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId }
           });
         }
       } catch (err) {

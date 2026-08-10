@@ -126,7 +126,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       setIsLoading(false);
     };
 
-    const isDemo = currentProjectId.startsWith('demo-') || activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU');
+    const isDemo = currentProjectId === 'demo-1';
     if (isDemo) {
       loadDemoSlides();
       return;
@@ -158,10 +158,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           setSlides(loadedSlides);
           if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
         } else {
-          loadDemoSlides();
+          setSlides([]);
+          setActiveSlideId(null);
         }
       } catch (e) {
-        loadDemoSlides();
+        console.error(e);
       } finally {
         setIsLoading(false);
       }

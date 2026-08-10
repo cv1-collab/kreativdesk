@@ -252,8 +252,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   useEffect(() => {
     if (!currentProjectId) return;
 
-    // 🔥 DEMO-MODUS SCHUTZSCHILD: 
-    const isDemo = currentProjectId === 'demo-1' || activeProject?.name?.includes('Quartier') || activeProject?.name?.includes('Bau') || activeProject?.name?.includes('BAU');
+    // DEMO-MODUS: Nur für echtes Demo-Projekt demo-1
+    const isDemo = currentProjectId === 'demo-1';
     if (isDemo) {
       setDefects(DEMO_DEFECTS);
       return;
@@ -264,11 +264,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         .from('defects')
         .select('*')
         .eq('project_id', currentProjectId);
-      if (defs && defs.length > 0) {
-        setDefects(defs as any);
-      } else {
-        setDefects(DEMO_DEFECTS);
-      }
+      setDefects(defs && defs.length > 0 ? (defs as any) : []);
     };
 
     fetchDefects();
