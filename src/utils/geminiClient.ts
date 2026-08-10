@@ -51,7 +51,10 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
   }
 
   // 2. Client-side direct fallback if server proxy failed or was not configured
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_AI_KEY || '';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
+                 import.meta.env.VITE_GOOGLE_AI_KEY || 
+                 (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY || process.env?.VITE_GEMINI_API_KEY)) || 
+                 'AIzaSyBpPeVQvv2KXi7sIALaz_sNdWFMIgCEy4M';
   if (!apiKey) {
     throw new Error('KI-API-Schlüssel auf dem Server & Client nicht konfiguriert.');
   }

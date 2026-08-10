@@ -68,8 +68,11 @@ const GlobalSuspenseFallback = () => (
   </div>
 );
 
+import { scrubLocalStorageFileUrls } from './utils';
+
 function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
+    scrubLocalStorageFileUrls();
     const fullUrl = window.location.href;
     const isRecovery = fullUrl.includes('type=recovery') || fullUrl.includes('type%3Drecovery') || sessionStorage.getItem('is_password_recovery') === 'true';
     
