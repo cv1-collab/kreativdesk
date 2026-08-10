@@ -12,16 +12,13 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY; 
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY; 
     
     if (!apiKey) {
-      return res.status(500).json({ error: 'Gemini API key not configured' });
+      return res.status(500).json({ error: 'Gemini API key not configured on server' });
     }
     
-    // Wir initialisieren die KI hier auf dem Server!
     const ai = new GoogleGenAI({ apiKey });
-    
-    // Wir holen uns die Daten, die das Frontend schickt
     const { model, contents, config } = req.body || {};
     const safeModel = (!model || model.includes('2.5')) ? 'gemini-2.0-flash' : model;
 
@@ -30,10 +27,12 @@ export default async function handler(req: any, res: any) {
       contents,
       config
     });
+
+    const generatedText = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
     
     res.status(200).json({
-      text: response.text,
-      candidates: response.candidates
+      text: generatedText,
+      candidates: response.candidates ? JSON.parse(JSON.stringify(response.candidates)) : []
     });
     
   } catch (error: any) {
