@@ -148,18 +148,59 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           projectId: d.project_id
         })));
       }
+
+      // Multi-tier TimeEntries Fetching
+      const localCacheKey = `time_entries_cache_${safeCompanyId}`;
+      const localCached = localStorage.getItem(localCacheKey);
+      const localTimes = localCached ? JSON.parse(localCached) : [];
+
+      const { data: times } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('company_id', safeCompanyId);
+
+      const { data: configTime } = await supabase
+        .from('system_config')
+        .select('data')
+        .eq('id', `time_entries_${safeCompanyId}`)
+        .maybeSingle();
+
+      const configTimes = configTime?.data?.entries || [];
+      const timeMap = new Map();
+      [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
+        if (t && (t.id || t.description || t.hours)) {
+          const tId = t.id || `time-${t.date}-${t.hours}`;
+          timeMap.set(tId, {
+            id: tId,
+            userId: t.userId || t.user_id || currentUser.uid,
+            projectId: t.projectId || t.project_id || 'global',
+            date: t.date || new Date().toISOString().split('T')[0],
+            hours: Number(t.hours || 0),
+            description: t.description || 'Zeiterfassung',
+            hourlyRate: Number(t.hourlyRate || t.hourly_rate || 120),
+            isBillable: t.isBillable !== undefined ? t.isBillable : (t.is_billable !== undefined ? t.is_billable : true),
+            ownerId: t.ownerId || t.owner_id || currentUser.uid,
+            companyId: t.companyId || t.company_id || safeCompanyId
+          });
+        }
+      });
+      const mergedTimes = Array.from(timeMap.values());
+      setTimeEntries(mergedTimes as TimeEntry[]);
+      localStorage.setItem(localCacheKey, JSON.stringify(mergedTimes));
+
     } catch (err) {
       console.error("Error fetching project details:", err);
     }
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
 
     fetchProjects();
     fetchCompanyUsers();
     fetchProjectDetails();
 
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
@@ -171,12 +212,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'defects' }, () => {
         fetchProjectDetails();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries', filter: `company_id=eq.${safeCompanyId}` }, () => {
+        fetchProjectDetails();
+      })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
     };
-  }, [currentUser?.companyId, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
+  }, [currentUser, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
 
   const addProject = async (projectData: any) => {
     if (!currentUser?.companyId) return;
@@ -257,7 +303,56 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addTimeEntry = async (entryData: any) => {
-    // Time entry
+    if (!currentUser || !currentUser.uid) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+
+    const tId = entryData.id || `time-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+    const newEntry: TimeEntry = {
+      id: tId,
+      userId: entryData.userId || entryData.user_id || currentUser.uid,
+      projectId: entryData.projectId || entryData.project_id || 'global',
+      date: entryData.date || new Date().toISOString().split('T')[0],
+      hours: Number(entryData.hours || 0),
+      description: entryData.description || 'Zeiterfassung',
+      hourlyRate: Number(entryData.hourlyRate || entryData.hourly_rate || 120),
+      ownerId: currentUser.uid,
+      companyId: safeCompanyId
+    };
+
+    setTimeEntries(prev => {
+      const updated = [newEntry, ...prev];
+      localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(updated));
+      return updated;
+    });
+
+    try {
+      const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
+      const existingEntries = existingConfig?.data?.entries || [];
+      await supabase.from('system_config').upsert({
+        id: `time_entries_${safeCompanyId}`,
+        data: { entries: [newEntry, ...existingEntries], companyId: safeCompanyId }
+      });
+    } catch (err) {
+      console.warn("ProjectContext addTimeEntry backup warning:", err);
+    }
+
+    try {
+      await supabase.from('time_entries').insert({
+        id: newEntry.id,
+        user_id: newEntry.userId,
+        project_id: newEntry.projectId,
+        date: newEntry.date,
+        hours: newEntry.hours,
+        description: newEntry.description,
+        hourly_rate: newEntry.hourlyRate,
+        is_billable: entryData.isBillable !== undefined ? entryData.isBillable : true,
+        company_id: safeCompanyId,
+        owner_id: currentUser.uid,
+        created_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn("ProjectContext addTimeEntry insert warning:", err);
+    }
   };
 
   return (

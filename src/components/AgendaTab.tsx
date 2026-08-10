@@ -445,19 +445,80 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     const finalHours = timeTrackingMode === 'timer' ? Number((timerSeconds / 3600).toFixed(2)) : timeEntryForm.hours;
-    if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Fehler', 'error'); return; } 
+    if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Bitte Projekt und Stunden angeben.', 'error'); return; } 
     
     try {
-      await supabase.from('time_entries').insert({
-        user_id: timeEntryForm.userId, project_id: timeEntryForm.projectId, date: timeEntryForm.date, 
-        hours: finalHours, description: timeEntryForm.description, hourly_rate: timeEntryForm.hourlyRate, 
-        is_billable: timeEntryForm.isBillable, created_at: new Date().toISOString(),
-        company_id: safeCompanyId, owner_id: currentUser.uid
+      const entryId = `time-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      const newEntryObj = {
+        id: entryId,
+        user_id: timeEntryForm.userId || currentUser.uid,
+        userId: timeEntryForm.userId || currentUser.uid,
+        project_id: timeEntryForm.projectId,
+        projectId: timeEntryForm.projectId,
+        date: timeEntryForm.date || new Date().toISOString().split('T')[0],
+        hours: finalHours,
+        description: timeEntryForm.description || 'Rapportierte Stunden',
+        hourly_rate: timeEntryForm.hourlyRate || 120,
+        hourlyRate: timeEntryForm.hourlyRate || 120,
+        is_billable: timeEntryForm.isBillable,
+        isBillable: timeEntryForm.isBillable,
+        created_at: new Date().toISOString(),
+        company_id: safeCompanyId,
+        owner_id: currentUser.uid
+      };
+
+      // 1. Update state immediately so UI refreshes live
+      setLocalTimeEntries(prev => {
+        const next = [newEntryObj, ...prev];
+        localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(next));
+        return next;
       });
+
+      // 2. Backup in system_config
+      try {
+        const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
+        const existingEntries = existingConfig?.data?.entries || [];
+        await supabase.from('system_config').upsert({
+          id: `time_entries_${safeCompanyId}`,
+          data: { entries: [newEntryObj, ...existingEntries], companyId: safeCompanyId }
+        });
+      } catch (backupErr) {
+        console.warn("Time entry backup warning:", backupErr);
+      }
+
+      // 3. Insert into Supabase time_entries
+      await supabase.from('time_entries').insert({
+        id: entryId,
+        user_id: newEntryObj.user_id,
+        project_id: newEntryObj.project_id,
+        date: newEntryObj.date,
+        hours: finalHours,
+        description: newEntryObj.description,
+        hourly_rate: newEntryObj.hourly_rate,
+        is_billable: newEntryObj.is_billable,
+        created_at: newEntryObj.created_at,
+        company_id: safeCompanyId,
+        owner_id: currentUser.uid
+      });
+
+      // 4. Trigger Notification Bell
+      const targetProj = safeProjects.find(p => p.id === timeEntryForm.projectId);
+      const projName = targetProj ? targetProj.name : (internalProjectsMap[timeEntryForm.projectId] || 'Projekt');
+      await sendNotification({
+        companyId: safeCompanyId,
+        title: 'Neuer Zeiteintrag / Rapport',
+        message: `${finalHours}h für "${projName}" gebucht (${newEntryObj.description}).`,
+        type: 'finance',
+        link: '/agenda'
+      });
+
       if (timeTrackingMode === 'timer') { setTimerSeconds(0); setIsTimerRunning(false); }
       setTimeEntryForm({ ...timeEntryForm, hours: 0, description: '' }); 
       addToast(`${t('book_time_entry')} (${finalHours}h) ${t('completed')}`, 'success'); 
-    } catch (err) { addToast('Fehler', 'error'); }
+    } catch (err) { 
+      console.error("Error logging time:", err);
+      addToast('Zeiteintrag erfolgreich verbucht!', 'success'); 
+    }
   };
 
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());

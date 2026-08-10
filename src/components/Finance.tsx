@@ -665,20 +665,74 @@ export default function Finance() {
     });
   };
 
-  const getFilteredTimeEntries = () => {
-    const currentProjectTimeEntries = (timeEntries || []).filter((e: any) => e.projectId === currentProjectId);
-    return currentProjectTimeEntries.filter((e: any) => {
-      if (timeFilter === 'all') return true;
-      const eDate = new Date(e.date);
-      const now = new Date();
-      if (timeFilter === 'year') return eDate.getFullYear() === now.getFullYear();
-      if (timeFilter === 'month') return eDate.getFullYear() === now.getFullYear() && eDate.getMonth() === now.getMonth();
-      if (timeFilter === 'today') return (e.date || '') === now.toISOString().split('T')[0];
-      return true;
-    });
-  };
+  const [localTimeEntries, setLocalTimeEntries] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const fetchTimes = async () => {
+      try {
+        const localCacheKey = `time_entries_cache_${safeCompanyId}`;
+        const localCached = localStorage.getItem(localCacheKey);
+        const localTimes = localCached ? JSON.parse(localCached) : [];
+
+        const { data: times } = await supabase.from('time_entries').select('*').eq('company_id', safeCompanyId);
+        const { data: configTime } = await supabase.from('system_config').select('data').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
+        const configTimes = configTime?.data?.entries || [];
+
+        const map = new Map();
+        [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
+          if (t && (t.id || t.hours)) {
+            const tId = t.id || `time-${t.date}-${t.hours}`;
+            map.set(tId, {
+              id: tId,
+              userId: t.userId || t.user_id,
+              projectId: t.projectId || t.project_id || 'global',
+              date: t.date || new Date().toISOString().split('T')[0],
+              hours: Number(t.hours || 0),
+              description: t.description || 'Zeiterfassung',
+              hourlyRate: Number(t.hourlyRate || t.hourly_rate || 120),
+              isBillable: t.isBillable !== undefined ? t.isBillable : true,
+              budgetPosId: t.budgetPosId || t.budget_pos_id || ''
+            });
+          }
+        });
+        setLocalTimeEntries(Array.from(map.values()));
+      } catch (err) {
+        console.warn("Finance fetchTimes error:", err);
+      }
+    };
+    fetchTimes();
+  }, [currentUser, currentProjectId]);
 
   const filteredTransactions = getFilteredTransactions();
+
+  const allTimeEntriesCombined = [...(timeEntries || []), ...localTimeEntries];
+  const combinedMap = new Map();
+  allTimeEntriesCombined.forEach((t: any) => combinedMap.set(t.id || `time-${t.date}-${t.hours}`, t));
+  const effectiveTimeEntries = Array.from(combinedMap.values());
+
+  const getFilteredTimeEntries = () => {
+    let result = effectiveTimeEntries.filter((e: any) => e.projectId === currentProjectId);
+    const now = new Date();
+    if (timeFilter === 'year') {
+      const year = now.getFullYear();
+      result = result.filter((e: any) => e.date && new Date(e.date).getFullYear() === year);
+    } else if (timeFilter === 'month') {
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      result = result.filter((e: any) => {
+        if (!e.date) return false;
+        const d = new Date(e.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+    } else if (timeFilter === 'today') {
+      const todayStr = now.toISOString().split('T')[0];
+      result = result.filter((e: any) => e.date === todayStr);
+    }
+    return result;
+  };
+
   const filteredTimeEntries = getFilteredTimeEntries();
 
   const filteredHoursCost = filteredTimeEntries.reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (e.hourlyRate || 0)), 0);
@@ -687,7 +741,7 @@ export default function Finance() {
   const filteredSpent = filteredExtSpent + filteredHoursCost;
   const filteredProfit = filteredInvoiced - filteredSpent;
 
-  const allTimeTimeEntries = (timeEntries || []).filter((e: any) => e.projectId === currentProjectId);
+  const allTimeTimeEntries = effectiveTimeEntries.filter((e: any) => e.projectId === currentProjectId);
   const allTimeHoursCost = allTimeTimeEntries.reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (e.hourlyRate || 0)), 0);
   const allTimeHours = allTimeTimeEntries.reduce((sum: number, e: any) => sum + (Number(e.hours) || 0), 0);
   
@@ -721,7 +775,7 @@ export default function Finance() {
   const rawTxs = transactions.map(t => ({ ...t, isTimeEntry: false }));
   const rawTimes = allTimeTimeEntries.map((e: any) => ({
     id: e.id, date: e.date || new Date().toISOString().split('T')[0], description: e.description || 'Zeiterfassung', category: 'Interne Stunden',
-    amount: -(Number(e.hours || 0) * Number(e.hourlyRate || 0)), status: 'Gebucht', isTimeEntry: true, hours: e.hours, userId: e.userId, budgetPosId: e.budgetPosId || ''
+    amount: -(Number(e.hours || 0) * Number(e.hourlyRate || 0)), status: 'Gebucht', isTimeEntry: true, hours: e.hours, userId: e.userId, budgetPosId: e.budgetPosId || '', url: ''
   }));
   const combinedLedgerAsc = [...rawTxs, ...rawTimes].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let runningBalance = 0;
