@@ -146,7 +146,15 @@ export default function MeetChat() {
     };
 
     recognitionRef.current = recognition;
-    return () => recognition.stop();
+    return () => {
+      try {
+        if (recognitionRef.current) {
+          recognitionRef.current.stop();
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+    };
   }, [callId, joinCallId, currentUser, activeProjectId, projectId, currentLang]);
 
   const toggleTranscription = () => {
@@ -273,7 +281,11 @@ export default function MeetChat() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `company_id=eq.${currentUser.companyId}` }, fetchChatMessages)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
+    };
   }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId]);
 
   useEffect(() => {

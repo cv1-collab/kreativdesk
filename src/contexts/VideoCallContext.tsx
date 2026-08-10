@@ -118,7 +118,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
     };
   }, [safeCompanyId, currentUser?.uid]);
 
@@ -328,7 +330,9 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
-    return () => hangUp();
+    return () => {
+      hangUp();
+    };
   }, []);
 
   return (
