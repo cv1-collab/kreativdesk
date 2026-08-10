@@ -280,14 +280,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setCallStatus('connected');
     setIsMinimized(false);
 
-    await supabase.from('video_calls').upsert({ 
-      id: currentCallId,
-      project_id: currentProjectId || 'global', 
-      company_id: safeCompanyId, 
-      caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Teammitglied',
-      caller_id: currentUser?.uid,
-      created_at: new Date().toISOString() 
-    });
+    try {
+      await supabase.from('video_calls').upsert({ 
+        id: currentCallId,
+        project_id: currentProjectId || 'global', 
+        company_id: safeCompanyId, 
+        caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Teammitglied',
+        caller_id: currentUser?.uid,
+        created_at: new Date().toISOString() 
+      });
+    } catch (vcErr) {
+      console.warn("video_calls upsert fallback handled:", vcErr);
+    }
 
     await joinMeshNetwork(currentCallId, stream);
   };
