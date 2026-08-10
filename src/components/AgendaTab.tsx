@@ -348,6 +348,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
     const fetchData = async () => {
       try {
+        const localCacheKey = `agenda_cache_${safeCompanyId}`;
+        const localCachedRaw = localStorage.getItem(localCacheKey);
+        const localCachedEvents = localCachedRaw ? JSON.parse(localCachedRaw) : [];
+
         const { data: dbEvents } = await supabase
           .from('calendar_events')
           .select('*')
@@ -361,14 +365,24 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         const configEvents = config?.data?.events || [];
         const eventMap = new Map();
-        [...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
+        [...localCachedEvents, ...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
           if (evt && (evt.title || evt.id)) {
-            const key = evt.id || `${evt.title}_${evt.date || evt.event_date}`;
-            eventMap.set(key, evt);
+            const dateStr = evt.date || evt.event_date || evt.start_date || (evt.created_at ? evt.created_at.split('T')[0] : '');
+            const normalized = {
+              ...evt,
+              id: evt.id || `evt-${Date.now()}-${Math.random()}`,
+              date: dateStr,
+              event_date: dateStr,
+              start_date: dateStr,
+              projectId: evt.projectId || evt.project_id || 'global'
+            };
+            eventMap.set(normalized.id, normalized);
           }
         });
 
-        setCalendarEvents(Array.from(eventMap.values()));
+        const mergedEvents = Array.from(eventMap.values());
+        setCalendarEvents(mergedEvents);
+        localStorage.setItem(localCacheKey, JSON.stringify(mergedEvents));
 
         const { data: times } = await supabase
           .from('time_entries')
@@ -515,7 +529,19 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       }
 
       const finalEvent = createdEvent || { ...eventToInsert, id: `evt-${Date.now()}` };
-      setCalendarEvents(prev => [...prev, finalEvent]);
+      const normalizedFinal = {
+        ...finalEvent,
+        date: newEvent.date,
+        event_date: newEvent.date,
+        start_date: newEvent.date,
+        projectId: targetProjectId
+      };
+
+      setCalendarEvents(prev => {
+        const next = [...prev, normalizedFinal];
+        localStorage.setItem(`agenda_cache_${safeCompanyId}`, JSON.stringify(next));
+        return next;
+      });
 
       // Backup to system_config
       try {
@@ -523,7 +549,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         const existingEvents = existingConfig?.data?.events || [];
         await supabase.from('system_config').upsert({
           id: `agenda_events_${safeCompanyId}`,
-          data: { events: [finalEvent, ...existingEvents], companyId: safeCompanyId }
+          data: { events: [normalizedFinal, ...existingEvents], companyId: safeCompanyId }
         });
       } catch (backupErr) {
         console.warn("Agenda event backup fail:", backupErr);

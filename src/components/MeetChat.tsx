@@ -447,19 +447,44 @@ export default function MeetChat() {
         id: eventId,
         title: newCallEvent.title,
         date: newCallEvent.date,
+        event_date: newCallEvent.date,
+        start_date: newCallEvent.date,
         time: newCallEvent.time,
-        meetingLink: meetingLink
+        type: 'call',
+        description: newCallEvent.description || '',
+        meetingLink: meetingLink,
+        meeting_link: meetingLink,
+        projectId: targetProjectId,
+        project_id: targetProjectId,
+        company_id: currentUser.companyId,
+        owner_id: currentUser.uid
       };
 
       setUpcomingCalls(prev => [newCallObj, ...prev]);
 
-      // 2. Backup to system_config
+      // Save to local storage cache for Agenda tab
+      try {
+        const agendaCacheKey = `agenda_cache_${currentUser.companyId}`;
+        const existingAgendaCache = JSON.parse(localStorage.getItem(agendaCacheKey) || '[]');
+        localStorage.setItem(agendaCacheKey, JSON.stringify([newCallObj, ...existingAgendaCache]));
+      } catch (cacheErr) {
+        console.warn("Agenda cache sync fail:", cacheErr);
+      }
+
+      // 2. Backup to system_config (both calls and agenda events)
       try {
         const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `schedule_calls_${currentUser.companyId}`).maybeSingle();
         const existingCalls = existingConfig?.data?.calls || [];
         await supabase.from('system_config').upsert({
           id: `schedule_calls_${currentUser.companyId}`,
           data: { calls: [newCallObj, ...existingCalls], companyId: currentUser.companyId }
+        });
+
+        const { data: agendaConfig } = await supabase.from('system_config').select('data').eq('id', `agenda_events_${currentUser.companyId}`).maybeSingle();
+        const existingAgendaEvents = agendaConfig?.data?.events || [];
+        await supabase.from('system_config').upsert({
+          id: `agenda_events_${currentUser.companyId}`,
+          data: { events: [newCallObj, ...existingAgendaEvents], companyId: currentUser.companyId }
         });
       } catch (backupErr) {
         console.warn("Call backup fail:", backupErr);
