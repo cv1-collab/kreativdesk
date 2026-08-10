@@ -437,19 +437,23 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const handleSaveCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !currentUser.uid || !newEvent.title || !newEvent.date || !newEvent.projectId) { addToast('Fehler', 'error'); return; }
+    if (!currentUser || !currentUser.uid || !newEvent.title || !newEvent.date) {
+      addToast('Bitte Titel und Datum ausfüllen.', 'error');
+      return;
+    }
     const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const targetProjectId = newEvent.projectId || 'global';
     
     try {
       const callMeetingId = newEvent.type === 'call' ? `meet-${Date.now()}` : null;
-      const meetingLink = newEvent.type === 'call' ? `/project/${newEvent.projectId}/meet?join=${callMeetingId}` : null;
+      const meetingLink = newEvent.type === 'call' ? `/project/${targetProjectId}/meet?join=${callMeetingId}` : null;
 
       // 1. If it's a video call, pre-register in video_calls so external link works
       if (callMeetingId) {
         try {
           await supabase.from('video_calls').upsert({
             id: callMeetingId,
-            project_id: newEvent.projectId,
+            project_id: targetProjectId,
             company_id: safeCompanyId,
             caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
             caller_id: currentUser.uid,
@@ -472,7 +476,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         meeting_link: meetingLink,
         company_id: safeCompanyId, 
         owner_id: currentUser.uid, 
-        project_id: newEvent.projectId
+        project_id: targetProjectId
       };
 
       const { data: createdEvent, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
@@ -484,7 +488,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
       setIsEventModalOpen(false);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
-      addToast(t('completed'), 'success');
+      addToast('Termin erfolgreich in der Agenda eingetragen!', 'success');
     } catch (err) { 
       console.error(err);
       addToast('Fehler beim Speichern des Termins', 'error'); 

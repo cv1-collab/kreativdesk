@@ -26,11 +26,12 @@ import FinanceTab from './FinanceTab';
 import SettingsTab from './SettingsTab';
 import AuditLogsTab from './AuditLogsTab';
 import WelcomeOnboarding from './WelcomeOnboarding';
+import MeetChat from './MeetChat';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
   X, Shield, Moon, Sun, FolderOpen, Megaphone, Trash2, Landmark,
-  DollarSign, LayoutDashboard, Bell, LayoutTemplate, Layers, BookOpen, CalendarDays,
+  DollarSign, LayoutDashboard, Bell, LayoutTemplate, Layers, BookOpen, CalendarDays, Video,
   Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw, Lightbulb,
   Monitor, Smartphone, Apple, Laptop, Download
 } from 'lucide-react';
@@ -96,11 +97,19 @@ export default function CompanyDashboard() {
   
   const { startTour } = useTour();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit' | 'meet'>('dashboard');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam as any);
+    }
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -543,6 +552,7 @@ export default function CompanyDashboard() {
       { id: 'leads', icon: Megaphone, label: t('crm_leads'), count: safeLeads.filter(l => l.status === 'neu' || l.status === 'New').length, className: 'tour-leads' },
       // +++ FIX 1.6: GEISTER-USER FILTER HINZUGEFÜGT +++
       { id: 'team', icon: Users, label: t('project_team'), count: safeCompanyUsers.filter((u: any) => u.email || u.firstName || u.name).length, className: 'tour-crm' },
+      { id: 'meet', icon: Video, label: 'Meet & Chat', className: 'tour-meet' },
       { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), className: 'tour-agenda' }
     ]},
     { title: 'System', items: [ 
@@ -643,6 +653,7 @@ export default function CompanyDashboard() {
              <div className="w-full h-full flex flex-col">
                {activeTab === 'dashboard' && <DashboardOverviewTab setActiveTab={(tab) => setActiveTab(tab as any)} />}
                {activeTab === 'audit' && <AuditLogsTab />}
+               {activeTab === 'meet' && <MeetChat />}
                
                {activeTab === 'projects' && (
                  <div className="space-y-6 w-full animate-in fade-in duration-300">

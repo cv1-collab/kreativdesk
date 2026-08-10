@@ -144,9 +144,10 @@ export default function App() {
                               </PrivateRoute>
                             } />
 
-                            {/* Settings und Help bleiben OHNE TrialGuard erreichbar */}
+                            {/* Settings, Help und Meet bleiben OHNE ein spezifisches Projekt erreichbar */}
                             <Route path="/help" element={<PrivateRoute><EmailVerificationGuard><HelpCenter /></EmailVerificationGuard></PrivateRoute>} />
                             <Route path="/settings" element={<PrivateRoute><EmailVerificationGuard><Settings /></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/meet" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
 
                             {/* +++ PROJEKT BEREICH (KOMPLETT GESCHÜTZT) +++ */}
                             <Route path="/project/:projectId" element={
