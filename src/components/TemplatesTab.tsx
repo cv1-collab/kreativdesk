@@ -68,9 +68,9 @@ export default function TemplatesTab({
     if (!aiPrompt.trim()) return;
     setIsGeneratingAi(true);
     try {
-      const prompt = `Erstelle eine professionelle Vertragsvorlage oder Dokumentenvorlage im Schweizer Standard für das Thema: "${aiPrompt}". Verwende klare Gliederungspunkte (1. Gegenstand, 2. Honorar/Kosten, 3. Termine, 4. Sonstiges).`;
-      const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-      setGeneratedTemplate(typeof res === 'string' ? res : JSON.stringify(res));
+      const res = await callGeminiAPI('gemini-2.0-flash', [{ text: prompt }]);
+      const outputText = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(res));
+      setGeneratedTemplate(outputText);
       addToast('KI-Vorlage generiert!', 'success');
     } catch (err) {
       addToast('Fehler bei der Generierung', 'error');

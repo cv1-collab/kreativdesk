@@ -45,20 +45,15 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
-      // If company has 0 projects and has never been seeded before, seed default demo project automatically
+      // If company has 0 projects, seed default demo project automatically
       if (!projs || projs.length === 0) {
-        const seedKey = `demo_seeded_${safeCompanyId}`;
-        const hasAlreadySeeded = localStorage.getItem(seedKey) === 'true';
-        if (!hasAlreadySeeded) {
-          localStorage.setItem(seedKey, 'true');
-          await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, 'construction');
-          const { data: seededProjs } = await supabase
-            .from('projects')
-            .select('*')
-            .eq('company_id', safeCompanyId)
-            .order('created_at', { ascending: false });
-          projs = seededProjs || [];
-        }
+        await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, 'construction');
+        const { data: seededProjs } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('company_id', safeCompanyId)
+          .order('created_at', { ascending: false });
+        projs = seededProjs || [];
       }
 
       if (projs) {
@@ -225,7 +220,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   }, [currentUser, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
 
   const addProject = async (projectData: any) => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     const { data: newProj, error } = await supabase
       .from('projects')
@@ -233,7 +229,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         name: projectData.name,
         description: projectData.description || '',
         status: projectData.status || 'planning',
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         owner_id: currentUser.uid
       })
       .select()

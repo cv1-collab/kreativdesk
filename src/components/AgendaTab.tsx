@@ -332,8 +332,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       
       Verwende Schweizer Rechtschreibung (ss statt ß).`;
 
-      const aiResponse = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-      setAiRapportText(typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse));
+      const aiResponse = await callGeminiAPI('gemini-2.0-flash', [{ text: prompt }]);
+      const textOutput = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.text || aiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(aiResponse));
+      setAiRapportText(textOutput);
       setAiRapportModalOpen(true);
       setIsGeneratingAIRapport(false);
     } catch (err) {

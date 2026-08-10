@@ -22,10 +22,11 @@ export default async function handler(req: any, res: any) {
     const ai = new GoogleGenAI({ apiKey });
     
     // Wir holen uns die Daten, die das Frontend schickt
-    const { model, contents, config } = req.body;
+    const { model, contents, config } = req.body || {};
+    const safeModel = (!model || model.includes('2.5')) ? 'gemini-2.0-flash' : model;
 
     const response = await ai.models.generateContent({
-      model,
+      model: safeModel,
       contents,
       config
     });
