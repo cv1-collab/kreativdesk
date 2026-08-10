@@ -68,7 +68,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     privacy_desc: 'Manage your personal data in accordance with privacy laws (GDPR). You can export all your data or permanently delete your account and company.',
     request_data_export: 'Request Data Export (ZIP)',
     delete_account_company: 'Permanently Delete Account & Company',
-    delete_confirm: 'Are you sure you want to permanently delete your company and all data? This cannot be undone!'
+    delete_confirm: 'Are you sure you want to permanently delete your company and all data? This cannot be undone!',
+    screensaver_title: 'Screensaver & Kiosk Mode',
+    active_status: 'Active',
+    inactive_status: 'Inactive',
+    timeout_minutes: 'Timeout (Min.)',
+    background_image: 'Background Image',
+    change_image: 'Change Image',
+    test_now: 'Test Now',
+    save: 'Save',
+    roles_permissions: 'Roles & Permissions',
+    no_team_members: 'No team members found.',
+    view_finance: 'View Finance',
+    approve_budget: 'Approve Budget'
   },
   de: {
     agency_profile: 'Unternehmensprofil', 
@@ -122,7 +134,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     privacy_desc: 'Verwalte deine persönlichen Daten gemäss den aktuellen Datenschutzrichtlinien (DSGVO). Du kannst all deine Daten exportieren oder deinen Account und deine Firma unwiderruflich löschen.',
     request_data_export: 'Datenauskunft anfordern (ZIP)',
     delete_account_company: 'Account & Firma unwiderruflich löschen',
-    delete_confirm: 'Bist du sicher, dass du deine Firma und alle Daten unwiderruflich löschen möchtest? Dies kann nicht rückgängig gemacht werden!'
+    delete_confirm: 'Bist du sicher, dass du deine Firma und alle Daten unwiderruflich löschen möchtest? Dies kann nicht rückgängig gemacht werden!',
+    screensaver_title: 'Screensaver & Kiosk Modus',
+    active_status: 'Aktiv',
+    inactive_status: 'Inaktiv',
+    timeout_minutes: 'Timeout (Min.)',
+    background_image: 'Hintergrundbild',
+    change_image: 'Bild ändern',
+    test_now: 'Sofort testen',
+    save: 'Speichern',
+    roles_permissions: 'Rollen & Berechtigungen',
+    no_team_members: 'Keine Teammitglieder gefunden.',
+    view_finance: 'Finanzen sehen',
+    approve_budget: 'Budget freigeben'
   }
 };
 
@@ -777,6 +801,10 @@ export default function SettingsTab() {
 // SCREENSAVER KOMPONENTE
 function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   const { addToast } = useToast();
+  const { language, t: globalT } = useLanguage();
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
+  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
   const [active, setActive] = useState(false);
   const [timeout, setTimeoutVal] = useState(5);
   // Default Bild für Kreativ Desk (Architektur/Design)
@@ -807,8 +835,8 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
         screensaver_timeout: Number(timeout),
         screensaver_image: image
       });
-      addToast('Screensaver gespeichert!', 'success');
-    } catch (err) { addToast('Fehler beim Speichern', 'error'); } 
+      addToast('Screensaver saved!', 'success');
+    } catch (err) { addToast('Save failed', 'error'); } 
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -823,8 +851,8 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       const url = pubData.publicUrl;
       setImage(url);
       await supabase.from('company_settings').upsert({ company_id: currentUser.companyId, screensaver_image: url });
-      addToast('Hintergrundbild hochgeladen!', 'success');
-    } catch (err) { addToast('Upload fehlgeschlagen', 'error'); } 
+      addToast('Background image uploaded!', 'success');
+    } catch (err) { addToast('Upload failed', 'error'); } 
     finally { setIsUploading(false); }
   };
 
@@ -832,7 +860,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
     <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
       <div className="flex items-center justify-between pb-4 border-b border-border/50">
         <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
-          <Monitor size={16} /> Screensaver & Kiosk Modus
+          <Monitor size={16} /> {t('screensaver_title')}
         </h3>
         <label className="flex items-center cursor-pointer">
           <div className="relative">
@@ -840,18 +868,18 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
             <div className={cn("block w-10 h-6 rounded-full transition-colors", active ? "bg-accent-ai" : "bg-background border border-border")} />
             <div className={cn("absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", active ? "transform translate-x-4" : "")} />
           </div>
-          <span className="ml-3 text-xs font-bold text-text-muted uppercase tracking-widest">{active ? 'Aktiv' : 'Inaktiv'}</span>
+          <span className="ml-3 text-xs font-bold text-text-muted uppercase tracking-widest">{active ? t('active_status') : t('inactive_status')}</span>
         </label>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-6">
         <div className="w-full sm:w-1/3 space-y-2">
-          <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Clock size={14}/> Timeout (Min.)</label>
+          <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Clock size={14}/> {t('timeout_minutes')}</label>
           <input type="number" min="1" max="60" value={timeout} onChange={e => setTimeoutVal(Number(e.target.value))} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-bold shadow-inner" />
         </div>
 
         <div className="w-full sm:w-2/3 space-y-2">
-          <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><ImageIcon size={14}/> Hintergrundbild</label>
+          <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><ImageIcon size={14}/> {t('background_image')}</label>
           <div className="flex items-center gap-4 bg-background/30 p-3 rounded-xl border border-border/30">
             <div className="w-16 h-16 bg-background border border-border rounded-lg overflow-hidden shrink-0 relative">
               <img src={image} alt="Screensaver" className="w-full h-full object-cover" />
@@ -860,7 +888,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
             <div className="space-y-2 w-full">
               <input type="file" ref={fileRef} onChange={handleUpload} accept="image/*" className="hidden" />
               <button type="button" onClick={() => fileRef.current?.click()} disabled={isUploading} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors shadow-sm">
-                Bild ändern
+                {t('change_image')}
               </button>
             </div>
           </div>
@@ -869,10 +897,10 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
 
       <div className="pt-4 border-t border-border/50 flex justify-between items-center bg-background/20 -mx-6 -mb-6 px-6 py-4 rounded-b-2xl">
         <button type="button" onClick={() => window.dispatchEvent(new Event('triggerScreensaver'))} className="px-4 py-2 bg-text-primary text-background rounded-lg text-xs font-bold hover:opacity-90 flex items-center gap-2 transition-all shadow-md">
-          <Play size={14} fill="currentColor" /> Sofort testen
+          <Play size={14} fill="currentColor" /> {t('test_now')}
         </button>
         <button type="button" onClick={handleSave} className="text-xs font-bold text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors">
-          <Save size={14} /> Speichern
+          <Save size={14} /> {t('save')}
         </button>
       </div>
     </div>
@@ -882,6 +910,10 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
 // TEAM BERECHTIGUNGEN KOMPONENTE
 function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
   const { addToast } = useToast();
+  const { language, t: globalT } = useLanguage();
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
+  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -906,22 +938,22 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
       await supabase.from('users').update({ [colName]: !currentValue }).eq('id', userId);
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: !currentValue } : m));
-      addToast('Berechtigung aktualisiert', 'success');
+      addToast('Permissions updated', 'success');
     } catch (err) {
-      addToast('Fehler beim Aktualisieren', 'error');
+      addToast('Update failed', 'error');
     }
   };
 
   return (
     <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
       <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-        <Users size={16} /> Rollen & Berechtigungen
+        <Users size={16} /> {t('roles_permissions')}
       </h3>
       
       {isLoading ? (
         <div className="flex justify-center p-4"><Loader2 size={24} className="animate-spin text-accent-ai" /></div>
       ) : teamMembers.length === 0 ? (
-        <p className="text-sm text-text-muted text-center p-4">Keine Teammitglieder gefunden.</p>
+        <p className="text-sm text-text-muted text-center p-4">{t('no_team_members')}</p>
       ) : (
         <div className="space-y-4">
           {teamMembers.map(member => (
@@ -937,7 +969,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
                     <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canViewFinance ? "bg-accent-ai" : "bg-background border border-border")} />
                     <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canViewFinance ? "transform translate-x-3" : "")} />
                   </div>
-                  <span className="text-xs font-bold text-text-muted">Finanzen sehen</span>
+                  <span className="text-xs font-bold text-text-muted">{t('view_finance')}</span>
                 </label>
                 
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -946,7 +978,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
                     <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canApproveBudget ? "bg-accent-ai" : "bg-background border border-border")} />
                     <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canApproveBudget ? "transform translate-x-3" : "")} />
                   </div>
-                  <span className="text-xs font-bold text-text-muted">Budget freigeben</span>
+                  <span className="text-xs font-bold text-text-muted">{t('approve_budget')}</span>
                 </label>
               </div>
             </div>
