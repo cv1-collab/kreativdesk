@@ -559,7 +559,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       // 2. Insert into calendar_events with schema cache resilience
       const eventToInsert: any = {
         title: newEvent.title,
-        date: newEvent.date,
+        event_date: newEvent.date,
         time: newEvent.time,
         type: newEvent.type,
         description: newEvent.description || '',
@@ -575,17 +575,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       let { data, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
 
       if (error) {
-        console.warn("Primary insert error into calendar_events, trying fallback schema:", error);
-        // Fallback: If 'date' column is rejected by PGRST204 schema cache, retry without 'date' or with 'event_date'
-        const { date, ...withoutDate } = eventToInsert;
-        const retryRes = await supabase.from('calendar_events').insert({ ...withoutDate, event_date: date, start_date: date }).select().single();
+        const retryRes = await supabase.from('calendar_events').insert({ ...eventToInsert, date: newEvent.date }).select().single();
         if (!retryRes.error) {
           createdEvent = retryRes.data;
-        } else {
-          const retryRes2 = await supabase.from('calendar_events').insert(withoutDate).select().single();
-          if (!retryRes2.error) {
-            createdEvent = retryRes2.data;
-          }
         }
       } else {
         createdEvent = data;

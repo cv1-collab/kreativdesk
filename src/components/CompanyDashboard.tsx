@@ -105,10 +105,16 @@ export default function CompanyDashboard() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tabParam = params.get('tab');
-    if (tabParam) {
-      setActiveTab(tabParam as any);
+    const rawPath = window.location.pathname.replace(/^\//, '').toLowerCase();
+    const validTabs = ['dashboard', 'projects', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'];
+    if (validTabs.includes(rawPath)) {
+      setActiveTab(rawPath as any);
+    } else {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam && validTabs.includes(tabParam)) {
+        setActiveTab(tabParam as any);
+      }
     }
   }, []);
 

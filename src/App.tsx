@@ -147,10 +147,18 @@ export default function App() {
                               </PrivateRoute>
                             } />
 
-                            {/* Settings, Help und Meet bleiben OHNE ein spezifisches Projekt erreichbar */}
+                            {/* Settings, Help, Meet und Dashboard-Tabs bleiben OHNE ein spezifisches Projekt erreichbar */}
                             <Route path="/help" element={<PrivateRoute><EmailVerificationGuard><HelpCenter /></EmailVerificationGuard></PrivateRoute>} />
                             <Route path="/settings" element={<PrivateRoute><EmailVerificationGuard><Settings /></EmailVerificationGuard></PrivateRoute>} />
                             <Route path="/meet" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/agenda" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/finance" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/projects" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/documents" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/templates" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/leads" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/crm" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                            <Route path="/audit" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
 
                             {/* +++ PROJEKT BEREICH (KOMPLETT GESCHÜTZT) +++ */}
                             <Route path="/project/:projectId" element={
