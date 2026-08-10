@@ -91,6 +91,39 @@ export default function AdminSalesTab() {
     }
   };
 
+  const handleDeleteTrx = async (trxId: string) => {
+    if (!window.confirm('Transaktion wirklich löschen?')) return;
+    setIsSubmitting(true);
+    try {
+      await supabase.from('transactions').delete().eq('id', trxId);
+      addToast('Transaktion gelöscht', 'success');
+      setIsModalOpen(false);
+      fetchTransactions();
+    } catch (err) {
+      addToast('Fehler beim Löschen', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCleanupDummies = async () => {
+    if (!window.confirm('Möchtest du alle alten Test- und Dummy-Zahlungen aus der Abrechnungstabelle löschen?')) return;
+    setIsSubmitting(true);
+    try {
+      await supabase
+        .from('transactions')
+        .delete()
+        .or('type.is.null,type.neq.subscription');
+      addToast('Dummy-Zahlungen wurden erfolgreich gelöscht!', 'success');
+      fetchTransactions();
+    } catch (err) {
+      console.error(err);
+      addToast('Fehler beim Bereinigen', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredTransactions = filter === 'All' ? transactions : transactions.filter(t => t.status === filter);
 
   return (
@@ -104,9 +137,14 @@ export default function AdminSalesTab() {
             </button>
           ))}
         </div>
-        <button onClick={() => window.open('https://dashboard.stripe.com', '_blank')} className="px-4 py-2 bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 rounded-xl text-sm font-bold hover:bg-[#635BFF]/20 transition-all flex items-center justify-center gap-2 shadow-sm shrink-0">
-          <ExternalLink size={16}/> {t('open_stripe')}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={handleCleanupDummies} disabled={isSubmitting} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
+            Dummy-Zahlungen löschen
+          </button>
+          <button onClick={() => window.open('https://dashboard.stripe.com', '_blank')} className="px-4 py-2 bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 rounded-xl text-sm font-bold hover:bg-[#635BFF]/20 transition-all flex items-center justify-center gap-2 shadow-sm">
+            <ExternalLink size={16}/> {t('open_stripe')}
+          </button>
+        </div>
       </div>
 
       <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
@@ -130,7 +168,6 @@ export default function AdminSalesTab() {
                     <p className="font-bold text-text-primary">{trx.userEmail || trx.userName || t('unknown')}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-text-muted font-medium">{trx.plan || 'Subscription'}</p>
-                      {/* 🔥 NEU: Label für manuelle Rechnungen */}
                       {trx.isManual && (
                         <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest border border-purple-500/20">Manuell</span>
                       )}
@@ -185,12 +222,17 @@ export default function AdminSalesTab() {
               </form>
             </div>
 
-            <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col sm:flex-row justify-end gap-3 shrink-0 sticky bottom-0 z-30">
-              <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-              <button form="edit-trx-form" type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-                {isSubmitting && <Loader2 size={16} className="animate-spin"/>} 
-                <CheckCircle2 size={18} /> {t('save_changes')}
+            <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0 sticky bottom-0 z-30">
+              <button type="button" onClick={() => handleDeleteTrx(selectedTrx.id)} disabled={isSubmitting} className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
+                Löschen
               </button>
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
+                <button form="edit-trx-form" type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  {isSubmitting && <Loader2 size={16} className="animate-spin"/>} 
+                  <CheckCircle2 size={18} /> {t('save_changes')}
+                </button>
+              </div>
             </div>
           </div>
         </div>,
