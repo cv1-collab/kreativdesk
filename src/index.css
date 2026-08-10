@@ -84,3 +84,22 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }
+
+/* Joyride Product Tour Modal Contrast & Background Overrides */
+.react-joyride__tooltip {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 1.25rem !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85) !important;
+}
+
+.react-joyride__tooltip [class*="tooltip__content"],
+.react-joyride__tooltip p,
+.react-joyride__tooltip span,
+.react-joyride__tooltip h1,
+.react-joyride__tooltip h2,
+.react-joyride__tooltip h3,
+.react-joyride__tooltip div {
+  color: inherit;
+}

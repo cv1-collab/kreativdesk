@@ -35,24 +35,24 @@ export default function ProductTour() {
       proTip?: string
     ) => (
       <div className="flex flex-col gap-3 p-1 text-left max-w-sm text-white">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-1">
+        <div className="flex items-center justify-between border-b border-white/15 pb-3 mb-1">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0 shadow-md text-blue-400">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center shrink-0 shadow-md text-blue-400">
               <IconComponent size={20} />
             </div>
             <div>
               <span className="font-extrabold text-base text-white leading-tight block">{title}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-400">
                 {isGerman ? `Schritt ${stepNum} von ${total}` : `Step ${stepNum} of ${total}`}
               </span>
             </div>
           </div>
         </div>
-        <p className="text-xs text-zinc-300 leading-relaxed font-normal">{content}</p>
+        <p className="text-xs text-slate-100 leading-relaxed font-medium">{content}</p>
         {proTip && (
-          <div className="mt-2 bg-blue-950/60 border border-blue-500/30 rounded-xl p-3 flex gap-2.5 items-start">
+          <div className="mt-2 bg-blue-950/80 border border-blue-500/40 rounded-xl p-3 flex gap-2.5 items-start shadow-inner">
             <Sparkles size={16} className="text-blue-400 shrink-0 mt-0.5" />
-            <div className="text-[11px] font-medium leading-relaxed text-zinc-300">
+            <div className="text-[11px] font-medium leading-relaxed text-slate-100">
               <strong className="block mb-0.5 text-blue-300 font-bold">{isGerman ? 'Pro-Tipp:' : 'Pro Tip:'}</strong>
               {proTip}
             </div>
@@ -177,20 +177,27 @@ export default function ProductTour() {
         styles: {
           options: {
             primaryColor: '#3b82f6',
-            backgroundColor: '#18181b',
-            textColor: '#f4f4f5',
-            arrowColor: '#18181b',
+            backgroundColor: '#0f172a',
+            textColor: '#ffffff',
+            arrowColor: '#0f172a',
             overlayColor: 'rgba(0, 0, 0, 0.75)',
             zIndex: 100000,
           },
           tooltip: {
+            backgroundColor: '#0f172a',
+            color: '#ffffff',
             borderRadius: '1.25rem',
-            border: '1px solid rgba(255, 255, 255, 0.15)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
             padding: '1.25rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
           },
           tooltipContainer: {
             textAlign: 'left',
+            color: '#ffffff',
+          },
+          tooltipContent: {
+            color: '#ffffff',
+            padding: 0,
           },
           buttonNext: {
             backgroundColor: '#3b82f6',
@@ -203,12 +210,12 @@ export default function ProductTour() {
           },
           buttonBack: {
             marginRight: '0.5rem',
-            color: '#a1a1aa',
+            color: '#94a3b8',
             fontSize: '0.875rem',
             fontWeight: '600',
           },
           buttonSkip: {
-            color: '#a1a1aa',
+            color: '#94a3b8',
             fontSize: '0.875rem',
             fontWeight: '600',
           }
