@@ -38,10 +38,36 @@ export default function AdminSalesTab() {
 
   const fetchTransactions = async () => {
     try {
-      const { data } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-      if (data) setTransactions(data);
+      // 1. Resolve user profiles & company names for transaction rows
+      const { data: profs } = await supabase.from('profiles').select('id, email, company_name, name');
+      const profileMap = new Map();
+      if (profs) {
+        profs.forEach(p => profileMap.set(p.id, p));
+      }
+
+      // 2. Fetch subscription transactions (exclude internal project dummy transactions)
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .or('type.eq.subscription,category.eq.Subscription,is_subscription.eq.true,isManual.eq.true')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        const enriched = data.map(t => {
+          const prof = profileMap.get(t.user_id || t.owner_id);
+          return {
+            ...t,
+            userEmail: t.userEmail || t.user_email || prof?.email || prof?.name || t.company_name || 'Abonnent',
+            companyName: prof?.company_name || t.company_name || 'Kreativ Desk Organisation'
+          };
+        });
+        setTransactions(enriched);
+      } else {
+        setTransactions([]);
+      }
     } catch (e) {
       console.error(e);
+      setTransactions([]);
     }
   };
 
