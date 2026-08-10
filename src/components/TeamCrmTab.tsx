@@ -253,9 +253,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      await supabase.from('users').update({ role: newRole }).eq('id', userId);
       await supabase.from('company_users').update({ role: newRole }).eq('id', userId);
-      await supabase.from('contacts').update({ role: newRole }).eq('id', userId);
       await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
       
       setCrmUsers((prev: any[]) => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
@@ -263,7 +261,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         setSelectedContact((prev: any) => prev ? { ...prev, role: newRole } : null);
       }
       addToast(`${t('role')} "${newRole}" ${t('completed')}`, 'success');
-    } catch (error) { addToast(t('upload_failed'), 'error'); }
+    } catch (error) { 
+      console.error("Role update error:", error);
+      addToast(t('upload_failed'), 'error'); 
+    }
   };
 
   const openEditModal = () => {
@@ -314,56 +315,49 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
       const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(' ');
 
-      const contactData: any = {
-        firstName: newContact.firstName, 
-        first_name: newContact.firstName,
-        lastName: newContact.lastName, 
-        last_name: newContact.lastName,
-        email: newContact.email, 
-        phone: newContact.phone,
-        company: newContact.company, 
-        street: newContact.street, 
-        zipCity: newContact.zipCity,
-        zip_city: newContact.zipCity,
-        website: newContact.website,
-        uid: newContact.uid, 
-        vat: newContact.vat, 
-        description: newContact.description, 
-        isExternal: newContact.isExternal !== false,
-        is_external: newContact.isExternal !== false,
-        status: newContact.status || 'neu', 
-        name: fullName || newContact.company || t('unknown'),
-        companyId: safeCompanyId,
+      // Strictly filter fields matching valid columns in company_users table to prevent schema rejection
+      const dbPayload: any = {
         company_id: safeCompanyId,
-        role: newContact.isExternal ? 'partner' : 'employee'
+        first_name: newContact.firstName || null,
+        last_name: newContact.lastName || null,
+        name: fullName || newContact.company || t('unknown'),
+        email: newContact.email || null,
+        phone: newContact.phone || null,
+        role: newContact.isExternal ? 'partner' : 'employee',
+        status: newContact.status || 'neu'
       };
 
-      if (photoURL) {
-        contactData.photoURL = photoURL;
-        contactData.photo_url = photoURL;
-      }
+      const fullContactObject = {
+        ...newContact,
+        ...dbPayload,
+        firstName: newContact.firstName,
+        lastName: newContact.lastName,
+        companyId: safeCompanyId,
+        photoURL,
+        isExternal: newContact.isExternal !== false
+      };
 
       if (newContact.id) {
-        await supabase.from('company_users').update(contactData).eq('id', newContact.id);
-        await supabase.from('contacts').update(contactData).eq('id', newContact.id);
-        setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? { ...u, ...contactData } : u));
-        setSelectedContact((prev: any) => prev ? { ...prev, ...contactData } : null);
+        const { error: updateErr } = await supabase.from('company_users').update(dbPayload).eq('id', newContact.id);
+        if (updateErr) console.warn("Update error in company_users:", updateErr);
+        
+        const updatedContact = { ...selectedContact, ...fullContactObject };
+        setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? updatedContact : u));
+        setSelectedContact(updatedContact);
         addToast(t('save') + ' ' + t('completed'), 'success');
       } else {
-        contactData.createdAt = new Date().toISOString();
-        contactData.created_at = new Date().toISOString();
-        let createdObj: any = null;
-
-        let { data: created, error: insertErr } = await supabase.from('company_users').insert(contactData).select().single();
-        if (insertErr || !created) {
-          console.warn("Primary insert into company_users failed, retrying with contacts table:", insertErr);
-          const { data: createdFallback } = await supabase.from('contacts').insert(contactData).select().single();
-          createdObj = createdFallback;
-        } else {
-          createdObj = created;
+        dbPayload.created_at = new Date().toISOString();
+        const { data: created, error: insertErr } = await supabase.from('company_users').insert(dbPayload).select().single();
+        
+        if (insertErr) {
+          console.error("Error inserting contact into company_users:", insertErr);
         }
 
-        const finalContact = createdObj || { ...contactData, id: `user-${Date.now()}` };
+        const finalContact = {
+          ...fullContactObject,
+          id: created ? created.id : `user-${Date.now()}`
+        };
+
         setCrmUsers((prev: any[]) => [finalContact, ...prev]);
         setSelectedContact(finalContact);
         
