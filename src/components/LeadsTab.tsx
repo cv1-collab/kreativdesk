@@ -485,14 +485,24 @@ export default function LeadsTab() {
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
+      const fullName = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.name || lead.company || 'Lead';
       const contactData = {
-        first_name: lead.firstName || '', last_name: lead.lastName || '',
-        email: lead.email || '', phone: lead.phone || '',
-        company: lead.company || '', description: lead.message || '',
-        status: 'Neu', is_external: true, created_at: new Date().toISOString(),
+        first_name: lead.firstName || null,
+        last_name: lead.lastName || null,
+        name: fullName,
+        email: lead.email || null,
+        phone: lead.phone || null,
+        role: 'partner',
+        status: 'neu',
+        created_at: new Date().toISOString(),
         company_id: safeCompanyId
       };
-      await supabase.from('company_users').insert(contactData);
+      const { error: insErr } = await supabase.from('company_users').insert(contactData);
+      if (insErr) {
+        console.error("Error converting lead to CRM contact:", insErr);
+        addToast(t('upload_failed'), 'error');
+        return;
+      }
       await supabase.from('leads').update({ status: 'Converted' }).eq('id', lead.id);
       addToast('Lead in CRM übertragen!', 'success');
       if (editingLead?.id === lead.id) setIsModalOpen(false);

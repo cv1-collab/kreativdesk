@@ -139,8 +139,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         phone: u.phone || '',
         company: u.company || '',
         status: u.status || 'neu',
-        role: u.role || 'employee',
-        isExternal: u.is_external !== false
+        isExternal: u.is_external !== undefined ? u.is_external : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external')
       }));
 
       const mappedProfiles = (profilesData || []).map(p => ({
@@ -369,6 +368,9 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         
         if (insertErr) {
           console.error("Error inserting contact into company_users:", insertErr);
+          addToast(t('upload_failed'), 'error');
+          setIsSubmitting(false);
+          return;
         }
 
         const finalContact = {

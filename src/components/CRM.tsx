@@ -37,15 +37,31 @@ export default function CRM() {
   const [newContact, setNewContact] = useState({ name: '', role: '', company: '', email: '', phone: '' });
 
   const fetchContacts = async () => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
-      const { data } = await supabase
-        .from('contacts')
+      const { data, error } = await supabase
+        .from('company_users')
         .select('*')
-        .eq('company_id', currentUser.companyId)
+        .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
-      if (data) setContacts(data);
+      if (error) {
+        console.error("Error fetching CRM contacts:", error);
+        return;
+      }
+
+      if (data) {
+        const mapped = data.map(u => ({
+          id: u.id,
+          name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
+          role: u.role || 'partner',
+          company: u.company || '',
+          email: u.email || '',
+          phone: u.phone || ''
+        }));
+        setContacts(mapped);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -57,18 +73,31 @@ export default function CRM() {
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const nameParts = newContact.name.trim().split(' ');
+    const firstName = nameParts[0] || newContact.name;
+    const lastName = nameParts.slice(1).join(' ') || '';
+
     try {
-      await supabase.from('contacts').insert({
+      const { error } = await supabase.from('company_users').insert({
         name: newContact.name,
-        role: newContact.role,
-        company: newContact.company,
-        email: newContact.email,
-        phone: newContact.phone,
-        company_id: currentUser.companyId,
-        owner_id: currentUser.uid,
+        first_name: firstName,
+        last_name: lastName,
+        role: newContact.role || 'partner',
+        email: newContact.email || null,
+        phone: newContact.phone || null,
+        company_id: safeCompanyId,
+        status: 'neu',
         created_at: new Date().toISOString()
       });
+
+      if (error) {
+        console.error("Error adding contact:", error);
+        addToast('Fehler beim Speichern', 'error');
+        return;
+      }
+
       setIsModalOpen(false);
       setNewContact({ name: '', role: '', company: '', email: '', phone: '' });
       addToast('Kontakt gespeichert!', 'success');
@@ -81,7 +110,11 @@ export default function CRM() {
   const handleDeleteContact = async (id: string) => {
     if (!window.confirm('Kontakt wirklich löschen?')) return;
     try {
-      await supabase.from('contacts').delete().eq('id', id);
+      const { error } = await supabase.from('company_users').delete().eq('id', id);
+      if (error) {
+        addToast('Fehler beim Löschen', 'error');
+        return;
+      }
       addToast('Kontakt gelöscht', 'info');
       fetchContacts();
     } catch (error) {
