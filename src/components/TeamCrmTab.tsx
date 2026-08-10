@@ -255,6 +255,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     try {
       await supabase.from('users').update({ role: newRole }).eq('id', userId);
       await supabase.from('company_users').update({ role: newRole }).eq('id', userId);
+      await supabase.from('contacts').update({ role: newRole }).eq('id', userId);
+      await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+      
+      setCrmUsers((prev: any[]) => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      if (selectedContact?.id === userId) {
+        setSelectedContact((prev: any) => prev ? { ...prev, role: newRole } : null);
+      }
       addToast(`${t('role')} "${newRole}" ${t('completed')}`, 'success');
     } catch (error) { addToast(t('upload_failed'), 'error'); }
   };
@@ -308,33 +315,64 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(' ');
 
       const contactData: any = {
-        firstName: newContact.firstName, lastName: newContact.lastName, email: newContact.email, phone: newContact.phone,
-        company: newContact.company, street: newContact.street, zipCity: newContact.zipCity, website: newContact.website,
-        uid: newContact.uid, vat: newContact.vat, description: newContact.description, isExternal: newContact.isExternal,
-        status: newContact.status, name: fullName || newContact.company || t('unknown'),
-        companyId: safeCompanyId 
+        firstName: newContact.firstName, 
+        first_name: newContact.firstName,
+        lastName: newContact.lastName, 
+        last_name: newContact.lastName,
+        email: newContact.email, 
+        phone: newContact.phone,
+        company: newContact.company, 
+        street: newContact.street, 
+        zipCity: newContact.zipCity,
+        zip_city: newContact.zipCity,
+        website: newContact.website,
+        uid: newContact.uid, 
+        vat: newContact.vat, 
+        description: newContact.description, 
+        isExternal: newContact.isExternal !== false,
+        is_external: newContact.isExternal !== false,
+        status: newContact.status || 'neu', 
+        name: fullName || newContact.company || t('unknown'),
+        companyId: safeCompanyId,
+        company_id: safeCompanyId,
+        role: newContact.isExternal ? 'partner' : 'employee'
       };
 
-      if (photoURL) contactData.photoURL = photoURL;
+      if (photoURL) {
+        contactData.photoURL = photoURL;
+        contactData.photo_url = photoURL;
+      }
 
       if (newContact.id) {
         await supabase.from('company_users').update(contactData).eq('id', newContact.id);
+        await supabase.from('contacts').update(contactData).eq('id', newContact.id);
+        setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? { ...u, ...contactData } : u));
         setSelectedContact((prev: any) => prev ? { ...prev, ...contactData } : null);
         addToast(t('save') + ' ' + t('completed'), 'success');
       } else {
-        contactData.role = newContact.isExternal ? null : 'employee';
         contactData.createdAt = new Date().toISOString();
-        const { data: created } = await supabase.from('company_users').insert(contactData).select().single();
-        const docId = created ? created.id : `user-${Date.now()}`;
+        contactData.created_at = new Date().toISOString();
+        let createdObj: any = null;
+
+        let { data: created, error: insertErr } = await supabase.from('company_users').insert(contactData).select().single();
+        if (insertErr || !created) {
+          console.warn("Primary insert into company_users failed, retrying with contacts table:", insertErr);
+          const { data: createdFallback } = await supabase.from('contacts').insert(contactData).select().single();
+          createdObj = createdFallback;
+        } else {
+          createdObj = created;
+        }
+
+        const finalContact = createdObj || { ...contactData, id: `user-${Date.now()}` };
+        setCrmUsers((prev: any[]) => [finalContact, ...prev]);
+        setSelectedContact(finalContact);
         
         await logAuditAction({
           action: 'USER_INVITED',
           userId: currentUser.uid,
           companyId: safeCompanyId,
-          details: { invitedUserId: docId, isExternal: newContact.isExternal }
+          details: { invitedUserId: finalContact.id, isExternal: newContact.isExternal }
         });
-        
-
         
         addToast(t('save') + ' ' + t('completed'), 'success');
       }
