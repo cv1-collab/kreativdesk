@@ -716,26 +716,26 @@ export default function MeetChat() {
                     <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")} />
                   </div>
 
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-background/90 backdrop-blur-xl border border-border/50 p-2 rounded-2xl shadow-2xl z-30 pointer-events-auto">
-                    <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all", isMicOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")}>{isMicOn ? <Mic size={20} /> : <MicOff size={20} />}</button>
-                    <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all", isCamOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")}>{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
-                    <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block", !isScreenSharing ? "bg-surface hover:bg-white/10 text-white" : "bg-accent-ai text-white shadow-lg")}>{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
-                    <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block", isTranscribing ? "bg-accent-ai text-white shadow-lg" : "bg-surface hover:bg-white/10 text-white")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
-                    <div className="w-px h-8 bg-border/50 mx-1 md:mx-2"></div>
-                    <button onClick={hangUp} className="px-4 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg flex items-center gap-2"><PhoneOff size={18} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto">
+                    <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Mikrofon">{isMicOn ? <Mic size={20} /> : <MicOff size={20} />}</button>
+                    <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
+                    <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
+                    <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
+                    <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
+                    <button onClick={hangUp} className="px-5 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2"><PhoneOff size={18} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
                   </div>
 
                   {currentTranscript && (
-                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md px-6 py-3 rounded-2xl text-white text-lg font-medium max-w-2xl text-center shadow-2xl z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-2">
+                    <div className="absolute bottom-32 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-md px-6 py-3 rounded-2xl text-white text-lg font-medium max-w-2xl text-center shadow-2xl z-40 pointer-events-none animate-in fade-in slide-in-from-bottom-2 border border-slate-700">
                       {currentTranscript}
                     </div>
                   )}
 
-                  <div className="absolute top-6 left-4 flex flex-col md:flex-row items-start md:items-center gap-3 bg-background/90 backdrop-blur-md border border-border/50 px-4 py-2 rounded-xl shadow-lg z-30">
-                    <div className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-text-muted font-bold">Meeting ID</span><span className="text-xs md:text-sm font-mono font-bold text-white">{callId || joinCallId}</span></div>
-                    <div className="w-px h-8 bg-border/50 hidden md:block mx-1"></div>
-                    <button onClick={() => { const joinUrl = `${window.location.origin}/guest-meet/${callId || joinCallId}`; navigator.clipboard.writeText(joinUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); addToast('Link kopiert!', 'success'); }} className="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-white/10 rounded-lg text-xs font-bold text-text-muted hover:text-white transition-colors">
-                      {copied ? <CheckCircle2 size={16} className="text-emerald-500" /> : <LinkIcon size={16} />}
+                  <div className="absolute top-6 left-4 flex flex-col md:flex-row items-start md:items-center gap-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 px-4 py-2.5 rounded-xl shadow-lg z-30">
+                    <div className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Meeting ID</span><span className="text-xs md:text-sm font-mono font-bold text-white">{callId || joinCallId}</span></div>
+                    <div className="w-px h-8 bg-slate-700/60 hidden md:block mx-1"></div>
+                    <button onClick={() => { const joinUrl = `${window.location.origin}/guest-meet/${callId || joinCallId}`; navigator.clipboard.writeText(joinUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); addToast('Link kopiert!', 'success'); }} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-200 hover:text-white transition-colors">
+                      {copied ? <CheckCircle2 size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
                       <span className="hidden sm:inline">{t('external_link')}</span>
                     </button>
                   </div>

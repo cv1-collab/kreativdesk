@@ -266,18 +266,18 @@ export default function GuestMeet() {
         )}
 
         {/* Controls */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-background/90 backdrop-blur-xl border border-border/50 p-2 rounded-2xl shadow-2xl z-30">
-          <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all", isMicOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")} title="Mikrofon Umschalten">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2.5 rounded-2xl shadow-2xl z-30">
+          <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Mikrofon Umschalten">
             {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
           </button>
-          <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all", isCamOn ? "bg-surface hover:bg-white/10 text-white" : "bg-red-500 text-white shadow-lg")} title="Kamera Umschalten">
+          <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera Umschalten">
             {isCamOn ? <Video size={20} /> : <VideoOff size={20} />}
           </button>
-          <button onClick={handleToggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all", isScreenSharing ? "bg-emerald-500 text-white shadow-lg" : "bg-surface hover:bg-white/10 text-white")} title="Bildschirm Teilen">
+          <button onClick={handleToggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all border", isScreenSharing ? "bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Bildschirm Teilen">
             <PhoneForwarded size={20} />
           </button>
-          <div className="w-px h-8 bg-border/50 mx-1 md:mx-2"></div>
-          <button onClick={handleLeave} className="px-4 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-all shadow-lg flex items-center gap-2">
+          <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
+          <button onClick={handleLeave} className="px-5 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2">
             <PhoneOff size={18} /> <span className="hidden md:inline">Verlassen</span>
           </button>
         </div>
