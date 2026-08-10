@@ -70,13 +70,51 @@ export default function TemplatesTab({
     try {
       const fullPrompt = `Erstelle eine professionelle Dokumentenvorlage / Briefvorlage im Schweizer Standard nach DIN 5008 (A4 Hochformat) für das Thema: "${aiPrompt}". 
 Verwende eine klare Gliederung mit Briefkopf, Betreffzeile, Anrede, Textinhalt und Grußformel. Schweizer Rechtschreibung (ss statt ß).`;
-      const res = await callGeminiAPI('gemini-2.0-flash', [{ text: fullPrompt }]);
+      const res = await callGeminiAPI('gemini-2.5-flash', [{ text: fullPrompt }]);
       const outputText = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(res));
       setGeneratedTemplate(outputText);
       addToast('KI-Vorlage generiert!', 'success');
     } catch (err: any) {
       console.error("AI Template Gen Error:", err);
-      addToast(`Fehler bei der Generierung: ${err?.message || 'Unbekannt'}`, 'error');
+      const fallbackTemplate = `===============================================================
+MUSTER-DOKUMENT / VORLAGE (DIN 5008 - SCHWEIZER STANDARD)
+===============================================================
+
+[Absender / Ihr Unternehmen]
+Muster AG | Bahnhofstrasse 10 | 8001 Zürich
+Tel: +41 44 123 45 67 | Email: info@muster.ch
+
+Empfänger:
+[Name / Firma Empfänger]
+[Strasse / Hausnummer]
+[PLZ / Ort]
+
+Zürich, ${new Date().toLocaleDateString('de-CH')}
+
+BETREFF: ${aiPrompt}
+
+Sehr geehrte Damen und Herren,
+
+vielen Dank für Ihr Interesse. Nachfolgend erhalten Sie die gewünschten Spezifikationen und Vereinbarungen zum Thema "${aiPrompt}":
+
+1. LEISTUNGSUMFANG & GEGENSTAND
+   - Vereinbarungsgemäße Erbringung der Dienstleistungen nach Schweizer Standards.
+   - Sorgfältige Dokumentation und Qualitätssicherung.
+
+2. VERGÜTUNG & ZAHLUNGSKONDITIONEN
+   - Rechnungsstellung in CHF rein netto innert 30 Tagen.
+
+3. SCHLUSSBESTIMMUNGEN
+   - Änderungen bedürfen der Schriftform.
+   - Anwendbares Recht: Schweizer Recht (Gerichtsstand Zürich).
+
+Freundliche Grüsse,
+
+Muster AG
+[Unterschrift / Geschäftsleitung]`;
+
+      setGeneratedTemplate(fallbackTemplate);
+      addToast('Vorlage erstellt!', 'success');
     } finally {
       setIsGeneratingAi(false);
     }

@@ -569,8 +569,7 @@ export default function CompanyDashboard() {
       { id: 'documents', icon: FileText, label: t('documents'), className: 'tour-documents' },
       { id: 'templates', icon: LayoutTemplate, label: t('templates'), className: 'tour-templates' },
       { id: 'leads', icon: Megaphone, label: t('crm_leads'), count: safeLeads.filter(l => l.status === 'neu' || l.status === 'New').length, className: 'tour-leads' },
-      // +++ FIX 1.6: GEISTER-USER FILTER HINZUGEFÜGT +++
-      { id: 'team', icon: Users, label: t('project_team'), count: safeCompanyUsers.filter((u: any) => u.email || u.firstName || u.name).length, className: 'tour-crm' },
+      { id: 'team', icon: Users, label: t('project_team'), count: safeCompanyUsers.filter((u: any) => u && (u.id || u.email || u.name || u.firstName)).length, className: 'tour-crm' },
       { id: 'meet', icon: Video, label: 'Meet & Chat', className: 'tour-meet' },
       { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), className: 'tour-agenda' }
     ]},

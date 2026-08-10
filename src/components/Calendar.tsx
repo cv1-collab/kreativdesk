@@ -104,8 +104,8 @@ const pdfStyles = StyleSheet.create({
 const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, shapes, chartMinHeight, chartWidth, getMonths, getYearPercentage, t }: any) => {
   const months = getMonths();
   
-  const UI_HEADER_H = 45;
-  const UI_PAD_TOP = 16;
+  const UI_HEADER_H = 44;
+  const UI_PAD_TOP = 4;
   const UI_ROW_H = 48;
 
   const isLandscape = settings.orientation === 'landscape';
@@ -342,9 +342,9 @@ export default function Calendar() {
   const [editingMarker, setEditingMarker] = useState<SmartMarker | null>(null);
   const [editingShape, setEditingShape] = useState<Shape | null>(null);
 
-  const UI_HEADER_H = 45;
+  const UI_HEADER_H = 44;
   const UI_ROW_H = 48;
-  const UI_PAD_TOP = 16;
+  const UI_PAD_TOP = 4;
   const UI_PAD_BOT = 40;
   const visibleTasks = ganttTasks.filter(t => t.title && t.title.trim() !== '');
   const chartMinHeight = Math.max(500, UI_HEADER_H + UI_PAD_TOP + (visibleTasks.length * UI_ROW_H) + UI_PAD_BOT);
