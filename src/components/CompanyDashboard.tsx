@@ -19,6 +19,7 @@ import DashboardOverviewTab from './DashboardOverviewTab';
 import TeamCrmTab from './TeamCrmTab';
 import DocumentsTab from './DocumentsTab';
 import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders, getOrCreateRealCompanyId } from '../services/seedService';
+import { fetchNotifications, sendNotification } from '../lib/notifications';
 import AgendaTab from './AgendaTab';
 import LeadsTab from './LeadsTab';
 import TemplatesTab from './TemplatesTab';
@@ -268,6 +269,9 @@ export default function CompanyDashboard() {
         .select('*')
         .eq('company_id', safeCompanyId);
       if (leads) setCollectedLeads(leads);
+
+      const notifs = await fetchNotifications(safeCompanyId);
+      setUnreadNotifications(notifs.filter(n => !n.is_read).length);
     };
 
     fetchData();
@@ -275,12 +279,15 @@ export default function CompanyDashboard() {
     const channel = supabase
       .channel('company-dash-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
     };
-  }, [currentUser]);
+  }, [currentUser, isNotificationOpen]);
 
   const safeAllDocs = Array.isArray(allDocuments) ? allDocuments : [];
   const safeCompanyUsers = Array.isArray(companyUsers) ? companyUsers : [];

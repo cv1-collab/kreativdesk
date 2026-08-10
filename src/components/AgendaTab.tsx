@@ -16,6 +16,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { downloadICSFile } from '../utils/icsGenerator';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { sendNotification } from '../lib/notifications';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -554,6 +555,15 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       } catch (backupErr) {
         console.warn("Agenda event backup fail:", backupErr);
       }
+
+      // Trigger notification bell
+      await sendNotification({
+        companyId: safeCompanyId,
+        title: 'Neuer Termin in der Agenda',
+        message: `Termin "${newEvent.title}" am ${newEvent.date} um ${newEvent.time} Uhr eingetragen.`,
+        type: 'meeting',
+        link: '/agenda'
+      });
 
       setIsEventModalOpen(false);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });

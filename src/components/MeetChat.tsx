@@ -15,6 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useVideoCall } from '../contexts/VideoCallContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
+import { sendNotification } from '../lib/notifications';
 
 const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -530,6 +531,15 @@ export default function MeetChat() {
         }
       }
       
+      // Trigger notification bell
+      await sendNotification({
+        companyId: currentUser.companyId,
+        title: 'Neuer Video Call geplant',
+        message: `Video Call "${newCallEvent.title}" am ${newCallEvent.date} um ${newCallEvent.time} Uhr angesetzt.`,
+        type: 'call',
+        link: meetingLink
+      });
+
       setIsScheduleModalOpen(false);
       setNewCallEvent({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] });
       

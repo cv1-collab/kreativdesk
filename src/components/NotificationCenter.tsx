@@ -1,41 +1,30 @@
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect } from 'react';
-import { X, Bell, Sparkles, CheckCircle2, Mail, Megaphone } from 'lucide-react';
+import { X, Bell, CheckCircle2, Megaphone, Calendar, DollarSign, FileText, Folder, Video, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAI } from '../contexts/AIContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
+import { fetchNotifications, markNotificationAsRead, markAllNotificationsAsRead, AppNotification } from '../lib/notifications';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     system_notifications: 'System Notifications',
-    ai_warning: 'AI Warning',
     new_b2b_lead: 'New B2B Request',
-    just_now: 'Just now',
     all_green: 'All systems operational',
     no_new_messages: 'No new system messages or requests.',
     close: 'Close',
     mark_seen: 'Mark as seen',
-    verify_email: 'Verify your email address.',
-    verify_email_desc: 'To use all features, please verify your email.',
-    send_verification: 'Send verification email',
-    verification_sent: 'Verification email sent!'
   },
   de: {
     system_notifications: 'System-Benachrichtigungen',
-    ai_warning: 'AI Warnung',
     new_b2b_lead: 'Neue B2B Anfrage',
-    just_now: 'Gerade eben',
     all_green: 'Alles im grünen Bereich',
     no_new_messages: 'Keine neuen System-Meldungen oder Anfragen.',
     close: 'Schließen',
     mark_seen: 'Gelesen',
-    verify_email: 'Bestätige deine E-Mail-Adresse.',
-    verify_email_desc: 'Um alle Funktionen nutzen zu können, bestätige bitte deine E-Mail.',
-    send_verification: 'Bestätigungs-E-Mail senden',
-    verification_sent: 'Bestätigungs-E-Mail wurde gesendet!'
   }
 };
 
@@ -45,28 +34,44 @@ interface NotificationCenterProps {
 }
 
 export default function NotificationCenter({ isOpen, onClose }: NotificationCenterProps) {
-  const { warnings, dismissWarning } = useAI();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { language, t: globalT } = useLanguage();
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key;
   
   const [newLeads, setNewLeads] = useState<any[]>([]);
-  const [userNotifications, setUserNotifications] = useState<any[]>([]);
+  const [userNotifications, setUserNotifications] = useState<AppNotification[]>([]);
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
 
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+
+  const loadNotifications = async () => {
+    if (!safeCompanyId) return;
+    const notifs = await fetchNotifications(safeCompanyId);
+    setUserNotifications(notifs);
+  };
+
   useEffect(() => {
-    if (!currentUser?.companyId) return;
-    const fetchNotifs = async () => {
-      const { data } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('company_id', currentUser.companyId)
-        .order('created_at', { ascending: false });
-      if (data) setUserNotifications(data);
+    if (isOpen && safeCompanyId) {
+      loadNotifications();
+    }
+  }, [isOpen, safeCompanyId]);
+
+  useEffect(() => {
+    if (!safeCompanyId) return;
+    loadNotifications();
+
+    const channel = supabase
+      .channel('notif-center-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `company_id=eq.${safeCompanyId}` }, loadNotifications)
+      .subscribe();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
     };
-    fetchNotifs();
-  }, [currentUser?.companyId]);
+  }, [safeCompanyId]);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -88,23 +93,39 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
     } catch (error) { console.error(error); }
   };
 
-  const markNotificationAsRead = async (notifId: string) => {
-    try { 
-      await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
-      setUserNotifications(prev => prev.filter(n => n.id !== notifId));
-    } catch (error) { console.error(error); }
+  const handleMarkAsRead = async (notifId: string) => {
+    if (!safeCompanyId) return;
+    await markNotificationAsRead(notifId, safeCompanyId);
+    setUserNotifications(prev => prev.map(n => n.id === notifId ? { ...n, is_read: true } : n));
   };
 
-  const markAllNotificationsAsRead = async () => {
-    try {
-      if (currentUser?.companyId) {
-        await supabase.from('notifications').update({ is_read: true }).eq('company_id', currentUser.companyId);
-        setUserNotifications([]);
-      }
-    } catch (error) { console.error(error); }
+  const handleMarkAllAsRead = async () => {
+    if (!safeCompanyId) return;
+    await markAllNotificationsAsRead(safeCompanyId);
+    setUserNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const getNotifIcon = (type?: string) => {
+    switch (type) {
+      case 'meeting':
+        return <Calendar size={16} className="text-emerald-500 shrink-0" />;
+      case 'call':
+        return <Video size={16} className="text-blue-500 shrink-0" />;
+      case 'finance':
+        return <DollarSign size={16} className="text-amber-500 shrink-0" />;
+      case 'quote':
+        return <FileText size={16} className="text-purple-500 shrink-0" />;
+      case 'document':
+      case 'plan':
+        return <Folder size={16} className="text-indigo-500 shrink-0" />;
+      default:
+        return <Info size={16} className="text-blue-400 shrink-0" />;
+    }
   };
 
   if (!isOpen) return null;
+
+  const unreadCount = userNotifications.filter(n => !n.is_read).length;
 
   return (
     <AnimatePresence>
@@ -122,9 +143,9 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
                 <h2 className="font-bold text-lg text-text-primary">{t('system_notifications')}</h2>
               </div>
               <div className="flex items-center gap-2">
-                {userNotifications.length > 0 && (
+                {unreadCount > 0 && (
                   <button 
-                    onClick={markAllNotificationsAsRead}
+                    onClick={handleMarkAllAsRead}
                     className="text-xs text-accent-ai font-bold hover:underline"
                   >
                     Alle lesen
@@ -136,7 +157,7 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
               </div>
             </div>
 
-            <div className="space-y-4 overflow-y-auto max-h-[75vh] pr-1">
+            <div className="space-y-3 overflow-y-auto max-h-[75vh] pr-1 custom-scrollbar">
               {newLeads.map((lead) => (
                 <div key={lead.id} className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl">
                   <div className="flex items-center justify-between mb-2">
@@ -148,12 +169,48 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
               ))}
 
               {userNotifications.map((notif) => (
-                <div key={notif.id} className="p-4 bg-surface-hover border border-border/50 rounded-2xl flex justify-between items-start">
-                  <div>
-                    <div className="font-bold text-sm text-text-primary">{notif.title || 'Mitteilung'}</div>
-                    <div className="text-xs text-text-muted mt-1">{notif.message}</div>
+                <div 
+                  key={notif.id} 
+                  onClick={() => {
+                    if (!notif.is_read) handleMarkAsRead(notif.id);
+                    if (notif.link) {
+                      onClose();
+                      navigate(notif.link);
+                    }
+                  }}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-start gap-3 ${
+                    notif.is_read 
+                      ? 'bg-surface/50 border-border/30 opacity-70' 
+                      : 'bg-surface-hover border-border shadow-sm hover:border-accent-ai/40'
+                  }`}
+                >
+                  <div className="flex gap-3 items-start">
+                    <div className="mt-0.5 p-2 rounded-xl bg-background border border-border/50">
+                      {getNotifIcon(notif.type)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                        {notif.title || 'Mitteilung'}
+                        {!notif.is_read && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                        )}
+                      </div>
+                      <div className="text-xs text-text-muted mt-1 leading-relaxed">{notif.message}</div>
+                      <div className="text-[10px] text-text-muted/60 mt-2 font-mono">
+                        {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Uhr
+                      </div>
+                    </div>
                   </div>
-                  <button onClick={() => markNotificationAsRead(notif.id)} className="text-text-muted hover:text-text-primary p-1"><X size={14} /></button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarkAsRead(notif.id);
+                    }} 
+                    className="text-text-muted hover:text-text-primary p-1 shrink-0"
+                    title="Als gelesen markieren"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               ))}
 
