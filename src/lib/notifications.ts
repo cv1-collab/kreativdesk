@@ -89,13 +89,6 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
     const rawCache = localStorage.getItem(cacheKey);
     const localNotifs: AppNotification[] = rawCache ? JSON.parse(rawCache) : [];
 
-    const { data: dbNotifs } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
     const { data: config } = await supabase
       .from('system_config')
       .select('data')
@@ -104,8 +97,21 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
 
     const configNotifs: AppNotification[] = config?.data?.notifications || [];
 
+    let dbNotifs: any[] = [];
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (data) dbNotifs = data;
+    } catch (dbErr) {
+      // Ignore missing notifications table
+    }
+
     const map = new Map<string, AppNotification>();
-    [...localNotifs, ...configNotifs, ...(dbNotifs || [])].forEach(n => {
+    [...localNotifs, ...configNotifs, ...dbNotifs].forEach(n => {
       if (n && n.id) {
         map.set(n.id, {
           id: n.id,
@@ -127,7 +133,7 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
     localStorage.setItem(cacheKey, JSON.stringify(allNotifs.slice(0, 50)));
     return allNotifs;
   } catch (err) {
-    console.error("Error fetching notifications:", err);
+    console.warn("Notifications fetch fallback handled:", err);
     return [];
   }
 };

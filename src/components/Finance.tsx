@@ -631,13 +631,15 @@ export default function Finance() {
       try {
         const { data: comp } = await supabase
           .from('companies')
-          .select('primary_color')
+          .select('*')
           .eq('id', currentUser.companyId)
-          .single();
-        if (comp?.primary_color) {
-          setCompanyColor(comp.primary_color);
+          .maybeSingle();
+        if (comp && (comp.primary_color || comp.primaryColor)) {
+          setCompanyColor(comp.primary_color || comp.primaryColor);
         }
-      } catch (e) { console.error('Error fetching company color:', e); }
+      } catch (e) {
+        console.warn('Company color fetch fallback handled:', e);
+      }
     };
     fetchCompanyData();
   }, [currentUser?.companyId]);

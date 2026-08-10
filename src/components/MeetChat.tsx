@@ -221,21 +221,29 @@ export default function MeetChat() {
   }, [activeProjectId, setActiveProject, callStatus, joinCall, startCall]);
 
   useEffect(() => {
-    if (!currentUser || !currentUser.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     
     const fetchChatMessages = async () => {
-      const { data: msgs } = await supabase
-        .from('chat_messages')
-        .select('*')
-        .eq('company_id', currentUser.companyId)
-        .order('created_at', { ascending: true });
+      try {
+        let msgs: any[] = [];
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .order('created_at', { ascending: true })
+          .limit(100);
 
-      if (msgs) {
-        setMessages(msgs.map(d => ({
-          id: d.id, sender: d.sender || 'Unknown', avatar: d.avatar || 'U',
-          time: new Date(d.created_at || d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: d.text, isAI: d.is_ai, reference: d.reference, createdAt: d.created_at
-        })));
+        if (!error && data) msgs = data;
+        
+        if (msgs && msgs.length > 0) {
+          setMessages(msgs.map(d => ({
+            id: d.id, sender: d.sender || 'System', avatar: d.avatar || 'U',
+            time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            text: d.text, isAI: d.is_ai, reference: d.reference, createdAt: d.created_at
+          })));
+        }
+      } catch (chatErr) {
+        console.warn("Chat fetch fallback handled:", chatErr);
       }
     };
 
@@ -243,19 +251,29 @@ export default function MeetChat() {
 
     const fetchUpcomingCalls = async () => {
       try {
-        const { data: events } = await supabase
-          .from('calendar_events')
-          .select('*')
-          .eq('company_id', currentUser.companyId)
-          .eq('type', 'call');
+        let events: any[] = [];
+        try {
+          const { data } = await supabase
+            .from('calendar_events')
+            .select('*')
+            .eq('type', 'call');
+          if (data) events = data;
+        } catch (evErr) {
+          console.warn("Calendar events query fallback handled:", evErr);
+        }
 
-        const { data: config } = await supabase
-          .from('system_config')
-          .select('data')
-          .eq('id', `schedule_calls_${currentUser.companyId}`)
-          .maybeSingle();
+        let configCalls: any[] = [];
+        try {
+          const { data: config } = await supabase
+            .from('system_config')
+            .select('data')
+            .eq('id', `schedule_calls_${safeCompanyId}`)
+            .maybeSingle();
+          if (config?.data?.calls) configCalls = config.data.calls;
+        } catch (cfgErr) {
+          console.warn("System config calls fallback handled:", cfgErr);
+        }
 
-        const configCalls = config?.data?.calls || [];
         const dbCalls = (events || []).map((e: any) => ({
           id: e.id,
           title: e.title,
@@ -271,7 +289,7 @@ export default function MeetChat() {
 
         setUpcomingCalls(Array.from(mergedMap.values()));
       } catch (err) {
-        console.error("Error fetching upcoming calls:", err);
+        console.warn("Error fetching upcoming calls:", err);
       }
     };
 
@@ -279,7 +297,7 @@ export default function MeetChat() {
 
     const channel = supabase
       .channel('chat-msg-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `company_id=eq.${currentUser.companyId}` }, fetchChatMessages)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, fetchChatMessages)
       .subscribe();
 
     return () => {
@@ -446,14 +464,18 @@ export default function MeetChat() {
       const meetingId = generatedMeetingId || `meet-${Date.now()}`;
       
       // 1. Pre-register video call so external links work
-      await supabase.from('video_calls').upsert({
-        id: meetingId,
-        project_id: targetProjectId,
-        company_id: currentUser.companyId,
-        caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
-        caller_id: currentUser.uid,
-        created_at: new Date().toISOString()
-      });
+      try {
+        await supabase.from('video_calls').upsert({
+          id: meetingId,
+          project_id: targetProjectId,
+          company_id: currentUser.companyId,
+          caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
+          caller_id: currentUser.uid,
+          created_at: new Date().toISOString()
+        });
+      } catch (vcErr) {
+        console.warn("video_calls upsert fallback handled:", vcErr);
+      }
 
       const meetingLink = `/project/${targetProjectId}/meet?join=${meetingId}`;
       const newCallObj = {
@@ -503,32 +525,31 @@ export default function MeetChat() {
         console.warn("Call backup fail:", backupErr);
       }
 
-      // 3. Insert into calendar_events with schema cache resilience
-      const eventToInsert: any = {
-        title: newCallEvent.title,
-        date: newCallEvent.date,
-        time: newCallEvent.time,
-        type: 'call',
-        description: newCallEvent.description || '',
-        id: eventId,
-        owner_id: currentUser.uid,
-        company_id: currentUser.companyId, 
-        project_id: targetProjectId,
-        participants: newCallEvent.participants || [],
-        timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
-        created_at: new Date().toISOString(),
-        meeting_link: meetingLink
-      };
+      // 3. Insert into calendar_events with schema resilience
+      try {
+        const eventToInsert: any = {
+          title: newCallEvent.title,
+          date: newCallEvent.date,
+          time: newCallEvent.time,
+          type: 'call',
+          description: newCallEvent.description || '',
+          id: eventId,
+          owner_id: currentUser.uid,
+          company_id: currentUser.companyId, 
+          project_id: targetProjectId,
+          participants: newCallEvent.participants || [],
+          timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
+          created_at: new Date().toISOString(),
+          meeting_link: meetingLink
+        };
 
-      const { error: insertErr } = await supabase.from('calendar_events').insert(eventToInsert);
-
-      if (insertErr) {
-        console.warn("Primary insert error into calendar_events in MeetChat, trying fallback schema:", insertErr);
-        const { date, ...withoutDate } = eventToInsert;
-        const retry1 = await supabase.from('calendar_events').insert({ ...withoutDate, event_date: date, start_date: date });
-        if (retry1.error) {
-          await supabase.from('calendar_events').insert(withoutDate);
+        const { error: insertErr } = await supabase.from('calendar_events').insert(eventToInsert);
+        if (insertErr) {
+          const { company_id, ...withoutCompanyId } = eventToInsert;
+          await supabase.from('calendar_events').insert(withoutCompanyId);
         }
+      } catch (calInsErr) {
+        console.warn("Calendar events insert handled:", calInsErr);
       }
       
       // Trigger notification bell

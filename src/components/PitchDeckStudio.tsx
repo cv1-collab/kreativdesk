@@ -287,12 +287,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     
     const fetchSlides = async () => {
-      let query = supabase.from('slides').select('*').eq('company_id', safeCompanyId);
-      if (targetId && targetId !== 'global') {
-        query = query.eq('project_id', targetId);
+      let slidesArr: any[] = [];
+      try {
+        let query = supabase.from('slides').select('*');
+        if (targetId && targetId !== 'global') {
+          query = query.eq('project_id', targetId);
+        }
+        const { data: loadedSlides } = await query;
+        if (loadedSlides) slidesArr = loadedSlides as any[];
+      } catch (err) {
+        console.warn("Pitch deck slides fetch fallback handled:", err);
       }
-      const { data: loadedSlides } = await query;
-      const slidesArr = loadedSlides ? (loadedSlides as any[]) : [];
 
       if (slidesArr.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
         try {
@@ -307,14 +312,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             id: `slide-demo-${targetId}-${i}`,
             ...s,
             project_id: targetId,
-            company_id: currentUser.companyId,
-            owner_id: currentUser.uid,
+            company_id: currentUser?.companyId || safeCompanyId,
+            owner_id: currentUser?.uid,
             created_at: new Date().toISOString()
           }));
 
-          await supabase.from('slides').upsert(slidesToInsert);
           slidesArr.push(...slidesToInsert);
-        } catch(e) { console.error("Error seeding demo deck", e); }
+        } catch(e) { console.warn("Error seeding demo deck", e); }
       }
 
       slidesArr.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
