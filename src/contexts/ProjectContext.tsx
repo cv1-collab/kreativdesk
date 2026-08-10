@@ -85,18 +85,37 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('company_id', safeCompanyId);
 
-      if (profs) {
-        const users: CompanyUser[] = profs.map(p => ({
-          id: p.id,
-          name: p.name || p.email,
-          email: p.email,
-          role: p.role === 'owner' ? 'Admin' : 'Internal',
-          avatar: p.photo_url || '',
-          ownerId: p.id,
-          companyId: p.company_id || safeCompanyId
-        }));
-        setCompanyUsers(users);
-      }
+      const { data: crmData } = await supabase
+        .from('company_users')
+        .select('*')
+        .eq('company_id', safeCompanyId);
+
+      const mappedProfiles: CompanyUser[] = (profs || []).map(p => ({
+        id: p.id,
+        name: p.name || p.email,
+        email: p.email,
+        role: p.role === 'owner' ? 'Admin' : 'Internal',
+        avatar: p.photo_url || '',
+        ownerId: p.id,
+        companyId: p.company_id || safeCompanyId
+      }));
+
+      const mappedCrm: CompanyUser[] = (crmData || []).map(u => ({
+        id: u.id,
+        name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
+        email: u.email || '',
+        role: u.role || 'Partner',
+        avatar: '',
+        ownerId: u.id,
+        companyId: safeCompanyId
+      }));
+
+      const userMap = new Map<string, CompanyUser>();
+      mappedProfiles.forEach(p => { if (p.id || p.email) userMap.set(p.id || p.email, p); });
+      mappedCrm.forEach(c => { if (c.id || c.email) userMap.set(c.id || c.email, c); });
+
+      const combinedUsers = Array.from(userMap.values());
+      setCompanyUsers(combinedUsers);
     } catch (err) {
       console.error("Error fetching company users:", err);
     }

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { jsPDF } from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { 
   Users, Mail, Building, Phone, Shield, 
   Search, UserPlus, CheckCircle2, ShieldAlert,
@@ -91,6 +92,7 @@ const safeStr = (str: any, maxLen: number) => {
 
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
+  const { fetchCompanyUsers } = useProject();
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
   
@@ -391,6 +393,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         addToast(t('save') + ' ' + t('completed'), 'success');
       }
       
+      fetchCompanyUsers?.();
       closeAddModal();
     } catch (err) { 
       console.error("Fehler beim Speichern:", err); addToast(t('upload_failed'), 'error'); 

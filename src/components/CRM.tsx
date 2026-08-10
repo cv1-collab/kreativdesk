@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, FileText, Search, Plus, Trash2, UserPlus, Loader2 } from 'lucide-react';
 import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
@@ -26,6 +27,7 @@ interface Contact { id: string; name: string; role: string; company: string; ema
 
 export default function CRM() {
   const { currentUser } = useAuth();
+  const { fetchCompanyUsers } = useProject();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
