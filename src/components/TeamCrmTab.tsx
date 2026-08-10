@@ -29,6 +29,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     edit_contact: 'Edit Contact', delete: 'Delete', contact_methods: 'Contact Methods', no_email: 'No Email',
     no_phone: 'No Phone', no_website: 'No Website', location_business: 'Location & Business', no_address_data: 'No address data',
     role_management_system: 'Role Management (System)', employee: 'Employee', management: 'Management', owner: 'Owner',
+    owner_management: 'Owner / Management', mitarbeiter: 'Internal Employee', partner: 'Partner / Subcontractor', guest: 'Guest / Client', viewer: 'Viewer (Read-Only)',
     internal_notes: 'Internal Notes', selection_mode_active: 'Selection Mode Active', no_contact_selected: 'No Contact Selected',
     selection_mode_desc: 'Select contacts in the left list for mass actions.', no_contact_selected_desc: 'Select an entry on the left to edit details.',
     create_contact: 'Create Contact', profile_pic_logo: 'Profile Picture / Logo', click_to_upload: 'Click to upload',
@@ -57,6 +58,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     edit_contact: 'Kontakt bearbeiten', delete: 'Löschen', contact_methods: 'Kontaktwege', no_email: 'Keine E-Mail',
     no_phone: 'Keine Nummer', no_website: 'Keine Webseite', location_business: 'Standort & Business', no_address_data: 'Keine Adressdaten',
     role_management_system: 'Rollen-Verwaltung (System)', employee: 'Mitarbeiter', management: 'Management', owner: 'Owner',
+    owner_management: 'Inhaber & Geschäftsleitung', mitarbeiter: 'Interner Mitarbeiter', partner: 'Partner / Fachplaner / Subunternehmer', guest: 'Gast / Kunde', viewer: 'Betrachter (Lesezugriff)',
     internal_notes: 'Interne Notizen', selection_mode_active: 'Auswahlmodus aktiv', no_contact_selected: 'Kein Kontakt ausgewählt',
     selection_mode_desc: 'Markiere Kontakte in der linken Liste für Massenaktionen.', no_contact_selected_desc: 'Wähle links einen Eintrag, um Details zu bearbeiten.',
     create_contact: 'Kontakt erfassen', profile_pic_logo: 'Profilbild / Logo', click_to_upload: 'Klicken zum Hochladen',
@@ -700,7 +702,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                   <div className="col-span-2 space-y-4 pt-4 border-t border-border/50">
                      <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest">{t('role_management_system')}</h3>
                      <select value={selectedContact.role || 'employee'} onChange={(e) => handleRoleChange(selectedContact.id, e.target.value)} disabled={selectedContact.id === currentUser?.uid && isSuperAdmin} className="w-full max-w-xs px-4 py-2.5 rounded-xl text-sm font-bold border outline-none cursor-pointer bg-background hover:bg-white/5 border-border text-text-primary focus:border-accent-ai transition-colors">
-                        <option value="employee" className="bg-surface">{t('employee')}</option><option value="management" className="bg-surface">{t('management')}</option><option value="owner" className="bg-surface">{t('owner')}</option>
+                        <option value="owner" className="bg-surface">{t('owner_management')}</option>
+                        <option value="management" className="bg-surface">{t('management')}</option>
+                        <option value="employee" className="bg-surface">{t('mitarbeiter')}</option>
+                        <option value="partner" className="bg-surface">{t('partner')}</option>
+                        <option value="guest" className="bg-surface">{t('guest')}</option>
+                        <option value="viewer" className="bg-surface">{t('viewer')}</option>
                       </select>
                   </div>
                 )}

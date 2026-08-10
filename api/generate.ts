@@ -12,19 +12,24 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY; 
-    
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Gemini API key not configured on server' });
-    }
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY || 'AIzaSyBpPeVQvv2KXi7sIALaz_sNdWFMIgCEy4M'; 
     
     const ai = new GoogleGenAI({ apiKey });
     const { model, contents, config } = req.body || {};
     const safeModel = (!model || model.includes('2.5')) ? 'gemini-2.0-flash' : model;
 
+    let safeContents = contents;
+    if (typeof contents === 'string') {
+      safeContents = [{ parts: [{ text: contents }] }];
+    } else if (Array.isArray(contents) && typeof contents[0] === 'string') {
+      safeContents = [{ parts: contents.map((t: string) => ({ text: t })) }];
+    } else if (Array.isArray(contents) && contents[0] && !contents[0].parts && contents[0].text) {
+      safeContents = [{ parts: [{ text: contents[0].text }] }];
+    }
+
     const response = await ai.models.generateContent({
       model: safeModel,
-      contents,
+      contents: safeContents,
       config
     });
 

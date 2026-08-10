@@ -37,7 +37,38 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     website: 'Website',
     security_support: 'Security & Support',
     reset_password: 'Reset Password',
-    contact_support: 'Contact Support'
+    contact_support: 'Contact Support',
+    documents_terms: 'Documents & Terms',
+    terms_conditions: 'Terms & Conditions',
+    privacy_policy_doc: 'Privacy Policy',
+    upload_terms: 'Upload Terms (PDF)',
+    update_terms: 'Update Terms',
+    upload_privacy: 'Upload Privacy Policy (PDF)',
+    update_privacy: 'Update Privacy Policy',
+    view_current_doc: 'View Current Document',
+    custom_branding: 'Custom Branding',
+    unlock_branding: 'Unlock Custom Branding',
+    primary_color: 'Primary Brand Color (Hex)',
+    integrations: 'Integrations',
+    unlock_integrations: 'Unlock Integrations',
+    slack_integration_desc: 'Send automated notifications to your Slack Workspace',
+    saas_engine: 'SaaS Engine',
+    current_plan_desc: 'Your current subscription plan for',
+    licenses: 'Licenses',
+    storage_space: 'Storage Space',
+    cloud_storage: 'Cloud Storage',
+    white_label_branding: 'White-Label Branding',
+    b2b_api_access: 'B2B API Access',
+    upgrade_now: 'Upgrade Subscription Now',
+    manage_subscription: 'Manage Subscription (Stripe Portal)',
+    developer_demo: 'Developer & Demo',
+    load_demo_desc: 'Load a real test project (dummy) with files, documents, and finances into your workspace.',
+    load_demo_btn: 'Load Test Dummy Project',
+    privacy_gdpr: 'Privacy & GDPR',
+    privacy_desc: 'Manage your personal data in accordance with privacy laws (GDPR). You can export all your data or permanently delete your account and company.',
+    request_data_export: 'Request Data Export (ZIP)',
+    delete_account_company: 'Permanently Delete Account & Company',
+    delete_confirm: 'Are you sure you want to permanently delete your company and all data? This cannot be undone!'
   },
   de: {
     agency_profile: 'Unternehmensprofil', 
@@ -60,7 +91,38 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     website: 'Webseite',
     security_support: 'Sicherheit & Support',
     reset_password: 'Passwort zurücksetzen',
-    contact_support: 'Support kontaktieren'
+    contact_support: 'Support kontaktieren',
+    documents_terms: 'Dokumente & AGB',
+    terms_conditions: 'AGB (Terms & Conditions)',
+    privacy_policy_doc: 'Datenschutzrichtlinie (Privacy Policy)',
+    upload_terms: 'AGB hochladen (PDF)',
+    update_terms: 'AGB aktualisieren',
+    upload_privacy: 'Datenschutz hochladen (PDF)',
+    update_privacy: 'Datenschutz aktualisieren',
+    view_current_doc: 'Aktuelles Dokument ansehen',
+    custom_branding: 'Custom Branding',
+    unlock_branding: 'Branding freischalten',
+    primary_color: 'Hauptfarbe (Hex)',
+    integrations: 'Integrationen',
+    unlock_integrations: 'Integrationen freischalten',
+    slack_integration_desc: 'Sende Benachrichtigungen in deinen Slack-Workspace',
+    saas_engine: 'SaaS Engine',
+    current_plan_desc: 'Dein aktueller Tarif für',
+    licenses: 'Lizenzen',
+    storage_space: 'Speicherplatz',
+    cloud_storage: 'Cloud Speicher',
+    white_label_branding: 'White-Label Branding',
+    b2b_api_access: 'B2B API-Zugriff',
+    upgrade_now: 'Jetzt kostenpflichtig upgraden',
+    manage_subscription: 'Abonnement verwalten (Stripe Portal)',
+    developer_demo: 'Entwickler & Demo',
+    load_demo_desc: 'Lade ein Testprojekt (Dummy) mit realen Daten, Dokumenten und Finanzen in deinen Workspace.',
+    load_demo_btn: 'Testdummy (Bau) laden',
+    privacy_gdpr: 'Datenschutz & DSGVO',
+    privacy_desc: 'Verwalte deine persönlichen Daten gemäss den aktuellen Datenschutzrichtlinien (DSGVO). Du kannst all deine Daten exportieren oder deinen Account und deine Firma unwiderruflich löschen.',
+    request_data_export: 'Datenauskunft anfordern (ZIP)',
+    delete_account_company: 'Account & Firma unwiderruflich löschen',
+    delete_confirm: 'Bist du sicher, dass du deine Firma und alle Daten unwiderruflich löschen möchtest? Dies kann nicht rückgängig gemacht werden!'
   }
 };
 
@@ -611,15 +673,15 @@ export default function SettingsTab() {
         <div className="space-y-6">
           <div className="bg-surface border border-border rounded-xl p-5 md:p-6 flex flex-col relative shadow-[0_0_30px_rgba(16,185,129,0.1)]">
             <div className="absolute -top-3 right-4 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest">
-              SaaS Engine
+              {t('saas_engine')}
             </div>
             <h4 className="text-xl font-bold mb-1 text-emerald-500">Kreativ-Desk {companyPlan.includes('Trial') ? 'Trial' : companyPlan}</h4>
-            <p className="text-sm text-text-muted mb-6 leading-relaxed">Dein aktueller Tarif für {agencyName || 'deine Agentur'}.</p>
+            <p className="text-sm text-text-muted mb-6 leading-relaxed">{t('current_plan_desc')} {agencyName || 'Organization'}.</p>
             
             <div className="bg-background/50 border border-border/50 rounded-lg p-4 mb-6 space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Users size={14}/> Lizenzen</span>
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Users size={14}/> {t('licenses')}</span>
                   <span className="text-sm font-bold text-text-primary">{usedSeats} / {maxSeats}</span>
                 </div>
                 <div className="w-full bg-surface rounded-full h-2 overflow-hidden border border-border/50">
@@ -629,7 +691,7 @@ export default function SettingsTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Save size={14}/> Speicherplatz</span>
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Save size={14}/> {t('storage_space')}</span>
                   <span className="text-sm font-bold text-text-primary">
                     {(storageUsed / (1024 * 1024 * 1024)).toFixed(2)} GB / {((STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter']) / (1024 * 1024 * 1024)).toFixed(0)} GB
                   </span>
@@ -647,42 +709,42 @@ export default function SettingsTab() {
             </div>
             
             <div className="space-y-3 mb-8">
-              <div className="flex items-center gap-2 text-sm font-bold text-text-primary"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> Cloud Speicher</div>
-              <div className="flex items-center gap-2 text-sm text-text-primary"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> White-Label Branding</div>
-              <div className="flex items-center gap-2 text-sm text-text-primary"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> B2B API Access</div>
+              <div className="flex items-center gap-2 text-sm font-bold text-text-primary"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> {t('cloud_storage')}</div>
+              <div className="flex items-center gap-2 text-sm text-text-primary"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> {t('white_label_branding')}</div>
+              <div className="flex items-center gap-2 text-sm text-text-primary"><CheckCircle2 size={16} className="text-emerald-500 shrink-0"/> {t('b2b_api_access')}</div>
             </div>
             
             {currentUser?.stripeCustomerId && !companyPlan.includes('Trial') ? (
               <button type="button" onClick={handleManageSubscription} disabled={isPortalLoading} className="mt-auto w-full py-3 bg-zinc-800 text-white border border-zinc-700 rounded-lg text-sm font-bold hover:bg-zinc-700 transition-colors shadow-lg flex justify-center items-center gap-2 disabled:opacity-50">
-                {isPortalLoading ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />} Abo & Rechnungen verwalten
+                {isPortalLoading ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />} {t('manage_subscription')}
               </button>
             ) : (
               <button type="button" onClick={() => handleUpgradeStripe('Expert')} disabled={isUpgradeLoading} className="mt-auto w-full py-3 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-600 transition-colors shadow-lg flex justify-center items-center gap-2 disabled:opacity-50">
-                {isUpgradeLoading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />} Jetzt kostenpflichtig upgraden
+                {isUpgradeLoading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />} {t('upgrade_now')}
               </button>
             )}
           </div>
           
           <div className="bg-surface border border-border rounded-xl p-5 md:p-6 shadow-sm">
             <h4 className="text-sm font-bold text-text-primary mb-2 flex items-center gap-2">
-              <Building2 size={16} className="text-accent-ai" /> Entwickler & Demo
+              <Building2 size={16} className="text-accent-ai" /> {t('developer_demo')}
             </h4>
-            <p className="text-xs text-text-muted mb-4">Lade ein Testprojekt (Dummy) mit realen Daten, Dokumenten und Finanzen in deinen Workspace.</p>
+            <p className="text-xs text-text-muted mb-4">{t('load_demo_desc')}</p>
             <button 
               type="button" 
               onClick={() => window.dispatchEvent(new CustomEvent('create-demo-project', { detail: { type: 'construction' } }))}
               className="w-full py-2.5 bg-background border border-border hover:border-accent-ai text-text-primary rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center gap-2"
             >
-              <Zap size={14} /> Testdummy (Bau) laden
+              <Zap size={14} /> {t('load_demo_btn')}
             </button>
           </div>
           
           {/* GDPR / Datenschutz Card */}
           <div className="bg-surface border border-border rounded-xl p-5 md:p-6 shadow-sm mt-6">
             <h4 className="text-sm font-bold text-text-primary mb-2 flex items-center gap-2">
-              <Shield size={16} className="text-accent-ai" /> Datenschutz & GDPR
+              <Shield size={16} className="text-accent-ai" /> {t('privacy_gdpr')}
             </h4>
-            <p className="text-xs text-text-muted mb-4">Verwalte deine persönlichen Daten gemäss den aktuellen Datenschutzrichtlinien (DSGVO). Du kannst all deine Daten exportieren oder deinen Account und deine Firma unwiderruflich löschen.</p>
+            <p className="text-xs text-text-muted mb-4">{t('privacy_desc')}</p>
             
             <div className="space-y-3">
               <button 
@@ -690,7 +752,7 @@ export default function SettingsTab() {
                 onClick={handleExportData}
                 className="w-full py-2.5 bg-background border border-border hover:border-accent-ai text-text-primary rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center gap-2"
               >
-                <Download size={14} /> Datenauskunft anfordern (ZIP)
+                <Download size={14} /> {t('request_data_export')}
               </button>
 
               <button 
@@ -698,12 +760,12 @@ export default function SettingsTab() {
                 onClick={handleDeleteCompany}
                 className="w-full py-2.5 bg-red-500/10 border border-red-500/20 hover:bg-red-500 hover:text-white text-red-500 rounded-lg text-xs font-bold transition-all shadow-sm flex justify-center items-center gap-2"
               >
-                <Trash2 size={14} /> Account & Firma unwiderruflich löschen
+                <Trash2 size={14} /> {t('delete_account_company')}
               </button>
             </div>
             <div className="mt-4 p-3 bg-red-500/5 rounded-lg border border-red-500/10 flex gap-3 items-start">
               <AlertTriangle size={14} className="text-red-500 shrink-0 mt-0.5" />
-              <p className="text-[10px] text-red-500/80 leading-relaxed">Achtung: Die Löschung des Accounts entfernt alle Projekte, Finanzen und Mitarbeiter der Firma. Diese Aktion kann nicht rückgängig gemacht werden.</p>
+              <p className="text-[10px] text-red-500/80 leading-relaxed">{t('delete_confirm')}</p>
             </div>
           </div>
         </div>
