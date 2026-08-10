@@ -1,10 +1,32 @@
 import { supabase } from '../lib/supabase';
 
-export async function callGeminiAPI(model: string, contents: any, config?: any) {
+function normalizeContents(contents: any): any {
+  if (typeof contents === 'string') {
+    return [{ parts: [{ text: contents }] }];
+  }
+  if (Array.isArray(contents)) {
+    return contents.map(item => {
+      if (typeof item === 'string') {
+        return { parts: [{ text: item }] };
+      }
+      if (item && item.text && !item.parts) {
+        return { parts: [{ text: item.text }] };
+      }
+      if (item && item.inlineData && !item.parts) {
+        return { parts: [{ inlineData: item.inlineData }] };
+      }
+      return item;
+    });
+  }
+  return contents;
+}
+
+export async function callGeminiAPI(model: string, rawContents: any, config?: any) {
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || '';
 
   const safeModel = (!model || model.includes('2.5')) ? 'gemini-2.0-flash' : model;
+  const contents = normalizeContents(rawContents);
 
   // 1. Try server proxy API endpoint /api/generate
   try {
