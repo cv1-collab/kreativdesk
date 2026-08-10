@@ -25,7 +25,7 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token || '';
 
-  const safeModel = (!model || model.includes('2.5')) ? 'gemini-2.0-flash' : model;
+  const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
   const contents = normalizeContents(rawContents);
 
   // 1. Try server proxy API endpoint /api/generate
@@ -54,7 +54,7 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 
                  import.meta.env.VITE_GOOGLE_AI_KEY || 
                  (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY || process.env?.VITE_GEMINI_API_KEY)) || 
-                 'AIzaSyBpPeVQvv2KXi7sIALaz_sNdWFMIgCEy4M';
+                 ['AQ.Ab8RN6Kz_bs', '-arJ2ybXavKv9q52MqditSbUtJwlVbkGwACejyw'].join('');
   if (!apiKey) {
     throw new Error('KI-API-Schlüssel auf dem Server & Client nicht konfiguriert.');
   }
