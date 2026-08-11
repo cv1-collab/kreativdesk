@@ -44,6 +44,9 @@ export const sendNotification = async ({
     const existing: AppNotification[] = raw ? JSON.parse(raw) : [];
     const updated = [notifObj, ...existing.filter(n => n.id !== notifObj.id)];
     localStorage.setItem(cacheKey, JSON.stringify(updated.slice(0, 50)));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
+    }
   } catch (err) {
     console.warn("Notification local storage save error:", err);
   }
@@ -151,6 +154,9 @@ export const markNotificationAsRead = async (notifId: string, companyId: string)
     }
 
     await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
+    }
   } catch (err) {
     console.warn("Mark notification read error:", err);
   }
@@ -169,6 +175,9 @@ export const markAllNotificationsAsRead = async (companyId: string) => {
     }
 
     await supabase.from('notifications').update({ is_read: true }).eq('company_id', companyId);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
+    }
   } catch (err) {
     console.warn("Mark all notifications read error:", err);
   }

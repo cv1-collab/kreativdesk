@@ -129,12 +129,12 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
+      <div className="fixed inset-0 z-[100000] bg-black/60 backdrop-blur-md flex justify-end">
         <motion.div 
           initial={{ x: 300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 300, opacity: 0 }}
-          className="w-full max-w-md bg-surface border-l border-border h-full p-6 shadow-2xl flex flex-col justify-between"
+          className="w-full max-w-md bg-surface border-l border-border h-full p-6 shadow-2xl flex flex-col justify-between relative z-[100001]"
         >
           <div>
             <div className="flex items-center justify-between border-b border-border pb-4 mb-6">

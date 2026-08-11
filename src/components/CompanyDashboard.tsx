@@ -288,7 +288,10 @@ export default function CompanyDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
       .subscribe();
 
+    window.addEventListener('notif_updated', fetchData);
+
     return () => {
+      window.removeEventListener('notif_updated', fetchData);
       if (channel) {
         supabase.removeChannel(channel).catch(() => {});
       }

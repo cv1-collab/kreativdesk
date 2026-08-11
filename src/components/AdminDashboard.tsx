@@ -88,7 +88,10 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, loadAdminNotifications)
       .subscribe();
 
+    window.addEventListener('notif_updated', loadAdminNotifications);
+
     return () => {
+      window.removeEventListener('notif_updated', loadAdminNotifications);
       supabase.removeChannel(channel).catch(() => {});
     };
   }, [currentUser]);

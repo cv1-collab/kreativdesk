@@ -218,10 +218,16 @@ export default function Layout() {
       fetchNotifs();
     };
 
+    const handleNotifUpdated = () => {
+      fetchNotifs();
+    };
+
     window.addEventListener('document_created', handleDocCreated);
+    window.addEventListener('notif_updated', handleNotifUpdated);
     return () => {
       supabase.removeChannel(channel).catch(() => {});
       window.removeEventListener('document_created', handleDocCreated);
+      window.removeEventListener('notif_updated', handleNotifUpdated);
     };
   }, [fetchNotifs, currentUser?.companyId, currentUser?.uid]);
 
