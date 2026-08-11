@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
+import { fetchNotifications } from '../lib/notifications';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -179,41 +180,37 @@ export default function Layout() {
   };
 
   const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => localStorage.getItem('has_new_document') === 'true');
+  const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
 
   const fetchNotifs = useCallback(async () => {
     if (!currentUser?.companyId && !currentUser?.uid) return;
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
     try {
-      const { data: docs } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (docs) {
-        const formatted = docs.map(d => ({
-          id: d.id,
-          type: 'doc',
-          title: d.type === 'vorlage' ? '📄 KI-Vorlage in Bauakte' : (language === 'de' ? 'Neues Dokument' : 'New Document'),
-          desc: d.name || 'Unbenannt',
-          time: d.created_at || new Date().toISOString()
-        }));
-        setNotifications(formatted);
-
-        if (localStorage.getItem('has_new_document') === 'true') {
-          setHasUnread(true);
-          setHasNewDocBadge(true);
-        }
+      const notifItems = await fetchNotifications(safeCompanyId);
+      const unread = notifItems.filter(n => !n.is_read).length;
+      setUnreadNotifCount(unread);
+      if (unread > 0 || localStorage.getItem('has_new_document') === 'true') {
+        setHasUnread(true);
+      } else {
+        setHasUnread(false);
       }
     } catch (e) {
       console.error(e);
     }
-  }, [currentUser?.companyId, currentUser?.uid, language]);
+  }, [currentUser?.companyId, currentUser?.uid]);
 
   useEffect(() => {
     fetchNotifs();
+
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!safeCompanyId) return;
+
+    const channel = supabase
+      .channel('layout-notif-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `company_id=eq.${safeCompanyId}` }, fetchNotifs)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, fetchNotifs)
+      .subscribe();
 
     const handleDocCreated = () => {
       setHasUnread(true);
@@ -222,8 +219,11 @@ export default function Layout() {
     };
 
     window.addEventListener('document_created', handleDocCreated);
-    return () => window.removeEventListener('document_created', handleDocCreated);
-  }, [fetchNotifs]);
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+      window.removeEventListener('document_created', handleDocCreated);
+    };
+  }, [fetchNotifs, currentUser?.companyId, currentUser?.uid]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -439,11 +439,16 @@ export default function Layout() {
 
               <div>
                 <button 
-                  onClick={() => setShowNotifications(true)} 
+                  onClick={() => {
+                    setShowNotifications(true);
+                    setHasUnread(false);
+                  }} 
                   className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
                 >
                   <Bell size={18} />
-                  {hasUnread && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}
+                  {(hasUnread || unreadNotifCount > 0 || hasNewDocBadge) && (
+                    <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>
+                  )}
                 </button>
                 <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
               </div>

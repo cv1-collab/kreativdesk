@@ -63,13 +63,34 @@ export default function AdminDashboard() {
     }
   }, [location.search, navigate]);
 
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
+
   useEffect(() => {
-    if (!checkIsSuperAdmin(currentUser?.email)) return;
-    const fetchLeadsCount = async () => {
-      const { data } = await supabase.from('leads').select('id').eq('status', 'New');
-      if (data) setNewLeadsCount(data.length);
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+
+    const loadAdminNotifications = async () => {
+      if (checkIsSuperAdmin(currentUser?.email)) {
+        const { data } = await supabase.from('leads').select('id').eq('status', 'New');
+        if (data) setNewLeadsCount(data.length);
+      }
+      if (safeCompanyId) {
+        const { fetchNotifications } = await import('../lib/notifications');
+        const notifs = await fetchNotifications(safeCompanyId);
+        setUnreadNotifsCount(notifs.filter(n => !n.is_read).length);
+      }
     };
-    fetchLeadsCount();
+
+    loadAdminNotifications();
+
+    const channel = supabase
+      .channel('admin-realtime-notifs')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, loadAdminNotifications)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, loadAdminNotifications)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
   }, [currentUser]);
 
   const navItems = [
@@ -170,7 +191,9 @@ export default function AdminDashboard() {
             <button onClick={toggleTheme} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer">{theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}</button>
             <button onClick={() => setShowNotifications(true)} className="p-2 text-text-muted hover:text-text-primary rounded-full transition-colors relative cursor-pointer bg-background border border-border/50 shadow-sm">
               <Bell size={18} />
-              {newLeadsCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-surface animate-pulse" />}
+              {(newLeadsCount > 0 || unreadNotifsCount > 0) && (
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse" />
+              )}
             </button>
             <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-red-500/20 border-2 border-white/10 shrink-0 ml-1">
                 {currentUser?.email?.charAt(0).toUpperCase()}
