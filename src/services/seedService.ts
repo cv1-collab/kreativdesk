@@ -417,3 +417,42 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
 
   return projId;
 }
+
+export async function purgeAllDummyData(companyId: string) {
+  if (!companyId) return;
+
+  try {
+    // Delete auto-seeded dummy transactions
+    await supabase
+      .from('transactions')
+      .delete()
+      .eq('company_id', companyId)
+      .or('description.ilike.%Akontozahlung%,description.ilike.%Teilrechnung%,description.ilike.%Demobuchung%');
+
+    // Find and delete demo project "Quartier Neubau Süd" if auto-created
+    const { data: demoProjs } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('name', 'Quartier Neubau Süd');
+
+    if (demoProjs && demoProjs.length > 0) {
+      for (const p of demoProjs) {
+        await supabase.from('transactions').delete().eq('project_id', p.id);
+        await supabase.from('defects').delete().eq('project_id', p.id);
+        await supabase.from('time_entries').delete().eq('project_id', p.id);
+        await supabase.from('slides').delete().eq('project_id', p.id);
+        await supabase.from('project_members').delete().eq('project_id', p.id);
+        await supabase.from('projects').delete().eq('id', p.id);
+        await supabase.from('system_config').delete().eq('id', `finance_${p.id}`);
+        await supabase.from('system_config').delete().eq('id', `schedule_${p.id}`);
+      }
+    }
+
+    // Delete demo user profiles
+    await supabase.from('profiles').delete().eq('company_id', companyId).like('id', 'demo_user_%');
+  } catch (err) {
+    console.error('Error purging dummy data:', err);
+  }
+}
+

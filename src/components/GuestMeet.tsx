@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useVideoCall } from '../contexts/VideoCallContext';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, Users } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, Users, MonitorUp, MonitorOff } from 'lucide-react';
 import { cn } from '../utils';
 
 const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
@@ -33,12 +33,16 @@ export default function GuestMeet() {
 
   const {
     localStream, remoteStreams, isMicOn, isCamOn, callStatus,
-    joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall
+    joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall,
+    toggleScreenShare: contextToggleScreenShare
   } = useVideoCall();
 
   const handleToggleScreenShare = async () => {
     try {
-      if (!isScreenSharing) {
+      if (contextToggleScreenShare) {
+        await contextToggleScreenShare();
+        setIsScreenSharing(prev => !prev);
+      } else if (!isScreenSharing) {
         const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         setIsScreenSharing(true);
         stream.getVideoTracks()[0].onended = () => setIsScreenSharing(false);
@@ -79,8 +83,6 @@ export default function GuestMeet() {
           setMeetingCompanyId(callDoc.company_id || null);
           setError('');
         } else {
-          // Fallback: If callDoc is not found in Supabase (e.g., anonymous guest without auth JWT token or missing record),
-          // allow guest to join if joinId is valid
           if (joinId && joinId.length >= 3) {
             setError('');
           } else {
@@ -121,6 +123,31 @@ export default function GuestMeet() {
       }
     };
     fetchChat();
+
+    // Supabase Realtime channel subscription for instant chat messages
+    const channel = supabase
+      .channel(`chat_messages_${joinId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `call_id=eq.${joinId}` }, (payload) => {
+        const d = payload.new;
+        if (d) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === d.id)) return prev;
+            return [...prev, {
+              id: d.id,
+              sender: d.sender || 'Unknown',
+              avatar: d.avatar || 'U',
+              time: new Date(d.created_at || d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              text: d.text
+            }];
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
   }, [isJoined, joinId]);
 
   // Handle Video Streams
@@ -134,6 +161,7 @@ export default function GuestMeet() {
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestName.trim() || error) return;
+    localStorage.setItem('kreativdesk_guest_name', guestName);
     setIsJoined(true);
     await joinCall(joinId);
 
@@ -160,9 +188,19 @@ export default function GuestMeet() {
     
     const text = newMessage;
     setNewMessage('');
+    const msgId = `msg-${Date.now()}`;
     
+    // Optimistic UI Update
+    setMessages(prev => [...prev, {
+      id: msgId,
+      sender: guestName,
+      avatar: guestName.substring(0, 2).toUpperCase(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: text
+    }]);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
     try {
-      const msgId = `msg-${Date.now()}`;
       await supabase.from('chat_messages').insert({
         id: msgId,
         call_id: joinId,
@@ -274,7 +312,7 @@ export default function GuestMeet() {
             {isCamOn ? <Video size={20} /> : <VideoOff size={20} />}
           </button>
           <button onClick={handleToggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all border", isScreenSharing ? "bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Bildschirm Teilen">
-            <PhoneForwarded size={20} />
+            {isScreenSharing ? <MonitorOff size={20} /> : <MonitorUp size={20} />}
           </button>
           <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
           <button onClick={handleLeave} className="px-5 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2">

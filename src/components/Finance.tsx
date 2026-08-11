@@ -23,8 +23,6 @@ import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
-import { demoTemplates } from '../utils/demoTemplates';
-import { generateDemoTransactions } from '../services/seedService';
 import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -483,9 +481,6 @@ export default function Finance() {
         .eq('project_id', currentProjectId)
         .order('created_at', { ascending: false });
 
-      const projName = (activeProject?.name || '').toLowerCase();
-      const isBau = projName.includes('bau') || projName.includes('quartier') || projName.includes('demo') || currentProjectId === 'demo-1';
-
       if (txs && txs.length > 0) {
         setTransactions(txs.map(t => ({
           ...t,
@@ -493,31 +488,8 @@ export default function Finance() {
           companyId: t.company_id,
           ownerId: t.owner_id
         } as Transaction)));
-      } else if (isBau) {
-        const dummyTxs = generateDemoTransactions(demoTemplates.construction?.financeGroups || [], currentProjectId, currentUser.companyId, currentUser.uid);
-        setTransactions(dummyTxs.map(t => ({
-          ...t,
-          projectId: t.project_id,
-          companyId: t.company_id,
-          ownerId: t.owner_id
-        } as Transaction)));
-
-        // Persist to Supabase asynchronously
-        (async () => {
-          for (const tx of dummyTxs) {
-            await supabase.from('transactions').insert({
-              company_id: currentUser.companyId,
-              project_id: currentProjectId,
-              owner_id: currentUser.uid,
-              description: tx.description || tx.title || 'Demobuchung',
-              amount: tx.amount || 0,
-              category: tx.category || 'General',
-              type: tx.type || 'expense',
-              date: tx.date || new Date().toISOString().split('T')[0],
-              status: tx.status || 'Pending'
-            });
-          }
-        })();
+      } else {
+        setTransactions([]);
       }
 
       // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG
@@ -547,10 +519,8 @@ export default function Finance() {
           setIncludeOptions(finConfig.data.includeOptions);
         }
       } else {
-        // FALLBACK: If budget is missing or empty, populate template groups for Bau/demo projects
-        const projName = (activeProject?.name || '').toLowerCase();
-        const isBau = projName.includes('bau') || projName.includes('quartier') || projName.includes('demo') || currentProjectId === 'demo-1';
-        const initGroups = isBau ? (demoTemplates.construction?.financeGroups || []) : [];
+        // FALLBACK: Clean empty state
+        const initGroups: any[] = [];
         const initVersion: BudgetVersion = {
           id: `v-approved-${currentProjectId}`,
           name: 'Originalbudget',

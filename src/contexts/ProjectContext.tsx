@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { supabase } from '../lib/supabase';
 import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
-import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders } from '../services/seedService';
+import { ensureDefaultCompanyFolders } from '../services/seedService';
 
 export interface Project { id: string; name: string; description: string; status: 'active' | 'planning' | 'completed'; role: 'owner' | 'admin' | 'viewer'; createdAt: string; ownerId: string; companyId: string; memberIds?: string[]; }
 export interface CompanyUser { id: string; name: string; email: string; role: 'Admin' | 'Internal' | 'External Planner' | 'Client'; department?: string; hourlyRate?: number; avatar?: string; ownerId: string; companyId: string; }
@@ -47,16 +47,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
-      // If company has 0 projects, seed default demo project automatically
-      if (!projs || projs.length === 0) {
-        await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, 'construction');
-        const { data: seededProjs } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('company_id', safeCompanyId)
-          .order('created_at', { ascending: false });
-        projs = seededProjs || [];
-      }
+
 
       if (projs) {
         const mappedProjects: Project[] = projs.map(p => ({

@@ -14,8 +14,6 @@ import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
-import { demoTemplates } from '../utils/demoTemplates';
-import { generateDemoTransactions } from '../services/seedService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -179,9 +177,6 @@ export default function Dashboard() {
 
         setRecentActivities([...docs, ...times].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8));
 
-        const projName = (activeProject?.name || '').toLowerCase();
-        const isBau = projName.includes('bau') || projName.includes('quartier') || projName.includes('demo') || activeProject.id === 'demo-1';
-
         const { data: txsData } = await supabase
           .from('transactions')
           .select('*')
@@ -190,14 +185,8 @@ export default function Dashboard() {
 
         if (txsData && txsData.length > 0) {
           setTransactions(txsData);
-        } else if (isBau) {
-          const dummyTxs = generateDemoTransactions(demoTemplates.construction?.financeGroups || [], activeProject.id, currentUser.companyId, currentUser.uid);
-          setTransactions(dummyTxs);
-          (async () => {
-            for (const tx of dummyTxs) {
-              await supabase.from('transactions').insert(tx);
-            }
-          })();
+        } else {
+          setTransactions([]);
         }
 
         const { data: finConfig } = await supabase
@@ -213,8 +202,8 @@ export default function Dashboard() {
 
         if (finConfig?.data && hasValidGroups) {
           setVersions(finConfig.data.versions);
-        } else if (isBau) {
-          const initGroups = demoTemplates.construction?.financeGroups || [];
+        } else {
+          const initGroups: any[] = [];
           const initVersion = {
             id: `v-approved-${activeProject.id}`,
             name: 'Originalbudget',
