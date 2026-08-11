@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { sanitizeUrl } from '../utils';
 
 export default function Screensaver() {
   const { currentUser } = useAuth();
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(new Date());
-  
-  const [config, setConfig] = useState({
-    active: false,
-    image: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
-    timeout: 5
-  });
+  const [bgImg, setBgImg] = useState(() => localStorage.getItem('ws_screensaver_bg') || '');
+  const [timeoutMinutes, setTimeoutMinutes] = useState(5);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setBgImg(localStorage.getItem('ws_screensaver_bg') || '');
+    };
+    window.addEventListener('ws_screensaver_bg_changed', handleUpdate);
+    return () => window.removeEventListener('ws_screensaver_bg_changed', handleUpdate);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -38,12 +41,11 @@ export default function Screensaver() {
         }
 
         const isCompActive = compData && compData.screensaver_active !== null && compData.screensaver_active !== undefined;
+        const image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || localStorage.getItem('ws_screensaver_bg') || '';
+        const timeout = (isCompActive && compData.screensaver_timeout) || sysConf.screensaverTimeout || 5;
 
-        setConfig({
-          active: isCompActive ? compData.screensaver_active : (sysConf.screensaverActive ?? false),
-          image: (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
-          timeout: (isCompActive && compData.screensaver_timeout) || sysConf.screensaverTimeout || 5
-        });
+        setTimeoutMinutes(timeout);
+        if (image) setBgImg(image);
       } catch (e) {
         console.error("Screensaver fetch config error:", e);
       }
@@ -52,102 +54,88 @@ export default function Screensaver() {
   }, [currentUser]);
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    let isLocked = false;
-
+    let timeoutId: any;
     const resetTimer = () => {
-      if (isLocked) return;
-      
       setIsActive(false);
       clearTimeout(timeoutId);
-      
-      if (config.active) {
-        timeoutId = setTimeout(() => {
-          setIsActive(true);
-        }, config.timeout * 60 * 1000);
-      }
+      timeoutId = setTimeout(
+        () => setIsActive(true),
+        timeoutMinutes * 60 * 1000
+      );
     };
 
-    const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, resetTimer));
-
+    const events = [
+      'mousedown',
+      'mousemove',
+      'keypress',
+      'scroll',
+      'touchstart',
+    ];
+    events.forEach((event) => document.addEventListener(event, resetTimer));
     resetTimer();
 
     return () => {
       clearTimeout(timeoutId);
-      events.forEach(event => window.removeEventListener(event, resetTimer));
+      events.forEach((event) =>
+        document.removeEventListener(event, resetTimer)
+      );
     };
-  }, [config.active, config.timeout]);
+  }, [timeoutMinutes]);
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    if (!isActive) return;
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, [isActive]);
 
-  if (!config.active || !isActive) return null;
+  if (!isActive) return null;
+
+  const defaultBg = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop";
 
   return (
-    <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[999999] bg-black cursor-pointer"
-        onClick={() => setIsActive(false)}
-      >
-        <div 
-          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105"
-          style={{ backgroundImage: sanitizeUrl(config.image) ? `url(${sanitizeUrl(config.image)})` : 'none' }}
+    <div 
+      onClick={() => setIsActive(false)}
+      className="fixed inset-0 z-[500000] flex flex-col items-center justify-center bg-zinc-950 text-white animate-in fade-in duration-1000 overflow-hidden cursor-none screensaver-container"
+    >
+      {/* Animated Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center opacity-40 select-none pointer-events-none transition-transform duration-1000 scale-105"
+        style={{
+          backgroundImage: `url(${bgImg || defaultBg})`,
+        }}
+      />
+      {/* Light glow overlay gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[3px] select-none pointer-events-none" />
+
+      <div className="relative z-10 flex flex-col items-center text-center space-y-6 keep-white">
+        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.4)] border border-white/40 mb-4 keep-white">
+          <Building2 size={48} className="text-white keep-white" style={{ color: '#ffffff' }} />
+        </div>
+        <h1 
+          className="text-3xl font-black tracking-[0.6em] uppercase select-none keep-white"
+          style={{ color: '#ffffff', textShadow: '0 4px 20px rgba(0,0,0,0.95)' }}
         >
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+          Kreativ-Desk OS
+        </h1>
+        <div 
+          className="text-6xl md:text-8xl font-black tracking-widest font-mono select-none keep-white"
+          style={{ color: '#ffffff', textShadow: '0 0 40px rgba(255,255,255,0.95), 0 4px 20px rgba(0,0,0,0.95)' }}
+        >
+          {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </div>
-
-        <div className="relative z-10 h-full flex flex-col justify-between p-12 text-white">
-          <div className="text-right">
-            <h1 className="text-8xl font-black tracking-tighter">
-              {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </h1>
-            <p className="text-xl font-medium text-white/80 mt-2">
-              {time.toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-          </div>
-
-          <div className="flex justify-between items-end">
-            <div>
-              <p className="text-xs uppercase tracking-widest text-white/60 font-bold mb-1">Workspace Status</p>
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                Kreativ Desk OS
-                <span className="text-xs px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-full font-mono font-bold">
-                  🟢 Live Operational
-                </span>
-              </h2>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex gap-2">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setConfig(prev => ({ ...prev, image: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop' })); }}
-                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold backdrop-blur-md"
-                >
-                  Modern
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setConfig(prev => ({ ...prev, image: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b7?q=80&w=2000&auto=format&fit=crop' })); }}
-                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold backdrop-blur-md"
-                >
-                  Baustelle
-                </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setConfig(prev => ({ ...prev, image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2000&auto=format&fit=crop' })); }}
-                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[10px] font-bold backdrop-blur-md"
-                >
-                  Minimalist
-                </button>
-              </div>
-              <p className="text-xs text-white/50 animate-pulse">Klicken zum Beenden</p>
-            </div>
-          </div>
+        <div 
+          className="text-xs font-black uppercase tracking-[0.25em] select-none keep-white"
+          style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.95)' }}
+        >
+          {time.toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
-      </motion.div>
-    </AnimatePresence>
+        <div 
+          className="pt-8 text-[10px] font-black tracking-[0.3em] uppercase animate-pulse select-none keep-white"
+          style={{ color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.95)' }}
+        >
+          MAUS BEWEGEN ODER KLICKEN ZUM ENTSPERREN
+        </div>
+      </div>
+    </div>
   );
 }

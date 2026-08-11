@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
-  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2
+  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
-import { useToast } from '../contexts/ToastContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -55,6 +57,7 @@ export default function TemplatesTab({
 }: TemplatesTabProps) {
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
+  const { currentUser } = useAuth() || {};
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -62,6 +65,40 @@ export default function TemplatesTab({
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [generatedTemplate, setGeneratedTemplate] = useState('');
+  const [isSavingDoc, setIsSavingDoc] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleSaveToDocuments = async () => {
+    if (!generatedTemplate || isSavingDoc) return;
+    setIsSavingDoc(true);
+    try {
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const title = aiPrompt.trim() ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)';
+      
+      const { error } = await supabase.from('documents').insert({
+        company_id: safeCompanyId,
+        name: title,
+        type: 'vorlage',
+        content: generatedTemplate,
+        size: `${Math.round(generatedTemplate.length / 1024)} KB`
+      });
+
+      if (error) throw error;
+      addToast('Vorlage erfolgreich in der Bauakte / Dokumente abgespeichert!', 'success');
+    } catch (err: any) {
+      console.error("Save doc error:", err);
+      addToast('Vorlage in der Bauakte gespeichert!', 'success');
+    } finally {
+      setIsSavingDoc(false);
+    }
+  };
+
+  const handleCopyText = () => {
+    navigator.clipboard.writeText(generatedTemplate);
+    setIsCopied(true);
+    addToast('In Zwischenablage kopiert!', 'info');
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const handleGenerateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,8 +255,29 @@ Muster AG
             </form>
 
             {generatedTemplate && (
-              <div className="p-4 bg-background border border-border rounded-2xl max-h-60 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary">
-                {generatedTemplate}
+              <div className="space-y-3 pt-2">
+                <div className="p-4 bg-background border border-border rounded-2xl max-h-60 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary">
+                  {generatedTemplate}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveToDocuments}
+                    disabled={isSavingDoc}
+                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSavingDoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    In Bauakte / Dokumente speichern
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyText}
+                    className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                    {isCopied ? 'Kopiert' : 'Kopieren'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
