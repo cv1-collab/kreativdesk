@@ -75,16 +75,28 @@ export default function TemplatesTab({
       const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
       const title = aiPrompt.trim() ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)';
       
-      const { error } = await supabase.from('documents').insert({
+      const { data, error } = await supabase.from('documents').insert({
         company_id: safeCompanyId,
+        project_id: 'global',
+        category: 'company',
+        folder_id: 'root',
+        is_folder: false,
         name: title,
         type: 'vorlage',
         content: generatedTemplate,
-        size: `${Math.round(generatedTemplate.length / 1024)} KB`
-      });
+        size: `${Math.max(1, Math.round(generatedTemplate.length / 1024))} KB`,
+        created_at: new Date().toISOString(),
+        uploaded_at: new Date().toISOString()
+      }).select().single();
 
       if (error) throw error;
-      addToast('Vorlage erfolgreich in der Bauakte / Dokumente abgespeichert!', 'success');
+
+      localStorage.setItem('has_new_document', 'true');
+      localStorage.setItem('last_created_doc_title', title);
+      window.dispatchEvent(new CustomEvent('document_created', { detail: { title, id: data?.id } }));
+
+      addToast(`Vorlage "${title}" erfolgreich in der Bauakte gespeichert!`, 'success');
+      setIsAiModalOpen(false);
     } catch (err: any) {
       console.error("Save doc error:", err);
       addToast('Vorlage in der Bauakte gespeichert!', 'success');

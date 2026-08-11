@@ -399,7 +399,13 @@ export default function Documents() {
                   <div>
                     <div className="font-bold text-sm text-text-primary flex items-center gap-2">
                       {item.name}
-                      {item.is_folder && <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Ordner</span>}
+                      {item.is_folder ? (
+                        <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Ordner</span>
+                      ) : (item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 3600000)) ? (
+                        <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
+                          🔴 NEU
+                        </span>
+                      ) : null}
                     </div>
                     <div className="text-xs text-text-muted">
                       {item.is_folder ? 'Ordner' : item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}

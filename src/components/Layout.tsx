@@ -177,34 +177,52 @@ export default function Layout() {
     return new Date(timeVal).getTime();
   };
 
-  useEffect(() => {
-    if (!currentUser?.companyId) return;
+  const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => localStorage.getItem('has_new_document') === 'true');
 
-    const fetchNotifs = async () => {
-      try {
-        const { data: docs } = await supabase
-          .from('documents')
-          .select('*')
-          .eq('company_id', currentUser.companyId)
-          .limit(10);
+  const fetchNotifs = useCallback(async () => {
+    if (!currentUser?.companyId && !currentUser?.uid) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
-        if (docs) {
-          const formatted = docs.map(d => ({
-            id: d.id,
-            type: 'doc',
-            title: language === 'de' ? 'Neues Dokument' : 'New Document',
-            desc: d.name || 'Unbenannt',
-            time: d.created_at || new Date().toISOString()
-          }));
-          setNotifications(formatted);
+    try {
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('company_id', safeCompanyId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (docs) {
+        const formatted = docs.map(d => ({
+          id: d.id,
+          type: 'doc',
+          title: d.type === 'vorlage' ? '📄 KI-Vorlage in Bauakte' : (language === 'de' ? 'Neues Dokument' : 'New Document'),
+          desc: d.name || 'Unbenannt',
+          time: d.created_at || new Date().toISOString()
+        }));
+        setNotifications(formatted);
+
+        if (localStorage.getItem('has_new_document') === 'true') {
+          setHasUnread(true);
+          setHasNewDocBadge(true);
         }
-      } catch (e) {
-        console.error(e);
       }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [currentUser?.companyId, currentUser?.uid, language]);
+
+  useEffect(() => {
+    fetchNotifs();
+
+    const handleDocCreated = () => {
+      setHasUnread(true);
+      setHasNewDocBadge(true);
+      fetchNotifs();
     };
 
-    fetchNotifs();
-  }, [currentUser?.companyId, language]);
+    window.addEventListener('document_created', handleDocCreated);
+    return () => window.removeEventListener('document_created', handleDocCreated);
+  }, [fetchNotifs]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -275,14 +293,27 @@ export default function Layout() {
                       key={item.id}
                       to={`/project/${projectId}${item.id ? `/${item.id}` : ''}`}
                       end={item.id === ''}
+                      onClick={() => {
+                        if (item.id === 'documents') {
+                          setHasNewDocBadge(false);
+                          localStorage.removeItem('has_new_document');
+                        }
+                      }}
                       className={({ isActive }) => cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                         isActive ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:bg-white/5 hover:text-text-primary border border-transparent",
                         item.className
                       )}
                     >
-                      <item.icon size={18} className="shrink-0" />
-                      <span className="truncate">{item.label}</span>
+                      <div className="flex items-center gap-3 truncate">
+                        <item.icon size={18} className="shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      {item.id === 'documents' && hasNewDocBadge && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-black text-[9px] uppercase tracking-wider animate-pulse shrink-0">
+                          NEU
+                        </span>
+                      )}
                     </NavLink>
                   );
                 })}
