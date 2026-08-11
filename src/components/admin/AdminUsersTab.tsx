@@ -5,6 +5,7 @@ import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
+import { checkIsSuperAdmin } from '../../config/admins';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -111,7 +112,23 @@ export default function AdminUsersTab() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      if (data) setUsers(data);
+      if (data) {
+        // Auto-sync super_admin status in Database and state
+        data.forEach(async (u) => {
+          if (checkIsSuperAdmin(u.email) && (u.role !== 'super_admin' || u.plan !== 'Enterprise')) {
+            await supabase.from('profiles').update({ role: 'super_admin', plan: 'Enterprise' }).eq('id', u.id);
+          }
+        });
+
+        const mapped = data.map(u => {
+          if (checkIsSuperAdmin(u.email)) {
+            return { ...u, role: 'Super_admin', plan: 'Enterprise' };
+          }
+          return u;
+        });
+
+        setUsers(mapped);
+      }
     } catch (err) {
       console.error("Error fetching users for admin:", err);
     } finally {

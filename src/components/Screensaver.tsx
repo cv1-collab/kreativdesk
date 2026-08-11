@@ -102,17 +102,17 @@ export default function Screensaver() {
   return (
     <div 
       onClick={() => setIsActive(false)}
-      className="fixed inset-0 z-[500000] flex flex-col items-center justify-center bg-zinc-950 text-white animate-in fade-in duration-1000 overflow-hidden cursor-none screensaver-container"
+      className="fixed inset-0 z-[500000] flex flex-col items-center justify-center bg-slate-900 text-white animate-in fade-in duration-1000 overflow-hidden cursor-pointer screensaver-container"
     >
-      {/* Animated Background Image */}
+      {/* Vibrant Full Color Background Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-40 select-none pointer-events-none transition-transform duration-1000 scale-105"
+        className="absolute inset-0 bg-cover bg-center opacity-95 select-none pointer-events-none transition-transform duration-1000 scale-105"
         style={{
           backgroundImage: `url(${bgImg || defaultBg})`,
         }}
       />
-      {/* Light glow overlay gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[3px] select-none pointer-events-none" />
+      {/* Friendly Light & Glass Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 backdrop-blur-[1px] select-none pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center text-center space-y-6 keep-white">
         <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-800 flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.5)] border-2 border-white/60 mb-4 keep-white">

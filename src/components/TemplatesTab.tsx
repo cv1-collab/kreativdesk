@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
-  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check, Building2, Briefcase, Edit3
+  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check, Building2, Briefcase, Edit3, CheckCircle2
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -331,70 +331,87 @@ Muster AG
             </form>
 
             {generatedTemplate && (
-              <div className="space-y-3 pt-2">
-                <div className="p-4 bg-background border border-border rounded-2xl max-h-56 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary">
-                  {generatedTemplate}
+              <div className="space-y-4 pt-2 border-t border-border/50">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-500 flex items-center gap-1">
+                      <CheckCircle2 size={13} /> Vorlagen-Vorschau
+                    </span>
+                    <span className="text-[10px] text-text-muted font-mono">{generatedTemplate.length} Zeichen</span>
+                  </div>
+                  <div className="p-4 bg-background border border-border/80 rounded-2xl max-h-48 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary leading-relaxed custom-scrollbar shadow-inner">
+                    {generatedTemplate}
+                  </div>
                 </div>
 
                 {/* Ablageort Auswahl */}
-                <div className="space-y-1.5 bg-background border border-border/50 p-3 rounded-2xl">
-                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">{t('choose_location')}</label>
+                <div className="space-y-2 bg-background/50 border border-border/50 p-3.5 rounded-2xl">
+                  <label className="block text-[11px] font-extrabold text-text-muted uppercase tracking-wider">1. {t('choose_location')}</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSaveScope('company')}
                       className={cn(
-                        "px-3 py-2 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
+                        "p-2.5 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
                         saveScope === 'company'
-                          ? "bg-blue-600/10 text-blue-500 border-blue-500/40 shadow-sm"
-                          : "bg-surface text-text-muted border-border hover:text-text-primary"
+                          ? "bg-blue-600/10 text-blue-500 border-blue-500/50 shadow-sm font-bold"
+                          : "bg-surface text-text-muted border-border/50 hover:text-text-primary"
                       )}
                     >
                       <span className="flex items-center gap-1.5 font-bold"><Building2 size={14} /> {t('company_docs')}</span>
-                      <span className="text-[10px] font-normal text-text-muted">Company Dashboard ➔ Dokumente</span>
+                      <span className="text-[10px] font-normal text-text-muted opacity-80">Company Dashboard ➔ Dokumente</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSaveScope('project')}
                       className={cn(
-                        "px-3 py-2 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
+                        "p-2.5 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
                         saveScope === 'project'
-                          ? "bg-emerald-600/10 text-emerald-500 border-emerald-500/40 shadow-sm"
-                          : "bg-surface text-text-muted border-border hover:text-text-primary"
+                          ? "bg-emerald-600/10 text-emerald-500 border-emerald-500/50 shadow-sm font-bold"
+                          : "bg-surface text-text-muted border-border/50 hover:text-text-primary"
                       )}
                     >
                       <span className="flex items-center gap-1.5 font-bold"><Briefcase size={14} /> {t('project_docs')}</span>
-                      <span className="text-[10px] font-normal text-text-muted truncate">{activeProject?.name || 'Aktuelles Projekt'}</span>
+                      <span className="text-[10px] font-normal text-text-muted opacity-80 truncate">{activeProject?.name || 'Aktuelles Projekt'}</span>
                     </button>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 pt-1">
+                {/* Section 2: Action Buttons */}
+                <div className="space-y-2 pt-1">
+                  <label className="block text-[11px] font-extrabold text-text-muted uppercase tracking-wider">2. Nächster Schritt wählen:</label>
+
+                  {/* Primary CTA */}
                   <button
                     type="button"
                     onClick={() => setIsStudioModalOpen(true)}
-                    className="w-full py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
+                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
                   >
                     <Sparkles size={16} /> {t('open_in_studio')}
                   </button>
 
-                  <div className="flex items-center gap-2">
+                  {/* Secondary Options */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
                       onClick={handleSaveToDocuments}
                       disabled={isSavingDoc}
-                      className={cn("flex-1 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50", saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20")}
+                      className={cn(
+                        "py-2.5 px-3 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50",
+                        saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
+                      )}
                     >
                       {isSavingDoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                      {saveScope === 'company' ? t('quick_save_company') : t('quick_save_project')}
+                      <span className="truncate">{saveScope === 'company' ? t('quick_save_company') : t('quick_save_project')}</span>
                     </button>
+
                     <button
                       type="button"
                       onClick={handleCopyText}
-                      className="px-4 py-3 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="py-2.5 px-3 bg-surface border border-border hover:bg-surface-hover text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                      {isCopied ? t('copied') : t('copy')}
+                      <span>{isCopied ? t('copied') : t('copy')}</span>
                     </button>
                   </div>
                 </div>
