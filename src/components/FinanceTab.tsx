@@ -409,7 +409,6 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <button onClick={handlePurgeDummyData} className="flex-1 sm:flex-none px-3 py-2 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2" title="Löscht alle automatisch generierten Test- & Dummydaten"><Trash2 size={16} /> Dummy-Daten löschen</button>
           <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-2"><FileSignature size={16} /> {t('new_quote')}</button>
           <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"><FileText size={16} /> {t('new_invoice')}</button>
           <button onClick={() => setShowExpenseModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2"><Receipt size={16} /> {t('record_expenses')}</button>
