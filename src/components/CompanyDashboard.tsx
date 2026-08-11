@@ -194,7 +194,25 @@ export default function CompanyDashboard() {
   const docUploadRef = useRef<HTMLInputElement>(null);
   
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [usedStorageMB, setUsedStorageMB] = useState(0); 
+  const [usedStorageMB, setUsedStorageMB] = useState(0);
+  const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => localStorage.getItem('has_new_document') === 'true');
+
+  useEffect(() => {
+    const handleDocCreated = () => {
+      setHasNewDocBadge(true);
+    };
+    window.addEventListener('document_created', handleDocCreated);
+    return () => {
+      window.removeEventListener('document_created', handleDocCreated);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'documents') {
+      setHasNewDocBadge(false);
+      localStorage.removeItem('has_new_document');
+    }
+  }, [activeTab]);
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -614,9 +632,29 @@ export default function CompanyDashboard() {
               <div key={i} className="space-y-1">
                 <div className="px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest hidden xl:block">{group.title}</div>
                 {visibleItems.map(item => (
-                  <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={cn("w-full flex items-center justify-center xl:justify-between px-3 py-2.5 xl:py-2 rounded-xl text-sm font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}>
-                    <div className="flex items-center gap-3"><item.icon size={18} className="shrink-0" /><span className="hidden xl:block truncate">{item.label}</span></div>
-                    {item.count !== undefined && item.count > 0 && <span className={cn("hidden xl:flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-black", activeTab === item.id ? "bg-accent-ai text-white" : "bg-surface border border-border text-text-muted")}>{item.count}</span>}
+                  <button 
+                    key={item.id} 
+                    onClick={() => {
+                      setActiveTab(item.id as any);
+                      if (item.id === 'documents') {
+                        setHasNewDocBadge(false);
+                        localStorage.removeItem('has_new_document');
+                      }
+                    }} 
+                    className={cn("w-full flex items-center justify-center xl:justify-between px-3 py-2.5 xl:py-2 rounded-xl text-sm font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <item.icon size={18} className="shrink-0" />
+                      <span className="hidden xl:block truncate">{item.label}</span>
+                    </div>
+                    {item.id === 'documents' && hasNewDocBadge && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-black text-[9px] uppercase tracking-wider animate-pulse shadow-sm flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> NEU
+                      </span>
+                    )}
+                    {item.count !== undefined && item.count > 0 && item.id !== 'documents' && (
+                      <span className={cn("hidden xl:flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-black", activeTab === item.id ? "bg-accent-ai text-white" : "bg-surface border border-border text-text-muted")}>{item.count}</span>
+                    )}
                   </button>
                 ))}
               </div>

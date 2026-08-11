@@ -7,7 +7,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
 import { 
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
-  Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3 
+  Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, Search, ArrowUpDown 
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
@@ -59,6 +59,9 @@ export default function Documents() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
   const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([{ id: 'root', name: 'Root' }]);
+
+  const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
@@ -314,6 +317,9 @@ export default function Documents() {
       if (seenFolderNames.has(doc.name)) return false;
       seenFolderNames.add(doc.name);
     }
+    if (searchTerm.trim()) {
+      return doc.name.toLowerCase().includes(searchTerm.toLowerCase().trim());
+    }
     return true;
   });
 
@@ -323,7 +329,20 @@ export default function Documents() {
     if (a.is_folder && b.is_folder) {
       return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
     }
-    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+
+    if (sortOption === 'newest') {
+      return new Date(b.created_at || b.uploaded_at || 0).getTime() - new Date(a.created_at || a.uploaded_at || 0).getTime();
+    }
+    if (sortOption === 'oldest') {
+      return new Date(a.created_at || a.uploaded_at || 0).getTime() - new Date(b.created_at || b.uploaded_at || 0).getTime();
+    }
+    if (sortOption === 'name_asc') {
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    if (sortOption === 'name_desc') {
+      return b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    return 0;
   });
 
   return (
@@ -409,20 +428,53 @@ export default function Documents() {
         </button>
       </div>
 
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-xs font-bold text-text-muted bg-surface/50 border border-border px-4 py-2.5 rounded-xl">
-        <span className="text-text-primary">{activeTab === 'company' ? t('company_docs') : t('project_docs')}</span>
-        {folderPath.map((item, idx) => (
-          <React.Fragment key={item.id}>
-            <ChevronRight size={14} className="text-text-muted" />
-            <button
-              onClick={() => navigateBreadcrumb(idx)}
-              className={cn("hover:underline", idx === folderPath.length - 1 ? "text-blue-500 font-extrabold" : "text-text-muted")}
+      {/* Breadcrumb Navigation & Search/Sort Controls */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface/50 border border-border px-4 py-3 rounded-2xl">
+        <div className="flex items-center gap-2 text-xs font-bold text-text-muted flex-wrap">
+          <span className="text-text-primary">{activeTab === 'company' ? t('company_docs') : t('project_docs')}</span>
+          {folderPath.map((item, idx) => (
+            <React.Fragment key={item.id}>
+              <ChevronRight size={14} className="text-text-muted" />
+              <button
+                onClick={() => navigateBreadcrumb(idx)}
+                className={cn("hover:underline cursor-pointer", idx === folderPath.length - 1 ? "text-blue-500 font-extrabold" : "text-text-muted")}
+              >
+                {item.name === 'Root' ? t('root') : item.name}
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+
+        {/* Search & Sort Dropdown */}
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <div className="relative flex-1 sm:w-48">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input
+              type="text"
+              placeholder="Dokumente suchen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-background border border-border/70 rounded-xl pl-9 pr-7 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none shadow-sm"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs">✕</button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ArrowUpDown size={14} className="text-text-muted" />
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as any)}
+              className="bg-background border border-border/70 rounded-xl px-3 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none cursor-pointer shadow-sm"
             >
-              {item.name === 'Root' ? t('root') : item.name}
-            </button>
-          </React.Fragment>
-        ))}
+              <option value="newest">📅 Neueste zuerst</option>
+              <option value="oldest">📅 Älteste zuerst</option>
+              <option value="name_asc">🔤 Name (A – Z)</option>
+              <option value="name_desc">🔤 Name (Z – A)</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Create Folder Modal */}
