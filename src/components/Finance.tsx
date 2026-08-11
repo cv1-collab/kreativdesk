@@ -26,6 +26,7 @@ import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -1041,27 +1042,25 @@ export default function Finance() {
   };
 
   const saveDocumentToCloud = async (fileData: any, category: string, defaultStatus: string = 'Offen') => {
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return false;
+    if (!currentUser) return false;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const safeProjectId = currentProjectId || 'global';
     try {
       let downloadUrl = fileData.url || '';
       if (fileData.file) {
-        const filePath = `${currentUser.companyId}/documents/${Date.now()}_${fileData.fileName}`;
-        const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, fileData.file, { upsert: true });
-        if (!upErr) {
-          const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-          downloadUrl = pubData.publicUrl;
-        }
+        const fileName = fileData.fileName || `Dokument_${Date.now()}.pdf`;
+        downloadUrl = await uploadPdfBlobWithFallback(fileData.file, fileName, safeCompanyId);
       }
       const targetFolderId = await ensureFolderLocal('Finanzen', 'projects');
       const documentName = fileData.fileName || fileData.name || `Dokument_${Date.now()}.pdf`;
       const documentTotal = fileData.total !== undefined ? fileData.total : (fileData.amount || 0);
 
       await supabase.from('documents').insert({
-        name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, folder_id: targetFolderId, is_folder: false, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, category: 'projects', uploaded_by: currentUser.uid, created_at: new Date().toISOString()
+        name: documentName, size: fileData.size || '0 MB', type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, folder_id: targetFolderId, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: safeProjectId, category: 'projects', uploaded_by: currentUser.uid, created_at: new Date().toISOString()
       });
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
       await supabase.from('transactions').insert({
-        date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, receipt_urls: downloadUrl ? [downloadUrl] : []
+        date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: safeProjectId, receipt_urls: downloadUrl ? [downloadUrl] : []
       });
       return true;
     } catch (error) { return false; }
@@ -1078,31 +1077,27 @@ export default function Finance() {
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const safeProjectId = currentProjectId || 'global';
     try {
       const fileName = `Finanzbericht_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       const targetFolderId = await ensureFolderLocal("Finanzen", "projects");
-      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: currentProjectId, folder_id: targetFolderId, category: 'projects', owner_id: currentUser.uid, company_id: currentUser.companyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: safeProjectId, folder_id: targetFolderId, category: 'projects', owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       addToast('Erfolgreich exportiert', 'success');
       setIsPdfStudioOpen(false);
     } catch (e) { addToast('Fehler beim Speichern', 'error'); }
   };
 
   const handleSaveReceiptPdfToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const safeProjectId = currentProjectId || 'global';
     setIsSubmitting(true);
     try {
       const fileName = `Buchung_${incomingData.vendor.replace(/\s/g,'_')}_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const finalPdfUrl = pubData.publicUrl;
+      const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const uploadedUrls = [finalPdfUrl];
       
@@ -1112,7 +1107,7 @@ export default function Finance() {
       await supabase.from('transactions').insert({
         date: incomingData.date || new Date().toISOString().split('T')[0], 
         description: `${descPrefix} - ${incomingData.description || 'Beleg'}`, 
-        category: 'Kreditorenrechnung', amount: -Math.abs(Number(incomingData.amount) || 0), status: incomingData.status || 'Offen', project_id: currentProjectId, owner_id: currentUser.uid, company_id: currentUser.companyId, budget_pos_id: incomingData.budgetPosId || '', receipt_urls: uploadedUrls
+        category: 'Kreditorenrechnung', amount: -Math.abs(Number(incomingData.amount) || 0), status: incomingData.status || 'Offen', project_id: safeProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, budget_pos_id: incomingData.budgetPosId || '', receipt_urls: uploadedUrls
       });
 
       addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success'); 

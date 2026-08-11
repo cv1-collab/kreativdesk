@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, X, Calculator, CheckSquare, Cloud, Send, FileSignature, FileText } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
-
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';

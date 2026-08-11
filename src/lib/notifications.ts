@@ -53,7 +53,7 @@ export const sendNotification = async ({
 
   // 2. Insert into Supabase notifications table
   try {
-    const { error } = await supabase.from('notifications').insert({
+    let { error } = await supabase.from('notifications').insert({
       id: notifObj.id,
       company_id: companyId,
       title,
@@ -64,8 +64,20 @@ export const sendNotification = async ({
       created_at: notifObj.created_at
     });
 
+    if (error && (error.code === 'PGRST204' || error.message?.includes('is_read'))) {
+      const res = await supabase.from('notifications').insert({
+        id: notifObj.id,
+        company_id: companyId,
+        title,
+        message,
+        type,
+        link,
+        created_at: notifObj.created_at
+      });
+      error = res.error;
+    }
+
     if (error) {
-      console.warn("Primary insert into notifications table failed, using system_config fallback:", error);
       // Fallback: Backup to system_config
       const { data: existingConfig } = await supabase
         .from('system_config')
@@ -80,7 +92,7 @@ export const sendNotification = async ({
       });
     }
   } catch (err) {
-    console.warn("Error sending notification:", err);
+    // Silent fallback catch
   }
 };
 

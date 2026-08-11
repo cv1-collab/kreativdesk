@@ -398,13 +398,46 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         setCalendarEvents(mergedEvents);
         localStorage.setItem(localCacheKey, JSON.stringify(mergedEvents));
 
-        const { data: times } = await supabase
+        const timeCacheKey = `time_entries_cache_${safeCompanyId}`;
+        const rawTimeCache = localStorage.getItem(timeCacheKey);
+        const localCachedTimes: any[] = rawTimeCache ? JSON.parse(rawTimeCache) : [];
+
+        const { data: configTime } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', `time_entries_${safeCompanyId}`)
+          .maybeSingle();
+
+        const configTimes = configTime?.data?.entries || [];
+
+        const { data: dbTimes } = await supabase
           .from('time_entries')
           .select('*')
           .eq('company_id', safeCompanyId)
           .order('created_at', { ascending: false });
 
-        if (times) setLocalTimeEntries(times);
+        const timeMap = new Map();
+        [...localCachedTimes, ...configTimes, ...(dbTimes || [])].forEach((t: any) => {
+          if (t && (t.id || t.hours)) {
+            const entryId = t.id || `time-${t.date}-${t.hours}`;
+            timeMap.set(entryId, {
+              ...t,
+              id: entryId,
+              hours: Number(t.hours || 0),
+              hourlyRate: Number(t.hourly_rate || t.hourlyRate || 120),
+              hourly_rate: Number(t.hourly_rate || t.hourlyRate || 120),
+              projectId: t.projectId || t.project_id || 'global',
+              project_id: t.projectId || t.project_id || 'global',
+              userId: t.userId || t.user_id || currentUser.uid,
+              user_id: t.userId || t.user_id || currentUser.uid,
+              date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0])
+            });
+          }
+        });
+
+        const mergedTimes = Array.from(timeMap.values());
+        setLocalTimeEntries(mergedTimes);
+        localStorage.setItem(timeCacheKey, JSON.stringify(mergedTimes));
 
         const { data: users } = await supabase
           .from('profiles')

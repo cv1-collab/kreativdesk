@@ -10,6 +10,7 @@ import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { cn, sanitizeUrl } from '../utils';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -133,11 +134,7 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         return;
       }
       const fileName = `Buchung_ExtKosten_${Date.now()}.pdf`;
-      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const finalPdfUrl = pubData.publicUrl;
+      const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       let targetFolderId = 'root';
       const { data: existingFolder } = await supabase

@@ -12,6 +12,7 @@ import { cn, sanitizeUrl } from '../utils';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { purgeAllDummyData } from '../services/seedService';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -94,7 +95,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   
   const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${opCostSessionId}`;
+  const mobileUploadUrl = typeof window !== 'undefined' ? `${window.location.origin}/mobile-upload/extern/${opCostSessionId}` : '';
   
   const opCategories = ['AHV / Sozialleistungen', 'Pensionskasse (BVG)', 'SUVA / Versicherungen', 'Steuern & MWST', 'Treuhand & Beratung', 'Miete & Infrastruktur', 'Software & Lizenzen', 'Fremdleistungen & Subunternehmer', 'Fahrzeuge & Mobilität', 'Marketing & Akquise'];
 
@@ -109,15 +110,58 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
         .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
+      let baseTxs: Transaction[] = [];
       if (txs) {
-        setTransactions(txs.map(t => ({
+        baseTxs = txs.map(t => ({
           ...t,
           projectId: t.project_id,
           companyId: t.company_id,
           ownerId: t.owner_id,
           receiptUrls: t.receipt_urls || []
-        } as Transaction)));
+        } as Transaction));
       }
+
+      // Merge time entries (Zeiterfassung / Rapporte)
+      const { data: times } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('company_id', safeCompanyId);
+
+      const localCacheKey = `time_entries_cache_${safeCompanyId}`;
+      const rawCache = localStorage.getItem(localCacheKey);
+      const localCachedTimes: any[] = rawCache ? JSON.parse(rawCache) : [];
+
+      const { data: configTime } = await supabase
+        .from('system_config')
+        .select('data')
+        .eq('id', `time_entries_${safeCompanyId}`)
+        .maybeSingle();
+
+      const configTimes = configTime?.data?.entries || [];
+
+      const timeMap = new Map();
+      [...localCachedTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
+        if (t && (t.id || t.hours)) {
+          const entryId = t.id || `time-${t.date}-${t.hours}`;
+          const hoursNum = Number(t.hours || 0);
+          const rateNum = Number(t.hourly_rate || t.hourlyRate || 120);
+          timeMap.set(entryId, {
+            id: entryId,
+            type: 'time_entry',
+            category: 'Interne Stunden',
+            description: `${hoursNum}h Rapport: ${t.description || 'Stundenerfassung'}`,
+            amount: hoursNum * rateNum,
+            date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+            status: 'Gebucht',
+            projectId: t.project_id || t.projectId || 'global',
+            companyId: safeCompanyId,
+            createdAt: t.created_at || new Date().toISOString()
+          });
+        }
+      });
+
+      const mappedTimeTxs = Array.from(timeMap.values()) as Transaction[];
+      setTransactions([...baseTxs, ...mappedTimeTxs]);
 
       const { data: projs } = await supabase
         .from('projects')
@@ -134,6 +178,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     const channel = supabase
       .channel('finance-tab-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
       .subscribe();
 
     return () => {
@@ -141,7 +186,6 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     };
   }, [currentUser]);
 
-  // Rest of applyAiData etc.
   const applyAiData = (aiData: any) => {
     const vendorName = aiData.vendor || aiData.merchant || aiData.company || aiData.description || '';
     const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
@@ -175,10 +219,6 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     } catch (error) { addToast(t('ai_failed'), 'error'); } finally { setIsAnalyzingAI(false); }
   };
 
-  useEffect(() => {
-    if (!opCostSessionId || !showOpCostModal) return;
-  }, [opCostSessionId, showOpCostModal]);
-
   const handleUpdateStatus = async (id: string, newStatus: string) => { 
     try { 
       await supabase.from('transactions').update({ status: newStatus }).eq('id', id); 
@@ -194,6 +234,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     if (window.confirm(t('confirm_delete'))) { 
       try { 
         await supabase.from('transactions').delete().eq('id', id); 
+        await supabase.from('time_entries').delete().eq('id', id);
         setTransactions(prev => prev.filter(tx => tx.id !== id));
         addToast(t('entry_deleted'), "success"); 
       } catch (e) { 
@@ -202,11 +243,13 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     } 
   };
 
-  const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length || !currentUser) return;
-    setIsUploadingImage(true); 
-    for (const file of files) {
+  const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingImage(true);
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const reader = new FileReader();
       reader.onloadend = async () => {
         if (reader.result) {
@@ -227,11 +270,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     
     try {
       const fileName = `Buchung_${opCostData.category.replace(/\s/g,'_')}_${Date.now()}.pdf`;
-      const storagePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(storagePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(storagePath);
-      const finalPdfUrl = pubData.publicUrl;
+      const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       let targetFolderId = 'root';
       const { data: existingFolder } = await supabase
@@ -264,7 +303,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'quotes' | 'invoices' | 'expenses' | 'operating_costs'>('all');
+  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'quotes' | 'invoices' | 'expenses' | 'operating_costs' | 'time_entries'>('all');
 
   const toggleSelectId = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -344,48 +383,19 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const invoices = searchFiltered.filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'revenue' || tx.type === 'invoice');
   const expenses = searchFiltered.filter(tx => tx.category === 'Spesen' || tx.type === 'expense');
   const operatingCosts = searchFiltered.filter(tx => tx.type === 'operating_cost' || tx.category === 'Kreditorenrechnung');
+  const timeEntriesList = searchFiltered.filter(tx => tx.category === 'Interne Stunden' || tx.type === 'time_entry');
 
   const totalRevenue = invoices.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
   const totalSpesen = expenses.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
   const totalOpCosts = operatingCosts.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
-
-  const handlePurgeDummyData = async () => {
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    if (window.confirm('Möchtest du alle automatisch erstellten Dummy- & Testdaten (z.B. Akontozahlung, Demo-Projekt) wirklich löschen?')) {
-      await purgeAllDummyData(safeCompanyId);
-      addToast('Dummy-Daten wurden erfolgreich gelöscht!', 'success');
-      const { data: txs } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .order('created_at', { ascending: false });
-
-      if (txs) {
-        setTransactions(txs.map(t => ({
-          ...t,
-          projectId: t.project_id,
-          companyId: t.company_id,
-          ownerId: t.owner_id,
-          receiptUrls: t.receipt_urls || []
-        } as Transaction)));
-      } else {
-        setTransactions([]);
-      }
-
-      const { data: projs } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-      setProjects(projs || []);
-    }
-  };
+  const totalTimeCosts = timeEntriesList.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
 
   const activeCategoryItems = 
     activeTabFilter === 'quotes' ? quotes :
     activeTabFilter === 'invoices' ? invoices :
     activeTabFilter === 'expenses' ? expenses :
     activeTabFilter === 'operating_costs' ? operatingCosts :
+    activeTabFilter === 'time_entries' ? timeEntriesList :
     searchFiltered;
 
   return (
@@ -526,6 +536,12 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'operating_costs' ? "bg-purple-500/10 text-purple-500 border-purple-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
             <Landmark size={14} /> Externe Kosten ({operatingCosts.length})
+          </button>
+          <button 
+            onClick={() => setActiveTabFilter('time_entries')}
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'time_entries' ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
+          >
+            <Clock size={14} /> Interne Stunden / Rapporte ({timeEntriesList.length})
           </button>
         </div>
 
