@@ -73,6 +73,30 @@ export default function AdminBrandTab() {
     fetchConfig();
   }, []);
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, targetField: 'screensaverImage' | 'loginBgImage' | 'masterLogo') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      addToast('Datei zu gross. Bitte maximal 8 MB auswählen.', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        setConfig(prev => ({ ...prev, [targetField]: dataUrl }));
+        if (targetField === 'screensaverImage') {
+          localStorage.setItem('ws_screensaver_bg', dataUrl);
+          window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
+        }
+        addToast('Bild erfolgreich geladen!', 'success');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -392,14 +416,34 @@ export default function AdminBrandTab() {
               </div>
 
               <div className="md:col-span-2 space-y-3">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Master Wallpaper URL</label>
-                <input 
-                  type="url" 
-                  placeholder="https://images.unsplash.com/photo-..." 
-                  value={config.screensaverImage || ''} 
-                  onChange={(e) => setConfig({ ...config, screensaverImage: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
-                />
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Master Wallpaper URL / Datei</label>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (!config.screensaverImage) return;
+                      setConfig(prev => ({ ...prev, loginBgImage: prev.screensaverImage }));
+                      addToast('Screensaver-Bild als Login-Hintergrund übernommen!', 'info');
+                    }}
+                    className="text-[11px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    🔗 Für Login übernehmen
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="url" 
+                    placeholder="https://images.unsplash.com/photo-... oder Datei hochladen" 
+                    value={config.screensaverImage || ''} 
+                    onChange={(e) => setConfig({ ...config, screensaverImage: e.target.value })}
+                    className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                  />
+                  <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-2 shrink-0">
+                    <Upload size={14} className="text-amber-500" />
+                    <span>Upload</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'screensaverImage')} />
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -501,14 +545,34 @@ export default function AdminBrandTab() {
             </div>
 
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Login Wallpaper URL</label>
-              <input 
-                type="url" 
-                placeholder="https://images.unsplash.com/photo-..." 
-                value={config.loginBgImage || ''} 
-                onChange={(e) => setConfig({ ...config, loginBgImage: e.target.value })}
-                className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
-              />
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Login Wallpaper URL / Datei</label>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (!config.loginBgImage) return;
+                    setConfig(prev => ({ ...prev, screensaverImage: prev.loginBgImage }));
+                    addToast('Login-Bild als Screensaver übernommen!', 'info');
+                  }}
+                  className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  🔗 Für Screensaver übernehmen
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input 
+                  type="url" 
+                  placeholder="https://images.unsplash.com/photo-... oder Datei hochladen" 
+                  value={config.loginBgImage || ''} 
+                  onChange={(e) => setConfig({ ...config, loginBgImage: e.target.value })}
+                  className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+                <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-2 shrink-0">
+                  <Upload size={14} className="text-purple-400" />
+                  <span>Upload</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'loginBgImage')} />
+                </label>
+              </div>
             </div>
 
             <div className="space-y-2 pt-2">
