@@ -452,6 +452,7 @@ export default function LeadsTab() {
   const handleDeleteLead = async (id: string) => { 
     if (window.confirm(t('delete_user_confirm'))) { 
       try {
+        setCollectedLeads((prev: any[]) => prev.filter(l => l.id !== id));
         await supabase.from('leads').delete().eq('id', id);
         addToast(t('delete') + ' ' + t('completed'), 'info'); 
         if (editingLead?.id === id) setIsModalOpen(false);

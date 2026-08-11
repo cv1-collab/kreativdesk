@@ -112,13 +112,12 @@ export default function CRM() {
   const handleDeleteContact = async (id: string) => {
     if (!window.confirm('Kontakt wirklich löschen?')) return;
     try {
-      const { error } = await supabase.from('company_users').delete().eq('id', id);
-      if (error) {
-        addToast('Fehler beim Löschen', 'error');
-        return;
-      }
+      setContacts(prev => prev.filter(c => c.id !== id));
+      await supabase.from('company_users').delete().eq('id', id);
+      await supabase.from('profiles').delete().eq('id', id);
       addToast('Kontakt gelöscht', 'info');
       fetchContacts();
+      fetchCompanyUsers?.();
     } catch (error) {
       addToast('Fehler beim Löschen', 'error');
     }

@@ -693,7 +693,18 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                     </div>
                     <div className="overflow-hidden"><div className={cn("font-bold text-sm truncate", (isSelected && !isSelectionMode) ? "text-accent-ai" : "text-text-primary")}>{formatName(contact)}</div><div className="text-xs text-text-muted truncate mt-0.5 font-medium">{contact.company || contact.email || t('no_company')}</div></div>
                   </div>
-                  {contact.status === 'neu' && !isTeam && !isSelectionMode && <div className="w-2 h-2 rounded-full bg-accent-ai shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0 ml-2" />}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {contact.status === 'neu' && !isTeam && !isSelectionMode && <div className="w-2 h-2 rounded-full bg-accent-ai shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0 ml-1" />}
+                    {!isSelectionMode && contact.email !== currentUser?.email && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteContact(contact.id); }} 
+                        className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100" 
+                        title={t('delete')}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
