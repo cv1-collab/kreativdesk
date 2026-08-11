@@ -902,7 +902,17 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       </div>
 
       <div className="pt-4 border-t border-border/50 flex justify-between items-center bg-background/20 -mx-6 -mb-6 px-6 py-4 rounded-b-2xl">
-        <button type="button" onClick={() => window.dispatchEvent(new Event('triggerScreensaver'))} className="px-4 py-2 bg-text-primary text-background rounded-lg text-xs font-bold hover:opacity-90 flex items-center gap-2 transition-all shadow-md">
+        <button 
+          type="button" 
+          onClick={() => {
+            if (image) {
+              localStorage.setItem('ws_screensaver_bg', image);
+              window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
+            }
+            window.dispatchEvent(new Event('triggerScreensaver'));
+          }} 
+          className="px-4 py-2 bg-text-primary text-background rounded-lg text-xs font-bold hover:opacity-90 flex items-center gap-2 transition-all shadow-md cursor-pointer"
+        >
           <Play size={14} fill="currentColor" /> {t('test_now')}
         </button>
         <button type="button" onClick={handleSave} className="text-xs font-bold text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors">

@@ -11,6 +11,10 @@ import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 import { cn } from '../utils';
 
+// Universal PDF Studio Engine Imports
+import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
+import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+
 interface DocumentStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,7 +27,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     studio_title: 'AI Letter & Document Studio',
     studio_subtitle: 'Interactive Contract & Letter Editor in Swiss Layout',
     din_a4_live: 'DIN-A4 LIVE LAYOUT',
-    print_pdf: 'Print / PDF',
+    open_pdf_studio: 'Universal PDF Studio',
     copy_text: 'Copy Text',
     copied: 'Copied',
     save_company: 'Save in Company Docs',
@@ -62,7 +66,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     studio_title: 'KI Brief- & Dokumenten-Studio',
     studio_subtitle: 'Interaktiver Vertrags- & Brief-Editor im Schweizer Layout',
     din_a4_live: 'DIN-A4 LIVE LAYOUT',
-    print_pdf: 'Drucken / PDF',
+    open_pdf_studio: 'Universal PDF Studio',
     copy_text: 'Text Kopieren',
     copied: 'Kopiert',
     save_company: 'In Firmen-Dokumente speichern',
@@ -99,6 +103,145 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
+const pdfStyles = StyleSheet.create({
+  page: { 
+    padding: '15mm', 
+    fontFamily: 'Helvetica', 
+    fontSize: 10, 
+    color: '#1f2937', 
+    backgroundColor: '#ffffff',
+    flexDirection: 'column',
+    justifyContent: 'space-between'
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#09090b', 
+    paddingBottom: 10, 
+    marginBottom: 20 
+  },
+  companyName: { fontSize: 16, fontWeight: 'bold', color: '#09090b', textTransform: 'uppercase', letterSpacing: 1 },
+  companySub: { fontSize: 8, color: '#4b5563', marginTop: 3 },
+  companyWeb: { fontSize: 8, color: '#2563eb', fontWeight: 'bold', marginTop: 2 },
+  logo: { width: 110, height: 40, objectFit: 'contain' },
+  logoFallback: { width: 36, height: 36, borderRadius: 6, backgroundColor: '#09090b', alignItems: 'center', justifyContent: 'center' },
+  logoFallbackText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  gridMeta: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  recipientBox: { width: 220, padding: 8, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 6 },
+  recipientLabel: { fontSize: 7, fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', marginBottom: 3, letterSpacing: 1 },
+  recipientName: { fontSize: 10, fontWeight: 'bold', color: '#111827', marginBottom: 2 },
+  recipientText: { fontSize: 8, color: '#374151' },
+  metaRight: { textAlign: 'right', justifyContent: 'flex-end' },
+  metaDate: { fontSize: 9, fontWeight: 'bold', color: '#111827' },
+  metaRef: { fontSize: 8, color: '#6b7280', marginTop: 2 },
+  docTitle: { fontSize: 15, fontWeight: 'bold', color: '#09090b', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 5 },
+  bodyText: { fontSize: 9.5, color: '#1f2937', lineHeight: 1.6, marginBottom: 20 },
+  signaturesBlock: { marginTop: 25, borderTopWidth: 2, borderTopColor: '#09090b', paddingTop: 12 },
+  signaturesTitle: { fontSize: 8, fontWeight: 'bold', color: '#4b5563', textTransform: 'uppercase', marginBottom: 12, letterSpacing: 1 },
+  signaturesGrid: { flexDirection: 'row', justifyContent: 'space-between' },
+  signatureCol: { width: 210 },
+  sigLine: { borderTopWidth: 1, borderTopColor: '#111827', paddingTop: 4, marginTop: 25 },
+  sigName: { fontSize: 8.5, fontWeight: 'bold', color: '#111827' },
+  sigLabel: { fontSize: 7.5, color: '#6b7280', marginTop: 1 },
+  footer: { marginTop: 15, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 6, textAlign: 'center', fontSize: 7.5, color: '#9ca3af' }
+});
+
+function DocumentStudioPDFDocument({
+  settings,
+  docTitle,
+  docContent,
+  recipientName,
+  recipientStreet,
+  recipientZipCity,
+  docPlaceDate,
+  docReference,
+  companyData,
+  showSignatures,
+  clientSignatory,
+  architectSignatory,
+  footerText
+}: any) {
+  const primaryColor = settings?.accentColor || '#09090b';
+  const logoUrl = settings?.logo || companyData.logo;
+
+  return (
+    <Document>
+      <Page size={settings?.format || 'A4'} orientation={settings?.orientation || 'portrait'} style={pdfStyles.page}>
+        <View>
+          {/* Header */}
+          <View style={[pdfStyles.header, { borderBottomColor: primaryColor }]}>
+            <View>
+              <Text style={pdfStyles.companyName}>{companyData.name}</Text>
+              <Text style={pdfStyles.companySub}>{companyData.street} • {companyData.zipCity}</Text>
+              <Text style={pdfStyles.companyWeb}>{companyData.website}</Text>
+            </View>
+            {logoUrl ? (
+              <PDFImage src={logoUrl} style={pdfStyles.logo} />
+            ) : (
+              <View style={[pdfStyles.logoFallback, { backgroundColor: primaryColor }]}>
+                <Text style={pdfStyles.logoFallbackText}>K</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Recipient & Meta */}
+          <View style={pdfStyles.gridMeta}>
+            <View style={pdfStyles.recipientBox}>
+              <Text style={pdfStyles.recipientLabel}>Empfänger</Text>
+              <Text style={pdfStyles.recipientName}>{recipientName}</Text>
+              <Text style={pdfStyles.recipientText}>{recipientStreet}</Text>
+              <Text style={pdfStyles.recipientText}>{recipientZipCity}</Text>
+            </View>
+            <View style={pdfStyles.metaRight}>
+              <Text style={pdfStyles.metaDate}>{docPlaceDate}</Text>
+              <Text style={pdfStyles.metaRef}>{docReference}</Text>
+            </View>
+          </View>
+
+          {/* Title */}
+          <Text style={pdfStyles.docTitle}>{docTitle}</Text>
+
+          {/* Content (auto wraps across PDF pages!) */}
+          <Text style={pdfStyles.bodyText}>{docContent}</Text>
+        </View>
+
+        {/* Signatures & Footer */}
+        <View wrap={false}>
+          {showSignatures && (
+            <View style={pdfStyles.signaturesBlock}>
+              <Text style={pdfStyles.signaturesTitle}>Unterschriften & Rechtsgültige Bestätigung</Text>
+              <View style={pdfStyles.signaturesGrid}>
+                <View style={pdfStyles.signatureCol}>
+                  <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 20 }}>Ort, Datum: ____________________</Text>
+                  <View style={pdfStyles.sigLine}>
+                    <Text style={pdfStyles.sigName}>{clientSignatory}</Text>
+                    <Text style={pdfStyles.sigLabel}>Rechtsgültige Unterschrift Auftraggeber</Text>
+                  </View>
+                </View>
+                <View style={pdfStyles.signatureCol}>
+                  <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 20 }}>Ort, Datum: ____________________</Text>
+                  <View style={pdfStyles.sigLine}>
+                    <Text style={pdfStyles.sigName}>{architectSignatory}</Text>
+                    <Text style={pdfStyles.sigLabel}>Rechtsgültige Unterschrift Auftragnehmer</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {footerText && (
+            <View style={pdfStyles.footer}>
+              <Text>{footerText}</Text>
+            </View>
+          )}
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
 export default function DocumentStudioModal({
   isOpen,
   onClose,
@@ -119,6 +262,7 @@ export default function DocumentStudioModal({
   const [saveScope, setSaveScope] = useState<'company' | 'project'>('company');
   const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
 
   // Recipient details
   const [recipientName, setRecipientName] = useState('Erika & Hans Muster');
@@ -134,7 +278,7 @@ export default function DocumentStudioModal({
   const [clientSignatory, setClientSignatory] = useState('Auftraggeber (Bauherr)');
   const [architectSignatory, setArchitectSignatory] = useState(currentUser?.email ? `Auftragnehmer (${currentUser.email})` : 'Auftragnehmer (Architekt / Planer)');
   const [footerText, setFooterText] = useState('Kreativ-Desk OS Architecture • CHE-123.456.789 MWST • IBAN: CH93 0000 0000 0000 0000 0');
-  const [accentColor, setAccentColor] = useState('#09090b'); // Default sleek dark header border
+  const [accentColor, setAccentColor] = useState('#09090b');
 
   // Company details
   const [companyData, setCompanyData] = useState({
@@ -292,6 +436,74 @@ ${footerText}
     }
   };
 
+  const handleSavePdfCloud = async (blob: Blob) => {
+    try {
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const isProjectScope = saveScope === 'project';
+      const targetProjectId = isProjectScope ? (activeProjectId || 'global') : 'global';
+      const category = isProjectScope ? 'projects' : 'company';
+
+      const cleanTitle = docTitle.trim() || 'Dokument_Vorlage';
+      const fileName = cleanTitle.endsWith('.pdf') ? cleanTitle : `${cleanTitle}.pdf`;
+      const filePath = `documents/${safeCompanyId}/${Date.now()}_${fileName}`;
+
+      const { error: upErr } = await supabase.storage.from('documents').upload(filePath, blob, {
+        contentType: 'application/pdf',
+        upsert: true
+      });
+
+      let publicUrl = '';
+      if (!upErr) {
+        const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        publicUrl = pubData.publicUrl;
+      } else {
+        const reader = new FileReader();
+        publicUrl = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      const { data, error } = await supabase.from('documents').insert({
+        company_id: safeCompanyId,
+        project_id: targetProjectId,
+        category: category,
+        folder_id: 'root',
+        is_folder: false,
+        name: fileName,
+        type: 'pdf',
+        url: publicUrl,
+        file_url: publicUrl,
+        size: `${Math.max(1, Math.round(blob.size / 1024))} KB`,
+        created_at: new Date().toISOString(),
+        uploaded_at: new Date().toISOString()
+      }).select().single();
+
+      if (error) throw error;
+
+      localStorage.setItem('has_new_document', 'true');
+      localStorage.setItem('last_created_doc_title', fileName);
+      window.dispatchEvent(new CustomEvent('document_created', { detail: { title: fileName, id: data?.id } }));
+
+      const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';
+
+      await sendNotification({
+        companyId: safeCompanyId,
+        title: '📄 PDF im Studio generiert & gespeichert',
+        message: `PDF Dokument "${fileName}" wurde erfolgreich in ${locationName} abgelegt.`,
+        type: 'document',
+        link: isProjectScope ? `/project/${targetProjectId}/documents` : '/app'
+      });
+
+      addToast(`PDF "${fileName}" erfolgreich als PDF in ${locationName} gespeichert!`, 'success');
+      setIsPdfStudioOpen(false);
+      onClose();
+    } catch (err: any) {
+      console.error("PDF Cloud Save error:", err);
+      addToast('Fehler beim Speichern des PDFs!', 'error');
+    }
+  };
+
   const handleCopyText = () => {
     navigator.clipboard.writeText(docContent);
     setIsCopied(true);
@@ -319,10 +531,10 @@ ${footerText}
         {/* Action Buttons Toolbar */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => window.print()}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer print:hidden"
+            onClick={() => setIsPdfStudioOpen(true)}
+            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
           >
-            <Printer size={15} className="text-amber-500 dark:text-amber-400" /> {t('print_pdf')}
+            <Sparkles size={15} /> {t('open_pdf_studio')}
           </button>
           
           <button
@@ -637,7 +849,7 @@ ${footerText}
                 />
               </div>
 
-              {/* Editable Document Body - Auto-expanding for multi-page print */}
+              {/* Editable Document Body - Auto-expanding */}
               <div className="mb-10">
                 <textarea
                   ref={textareaRef}
@@ -681,6 +893,36 @@ ${footerText}
           </div>
         </main>
       </div>
+
+      {/* Universal PDF Studio Export Integration Modal */}
+      {isPdfStudioOpen && (
+        <UniversalPDFStudio
+          isOpen={isPdfStudioOpen}
+          onClose={() => setIsPdfStudioOpen(false)}
+          title={docTitle}
+          fileName={docTitle.replace(/\s+/g, '_')}
+          onSaveCloud={handleSavePdfCloud}
+          defaultAccentColor={accentColor}
+        >
+          {(settings) => (
+            <DocumentStudioPDFDocument
+              settings={settings}
+              docTitle={docTitle}
+              docContent={docContent}
+              recipientName={recipientName}
+              recipientStreet={recipientStreet}
+              recipientZipCity={recipientZipCity}
+              docPlaceDate={docPlaceDate}
+              docReference={docReference}
+              companyData={companyData}
+              showSignatures={showSignatures}
+              clientSignatory={clientSignatory}
+              architectSignatory={architectSignatory}
+              footerText={footerText}
+            />
+          )}
+        </UniversalPDFStudio>
+      )}
 
     </div>
   );

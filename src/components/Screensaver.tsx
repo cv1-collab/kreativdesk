@@ -14,8 +14,15 @@ export default function Screensaver() {
     const handleUpdate = () => {
       setBgImg(localStorage.getItem('ws_screensaver_bg') || '');
     };
+    const handleTrigger = () => {
+      setIsActive(true);
+    };
     window.addEventListener('ws_screensaver_bg_changed', handleUpdate);
-    return () => window.removeEventListener('ws_screensaver_bg_changed', handleUpdate);
+    window.addEventListener('triggerScreensaver', handleTrigger);
+    return () => {
+      window.removeEventListener('ws_screensaver_bg_changed', handleUpdate);
+      window.removeEventListener('triggerScreensaver', handleTrigger);
+    };
   }, []);
 
   useEffect(() => {
