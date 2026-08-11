@@ -194,16 +194,16 @@ ______________________________   ______________________________
     <div className="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-md flex flex-col justify-between overflow-hidden animate-in fade-in duration-200">
       
       {/* Top Header Control Toolbar */}
-      <header className="h-16 bg-slate-900 border-b border-slate-800 px-6 flex items-center justify-between shrink-0 z-50 shadow-xl">
+      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 z-50 shadow-md">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-md">
             <Sparkles size={20} />
           </div>
           <div>
-            <h2 className="font-bold text-sm text-white tracking-wide flex items-center gap-2">
-              KI Brief- & Dokumenten-Studio <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-black font-black uppercase">DIN-A4 Live Layout</span>
+            <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-wide flex items-center gap-2">
+              KI Brief- & Dokumenten-Studio <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black uppercase">DIN-A4 Live Layout</span>
             </h2>
-            <p className="text-[11px] text-slate-400 font-medium">Interaktiver Vertrags- & Brief-Editor im Schweizer Layout</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Interaktiver Vertrags- & Brief-Editor im Schweizer Layout</p>
           </div>
         </div>
 
@@ -211,16 +211,16 @@ ______________________________   ______________________________
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsPdfStudioOpen(true)}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
-            <Printer size={15} className="text-amber-400" /> PDF Studio / Drucken
+            <Printer size={15} className="text-amber-500 dark:text-amber-400" /> PDF Studio / Drucken
           </button>
           
           <button
             onClick={handleCopyText}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
-            {isCopied ? <Check size={15} className="text-emerald-400" /> : <Copy size={15} />}
+            {isCopied ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
             {isCopied ? 'Kopiert' : 'Text Kopieren'}
           </button>
 
@@ -238,7 +238,7 @@ ______________________________   ______________________________
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl border border-slate-700 transition-colors ml-2 cursor-pointer"
+            className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 transition-colors ml-2 cursor-pointer"
             title="Schließen"
           >
             <X size={20} />
@@ -247,28 +247,28 @@ ______________________________   ______________________________
       </header>
 
       {/* Main Studio Canvas Area */}
-      <div className="flex-1 flex overflow-hidden bg-slate-950">
+      <div className="flex-1 flex overflow-hidden bg-slate-100 dark:bg-slate-950">
         
         {/* Left Sidebar Control Panel */}
-        <aside className="w-80 border-r border-slate-800 bg-slate-900/90 p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-200">
+        <aside className="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200">
           
           {/* Target Scope Selection */}
           <div className="space-y-2">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">1. Ablageort festlegen</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Ablageort festlegen</label>
             <div className="grid grid-cols-1 gap-2">
               <button
                 onClick={() => setSaveScope('company')}
                 className={cn(
                   "p-3 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer",
                   saveScope === 'company'
-                    ? "bg-blue-600/10 border-blue-500 text-white shadow-md shadow-blue-500/10"
-                    : "bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-white"
+                    ? "bg-blue-600/10 border-blue-500 text-blue-600 dark:text-white shadow-md shadow-blue-500/10 font-bold"
+                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <Building2 size={18} className="text-blue-400 shrink-0 mt-0.5" />
+                <Building2 size={18} className="text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs text-white">Firmenunterlagen</div>
-                  <div className="text-[10px] text-slate-400">Company Dashboard ➔ Dokumente</div>
+                  <div className="font-bold text-xs">Firmenunterlagen</div>
+                  <div className="text-[10px] opacity-75">Company Dashboard ➔ Dokumente</div>
                 </div>
               </button>
 
@@ -277,89 +277,89 @@ ______________________________   ______________________________
                 className={cn(
                   "p-3 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer",
                   saveScope === 'project'
-                    ? "bg-emerald-600/10 border-emerald-500 text-white shadow-md shadow-emerald-500/10"
-                    : "bg-slate-800/60 border-slate-700/60 text-slate-400 hover:text-white"
+                    ? "bg-emerald-600/10 border-emerald-500 text-emerald-600 dark:text-white shadow-md shadow-emerald-500/10 font-bold"
+                    : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <Briefcase size={18} className="text-emerald-400 shrink-0 mt-0.5" />
+                <Briefcase size={18} className="text-emerald-500 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs text-white">Projekt-Bauakte</div>
-                  <div className="text-[10px] text-slate-400 truncate max-w-[180px]">{activeProject?.name || 'Aktuelles Projekt'}</div>
+                  <div className="font-bold text-xs">Projekt-Bauakte</div>
+                  <div className="text-[10px] opacity-75 truncate max-w-[180px]">{activeProject?.name || 'Aktuelles Projekt'}</div>
                 </div>
               </button>
             </div>
           </div>
 
-          <hr className="border-slate-800" />
+          <hr className="border-slate-200 dark:border-slate-800" />
 
           {/* Recipient Details Edit */}
           <div className="space-y-3">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">2. Empfänger-Adresse</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Empfänger-Adresse</label>
             <input
               type="text"
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder="Empfänger Name / Firma..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 outline-none font-bold"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-bold"
             />
             <input
               type="text"
               value={recipientStreet}
               onChange={e => setRecipientStreet(e.target.value)}
               placeholder="Strasse & Nr..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
             <input
               type="text"
               value={recipientZipCity}
               onChange={e => setRecipientZipCity(e.target.value)}
               placeholder="PLZ & Ort..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
           </div>
 
-          <hr className="border-slate-800" />
+          <hr className="border-slate-200 dark:border-slate-800" />
 
           {/* Document Header Meta Edit */}
           <div className="space-y-3">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">3. Datum & Referenz</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. Datum & Referenz</label>
             <input
               type="text"
               value={docPlaceDate}
               onChange={e => setDocPlaceDate(e.target.value)}
               placeholder="Ort, Datum..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
             <input
               type="text"
               value={docReference}
               onChange={e => setDocReference(e.target.value)}
               placeholder="Referenz / Projekt..."
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
           </div>
 
-          <hr className="border-slate-800" />
+          <hr className="border-slate-200 dark:border-slate-800" />
 
           {/* Signatories Edit */}
           <div className="space-y-3">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-400">4. Unterschriften-Blöcke</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">4. Unterschriften-Blöcke</label>
             <div>
-              <span className="text-[10px] text-slate-400">Auftraggeber (Bauherr):</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Auftraggeber (Bauherr):</span>
               <input
                 type="text"
                 value={clientSignatory}
                 onChange={e => setClientSignatory(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:border-amber-500 outline-none font-medium mt-1"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
               />
             </div>
             <div>
-              <span className="text-[10px] text-slate-400">Auftragnehmer (Architekt):</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">Auftragnehmer (Architekt):</span>
               <input
                 type="text"
                 value={architectSignatory}
                 onChange={e => setArchitectSignatory(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:border-amber-500 outline-none font-medium mt-1"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
               />
             </div>
           </div>

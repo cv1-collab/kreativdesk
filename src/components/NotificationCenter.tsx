@@ -135,24 +135,24 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
           initial={{ x: 350, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 350, opacity: 0 }}
-          className="w-full max-w-md bg-[#0f172a] text-white border-l border-slate-800 h-full p-6 shadow-2xl flex flex-col justify-between relative z-[1000000]"
+          className="w-full max-w-md bg-white dark:bg-[#0f172a] text-slate-900 dark:text-slate-100 border-l border-slate-200 dark:border-slate-800 h-full p-6 shadow-2xl flex flex-col justify-between relative z-[1000000]"
         >
           <div>
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4 mb-6">
               <div className="flex items-center gap-2">
-                <Bell size={20} className="text-amber-400" />
-                <h2 className="font-bold text-lg text-white">{t('system_notifications')}</h2>
+                <Bell size={20} className="text-amber-500 dark:text-amber-400" />
+                <h2 className="font-bold text-lg text-slate-900 dark:text-white">{t('system_notifications')}</h2>
               </div>
               <div className="flex items-center gap-2">
                 {unreadCount > 0 && (
                   <button 
                     onClick={handleMarkAllAsRead}
-                    className="text-xs text-amber-400 font-bold hover:underline cursor-pointer"
+                    className="text-xs text-amber-500 dark:text-amber-400 font-bold hover:underline cursor-pointer"
                   >
                     Alle lesen
                   </button>
                 )}
-                <button onClick={onClose} className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white cursor-pointer">
+                <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer">
                   <X size={20} />
                 </button>
               </div>
@@ -162,10 +162,10 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
               {newLeads.map((lead) => (
                 <div key={lead.id} className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-2xl">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-sm text-white flex items-center gap-1.5"><Megaphone size={16} className="text-blue-400" /> {t('new_b2b_lead')}</span>
-                    <button onClick={() => markLeadAsSeen(lead.id)} className="text-xs font-bold text-blue-400 hover:underline cursor-pointer">{t('mark_seen')}</button>
+                    <span className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5"><Megaphone size={16} className="text-blue-500 dark:text-blue-400" /> {t('new_b2b_lead')}</span>
+                    <button onClick={() => markLeadAsSeen(lead.id)} className="text-xs font-bold text-blue-500 dark:text-blue-400 hover:underline cursor-pointer">{t('mark_seen')}</button>
                   </div>
-                  <div className="text-xs text-slate-400">{lead.name || lead.email} - {lead.company || 'B2B'}</div>
+                  <div className="text-xs text-slate-600 dark:text-slate-400">{lead.name || lead.email} - {lead.company || 'B2B'}</div>
                 </div>
               ))}
 
@@ -181,23 +181,23 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
                   }}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex justify-between items-start gap-3 ${
                     notif.is_read 
-                      ? 'bg-slate-900/90 border-slate-800/80 opacity-75' 
-                      : 'bg-slate-800/90 border-slate-700 shadow-md hover:border-amber-400/50'
+                      ? 'bg-slate-50/80 dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800/80 opacity-75' 
+                      : 'bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700 shadow-md hover:border-amber-500/50'
                   }`}
                 >
                   <div className="flex gap-3 items-start">
-                    <div className="mt-0.5 p-2 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="mt-0.5 p-2 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800">
                       {getNotifIcon(notif.type)}
                     </div>
                     <div>
-                      <div className="font-bold text-sm text-white flex items-center gap-2">
+                      <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                         {notif.title || 'Mitteilung'}
                         {!notif.is_read && (
                           <span className="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
                         )}
                       </div>
-                      <div className="text-xs text-slate-300 mt-1 leading-relaxed">{notif.message}</div>
-                      <div className="text-[10px] text-slate-500 mt-2 font-mono">
+                      <div className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">{notif.message}</div>
+                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 font-mono">
                         {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} Uhr
                       </div>
                     </div>
@@ -207,7 +207,7 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
                       e.stopPropagation();
                       handleMarkAsRead(notif.id);
                     }} 
-                    className="text-slate-500 hover:text-white p-1 shrink-0 cursor-pointer"
+                    className="text-slate-400 hover:text-slate-900 dark:hover:text-white p-1 shrink-0 cursor-pointer"
                     title="Als gelesen markieren"
                   >
                     <X size={14} />
@@ -216,17 +216,17 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
               ))}
 
               {newLeads.length === 0 && userNotifications.length === 0 && (
-                <div className="text-center py-16 text-slate-500 font-medium">
+                <div className="text-center py-16 text-slate-400 dark:text-slate-500 font-medium">
                   <CheckCircle2 size={32} className="text-emerald-500 mx-auto mb-3" />
-                  <div className="text-white font-bold">{t('all_green')}</div>
-                  <div className="text-xs mt-1 text-slate-400">{t('no_new_messages')}</div>
+                  <div className="text-slate-900 dark:text-white font-bold">{t('all_green')}</div>
+                  <div className="text-xs mt-1 text-slate-500 dark:text-slate-400">{t('no_new_messages')}</div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="border-t border-slate-800 pt-4">
-            <button onClick={onClose} className="w-full py-3 bg-slate-800 hover:bg-slate-700 rounded-xl font-bold text-sm text-white transition-colors cursor-pointer">{t('close')}</button>
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
+            <button onClick={onClose} className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl font-bold text-sm text-slate-900 dark:text-white transition-colors cursor-pointer border border-slate-200 dark:border-slate-700 shadow-sm">{t('close')}</button>
           </div>
         </motion.div>
       </div>
