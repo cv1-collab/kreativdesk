@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2 } from 'lucide-react';
+import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabase';
@@ -7,7 +7,7 @@ import { cn } from '../../utils';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
-    global_branding: 'Global Branding & White-Labeling', branding_desc: 'Configure official master branding, company details, logo, and colors for your instance.',
+    global_branding: 'Global Branding & White-Labeling', branding_desc: 'Configure official master branding, company details, logo, announcements, and colors for your instance.',
     master_data: 'Company Master Data', company_name: 'Company Name (Master)', address: 'Street Address', zip: 'ZIP / Postal Code',
     city: 'City', iban: 'Master IBAN / Bank Account', design: 'Design & Visual Identity', upload_desc: 'Enter image URL or upload your official company logo.',
     accent_color: 'Primary Accent Color', save_branding: 'Save Branding Settings', branding_saved: 'Branding settings saved successfully!',
@@ -15,7 +15,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     preset_colors: 'Color Presets', logo_preview: 'Logo Preview', no_logo: 'No logo set'
   },
   de: {
-    global_branding: 'Globales Branding & White-Labeling', branding_desc: 'Konfiguriere das offizielle Firmen-Branding, Stammdaten, Logo und Akzentfarben deiner Instanz.',
+    global_branding: 'Globales Branding & White-Labeling', branding_desc: 'Konfiguriere das offizielle Firmen-Branding, Stammdaten, Ankündigungs-Banner und Akzentfarben deiner Instanz.',
     master_data: 'Firmen-Stammdaten', company_name: 'Firmenname (Master)', address: 'Strasse & Nr.', zip: 'PLZ',
     city: 'Ort', iban: 'IBAN / Bankverbindung (Master)', design: 'Design & Visuelle Identität', upload_desc: 'Bild-URL eingeben oder offizietes Firmen-Logo hochladen.',
     accent_color: 'Primäre Akzentfarbe', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding-Einstellungen erfolgreich gespeichert!',
@@ -46,7 +46,12 @@ export default function AdminBrandTab() {
     companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
     screensaverActive: false,
     screensaverImage: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
-    screensaverTimeout: 5
+    screensaverTimeout: 5,
+    announcementActive: false,
+    announcementText: '',
+    announcementType: 'info',
+    announcementLink: '',
+    loginBgImage: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -413,6 +418,114 @@ export default function AdminBrandTab() {
                     className={cn(
                       "group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all hover:scale-[1.02]",
                       config.screensaverImage === w.url ? "border-amber-500 ring-2 ring-amber-500/30" : "border-border hover:border-white/30"
+                    )}
+                  >
+                    <img src={w.url} alt={w.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2">
+                      <span className="text-[10px] font-bold text-white truncate">{w.name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Global Announcement Banner Manager */}
+          <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-4 lg:col-span-2">
+            <div className="border-b border-border/50 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Megaphone className="text-blue-500" size={20} />
+                <div>
+                  <h4 className="font-bold text-base text-text-primary">Globales Ankündigungs-Banner (System-Wide Broadcast)</h4>
+                  <p className="text-xs text-text-muted">Blende wichtige Hinweise (z.B. Wartungsarbeiten, Releases) oben bei allen eingeloggten Nutzern ein.</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setConfig(prev => ({ ...prev, announcementActive: !prev.announcementActive }))}
+                className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border", config.announcementActive ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
+              >
+                {config.announcementActive ? 'Banner: Aktiviert' : 'Banner: Deaktiviert'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Ankündigungstext</label>
+                <input 
+                  type="text" 
+                  placeholder="z.B. Wartungsarbeiten am Samstag ab 22:00 Uhr. Plattform bleibt erreichbar." 
+                  value={config.announcementText || ''} 
+                  onChange={(e) => setConfig({ ...config, announcementText: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Typ / Styling</label>
+                <select
+                  value={config.announcementType || 'info'}
+                  onChange={(e) => setConfig({ ...config, announcementType: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-bold text-text-primary focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                >
+                  <option value="info">Info (Blau)</option>
+                  <option value="warning">Warnung (Orange)</option>
+                  <option value="error">Dringend / Fehler (Rot)</option>
+                  <option value="success">Erfolg (Grün)</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-3 space-y-2">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                  <LinkIcon size={12} /> Link URL (Optional)
+                </label>
+                <input 
+                  type="url" 
+                  placeholder="https://kreativdesk.ch/updates" 
+                  value={config.announcementLink || ''} 
+                  onChange={(e) => setConfig({ ...config, announcementLink: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Custom Login & Sign-Up Background Configurator */}
+          <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-4 lg:col-span-2">
+            <div className="border-b border-border/50 pb-4 flex items-center gap-2">
+              <Lock className="text-purple-500" size={20} />
+              <div>
+                <h4 className="font-bold text-base text-text-primary">Custom Login & Registrierungs-Hintergrund</h4>
+                <p className="text-xs text-text-muted">Passe das Hintergrundbild der Login- und Registrierungsseiten für dein White-Labeling an.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Login Wallpaper URL</label>
+              <input 
+                type="url" 
+                placeholder="https://images.unsplash.com/photo-..." 
+                value={config.loginBgImage || ''} 
+                onChange={(e) => setConfig({ ...config, loginBgImage: e.target.value })}
+                className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Hintergrund Presets</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { name: 'Swiss Alp Panorama', url: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Modern Architecture', url: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Dark Cyberpunk Glass', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Abstract Gradient Wave', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop' }
+                ].map(w => (
+                  <div 
+                    key={w.url}
+                    onClick={() => setConfig({ ...config, loginBgImage: w.url })}
+                    className={cn(
+                      "group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all hover:scale-[1.02]",
+                      config.loginBgImage === w.url ? "border-purple-500 ring-2 ring-purple-500/30" : "border-border hover:border-white/30"
                     )}
                   >
                     <img src={w.url} alt={w.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />

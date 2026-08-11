@@ -14,7 +14,7 @@ import {
   LayoutDashboard, Calendar, DollarSign, Box, Map,
   Video, PenTool, Presentation, Camera, 
   ArrowLeft, ShieldAlert, FileText, UserCheck,
-  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle
+  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X
 } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
@@ -64,6 +64,50 @@ export default function Layout() {
   // PWA & Offline State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Global Announcement & Admin Preview State
+  const [announcement, setAnnouncement] = useState<any>(null);
+  const [isAnnouncementDismissed, setIsAnnouncementDismissed] = useState(false);
+  const [adminPreviewCompany, setAdminPreviewCompany] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    // Check preview mode in sessionStorage
+    const pId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
+    const pName = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_name') : null;
+    if (pId) {
+      setAdminPreviewCompany({ id: pId, name: pName || 'Workspace' });
+    }
+
+    // Fetch Global Announcement from system_config
+    const fetchAnnouncement = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', 'global_master')
+          .maybeSingle();
+
+        const config = data?.data || {};
+        if (config.announcementActive && config.announcementText) {
+          setAnnouncement({
+            text: config.announcementText,
+            type: config.announcementType || 'info',
+            link: config.announcementLink || null
+          });
+        }
+      } catch (e) {
+        console.error("Announcement fetch error:", e);
+      }
+    };
+    fetchAnnouncement();
+  }, []);
+
+  const handleExitPreviewMode = () => {
+    sessionStorage.removeItem('admin_preview_company_id');
+    sessionStorage.removeItem('admin_preview_company_name');
+    addToast('Mandanten-Vorschau beendet', 'info');
+    window.location.href = '/admin?tab=users';
+  };
 
   useEffect(() => {
     const handleBeforeInstall = (e: Event) => {
@@ -288,6 +332,46 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background relative">
+          {/* 👁️ SUPER-ADMIN MANDANTEN-VORSCHAU FLOATING BAR */}
+          {adminPreviewCompany && (
+            <div className="bg-purple-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between z-[80] shadow-md border-b border-purple-500 animate-in slide-in-from-top-2">
+              <div className="flex items-center gap-2">
+                <Eye size={16} className="animate-pulse" />
+                <span>👁️ MANDANTEN-VORSCHAU MODUS: <strong className="underline underline-offset-2">{adminPreviewCompany.name}</strong> (Super-Admin Workspace Vorschau)</span>
+              </div>
+              <button 
+                onClick={handleExitPreviewMode}
+                className="px-3 py-1 bg-white text-purple-900 rounded-lg font-bold text-xs hover:bg-purple-100 transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+              >
+                <X size={14} /> Vorschau Beenden
+              </button>
+            </div>
+          )}
+
+          {/* 📢 GLOBAL ANNOUNCEMENT BROADCAST BANNER */}
+          {announcement && !isAnnouncementDismissed && (
+            <div className={cn(
+              "px-4 py-2 text-xs font-bold flex items-center justify-between z-[75] shadow-sm border-b transition-all animate-in slide-in-from-top-2",
+              announcement.type === 'warning' ? "bg-amber-500 text-black border-amber-600" :
+              announcement.type === 'error' ? "bg-red-600 text-white border-red-700" :
+              announcement.type === 'success' ? "bg-emerald-600 text-white border-emerald-700" :
+              "bg-blue-600 text-white border-blue-700"
+            )}>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <Megaphone size={16} className="shrink-0" />
+                <span className="truncate">{announcement.text}</span>
+                {announcement.link && (
+                  <a href={announcement.link} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 ml-2 font-black shrink-0 hover:opacity-80">
+                    Mehr erfahren ➔
+                  </a>
+                )}
+              </div>
+              <button onClick={() => setIsAnnouncementDismissed(true)} className="p-1 hover:bg-black/10 rounded transition-colors ml-3 shrink-0">
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
           {/* OFFLINE BAUSTELLEN STATUS BANNER */}
           {isOffline && (
             <div className="bg-amber-500/90 backdrop-blur-md text-black px-4 py-1.5 text-xs font-bold flex items-center justify-center gap-2 z-[70]">

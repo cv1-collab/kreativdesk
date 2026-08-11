@@ -35,7 +35,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const fetchProjects = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
+    const safeCompanyId = previewCompanyId || currentUser.companyId || currentUser.uid;
 
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
@@ -78,7 +79,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const fetchCompanyUsers = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
+    const safeCompanyId = previewCompanyId || currentUser.companyId || currentUser.uid;
 
     try {
       const { data: profs } = await supabase
@@ -124,7 +126,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const fetchProjectDetails = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
+    const safeCompanyId = previewCompanyId || currentUser.companyId || currentUser.uid;
 
     try {
       const { data: mems } = await supabase

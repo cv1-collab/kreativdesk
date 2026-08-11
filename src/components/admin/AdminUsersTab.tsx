@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Shield, UserCheck, Trash2, Loader2, Mail, X, CheckCircle2, Copy, ExternalLink, Building2, Sparkles } from 'lucide-react';
+import { Search, Shield, UserCheck, Trash2, Loader2, Mail, X, CheckCircle2, Copy, ExternalLink, Building2, Sparkles, Eye } from 'lucide-react';
 import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -37,6 +37,15 @@ export default function AdminUsersTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleImpersonateWorkspace = (user: any) => {
+    const companyId = user.company_id || user.companyId || user.id;
+    const companyName = user.company_name || user.companyName || user.name || user.email || 'Workspace';
+    sessionStorage.setItem('admin_preview_company_id', companyId);
+    sessionStorage.setItem('admin_preview_company_name', companyName);
+    addToast(`Mandanten-Vorschau aktiviert für: ${companyName}`, 'info');
+    window.location.href = '/app';
+  };
 
   // Preprovision VIP Concierge States
   const [isPreprovisionOpen, setIsPreprovisionOpen] = useState(false);
@@ -276,6 +285,13 @@ export default function AdminUsersTab() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => handleImpersonateWorkspace(user)}
+                          className="px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                          title="Workspace aus Kundensicht testen"
+                        >
+                          <Eye size={14} /> Vorschau
+                        </button>
                         <button 
                           onClick={() => handleEditClick(user)}
                           className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-bold transition-colors"

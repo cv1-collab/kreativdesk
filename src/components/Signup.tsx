@@ -106,9 +106,34 @@ export default function Signup() {
     }
   }
 
+  const [customBg, setCustomBg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchBg = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', 'global_master')
+          .maybeSingle();
+
+        if (data?.data?.loginBgImage) {
+          setCustomBg(data.data.loginBgImage);
+        }
+      } catch (e) {
+        console.error("Signup custom background error:", e);
+      }
+    };
+    fetchBg();
+  }, []);
+
   return (
-    <div className="flex min-h-screen bg-[#09090b] selection:bg-blue-500/30">
-      <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24">
+    <div 
+      className="flex min-h-screen bg-[#09090b] selection:bg-blue-500/30 relative bg-cover bg-center"
+      style={customBg ? { backgroundImage: `url(${customBg})` } : {}}
+    >
+      {customBg && <div className="absolute inset-0 bg-black/65 backdrop-blur-[3px] z-0" />}
+      <div className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24 relative z-10">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div>
             <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">

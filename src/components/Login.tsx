@@ -161,8 +161,33 @@ export default function Login() {
     }
   }
 
+  const [customBg, setCustomBg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchBg = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', 'global_master')
+          .maybeSingle();
+
+        if (data?.data?.loginBgImage) {
+          setCustomBg(data.data.loginBgImage);
+        }
+      } catch (e) {
+        console.error("Login custom background error:", e);
+      }
+    };
+    fetchBg();
+  }, []);
+
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-blue-500/30">
+    <div 
+      className="min-h-screen bg-[#09090b] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-blue-500/30 relative bg-cover bg-center"
+      style={customBg ? { backgroundImage: `url(${customBg})` } : {}}
+    >
+      {customBg && <div className="absolute inset-0 bg-black/65 backdrop-blur-[3px] z-0" />}
       
       <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 text-[#a1a1aa] hover:text-[#fafafa] transition-colors text-sm font-medium group">
         <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Website
