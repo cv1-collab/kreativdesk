@@ -469,16 +469,81 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     return u.displayName || u.name || u.email || t('unknown');
   };
 
+  const TIMER_STORAGE_KEY = 'kreativdesk_live_timer';
+
   const [timeEntryForm, setTimeEntryForm] = useState({ type: 'internal', userId: '', projectId: '', date: new Date().toISOString().split('T')[0], hours: 0, hourlyRate: 0, description: '', isBillable: true });
   const [timeTrackingMode, setTimeTrackingMode] = useState<'manual' | 'timer'>('manual');
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  
+  const [timerSeconds, setTimerSeconds] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(TIMER_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.isRunning && parsed.startTime) {
+          const elapsed = Math.floor((Date.now() - parsed.startTime) / 1000);
+          return (parsed.accumulated || 0) + elapsed;
+        }
+        return parsed.accumulated || 0;
+      }
+    } catch (e) {}
+    return 0;
+  });
+
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(TIMER_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return Boolean(parsed.isRunning);
+      }
+    } catch (e) {}
+    return false;
+  });
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isTimerRunning) { interval = setInterval(() => setTimerSeconds(s => s + 1), 1000); }
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        try {
+          const saved = localStorage.getItem(TIMER_STORAGE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            const elapsed = Math.floor((Date.now() - (parsed.startTime || Date.now())) / 1000);
+            setTimerSeconds((parsed.accumulated || 0) + elapsed);
+          } else {
+            setTimerSeconds(s => s + 1);
+          }
+        } catch (e) {
+          setTimerSeconds(s => s + 1);
+        }
+      }, 1000);
+    }
     return () => clearInterval(interval);
   }, [isTimerRunning]);
+
+  const toggleTimer = () => {
+    if (isTimerRunning) {
+      setIsTimerRunning(false);
+      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({
+        accumulated: timerSeconds,
+        isRunning: false,
+        startTime: null
+      }));
+    } else {
+      setIsTimerRunning(true);
+      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({
+        accumulated: timerSeconds,
+        isRunning: true,
+        startTime: Date.now()
+      }));
+    }
+  };
+
+  const resetTimer = () => {
+    setIsTimerRunning(false);
+    setTimerSeconds(0);
+    localStorage.removeItem(TIMER_STORAGE_KEY);
+  };
 
   const formatTimerTime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600); const m = Math.floor((totalSeconds % 3600) / 60); const s = totalSeconds % 60;
@@ -558,7 +623,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         link: '/agenda'
       });
 
-      if (timeTrackingMode === 'timer') { setTimerSeconds(0); setIsTimerRunning(false); }
+      if (timeTrackingMode === 'timer') { resetTimer(); }
+      setTimeEntryForm({ ...timeEntryForm, hours: 0, description: '' });
+      addToast(`${t('book_time_entry')} (${finalHours}h) ${t('completed')}`, 'success');
       setTimeEntryForm({ ...timeEntryForm, hours: 0, description: '' });
       addToast(`${t('book_time_entry')} (${finalHours}h) ${t('completed')}`, 'success');
     } catch (err) {
@@ -919,10 +986,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                   <div className="text-center py-6 bg-background rounded-xl border border-border/50 mb-4 animate-in fade-in zoom-in-95 duration-200">
                     <div className="text-5xl font-bold tracking-tight text-text-primary mb-6">{formatTimerTime(timerSeconds)}</div>
                     <div className="flex justify-center gap-4">
-                      <button type="button" onClick={() => setIsTimerRunning(!isTimerRunning)} className={cn("w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg", isTimerRunning ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-accent-ai text-white shadow-accent-ai/20")}>
+                      <button type="button" onClick={toggleTimer} className={cn("w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 shadow-lg", isTimerRunning ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "bg-accent-ai text-white shadow-accent-ai/20")}>
                         {isTimerRunning ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
                       </button>
-                      <button type="button" onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }} className="w-14 h-14 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center transition-transform hover:scale-105">
+                      <button type="button" onClick={resetTimer} className="w-14 h-14 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center transition-transform hover:scale-105">
                         <Square size={24} />
                       </button>
                     </div>

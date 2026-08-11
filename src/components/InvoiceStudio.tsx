@@ -9,6 +9,7 @@ import { Plus, Trash2, X, Calculator, CheckSquare, Cloud, Send, FileSignature, F
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -167,33 +168,29 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
     if (onSave) {
       onSave({ file: blob, fileName, total, clientName: formData.recipient.split('\n')[0] || 'Kunde', invoiceNumber: formData.invoiceNumber, budgetPosId: '', type });
     } else {
-      if (!currentUser || !currentUser.companyId) return;
+      if (!currentUser) return;
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
       try {
-        const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
-        const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-        if (upErr) throw upErr;
-        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        const url = pubData.publicUrl;
+        const url = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
         
         let targetFolderId = 'root';
         let targetCategory = 'projects';
         let targetProjectId: string | null = activeProjectId;
 
-        if (activeProjectId === 'global') {
+        if (targetProjectId === 'global') {
             targetCategory = 'company';
-            targetProjectId = 'global';
             const { data: existingFolder } = await supabase
               .from('documents')
               .select('id')
-              .eq('company_id', currentUser.companyId)
+              .eq('company_id', safeCompanyId)
               .eq('name', '01_FINANZEN')
               .eq('is_folder', true)
-              .single();
+              .maybeSingle();
 
             if (existingFolder) {
                 targetFolderId = existingFolder.id;
             } else {
-                const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: currentUser.companyId, created_at: new Date().toISOString() }).select().single();
+                const { data: newF } = await supabase.from('documents').insert({ name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString() }).select().single();
                 if (newF) targetFolderId = newF.id;
             }
         } 
@@ -206,16 +203,28 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           size: `${Math.round(blob.size / 1024)} KB`, 
           is_folder: false, 
           owner_id: currentUser.uid, 
-          company_id: currentUser.companyId, 
+          company_id: safeCompanyId, 
           project_id: targetProjectId, 
           folder_id: targetFolderId, 
           category: targetCategory, 
           uploaded_at: new Date().toISOString() 
         });
         
-        await supabase.from('transactions').insert({ date: formData.date, description: `${type === 'invoice' ? 'Rechnung' : 'Offerte'}: ${formData.invoiceNumber}`, category: type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', amount: total, status: type === 'invoice' ? 'Offen' : 'Draft', owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: activeProjectId, url: url });
+        await supabase.from('transactions').insert({ 
+          date: formData.date, 
+          description: `${type === 'invoice' ? 'Rechnung' : 'Offerte'}: ${formData.invoiceNumber}`, 
+          category: type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', 
+          amount: total, 
+          status: type === 'invoice' ? 'Offen' : 'Draft', 
+          owner_id: currentUser.uid, 
+          company_id: safeCompanyId, 
+          project_id: targetProjectId, 
+          receipt_urls: url ? [url] : [] 
+        });
+
+        await notifyNewDocument(safeCompanyId, fileName, type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', targetProjectId || 'global');
         
-        addToast('Erfolgreich gespeichert', 'success');
+        addToast('Erfolgreich im Datenraum & Finanzen gespeichert!', 'success');
         onClose();
       } catch (e) {
         addToast('Fehler beim Speichern', 'error');

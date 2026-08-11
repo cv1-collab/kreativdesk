@@ -76,8 +76,17 @@ export default function Documents() {
 
   const handleOpenInStudio = (item: any) => {
     const fileUrl = item.url || item.file_url;
+    const isPdf = item.type === 'application/pdf' || 
+                  item.name?.toLowerCase().endsWith('.pdf') || 
+                  (fileUrl && (fileUrl.includes('.pdf') || fileUrl.startsWith('data:application/pdf')));
+
+    if (isPdf) {
+      handleDownloadFile(item);
+      return;
+    }
+
     let textContent = '';
-    if (fileUrl && fileUrl.startsWith('data:')) {
+    if (fileUrl && fileUrl.startsWith('data:text')) {
       try {
         const parts = fileUrl.split(',');
         const rawData = parts[1] || '';

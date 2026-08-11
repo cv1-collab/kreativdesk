@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { checkStorageLimit, incrementStorage } from '../utils/storageGuard';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -99,6 +100,18 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
   const [positions, setPositions] = useState<any[]>([{ id: '1', category: 'Verpflegung', description: '', amount: '' }]);
   const [receipts, setReceipts] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const allEmployees = React.useMemo(() => {
+    const list = Array.isArray(companyUsers) ? [...companyUsers] : [];
+    if (currentUser && !list.some((u: any) => (u.id || u.uid) === currentUser.uid)) {
+      list.unshift({
+        id: currentUser.uid,
+        name: currentUser.displayName || currentUser.email || 'Ich (Mitarbeiter)',
+        email: currentUser.email
+      });
+    }
+    return list;
+  }, [companyUsers, currentUser]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
@@ -227,6 +240,8 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
         name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString() 
       });
 
+      await notifyNewDocument(safeCompanyId, fileName, 'Spesen', headerData.projectId || 'global');
+
       addToast(t('ext_costs_booked'), "success"); 
       setIsPdfStudioOpen(false);
       if (onSave) onSave();
@@ -249,7 +264,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
         <div className="flex-1 overflow-y-auto bg-background/50 custom-scrollbar relative">
           <div className="p-4 sm:p-6 md:p-8 space-y-6 md:space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 bg-surface p-4 md:p-6 rounded-xl border border-border/50 shadow-sm">
-              <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('employee')}</label><select value={headerData.userId} onChange={e => setHeaderData({...headerData, userId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold"><option value="">{t('select')}</option>{Array.isArray(companyUsers) && companyUsers.map((u:any) => <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>)}</select></div>
+              <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('employee')}</label><select value={headerData.userId} onChange={e => setHeaderData({...headerData, userId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold"><option value="">{t('select')}</option>{allEmployees.map((u:any) => <option key={u.id || u.uid} value={u.id || u.uid}>{u.name || [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email || 'Mitarbeiter'}</option>)}</select></div>
               <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</label><input type="date" value={headerData.date} onChange={e => setHeaderData({...headerData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold" /></div>
               <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('project_assignment')}</label><select value={headerData.projectId} onChange={e => setHeaderData({...headerData, projectId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm outline-none text-text-primary font-bold"><option value="">{t('global_expenses')}</option>{Array.isArray(projects) && projects.map((p:any) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
             </div>

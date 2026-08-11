@@ -27,6 +27,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -1062,6 +1063,7 @@ export default function Finance() {
       await supabase.from('transactions').insert({
         date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: safeProjectId, receipt_urls: downloadUrl ? [downloadUrl] : []
       });
+      await notifyNewDocument(safeCompanyId, documentName, category, safeProjectId);
       return true;
     } catch (error) { return false; }
   };

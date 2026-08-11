@@ -13,6 +13,7 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { purgeAllDummyData } from '../services/seedService';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -296,6 +297,8 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       await supabase.from('documents').insert({
         name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString()
       });
+
+      await notifyNewDocument(safeCompanyId, fileName, 'operating_cost', 'global');
 
       addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
     } catch (error) { addToast(t('save_error'), "error"); } finally { setIsSubmitting(false); }

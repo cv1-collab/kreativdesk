@@ -11,6 +11,7 @@ import UniversalPDFStudio from './UniversalPDFStudio';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { cn, sanitizeUrl } from '../utils';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
@@ -152,6 +153,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       await supabase.from('transactions').insert({ type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', project_id: 'global', owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...opCostReceipts], created_at: new Date().toISOString() });
       
       await supabase.from('documents').insert({ name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString() });
+
+      await notifyNewDocument(safeCompanyId, fileName, 'operating_cost', 'global');
 
       addToast('Externe Kosten verbucht', "success"); 
       onClose();
