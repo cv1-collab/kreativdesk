@@ -19,21 +19,33 @@ export default function Screensaver() {
     if (!currentUser) return;
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase
-          .from('company_settings')
-          .select('screensaver_active, screensaver_image, screensaver_timeout')
-          .eq('company_id', currentUser.companyId || currentUser.uid)
+        const { data: sysData } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', 'global_master')
           .maybeSingle();
 
-        if (data) {
-          setConfig({
-            active: data.screensaver_active ?? false,
-            image: data.screensaver_image || 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
-            timeout: data.screensaver_timeout || 5
-          });
+        const sysConf = sysData?.data || {};
+
+        let compData = null;
+        if (currentUser?.companyId || currentUser?.uid) {
+          const { data } = await supabase
+            .from('company_settings')
+            .select('screensaver_active, screensaver_image, screensaver_timeout')
+            .eq('company_id', currentUser.companyId || currentUser.uid)
+            .maybeSingle();
+          compData = data;
         }
+
+        const isCompActive = compData && compData.screensaver_active !== null && compData.screensaver_active !== undefined;
+
+        setConfig({
+          active: isCompActive ? compData.screensaver_active : (sysConf.screensaverActive ?? false),
+          image: (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
+          timeout: (isCompActive && compData.screensaver_timeout) || sysConf.screensaverTimeout || 5
+        });
       } catch (e) {
-        console.error(e);
+        console.error("Screensaver fetch config error:", e);
       }
     };
     fetchConfig();

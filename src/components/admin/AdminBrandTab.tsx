@@ -348,6 +348,80 @@ export default function AdminBrandTab() {
             </div>
           </div>
 
+          {/* Card 3: Global Master Screensaver Configurator */}
+          <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-4 lg:col-span-2">
+            <div className="border-b border-border/50 pb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="text-amber-500" size={20} />
+                <div>
+                  <h4 className="font-bold text-base text-text-primary">Globaler Master-Bildschirmschoner</h4>
+                  <p className="text-xs text-text-muted">Definiere das Standard-Hintergrundbild und den Inaktivitäts-Timer für alle Workspaces.</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setConfig(prev => ({ ...prev, screensaverActive: !prev.screensaverActive }))}
+                className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border", config.screensaverActive ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
+              >
+                {config.screensaverActive ? 'Master Screensaver: Aktiv' : 'Master Screensaver: Inaktiv'}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Inaktivitäts-Timer (Minuten)</label>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={120} 
+                    value={config.screensaverTimeout || 5} 
+                    onChange={(e) => setConfig({ ...config, screensaverTimeout: Math.max(1, parseInt(e.target.value) || 5) })}
+                    className="w-24 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-bold text-text-primary text-center"
+                  />
+                  <span className="text-xs font-bold text-text-muted">Minuten ohne Interaktion</span>
+                </div>
+              </div>
+
+              <div className="md:col-span-2 space-y-3">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Master Wallpaper URL</label>
+                <input 
+                  type="url" 
+                  placeholder="https://images.unsplash.com/photo-..." 
+                  value={config.screensaverImage || ''} 
+                  onChange={(e) => setConfig({ ...config, screensaverImage: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Wallpaper Presets (Empfohlen)</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { name: 'Moderne Architektur', url: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Swiss Alp Panorama', url: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Minimal Interior Studio', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Dark Cyberpunk Glass', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop' }
+                ].map(w => (
+                  <div 
+                    key={w.url}
+                    onClick={() => setConfig({ ...config, screensaverImage: w.url })}
+                    className={cn(
+                      "group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all hover:scale-[1.02]",
+                      config.screensaverImage === w.url ? "border-amber-500 ring-2 ring-amber-500/30" : "border-border hover:border-white/30"
+                    )}
+                  >
+                    <img src={w.url} alt={w.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2">
+                      <span className="text-[10px] font-bold text-white truncate">{w.name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* Footer Action Bar */}
