@@ -101,7 +101,9 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
     { name: '06_OPERATIONS', category: 'company' },
     { name: '07_ASSETS', category: 'company' },
     { name: '08_PLÄNE', category: 'company' },
-    { name: '09_DOKUMENTATION', category: 'company' }
+    { name: '09_DOKUMENTATION', category: 'company' },
+    { name: '10_KI_STUDIO', category: 'company' },
+    { name: '11_WHITEBOARD_3D', category: 'company' }
   ];
 
   try {

@@ -9,7 +9,7 @@ import {
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
   Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, 
   Search, ArrowUpDown, LayoutGrid, List, DollarSign, Landmark, Users, TrendingUp, 
-  Megaphone, Settings, Shield, Eye, ArrowRight, CheckCircle2, Clock
+  Megaphone, Settings, Shield, Eye, ArrowRight, CheckCircle2, Clock, Image as ImageIcon, Box
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
@@ -32,7 +32,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     grid_view: 'Grid View',
     list_view: 'List View',
     open_folder: 'Open Folder',
-    open_project_docs: 'Open Project Files'
+    open_project_docs: 'Open Project Files',
+    loose_files: 'Unassigned / Root Documents',
+    search_placeholder: 'Search documents & folders...'
   },
   de: { 
     document_hub: 'Dokumenten Hub', 
@@ -50,7 +52,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     grid_view: 'Kacheln',
     list_view: 'Liste',
     open_folder: 'Ordner öffnen',
-    open_project_docs: 'Projektunterlagen öffnen'
+    open_project_docs: 'Projektunterlagen öffnen',
+    loose_files: 'Kürzlich erstellte / Nicht zugeordnete Dokumente',
+    search_placeholder: 'Dokumente & Ordner suchen...'
   }
 };
 
@@ -109,6 +113,51 @@ const COMPANY_FOLDER_PRESETS: Record<string, { label: string; desc: string; icon
     border: 'border-cyan-500/30 hover:border-cyan-500/60', 
     bg: 'bg-cyan-500/10 text-cyan-500',
     text: 'text-cyan-500'
+  },
+  '07_ASSETS': {
+    label: 'Medien & Assets',
+    desc: 'Bilder, Renderings, Grafiken & Logos',
+    icon: ImageIcon,
+    color: 'sky',
+    border: 'border-sky-500/30 hover:border-sky-500/60',
+    bg: 'bg-sky-500/10 text-sky-500',
+    text: 'text-sky-500'
+  },
+  '08_PLÄNE': {
+    label: 'CAD & 3D Pläne',
+    desc: 'CAD-Zeichnungen, BIM-Modelle & Statikberichte',
+    icon: Box,
+    color: 'teal',
+    border: 'border-teal-500/30 hover:border-teal-500/60',
+    bg: 'bg-teal-500/10 text-teal-500',
+    text: 'text-teal-500'
+  },
+  '09_DOKUMENTATION': {
+    label: 'Dokumentation',
+    desc: 'Bautagebücher, Berichte & Sitzungsprotokolle',
+    icon: FileText,
+    color: 'indigo',
+    border: 'border-indigo-500/30 hover:border-indigo-500/60',
+    bg: 'bg-indigo-500/10 text-indigo-500',
+    text: 'text-indigo-500'
+  },
+  '10_KI_STUDIO': {
+    label: 'KI-Verträge & Studio-Briefe',
+    desc: 'Mit KI-Editor oder Brief-Studio generierte Dokumente',
+    icon: Sparkles,
+    color: 'violet',
+    border: 'border-violet-500/30 hover:border-violet-500/60',
+    bg: 'bg-violet-500/10 text-violet-500',
+    text: 'text-violet-500'
+  },
+  '11_WHITEBOARD_3D': {
+    label: 'Whiteboard & 3D Snapshots',
+    desc: 'Exporte aus Whiteboards, 3D Viewer & Baukamera',
+    icon: Eye,
+    color: 'fuchsia',
+    border: 'border-fuchsia-500/30 hover:border-fuchsia-500/60',
+    bg: 'bg-fuchsia-500/10 text-fuchsia-500',
+    text: 'text-fuchsia-500'
   }
 };
 
@@ -371,8 +420,8 @@ export default function Documents() {
     '04_MARKETING': '05_MARKETING',
   };
 
-  // Document Filtering
-  const filteredItems = documents.filter(doc => {
+  // Filter documents by tab and current folder
+  const allFilteredDocs = documents.filter(doc => {
     if (doc.is_folder && legacyFolderMap[doc.name]) {
       const canonicalName = legacyFolderMap[doc.name];
       const hasCanonical = documents.some(d => d.is_folder && d.name === canonicalName);
@@ -398,7 +447,7 @@ export default function Documents() {
   });
 
   const seenFolderNames = new Set<string>();
-  const deduplicatedItems = filteredItems.filter(doc => {
+  const deduplicatedDocs = allFilteredDocs.filter(doc => {
     if (doc.is_folder) {
       if (seenFolderNames.has(doc.name)) return false;
       seenFolderNames.add(doc.name);
@@ -409,36 +458,42 @@ export default function Documents() {
     return true;
   });
 
-  const currentItems = [...deduplicatedItems].sort((a, b) => {
-    const getTime = (item: any) => {
-      const d = item.created_at || item.uploaded_at || item.date;
-      if (!d) return 0;
-      const t = new Date(d).getTime();
-      return isNaN(t) ? 0 : t;
-    };
+  // Separate Folders and Files for Root View to prevent duplicate card rendering
+  const allFoldersInCurrentScope = deduplicatedDocs.filter(d => d.is_folder);
+  const allFilesInCurrentScope = deduplicatedDocs.filter(d => !d.is_folder);
 
-    const nameA = (a.name || '').toString().toLowerCase();
-    const nameB = (b.name || '').toString().toLowerCase();
+  const sortItems = (items: any[]) => {
+    return [...items].sort((a, b) => {
+      const getTime = (item: any) => {
+        const d = item.created_at || item.uploaded_at || item.date;
+        if (!d) return 0;
+        const t = new Date(d).getTime();
+        return isNaN(t) ? 0 : t;
+      };
 
-    if (a.is_folder && !b.is_folder) return -1;
-    if (!a.is_folder && b.is_folder) return 1;
+      const nameA = (a.name || '').toString().toLowerCase();
+      const nameB = (b.name || '').toString().toLowerCase();
 
-    if (sortOption === 'name_asc') {
-      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-    }
-    if (sortOption === 'name_desc') {
-      return nameB.localeCompare(nameA, undefined, { numeric: true, sensitivity: 'base' });
-    }
-    if (sortOption === 'oldest') {
-      const diff = getTime(a) - getTime(b);
+      if (sortOption === 'name_asc') {
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (sortOption === 'name_desc') {
+        return nameB.localeCompare(nameA, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (sortOption === 'oldest') {
+        const diff = getTime(a) - getTime(b);
+        if (diff !== 0) return diff;
+        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      
+      const diff = getTime(b) - getTime(a);
       if (diff !== 0) return diff;
       return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-    }
-    
-    const diff = getTime(b) - getTime(a);
-    if (diff !== 0) return diff;
-    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
-  });
+    });
+  };
+
+  const sortedFiles = sortItems(allFilesInCurrentScope);
+  const sortedFolders = sortItems(allFoldersInCurrentScope);
 
   // Calculate file counts for company folders
   const getCompanyFolderCount = (folderName: string) => {
@@ -452,9 +507,15 @@ export default function Documents() {
     return documents.filter(d => d.project_id === projId).length;
   };
 
+  // List of preset keys for company root
+  const presetKeys = Object.keys(COMPANY_FOLDER_PRESETS);
+
+  // Custom user-created folders in root
+  const customRootFolders = sortedFolders.filter(f => !presetKeys.includes(f.name));
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header Bar */}
+      {/* Top Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-border p-6 rounded-3xl shadow-sm gap-4">
         <div>
           <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
@@ -498,7 +559,7 @@ export default function Documents() {
         </div>
       </div>
 
-      {/* Main Tabs: Firmenunterlagen vs. Projektunterlagen */}
+      {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen & Layout Switcher */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/70 pb-1">
         <div className="flex border-b border-transparent gap-2">
           <button
@@ -509,9 +570,9 @@ export default function Documents() {
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
-              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl",
+              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl cursor-pointer",
               activeTab === 'company'
-                ? "border-blue-500 text-blue-500 bg-blue-500/10 shadow-sm"
+                ? "border-blue-500 text-blue-500 bg-blue-500/10 shadow-sm font-extrabold"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
@@ -527,9 +588,9 @@ export default function Documents() {
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
-              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl",
+              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl cursor-pointer",
               activeTab === 'projects'
-                ? "border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm"
+                ? "border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-extrabold"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
@@ -543,7 +604,7 @@ export default function Documents() {
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
-              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
               viewMode === 'grid' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
             )}
             title={t('grid_view')}
@@ -554,7 +615,7 @@ export default function Documents() {
           <button
             onClick={() => setViewMode('list')}
             className={cn(
-              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
               viewMode === 'list' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
             )}
             title={t('list_view')}
@@ -596,7 +657,7 @@ export default function Documents() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
             <input
               type="text"
-              placeholder="Dokumente suchen..."
+              placeholder={t('search_placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-background border border-border/70 rounded-xl pl-9 pr-7 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none shadow-sm"
@@ -630,89 +691,169 @@ export default function Documents() {
             type="text"
             value={newFolderName}
             onChange={e => setNewFolderName(e.target.value)}
-            placeholder="Ordnername (z.B. 05_PLÄNE)..."
+            placeholder="Ordnername (z.B. 10_KI_STUDIO)..."
             className="flex-1 bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold text-text-primary outline-none focus:border-blue-500"
             autoFocus
           />
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-500 transition-all">Erstellen</button>
-          <button type="button" onClick={() => setIsCreatingFolder(false)} className="px-3 py-2 text-text-muted hover:text-text-primary font-bold text-xs">Abbrechen</button>
+          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-500 transition-all cursor-pointer">Erstellen</button>
+          <button type="button" onClick={() => setIsCreatingFolder(false)} className="px-3 py-2 text-text-muted hover:text-text-primary font-bold text-xs cursor-pointer">Abbrechen</button>
         </form>
       )}
 
       {/* ========================================================= */}
-      {/* 1. FIRMENUNTERLAGEN ROOT VIEW (KACHELN / CARDS GRID) */}
+      {/* 1. FIRMENUNTERLAGEN ROOT VIEW (GRID ODER LISTE) */}
       {/* ========================================================= */}
       {activeTab === 'company' && currentFolderId === 'root' && !searchTerm && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="flex justify-between items-center">
             <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Building2 size={16} className="text-blue-500" />
               Hauptkategorien Firmenunterlagen
             </h4>
-            <span className="text-xs text-text-muted font-medium">{Object.keys(COMPANY_FOLDER_PRESETS).length} Hauptordner</span>
+            <span className="text-xs text-text-muted font-medium">{presetKeys.length + customRootFolders.length} Themen-Ordner</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(COMPANY_FOLDER_PRESETS).map(([folderKey, preset]) => {
-              const IconComp = preset.icon;
-              const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
-              const fileCount = getCompanyFolderCount(folderKey);
+          {viewMode === 'grid' ? (
+            /* GRID VIEW / KACHELN FOR COMPANY ROOT FOLDERS */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {presetKeys.map(folderKey => {
+                const preset = COMPANY_FOLDER_PRESETS[folderKey];
+                const IconComp = preset.icon;
+                const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
+                const fileCount = getCompanyFolderCount(folderKey);
 
-              return (
-                <div
-                  key={folderKey}
-                  onClick={() => {
-                    if (folderObj) {
-                      navigateToFolder(folderObj.id, folderObj.name);
-                    } else {
-                      addToast(`Ordner ${preset.label} wird vorbereitet...`, 'info');
-                      fetchDocuments();
-                    }
-                  }}
-                  className={cn(
-                    "group relative bg-surface border rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden",
-                    preset.border
-                  )}
-                >
-                  <div className="space-y-4 relative z-10">
-                    <div className="flex justify-between items-start">
-                      <div className={cn("p-3.5 rounded-2xl transition-transform group-hover:scale-110 shadow-md", preset.bg)}>
-                        <IconComp size={26} />
+                return (
+                  <div
+                    key={folderKey}
+                    onClick={() => {
+                      if (folderObj) {
+                        navigateToFolder(folderObj.id, folderObj.name);
+                      } else {
+                        addToast(`Ordner ${preset.label} wird geladen...`, 'info');
+                        fetchDocuments();
+                      }
+                    }}
+                    className={cn(
+                      "group relative bg-surface border rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden",
+                      preset.border
+                    )}
+                  >
+                    <div className="space-y-4 relative z-10">
+                      <div className="flex justify-between items-start">
+                        <div className={cn("p-3.5 rounded-2xl transition-transform group-hover:scale-110 shadow-md", preset.bg)}>
+                          <IconComp size={26} />
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-text-muted flex items-center gap-1.5 shadow-sm">
+                          <FolderOpen size={12} className={preset.text} />
+                          {fileCount} Datei{fileCount === 1 ? '' : 'en'}
+                        </span>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-text-muted flex items-center gap-1.5 shadow-sm">
-                        <FolderOpen size={12} className={preset.text} />
-                        {fileCount} Datei{fileCount === 1 ? '' : 'en'}
+
+                      <div>
+                        <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-blue-500 transition-colors">
+                          {preset.label}
+                        </h5>
+                        <p className="text-text-muted text-xs font-medium leading-relaxed mt-1">
+                          {preset.desc}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold relative z-10">
+                      <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">{folderKey}</span>
+                      <span className={cn("flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold", preset.text)}>
+                        {t('open_folder')} <ArrowRight size={14} />
                       </span>
                     </div>
+                  </div>
+                );
+              })}
 
+              {/* Custom User Folders */}
+              {customRootFolders.map(folderObj => (
+                <div
+                  key={folderObj.id}
+                  onClick={() => navigateToFolder(folderObj.id, folderObj.name)}
+                  className="group relative bg-surface border border-amber-500/20 hover:border-amber-500/60 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-500 transition-transform group-hover:scale-110 shadow-md">
+                        <FolderOpen size={26} />
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-amber-500 flex items-center gap-1.5 shadow-sm">
+                        Ordner
+                      </span>
+                    </div>
                     <div>
-                      <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-blue-500 transition-colors">
-                        {preset.label}
+                      <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-amber-500 transition-colors">
+                        {folderObj.name}
                       </h5>
-                      <p className="text-text-muted text-xs font-medium leading-relaxed mt-1">
-                        {preset.desc}
-                      </p>
                     </div>
                   </div>
-
-                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold relative z-10">
-                    <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">{folderKey}</span>
-                    <span className={cn("flex items-center gap-1 group-hover:translate-x-1 transition-transform", preset.text)}>
-                      Ordner öffnen <ArrowRight size={14} />
+                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold text-amber-500">
+                    <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">BENUTZERORDNER</span>
+                    <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold">
+                      {t('open_folder')} <ArrowRight size={14} />
                     </span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* LIST VIEW FOR COMPANY ROOT FOLDERS */
+            <div className="bg-surface border border-border rounded-3xl p-4 shadow-sm divide-y divide-border/50">
+              {presetKeys.map(folderKey => {
+                const preset = COMPANY_FOLDER_PRESETS[folderKey];
+                const IconComp = preset.icon;
+                const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
+                const fileCount = getCompanyFolderCount(folderKey);
+
+                return (
+                  <div
+                    key={folderKey}
+                    onClick={() => {
+                      if (folderObj) {
+                        navigateToFolder(folderObj.id, folderObj.name);
+                      } else {
+                        addToast(`Ordner ${preset.label} wird geladen...`, 'info');
+                        fetchDocuments();
+                      }
+                    }}
+                    className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-2xl group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-2.5 rounded-xl shadow-sm", preset.bg)}>
+                        <IconComp size={18} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-text-primary group-hover:text-blue-500 transition-colors flex items-center gap-2">
+                          {preset.label}
+                          <span className="text-[10px] uppercase font-black px-2 py-0.5 bg-background border border-border/50 text-text-muted rounded-md">{folderKey}</span>
+                        </div>
+                        <div className="text-xs text-text-muted font-medium">{preset.desc}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-bold text-text-muted bg-background border border-border/50 px-3 py-1 rounded-full">
+                        {fileCount} Datei{fileCount === 1 ? '' : 'en'}
+                      </span>
+                      <ChevronRight size={18} className="text-text-muted group-hover:text-blue-500 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* 2. PROJEKTUNTERLAGEN ROOT VIEW (PROJEKT-KACHELN / CARDS) */}
+      {/* 2. PROJEKTUNTERLAGEN ROOT VIEW (GRID ODER LISTE) */}
       {/* ========================================================= */}
       {activeTab === 'projects' && currentFolderId === 'root' && !selectedProjectId && !searchTerm && (
-        <div className="space-y-6">
+        <div className="space-y-8">
           <div className="flex justify-between items-center">
             <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Briefcase size={16} className="text-emerald-500" />
@@ -721,210 +862,289 @@ export default function Documents() {
             <span className="text-xs text-text-muted font-medium">{projects.length} Aktive Projekte</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((proj: any) => {
-              const fileCount = getProjectFileCount(proj.id);
-              return (
-                <div
-                  key={proj.id}
-                  onClick={() => {
-                    setSelectedProjectId(proj.id);
-                  }}
-                  className="group bg-surface border border-emerald-500/20 hover:border-emerald-500/60 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
-                >
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-start">
-                      <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-500 transition-transform group-hover:scale-110 shadow-md">
-                        <Briefcase size={26} />
+          {viewMode === 'grid' ? (
+            /* GRID VIEW / KACHELN FOR PROJECTS */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((proj: any) => {
+                const fileCount = getProjectFileCount(proj.id);
+                return (
+                  <div
+                    key={proj.id}
+                    onClick={() => setSelectedProjectId(proj.id)}
+                    className="group bg-surface border border-emerald-500/20 hover:border-emerald-500/60 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-500 transition-transform group-hover:scale-110 shadow-md">
+                          <Briefcase size={26} />
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-emerald-500 flex items-center gap-1.5 shadow-sm">
+                          <CheckCircle2 size={12} />
+                          {fileCount} Bauakten
+                        </span>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-emerald-500 flex items-center gap-1.5 shadow-sm">
-                        <CheckCircle2 size={12} />
-                        {fileCount} Bauakten
+
+                      <div>
+                        <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-emerald-500 transition-colors">
+                          {proj.name}
+                        </h5>
+                        <p className="text-text-muted text-xs font-medium mt-1">
+                          {proj.client || proj.location || 'Bauprojekt & Dokumentenablage'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold text-emerald-500">
+                      <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">PROJEKTAKTE</span>
+                      <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold">
+                        {t('open_project_docs')} <ArrowRight size={14} />
                       </span>
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* LIST VIEW FOR PROJECTS */
+            <div className="bg-surface border border-border rounded-3xl p-4 shadow-sm divide-y divide-border/50">
+              {projects.map((proj: any) => {
+                const fileCount = getProjectFileCount(proj.id);
+                return (
+                  <div
+                    key={proj.id}
+                    onClick={() => setSelectedProjectId(proj.id)}
+                    className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-2xl group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 shadow-sm">
+                        <Briefcase size={18} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm text-text-primary group-hover:text-emerald-500 transition-colors">
+                          {proj.name}
+                        </div>
+                        <div className="text-xs text-text-muted font-medium">{proj.client || proj.location || 'Bauprojekt'}</div>
+                      </div>
+                    </div>
 
-                    <div>
-                      <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-emerald-500 transition-colors">
-                        {proj.name}
-                      </h5>
-                      <p className="text-text-muted text-xs font-medium mt-1">
-                        {proj.client || proj.location || 'Bauprojekt & Dokumentenablage'}
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
+                        {fileCount} Bauakten
+                      </span>
+                      <ChevronRight size={18} className="text-text-muted group-hover:text-emerald-500 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
-
-                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold text-emerald-500">
-                    <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">PROJEKTAKTE</span>
-                    <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold">
-                      {t('open_project_docs')} <ArrowRight size={14} />
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
       {/* ========================================================= */}
-      {/* 3. DRILL-DOWN SUBFOLDER & FILE VIEW (GRID VS LIST) */}
+      {/* 3. LOOSE FILES & SUBFOLDER DRILL-DOWN VIEW */}
       {/* ========================================================= */}
-      {(currentFolderId !== 'root' || selectedProjectId || searchTerm || activeTab === 'company' || activeTab === 'projects') && (
-        <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm space-y-4">
-          {currentItems.length === 0 ? (
-            <div className="text-center py-16 text-text-muted space-y-3">
-              <FolderOpen className="mx-auto text-text-muted opacity-40" size={48} />
-              <p className="font-medium">{t('no_files')}</p>
-              <button
-                onClick={handleSeedDemoData}
-                className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all"
-              >
-                ✨ {t('seed_demo_btn')}
-              </button>
-            </div>
-          ) : viewMode === 'grid' ? (
-            /* KACHELN / GRID VIEW FOR FILES & SUBFOLDERS */
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {currentItems.map(item => (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    if (item.is_folder) {
-                      navigateToFolder(item.id, item.name);
-                    } else {
-                      handleOpenInStudio(item);
-                    }
-                  }}
-                  className="bg-background border border-border/70 hover:border-blue-500/50 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group relative"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className={cn(
-                      "p-3 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
-                      item.is_folder ? "bg-amber-500/10 text-amber-500" : "bg-blue-500/10 text-blue-500"
-                    )}>
-                      {item.is_folder ? <FolderOpen size={24} /> : <FileText size={24} />}
-                    </div>
+      {(currentFolderId !== 'root' || selectedProjectId || searchTerm || sortedFiles.length > 0) && (
+        <div className="space-y-4">
+          {currentFolderId === 'root' && !selectedProjectId && sortedFiles.length > 0 && !searchTerm && (
+            <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 pt-4">
+              <FileText size={16} className="text-blue-500" />
+              {t('loose_files')} ({sortedFiles.length})
+            </h4>
+          )}
 
-                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                      {!item.is_folder && (item.url || item.file_url) && (
-                        <button
-                          onClick={() => handleDownloadFile(item)}
-                          className="p-1.5 text-text-muted hover:text-blue-500 transition-colors bg-surface rounded-lg border border-border/50"
-                          title="Download"
-                        >
-                          <Download size={14} />
-                        </button>
-                      )}
+          <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
+            {sortedFiles.length === 0 && (currentFolderId !== 'root' || selectedProjectId) ? (
+              <div className="text-center py-16 text-text-muted space-y-3">
+                <FolderOpen className="mx-auto text-text-muted opacity-40" size={48} />
+                <p className="font-medium">{t('no_files')}</p>
+                <button
+                  onClick={handleSeedDemoData}
+                  className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all cursor-pointer"
+                >
+                  ✨ {t('seed_demo_btn')}
+                </button>
+              </div>
+            ) : viewMode === 'grid' ? (
+              /* GRID VIEW FOR FILES IN SUBFOLDERS / SEARCH */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {/* Render subfolders if inside a folder */}
+                {currentFolderId !== 'root' && sortedFolders.map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigateToFolder(item.id, item.name)}
+                    className="bg-background border border-amber-500/30 hover:border-amber-500 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500 group-hover:scale-105 transition-transform">
+                        <FolderOpen size={24} />
+                      </div>
                       {canDelete && (
                         <button
-                          onClick={() => handleDelete(item.id, item.is_folder)}
-                          className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-surface rounded-lg border border-border/50"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(item.id, true); }}
+                          className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
                           title="Löschen"
                         >
                           <Trash2 size={14} />
                         </button>
                       )}
                     </div>
-                  </div>
-
-                  <div>
-                    <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
-                      {item.name}
-                      {item.is_folder ? (
-                        <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded">Ordner</span>
-                      ) : (item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) ? (
-                        <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-red-500 text-white rounded animate-pulse">🔴 NEU</span>
-                      ) : null}
-                    </div>
-                    <div className="text-[11px] text-text-muted font-medium mt-1">
-                      {item.is_folder ? 'Ordner' : item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
-                    </div>
-                  </div>
-
-                  {!item.is_folder && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
-                      className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-                    >
-                      <Edit3 size={12} /> Im Studio bearbeiten
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            /* LIST VIEW FOR FILES & SUBFOLDERS */
-            <div className="divide-y divide-border/50">
-              {currentItems.map(item => (
-                <div 
-                  key={item.id} 
-                  className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-xl group cursor-pointer"
-                  onClick={() => {
-                    if (item.is_folder) {
-                      navigateToFolder(item.id, item.name);
-                    } else {
-                      handleOpenInStudio(item);
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    {item.is_folder ? (
-                      <FolderOpen className="text-amber-500 shrink-0 group-hover:scale-110 transition-transform" size={22} />
-                    ) : (
-                      <FileText className="text-blue-500 shrink-0" size={22} />
-                    )}
                     <div>
-                      <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      <div className="font-bold text-sm text-text-primary group-hover:text-amber-500 transition-colors">
                         {item.name}
-                        {item.is_folder ? (
-                          <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Ordner</span>
-                        ) : (item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) ? (
-                          <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
-                            🔴 NEU
-                          </span>
-                        ) : null}
                       </div>
-                      <div className="text-xs text-text-muted">
-                        {item.is_folder ? 'Ordner' : item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
-                      </div>
+                      <div className="text-[11px] text-text-muted font-medium mt-1">Ordner</div>
                     </div>
                   </div>
+                ))}
 
-                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                    {!item.is_folder && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
-                      <button 
-                        onClick={() => handleOpenInStudio(item)} 
-                        className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-                        title="Im Brief- & Dokumenten-Studio bearbeiten"
+                {/* Render Files */}
+                {sortedFiles.map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleOpenInStudio(item)}
+                    className="bg-background border border-border/70 hover:border-blue-500/50 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group relative"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                        <FileText size={24} />
+                      </div>
+
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        {(item.url || item.file_url) && (
+                          <button
+                            onClick={() => handleDownloadFile(item)}
+                            className="p-1.5 text-text-muted hover:text-blue-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
+                            title="Download"
+                          >
+                            <Download size={14} />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(item.id, false)}
+                            className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
+                            title="Löschen"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
+                        {item.name}
+                        {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
+                          <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-red-500 text-white rounded animate-pulse">🔴 NEU</span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-text-muted font-medium mt-1">
+                        {item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
+                      </div>
+                    </div>
+
+                    {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
+                        className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
+                        <Edit3 size={12} /> Im Studio bearbeiten
                       </button>
                     )}
-
-                    {!item.is_folder && (item.url || item.file_url) && (
-                      <button 
-                        onClick={() => handleDownloadFile(item)} 
-                        className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
-                        title="Download / Herunterladen"
-                      >
-                        <Download size={16} />
-                      </button>
-                    )}
-
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* LIST VIEW FOR FILES IN SUBFOLDERS / SEARCH */
+              <div className="divide-y divide-border/50">
+                {currentFolderId !== 'root' && sortedFolders.map(item => (
+                  <div
+                    key={item.id}
+                    onClick={() => navigateToFolder(item.id, item.name)}
+                    className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-xl group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FolderOpen className="text-amber-500 shrink-0 group-hover:scale-110 transition-transform" size={22} />
+                      <div>
+                        <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                          {item.name}
+                          <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Ordner</span>
+                        </div>
+                        <div className="text-xs text-text-muted">Unterordner</div>
+                      </div>
+                    </div>
                     {canDelete && (
-                      <button 
-                        onClick={() => handleDelete(item.id, item.is_folder)} 
-                        className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border"
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id, true); }}
+                        className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
                         title="Löschen"
                       >
                         <Trash2 size={16} />
                       </button>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+
+                {sortedFiles.map(item => (
+                  <div 
+                    key={item.id} 
+                    className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-xl group cursor-pointer"
+                    onClick={() => handleOpenInStudio(item)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="text-blue-500 shrink-0" size={22} />
+                      <div>
+                        <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                          {item.name}
+                          {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
+                            <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
+                              🔴 NEU
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-text-muted">
+                          {item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                        <button 
+                          onClick={() => handleOpenInStudio(item)} 
+                          className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+                          title="Im Brief- & Dokumenten-Studio bearbeiten"
+                        >
+                          <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
+                        </button>
+                      )}
+
+                      {(item.url || item.file_url) && (
+                        <button 
+                          onClick={() => handleDownloadFile(item)} 
+                          className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                          title="Download / Herunterladen"
+                        >
+                          <Download size={16} />
+                        </button>
+                      )}
+
+                      {canDelete && (
+                        <button 
+                          onClick={() => handleDelete(item.id, false)} 
+                          className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                          title="Löschen"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
