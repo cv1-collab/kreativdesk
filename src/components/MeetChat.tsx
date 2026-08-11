@@ -671,40 +671,9 @@ export default function MeetChat() {
                     </div>
                   )}
                   
-                  <div className="flex flex-col sm:flex-row justify-center items-center gap-3 w-full mb-8">
-                    <button onClick={() => startCall(selectedUserIds)} className="w-full sm:w-auto px-6 py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
-                      <PhoneCall size={16} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
-                    </button>
-                    <button onClick={async () => { 
-                      const newId = `meet-${Date.now()}`;
-                      const joinUrl = `${window.location.origin}/guest-meet/${newId}`; 
-                      navigator.clipboard.writeText(joinUrl); 
-                      setCopiedLink(true); 
-                      setTimeout(() => setCopiedLink(false), 2000); 
-                      setJoinCallId(newId);
-
-                      // Pre-register meeting in Supabase video_calls table
-                      try {
-                        const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
-                        const targetProjectId = projectId || activeProjectId || 'global';
-                        await supabase.from('video_calls').upsert({
-                          id: newId,
-                          project_id: targetProjectId,
-                          company_id: safeCompanyId,
-                          caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Host',
-                          caller_id: currentUser?.uid,
-                          created_at: new Date().toISOString()
-                        });
-                      } catch (err) {
-                        console.error('Failed to pre-register call in Supabase:', err);
-                      }
-
-                      // Start call so host is in the room
-                      await startCall(selectedUserIds, newId);
-                      addToast('Link kopiert & Call gestartet!', 'success');
-                    }} className="w-full sm:w-auto px-5 py-2.5 bg-surface border border-border/80 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-all flex items-center justify-center gap-2 shadow-sm">
-                      {copiedLink ? <CheckCircle2 size={16} className="text-emerald-500" /> : <LinkIcon size={16} />} 
-                      <span className="inline">{t('external_link')}</span>
+                  <div className="flex justify-center items-center gap-3 w-full mb-6">
+                    <button onClick={() => startCall(selectedUserIds)} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
+                      <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
                   </div>
 
