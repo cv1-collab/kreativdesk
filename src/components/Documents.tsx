@@ -7,7 +7,9 @@ import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
 import { 
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
-  Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, Search, ArrowUpDown 
+  Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, 
+  Search, ArrowUpDown, LayoutGrid, List, DollarSign, Landmark, Users, TrendingUp, 
+  Megaphone, Settings, Shield, Eye, ArrowRight, CheckCircle2, Clock
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
@@ -26,7 +28,11 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     no_files: 'No documents found in this folder.',
     root: 'Root',
     seed_demo_btn: 'Restore Demo Data',
-    seed_success: 'Demo data & folders successfully restored!'
+    seed_success: 'Demo data & folders successfully restored!',
+    grid_view: 'Grid View',
+    list_view: 'List View',
+    open_folder: 'Open Folder',
+    open_project_docs: 'Open Project Files'
   },
   de: { 
     document_hub: 'Dokumenten Hub', 
@@ -40,14 +46,76 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     no_files: 'Keine Dokumente in diesem Ordner vorhanden.',
     root: 'Hauptverzeichnis',
     seed_demo_btn: 'Demo-Daten wiederherstellen',
-    seed_success: 'Demo-Projektdaten & Firmenordner erfolgreich geladen!'
+    seed_success: 'Demo-Projektdaten & Firmenordner erfolgreich geladen!',
+    grid_view: 'Kacheln',
+    list_view: 'Liste',
+    open_folder: 'Ordner öffnen',
+    open_project_docs: 'Projektunterlagen öffnen'
+  }
+};
+
+// Preset Company Folders with rich styling & metadata
+const COMPANY_FOLDER_PRESETS: Record<string, { label: string; desc: string; icon: any; color: string; border: string; bg: string; text: string }> = {
+  '01_FINANZEN': { 
+    label: 'Finanzen & Buchhaltung', 
+    desc: 'Rechnungen, Offerten, Bilanzen, Belege & Spesen', 
+    icon: DollarSign, 
+    color: 'emerald', 
+    border: 'border-emerald-500/30 hover:border-emerald-500/60', 
+    bg: 'bg-emerald-500/10 text-emerald-500',
+    text: 'text-emerald-500'
+  },
+  '02_RECHTLICHES': { 
+    label: 'Rechtliches & Verträge', 
+    desc: 'AGBs, Verträge, SIA-Standards & Compliance', 
+    icon: Landmark, 
+    color: 'blue', 
+    border: 'border-blue-500/30 hover:border-blue-500/60', 
+    bg: 'bg-blue-500/10 text-blue-500',
+    text: 'text-blue-500'
+  },
+  '03_HR_MITARBEITER': { 
+    label: 'HR & Mitarbeiter', 
+    desc: 'Personalakten, Arbeitsverträge & Lohnnachweise', 
+    icon: Users, 
+    color: 'purple', 
+    border: 'border-purple-500/30 hover:border-purple-500/60', 
+    bg: 'bg-purple-500/10 text-purple-500',
+    text: 'text-purple-500'
+  },
+  '04_SALES': { 
+    label: 'Sales & Akquise', 
+    desc: 'Kundenangebote, Akquise & Präsentationen', 
+    icon: TrendingUp, 
+    color: 'rose', 
+    border: 'border-rose-500/30 hover:border-rose-500/60', 
+    bg: 'bg-rose-500/10 text-rose-500',
+    text: 'text-rose-500'
+  },
+  '05_MARKETING': { 
+    label: 'Marketing & PR', 
+    desc: 'Branding, Logos, Medien & Publikationen', 
+    icon: Megaphone, 
+    color: 'amber', 
+    border: 'border-amber-500/30 hover:border-amber-500/60', 
+    bg: 'bg-amber-500/10 text-amber-500',
+    text: 'text-amber-500'
+  },
+  '06_OPERATIONS': { 
+    label: 'Operations & QM', 
+    desc: 'Betriebsabläufe, Prozesse, QM & Vorlagen', 
+    icon: Settings, 
+    color: 'cyan', 
+    border: 'border-cyan-500/30 hover:border-cyan-500/60', 
+    bg: 'bg-cyan-500/10 text-cyan-500',
+    text: 'text-cyan-500'
   }
 };
 
 export default function Documents() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-  const { activeProjectId } = useProject() as any;
+  const { projects = [], activeProjectId } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
   const canUpload = hasPermission('canUploadFiles');
@@ -56,8 +124,10 @@ export default function Documents() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [activeTab, setActiveTab] = useState<'company' | 'projects'>('company');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [documents, setDocuments] = useState<any[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([{ id: 'root', name: 'Root' }]);
 
   const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
@@ -101,8 +171,8 @@ export default function Documents() {
   };
 
   const fetchDocuments = async () => {
-    if (!currentUser?.companyId) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    if (!currentUser?.companyId && !currentUser?.uid) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
@@ -155,7 +225,7 @@ export default function Documents() {
         name: newFolderName.trim(),
         is_folder: true,
         category: activeTab,
-        project_id: activeTab === 'projects' ? (activeProjectId || 'global') : 'global',
+        project_id: activeTab === 'projects' ? (selectedProjectId || activeProjectId || 'global') : 'global',
         folder_id: currentFolderId,
         owner_id: currentUser.uid,
         uploaded_by: currentUser.uid,
@@ -192,7 +262,7 @@ export default function Documents() {
         size: `${Math.round(file.size / 1024)} KB`,
         type: file.type,
         category: activeTab,
-        project_id: activeTab === 'projects' ? (activeProjectId || 'global') : 'global',
+        project_id: activeTab === 'projects' ? (selectedProjectId || activeProjectId || 'global') : 'global',
         folder_id: currentFolderId,
         is_folder: false,
         owner_id: currentUser.uid,
@@ -290,6 +360,9 @@ export default function Documents() {
     const newPath = folderPath.slice(0, index + 1);
     setFolderPath(newPath);
     setCurrentFolderId(newPath[newPath.length - 1].id);
+    if (index === 0) {
+      setSelectedProjectId(null);
+    }
   };
 
   const legacyFolderMap: Record<string, string> = {
@@ -298,6 +371,7 @@ export default function Documents() {
     '04_MARKETING': '05_MARKETING',
   };
 
+  // Document Filtering
   const filteredItems = documents.filter(doc => {
     if (doc.is_folder && legacyFolderMap[doc.name]) {
       const canonicalName = legacyFolderMap[doc.name];
@@ -313,6 +387,9 @@ export default function Documents() {
       return isCompanyCategory && doc.folder_id === currentFolderId;
     } else {
       const isProjectCategory = doc.category === 'projects' || (doc.project_id && doc.project_id !== 'global');
+      if (selectedProjectId) {
+        return isProjectCategory && doc.project_id === selectedProjectId && (currentFolderId === 'root' ? (doc.folder_id === 'root' || !doc.folder_id) : doc.folder_id === currentFolderId);
+      }
       if (currentFolderId === 'root') {
         return isProjectCategory && (doc.folder_id === 'root' || !doc.folder_id);
       }
@@ -343,7 +420,6 @@ export default function Documents() {
     const nameA = (a.name || '').toString().toLowerCase();
     const nameB = (b.name || '').toString().toLowerCase();
 
-    // Group folders first
     if (a.is_folder && !b.is_folder) return -1;
     if (!a.is_folder && b.is_folder) return 1;
 
@@ -359,11 +435,22 @@ export default function Documents() {
       return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
     }
     
-    // Default: newest (Neueste zuerst)
     const diff = getTime(b) - getTime(a);
     if (diff !== 0) return diff;
     return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
   });
+
+  // Calculate file counts for company folders
+  const getCompanyFolderCount = (folderName: string) => {
+    const folderObj = documents.find(d => d.is_folder && d.name === folderName);
+    if (!folderObj) return 0;
+    return documents.filter(d => d.folder_id === folderObj.id).length;
+  };
+
+  // Calculate file counts for projects
+  const getProjectFileCount = (projId: string) => {
+    return documents.filter(d => d.project_id === projId).length;
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -411,47 +498,85 @@ export default function Documents() {
         </div>
       </div>
 
-      {/* Category Tabs: Firmenunterlagen vs Projektunterlagen */}
-      <div className="flex border-b border-border gap-2">
-        <button
-          onClick={() => {
-            setActiveTab('company');
-            setCurrentFolderId('root');
-            setFolderPath([{ id: 'root', name: 'Root' }]);
-          }}
-          className={cn(
-            "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2",
-            activeTab === 'company'
-              ? "border-blue-500 text-blue-500 bg-blue-500/5 rounded-t-xl"
-              : "border-transparent text-text-muted hover:text-text-primary"
-          )}
-        >
-          <Building2 size={18} />
-          {t('company_docs')}
-        </button>
+      {/* Main Tabs: Firmenunterlagen vs. Projektunterlagen */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/70 pb-1">
+        <div className="flex border-b border-transparent gap-2">
+          <button
+            onClick={() => {
+              setActiveTab('company');
+              setCurrentFolderId('root');
+              setSelectedProjectId(null);
+              setFolderPath([{ id: 'root', name: 'Root' }]);
+            }}
+            className={cn(
+              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl",
+              activeTab === 'company'
+                ? "border-blue-500 text-blue-500 bg-blue-500/10 shadow-sm"
+                : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
+            )}
+          >
+            <Building2 size={18} />
+            {t('company_docs')}
+          </button>
 
-        <button
-          onClick={() => {
-            setActiveTab('projects');
-            setCurrentFolderId('root');
-            setFolderPath([{ id: 'root', name: 'Root' }]);
-          }}
-          className={cn(
-            "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2",
-            activeTab === 'projects'
-              ? "border-emerald-500 text-emerald-500 bg-emerald-500/5 rounded-t-xl"
-              : "border-transparent text-text-muted hover:text-text-primary"
-          )}
-        >
-          <Briefcase size={18} />
-          {t('project_docs')}
-        </button>
+          <button
+            onClick={() => {
+              setActiveTab('projects');
+              setCurrentFolderId('root');
+              setSelectedProjectId(null);
+              setFolderPath([{ id: 'root', name: 'Root' }]);
+            }}
+            className={cn(
+              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl",
+              activeTab === 'projects'
+                ? "border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm"
+                : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
+            )}
+          >
+            <Briefcase size={18} />
+            {t('project_docs')}
+          </button>
+        </div>
+
+        {/* View Mode Toggle: Grid Kacheln vs Liste */}
+        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl shadow-sm self-end sm:self-auto">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={cn(
+              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+              viewMode === 'grid' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
+            )}
+            title={t('grid_view')}
+          >
+            <LayoutGrid size={16} />
+            <span className="hidden sm:inline">{t('grid_view')}</span>
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn(
+              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+              viewMode === 'list' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
+            )}
+            title={t('list_view')}
+          >
+            <List size={16} />
+            <span className="hidden sm:inline">{t('list_view')}</span>
+          </button>
+        </div>
       </div>
 
       {/* Breadcrumb Navigation & Search/Sort Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface/50 border border-border px-4 py-3 rounded-2xl">
         <div className="flex items-center gap-2 text-xs font-bold text-text-muted flex-wrap">
           <span className="text-text-primary">{activeTab === 'company' ? t('company_docs') : t('project_docs')}</span>
+          {selectedProjectId && (
+            <>
+              <ChevronRight size={14} className="text-text-muted" />
+              <span className="text-emerald-500 font-bold">
+                {projects.find((p: any) => p.id === selectedProjectId)?.name || 'Projekt'}
+              </span>
+            </>
+          )}
           {folderPath.map((item, idx) => (
             <React.Fragment key={item.id}>
               <ChevronRight size={14} className="text-text-muted" />
@@ -497,7 +622,7 @@ export default function Documents() {
         </div>
       </div>
 
-      {/* Create Folder Modal */}
+      {/* Create Folder Form Modal */}
       {isCreatingFolder && (
         <form onSubmit={handleCreateFolder} className="bg-surface border border-border rounded-2xl p-4 flex gap-3 items-center shadow-lg animate-in fade-in zoom-in-95">
           <FolderPlus className="text-blue-500 shrink-0" size={20} />
@@ -514,92 +639,294 @@ export default function Documents() {
         </form>
       )}
 
-      {/* File & Folder Grid / List */}
-      <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
-        {currentItems.length === 0 ? (
-          <div className="text-center py-16 text-text-muted space-y-3">
-            <FolderOpen className="mx-auto text-text-muted opacity-40" size={48} />
-            <p className="font-medium">{t('no_files')}</p>
-            <button
-              onClick={handleSeedDemoData}
-              className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all"
-            >
-              ✨ {t('seed_demo_btn')}
-            </button>
+      {/* ========================================================= */}
+      {/* 1. FIRMENUNTERLAGEN ROOT VIEW (KACHELN / CARDS GRID) */}
+      {/* ========================================================= */}
+      {activeTab === 'company' && currentFolderId === 'root' && !searchTerm && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+              <Building2 size={16} className="text-blue-500" />
+              Hauptkategorien Firmenunterlagen
+            </h4>
+            <span className="text-xs text-text-muted font-medium">{Object.keys(COMPANY_FOLDER_PRESETS).length} Hauptordner</span>
           </div>
-        ) : (
-          <div className="divide-y divide-border/50">
-            {currentItems.map(item => (
-              <div 
-                key={item.id} 
-                className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-xl group cursor-pointer"
-                onClick={() => {
-                  if (item.is_folder) {
-                    navigateToFolder(item.id, item.name);
-                  } else {
-                    handleOpenInStudio(item);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  {item.is_folder ? (
-                    <FolderOpen className="text-amber-500 shrink-0 group-hover:scale-110 transition-transform" size={22} />
-                  ) : (
-                    <FileText className="text-blue-500 shrink-0" size={22} />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.entries(COMPANY_FOLDER_PRESETS).map(([folderKey, preset]) => {
+              const IconComp = preset.icon;
+              const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
+              const fileCount = getCompanyFolderCount(folderKey);
+
+              return (
+                <div
+                  key={folderKey}
+                  onClick={() => {
+                    if (folderObj) {
+                      navigateToFolder(folderObj.id, folderObj.name);
+                    } else {
+                      addToast(`Ordner ${preset.label} wird vorbereitet...`, 'info');
+                      fetchDocuments();
+                    }
+                  }}
+                  className={cn(
+                    "group relative bg-surface border rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden",
+                    preset.border
                   )}
+                >
+                  <div className="space-y-4 relative z-10">
+                    <div className="flex justify-between items-start">
+                      <div className={cn("p-3.5 rounded-2xl transition-transform group-hover:scale-110 shadow-md", preset.bg)}>
+                        <IconComp size={26} />
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-text-muted flex items-center gap-1.5 shadow-sm">
+                        <FolderOpen size={12} className={preset.text} />
+                        {fileCount} Datei{fileCount === 1 ? '' : 'en'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-blue-500 transition-colors">
+                        {preset.label}
+                      </h5>
+                      <p className="text-text-muted text-xs font-medium leading-relaxed mt-1">
+                        {preset.desc}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold relative z-10">
+                    <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">{folderKey}</span>
+                    <span className={cn("flex items-center gap-1 group-hover:translate-x-1 transition-transform", preset.text)}>
+                      Ordner öffnen <ArrowRight size={14} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 2. PROJEKTUNTERLAGEN ROOT VIEW (PROJEKT-KACHELN / CARDS) */}
+      {/* ========================================================= */}
+      {activeTab === 'projects' && currentFolderId === 'root' && !selectedProjectId && !searchTerm && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+              <Briefcase size={16} className="text-emerald-500" />
+              Projekt-Bauakten & Unterlagen nach Projekten
+            </h4>
+            <span className="text-xs text-text-muted font-medium">{projects.length} Aktive Projekte</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((proj: any) => {
+              const fileCount = getProjectFileCount(proj.id);
+              return (
+                <div
+                  key={proj.id}
+                  onClick={() => {
+                    setSelectedProjectId(proj.id);
+                  }}
+                  className="group bg-surface border border-emerald-500/20 hover:border-emerald-500/60 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div className="p-3.5 rounded-2xl bg-emerald-500/10 text-emerald-500 transition-transform group-hover:scale-110 shadow-md">
+                        <Briefcase size={26} />
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-emerald-500 flex items-center gap-1.5 shadow-sm">
+                        <CheckCircle2 size={12} />
+                        {fileCount} Bauakten
+                      </span>
+                    </div>
+
+                    <div>
+                      <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-emerald-500 transition-colors">
+                        {proj.name}
+                      </h5>
+                      <p className="text-text-muted text-xs font-medium mt-1">
+                        {proj.client || proj.location || 'Bauprojekt & Dokumentenablage'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold text-emerald-500">
+                    <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">PROJEKTAKTE</span>
+                    <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold">
+                      {t('open_project_docs')} <ArrowRight size={14} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 3. DRILL-DOWN SUBFOLDER & FILE VIEW (GRID VS LIST) */}
+      {/* ========================================================= */}
+      {(currentFolderId !== 'root' || selectedProjectId || searchTerm || activeTab === 'company' || activeTab === 'projects') && (
+        <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm space-y-4">
+          {currentItems.length === 0 ? (
+            <div className="text-center py-16 text-text-muted space-y-3">
+              <FolderOpen className="mx-auto text-text-muted opacity-40" size={48} />
+              <p className="font-medium">{t('no_files')}</p>
+              <button
+                onClick={handleSeedDemoData}
+                className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all"
+              >
+                ✨ {t('seed_demo_btn')}
+              </button>
+            </div>
+          ) : viewMode === 'grid' ? (
+            /* KACHELN / GRID VIEW FOR FILES & SUBFOLDERS */
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {currentItems.map(item => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    if (item.is_folder) {
+                      navigateToFolder(item.id, item.name);
+                    } else {
+                      handleOpenInStudio(item);
+                    }
+                  }}
+                  className="bg-background border border-border/70 hover:border-blue-500/50 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group relative"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className={cn(
+                      "p-3 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
+                      item.is_folder ? "bg-amber-500/10 text-amber-500" : "bg-blue-500/10 text-blue-500"
+                    )}>
+                      {item.is_folder ? <FolderOpen size={24} /> : <FileText size={24} />}
+                    </div>
+
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      {!item.is_folder && (item.url || item.file_url) && (
+                        <button
+                          onClick={() => handleDownloadFile(item)}
+                          className="p-1.5 text-text-muted hover:text-blue-500 transition-colors bg-surface rounded-lg border border-border/50"
+                          title="Download"
+                        >
+                          <Download size={14} />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(item.id, item.is_folder)}
+                          className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-surface rounded-lg border border-border/50"
+                          title="Löschen"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
-                    <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                    <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
                       {item.name}
                       {item.is_folder ? (
-                        <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Ordner</span>
-                      ) : (item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 3600000)) ? (
-                        <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
-                          🔴 NEU
-                        </span>
+                        <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-amber-500/10 text-amber-500 rounded">Ordner</span>
+                      ) : (item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) ? (
+                        <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-red-500 text-white rounded animate-pulse">🔴 NEU</span>
                       ) : null}
                     </div>
-                    <div className="text-xs text-text-muted">
+                    <div className="text-[11px] text-text-muted font-medium mt-1">
                       {item.is_folder ? 'Ordner' : item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                   {!item.is_folder && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
-                    <button 
-                      onClick={() => handleOpenInStudio(item)} 
-                      className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-                      title="Im Brief- & Dokumenten-Studio bearbeiten"
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
+                      className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                     >
-                      <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
-                    </button>
-                  )}
-
-                  {!item.is_folder && (item.url || item.file_url) && (
-                    <button 
-                      onClick={() => handleDownloadFile(item)} 
-                      className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
-                      title="Download / Herunterladen"
-                    >
-                      <Download size={16} />
-                    </button>
-                  )}
-
-                  {canDelete && (
-                    <button 
-                      onClick={() => handleDelete(item.id, item.is_folder)} 
-                      className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border"
-                      title="Löschen"
-                    >
-                      <Trash2 size={16} />
+                      <Edit3 size={12} /> Im Studio bearbeiten
                     </button>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          ) : (
+            /* LIST VIEW FOR FILES & SUBFOLDERS */
+            <div className="divide-y divide-border/50">
+              {currentItems.map(item => (
+                <div 
+                  key={item.id} 
+                  className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-xl group cursor-pointer"
+                  onClick={() => {
+                    if (item.is_folder) {
+                      navigateToFolder(item.id, item.name);
+                    } else {
+                      handleOpenInStudio(item);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    {item.is_folder ? (
+                      <FolderOpen className="text-amber-500 shrink-0 group-hover:scale-110 transition-transform" size={22} />
+                    ) : (
+                      <FileText className="text-blue-500 shrink-0" size={22} />
+                    )}
+                    <div>
+                      <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                        {item.name}
+                        {item.is_folder ? (
+                          <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Ordner</span>
+                        ) : (item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) ? (
+                          <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
+                            🔴 NEU
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="text-xs text-text-muted">
+                        {item.is_folder ? 'Ordner' : item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                    {!item.is_folder && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                      <button 
+                        onClick={() => handleOpenInStudio(item)} 
+                        className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        title="Im Brief- & Dokumenten-Studio bearbeiten"
+                      >
+                        <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
+                      </button>
+                    )}
+
+                    {!item.is_folder && (item.url || item.file_url) && (
+                      <button 
+                        onClick={() => handleDownloadFile(item)} 
+                        className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                        title="Download / Herunterladen"
+                      >
+                        <Download size={16} />
+                      </button>
+                    )}
+
+                    {canDelete && (
+                      <button 
+                        onClick={() => handleDelete(item.id, item.is_folder)} 
+                        className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border"
+                        title="Löschen"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* KI Brief- & Dokumenten-Studio Modal */}
       <DocumentStudioModal
