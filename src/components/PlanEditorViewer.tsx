@@ -16,6 +16,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import PremiumFeature from './PremiumFeature';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { supabase } from '../lib/supabase';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -433,7 +435,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleSaveSnapshotToPitchDeck = async () => {
-    if (!currentUser || !currentUser.companyId) return;
+    if (!currentUser) return;
     addToast('Speichere CAD-Folie im Pitch Deck...', 'info');
 
     try {
@@ -1122,14 +1124,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       return;
     }
 
-    if (!currentUser || !currentUser.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
       const fileName = `PlanExport_${(planName || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
-      const filePath = `${currentUser?.companyId}/documents/${currentUser.uid}/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       await supabase.from('documents').insert({
         name: fileName,
@@ -1138,7 +1137,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         project_id: currentProjectId,
         category: currentProjectId === 'global' ? 'company' : 'projects', 
         owner_id: currentUser.uid,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         uploaded_by: currentUser.uid,
         type: 'application/pdf',
         size: `${Math.round(blob.size / 1024)} KB`,
@@ -1148,9 +1147,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         date: new Date().toLocaleDateString('de-CH')
       });
 
+      await notifyNewDocument(safeCompanyId, fileName, 'Plan-Export', currentProjectId);
+
       addToast(t('save_to_data_room') + ' erfolgreich!', 'success');
       setIsPdfStudioOpen(false);
     } catch (error) {
+      console.error("Cloud Save Error:", error);
       addToast('Fehler beim Speichern in der Cloud.', 'error');
     }
   };
