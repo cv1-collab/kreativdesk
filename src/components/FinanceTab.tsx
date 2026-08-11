@@ -675,9 +675,9 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        {hasPdf && (
+                        {hasPdf && !!sanitizeUrl(pdfUrl) && (
                           <a 
-                            href={pdfUrl} 
+                            href={sanitizeUrl(pdfUrl)} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="p-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-1 text-xs font-bold"
