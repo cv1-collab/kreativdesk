@@ -9,7 +9,8 @@ import {
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
   Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, 
   Search, ArrowUpDown, LayoutGrid, List, DollarSign, Landmark, Users, TrendingUp, 
-  Megaphone, Settings, Shield, Eye, ArrowRight, CheckCircle2, Clock, Image as ImageIcon, Box
+  Megaphone, Settings, Shield, Eye, ArrowRight, CheckCircle2, Clock, Image as ImageIcon, Box,
+  Archive, CheckSquare, Square
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
@@ -34,7 +35,11 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     open_folder: 'Open Folder',
     open_project_docs: 'Open Project Files',
     loose_files: 'Unassigned / Root Documents',
-    search_placeholder: 'Search documents & folders...'
+    search_placeholder: 'Search documents & folders...',
+    zip_download: 'Download as .ZIP Archive',
+    select_all: 'Select All',
+    deselect_all: 'Deselect All',
+    files_selected: 'files selected'
   },
   de: { 
     document_hub: 'Dokumenten Hub', 
@@ -54,7 +59,11 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     open_folder: 'Ordner öffnen',
     open_project_docs: 'Projektunterlagen öffnen',
     loose_files: 'Kürzlich erstellte / Nicht zugeordnete Dokumente',
-    search_placeholder: 'Dokumente & Ordner suchen...'
+    search_placeholder: 'Dokumente & Ordner suchen...',
+    zip_download: 'Als .ZIP-Archiv herunterladen',
+    select_all: 'Alle auswählen',
+    deselect_all: 'Auswahl aufheben',
+    files_selected: 'Dateien ausgewählt'
   }
 };
 
@@ -186,6 +195,9 @@ export default function Documents() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [isZipping, setIsZipping] = useState(false);
 
   const [studioDocTitle, setStudioDocTitle] = useState('');
   const [studioDocContent, setStudioDocContent] = useState('');
@@ -403,12 +415,14 @@ export default function Documents() {
   const navigateToFolder = (folderId: string, folderName: string) => {
     setCurrentFolderId(folderId);
     setFolderPath(prev => [...prev, { id: folderId, name: folderName }]);
+    setSelectedDocIds([]);
   };
 
   const navigateBreadcrumb = (index: number) => {
     const newPath = folderPath.slice(0, index + 1);
     setFolderPath(newPath);
     setCurrentFolderId(newPath[newPath.length - 1].id);
+    setSelectedDocIds([]);
     if (index === 0) {
       setSelectedProjectId(null);
     }
@@ -458,7 +472,7 @@ export default function Documents() {
     return true;
   });
 
-  // Separate Folders and Files for Root View to prevent duplicate card rendering
+  // Separate Folders and Files for Root View
   const allFoldersInCurrentScope = deduplicatedDocs.filter(d => d.is_folder);
   const allFilesInCurrentScope = deduplicatedDocs.filter(d => !d.is_folder);
 
@@ -495,6 +509,86 @@ export default function Documents() {
   const sortedFiles = sortItems(allFilesInCurrentScope);
   const sortedFolders = sortItems(allFoldersInCurrentScope);
 
+  // Multi-selection & ZIP Bulk Download Handlers
+  const toggleDocSelection = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedDocIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const toggleSelectAllFiles = () => {
+    if (selectedDocIds.length === sortedFiles.length) {
+      setSelectedDocIds([]);
+    } else {
+      setSelectedDocIds(sortedFiles.map(f => f.id));
+    }
+  };
+
+  const handleBulkZipDownload = async () => {
+    if (selectedDocIds.length === 0) return;
+    setIsZipping(true);
+    addToast(`Erstelle ZIP-Archiv für ${selectedDocIds.length} Bauakte(n)...`, 'info');
+
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      const selectedFiles = documents.filter(d => selectedDocIds.includes(d.id));
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const item = selectedFiles[i];
+        const fileUrl = item.url || item.file_url;
+        const fileName = item.name || `Dokument_${i + 1}.txt`;
+
+        if (!fileUrl) continue;
+
+        try {
+          if (fileUrl.startsWith('data:')) {
+            const parts = fileUrl.split(',');
+            const meta = parts[0] || '';
+            const rawData = parts[1] || '';
+            const isBase64 = meta.includes('base64');
+            if (isBase64) {
+              zip.file(fileName, rawData, { base64: true });
+            } else {
+              zip.file(fileName, decodeURIComponent(rawData));
+            }
+          } else {
+            const resp = await fetch(fileUrl);
+            const blob = await resp.blob();
+            zip.file(fileName, blob);
+          }
+        } catch (err) {
+          console.warn(`Fehler beim Hinzufügen von ${fileName} zum ZIP:`, err);
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const currentScopeName = selectedProjectId 
+        ? (projects.find((p: any) => p.id === selectedProjectId)?.name || 'Projekt') 
+        : (folderPath[folderPath.length - 1]?.name || 'Bauakten');
+      const zipFileName = `Bauakten_Export_${currentScopeName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.zip`;
+
+      const blobUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = zipFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+      addToast(`🎉 ${selectedFiles.length} Datei(en) erfolgreich als ZIP heruntergeladen!`, 'success');
+      setSelectedDocIds([]);
+    } catch (err) {
+      console.error("ZIP Generation error:", err);
+      addToast("Fehler beim Erstellen des ZIP-Archivs", "error");
+    } finally {
+      setIsZipping(false);
+    }
+  };
+
   // Calculate file counts for company folders
   const getCompanyFolderCount = (folderName: string) => {
     const folderObj = documents.find(d => d.is_folder && d.name === folderName);
@@ -507,10 +601,7 @@ export default function Documents() {
     return documents.filter(d => d.project_id === projId).length;
   };
 
-  // List of preset keys for company root
   const presetKeys = Object.keys(COMPANY_FOLDER_PRESETS);
-
-  // Custom user-created folders in root
   const customRootFolders = sortedFolders.filter(f => !presetKeys.includes(f.name));
 
   return (
@@ -567,6 +658,7 @@ export default function Documents() {
               setActiveTab('company');
               setCurrentFolderId('root');
               setSelectedProjectId(null);
+              setSelectedDocIds([]);
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
@@ -585,6 +677,7 @@ export default function Documents() {
               setActiveTab('projects');
               setCurrentFolderId('root');
               setSelectedProjectId(null);
+              setSelectedDocIds([]);
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
@@ -698,6 +791,35 @@ export default function Documents() {
           <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-xs hover:bg-blue-500 transition-all cursor-pointer">Erstellen</button>
           <button type="button" onClick={() => setIsCreatingFolder(false)} className="px-3 py-2 text-text-muted hover:text-text-primary font-bold text-xs cursor-pointer">Abbrechen</button>
         </form>
+      )}
+
+      {/* 🔥 BULK SELECTION & ZIP DOWNLOAD BAR */}
+      {selectedDocIds.length > 0 && (
+        <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in zoom-in-95">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="text-blue-500" size={20} />
+            <span className="font-extrabold text-sm text-text-primary">
+              {selectedDocIds.length} {t('files_selected')}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={handleBulkZipDownload}
+              disabled={isZipping}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {isZipping ? <Loader2 size={16} className="animate-spin" /> : <Archive size={16} />}
+              📦 {t('zip_download')} ({selectedDocIds.length})
+            </button>
+            <button
+              onClick={() => setSelectedDocIds([])}
+              className="px-3 py-2 bg-surface hover:bg-background border border-border text-text-muted hover:text-text-primary font-bold text-xs rounded-xl transition-all cursor-pointer"
+            >
+              {t('deselect_all')}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* ========================================================= */}
@@ -946,12 +1068,34 @@ export default function Documents() {
       {/* ========================================================= */}
       {(currentFolderId !== 'root' || selectedProjectId || searchTerm || sortedFiles.length > 0) && (
         <div className="space-y-4">
-          {currentFolderId === 'root' && !selectedProjectId && sortedFiles.length > 0 && !searchTerm && (
-            <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 pt-4">
-              <FileText size={16} className="text-blue-500" />
-              {t('loose_files')} ({sortedFiles.length})
-            </h4>
-          )}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            {currentFolderId === 'root' && !selectedProjectId && sortedFiles.length > 0 && !searchTerm && (
+              <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 pt-2">
+                <FileText size={16} className="text-blue-500" />
+                {t('loose_files')} ({sortedFiles.length})
+              </h4>
+            )}
+
+            {/* Select All Toggle Button */}
+            {sortedFiles.length > 0 && (
+              <button
+                onClick={toggleSelectAllFiles}
+                className="text-xs font-bold text-text-muted hover:text-blue-500 flex items-center gap-1.5 py-1 px-2.5 bg-surface border border-border/70 rounded-xl transition-colors cursor-pointer ml-auto"
+              >
+                {selectedDocIds.length === sortedFiles.length ? (
+                  <>
+                    <CheckSquare size={14} className="text-blue-500" />
+                    {t('deselect_all')}
+                  </>
+                ) : (
+                  <>
+                    <Square size={14} />
+                    {t('select_all')} ({sortedFiles.length})
+                  </>
+                )}
+              </button>
+            )}
+          </div>
 
           <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
             {sortedFiles.length === 0 && (currentFolderId !== 'root' || selectedProjectId) ? (
@@ -998,62 +1142,82 @@ export default function Documents() {
                   </div>
                 ))}
 
-                {/* Render Files */}
-                {sortedFiles.map(item => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleOpenInStudio(item)}
-                    className="bg-background border border-border/70 hover:border-blue-500/50 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group relative"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-                        <FileText size={24} />
-                      </div>
-
-                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                        {(item.url || item.file_url) && (
+                {/* Render Files with Checkboxes */}
+                {sortedFiles.map(item => {
+                  const isSelected = selectedDocIds.includes(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => handleOpenInStudio(item)}
+                      className={cn(
+                        "bg-background border p-4 rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between gap-3 group relative",
+                        isSelected ? "border-blue-500 bg-blue-500/5 ring-2 ring-blue-500/20" : "border-border/70 hover:border-blue-500/50"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleDownloadFile(item)}
-                            className="p-1.5 text-text-muted hover:text-blue-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
-                            title="Download"
+                            onClick={(e) => toggleDocSelection(item.id, e)}
+                            className="p-1 text-text-muted hover:text-blue-500 cursor-pointer transition-colors"
+                            title="Auswählen"
                           >
-                            <Download size={14} />
+                            {isSelected ? (
+                              <CheckSquare size={18} className="text-blue-500" />
+                            ) : (
+                              <Square size={18} className="text-text-muted opacity-60 hover:opacity-100" />
+                            )}
                           </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            onClick={() => handleDelete(item.id, false)}
-                            className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
-                            title="Löschen"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
 
-                    <div>
-                      <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
-                        {item.name}
-                        {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
-                          <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-red-500 text-white rounded animate-pulse">🔴 NEU</span>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-text-muted font-medium mt-1">
-                        {item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
-                      </div>
-                    </div>
+                          <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+                            <FileText size={20} />
+                          </div>
+                        </div>
 
-                    {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
-                        className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Edit3 size={12} /> Im Studio bearbeiten
-                      </button>
-                    )}
-                  </div>
-                ))}
+                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                          {(item.url || item.file_url) && (
+                            <button
+                              onClick={() => handleDownloadFile(item)}
+                              className="p-1.5 text-text-muted hover:text-blue-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
+                              title="Download"
+                            >
+                              <Download size={14} />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(item.id, false)}
+                              className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-surface rounded-lg border border-border/50 cursor-pointer"
+                              title="Löschen"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="font-bold text-sm text-text-primary line-clamp-2 group-hover:text-blue-500 transition-colors flex items-center gap-1.5">
+                          {item.name}
+                          {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
+                            <span className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0.5 bg-red-500 text-white rounded animate-pulse">🔴 NEU</span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-text-muted font-medium mt-1">
+                          {item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
+                        </div>
+                      </div>
+
+                      {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
+                          className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <Edit3 size={12} /> Im Studio bearbeiten
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               /* LIST VIEW FOR FILES IN SUBFOLDERS / SEARCH */
@@ -1086,62 +1250,80 @@ export default function Documents() {
                   </div>
                 ))}
 
-                {sortedFiles.map(item => (
-                  <div 
-                    key={item.id} 
-                    className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-xl group cursor-pointer"
-                    onClick={() => handleOpenInStudio(item)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-blue-500 shrink-0" size={22} />
-                      <div>
-                        <div className="font-bold text-sm text-text-primary flex items-center gap-2">
-                          {item.name}
-                          {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
-                            <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
-                              🔴 NEU
-                            </span>
+                {sortedFiles.map(item => {
+                  const isSelected = selectedDocIds.includes(item.id);
+                  return (
+                    <div 
+                      key={item.id} 
+                      className={cn(
+                        "py-3 px-4 flex items-center justify-between transition-colors rounded-xl group cursor-pointer",
+                        isSelected ? "bg-blue-500/10 border-l-4 border-blue-500" : "hover:bg-background/60"
+                      )}
+                      onClick={() => handleOpenInStudio(item)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={(e) => toggleDocSelection(item.id, e)}
+                          className="p-1 text-text-muted hover:text-blue-500 cursor-pointer"
+                          title="Auswählen"
+                        >
+                          {isSelected ? (
+                            <CheckSquare size={18} className="text-blue-500" />
+                          ) : (
+                            <Square size={18} className="text-text-muted opacity-60 hover:opacity-100" />
                           )}
-                        </div>
-                        <div className="text-xs text-text-muted">
-                          {item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
+                        </button>
+
+                        <FileText className="text-blue-500 shrink-0" size={22} />
+                        <div>
+                          <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+                            {item.name}
+                            {(item.type === 'vorlage' || (new Date().getTime() - new Date(item.created_at || 0).getTime() < 86400000)) && (
+                              <span className="text-[10px] uppercase tracking-widest font-black px-2 py-0.5 bg-red-500 text-white rounded-md animate-pulse flex items-center gap-1">
+                                🔴 NEU
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-text-muted">
+                            {item.size || 'Datei'} • {new Date(item.created_at || Date.now()).toLocaleDateString('de-CH')}
+                          </div>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                          <button 
+                            onClick={() => handleOpenInStudio(item)} 
+                            className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            title="Im Brief- & Dokumenten-Studio bearbeiten"
+                          >
+                            <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
+                          </button>
+                        )}
+
+                        {(item.url || item.file_url) && (
+                          <button 
+                            onClick={() => handleDownloadFile(item)} 
+                            className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                            title="Download / Herunterladen"
+                          >
+                            <Download size={16} />
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button 
+                            onClick={() => handleDelete(item.id, false)} 
+                            className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                            title="Löschen"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                      {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
-                        <button 
-                          onClick={() => handleOpenInStudio(item)} 
-                          className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-                          title="Im Brief- & Dokumenten-Studio bearbeiten"
-                        >
-                          <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
-                        </button>
-                      )}
-
-                      {(item.url || item.file_url) && (
-                        <button 
-                          onClick={() => handleDownloadFile(item)} 
-                          className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
-                          title="Download / Herunterladen"
-                        >
-                          <Download size={16} />
-                        </button>
-                      )}
-
-                      {canDelete && (
-                        <button 
-                          onClick={() => handleDelete(item.id, false)} 
-                          className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
-                          title="Löschen"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
