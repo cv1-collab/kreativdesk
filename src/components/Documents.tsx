@@ -178,6 +178,61 @@ export default function Documents() {
     }
   };
 
+  const handleDownloadFile = (item: any) => {
+    const fileUrl = item.url || item.file_url;
+    if (!fileUrl) {
+      addToast('Keine Datei-URL vorhanden', 'error');
+      return;
+    }
+
+    if (fileUrl.startsWith('data:')) {
+      try {
+        const parts = fileUrl.split(',');
+        const meta = parts[0] || '';
+        const rawData = parts[1] || '';
+        const isBase64 = meta.includes('base64');
+        const mimeMatch = meta.match(/data:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'text/plain';
+
+        let blob: Blob;
+        if (isBase64) {
+          const byteCharacters = atob(rawData);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          blob = new Blob([byteArray], { type: mime });
+        } else {
+          const decodedText = decodeURIComponent(rawData);
+          blob = new Blob([decodedText], { type: mime + ';charset=utf-8' });
+        }
+
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = item.name || 'Dokument.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        addToast(`Download "${item.name}" gestartet!`, 'success');
+      } catch (e) {
+        console.error("DataURL download error:", e);
+        addToast('Fehler beim Herunterladen der Datei', 'error');
+      }
+    } else {
+      const a = document.createElement('a');
+      a.href = fileUrl;
+      a.target = '_blank';
+      a.download = item.name || 'Dokument';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      addToast(`Download "${item.name}" gestartet!`, 'info');
+    }
+  };
+
   const handleDelete = async (id: string, isFolder: boolean) => {
     if (!window.confirm(t('confirm_delete'))) return;
     try {
@@ -414,16 +469,14 @@ export default function Documents() {
                 </div>
 
                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                  {!item.is_folder && !!sanitizeUrl(item.url || item.file_url) && (
-                    <a 
-                      href={sanitizeUrl(item.url || item.file_url)} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border"
-                      title="Download"
+                  {!item.is_folder && (item.url || item.file_url) && (
+                    <button 
+                      onClick={() => handleDownloadFile(item)} 
+                      className="p-2 text-text-muted hover:text-blue-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                      title="Download / Herunterladen"
                     >
                       <Download size={16} />
-                    </a>
+                    </button>
                   )}
 
                   {canDelete && (
