@@ -1,5 +1,5 @@
 import { checkIsSuperAdmin } from '../config/admins';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { jsPDF } from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
@@ -111,62 +111,62 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [realUsers, setRealUsers] = useState<any[]>([]);
   const [crmUsers, setCrmUsers] = useState<any[]>([]);
 
-  useEffect(() => {
+  const fetchAllContacts = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const fetchAllContacts = async () => {
-      let profilesData: any[] = [];
-      const companyId = currentUser.companyId;
+    let profilesData: any[] = [];
+    const companyId = currentUser.companyId;
 
-      if (companyId) {
-        const { data } = await supabase.from('profiles').select('*').eq('company_id', companyId);
-        profilesData = data || [];
+    if (companyId) {
+      const { data } = await supabase.from('profiles').select('*').eq('company_id', companyId);
+      profilesData = data || [];
+    }
+
+    if (!profilesData.some(p => p.id === currentUser.uid)) {
+      const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
+      if (myProfile) {
+        profilesData.push(myProfile);
       }
+    }
 
-      if (!profilesData.some(p => p.id === currentUser.uid)) {
-        const { data: myProfile } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
-        if (myProfile) {
-          profilesData.push(myProfile);
-        }
-      }
+    const safeCompanyId = companyId || currentUser.uid;
+    const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
+    
+    const mappedCrm = (crmData || []).map(u => ({
+      id: u.id,
+      firstName: u.first_name || u.firstName || u.name?.split(' ')[0] || u.name || '',
+      lastName: u.last_name || u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
+      name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
+      email: u.email || '',
+      phone: u.phone || '',
+      company: u.company || '',
+      status: u.status || 'neu',
+      isExternal: u.is_external !== undefined ? u.is_external : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external')
+    }));
 
-      const safeCompanyId = companyId || currentUser.uid;
-      const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
-      
-      const mappedCrm = (crmData || []).map(u => ({
-        id: u.id,
-        firstName: u.first_name || u.firstName || u.name?.split(' ')[0] || u.name || '',
-        lastName: u.last_name || u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
-        name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
-        email: u.email || '',
-        phone: u.phone || '',
-        company: u.company || '',
-        status: u.status || 'neu',
-        isExternal: u.is_external !== undefined ? u.is_external : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external')
-      }));
+    const mappedProfiles = (profilesData || []).map(p => ({
+      id: p.id,
+      firstName: p.name?.split(' ')[0] || p.name || 'Team',
+      lastName: p.name?.split(' ').slice(1).join(' ') || '',
+      name: p.name || p.email || 'Team Member',
+      email: p.email,
+      company: p.company_name || 'Kreativ Desk',
+      status: 'team',
+      role: p.role || 'owner',
+      isExternal: false
+    }));
 
-      const mappedProfiles = (profilesData || []).map(p => ({
-        id: p.id,
-        firstName: p.name?.split(' ')[0] || p.name || 'Team',
-        lastName: p.name?.split(' ').slice(1).join(' ') || '',
-        name: p.name || p.email || 'Team Member',
-        email: p.email,
-        company: p.company_name || 'Kreativ Desk',
-        status: 'team',
-        role: p.role || 'owner',
-        isExternal: false
-      }));
+    const combinedMap = new Map();
+    mappedProfiles.forEach(p => { if (p.id || p.email) combinedMap.set(p.id || p.email, p); });
+    mappedCrm.forEach(c => { if (c.id || c.email) combinedMap.set(c.id || c.email, c); });
 
-      const combinedMap = new Map();
-      mappedProfiles.forEach(p => { if (p.id || p.email) combinedMap.set(p.id || p.email, p); });
-      mappedCrm.forEach(c => { if (c.id || c.email) combinedMap.set(c.id || c.email, c); });
-
-      const combined = Array.from(combinedMap.values());
-      setCrmUsers(combined);
-      setRealUsers(profilesData || []);
-    };
-
-    fetchAllContacts();
+    const combined = Array.from(combinedMap.values());
+    setCrmUsers(combined);
+    setRealUsers(profilesData || []);
   }, [currentUser]);
+
+  useEffect(() => {
+    fetchAllContacts();
+  }, [fetchAllContacts]);
 
   const vcfInputRef = useRef<HTMLInputElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -179,7 +179,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [newContact, setNewContact] = useState<any>({
     id: null, firstName: '', lastName: '', email: '', phone: '', company: '',
     street: '', zipCity: '', website: '', uid: '', vat: '', description: '',
-    isExternal: false, status: 'neu'
+    isExternal: true, status: 'neu'
   });
 
   const [vcardSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
@@ -208,16 +208,22 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         
         await supabase.from('users').delete().eq('id', contactId);
         await supabase.from('company_users').delete().eq('id', contactId);
+        await supabase.from('profiles').delete().eq('id', contactId);
         
         await logAuditAction({
           action: 'USER_REMOVED',
-          userId: currentUser.uid,
+          userId: currentUser?.uid || '',
           companyId: safeCompanyId,
           details: { removedUserId: contactId }
         });
         
+        setCrmUsers((prev: any[]) => prev.filter(u => u.id !== contactId));
+        setRealUsers((prev: any[]) => prev.filter(u => u.id !== contactId));
         if (selectedContact?.id === contactId) setSelectedContact(null);
+
         addToast(t('delete') + ' ' + t('completed'), 'success');
+        fetchCompanyUsers?.();
+        fetchAllContacts();
       } catch (error) { 
         addToast(t('upload_failed'), 'error'); 
       }
@@ -248,12 +254,18 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           await offboardCompanyUser(id, safeCompanyId);
           await supabase.from('users').delete().eq('id', id);
           await supabase.from('company_users').delete().eq('id', id);
+          await supabase.from('profiles').delete().eq('id', id);
         }));
         
+        setCrmUsers((prev: any[]) => prev.filter(u => !deletableIds.includes(u.id)));
+        setRealUsers((prev: any[]) => prev.filter(u => !deletableIds.includes(u.id)));
         setSelectedIds([]); 
         setIsSelectionMode(false);
         if (selectedContact && deletableIds.includes(selectedContact.id)) setSelectedContact(null);
+
         addToast(`${deletableIds.length} ${t('contacts_deleted')}`, 'success');
+        fetchCompanyUsers?.();
+        fetchAllContacts();
       } catch (e) { 
         addToast(t('upload_failed'), 'error'); 
       }

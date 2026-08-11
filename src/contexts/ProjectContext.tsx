@@ -293,7 +293,15 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const removeCompanyUser = async (id: string) => {
-    fetchCompanyUsers();
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    try {
+      await supabase.from('company_users').delete().eq('id', id);
+      await supabase.from('profiles').delete().eq('id', id).eq('company_id', safeCompanyId);
+    } catch (e) {
+      console.error("Fehler beim Löschen des Benutzers:", e);
+    }
+    await fetchCompanyUsers();
   };
 
   const addProjectMember = async (projectId: string, memberData: any) => {
