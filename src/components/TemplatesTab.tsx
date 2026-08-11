@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
-  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check
+  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check, Building2, Briefcase
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useProject } from '../contexts/ProjectContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
@@ -58,6 +59,9 @@ export default function TemplatesTab({
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
   const { currentUser } = useAuth() || {};
+  const { activeProjectId, projects } = useProject() as any;
+  const activeProject = projects?.find((p: any) => p.id === activeProjectId);
+
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -67,6 +71,7 @@ export default function TemplatesTab({
   const [generatedTemplate, setGeneratedTemplate] = useState('');
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [saveScope, setSaveScope] = useState<'company' | 'project'>('company');
 
   const handleSaveToDocuments = async () => {
     if (!generatedTemplate || isSavingDoc) return;
@@ -74,11 +79,14 @@ export default function TemplatesTab({
     try {
       const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
       const title = aiPrompt.trim() ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)';
+      const isProjectScope = saveScope === 'project';
+      const targetProjectId = isProjectScope ? (activeProjectId || 'global') : 'global';
+      const category = isProjectScope ? 'projects' : 'company';
       
       const { data, error } = await supabase.from('documents').insert({
         company_id: safeCompanyId,
-        project_id: 'global',
-        category: 'company',
+        project_id: targetProjectId,
+        category: category,
         folder_id: 'root',
         is_folder: false,
         name: title,
@@ -95,7 +103,8 @@ export default function TemplatesTab({
       localStorage.setItem('last_created_doc_title', title);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title, id: data?.id } }));
 
-      addToast(`Vorlage "${title}" erfolgreich in der Bauakte gespeichert!`, 'success');
+      const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';
+      addToast(`Vorlage "${title}" erfolgreich in ${locationName} gespeichert!`, 'success');
       setIsAiModalOpen(false);
     } catch (err: any) {
       console.error("Save doc error:", err);
@@ -268,23 +277,57 @@ Muster AG
 
             {generatedTemplate && (
               <div className="space-y-3 pt-2">
-                <div className="p-4 bg-background border border-border rounded-2xl max-h-60 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary">
+                <div className="p-4 bg-background border border-border rounded-2xl max-h-56 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary">
                   {generatedTemplate}
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Ablageort Auswahl */}
+                <div className="space-y-1.5 bg-background border border-border/50 p-3 rounded-2xl">
+                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">Ablageort für Dokument wählen:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSaveScope('company')}
+                      className={cn(
+                        "px-3 py-2 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
+                        saveScope === 'company'
+                          ? "bg-blue-600/10 text-blue-500 border-blue-500/40 shadow-sm"
+                          : "bg-surface text-text-muted border-border hover:text-text-primary"
+                      )}
+                    >
+                      <span className="flex items-center gap-1.5 font-bold"><Building2 size={14} /> Firmenunterlagen</span>
+                      <span className="text-[10px] font-normal text-text-muted">Company Dashboard ➔ Dokumente</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSaveScope('project')}
+                      className={cn(
+                        "px-3 py-2 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
+                        saveScope === 'project'
+                          ? "bg-emerald-600/10 text-emerald-500 border-emerald-500/40 shadow-sm"
+                          : "bg-surface text-text-muted border-border hover:text-text-primary"
+                      )}
+                    >
+                      <span className="flex items-center gap-1.5 font-bold"><Briefcase size={14} /> Projekt-Bauakte</span>
+                      <span className="text-[10px] font-normal text-text-muted truncate">{activeProject?.name || 'Aktuelles Projekt'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={handleSaveToDocuments}
                     disabled={isSavingDoc}
-                    className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className={cn("flex-1 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50", saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20")}
                   >
                     {isSavingDoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                    In Bauakte / Dokumente speichern
+                    {saveScope === 'company' ? 'In Firmen-Dokumente speichern' : `In Projekt-Bauakte speichern`}
                   </button>
                   <button
                     type="button"
                     onClick={handleCopyText}
-                    className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="px-4 py-3 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                     {isCopied ? 'Kopiert' : 'Kopieren'}
