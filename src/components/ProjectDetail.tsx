@@ -45,13 +45,14 @@ export default function ProjectDetail() {
   const [tasks, setTasks] = useState<any[]>([]);
 
   const fetchTasks = async () => {
-    if (!projectId || !currentUser?.companyId) return;
+    if (!projectId || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
       const { data } = await supabase
         .from('project_tasks')
         .select('*')
         .eq('project_id', projectId)
-        .eq('company_id', currentUser.companyId);
+        .eq('company_id', safeCompanyId);
 
       if (data) setTasks(data);
     } catch (err) {
@@ -81,12 +82,13 @@ export default function ProjectDetail() {
 
   const handleAddTask = async (status: string) => {
     const title = window.prompt(t('task_title'));
-    if (title && currentUser?.companyId && projectId) {
+    if (title && currentUser && projectId) {
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
       await supabase.from('project_tasks').insert({
         title,
         status,
         project_id: projectId,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         owner_id: currentUser.uid,
         created_at: new Date().toISOString()
       });

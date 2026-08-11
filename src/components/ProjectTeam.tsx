@@ -83,7 +83,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   };
 
   const handleAddExistingUser = async () => {
-    if (!selectedUserId || !currentProjectId || !currentUser?.companyId) return;
+    if (!selectedUserId || !currentProjectId || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     if (!checkSeatLimit()) return;
     setIsProcessing(true);
     try {
@@ -106,7 +107,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   };
 
   const handleAddNewUser = async () => {
-    if (!newUserName || !newUserEmail || !currentProjectId || !currentUser?.companyId) return;
+    if (!newUserName || !newUserEmail || !currentProjectId || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     if (!checkSeatLimit()) return;
     setIsProcessing(true);
     try {
@@ -118,7 +120,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
         email: newUserEmail, 
         role: newUserCompanyRole,
         owner_id: currentUser.uid,
-        company_id: currentUser.companyId 
+        company_id: safeCompanyId 
       });
       
       await addProjectMember(currentProjectId, {
