@@ -452,6 +452,7 @@ ______________________________   ______________________________
           onClose={() => setIsPdfStudioOpen(false)}
           title={docTitle}
           fileName={docTitle.replace(/\s+/g, '_')}
+          onSaveCloud={handleSaveDocument}
         >
           <div className="p-8 bg-white text-slate-900 font-sans max-w-2xl mx-auto space-y-6">
             <div className="border-b-2 border-slate-900 pb-4">

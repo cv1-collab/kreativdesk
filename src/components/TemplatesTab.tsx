@@ -12,6 +12,7 @@ import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
 
 import DocumentStudioModal from './DocumentStudioModal';
+import { sendNotification } from '../lib/notifications';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
