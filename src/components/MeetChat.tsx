@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles,
-  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions
+  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { callGeminiAPI, callGeminiEmbedAPI } from '../utils/geminiClient';
@@ -586,6 +586,23 @@ export default function MeetChat() {
     setSelectedUserIds(prev => prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]);
   };
 
+  const handleQuickInvite = (mode: 'copy' | 'whatsapp' | 'email') => {
+    const activeCallRoomId = callId || joinCallId || generatedMeetingId || `meet-${Date.now()}`;
+    const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
+    const textMsg = `Hallo! Du bist zu einem Live-Videocall eingeladen. Klicke einfach auf diesen Link, um ohne Login beizutreten:\n${inviteUrl}`;
+
+    if (mode === 'copy') {
+      navigator.clipboard.writeText(inviteUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+      addToast('📋 Einladungs-Link kopiert! Externe Partner & Bauherren können ohne Login beitreten.', 'success');
+    } else if (mode === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(textMsg)}`, '_blank');
+    } else if (mode === 'email') {
+      window.open(`mailto:?subject=${encodeURIComponent('Videocall Einladung - Kreativ Desk')}&body=${encodeURIComponent(textMsg)}`, '_blank');
+    }
+  };
+
   const [isMobileViewport, setIsMobileViewport] = useState(() => window.innerWidth < 1024);
   useEffect(() => {
     const handleResize = () => setIsMobileViewport(window.innerWidth < 1024);
@@ -634,6 +651,14 @@ export default function MeetChat() {
             {/* 🔥 HIER IST DIE ZWEITE KLASSE HINZUGEFÜGT (tour-meet-schedule) */}
             <button onClick={openScheduleModal} className="tour-meet-schedule px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 shadow-sm">
               <Calendar size={16} /> {t('schedule_call')}
+            </button>
+            <button 
+              onClick={() => handleQuickInvite('copy')} 
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md text-sm font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              title="Gäste-Einladungslink ohne Login kopieren"
+            >
+              {copiedLink ? <CheckCircle2 size={16} /> : <UserPlus size={16} />}
+              <span>Link kopieren & Einladen</span>
             </button>
           </div>
         </header>
@@ -702,6 +727,38 @@ export default function MeetChat() {
                     </button>
                   </div>
 
+                  {/* 🔥 Schnell-Teilen per WhatsApp & E-Mail für externe Partner */}
+                  <div className="w-full bg-surface/50 border border-border/80 p-4 rounded-2xl space-y-3 mb-6">
+                    <div className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted flex items-center justify-center gap-1.5">
+                      <Sparkles size={14} className="text-emerald-500" />
+                      Schnell-Einladung für externe Partner & Bauherren
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        onClick={() => handleQuickInvite('copy')}
+                        className="px-3 py-2 bg-background hover:bg-surface border border-border rounded-xl font-bold text-xs text-text-primary flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                      >
+                        {copiedLink ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        Link kopieren
+                      </button>
+
+                      <button
+                        onClick={() => handleQuickInvite('whatsapp')}
+                        className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                      >
+                        💬 WhatsApp
+                      </button>
+
+                      <button
+                        onClick={() => handleQuickInvite('email')}
+                        className="px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                      >
+                        ✉️ E-Mail
+                      </button>
+                    </div>
+                  </div>
+
                   <div className="relative flex items-center gap-2 w-full mb-6"><div className="flex-1 h-px bg-border/50"></div><span className="text-xs text-text-muted font-bold uppercase tracking-widest">ODER</span><div className="flex-1 h-px bg-border/50"></div></div>
 
                   <div className="w-full flex gap-2">
@@ -742,6 +799,10 @@ export default function MeetChat() {
                     <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
                     <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
                     <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
+                    <button onClick={() => handleQuickInvite('copy')} className="p-3 md:p-4 rounded-xl transition-all bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center gap-2 font-bold text-xs" title="Gäste-Einladungslink kopieren">
+                      {copiedLink ? <CheckCircle2 size={20} /> : <UserPlus size={20} />}
+                      <span className="hidden lg:inline">Link kopieren</span>
+                    </button>
                     <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
                     <button onClick={hangUp} className="px-5 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2"><PhoneOff size={18} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
                   </div>

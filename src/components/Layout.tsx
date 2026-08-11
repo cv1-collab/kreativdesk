@@ -11,9 +11,9 @@ import { useTour } from '../contexts/TourContext';
 import { hasFeature } from '../utils/planFeatures';
 import { Lock } from 'lucide-react';
 
-import { 
+import {
   LayoutDashboard, Calendar, DollarSign, Box, Map,
-  Video, PenTool, Presentation, Camera, 
+  Video, PenTool, Presentation, Camera,
   ArrowLeft, ShieldAlert, FileText, UserCheck,
   Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X
 } from 'lucide-react';
@@ -43,26 +43,26 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 export default function Layout() {
   const { projectId } = useParams();
   const navigate = useNavigate();
-  
+
   const { projects, timeEntries } = useProject() as any;
-  const { currentUser, logout = async () => {} } = useAuth() || {};
+  const { currentUser, logout = async () => { } } = useAuth() || {};
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t: globalT } = useLanguage();
   const { startTour } = useTour();
 
   const { addToast } = useToast();
-  
+
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [showPitchModal, setShowPitchModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  
+
   const [notifications, setNotifications] = useState<any[]>([]);
   const [hasUnread, setHasUnread] = useState(false);
   const [lastSeen, setLastSeen] = useState<number>(() => parseInt(localStorage.getItem('lastSeenNotifs') || '0'));
-  
+
   // PWA & Offline State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
@@ -149,26 +149,34 @@ export default function Layout() {
   const projectHours = safeTimeEntries.filter((e: any) => e.projectId === project?.id).reduce((sum: number, e: any) => sum + e.hours, 0) || 0;
 
   const menuGroups = [
-    { title: t('steuerung'), items: [ 
-      { id: '', icon: LayoutDashboard, label: t('project_overview'), className: 'tour-proj-dashboard' }, 
-      ...(currentUser?.role === 'owner' || currentUser?.canViewFinance ? [{ id: 'finance', icon: DollarSign, label: t('finance_budget'), className: 'tour-proj-finance' }] : []),
-      { id: 'calendar', icon: Calendar, label: t('smart_calendar'), className: 'tour-proj-calendar' } 
-    ]},
-    { title: t('planung_bim'), items: [ 
-      { id: 'bim', icon: Box, label: t('3d_viewer'), className: 'tour-proj-bim', featureId: '3d_bim' }, 
-      { id: 'plans', icon: Map, label: t('cad_plans'), className: 'tour-proj-cad' } 
-    ]},
-    { title: t('ausfuehrung_kollaboration'), items: [ 
-      { id: 'defects', icon: ShieldAlert, label: t('defects'), className: 'tour-proj-defects' }, 
-      { id: 'site', icon: Camera, label: t('bau_kamera'), className: 'tour-proj-camera' }, 
-      { id: 'whiteboard', icon: PenTool, label: t('whiteboard'), className: 'tour-proj-whiteboard' }, 
-      { id: 'meet', icon: Video, label: t('meet_chat'), className: 'tour-proj-meet' } 
-    ]},
-    { title: t('datenraum'), items: [ 
-      { id: 'documents', icon: FileText, label: t('bau_akte'), className: 'tour-proj-docs' }, 
-      { id: 'pitch', icon: Presentation, label: t('pitch_deck'), className: 'tour-proj-pitch', featureId: 'ai_audit' }, 
-      { id: 'team', icon: UserCheck, label: t('projekt_zugriffe'), className: 'tour-proj-team' } 
-    ]}
+    {
+      title: t('steuerung'), items: [
+        { id: '', icon: LayoutDashboard, label: t('project_overview'), className: 'tour-proj-dashboard' },
+        ...(currentUser?.role === 'owner' || currentUser?.canViewFinance ? [{ id: 'finance', icon: DollarSign, label: t('finance_budget'), className: 'tour-proj-finance' }] : []),
+        { id: 'calendar', icon: Calendar, label: t('smart_calendar'), className: 'tour-proj-calendar' }
+      ]
+    },
+    {
+      title: t('planung_bim'), items: [
+        { id: 'bim', icon: Box, label: t('3d_viewer'), className: 'tour-proj-bim', featureId: '3d_bim' },
+        { id: 'plans', icon: Map, label: t('cad_plans'), className: 'tour-proj-cad' }
+      ]
+    },
+    {
+      title: t('ausfuehrung_kollaboration'), items: [
+        { id: 'defects', icon: ShieldAlert, label: t('defects'), className: 'tour-proj-defects' },
+        { id: 'site', icon: Camera, label: t('bau_kamera'), className: 'tour-proj-camera' },
+        { id: 'whiteboard', icon: PenTool, label: t('whiteboard'), className: 'tour-proj-whiteboard' },
+        { id: 'meet', icon: Video, label: t('meet_chat'), className: 'tour-proj-meet' }
+      ]
+    },
+    {
+      title: t('datenraum'), items: [
+        { id: 'documents', icon: FileText, label: t('bau_akte'), className: 'tour-proj-docs' },
+        { id: 'pitch', icon: Presentation, label: t('pitch_deck'), className: 'tour-proj-pitch', featureId: 'ai_audit' },
+        { id: 'team', icon: UserCheck, label: t('projekt_zugriffe'), className: 'tour-proj-team' }
+      ]
+    }
   ];
 
   const mobileNavItems = menuGroups.flatMap(group => group.items);
@@ -225,7 +233,7 @@ export default function Layout() {
     window.addEventListener('document_created', handleDocCreated);
     window.addEventListener('notif_updated', handleNotifUpdated);
     return () => {
-      supabase.removeChannel(channel).catch(() => {});
+      supabase.removeChannel(channel).catch(() => { });
       window.removeEventListener('document_created', handleDocCreated);
       window.removeEventListener('notif_updated', handleNotifUpdated);
     };
@@ -255,7 +263,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden selection:bg-accent-ai/30 text-text-primary flex-col lg:flex-row font-sans">
-      
+
       <aside className="w-64 border-r border-border bg-surface flex-col hidden lg:flex shrink-0 z-20 tour-project-sidebar">
         <div className="h-16 flex items-center px-4 border-b border-border/50 gap-3 shrink-0 bg-surface/30">
           <button onClick={() => navigate('/app')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-text-primary">
@@ -274,7 +282,7 @@ export default function Layout() {
               <div className="space-y-1">
                 {group.items.map((item) => {
                   const isLocked = item.featureId && !hasFeature(currentUser, item.featureId);
-                  
+
                   if (isLocked) {
                     return (
                       <button
@@ -348,11 +356,11 @@ export default function Layout() {
         <div className="p-4 border-t border-border/50 shrink-0 bg-surface/50 relative">
           <div className="space-y-3 mb-6 pb-4 border-b border-border/50">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-text-muted font-bold uppercase tracking-widest flex items-center gap-1"><Clock size={12}/> {t('booked')}</span>
+              <span className="text-xs text-text-muted font-bold uppercase tracking-widest flex items-center gap-1"><Clock size={12} /> {t('booked')}</span>
               <span className="text-xs font-mono font-bold text-accent-ai">{projectHours.toFixed(1)}h</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-text-muted font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12}/> {t('status')}</span>
+              <span className="text-xs text-text-muted font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12} /> {t('status')}</span>
               <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider", project?.status === 'active' ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400")}>
                 {project?.status === 'active' ? t('active') : (project?.status || 'ACTIVE')}
               </span>
@@ -370,138 +378,138 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background relative">
-          {/* 👁️ SUPER-ADMIN MANDANTEN-VORSCHAU FLOATING BAR */}
-          {adminPreviewCompany && (
-            <div className="bg-purple-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between z-[80] shadow-md border-b border-purple-500 animate-in slide-in-from-top-2">
-              <div className="flex items-center gap-2">
-                <Eye size={16} className="animate-pulse" />
-                <span>👁️ MANDANTEN-VORSCHAU MODUS: <strong className="underline underline-offset-2">{adminPreviewCompany.name}</strong> (Super-Admin Workspace Vorschau)</span>
-              </div>
-              <button 
-                onClick={handleExitPreviewMode}
-                className="px-3 py-1 bg-white text-purple-900 rounded-lg font-bold text-xs hover:bg-purple-100 transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
-              >
-                <X size={14} /> Vorschau Beenden
-              </button>
+        {/* 👁️ SUPER-ADMIN MANDANTEN-VORSCHAU FLOATING BAR */}
+        {adminPreviewCompany && (
+          <div className="bg-purple-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-between z-[80] shadow-md border-b border-purple-500 animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <Eye size={16} className="animate-pulse" />
+              <span>👁️ MANDANTEN-VORSCHAU MODUS: <strong className="underline underline-offset-2">{adminPreviewCompany.name}</strong> (Super-Admin Workspace Vorschau)</span>
             </div>
-          )}
+            <button
+              onClick={handleExitPreviewMode}
+              className="px-3 py-1 bg-white text-purple-900 rounded-lg font-bold text-xs hover:bg-purple-100 transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+            >
+              <X size={14} /> Vorschau Beenden
+            </button>
+          </div>
+        )}
 
-          {/* 📢 GLOBAL ANNOUNCEMENT BROADCAST BANNER */}
-          {announcement && !isAnnouncementDismissed && (
-            <div className={cn(
-              "px-4 py-2 text-xs font-bold flex items-center justify-between z-[75] shadow-sm border-b transition-all animate-in slide-in-from-top-2",
-              announcement.type === 'warning' ? "bg-amber-500 text-black border-amber-600" :
+        {/* 📢 GLOBAL ANNOUNCEMENT BROADCAST BANNER */}
+        {announcement && !isAnnouncementDismissed && (
+          <div className={cn(
+            "px-4 py-2 text-xs font-bold flex items-center justify-between z-[75] shadow-sm border-b transition-all animate-in slide-in-from-top-2",
+            announcement.type === 'warning' ? "bg-amber-500 text-black border-amber-600" :
               announcement.type === 'error' ? "bg-red-600 text-white border-red-700" :
-              announcement.type === 'success' ? "bg-emerald-600 text-white border-emerald-700" :
-              "bg-blue-600 text-white border-blue-700"
-            )}>
-              <div className="flex items-center gap-2 overflow-hidden">
-                <Megaphone size={16} className="shrink-0" />
-                <span className="truncate">{announcement.text}</span>
-                {announcement.link && (
-                  <a href={announcement.link} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 ml-2 font-black shrink-0 hover:opacity-80">
-                    Mehr erfahren ➔
-                  </a>
+                announcement.type === 'success' ? "bg-emerald-600 text-white border-emerald-700" :
+                  "bg-blue-600 text-white border-blue-700"
+          )}>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Megaphone size={16} className="shrink-0" />
+              <span className="truncate">{announcement.text}</span>
+              {announcement.link && (
+                <a href={announcement.link} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 ml-2 font-black shrink-0 hover:opacity-80">
+                  Mehr erfahren ➔
+                </a>
+              )}
+            </div>
+            <button onClick={() => setIsAnnouncementDismissed(true)} className="p-1 hover:bg-black/10 rounded transition-colors ml-3 shrink-0">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* OFFLINE BAUSTELLEN STATUS BANNER */}
+        {isOffline && (
+          <div className="bg-amber-500/90 backdrop-blur-md text-black px-4 py-1.5 text-xs font-bold flex items-center justify-center gap-2 z-[70]">
+            <span className="w-2 h-2 rounded-full bg-black animate-ping"></span>
+            📶 Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.
+          </div>
+        )}
+
+        <header className="h-14 lg:h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 lg:px-6 shrink-0 z-[60] sticky top-0 shadow-sm">
+          <div className="flex items-center gap-2 lg:gap-3">
+            <button onClick={() => navigate('/app')} className="p-1.5 lg:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm lg:hidden">
+              <ArrowLeft size={18} />
+            </button>
+            <span className="font-bold text-sm lg:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">
+            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm">
+              📱 <span className="hidden sm:inline">App installieren</span>
+            </button>
+
+            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm" title="Tour starten">
+              <HelpCircle size={18} />
+            </button>
+
+            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm">
+              <Globe size={14} className="text-accent-ai" /> <span className="hidden sm:inline">{language}</span>
+            </button>
+
+            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">
+              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+
+            <div>
+              <button
+                onClick={() => {
+                  setShowNotifications(true);
+                  setHasUnread(false);
+                }}
+                className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
+              >
+                <Bell size={18} />
+                {(hasUnread || unreadNotifCount > 0 || hasNewDocBadge) && (
+                  <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>
                 )}
-              </div>
-              <button onClick={() => setIsAnnouncementDismissed(true)} className="p-1 hover:bg-black/10 rounded transition-colors ml-3 shrink-0">
-                <X size={14} />
               </button>
+              <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
             </div>
-          )}
+          </div>
+        </header>
 
-          {/* OFFLINE BAUSTELLEN STATUS BANNER */}
-          {isOffline && (
-            <div className="bg-amber-500/90 backdrop-blur-md text-black px-4 py-1.5 text-xs font-bold flex items-center justify-center gap-2 z-[70]">
-              <span className="w-2 h-2 rounded-full bg-black animate-ping"></span>
-              📶 Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.
-            </div>
-          )}
+        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-xl border-b border-border overflow-x-auto hide-scrollbar shrink-0 w-full z-[55] shadow-sm sticky top-14">
+          {mobileNavItems.map(item => {
+            const path = `/project/${projectId}${item.id ? `/${item.id}` : ''}`;
+            const isActive = window.location.pathname === path || window.location.pathname.startsWith(path + '/');
+            return (
+              <NavLink key={item.id} to={path} end={item.id === ''} className={() => cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0", isActive ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border/50 hover:bg-white/5", item.className)}>
+                <item.icon size={14} />{item.label}
+              </NavLink>
+            );
+          })}
+        </div>
 
-          <header className="h-14 lg:h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 lg:px-6 shrink-0 z-[60] sticky top-0 shadow-sm">
-            <div className="flex items-center gap-2 lg:gap-3">
-              <button onClick={() => navigate('/app')} className="p-1.5 lg:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm lg:hidden">
-                <ArrowLeft size={18} />
-              </button>
-              <span className="font-bold text-sm lg:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
-            </div>
+        <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 lg:p-6 z-10 pb-20 lg:pb-6 tour-proj-content">
+          <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="w-10 h-10 text-accent-ai animate-spin" /></div>}>
+            <Outlet />
+          </Suspense>
+        </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">
-              <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm">
-                📱 <span className="hidden sm:inline">App installieren</span>
-              </button>
-              
-              <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm" title="Tour starten">
-                <HelpCircle size={18} />
-              </button>
-
-              <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm">
-                <Globe size={14} className="text-accent-ai" /> <span className="hidden sm:inline">{language}</span>
-              </button>
-              
-              <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">
-                {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
-              </button>
-
-              <div>
-                <button 
-                  onClick={() => {
-                    setShowNotifications(true);
-                    setHasUnread(false);
-                  }} 
-                  className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
-                >
-                  <Bell size={18} />
-                  {(hasUnread || unreadNotifCount > 0 || hasNewDocBadge) && (
-                    <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>
-                  )}
-                </button>
-                <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
-              </div>
-            </div>
-         </header>
-
-         <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-xl border-b border-border overflow-x-auto hide-scrollbar shrink-0 w-full z-[55] shadow-sm sticky top-14">
-            {mobileNavItems.map(item => {
-              const path = `/project/${projectId}${item.id ? `/${item.id}` : ''}`;
-              const isActive = window.location.pathname === path || window.location.pathname.startsWith(path + '/');
-              return (
-                <NavLink key={item.id} to={path} end={item.id === ''} className={() => cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0", isActive ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border/50 hover:bg-white/5", item.className)}>
-                  <item.icon size={14} />{item.label}
-                </NavLink>
-              );
-            })}
-         </div>
-
-         <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 lg:p-6 z-10 pb-20 lg:pb-6 tour-proj-content">
-           <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="w-10 h-10 text-accent-ai animate-spin" /></div>}>
-             <Outlet />
-           </Suspense>
-         </div>
-
-         {/* SMARTPHONE BOTTOM BAR NAVIGATION */}
-         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-surface/95 backdrop-blur-2xl border-t border-border flex justify-around items-center px-2 py-2 shadow-2xl">
-            <NavLink to={`/project/${projectId}`} end className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-              <LayoutDashboard size={18} />
-              <span>Übersicht</span>
-            </NavLink>
-            <NavLink to={`/project/${projectId}/defects`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-              <ShieldAlert size={18} />
-              <span>Mängel</span>
-            </NavLink>
-            <NavLink to={`/project/${projectId}/calendar`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-              <Calendar size={18} />
-              <span>Kalender</span>
-            </NavLink>
-            <NavLink to={`/project/${projectId}/site`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-              <Camera size={18} />
-              <span>Baustelle</span>
-            </NavLink>
-            <NavLink to={`/project/${projectId}/documents`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-              <FileText size={18} />
-              <span>Akte</span>
-            </NavLink>
-         </nav>
+        {/* SMARTPHONE BOTTOM BAR NAVIGATION */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-surface/95 backdrop-blur-2xl border-t border-border flex justify-around items-center px-2 py-2 shadow-2xl">
+          <NavLink to={`/project/${projectId}`} end className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
+            <LayoutDashboard size={18} />
+            <span>Übersicht</span>
+          </NavLink>
+          <NavLink to={`/project/${projectId}/defects`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
+            <ShieldAlert size={18} />
+            <span>Mängel</span>
+          </NavLink>
+          <NavLink to={`/project/${projectId}/calendar`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
+            <Calendar size={18} />
+            <span>Kalender</span>
+          </NavLink>
+          <NavLink to={`/project/${projectId}/site`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
+            <Camera size={18} />
+            <span>Baustelle</span>
+          </NavLink>
+          <NavLink to={`/project/${projectId}/documents`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
+            <FileText size={18} />
+            <span>Akte</span>
+          </NavLink>
+        </nav>
       </main>
 
       {showPitchModal && (
