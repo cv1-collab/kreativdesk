@@ -132,7 +132,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       return;
     }
 
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
     
     const fetchSlides = async () => {
       try {

@@ -19,6 +19,8 @@ import autoTable from 'jspdf-autotable';
 import { cn, sanitizeUrl } from '../utils';
 import { demoTemplates } from '../utils/demoTemplates';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -202,7 +204,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       Antworte NUR mit dem reinen JSON-Code, ohne Markdown-Formatierung!`;
 
       const aiRes = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-      const cleaned = (typeof aiRes === 'string' ? aiRes : JSON.stringify(aiRes)).replace(/```json/g, '').replace(/```/g, '').trim();
+      const rawText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || aiRes?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+      const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
       const generatedSlides = JSON.parse(cleaned);
 
       if (Array.isArray(generatedSlides) && generatedSlides.length > 0) {
@@ -359,12 +362,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const handleDirectImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser || !currentUser.companyId) return;
+    if (!file || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     const targetId = projectId || importProjectId || 'global';
     setIsUploadingImage(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${currentUser.companyId}/documents/${Date.now()}.${fileExt}`;
+      const filePath = `${safeCompanyId}/documents/${Date.now()}.${fileExt}`;
       const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
       let downloadUrl = '';
       if (!uploadErr) {
@@ -373,7 +377,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       }
       const newDoc = {
         name: file.name, url: downloadUrl, file_url: downloadUrl, size: `${Math.round(file.size / 1024)} KB`, type: file.type,
-        owner_id: currentUser.uid, company_id: currentUser.companyId,
+        owner_id: currentUser.uid, company_id: safeCompanyId,
         project_id: targetId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
       };
       const { data: created } = await supabase.from('documents').insert(newDoc).select().single();
@@ -570,14 +574,15 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleSaveToCloud = async () => {
-    if (!pdfBlob || !currentUser || !currentUser.companyId) return;
+    if (!pdfBlob || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSavingToCloud(true);
     try {
       const targetId = projectId || importProjectId || 'global';
       const { data: existingFolder } = await supabase
         .from('documents')
         .select('id')
-        .eq('company_id', currentUser.companyId)
+        .eq('company_id', safeCompanyId)
         .eq('project_id', targetId)
         .eq('is_folder', true)
         .eq('name', 'Pitch Decks')
@@ -588,27 +593,41 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       else {
          const { data: newF } = await supabase.from('documents').insert({
             name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', parent_id: 'root', 
-            owner_id: currentUser.uid, company_id: currentUser.companyId, category: 'projects', created_at: new Date().toISOString()
+            owner_id: currentUser.uid, company_id: safeCompanyId, category: 'projects', created_at: new Date().toISOString()
          }).select().single();
          if (newF) targetFolderId = newF.id;
       }
 
-      const filePath = `${currentUser.companyId}/pdf_exports/${Date.now()}_Projekt_Report.pdf`;
-      const { error: upErr } = await supabase.storage.from('documents').upload(filePath, pdfBlob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const fileName = `Pitch_Deck_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const downloadUrl = await uploadPdfBlobWithFallback(pdfBlob, fileName, safeCompanyId);
       
       await supabase.from('documents').insert({
-        name: `Status_Report_${new Date().toISOString().split('T')[0]}.pdf`, size: `${Math.round(pdfBlob.size / 1024)} KB`, 
-        type: 'application/pdf', url: downloadUrl, file_url: downloadUrl, project_id: targetId, folder_id: targetFolderId, 
-        parent_id: targetFolderId, category: 'projects', is_folder: false, owner_id: currentUser.uid, company_id: currentUser.companyId,
-        created_at: new Date().toISOString(), uploaded_at: new Date().toISOString()
+        name: fileName, 
+        size: `${Math.round(pdfBlob.size / 1024)} KB`, 
+        type: 'application/pdf', 
+        url: downloadUrl, 
+        file_url: downloadUrl, 
+        project_id: targetId, 
+        folder_id: targetFolderId, 
+        parent_id: targetFolderId, 
+        category: 'projects', 
+        is_folder: false, 
+        owner_id: currentUser.uid, 
+        company_id: safeCompanyId,
+        created_at: new Date().toISOString(), 
+        uploaded_at: new Date().toISOString()
       });
+
+      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', targetId);
+
       addToast(t('upload_success'), 'success'); 
       setIsPdfModalOpen(false);
-    } catch (e) { addToast(t('error_pdf'), 'error'); } 
-    finally { setIsSavingToCloud(false); }
+    } catch (e) { 
+      console.error("Cloud Save Error:", e);
+      addToast(t('error_pdf'), 'error'); 
+    } finally { 
+      setIsSavingToCloud(false); 
+    }
   };
 
   const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string) => {
