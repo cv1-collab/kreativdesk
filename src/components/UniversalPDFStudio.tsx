@@ -98,7 +98,7 @@ export default function UniversalPDFStudio({
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[1000000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-[95vw] h-[95vh] flex overflow-hidden">
         
         {/* SIDEBAR */}
