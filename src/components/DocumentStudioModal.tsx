@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Printer, Save, Copy, Check, Sparkles, Building2, Briefcase, 
-  FileText, Download, Edit3, ShieldCheck, UserCheck, CheckCircle2, Loader2
+  FileText, Upload, Image as ImageIcon, Palette, Eye, EyeOff, Trash2, Loader2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -18,6 +18,87 @@ interface DocumentStudioModalProps {
   initialContent: string;
 }
 
+const localTranslations: Record<'en' | 'de', Record<string, string>> = {
+  en: {
+    studio_title: 'AI Letter & Document Studio',
+    studio_subtitle: 'Interactive Contract & Letter Editor in Swiss Layout',
+    din_a4_live: 'DIN-A4 LIVE LAYOUT',
+    print_pdf: 'Print / PDF',
+    copy_text: 'Copy Text',
+    copied: 'Copied',
+    save_company: 'Save in Company Docs',
+    save_project: 'Save in Project Folder',
+    target_location: '1. Select Save Location',
+    company_docs: 'Company Documents',
+    company_sub: 'Company Dashboard ➔ Documents',
+    project_docs: 'Project Folder',
+    sender_details: '2. Sender & Letterhead Settings',
+    company_name: 'Company Name',
+    street: 'Street & No.',
+    zip_city: 'ZIP & City',
+    website: 'Website / Contact',
+    upload_logo: 'Upload Logo',
+    remove_logo: 'Remove Logo',
+    accent_color: 'Accent Color',
+    recipient_address: '3. Recipient Address',
+    recipient_name: 'Recipient Name / Company',
+    date_reference: '4. Date & Reference',
+    place_date: 'Place, Date',
+    reference: 'Reference / Project',
+    signatories: '5. Signatures & Footer',
+    show_signatures: 'Show Signature Blocks',
+    client_signatory: 'Client (Building Owner)',
+    architect_signatory: 'Contractor (Architect / Planner)',
+    footer_text: 'Footer Text (IBAN, VAT ID, etc.)',
+    subject_title: 'Subject / Document Title...',
+    document_content: 'Write or paste contract content here...',
+    signatures_heading: 'Signatures & Legally Binding Confirmation',
+    place_date_line: 'Place, Date:',
+    signature_client: 'Legally binding signature - Client',
+    signature_architect: 'Legally binding signature - Contractor',
+    close: 'Close'
+  },
+  de: {
+    studio_title: 'KI Brief- & Dokumenten-Studio',
+    studio_subtitle: 'Interaktiver Vertrags- & Brief-Editor im Schweizer Layout',
+    din_a4_live: 'DIN-A4 LIVE LAYOUT',
+    print_pdf: 'Drucken / PDF',
+    copy_text: 'Text Kopieren',
+    copied: 'Kopiert',
+    save_company: 'In Firmen-Dokumente speichern',
+    save_project: 'In Projekt-Bauakte speichern',
+    target_location: '1. Ablageort festlegen',
+    company_docs: 'Firmenunterlagen',
+    company_sub: 'Company Dashboard ➔ Dokumente',
+    project_docs: 'Projekt-Bauakte',
+    sender_details: '2. Absender & Briefkopf anpassen',
+    company_name: 'Firmenname',
+    street: 'Strasse & Nr.',
+    zip_city: 'PLZ & Ort',
+    website: 'Website / Kontakt',
+    upload_logo: 'Logo hochladen',
+    remove_logo: 'Logo entfernen',
+    accent_color: 'Briefkopf Akzentfarbe',
+    recipient_address: '3. Empfänger-Adresse',
+    recipient_name: 'Empfänger Name / Firma',
+    date_reference: '4. Datum & Referenz',
+    place_date: 'Ort, Datum',
+    reference: 'Referenz / Projekt',
+    signatories: '5. Unterschriften & Fusszeile',
+    show_signatures: 'Unterschriften-Blöcke anzeigen',
+    client_signatory: 'Auftraggeber (Bauherr)',
+    architect_signatory: 'Auftragnehmer (Architekt / Planer)',
+    footer_text: 'Fusszeile (IBAN, MWST-Nr., Rechtliches)',
+    subject_title: 'Betreff / Dokumenttitel...',
+    document_content: 'Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...',
+    signatures_heading: 'Unterschriften & Rechtsgültige Bestätigung',
+    place_date_line: 'Ort, Datum:',
+    signature_client: 'Rechtsgültige Unterschrift Auftraggeber',
+    signature_architect: 'Rechtsgültige Unterschrift Auftragnehmer',
+    close: 'Schliessen'
+  }
+};
+
 export default function DocumentStudioModal({
   isOpen,
   onClose,
@@ -29,6 +110,9 @@ export default function DocumentStudioModal({
   const activeProject = projects?.find((p: any) => p.id === activeProjectId);
   const { addToast } = useToast();
   const { language } = useLanguage();
+
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
+  const t = (key: string) => localTranslations[currentLang]?.[key] || key;
 
   const [docTitle, setDocTitle] = useState(initialTitle || 'KI-Vorlage (Vertrag / Brief)');
   const [docContent, setDocContent] = useState(initialContent || '');
@@ -45,9 +129,12 @@ export default function DocumentStudioModal({
   const [docPlaceDate, setDocPlaceDate] = useState(`Zürich, ${new Date().toLocaleDateString('de-CH', { day: '2-digit', month: 'long', year: 'numeric' })}`);
   const [docReference, setDocReference] = useState(activeProject?.name ? `Ref: ${activeProject.name}` : 'Ref: Projekt-Vertrag 2026');
 
-  // Signature Block details
+  // Signature Block & Footer details
+  const [showSignatures, setShowSignatures] = useState(true);
   const [clientSignatory, setClientSignatory] = useState('Auftraggeber (Bauherr)');
   const [architectSignatory, setArchitectSignatory] = useState(currentUser?.email ? `Auftragnehmer (${currentUser.email})` : 'Auftragnehmer (Architekt / Planer)');
+  const [footerText, setFooterText] = useState('Kreativ-Desk OS Architecture • CHE-123.456.789 MWST • IBAN: CH93 0000 0000 0000 0000 0');
+  const [accentColor, setAccentColor] = useState('#09090b'); // Default sleek dark header border
 
   // Company details
   const [companyData, setCompanyData] = useState({
@@ -58,10 +145,21 @@ export default function DocumentStudioModal({
     logo: ''
   });
 
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     setDocTitle(initialTitle || 'KI-Vorlage (Vertrag / Brief)');
     setDocContent(initialContent || '');
   }, [initialTitle, initialContent]);
+
+  // Auto-resize textarea to fit multi-page long contract text
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.max(320, textareaRef.current.scrollHeight)}px`;
+    }
+  }, [docContent]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -93,6 +191,17 @@ export default function DocumentStudioModal({
   }, [currentUser]);
 
   if (!isOpen) return null;
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCompanyData(prev => ({ ...prev, logo: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSaveDocument = async () => {
     if (!docContent || isSaving) return;
@@ -126,7 +235,7 @@ ${cleanTitle.toUpperCase()}
 
 ${docContent}
 
---------------------------------------------------
+${showSignatures ? `--------------------------------------------------
 UNTERSCHRIFTEN & BESTÄTIGUNG:
 
 ORT, DATUM: ______________________, __________________
@@ -134,7 +243,10 @@ ORT, DATUM: ______________________, __________________
 UNTERSCHRIFT AUFTRAGGEBER:       UNTERSCHRIFT AUFTRAGNEHMER:
 (${clientSignatory})              (${architectSignatory})
 
-______________________________   ______________________________
+______________________________   ______________________________` : ''}
+
+==================================================
+${footerText}
 ==================================================`;
 
       const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(fullDocumentText);
@@ -198,9 +310,9 @@ ______________________________   ______________________________
           </div>
           <div>
             <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-wide flex items-center gap-2">
-              KI Brief- & Dokumenten-Studio <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black uppercase">DIN-A4 Live Layout</span>
+              {t('studio_title')} <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black uppercase">{t('din_a4_live')}</span>
             </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Interaktiver Vertrags- & Brief-Editor im Schweizer Layout</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t('studio_subtitle')}</p>
           </div>
         </div>
 
@@ -210,7 +322,7 @@ ______________________________   ______________________________
             onClick={() => window.print()}
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer print:hidden"
           >
-            <Printer size={15} className="text-amber-500 dark:text-amber-400" /> Drucken / PDF
+            <Printer size={15} className="text-amber-500 dark:text-amber-400" /> {t('print_pdf')}
           </button>
           
           <button
@@ -218,7 +330,7 @@ ______________________________   ______________________________
             className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
             {isCopied ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
-            {isCopied ? 'Kopiert' : 'Text Kopieren'}
+            {isCopied ? t('copied') : t('copy_text')}
           </button>
 
           <button
@@ -230,13 +342,13 @@ ______________________________   ______________________________
             )}
           >
             {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-            {saveScope === 'company' ? 'In Firmen-Dokumente speichern' : 'In Projekt-Bauakte speichern'}
+            {saveScope === 'company' ? t('save_company') : t('save_project')}
           </button>
 
           <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 transition-colors ml-2 cursor-pointer"
-            title="Schließen"
+            title={t('close')}
           >
             <X size={20} />
           </button>
@@ -251,7 +363,7 @@ ______________________________   ______________________________
           
           {/* Target Scope Selection */}
           <div className="space-y-2">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Ablageort festlegen</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('target_location')}</label>
             <div className="grid grid-cols-1 gap-2">
               <button
                 onClick={() => setSaveScope('company')}
@@ -264,8 +376,8 @@ ______________________________   ______________________________
               >
                 <Building2 size={18} className="text-blue-500 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs">Firmenunterlagen</div>
-                  <div className="text-[10px] opacity-75">Company Dashboard ➔ Dokumente</div>
+                  <div className="font-bold text-xs">{t('company_docs')}</div>
+                  <div className="text-[10px] opacity-75">{t('company_sub')}</div>
                 </div>
               </button>
 
@@ -280,7 +392,7 @@ ______________________________   ______________________________
               >
                 <Briefcase size={18} className="text-emerald-500 shrink-0 mt-0.5" />
                 <div>
-                  <div className="font-bold text-xs">Projekt-Bauakte</div>
+                  <div className="font-bold text-xs">{t('project_docs')}</div>
                   <div className="text-[10px] opacity-75 truncate max-w-[180px]">{activeProject?.name || 'Aktuelles Projekt'}</div>
                 </div>
               </button>
@@ -289,28 +401,112 @@ ______________________________   ______________________________
 
           <hr className="border-slate-200 dark:border-slate-800" />
 
+          {/* Sender & Briefkopf Customization */}
+          <div className="space-y-3">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sender_details')}</label>
+            <input
+              type="text"
+              value={companyData.name}
+              onChange={e => setCompanyData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder={t('company_name')}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-bold"
+            />
+            <input
+              type="text"
+              value={companyData.street}
+              onChange={e => setCompanyData(prev => ({ ...prev, street: e.target.value }))}
+              placeholder={t('street')}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+            />
+            <input
+              type="text"
+              value={companyData.zipCity}
+              onChange={e => setCompanyData(prev => ({ ...prev, zipCity: e.target.value }))}
+              placeholder={t('zip_city')}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+            />
+            <input
+              type="text"
+              value={companyData.website}
+              onChange={e => setCompanyData(prev => ({ ...prev, website: e.target.value }))}
+              placeholder={t('website')}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+            />
+
+            {/* Logo Customization */}
+            <div className="pt-2">
+              <input 
+                type="file" 
+                ref={logoInputRef} 
+                onChange={handleLogoUpload} 
+                accept="image/*" 
+                className="hidden" 
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Upload size={14} className="text-amber-500" /> {t('upload_logo')}
+                </button>
+                {companyData.logo && (
+                  <button
+                    type="button"
+                    onClick={() => setCompanyData(prev => ({ ...prev, logo: '' }))}
+                    className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl border border-red-500/20 cursor-pointer"
+                    title={t('remove_logo')}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Accent Color picker */}
+            <div className="pt-2 flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('accent_color')}:</span>
+              <div className="flex items-center gap-1.5">
+                {['#09090b', '#2563eb', '#059669', '#d97706', '#7c3aed'].map(color => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => setAccentColor(color)}
+                    className={cn(
+                      "w-5 h-5 rounded-full border-2 transition-transform cursor-pointer",
+                      accentColor === color ? "scale-125 border-amber-500" : "border-transparent opacity-80 hover:opacity-100"
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-slate-200 dark:border-slate-800" />
+
           {/* Recipient Details Edit */}
           <div className="space-y-3">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Empfänger-Adresse</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('recipient_address')}</label>
             <input
               type="text"
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
-              placeholder="Empfänger Name / Firma..."
+              placeholder={t('recipient_name')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-bold"
             />
             <input
               type="text"
               value={recipientStreet}
               onChange={e => setRecipientStreet(e.target.value)}
-              placeholder="Strasse & Nr..."
+              placeholder={t('street')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
             <input
               type="text"
               value={recipientZipCity}
               onChange={e => setRecipientZipCity(e.target.value)}
-              placeholder="PLZ & Ort..."
+              placeholder={t('zip_city')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
           </div>
@@ -319,65 +515,97 @@ ______________________________   ______________________________
 
           {/* Document Header Meta Edit */}
           <div className="space-y-3">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. Datum & Referenz</label>
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('date_reference')}</label>
             <input
               type="text"
               value={docPlaceDate}
               onChange={e => setDocPlaceDate(e.target.value)}
-              placeholder="Ort, Datum..."
+              placeholder={t('place_date')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
             <input
               type="text"
               value={docReference}
               onChange={e => setDocReference(e.target.value)}
-              placeholder="Referenz / Projekt..."
+              placeholder={t('reference')}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
           </div>
 
           <hr className="border-slate-200 dark:border-slate-800" />
 
-          {/* Signatories Edit */}
+          {/* Signatories & Footer Edit */}
           <div className="space-y-3">
-            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">4. Unterschriften-Blöcke</label>
-            <div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">Auftraggeber (Bauherr):</span>
-              <input
-                type="text"
-                value={clientSignatory}
-                onChange={e => setClientSignatory(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
-              />
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('signatories')}</label>
+              <button
+                type="button"
+                onClick={() => setShowSignatures(prev => !prev)}
+                className="text-xs text-amber-500 font-bold flex items-center gap-1 cursor-pointer"
+              >
+                {showSignatures ? <Eye size={14} /> : <EyeOff size={14} />}
+                {showSignatures ? 'Ein' : 'Aus'}
+              </button>
             </div>
-            <div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">Auftragnehmer (Architekt):</span>
-              <input
-                type="text"
-                value={architectSignatory}
-                onChange={e => setArchitectSignatory(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+
+            {showSignatures && (
+              <>
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('client_signatory')}:</span>
+                  <input
+                    type="text"
+                    value={clientSignatory}
+                    onChange={e => setClientSignatory(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('architect_signatory')}:</span>
+                  <input
+                    type="text"
+                    value={architectSignatory}
+                    onChange={e => setArchitectSignatory(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="pt-2">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('footer_text')}:</span>
+              <textarea
+                value={footerText}
+                onChange={e => setFooterText(e.target.value)}
+                rows={2}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-[11px] text-slate-900 dark:text-white focus:border-amber-500 outline-none font-mono mt-1 resize-none"
               />
             </div>
           </div>
         </aside>
 
-        {/* Right Canvas (A4 Page) */}
+        {/* Right Canvas (A4 Page Multi-page Container) */}
         <main className="flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50 p-4 md:p-10 flex justify-center custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
-          <div className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-8 md:p-[20mm] border border-slate-200 flex flex-col print:shadow-none print:border-none print:p-0 justify-between relative">
-            
+          <div 
+            className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-8 md:p-[20mm] border border-slate-200 flex flex-col justify-between relative print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none"
+          >
             <div>
               {/* Swiss Letter Header */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-8">
+              <div 
+                className="flex justify-between items-start border-b-2 pb-6 mb-8 transition-colors"
+                style={{ borderColor: accentColor }}
+              >
                 <div>
                   <h1 className="text-xl font-black text-slate-900 uppercase tracking-wider">{companyData.name}</h1>
                   <p className="text-xs text-slate-600 font-medium mt-1">{companyData.street} • {companyData.zipCity}</p>
                   <p className="text-[11px] text-blue-600 font-bold mt-0.5">{companyData.website}</p>
                 </div>
                 {companyData.logo ? (
-                  <img src={companyData.logo} alt="Logo" className="h-12 object-contain max-w-[160px]" />
+                  <img src={companyData.logo} alt="Logo" className="h-12 object-contain max-w-[180px]" />
                 ) : (
-                  <div className="w-12 h-12 rounded-xl bg-slate-900 text-white font-black flex items-center justify-center text-xl shadow-md">
+                  <div 
+                    className="w-12 h-12 rounded-xl text-white font-black flex items-center justify-center text-xl shadow-md"
+                    style={{ backgroundColor: accentColor }}
+                  >
                     K
                   </div>
                 )}
@@ -405,37 +633,49 @@ ______________________________   ______________________________
                   value={docTitle}
                   onChange={e => setDocTitle(e.target.value)}
                   className="w-full text-xl md:text-2xl font-black text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-600 outline-none pb-1 bg-transparent tracking-tight"
-                  placeholder="Betreff / Dokumtentitel..."
+                  placeholder={t('subject_title')}
                 />
               </div>
 
-              {/* Editable Document Body */}
+              {/* Editable Document Body - Auto-expanding for multi-page print */}
               <div className="mb-10">
                 <textarea
+                  ref={textareaRef}
                   value={docContent}
                   onChange={e => setDocContent(e.target.value)}
-                  rows={14}
-                  className="w-full bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-blue-600 rounded-xl p-4 text-xs md:text-sm text-slate-800 font-sans leading-relaxed outline-none resize-y min-h-[300px] font-medium"
+                  placeholder={t('document_content')}
+                  className="w-full bg-slate-50/50 hover:bg-slate-50 focus:bg-white border border-slate-200 focus:border-blue-600 rounded-xl p-4 text-xs md:text-sm text-slate-800 font-sans leading-relaxed outline-none resize-none min-h-[320px] font-medium transition-all print:border-none print:p-0 print:bg-transparent"
                 />
               </div>
             </div>
 
-            {/* Swiss Dual Signature Block */}
-            <div className="pt-8 border-t-2 border-slate-900 mt-12">
-              <div className="text-[11px] font-bold text-slate-600 mb-6 uppercase tracking-wider">Unterschriften & Rechtsgültige Bestätigung</div>
-              <div className="grid grid-cols-2 gap-12 text-xs">
-                <div>
-                  <div className="text-slate-500 mb-10">Ort, Datum: _______________________</div>
-                  <div className="border-t border-slate-900 pt-2 font-bold text-slate-900">{clientSignatory}</div>
-                  <div className="text-[10px] text-slate-500">Rechtsgültige Unterschrift Auftraggeber</div>
-                </div>
+            {/* Swiss Dual Signature Block & Footer */}
+            <div className="space-y-6 pt-6 print-page-break-avoid">
+              {showSignatures && (
+                <div className="pt-6 border-t-2 border-slate-900 mt-8">
+                  <div className="text-[11px] font-bold text-slate-600 mb-6 uppercase tracking-wider">{t('signatures_heading')}</div>
+                  <div className="grid grid-cols-2 gap-12 text-xs">
+                    <div>
+                      <div className="text-slate-500 mb-10">{t('place_date_line')} _______________________</div>
+                      <div className="border-t border-slate-900 pt-2 font-bold text-slate-900">{clientSignatory}</div>
+                      <div className="text-[10px] text-slate-500">{t('signature_client')}</div>
+                    </div>
 
-                <div>
-                  <div className="text-slate-500 mb-10">Ort, Datum: _______________________</div>
-                  <div className="border-t border-slate-900 pt-2 font-bold text-slate-900">{architectSignatory}</div>
-                  <div className="text-[10px] text-slate-500">Rechtsgültige Unterschrift Auftragnehmer</div>
+                    <div>
+                      <div className="text-slate-500 mb-10">{t('place_date_line')} _______________________</div>
+                      <div className="border-t border-slate-900 pt-2 font-bold text-slate-900">{architectSignatory}</div>
+                      <div className="text-[10px] text-slate-500">{t('signature_architect')}</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* Customizable DIN-A4 Footer */}
+              {footerText && (
+                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-mono tracking-tight">
+                  {footerText}
+                </div>
+              )}
             </div>
 
           </div>

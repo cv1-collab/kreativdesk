@@ -27,7 +27,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     pitch_deck: 'Pitch Deck', pitch_deck_desc: 'AI-driven client presentations.',
     ai_template: 'Create AI Template', ai_template_desc: 'Generate custom contracts & documents with AI.',
     free_editor: 'Free Letter & Contract Editor', free_editor_desc: 'A4 live studio for letters, minutes & contracts.',
-    open_tool: 'Open Tool'
+    open_tool: 'Open Tool',
+    ai_modal_title: 'Generate AI Template',
+    ai_prompt_placeholder: 'e.g. SIA 102 Fee Contract for residential building conversion in Zurich...',
+    generate_btn: 'Generate Template Now',
+    generating: 'Generating Template...',
+    choose_location: 'Choose save location for document:',
+    company_docs: 'Company Documents',
+    project_docs: 'Project Folder',
+    open_in_studio: 'Open in Letter & Document Studio (A4 Layout)',
+    quick_save_company: 'Quick Save (Company Documents)',
+    quick_save_project: 'Quick Save (Project Folder)',
+    copy: 'Copy',
+    copied: 'Copied'
   },
   de: {
     templates_hub: 'Interaktive Vorlagen',
@@ -41,7 +53,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     pitch_deck: 'Pitch Deck', pitch_deck_desc: 'KI-gestützte Kundenpräsentationen.',
     ai_template: 'KI-Vorlage erstellen', ai_template_desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.',
     free_editor: 'Freier Brief- & Vertrags-Editor', free_editor_desc: 'DIN-A4 Live-Studio für Schweizer Briefe, Protokolle & Verträge.',
-    open_tool: 'Tool öffnen'
+    open_tool: 'Tool öffnen',
+    ai_modal_title: 'KI-Vorlage generieren',
+    ai_prompt_placeholder: 'z.B. SIA 102 Honorarvertrag für Umbau MFH Zürcher Oberland...',
+    generate_btn: 'Vorlage jetzt generieren',
+    generating: 'Generiere Vorlage...',
+    choose_location: 'Ablageort für Dokument wählen:',
+    company_docs: 'Firmenunterlagen',
+    project_docs: 'Projekt-Bauakte',
+    open_in_studio: 'Im Brief- & Dokumenten-Studio öffnen (DIN-A4 Layout)',
+    quick_save_company: 'Schnell-Speichern (Firmen-Dokumente)',
+    quick_save_project: 'Schnell-Speichern (Projekt-Bauakte)',
+    copy: 'Kopieren',
+    copied: 'Kopiert'
   }
 };
 
@@ -283,7 +307,7 @@ Muster AG
           <div className="bg-surface border border-border p-6 rounded-3xl max-w-xl w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-                <Sparkles className="text-amber-500" size={20} /> KI-Vorlage generieren
+                <Sparkles className="text-amber-500" size={20} /> {t('ai_modal_title')}
               </h3>
               <button onClick={() => setIsAiModalOpen(false)} className="p-2 text-text-muted hover:text-text-primary">✕</button>
             </div>
@@ -291,7 +315,7 @@ Muster AG
             <form onSubmit={handleGenerateTemplate} className="space-y-4">
               <input
                 type="text"
-                placeholder="z.B. SIA 102 Honorarvertrag für Umbau MFH Zürcher Oberland..."
+                placeholder={t('ai_prompt_placeholder')}
                 value={aiPrompt}
                 onChange={e => setAiPrompt(e.target.value)}
                 className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm text-text-primary focus:border-amber-500 outline-none"
@@ -299,10 +323,10 @@ Muster AG
               <button
                 type="submit"
                 disabled={isGeneratingAi}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {isGeneratingAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                {isGeneratingAi ? 'Generiere Vorlage...' : 'Vorlage jetzt generieren'}
+                {isGeneratingAi ? t('generating') : t('generate_btn')}
               </button>
             </form>
 
@@ -314,7 +338,7 @@ Muster AG
 
                 {/* Ablageort Auswahl */}
                 <div className="space-y-1.5 bg-background border border-border/50 p-3 rounded-2xl">
-                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">Ablageort für Dokument wählen:</label>
+                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">{t('choose_location')}</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -326,7 +350,7 @@ Muster AG
                           : "bg-surface text-text-muted border-border hover:text-text-primary"
                       )}
                     >
-                      <span className="flex items-center gap-1.5 font-bold"><Building2 size={14} /> Firmenunterlagen</span>
+                      <span className="flex items-center gap-1.5 font-bold"><Building2 size={14} /> {t('company_docs')}</span>
                       <span className="text-[10px] font-normal text-text-muted">Company Dashboard ➔ Dokumente</span>
                     </button>
                     <button
@@ -339,7 +363,7 @@ Muster AG
                           : "bg-surface text-text-muted border-border hover:text-text-primary"
                       )}
                     >
-                      <span className="flex items-center gap-1.5 font-bold"><Briefcase size={14} /> Projekt-Bauakte</span>
+                      <span className="flex items-center gap-1.5 font-bold"><Briefcase size={14} /> {t('project_docs')}</span>
                       <span className="text-[10px] font-normal text-text-muted truncate">{activeProject?.name || 'Aktuelles Projekt'}</span>
                     </button>
                   </div>
@@ -351,7 +375,7 @@ Muster AG
                     onClick={() => setIsStudioModalOpen(true)}
                     className="w-full py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
                   >
-                    <Sparkles size={16} /> Im Brief- & Dokumenten-Studio öffnen (DIN-A4 Layout)
+                    <Sparkles size={16} /> {t('open_in_studio')}
                   </button>
 
                   <div className="flex items-center gap-2">
@@ -362,7 +386,7 @@ Muster AG
                       className={cn("flex-1 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50", saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20")}
                     >
                       {isSavingDoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                      {saveScope === 'company' ? 'Schnell-Speichern (Firmen-Dokumente)' : 'Schnell-Speichern (Projekt-Bauakte)'}
+                      {saveScope === 'company' ? t('quick_save_company') : t('quick_save_project')}
                     </button>
                     <button
                       type="button"
@@ -370,7 +394,7 @@ Muster AG
                       className="px-4 py-3 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                      {isCopied ? 'Kopiert' : 'Kopieren'}
+                      {isCopied ? t('copied') : t('copy')}
                     </button>
                   </div>
                 </div>
