@@ -324,25 +324,36 @@ export default function Documents() {
   });
 
   const currentItems = [...deduplicatedItems].sort((a, b) => {
+    const getTime = (item: any) => {
+      const d = item.created_at || item.uploaded_at || item.date;
+      if (!d) return 0;
+      const t = new Date(d).getTime();
+      return isNaN(t) ? 0 : t;
+    };
+
+    const nameA = (a.name || '').toString().toLowerCase();
+    const nameB = (b.name || '').toString().toLowerCase();
+
+    // Group folders first
     if (a.is_folder && !b.is_folder) return -1;
     if (!a.is_folder && b.is_folder) return 1;
-    if (a.is_folder && b.is_folder) {
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-    }
 
-    if (sortOption === 'newest') {
-      return new Date(b.created_at || b.uploaded_at || 0).getTime() - new Date(a.created_at || a.uploaded_at || 0).getTime();
-    }
-    if (sortOption === 'oldest') {
-      return new Date(a.created_at || a.uploaded_at || 0).getTime() - new Date(b.created_at || b.uploaded_at || 0).getTime();
-    }
     if (sortOption === 'name_asc') {
-      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
     }
     if (sortOption === 'name_desc') {
-      return b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
+      return nameB.localeCompare(nameA, undefined, { numeric: true, sensitivity: 'base' });
     }
-    return 0;
+    if (sortOption === 'oldest') {
+      const diff = getTime(a) - getTime(b);
+      if (diff !== 0) return diff;
+      return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    
+    // Default: newest (Neueste zuerst)
+    const diff = getTime(b) - getTime(a);
+    if (diff !== 0) return diff;
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
   });
 
   return (

@@ -200,19 +200,13 @@ export default function CompanyDashboard() {
   useEffect(() => {
     const handleDocCreated = () => {
       setHasNewDocBadge(true);
+      localStorage.setItem('has_new_document', 'true');
     };
     window.addEventListener('document_created', handleDocCreated);
     return () => {
       window.removeEventListener('document_created', handleDocCreated);
     };
   }, []);
-
-  useEffect(() => {
-    if (activeTab === 'documents') {
-      setHasNewDocBadge(false);
-      localStorage.removeItem('has_new_document');
-    }
-  }, [activeTab]);
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
