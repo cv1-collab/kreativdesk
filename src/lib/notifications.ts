@@ -92,13 +92,20 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
     const rawCache = localStorage.getItem(cacheKey);
     const localNotifs: AppNotification[] = rawCache ? JSON.parse(rawCache) : [];
 
-    const { data: config } = await supabase
-      .from('system_config')
-      .select('data')
-      .eq('id', `notifications_${companyId}`)
-      .maybeSingle();
+    let configNotifs: AppNotification[] = [];
+    try {
+      const { data: config } = await supabase
+        .from('system_config')
+        .select('*')
+        .eq('id', `notifications_${companyId}`)
+        .maybeSingle();
 
-    const configNotifs: AppNotification[] = config?.data?.notifications || [];
+      if (config?.data?.notifications) {
+        configNotifs = config.data.notifications;
+      }
+    } catch (e) {
+      // Ignore system_config fallback errors
+    }
 
     let dbNotifs: any[] = [];
     try {

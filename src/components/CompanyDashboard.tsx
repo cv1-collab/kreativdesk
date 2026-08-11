@@ -599,13 +599,7 @@ export default function CompanyDashboard() {
         />
       )}
 
-      <AnimatePresence>
-        {isNotificationOpen && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} ref={notificationRef} className="absolute top-16 right-4 sm:right-6 w-80 max-w-[90vw] z-[999999] shadow-2xl">
-            <NotificationCenter isOpen={true} onClose={() => setIsNotificationOpen(false)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <NotificationCenter isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
 
       <aside className="w-[70px] xl:w-[260px] border-r border-border bg-surface hidden md:flex flex-col z-20 shrink-0 transition-all duration-300">
         <div className="h-16 flex items-center justify-center xl:justify-start px-0 xl:px-6 border-b border-border bg-surface/50">

@@ -464,6 +464,8 @@ export default function Documents() {
                 onClick={() => {
                   if (item.is_folder) {
                     navigateToFolder(item.id, item.name);
+                  } else {
+                    handleOpenInStudio(item);
                   }
                 }}
               >
