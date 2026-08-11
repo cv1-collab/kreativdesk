@@ -904,9 +904,51 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const handleDeleteTimeEntry = async (entryId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+
     if (window.confirm(t('delete') + '?')) {
-      try { await supabase.from('time_entries').delete().eq('id', entryId); addToast(t('delete') + ' ' + t('completed'), 'success'); }
-      catch (err) { addToast('Fehler', 'error'); }
+      try {
+        // 1. Live-State & LocalStorage-Cache sofort aktualisieren
+        setLocalTimeEntries(prev => {
+          const updated = prev.filter((t: any) => t.id !== entryId);
+          if (safeCompanyId) {
+            localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(updated));
+          }
+          return updated;
+        });
+
+        // 2. Aus Supabase time_entries löschen
+        await supabase.from('time_entries').delete().eq('id', entryId);
+
+        // 3. Aus system_config Backup entfernen
+        if (safeCompanyId) {
+          try {
+            const { data: configTime } = await supabase
+              .from('system_config')
+              .select('data')
+              .eq('id', `time_entries_${safeCompanyId}`)
+              .maybeSingle();
+
+            if (configTime?.data?.entries) {
+              const updatedConfigEntries = configTime.data.entries.filter((t: any) => 
+                t.id !== entryId && `time-${t.date}-${t.hours}` !== entryId
+              );
+              await supabase.from('system_config').upsert({
+                id: `time_entries_${safeCompanyId}`,
+                data: { ...configTime.data, entries: updatedConfigEntries }
+              });
+            }
+          } catch (cfgErr) {
+            console.warn("Error updating system_config on delete:", cfgErr);
+          }
+        }
+
+        addToast(t('delete') + ' ' + t('completed'), 'success');
+      } catch (err) {
+        console.error("Delete time entry error:", err);
+        addToast('Fehler beim Löschen', 'error');
+      }
     }
   };
 
