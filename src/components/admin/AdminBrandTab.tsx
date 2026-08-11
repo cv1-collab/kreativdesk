@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Upload, Loader2, Image as ImageIcon, AlertTriangle, Building2, PaintBucket, CheckCircle2 } from 'lucide-react';
+import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabase';
@@ -7,22 +7,32 @@ import { cn } from '../../utils';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
-    global_branding: 'Global Branding', branding_desc: 'Configure the white-label appearance of your instance.',
-    master_data: 'Master Data', company_name: 'Company Name (Master)', address: 'Address', zip: 'ZIP',
-    city: 'City', iban: 'IBAN', design: 'Design', upload_desc: 'Upload your official company logo (PNG/SVG recommended).',
-    accent_color: 'Accent Color', maintenance: 'Maintenance Mode', maintenance_desc: 'Locks access for all regular user accounts.',
-    active: 'Active', inactive: 'Inactive', save_branding: 'Save Branding Settings', branding_saved: 'Branding saved!',
-    email: 'Email', phone: 'Phone', website: 'Website', uid: 'UID'
+    global_branding: 'Global Branding & White-Labeling', branding_desc: 'Configure official master branding, company details, logo, and colors for your instance.',
+    master_data: 'Company Master Data', company_name: 'Company Name (Master)', address: 'Street Address', zip: 'ZIP / Postal Code',
+    city: 'City', iban: 'Master IBAN / Bank Account', design: 'Design & Visual Identity', upload_desc: 'Enter image URL or upload your official company logo.',
+    accent_color: 'Primary Accent Color', save_branding: 'Save Branding Settings', branding_saved: 'Branding settings saved successfully!',
+    email: 'Support / Master Email', phone: 'Phone Number', website: 'Official Website URL', uid: 'UID / Tax Registration No.',
+    preset_colors: 'Color Presets', logo_preview: 'Logo Preview', no_logo: 'No logo set'
   },
   de: {
-    global_branding: 'Globales Branding', branding_desc: 'Konfiguriere das White-Label Erscheinungsbild deiner Instanz.',
-    master_data: 'Stammdaten', company_name: 'Firmenname (Master)', address: 'Adresse', zip: 'PLZ',
-    city: 'Ort', iban: 'IBAN', design: 'Design', upload_desc: 'Lade dein offizielles Firmen-Logo hoch (PNG/SVG empfohlen).',
-    accent_color: 'Akzentfarbe', maintenance: 'Wartungsmodus', maintenance_desc: 'Sperrt den Zugriff für alle regulären Benutzer-Accounts.',
-    active: 'Aktiv', inactive: 'Inaktiv', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding gespeichert!',
-    email: 'E-Mail', phone: 'Telefon', website: 'Webseite', uid: 'UID-Nummer'
+    global_branding: 'Globales Branding & White-Labeling', branding_desc: 'Konfiguriere das offizielle Firmen-Branding, Stammdaten, Logo und Akzentfarben deiner Instanz.',
+    master_data: 'Firmen-Stammdaten', company_name: 'Firmenname (Master)', address: 'Strasse & Nr.', zip: 'PLZ',
+    city: 'Ort', iban: 'IBAN / Bankverbindung (Master)', design: 'Design & Visuelle Identität', upload_desc: 'Bild-URL eingeben oder offizietes Firmen-Logo hochladen.',
+    accent_color: 'Primäre Akzentfarbe', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding-Einstellungen erfolgreich gespeichert!',
+    email: 'Support / Master E-Mail', phone: 'Telefonnummer', website: 'Offizielle Webseite (URL)', uid: 'UID-Nummer / MWST-Nr.',
+    preset_colors: 'Farb-Presets', logo_preview: 'Logo-Vorschau', no_logo: 'Kein Logo hinterlegt'
   }
 };
+
+const COLOR_PRESETS = [
+  { name: 'Red', hex: '#ef4444' },
+  { name: 'Blue', hex: '#3b82f6' },
+  { name: 'Emerald', hex: '#10b981' },
+  { name: 'Purple', hex: '#8b5cf6' },
+  { name: 'Amber', hex: '#f59e0b' },
+  { name: 'Pink', hex: '#ec4899' },
+  { name: 'Cyan', hex: '#06b6d4' }
+];
 
 export default function AdminBrandTab() {
   const { language, t: globalT } = useLanguage();
@@ -32,10 +42,11 @@ export default function AdminBrandTab() {
   const { addToast } = useToast();
   
   const [config, setConfig] = useState({ 
-    masterLogo: '', accentColor: '#ef4444', isMaintenance: false,
+    masterLogo: '', accentColor: '#ef4444',
     companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -48,11 +59,51 @@ export default function AdminBrandTab() {
 
         if (data?.data) setConfig(prev => ({ ...prev, ...data.data }));
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching system config:", e);
       }
     };
     fetchConfig();
   }, []);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Logo-Datei darf maximal 5 MB groß sein.', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `master_logo_${Date.now()}.${fileExt}`;
+      const filePath = `branding/${fileName}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) {
+        // Fallback to data URL if storage upload fails
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setConfig(prev => ({ ...prev, masterLogo: reader.result as string }));
+          addToast('Logo als Daten-URL geladen', 'info');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        setConfig(prev => ({ ...prev, masterLogo: publicUrlData.publicUrl }));
+        addToast('Logo erfolgreich hochgeladen!', 'success');
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      addToast('Fehler beim Hochladen des Logos', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +117,7 @@ export default function AdminBrandTab() {
         });
       addToast(t('branding_saved'), 'success');
     } catch (e) {
-      console.error(e);
+      console.error("Save config error:", e);
       addToast('Fehler beim Speichern', 'error');
     } finally {
       setIsSubmitting(false);
@@ -75,32 +126,242 @@ export default function AdminBrandTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <form onSubmit={handleSave} className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-6">
-        <div>
-          <h3 className="text-xl font-black text-text-primary mb-1 flex items-center gap-2">
-            <Palette className="text-blue-500" size={24} />
-            {t('global_branding')}
-          </h3>
-          <p className="text-text-muted text-sm font-medium">{t('branding_desc')}</p>
-        </div>
-
-        <div className="space-y-4">
+      <form onSubmit={handleSave} className="space-y-6">
+        
+        {/* Header Box */}
+        <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('company_name')}</label>
-            <input 
-              type="text" 
-              value={config.companyName} 
-              onChange={(e) => setConfig({ ...config, companyName: e.target.value })}
-              className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary"
-            />
+            <h3 className="text-xl font-black text-text-primary mb-1 flex items-center gap-2">
+              <Palette className="text-blue-500" size={24} />
+              {t('global_branding')}
+            </h3>
+            <p className="text-text-muted text-sm font-medium">{t('branding_desc')}</p>
           </div>
-        </div>
-
-        <div className="pt-4 border-t border-border flex justify-end">
-          <button type="submit" disabled={isSubmitting} className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20">
-            {isSubmitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : t('save_branding')}
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shrink-0 cursor-pointer"
+          >
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}
+            {t('save_branding')}
           </button>
         </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* Card 1: Design & Visual Identity */}
+          <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-6">
+            <div className="border-b border-border/50 pb-4 flex items-center gap-2">
+              <PaintBucket className="text-purple-500" size={20} />
+              <h4 className="font-bold text-base text-text-primary">{t('design')}</h4>
+            </div>
+
+            {/* Master Logo Upload */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('logo_preview')}</label>
+              <div className="flex items-center gap-4">
+                <div className="w-24 h-24 rounded-2xl bg-background border-2 border-dashed border-border flex items-center justify-center overflow-hidden shrink-0 relative group">
+                  {config.masterLogo ? (
+                    <img src={config.masterLogo} alt="Master Logo" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <ImageIcon className="text-text-muted opacity-40" size={32} />
+                  )}
+                </div>
+                <div className="space-y-2 flex-1">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-background border border-border/60 hover:bg-white/5 rounded-xl text-xs font-bold text-text-primary cursor-pointer transition-colors shadow-sm">
+                    {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    <span>Logo Datei Hochladen</span>
+                    <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+                  </label>
+                  <p className="text-[11px] text-text-muted">{t('upload_desc')}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1">Logo URL (Alternativ)</label>
+                <input 
+                  type="url" 
+                  placeholder="https://deine-domain.ch/logo.png" 
+                  value={config.masterLogo} 
+                  onChange={(e) => setConfig({ ...config, masterLogo: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Accent Color Picker */}
+            <div className="space-y-3 pt-4 border-t border-border/50">
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('accent_color')}</label>
+              <div className="flex items-center gap-3">
+                <input 
+                  type="color" 
+                  value={config.accentColor || '#ef4444'} 
+                  onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
+                  className="w-10 h-10 rounded-xl border border-border bg-background cursor-pointer p-1"
+                />
+                <input 
+                  type="text" 
+                  value={config.accentColor || '#ef4444'} 
+                  onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
+                  className="w-32 px-3 py-2 bg-background border border-border/50 rounded-xl text-sm font-mono font-bold text-text-primary uppercase"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">{t('preset_colors')}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {COLOR_PRESETS.map(preset => (
+                    <button
+                      key={preset.hex}
+                      type="button"
+                      onClick={() => setConfig({ ...config, accentColor: preset.hex })}
+                      className={cn(
+                        "w-7 h-7 rounded-lg transition-transform hover:scale-110 border border-white/20 shadow-sm",
+                        config.accentColor === preset.hex && "ring-2 ring-blue-500 ring-offset-2 ring-offset-surface"
+                      )}
+                      style={{ backgroundColor: preset.hex }}
+                      title={preset.name}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Company Master Data */}
+          <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-4">
+            <div className="border-b border-border/50 pb-4 flex items-center gap-2">
+              <Building2 className="text-blue-500" size={20} />
+              <h4 className="font-bold text-base text-text-primary">{t('master_data')}</h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('company_name')}</label>
+                <input 
+                  type="text" 
+                  value={config.companyName} 
+                  onChange={(e) => setConfig({ ...config, companyName: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                  <Hash size={12} /> {t('uid')}
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="CHE-123.456.789 HR/MWST" 
+                  value={config.uid} 
+                  onChange={(e) => setConfig({ ...config, uid: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                  <Globe size={12} /> {t('website')}
+                </label>
+                <input 
+                  type="url" 
+                  placeholder="https://kreativdesk.ch" 
+                  value={config.website} 
+                  onChange={(e) => setConfig({ ...config, website: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                  <Mail size={12} /> {t('email')}
+                </label>
+                <input 
+                  type="email" 
+                  placeholder="support@kreativdesk.ch" 
+                  value={config.email} 
+                  onChange={(e) => setConfig({ ...config, email: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                  <Phone size={12} /> {t('phone')}
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="+41 44 123 45 67" 
+                  value={config.phone} 
+                  onChange={(e) => setConfig({ ...config, phone: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                  <MapPin size={12} /> {t('address')}
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="Musterstrasse 12" 
+                  value={config.address} 
+                  onChange={(e) => setConfig({ ...config, address: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('zip')}</label>
+                <input 
+                  type="text" 
+                  placeholder="8000" 
+                  value={config.zipCode} 
+                  onChange={(e) => setConfig({ ...config, zipCode: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('city')}</label>
+                <input 
+                  type="text" 
+                  placeholder="Zürich" 
+                  value={config.city} 
+                  onChange={(e) => setConfig({ ...config, city: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+
+              <div className="sm:col-span-2 pt-2">
+                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                  <CreditCard size={12} /> {t('iban')}
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="CH93 0000 0000 0000 0000 0" 
+                  value={config.iban} 
+                  onChange={(e) => setConfig({ ...config, iban: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-mono font-bold text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Footer Action Bar */}
+        <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm flex justify-end">
+          <button 
+            type="submit" 
+            disabled={isSubmitting} 
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+          >
+            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}
+            {t('save_branding')}
+          </button>
+        </div>
+
       </form>
     </div>
   );
