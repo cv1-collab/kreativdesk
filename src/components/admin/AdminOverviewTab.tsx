@@ -63,8 +63,13 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
           ]);
         }
 
-        const { data: txs } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-        if (txs) {
+        const { data: txs } = await supabase
+          .from('transactions')
+          .select('*')
+          .or('type.eq.subscription,category.eq.Subscription')
+          .order('created_at', { ascending: false });
+
+        if (txs && txs.length > 0) {
           setTransactions(txs);
           let sRev = 0;
           let mRev = 0;
@@ -85,6 +90,11 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
 
           const cData = Object.keys(monthlyRev).map(k => ({ n: k, v: monthlyRev[k] }));
           setRevChartData(cData.length > 0 ? cData : [{ n: 'Start', v: 0 }]);
+        } else {
+          setTransactions([]);
+          setStripeRevenue(0);
+          setManualRevenue(0);
+          setRevChartData([{ n: 'Start', v: 0 }]);
         }
       } catch (err) {
         console.error("Admin overview fetch error:", err);

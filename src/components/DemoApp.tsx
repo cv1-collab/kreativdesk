@@ -74,7 +74,7 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
       defects: template.defects || [],
 
       setActiveProject: () => { }, addProject: async () => { }, removeProject: async () => { }, updateProjectStatus: async () => { },
-      addCompanyUser: async () => { }, updateCompanyUser: async () => { }, removeCompanyUser: async () => { },
+      addCompanyUser: async () => { }, updateCompanyUser: async () => { }, removeCompanyUser: async () => { }, fetchCompanyUsers: async () => { },
       addProjectMember: async () => { }, removeProjectMember: async () => { }, addTimeEntry: async () => { },
       isDemoMode: true,
       demoData: template

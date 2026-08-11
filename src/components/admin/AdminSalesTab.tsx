@@ -49,7 +49,7 @@ export default function AdminSalesTab() {
       const { data } = await supabase
         .from('transactions')
         .select('*')
-        .or('type.eq.subscription,category.eq.Subscription,is_subscription.eq.true,isManual.eq.true')
+        .or('type.eq.subscription,category.eq.Subscription')
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
