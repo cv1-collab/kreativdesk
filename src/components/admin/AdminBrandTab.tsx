@@ -62,8 +62,7 @@ export default function AdminBrandTab() {
         .from('system_config')
         .upsert({
           id: 'global_master',
-          data: config,
-          is_maintenance: config.isMaintenance
+          data: config
         });
       addToast(t('branding_saved'), 'success');
     } catch (e) {
@@ -94,20 +93,6 @@ export default function AdminBrandTab() {
               onChange={(e) => setConfig({ ...config, companyName: e.target.value })}
               className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary"
             />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-background border border-border/50 rounded-2xl">
-            <div>
-              <div className="font-bold text-text-primary text-sm">{t('maintenance')}</div>
-              <div className="text-xs text-text-muted">{t('maintenance_desc')}</div>
-            </div>
-            <button 
-              type="button" 
-              onClick={() => setConfig({ ...config, isMaintenance: !config.isMaintenance })}
-              className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all", config.isMaintenance ? "bg-amber-500 text-white" : "bg-surface border border-border text-text-muted")}
-            >
-              {config.isMaintenance ? t('active') : t('inactive')}
-            </button>
           </div>
         </div>
 
