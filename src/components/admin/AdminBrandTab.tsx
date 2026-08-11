@@ -43,7 +43,10 @@ export default function AdminBrandTab() {
   
   const [config, setConfig] = useState({ 
     masterLogo: '', accentColor: '#ef4444',
-    companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: ''
+    companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
+    screensaverActive: false,
+    screensaverImage: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
+    screensaverTimeout: 5
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
