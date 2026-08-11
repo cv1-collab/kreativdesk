@@ -26,6 +26,8 @@ interface UniversalPDFStudioProps {
   sidebarControls?: React.ReactNode;
   children: React.ReactNode | ((settings: PDFSettings) => React.ReactNode);
   defaultAccentColor?: string;
+  defaultLogo?: string | null;
+  defaultFooterText?: string;
 }
 
 // Dummy-Export, damit bestehende Imports nicht crashen
@@ -35,7 +37,8 @@ export const getPageDimensions = (format: string, orientation: string) => {
 
 export default function UniversalPDFStudio({ 
   isOpen, onClose, title, fileName, onSaveCloud, 
-  defaultOrientation = 'portrait', sidebarControls, children, defaultAccentColor = '#3b82f6'
+  defaultOrientation = 'portrait', sidebarControls, children, 
+  defaultAccentColor = '#3b82f6', defaultLogo, defaultFooterText
 }: UniversalPDFStudioProps) {
   
   const [isGenerating, setIsGenerating] = useState(false);
@@ -43,10 +46,18 @@ export default function UniversalPDFStudio({
   
   const [format, setFormat] = useState<'A4' | 'A3'>('A4');
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(defaultOrientation);
-  const [logo, setLogo] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null>(defaultLogo || null);
   const [accentColor, setAccentColor] = useState(defaultAccentColor);
   const [watermark, setWatermark] = useState<'NONE' | 'VERTRAULICH' | 'ENTWURF' | 'FREIGEGEBEN'>('NONE');
-  const [footerText, setFooterText] = useState('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH'));
+  const [footerText, setFooterText] = useState(defaultFooterText || ('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH')));
+
+  useEffect(() => {
+    if (defaultLogo) setLogo(defaultLogo);
+  }, [defaultLogo]);
+
+  useEffect(() => {
+    if (defaultFooterText) setFooterText(defaultFooterText);
+  }, [defaultFooterText]);
   
   const logoRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);

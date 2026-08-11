@@ -903,6 +903,8 @@ ${footerText}
           fileName={docTitle.replace(/\s+/g, '_')}
           onSaveCloud={handleSavePdfCloud}
           defaultAccentColor={accentColor}
+          defaultLogo={companyData.logo}
+          defaultFooterText={footerText}
         >
           {(settings) => (
             <DocumentStudioPDFDocument
