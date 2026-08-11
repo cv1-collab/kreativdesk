@@ -1199,7 +1199,7 @@ export default function Calendar() {
 
                         {smartMarkers.map((marker, i) => {
                           const leftPct = getYearPercentage(marker.date);
-                          const defaultOffset = i * UI_ROW_H + 100;
+                          const defaultOffset = i * UI_ROW_H + 20;
                           const offsetY = marker.offsetY !== undefined ? marker.offsetY : defaultOffset;
 
                           return (
@@ -1289,7 +1289,7 @@ export default function Calendar() {
                           );
                         })}
 
-                        <div className="relative z-[20] pt-[100px]">
+                        <div className="relative z-[20] pt-[20px]">
                           {visibleTasks.map((task, index) => {
                             const startPct = getYearPercentage(task.start);
                             const endPct = Math.max(startPct + 1, getYearPercentage(task.end));

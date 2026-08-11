@@ -25,6 +25,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     vcard: 'Digital Business Card', vcard_desc: 'Contact cards (QR/NFC) for your team.',
     lead_form: 'Lead Forms', lead_form_desc: 'Digital forms for trade fairs and acquisition.',
     pitch_deck: 'Pitch Deck', pitch_deck_desc: 'AI-driven client presentations.',
+    ai_template: 'Create AI Template', ai_template_desc: 'Generate custom contracts & documents with AI.',
+    free_editor: 'Free Letter & Contract Editor', free_editor_desc: 'A4 live studio for letters, minutes & contracts.',
     open_tool: 'Open Tool'
   },
   de: {
@@ -37,6 +39,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     vcard: 'Digitale Visitenkarte', vcard_desc: 'Kontaktkarten (QR/NFC) fürs Team.',
     lead_form: 'Lead-Formulare', lead_form_desc: 'Formulare für Messen & Akquise.',
     pitch_deck: 'Pitch Deck', pitch_deck_desc: 'KI-gestützte Kundenpräsentationen.',
+    ai_template: 'KI-Vorlage erstellen', ai_template_desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.',
+    free_editor: 'Freier Brief- & Vertrags-Editor', free_editor_desc: 'DIN-A4 Live-Studio für Schweizer Briefe, Protokolle & Verträge.',
     open_tool: 'Tool öffnen'
   }
 };
@@ -198,12 +202,12 @@ Muster AG
 
   const templates = [
     { 
-      id: 'ai_gen', title: 'KI-Vorlage erstellen', desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.', 
+      id: 'ai_gen', title: t('ai_template'), desc: t('ai_template_desc'), 
       icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'hover:border-amber-500/50 border-amber-500/30',
       action: () => setIsAiModalOpen(true) 
     },
     { 
-      id: 'free_editor', title: 'Freier Brief- & Vertrags-Editor', desc: 'DIN-A4 Live-Studio für Schweizer Briefe, Protokolle & Verträge.', 
+      id: 'free_editor', title: t('free_editor'), desc: t('free_editor_desc'), 
       icon: Edit3, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/50 border-emerald-500/30 shadow-md',
       action: () => {
         setAiPrompt('');

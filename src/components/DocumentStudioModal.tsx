@@ -9,7 +9,6 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
-import UniversalPDFStudio from './UniversalPDFStudio';
 import { cn } from '../utils';
 
 interface DocumentStudioModalProps {
@@ -58,8 +57,6 @@ export default function DocumentStudioModal({
     website: 'www.kreativdesk.ch',
     logo: ''
   });
-
-  const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
 
   useEffect(() => {
     setDocTitle(initialTitle || 'KI-Vorlage (Vertrag / Brief)');
@@ -191,10 +188,10 @@ ______________________________   ______________________________
   };
 
   return (
-    <div className="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-md flex flex-col justify-between overflow-hidden animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-md flex flex-col justify-between overflow-hidden animate-in fade-in duration-200 print:bg-white print:static print:h-auto print:overflow-visible">
       
       {/* Top Header Control Toolbar */}
-      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 z-50 shadow-md">
+      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 z-50 shadow-md print:hidden">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-md">
             <Sparkles size={20} />
@@ -210,10 +207,10 @@ ______________________________   ______________________________
         {/* Action Buttons Toolbar */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsPdfStudioOpen(true)}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer print:hidden"
           >
-            <Printer size={15} className="text-amber-500 dark:text-amber-400" /> PDF Studio / Drucken
+            <Printer size={15} className="text-amber-500 dark:text-amber-400" /> Drucken / PDF
           </button>
           
           <button
@@ -247,10 +244,10 @@ ______________________________   ______________________________
       </header>
 
       {/* Main Studio Canvas Area */}
-      <div className="flex-1 flex overflow-hidden bg-slate-100 dark:bg-slate-950">
+      <div className="flex-1 flex overflow-hidden bg-slate-100 dark:bg-slate-950 print:bg-white print:overflow-visible">
         
         {/* Left Sidebar Control Panel */}
-        <aside className="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200">
+        <aside className="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200 print:hidden">
           
           {/* Target Scope Selection */}
           <div className="space-y-2">
@@ -365,9 +362,9 @@ ______________________________   ______________________________
           </div>
         </aside>
 
-        {/* Live DIN-A4 Paper Canvas */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-12 flex justify-center items-start custom-scrollbar bg-slate-950">
-          <div className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 p-[15mm] md:p-[20mm] shadow-2xl rounded-sm font-sans flex flex-col justify-between relative border border-slate-300">
+        {/* Right Canvas (A4 Page) */}
+        <main className="flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50 p-4 md:p-10 flex justify-center custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
+          <div className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-8 md:p-[20mm] border border-slate-200 flex flex-col print:shadow-none print:border-none print:p-0 justify-between relative">
             
             <div>
               {/* Swiss Letter Header */}
@@ -444,35 +441,6 @@ ______________________________   ______________________________
           </div>
         </main>
       </div>
-
-      {/* Universal PDF Studio Export Integration Modal */}
-      {isPdfStudioOpen && (
-        <UniversalPDFStudio
-          isOpen={isPdfStudioOpen}
-          onClose={() => setIsPdfStudioOpen(false)}
-          title={docTitle}
-          fileName={docTitle.replace(/\s+/g, '_')}
-          onSaveCloud={handleSaveDocument}
-        >
-          <div className="p-8 bg-white text-slate-900 font-sans max-w-2xl mx-auto space-y-6">
-            <div className="border-b-2 border-slate-900 pb-4">
-              <h1 className="text-xl font-bold">{companyData.name}</h1>
-              <p className="text-xs text-slate-500">{companyData.street} • {companyData.zipCity}</p>
-            </div>
-            <div className="text-xs space-y-1">
-              <p className="font-bold">{recipientName}</p>
-              <p>{recipientStreet}</p>
-              <p>{recipientZipCity}</p>
-            </div>
-            <h2 className="text-lg font-bold border-b pb-2">{docTitle}</h2>
-            <div className="text-xs whitespace-pre-wrap leading-relaxed">{docContent}</div>
-            <div className="pt-8 border-t flex justify-between text-xs">
-              <div>Unterschrift Auftraggeber: ____________________</div>
-              <div>Unterschrift Auftragnehmer: ____________________</div>
-            </div>
-          </div>
-        </UniversalPDFStudio>
-      )}
 
     </div>
   );
