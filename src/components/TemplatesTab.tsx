@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
-  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check, Building2, Briefcase
+  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check, Building2, Briefcase, Edit3
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -201,6 +201,15 @@ Muster AG
       id: 'ai_gen', title: 'KI-Vorlage erstellen', desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.', 
       icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'hover:border-amber-500/50 border-amber-500/30',
       action: () => setIsAiModalOpen(true) 
+    },
+    { 
+      id: 'free_editor', title: 'Freier Brief- & Vertrags-Editor', desc: 'DIN-A4 Live-Studio für Schweizer Briefe, Protokolle & Verträge.', 
+      icon: Edit3, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/50 border-emerald-500/30 shadow-md',
+      action: () => {
+        setAiPrompt('');
+        setGeneratedTemplate('Sehr geehrte Damen und Herren,\n\n[Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...]');
+        setIsStudioModalOpen(true);
+      } 
     },
     { 
       id: 'quote', title: t('quote'), desc: t('quote_desc'), 
