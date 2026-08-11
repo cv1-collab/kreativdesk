@@ -352,7 +352,7 @@ export default function LeadsTab() {
           { text: prompt }
         ]);
         
-        let text = response.text || "{}";
+        let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
         try {

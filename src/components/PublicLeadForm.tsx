@@ -6,6 +6,7 @@ import { CheckCircle2, Building2, User, Mail, Phone, MessageSquare, Send, Loader
 import QRCode from 'react-qr-code';
 import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { sendNotification } from '../lib/notifications';
 
 // === LOKALE ÜBERSETZUNGEN ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -126,7 +127,7 @@ export default function PublicLeadForm() {
           { text: prompt }
         ]);
         
-        let text = response.text || "{}";
+        let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
         text = text.replace(/`{3}json/g, '').replace(/`{3}/g, '').trim();
         
         try {
@@ -174,7 +175,19 @@ export default function PublicLeadForm() {
         created_at: new Date().toISOString()
       });
 
-
+      if (companyId) {
+        try {
+          await sendNotification({
+            companyId: companyId,
+            title: 'Neue Lead-Anfrage',
+            message: `Neuer Lead: ${formData.firstName} ${formData.lastName} (${formData.company || formData.email})`,
+            type: 'info',
+            link: '/crm'
+          });
+        } catch (nErr) {
+          console.warn("Lead notification warning:", nErr);
+        }
+      }
 
       setIsSubmitted(true);
     } catch (err) {
