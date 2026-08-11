@@ -7,10 +7,11 @@ import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
 import { 
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
-  Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles 
+  Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3 
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
+import DocumentStudioModal from './DocumentStudioModal';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { 
@@ -64,7 +65,28 @@ export default function Documents() {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
+  const [studioDocTitle, setStudioDocTitle] = useState('');
+  const [studioDocContent, setStudioDocContent] = useState('');
+  const [isStudioOpen, setIsStudioOpen] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenInStudio = (item: any) => {
+    const fileUrl = item.url || item.file_url;
+    let textContent = '';
+    if (fileUrl && fileUrl.startsWith('data:')) {
+      try {
+        const parts = fileUrl.split(',');
+        const rawData = parts[1] || '';
+        textContent = decodeURIComponent(rawData);
+      } catch (e) {
+        textContent = '';
+      }
+    }
+    setStudioDocTitle(item.name || 'Dokument');
+    setStudioDocContent(textContent || `DOKUMENT: ${item.name}\n\nInhalt des Dokuments hier im Studio bearbeiten...`);
+    setIsStudioOpen(true);
+  };
 
   const fetchDocuments = async () => {
     if (!currentUser?.companyId) return;
@@ -469,6 +491,16 @@ export default function Documents() {
                 </div>
 
                 <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                  {!item.is_folder && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                    <button 
+                      onClick={() => handleOpenInStudio(item)} 
+                      className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Im Brief- & Dokumenten-Studio bearbeiten"
+                    >
+                      <Edit3 size={14} /> <span className="hidden sm:inline">Im Studio bearbeiten</span>
+                    </button>
+                  )}
+
                   {!item.is_folder && (item.url || item.file_url) && (
                     <button 
                       onClick={() => handleDownloadFile(item)} 
@@ -494,6 +526,17 @@ export default function Documents() {
           </div>
         )}
       </div>
+
+      {/* KI Brief- & Dokumenten-Studio Modal */}
+      <DocumentStudioModal
+        isOpen={isStudioOpen}
+        onClose={() => {
+          setIsStudioOpen(false);
+          fetchDocuments();
+        }}
+        initialTitle={studioDocTitle}
+        initialContent={studioDocContent}
+      />
     </div>
   );
 }

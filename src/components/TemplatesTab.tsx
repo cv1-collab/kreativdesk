@@ -11,7 +11,7 @@ import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
 
-import { sendNotification } from '../lib/notifications';
+import DocumentStudioModal from './DocumentStudioModal';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -74,6 +74,7 @@ export default function TemplatesTab({
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [saveScope, setSaveScope] = useState<'company' | 'project'>('company');
+  const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
 
   const handleSaveToDocuments = async () => {
     if (!generatedTemplate || isSavingDoc) return;
@@ -330,30 +331,48 @@ Muster AG
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex flex-col gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={handleSaveToDocuments}
-                    disabled={isSavingDoc}
-                    className={cn("flex-1 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50", saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20")}
+                    onClick={() => setIsStudioModalOpen(true)}
+                    className="w-full py-3 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
                   >
-                    {isSavingDoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                    {saveScope === 'company' ? 'In Firmen-Dokumente speichern' : `In Projekt-Bauakte speichern`}
+                    <Sparkles size={16} /> Im Brief- & Dokumenten-Studio öffnen (DIN-A4 Layout)
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleCopyText}
-                    className="px-4 py-3 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    {isCopied ? 'Kopiert' : 'Kopieren'}
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveToDocuments}
+                      disabled={isSavingDoc}
+                      className={cn("flex-1 py-3 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50", saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20")}
+                    >
+                      {isSavingDoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      {saveScope === 'company' ? 'Schnell-Speichern (Firmen-Dokumente)' : 'Schnell-Speichern (Projekt-Bauakte)'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyText}
+                      className="px-4 py-3 bg-background border border-border/50 hover:bg-white/5 text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                      {isCopied ? 'Kopiert' : 'Kopieren'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
           </div>
         </div>
       )}
+
+      {/* KI Brief- & Dokumenten Studio Modal */}
+      <DocumentStudioModal
+        isOpen={isStudioModalOpen}
+        onClose={() => setIsStudioModalOpen(false)}
+        initialTitle={aiPrompt ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)'}
+        initialContent={generatedTemplate}
+      />
     </div>
   );
 }

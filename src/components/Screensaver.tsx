@@ -108,29 +108,31 @@ export default function Screensaver() {
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20 backdrop-blur-[3px] select-none pointer-events-none" />
 
       <div className="relative z-10 flex flex-col items-center text-center space-y-6 keep-white">
-        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-800 flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.4)] border border-white/40 mb-4 keep-white">
-          <Building2 size={48} className="text-white keep-white" style={{ color: '#ffffff' }} />
+        <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-800 flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.5)] border-2 border-white/60 mb-4 keep-white">
+          <span className="text-5xl font-black text-white tracking-tighter select-none font-sans drop-shadow-2xl" style={{ color: '#ffffff' }}>
+            K
+          </span>
         </div>
         <h1 
-          className="text-3xl font-black tracking-[0.6em] uppercase select-none keep-white"
+          className="text-3xl font-black tracking-[0.6em] uppercase select-none keep-white !text-white"
           style={{ color: '#ffffff', textShadow: '0 4px 20px rgba(0,0,0,0.95)' }}
         >
           Kreativ-Desk OS
         </h1>
         <div 
-          className="text-6xl md:text-8xl font-black tracking-widest font-mono select-none keep-white"
+          className="text-6xl md:text-8xl font-black tracking-widest font-mono select-none keep-white !text-white"
           style={{ color: '#ffffff', textShadow: '0 0 40px rgba(255,255,255,0.95), 0 4px 20px rgba(0,0,0,0.95)' }}
         >
           {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </div>
         <div 
-          className="text-xs font-black uppercase tracking-[0.25em] select-none keep-white"
+          className="text-xs font-black uppercase tracking-[0.25em] select-none keep-white !text-white"
           style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.95)' }}
         >
           {time.toLocaleDateString('de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </div>
         <div 
-          className="pt-8 text-[10px] font-black tracking-[0.3em] uppercase animate-pulse select-none keep-white"
+          className="pt-8 text-[10px] font-black tracking-[0.3em] uppercase animate-pulse select-none keep-white !text-white"
           style={{ color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.95)' }}
         >
           MAUS BEWEGEN ODER KLICKEN ZUM ENTSPERREN
