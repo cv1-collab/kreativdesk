@@ -160,7 +160,7 @@ export default function MeetChat() {
 
   const toggleTranscription = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-       addToast("Dein Browser unterstützt keine Live-Transkription (Chrome, Safari oder Edge empfohlen).", "error");
+       addToast("ℹ️ Live-Transkription wird in Firefox nicht unterstützt. Bitte nutze Chrome, Safari oder Edge für Live-Untertitel.", "info");
        return;
     }
     if (isTranscribing) {
