@@ -5,7 +5,7 @@ import {
   Plus, ArrowRight, Download, MoreVertical,
   CheckCircle2, Clock, Loader2, FileSignature, Trash2, 
   Building, Landmark, PieChart, Briefcase, X, Smartphone, Image as ImageIcon,
-  Calendar, Sparkles
+  Calendar, Sparkles, Search, Filter, CheckSquare, Square, ExternalLink
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -262,12 +262,89 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     } catch (error) { addToast(t('save_error'), "error"); } finally { setIsSubmitting(false); }
   };
 
-  const filtered = selectedYear === 'all' ? transactions : transactions.filter(tx => (tx.date || tx.createdAt || '').includes(selectedYear));
-  const quotes = filtered.filter(tx => tx.category === 'Offerte' || tx.category === 'Quote' || tx.type === 'quote');
-  const invoices = filtered.filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'revenue' || tx.type === 'invoice');
-  const expenses = filtered.filter(tx => tx.category === 'Spesen' || tx.type === 'expense');
-  const operatingCosts = filtered.filter(tx => tx.type === 'operating_cost' || tx.category === 'Kreditorenrechnung');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'quotes' | 'invoices' | 'expenses' | 'operating_costs'>('all');
+
+  const toggleSelectId = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const toggleSelectAll = (items: Transaction[]) => {
+    const itemIds = items.map(i => i.id);
+    const allSelected = itemIds.length > 0 && itemIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !itemIds.includes(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...itemIds])));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (window.confirm(`Möchtest du wirklich ${selectedIds.length} ausgewählte Einträge unwiderruflich löschen?`)) {
+      try {
+        await supabase.from('transactions').delete().in('id', selectedIds);
+        setTransactions(prev => prev.filter(tx => !selectedIds.includes(tx.id)));
+        setSelectedIds([]);
+        addToast(`${selectedIds.length} Einträge erfolgreich gelöscht!`, 'success');
+      } catch (e) {
+        addToast(t('delete_error'), 'error');
+      }
+    }
+  };
+
+  const handleBulkStatus = async (newStatus: string) => {
+    if (selectedIds.length === 0) return;
+    try {
+      await supabase.from('transactions').update({ status: newStatus }).in('id', selectedIds);
+      setTransactions(prev => prev.map(tx => selectedIds.includes(tx.id) ? { ...tx, status: newStatus } : tx));
+      addToast(`Status für ${selectedIds.length} Einträge auf "${newStatus}" aktualisiert`, 'success');
+    } catch (e) {
+      addToast(t('update_error'), 'error');
+    }
+  };
+
+  const handleExportCSV = (itemsToExport: Transaction[]) => {
+    if (itemsToExport.length === 0) return;
+    const headers = ['ID', 'Datum', 'Kategorie', 'Beschreibung', 'Betrag (CHF)', 'Status'];
+    const rows = itemsToExport.map(tx => [
+      tx.id,
+      tx.date || tx.createdAt || '',
+      `"${(tx.category || tx.type || '').replace(/"/g, '""')}"`,
+      `"${(tx.description || tx.client || '').replace(/"/g, '""')}"`,
+      tx.amount,
+      tx.status
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Finanzen_Export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const yearFiltered = selectedYear === 'all' ? transactions : transactions.filter(tx => (tx.date || tx.createdAt || '').includes(selectedYear));
   
+  const searchFiltered = yearFiltered.filter(tx => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (tx.description || '').toLowerCase().includes(q) ||
+      (tx.category || '').toLowerCase().includes(q) ||
+      (tx.client || '').toLowerCase().includes(q) ||
+      (tx.status || '').toLowerCase().includes(q) ||
+      String(tx.amount).includes(q)
+    );
+  });
+
+  const quotes = searchFiltered.filter(tx => tx.category === 'Offerte' || tx.category === 'Quote' || tx.type === 'quote');
+  const invoices = searchFiltered.filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'revenue' || tx.type === 'invoice');
+  const expenses = searchFiltered.filter(tx => tx.category === 'Spesen' || tx.type === 'expense');
+  const operatingCosts = searchFiltered.filter(tx => tx.type === 'operating_cost' || tx.category === 'Kreditorenrechnung');
+
   const totalRevenue = invoices.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
   const totalSpesen = expenses.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
   const totalOpCosts = operatingCosts.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
@@ -303,6 +380,13 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       setProjects(projs || []);
     }
   };
+
+  const activeCategoryItems = 
+    activeTabFilter === 'quotes' ? quotes :
+    activeTabFilter === 'invoices' ? invoices :
+    activeTabFilter === 'expenses' ? expenses :
+    activeTabFilter === 'operating_costs' ? operatingCosts :
+    searchFiltered;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 text-text-primary">
@@ -381,123 +465,223 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           </table>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* OFFERTEN TABELLE */}
-        <div className="bg-surface border border-border/50 rounded-2xl overflow-hidden h-full">
-          <div className="p-4 border-b border-border/50 bg-surface/50">
-            <h3 className="font-bold flex items-center gap-2"><FileSignature size={16} className="text-blue-500"/> {t('quotes')}</h3>
+
+      {/* SEARCH, FILTER & INTERACTIVE ACTION BAR */}
+      <div className="bg-surface border border-border/50 rounded-2xl p-4 shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          {/* SEARCH INPUT */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
+            <input 
+              type="text"
+              placeholder="Durchsuchen nach Beschreibung, Firma, Betrag, Status..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm outline-none focus:border-indigo-500 text-text-primary placeholder:text-text-muted/60 transition-all"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs">
+                <X size={16} />
+              </button>
+            )}
           </div>
-          <div className="overflow-x-auto h-[350px] custom-scrollbar bg-background -mx-4 px-4 sm:mx-0 sm:px-0 w-full">
-            <table className="w-full text-sm text-left min-w-[800px]">
-              <tbody className="divide-y divide-border/30">
-                {quotes.map(quote => (
-                  <tr key={quote.id} className="hover:bg-white/[0.02] group">
-                    <td className="px-4 py-2"><div className="font-bold text-xs truncate max-w-[150px]">{quote.description || quote.client || t('quote')}</div></td>
-                    <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(quote.amount)).toFixed(2)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {!!sanitizeUrl(quote.url) && <a href={sanitizeUrl(quote.url)} target="_blank" rel="noopener noreferrer" className="p-1 text-blue-500 hover:bg-blue-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
-                        <select value={quote.status} onChange={(e) => handleUpdateStatus(quote.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", quote.status === 'Angenommen' || quote.status === 'Approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20")}>
-                          <option value="Offen" className="bg-surface">Offen</option><option value="Angenommen" className="bg-surface">Angenommen</option><option value="Abgelehnt" className="bg-surface">Abgelehnt</option>
-                        </select>
-                        <button onClick={(e) => handleDeleteTransaction(quote.id, e)} className="p-1 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {quotes.length === 0 && <tr><td colSpan={3} className="text-center py-10 text-text-muted font-medium text-xs">{t('no_entries')}</td></tr>}
-              </tbody>
-            </table>
-          </div>
+
+          {/* EXPORT ALL CSV BUTTON */}
+          <button 
+            onClick={() => handleExportCSV(activeCategoryItems)}
+            disabled={activeCategoryItems.length === 0}
+            className="px-4 py-2.5 bg-surface border border-border hover:bg-white/5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+          >
+            <Download size={15} /> CSV Export ({activeCategoryItems.length})
+          </button>
         </div>
 
-        {/* RECHNUNGEN TABELLE */}
-        <div className="bg-surface border border-border/50 rounded-2xl overflow-hidden h-full">
-          <div className="p-4 border-b border-border/50 bg-surface/50">
-            <h3 className="font-bold flex items-center gap-2"><FileText size={16} className="text-emerald-500"/> {t('outgoing_invoices')}</h3>
-          </div>
-          <div className="overflow-x-auto h-[350px] custom-scrollbar bg-background -mx-4 px-4 sm:mx-0 sm:px-0 w-full">
-            <table className="w-full text-sm text-left min-w-[800px]">
-              <tbody className="divide-y divide-border/30">
-                {invoices.map(inv => (
-                  <tr key={inv.id} className="hover:bg-white/[0.02] group">
-                    <td className="px-4 py-2"><div className="font-bold text-xs truncate max-w-[150px]">{inv.description || inv.client || 'Rechnung'}</div></td>
-                    <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(inv.amount)).toFixed(2)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {!!sanitizeUrl(inv.url) && <a href={sanitizeUrl(inv.url)} target="_blank" rel="noopener noreferrer" className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
-                        <select value={inv.status} onChange={(e) => handleUpdateStatus(inv.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", inv.status === 'Bezahlt' || inv.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
-                          <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
-                        </select>
-                        <button onClick={(e) => handleDeleteTransaction(inv.id, e)} className="p-1 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {invoices.length === 0 && <tr><td colSpan={3} className="text-center py-10 text-text-muted font-medium text-xs">{t('no_entries')}</td></tr>}
-              </tbody>
-            </table>
-          </div>
+        {/* CATEGORY TABS */}
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar border-b border-border/30 pb-3">
+          <button 
+            onClick={() => setActiveTabFilter('all')}
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border", activeTabFilter === 'all' ? "bg-indigo-500/10 text-indigo-500 border-indigo-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
+          >
+            Alle ({searchFiltered.length})
+          </button>
+          <button 
+            onClick={() => setActiveTabFilter('quotes')}
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'quotes' ? "bg-blue-500/10 text-blue-500 border-blue-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
+          >
+            <FileSignature size={14} /> Offerten ({quotes.length})
+          </button>
+          <button 
+            onClick={() => setActiveTabFilter('invoices')}
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'invoices' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
+          >
+            <FileText size={14} /> Ausgangsrechnungen ({invoices.length})
+          </button>
+          <button 
+            onClick={() => setActiveTabFilter('expenses')}
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'expenses' ? "bg-orange-500/10 text-orange-500 border-orange-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
+          >
+            <Receipt size={14} /> Spesen ({expenses.length})
+          </button>
+          <button 
+            onClick={() => setActiveTabFilter('operating_costs')}
+            className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'operating_costs' ? "bg-purple-500/10 text-purple-500 border-purple-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
+          >
+            <Landmark size={14} /> Externe Kosten ({operatingCosts.length})
+          </button>
         </div>
 
-        {/* SPESEN TABELLE */}
-        <div className="bg-surface border border-border/50 rounded-2xl overflow-hidden h-full">
-          <div className="p-4 border-b border-border/50 bg-surface/50">
-            <h3 className="font-bold flex items-center gap-2"><Receipt size={16} className="text-orange-500"/> {t('expenses_team')}</h3>
+        {/* FLOATING BULK ACTIONS BAR */}
+        {selectedIds.length > 0 && (
+          <div className="bg-indigo-600 text-white p-3.5 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-xl animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 font-bold text-sm">
+              <CheckSquare size={18} />
+              <span>{selectedIds.length} Einträge ausgewählt</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button 
+                onClick={handleBulkDelete}
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow"
+              >
+                <Trash2 size={14} /> Ausgewählte löschen
+              </button>
+              <button 
+                onClick={() => handleBulkStatus('Bezahlt')}
+                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow"
+              >
+                <CheckCircle2 size={14} /> Als Bezahlt markieren
+              </button>
+              <button 
+                onClick={() => handleBulkStatus('Offen')}
+                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow"
+              >
+                Als Offen markieren
+              </button>
+              <button 
+                onClick={() => handleExportCSV(transactions.filter(t => selectedIds.includes(t.id)))}
+                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
+              >
+                <Download size={14} /> CSV Export
+              </button>
+              <button 
+                onClick={() => setSelectedIds([])}
+                className="text-xs text-white/80 hover:text-white font-bold ml-2 underline"
+              >
+                Abwählen
+              </button>
+            </div>
           </div>
-          <div className="overflow-x-auto h-[350px] custom-scrollbar bg-background -mx-4 px-4 sm:mx-0 sm:px-0 w-full">
-            <table className="w-full text-sm text-left min-w-[800px]">
-              <tbody className="divide-y divide-border/30">
-                {expenses.map(exp => (
-                  <tr key={exp.id} className="hover:bg-white/[0.02] group">
-                    <td className="px-4 py-2"><div className="font-bold text-xs truncate max-w-[150px]">{exp.description || exp.category || t('expenses')}</div></td>
-                    <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(exp.amount)).toFixed(2)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {!!sanitizeUrl(exp.receiptUrls?.[0]) && <a href={sanitizeUrl(exp.receiptUrls[0])} target="_blank" rel="noopener noreferrer" className="p-1 text-orange-500 hover:bg-orange-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
-                        <select value={exp.status} onChange={(e) => handleUpdateStatus(exp.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", exp.status === 'Bezahlt' || exp.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
-                          <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
-                        </select>
-                        <button onClick={(e) => handleDeleteTransaction(exp.id, e)} className="p-1 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {expenses.length === 0 && <tr><td colSpan={3} className="text-center py-10 text-text-muted font-medium text-xs">{t('no_entries')}</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        )}
 
-        {/* EXTERNE KOSTEN TABELLE */}
-        <div className="bg-surface border border-border/50 rounded-2xl overflow-hidden h-full">
-          <div className="p-4 border-b border-border/50 bg-surface/50">
-            <h3 className="font-bold flex items-center gap-2"><Landmark size={16} className="text-purple-500"/> {t('external_costs')}</h3>
-          </div>
-          <div className="overflow-x-auto h-[350px] custom-scrollbar bg-background -mx-4 px-4 sm:mx-0 sm:px-0 w-full">
-            <table className="w-full text-sm text-left min-w-[800px]">
-              <tbody className="divide-y divide-border/30">
-                {operatingCosts.map(op => (
-                  <tr key={op.id} className="hover:bg-white/[0.02] group">
-                    <td className="px-4 py-2"><div className="font-bold text-xs truncate max-w-[150px]">{op.description || op.category || 'Kosten'}</div></td>
-                    <td className="px-4 py-2 text-right text-xs font-medium whitespace-nowrap">CHF {Math.abs(Number(op.amount)).toFixed(2)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {!!sanitizeUrl(op.receiptUrls?.[0]) && <a href={sanitizeUrl(op.receiptUrls[0])} target="_blank" rel="noopener noreferrer" className="p-1 text-purple-500 hover:bg-purple-500/10 rounded transition-colors" title="PDF Öffnen"><FileText size={14}/></a>}
-                        <select value={op.status} onChange={(e) => handleUpdateStatus(op.id, e.target.value)} className={cn("px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border outline-none cursor-pointer appearance-none", op.status === 'Bezahlt' || op.status === 'paid' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-purple-500/10 text-purple-500 border-purple-500/20")}>
-                          <option value="Offen" className="bg-surface">Offen</option><option value="Bezahlt" className="bg-surface">Bezahlt</option>
-                        </select>
-                        <button onClick={(e) => handleDeleteTransaction(op.id, e)} className="p-1 text-text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12} /></button>
+        {/* MASTER INTERACTIVE TABLE */}
+        <div className="overflow-x-auto custom-scrollbar border border-border/30 rounded-xl">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-background/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/30">
+              <tr>
+                <th className="p-3 w-10 text-center">
+                  <input 
+                    type="checkbox"
+                    checked={activeCategoryItems.length > 0 && activeCategoryItems.every(item => selectedIds.includes(item.id))}
+                    onChange={() => toggleSelectAll(activeCategoryItems)}
+                    className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                </th>
+                <th className="p-3">Beschreibung / Firma</th>
+                <th className="p-3">Kategorie</th>
+                <th className="p-3">Datum</th>
+                <th className="p-3 text-right">Betrag (CHF)</th>
+                <th className="p-3 text-center">Status</th>
+                <th className="p-3 text-right">Aktionen</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/20">
+              {activeCategoryItems.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-text-muted">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Receipt size={32} className="opacity-30" />
+                      <p className="font-medium text-sm">{t('no_entries')}</p>
+                      {searchQuery && <p className="text-xs text-text-muted">Keine Treffer für "{searchQuery}"</p>}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              {activeCategoryItems.map(item => {
+                const isSelected = selectedIds.includes(item.id);
+                const hasPdf = !!sanitizeUrl(item.url || item.receiptUrls?.[0]);
+                const pdfUrl = sanitizeUrl(item.url || item.receiptUrls?.[0]);
+
+                return (
+                  <tr key={item.id} className={cn("hover:bg-white/[0.03] transition-colors", isSelected && "bg-indigo-500/10")}>
+                    <td className="p-3 text-center">
+                      <input 
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelectId(item.id)}
+                        className="w-4 h-4 rounded border-border text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </td>
+                    <td className="p-3 font-semibold text-text-primary">
+                      <div className="truncate max-w-[280px]" title={item.description || item.client}>
+                        {item.description || item.client || 'Buchung'}
+                      </div>
+                    </td>
+                    <td className="p-3">
+                      <span className="px-2 py-1 bg-surface border border-border/40 rounded text-[11px] font-medium text-text-muted">
+                        {item.category || item.type || 'Allgemein'}
+                      </span>
+                    </td>
+                    <td className="p-3 text-xs text-text-muted whitespace-nowrap">
+                      {item.date || item.createdAt || '-'}
+                    </td>
+                    <td className="p-3 text-right font-bold font-mono text-sm whitespace-nowrap">
+                      CHF {Math.abs(Number(item.amount)).toFixed(2)}
+                    </td>
+                    <td className="p-3 text-center">
+                      <select 
+                        value={item.status || 'Offen'}
+                        onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border outline-none cursor-pointer",
+                          item.status === 'Bezahlt' || item.status === 'paid' || item.status === 'Approved' || item.status === 'Angenommen'
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
+                            : item.status === 'Abgelehnt'
+                            ? "bg-red-500/10 text-red-500 border-red-500/30"
+                            : "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                        )}
+                      >
+                        <option value="Offen" className="bg-surface text-text-primary">Offen</option>
+                        <option value="Bezahlt" className="bg-surface text-text-primary">Bezahlt</option>
+                        <option value="Angenommen" className="bg-surface text-text-primary">Angenommen</option>
+                        <option value="Abgelehnt" className="bg-surface text-text-primary">Abgelehnt</option>
+                      </select>
+                    </td>
+                    <td className="p-3 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {hasPdf && (
+                          <a 
+                            href={pdfUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="p-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-1 text-xs font-bold"
+                            title="Dokument / PDF anzeigen & herunterladen"
+                          >
+                            <FileText size={14} /> PDF
+                          </a>
+                        )}
+                        <button 
+                          onClick={(e) => handleDeleteTransaction(item.id, e)}
+                          className="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg border border-red-500/20 transition-all flex items-center gap-1 text-xs font-bold"
+                          title="Eintrag löschen"
+                        >
+                          <Trash2 size={14} /> Löschen
+                        </button>
                       </div>
                     </td>
                   </tr>
-                ))}
-                {operatingCosts.length === 0 && <tr><td colSpan={3} className="text-center py-10 text-text-muted font-medium text-xs">{t('no_entries')}</td></tr>}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
       
