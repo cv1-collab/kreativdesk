@@ -143,28 +143,35 @@ export default function AdminDashboard() {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
-        <header className="h-16 flex items-center justify-between px-4 md:px-8 border-b border-border/50 bg-surface/80 backdrop-blur-xl z-[60] shrink-0">
+        <header className="h-16 flex items-center justify-between px-4 md:px-8 border-b border-border/50 bg-surface/95 backdrop-blur-xl z-20 shrink-0">
           <div className="flex items-center gap-3">
             <div className="md:hidden flex items-center gap-2">
                <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500"><Shield size={16} /></div>
                <span className="font-bold text-sm truncate max-w-[120px]">{t('admin_control')}</span>
             </div>
+            <div className="hidden md:flex items-center gap-2">
+              <div className="px-2.5 py-1 bg-red-500/10 text-red-500 rounded-lg text-xs font-bold border border-red-500/20 flex items-center gap-1.5 uppercase tracking-wider">
+                <Shield size={14} /> Root Admin
+              </div>
+              <span className="text-text-muted font-bold text-xs">/</span>
+              <span className="font-bold text-sm text-text-primary capitalize">{navItems.find(i => i.id === activeTab)?.label || activeTab}</span>
+            </div>
             {kdCompany && (
-              <div className="hidden md:flex items-center gap-2 text-xs font-bold bg-accent-ai/10 text-accent-ai px-3 py-1.5 rounded-full border border-accent-ai/20 ml-2">
+              <div className="hidden lg:flex items-center gap-2 text-xs font-bold bg-accent-ai/10 text-accent-ai px-3 py-1 rounded-full border border-accent-ai/20 ml-2">
                 <Users size={14} />
-                <span>Kreativ Desk Lizenzen: {kdCompany.usedSeats || 1} / {kdCompany.maxSeats || 10}</span>
+                <span>Lizenzen: {kdCompany.usedSeats || 1} / {kdCompany.maxSeats || 10}</span>
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4 relative z-[1000]">
-            <button onClick={startTour} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50" title="Tour starten"><HelpCircle size={18} /></button>
+          <div className="flex items-center gap-2 md:gap-4 relative z-30">
+            <button onClick={startTour} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer" title="Tour starten"><HelpCircle size={18} /></button>
             <button onClick={toggleLanguage} className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-background border border-border/50 rounded-md text-xs font-bold text-text-primary hover:bg-white/5 transition-colors uppercase cursor-pointer"><Globe size={14} className="text-red-500" /> {language}</button>
-            <button onClick={toggleTheme} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50">{theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}</button>
-            <div onClick={() => setShowNotifications(true)} className="p-3 text-text-muted hover:text-text-primary rounded-full transition-colors relative cursor-pointer z-[9999] bg-background border border-border/50 md:bg-transparent md:border-transparent">
-              <Bell size={18} className="pointer-events-none" />
-              {newLeadsCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-surface animate-pulse" />}
-            </div>
+            <button onClick={toggleTheme} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer">{theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}</button>
+            <button onClick={() => setShowNotifications(true)} className="p-2 text-text-muted hover:text-text-primary rounded-full transition-colors relative cursor-pointer bg-background border border-border/50 shadow-sm">
+              <Bell size={18} />
+              {newLeadsCount > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-surface animate-pulse" />}
+            </button>
             <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-red-500/20 border-2 border-white/10 shrink-0 ml-1">
                 {currentUser?.email?.charAt(0).toUpperCase()}
             </div>

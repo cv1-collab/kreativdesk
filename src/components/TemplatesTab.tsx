@@ -11,6 +11,8 @@ import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
 
+import { sendNotification } from '../lib/notifications';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     templates_hub: 'Interactive Templates',
@@ -83,15 +85,19 @@ export default function TemplatesTab({
       const targetProjectId = isProjectScope ? (activeProjectId || 'global') : 'global';
       const category = isProjectScope ? 'projects' : 'company';
       
+      const docFileName = title.endsWith('.txt') ? title : `${title}.txt`;
+      const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(generatedTemplate);
+
       const { data, error } = await supabase.from('documents').insert({
         company_id: safeCompanyId,
         project_id: targetProjectId,
         category: category,
         folder_id: 'root',
         is_folder: false,
-        name: title,
+        name: docFileName,
         type: 'vorlage',
-        content: generatedTemplate,
+        url: dataUrl,
+        file_url: dataUrl,
         size: `${Math.max(1, Math.round(generatedTemplate.length / 1024))} KB`,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString()
@@ -100,15 +106,25 @@ export default function TemplatesTab({
       if (error) throw error;
 
       localStorage.setItem('has_new_document', 'true');
-      localStorage.setItem('last_created_doc_title', title);
-      window.dispatchEvent(new CustomEvent('document_created', { detail: { title, id: data?.id } }));
+      localStorage.setItem('last_created_doc_title', docFileName);
+      window.dispatchEvent(new CustomEvent('document_created', { detail: { title: docFileName, id: data?.id } }));
 
       const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';
-      addToast(`Vorlage "${title}" erfolgreich in ${locationName} gespeichert!`, 'success');
+      
+      // Dispatch real-time notification
+      await sendNotification({
+        companyId: safeCompanyId,
+        title: '📄 Neue KI-Vorlage gespeichert',
+        message: `Vorlage "${docFileName}" wurde in ${locationName} abgelegt.`,
+        type: 'document',
+        link: isProjectScope ? `/project/${targetProjectId}/documents` : '/app'
+      });
+
+      addToast(`Vorlage "${docFileName}" erfolgreich in ${locationName} gespeichert!`, 'success');
       setIsAiModalOpen(false);
     } catch (err: any) {
       console.error("Save doc error:", err);
-      addToast('Vorlage in der Bauakte gespeichert!', 'success');
+      addToast('Fehler beim Speichern der Vorlage!', 'error');
     } finally {
       setIsSavingDoc(false);
     }

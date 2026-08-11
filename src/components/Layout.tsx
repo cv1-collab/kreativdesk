@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio from './PitchDeckStudio';
+import NotificationCenter from './NotificationCenter';
 import { useTour } from '../contexts/TourContext';
 import { hasFeature } from '../utils/planFeatures';
 import { Lock } from 'lucide-react';
@@ -436,36 +437,15 @@ export default function Layout() {
                 {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
               </button>
 
-              <div className="relative" ref={notificationsRef}>
+              <div>
                 <button 
-                  onClick={handleOpenNotifications} 
-                  className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm"
+                  onClick={() => setShowNotifications(true)} 
+                  className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
                 >
                   <Bell size={18} />
                   {hasUnread && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}
                 </button>
-
-                {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-surface border border-border rounded-xl shadow-2xl z-[10000] overflow-hidden animate-in fade-in slide-in-from-top-2">
-                    <div className="p-3 border-b border-border/50 bg-background/50 flex justify-between items-center">
-                      <span className="text-sm font-bold">{language === 'de' ? 'Benachrichtigungen' : 'Notifications'}</span>
-                      {hasUnread && <span className="text-[10px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded font-bold">{language === 'de' ? 'Neu' : 'New'}</span>}
-                    </div>
-                    <div className="max-h-64 overflow-y-auto custom-scrollbar">
-                      {notifications.length > 0 ? notifications.map((notif) => (
-                        <div key={notif.id} className="p-3 border-b border-border/50 hover:bg-white/5 cursor-pointer transition-colors" onClick={() => { setShowNotifications(false); if (notif.type === 'defect') navigate(`/project/${projectId}/defects`); else navigate(`/project/${projectId}/documents`); }}>
-                          <p className="text-xs font-bold text-text-primary mb-1">{notif.title}</p>
-                          <p className="text-xs text-text-muted line-clamp-2">{notif.desc}</p>
-                          <p className="text-[10px] text-text-muted mt-2">
-                            {new Date(parseTime(notif.time)).toLocaleDateString(language === 'de' ? 'de-CH' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                      )) : (
-                        <div className="p-4 text-center text-sm text-text-muted">{language === 'de' ? 'Keine neuen Benachrichtigungen' : 'No new notifications'}</div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
               </div>
             </div>
          </header>
