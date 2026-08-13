@@ -114,10 +114,10 @@ export default function GuestMeet() {
       if (data) {
         setMessages(data.map(d => ({
           id: d.id,
-          sender: d.sender || 'Unknown',
-          avatar: d.avatar || 'U',
-          time: new Date(d.created_at || d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: d.text
+          sender: d.sender_name || d.sender || 'Gast',
+          avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
+          time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: d.message || d.text
         })));
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       }
@@ -134,10 +134,10 @@ export default function GuestMeet() {
             if (prev.some(m => m.id === d.id)) return prev;
             return [...prev, {
               id: d.id,
-              sender: d.sender || 'Unknown',
-              avatar: d.avatar || 'U',
-              time: new Date(d.created_at || d.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: d.text
+              sender: d.sender_name || d.sender || 'Gast',
+              avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
+              time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              text: d.message || d.text
             }];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);

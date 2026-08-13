@@ -123,9 +123,9 @@ export default function MeetChat() {
     const payload: any = {
       id: msgId,
       call_id: currentMeetingCallId,
-      sender: senderName,
       sender_id: currentUser?.uid || `user-${Date.now()}`,
-      text: msgData.text,
+      sender_name: senderName,
+      message: msgData.text,
       created_at: new Date().toISOString()
     };
 
@@ -275,9 +275,15 @@ export default function MeetChat() {
         
         if (msgs && msgs.length > 0) {
           setMessages(msgs.map(d => ({
-            id: d.id, sender: d.sender || 'System', avatar: d.avatar || (d.sender || 'U').substring(0, 2).toUpperCase(),
+            id: d.id,
+            sender: d.sender_name || d.sender || 'System',
+            avatar: (d.sender_name || d.sender || 'U').substring(0, 2).toUpperCase(),
             time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            text: d.text, isAI: d.is_ai, fileUrl: d.file_url, reference: d.reference, createdAt: d.created_at
+            text: d.message || d.text,
+            isAI: d.is_ai,
+            fileUrl: d.file_url,
+            reference: d.reference,
+            createdAt: d.created_at
           })));
         }
       } catch (chatErr) {
@@ -344,10 +350,10 @@ export default function MeetChat() {
             if (prev.some(m => m.id === d.id)) return prev;
             return [...prev, {
               id: d.id,
-              sender: d.sender || 'System',
-              avatar: d.avatar || (d.sender || 'U').substring(0, 2).toUpperCase(),
+              sender: d.sender_name || d.sender || 'System',
+              avatar: (d.sender_name || d.sender || 'U').substring(0, 2).toUpperCase(),
               time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: d.text,
+              text: d.message || d.text,
               isAI: d.is_ai,
               fileUrl: d.file_url,
               reference: d.reference,
