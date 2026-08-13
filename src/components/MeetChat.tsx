@@ -647,7 +647,36 @@ export default function MeetChat() {
 
   const handleQuickInvite = (mode: 'copy' | 'whatsapp' | 'email') => {
     const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
-    const textMsg = `Hallo! Du bist zu einem Live-Videocall eingeladen. Klicke einfach auf diesen Link, um ohne Login beizutreten:\n${inviteUrl}`;
+    const hostName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Team';
+    const isDe = currentLang === 'de';
+
+    const emailSubject = isDe 
+      ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS`
+      : `📹 Invitation to Live Video Call | Kreativ Desk OS`;
+
+    const emailBody = isDe
+      ? `Hallo,\n\n${hostName} lädt dich zu einem Live-Videocall auf Kreativ Desk OS ein!\n\n` +
+        `📌 MEETING DETAILS:\n` +
+        `• Raum-ID: ${activeCallRoomId}\n` +
+        `• Direkt-Link: ${inviteUrl}\n\n` +
+        `✨ HINWEIS FÜR GÄSTE:\n` +
+        `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
+        `Freundliche Grüsse,\n` +
+        `Kreativ Desk OS\n` +
+        `https://www.kreativdesk.ch`
+      : `Hello,\n\n${hostName} invites you to a live video call on Kreativ Desk OS!\n\n` +
+        `📌 MEETING DETAILS:\n` +
+        `• Room ID: ${activeCallRoomId}\n` +
+        `• Direct Link: ${inviteUrl}\n\n` +
+        `✨ NOTE FOR GUESTS:\n` +
+        `No login or software download required. Simply click the link above, enter your name, and join immediately.\n\n` +
+        `Best regards,\n` +
+        `Kreativ Desk OS\n` +
+        `https://www.kreativdesk.ch`;
+
+    const whatsappMsg = isDe
+      ? `📹 *Einladung zum Live-Videocall (Kreativ Desk OS)*\n\nHallo! Du bist zu einem Videocall eingeladen. Klicke einfach auf den Link, um ohne Login beizutreten:\n👉 ${inviteUrl}`
+      : `📹 *Invitation to Live Video Call (Kreativ Desk OS)*\n\nHello! You are invited to a video call. Simply click the link to join without login:\n👉 ${inviteUrl}`;
 
     try {
       navigator.clipboard.writeText(inviteUrl).catch(() => {});
@@ -656,13 +685,13 @@ export default function MeetChat() {
     if (mode === 'copy') {
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-      addToast('📋 Einladungs-Link kopiert! Externe Partner können ohne Login beitreten.', 'success');
+      addToast(isDe ? '📋 Einladungs-Link kopiert!' : '📋 Invite link copied!', 'success');
     } else if (mode === 'whatsapp') {
-      addToast('💬 WhatsApp wird geöffnet (Link wurde zusätzlich kopiert!)', 'success');
-      window.open(`https://wa.me/?text=${encodeURIComponent(textMsg)}`, '_blank');
+      addToast(isDe ? '💬 WhatsApp wird geöffnet...' : '💬 Opening WhatsApp...', 'success');
+      window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
     } else if (mode === 'email') {
-      addToast('✉️ E-Mail-Programm wird geöffnet (Link wurde zusätzlich kopiert!)', 'success');
-      window.open(`mailto:?subject=${encodeURIComponent('Videocall Einladung - Kreativ Desk')}&body=${encodeURIComponent(textMsg)}`, '_blank');
+      addToast(isDe ? '✉️ E-Mail-Programm wird geöffnet...' : '✉️ Opening Email client...', 'success');
+      window.open(`mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
     }
   };
 
