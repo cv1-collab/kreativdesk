@@ -122,6 +122,7 @@ export default function AIConcierge() {
         systemInstruction: {
           role: 'system',
           parts: [{ text: `Du bist der Kreativ Desk AI Concierge. Du hilfst dem Nutzer. 
+Sprache des Nutzers: ${currentLang === 'de' ? 'Deutsch' : 'Englisch'}. Antworte IMMER in dieser Sprache.
 Kontext-Daten: ${JSON.stringify(chatContext)}
 
 WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket zu erstellen, ANTWORTE ZUSÄTZLICH MIT EINEM JSON-BLOCK in exakt diesem Format am Ende deiner Antwort:

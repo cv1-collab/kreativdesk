@@ -103,13 +103,14 @@ export default function AgendaRapport() {
             </thead>
             <tbody className="divide-y divide-border">
               {timeEntries.map(entry => {
-                const proj = projects?.find((p:any) => p.id === entry.projectId);
-                const isInternal = entry.projectId?.startsWith('internal_');
+                const targetProjId = entry.projectId || entry.project_id || '';
+                const proj = projects?.find((p:any) => p.id === targetProjId);
+                const isInternal = targetProjId.startsWith('internal_');
                 return (
                   <tr key={entry.id} className="hover:bg-background/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{new Date(entry.date).toLocaleDateString(currentLang === 'de' ? 'de-CH' : 'en-US')}</td>
-                    <td className="px-6 py-4 font-bold">{isInternal ? internalProjectsMap[entry.projectId] : (proj?.name || entry.projectName || 'Unbekannt')}</td>
-                    <td className="px-6 py-4 font-mono font-bold text-accent-ai">{parseFloat(entry.hours).toFixed(1)}h</td>
+                    <td className="px-6 py-4 font-bold">{isInternal ? internalProjectsMap[targetProjId] : (proj?.name || entry.projectName || entry.project_name || 'Unbekannt')}</td>
+                    <td className="px-6 py-4 font-mono font-bold text-accent-ai">{parseFloat(entry.hours || 0).toFixed(1)}h</td>
                     <td className="px-6 py-4 text-text-muted">{entry.description}</td>
                   </tr>
                 )

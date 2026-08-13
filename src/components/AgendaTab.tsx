@@ -317,7 +317,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       const timeSummary = localTimeEntries.slice(0, 15).map(t => `- ${t.date}: ${t.hours}h (${t.description || 'Arbeit'})`).join('\n');
       const eventSummary = calendarEvents.slice(0, 10).map(e => `- ${e.date} ${e.time}: ${e.title} (${e.type})`).join('\n');
 
-      const prompt = `Du bist ein erfahrener Schweizer Bauleiter & Projektmanager. Erstelle einen präzisen, professionellen Tages- & Wochen-Rapport (Zusammenfassung) für die Geschäftsleitung basierend auf folgenden Daten:
+      const prompt = currentLang === 'de'
+        ? `Du bist ein erfahrener Schweizer Bauleiter & Projektmanager. Erstelle einen präzisen, professionellen Tages- & Wochen-Rapport (Zusammenfassung) für die Geschäftsleitung basierend auf folgenden Daten:
       
       ZEITERFASSUNGEN / STUNDEN:
       ${timeSummary || 'Keine Zeiteinträge'}
@@ -330,7 +331,19 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       2. 🚨 Offene Punkte & Risiken
       3. 🎯 Nächste Schritte
       
-      Verwende Schweizer Rechtschreibung (ss statt ß).`;
+      Verwende Schweizer Rechtschreibung (ss statt ß).`
+        : `You are an experienced construction manager & project manager. Create a precise, professional daily & weekly report summary for executive management based on the following data:
+      
+      TIME ENTRIES / HOURS:
+      ${timeSummary || 'No time entries'}
+      
+      MEETINGS & SITE VISITS:
+      ${eventSummary || 'No appointments'}
+      
+      Structure the report into:
+      1. 📌 Key Progress & Milestones
+      2. 🚨 Open Points & Risks
+      3. 🎯 Next Steps`;
 
       const aiResponse = await callGeminiAPI('gemini-2.0-flash', [{ text: prompt }]);
       const textOutput = typeof aiResponse === 'string' ? aiResponse : (aiResponse?.text || aiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(aiResponse));
