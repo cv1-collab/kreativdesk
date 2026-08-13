@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles,
+  Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
   Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
@@ -85,6 +85,10 @@ export default function MeetChat() {
   const [upcomingCalls, setUpcomingCalls] = useState<any[]>([]); 
   const [newMessage, setNewMessage] = useState('');
   const [isAITyping, setIsAITyping] = useState(false);
+  
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [targetEmail, setTargetEmail] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [newCallEvent, setNewCallEvent] = useState({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] as string[] });
@@ -645,9 +649,10 @@ export default function MeetChat() {
     setSelectedUserIds(prev => prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]);
   };
 
-  const handleQuickInvite = (mode: 'copy' | 'whatsapp' | 'email') => {
+  const executeEmailInvite = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
-    const hostName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Team';
+    const hostName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Kreativ Desk Team';
     const isDe = currentLang === 'de';
 
     const emailSubject = isDe 
@@ -674,6 +679,37 @@ export default function MeetChat() {
         `Kreativ Desk OS\n` +
         `https://www.kreativdesk.ch`;
 
+    setIsSendingEmail(true);
+    try {
+      if (targetEmail.trim()) {
+        await fetch('/api/send-invite-webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: targetEmail.trim(),
+            roomUrl: inviteUrl,
+            roomId: activeCallRoomId,
+            senderName: hostName,
+            language: currentLang
+          })
+        }).catch(err => console.log("Webhook call note:", err));
+      }
+
+      window.open(`mailto:${targetEmail.trim()}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
+      addToast(isDe ? `✉️ Einladung für ${targetEmail || 'Gast'} vorbereitet & gesendet!` : `✉️ Invite prepared for ${targetEmail || 'guest'}!`, 'success');
+      setShowEmailModal(false);
+      setTargetEmail('');
+    } catch (err) {
+      console.error("Email send error:", err);
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleQuickInvite = (mode: 'copy' | 'whatsapp' | 'email') => {
+    const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
+    const isDe = currentLang === 'de';
+
     const whatsappMsg = isDe
       ? `📹 *Einladung zum Live-Videocall (Kreativ Desk OS)*\n\nHallo! Du bist zu einem Videocall eingeladen. Klicke einfach auf den Link, um ohne Login beizutreten:\n👉 ${inviteUrl}`
       : `📹 *Invitation to Live Video Call (Kreativ Desk OS)*\n\nHello! You are invited to a video call. Simply click the link to join without login:\n👉 ${inviteUrl}`;
@@ -690,8 +726,7 @@ export default function MeetChat() {
       addToast(isDe ? '💬 WhatsApp wird geöffnet...' : '💬 Opening WhatsApp...', 'success');
       window.open(`https://wa.me/?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
     } else if (mode === 'email') {
-      addToast(isDe ? '✉️ E-Mail-Programm wird geöffnet...' : '✉️ Opening Email client...', 'success');
-      window.open(`mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
+      setShowEmailModal(true);
     }
   };
 
@@ -1057,6 +1092,63 @@ export default function MeetChat() {
             </div>
           </div>,
           document.body 
+        )}
+        {showEmailModal && createPortal(
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-surface border border-border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+              <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                  <Mail size={18} className="text-accent-ai" />
+                  {currentLang === 'de' ? 'E-Mail Einladung senden' : 'Send Email Invitation'}
+                </h3>
+                <button onClick={() => setShowEmailModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-white/5">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <p className="text-xs text-text-muted leading-relaxed">
+                {currentLang === 'de' 
+                  ? 'Trage die E-Mail-Adresse deines Gastes oder Partners ein. Die Einladung wird im offiziellen Kreativ Desk OS Design (DE/EN) vorbereitet:'
+                  : 'Enter your guest\'s or partner\'s email address. The invitation will be prepared in official Kreativ Desk OS design (DE/EN):'}
+              </p>
+
+              <form onSubmit={executeEmailInvite} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
+                    {currentLang === 'de' ? 'Empfänger E-Mail' : 'Recipient Email'}
+                  </label>
+                  <input 
+                    type="email"
+                    value={targetEmail}
+                    onChange={e => setTargetEmail(e.target.value)}
+                    placeholder="z.B. partner@firma.ch"
+                    className="w-full bg-background border border-border/80 rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-ai outline-none transition-colors"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-border/50">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailModal(false)}
+                    className="px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-primary rounded-xl border border-border/50 hover:bg-white/5 transition-colors"
+                  >
+                    {currentLang === 'de' ? 'Abbrechen' : 'Cancel'}
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={isSendingEmail}
+                    className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    {isSendingEmail ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    {currentLang === 'de' ? 'Einladung senden' : 'Send Invitation'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
         )}
       </motion.div>
     </div>

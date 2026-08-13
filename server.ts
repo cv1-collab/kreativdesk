@@ -379,6 +379,37 @@ async function startServer() {
     }
   });
 
+  // --- 6.1 VIDEOCALL INVITE WEBHOOK ---
+  app.post('/api/send-invite-webhook', async (req, res) => {
+    try {
+      const { email, roomUrl, roomId, senderName, language } = req.body;
+      if (!email || !roomUrl) return res.status(400).json({ error: 'Email or roomUrl missing' });
+
+      const webhookUrl = process.env.INVITE_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
+      
+      if (webhookUrl) {
+         await fetch(webhookUrl, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+             email,
+             roomUrl,
+             roomId,
+             senderName: senderName || 'Kreativ Desk User',
+             language: language || 'de',
+             source: 'KreativDesk'
+           })
+         });
+         console.log(`Invite Webhook erfolgreich gesendet an: ${email}`);
+      }
+
+      res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("Invite Webhook Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // --- 7. GEMINI AI PROXY ---
   app.post('/api/generate', verifyAuth, verifySubscription, async (req, res) => {
     try {
