@@ -5,19 +5,19 @@
 
 @layer base {
   :root {
+    --bg-color: #ffffff;
+    --surface-color: #f8fafc;
+    --border-color: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-muted: #64748b;
+  }
+
+  .dark {
     --bg-color: #09090b;
     --surface-color: #18181b;
     --border-color: #27272a;
     --text-primary: #fafafa;
     --text-muted: #a1a1aa;
-  }
-
-  .light {
-    --bg-color: #ffffff;
-    --surface-color: #f4f4f5;
-    --border-color: #e4e4e7;
-    --text-primary: #09090b;
-    --text-muted: #52525b;
   }
 }
 
