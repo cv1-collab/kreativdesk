@@ -14,6 +14,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -528,11 +529,7 @@ export default function LeadsTab() {
 
     try {
       const fileName = `Leads_Report_${Date.now()}.pdf`;
-      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       
       const { data: existingFolder } = await supabase
         .from('documents')

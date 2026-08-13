@@ -18,6 +18,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { logAuditAction } from '../utils/auditLogger';
 import { offboardCompanyUser } from '../services/userService';
+import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -335,13 +336,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       let photoURL = newContact.id ? selectedContact?.photoURL : null; 
       
       if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${safeCompanyId}/crm_avatars/${Date.now()}.${fileExt}`;
-        const { error: uploadErr } = await supabase.storage.from('avatars').upload(filePath, avatarFile, { upsert: true });
-        if (!uploadErr) {
-          const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-          photoURL = urlData.publicUrl;
-        }
+        photoURL = await uploadFileWithFallback(avatarFile, avatarFile.name, safeCompanyId, 'crm_avatars');
       }
 
       const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(' ');
@@ -621,11 +616,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const fileName = `CRM_Report_${Date.now()}.pdf`;
       const pdfBlobOut = pdf.output('blob');
 
-      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, pdfBlobOut, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(pdfBlobOut, fileName, safeCompanyId);
       const targetFolderId = await ensureFolder("04_SALES");
 
       await supabase.from('documents').insert({

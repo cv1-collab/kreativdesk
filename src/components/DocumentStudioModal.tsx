@@ -10,6 +10,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 import { cn } from '../utils';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 // Universal PDF Studio Engine Imports
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -445,24 +446,8 @@ ${footerText}
 
       const cleanTitle = docTitle.trim() || 'Dokument_Vorlage';
       const fileName = cleanTitle.endsWith('.pdf') ? cleanTitle : `${cleanTitle}.pdf`;
-      const filePath = `documents/${safeCompanyId}/${Date.now()}_${fileName}`;
 
-      const { error: upErr } = await supabase.storage.from('documents').upload(filePath, blob, {
-        contentType: 'application/pdf',
-        upsert: true
-      });
-
-      let publicUrl = '';
-      if (!upErr) {
-        const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        publicUrl = pubData.publicUrl;
-      } else {
-        const reader = new FileReader();
-        publicUrl = await new Promise((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      }
+      const publicUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const { data, error } = await supabase.from('documents').insert({
         company_id: safeCompanyId,

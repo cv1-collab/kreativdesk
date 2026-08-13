@@ -17,6 +17,7 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import DailyGoals from './DailyGoals';
 
 // 🚀 NATIVES PDF STUDIO & VEKTOR ENGINE
@@ -275,11 +276,7 @@ export default function Dashboard() {
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Executive_Summary_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, currentUser.companyId);
       await supabase.from('documents').insert({ 
         name: fileName, 
         url: downloadUrl, 

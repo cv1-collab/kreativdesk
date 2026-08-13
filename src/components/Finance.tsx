@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { 
+import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
 } from 'recharts';
-import { 
-  TrendingUp, Plus, X, Calculator, Download, Send, Copy, Trash2, Receipt, 
-  DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon, 
-  FileText, AlertCircle, CalendarDays, FileSignature, 
+import {
+  TrendingUp, Plus, X, Calculator, Download, Send, Copy, Trash2, Receipt,
+  DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
+  FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
   Image as ImageIcon
 } from 'lucide-react';
@@ -42,7 +42,7 @@ function formatBytes(bytes: number) {
 }
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
-  de: { finance_budget: 'Finanzen & Budget', overview: 'Übersicht', budget_plan: 'Budgetplan', payment_control: 'Zahlungskontrolle', cashflow: 'Cashflow & Hauptbuch', all_time: 'Gesamte Zeit', this_year: 'Dieses Jahr', this_month: 'Dieser Monat', today: 'Heute', book_hours: 'Stunden erfassen', quote: 'Offerte', receipt: 'Beleg', invoice: 'Rechnung', planned: 'Geplant', actual_costs: 'Ist-Kosten', variance: 'Abweichung', pos: 'Pos', description: 'Beschreibung', qty: 'Menge', unit: 'Einh.', unit_price: 'EP', total: 'Total', subtotal: 'Zwischentotal', vat: 'MWST', total_amount: 'Bruttobetrag', budget_supplement: 'Nachtrag', internal_hours_time_tracking: 'Interne Stunden', date: 'Datum', budget_assignment: 'Budget-Zuweisung', credit_revenue: 'Haben (Umsatz)', debit_costs: 'Soll (Kosten)', balance_profit: 'Saldo', free_booking: 'Freie Buchung', status: 'Status', open: 'Offen', paid: 'Bezahlt', draft: 'Entwurf', no_bookings_period: 'Keine Buchungen.', book_costs: 'Kosten verbuchen', cancel: 'Abbrechen', take_photo: 'Foto aufnehmen', receipts_photos: 'Belege / Fotos', amount_chf: 'Betrag (CHF)', vendor_company: 'Firma', project: 'Projekt',  book_receipt: 'Beleg erfassen', new_project: 'Neues Projekt', client: 'Kunde', new_variant: 'Neue Variante', duplicate_variant: 'Duplizieren', delete_variant: 'Löschen', approve: 'Freigeben', approve_revoke: 'Freigabe widerrufen', approved: 'Freigegeben', add_position: 'Position hinzufügen', new_phase: 'Neue Phase', status_updated: 'Status aktualisiert', update_error: 'Fehler', delete_confirm: 'Wirklich löschen?', booking_deleted: 'Gelöscht', delete_error: 'Fehler beim Löschen', hours_deleted: 'Stunden gelöscht', new_variant_created: 'Variante erstellt', variant_duplicated: 'Dupliziert', min_one_variant: 'Min. eine Variante', cant_delete_approved: 'Freigegebene können nicht gelöscht werden', variant_deleted: 'Gelöscht', revoke_confirm: 'Freigabe widerrufen?', approve_confirm: 'Freigeben?', approval_revoked: 'Widerrufen', budget_approved: 'Freigegeben', analyzing_ai: 'KI analysiert...', ai_failed: 'KI Fehler', receipt_live_received: 'Beleg erkannt!', project_profit: 'Projectgewinn', revenue: 'Umsatz', costs: 'Kosten', total_budget: 'Gesamtbudget', budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', no_budget_present: 'Kein Budget vorhanden', planned_vs_actual: 'Soll vs Ist', payment_control_inactive: 'Zahlungskontrolle Inaktiv', payment_control_inactive_desc: 'Gib ein Budget frei', total_project_excl_vat: 'Total Projekt (exkl. MwSt)', external_costs: 'Externe Kosten', invoices_total: 'Rechnungen Total', expenses_team: 'Spesen', ext_costs: 'Externe Kosten', open_quotes: 'Offene Offerten', quotes: 'Offerten', outgoing_invoices: 'Rechnungen', expenses: 'Spesen', no_entries: 'Keine Einträge', simple_internal: 'Einfach (Intern)', detailed_external: 'Detailliert (Extern)', generate_pdf_book: 'PDF generieren & verbuchen', rotate: 'Tabelle zeigen' },
+  de: { finance_budget: 'Finanzen & Budget', overview: 'Übersicht', budget_plan: 'Budgetplan', payment_control: 'Zahlungskontrolle', cashflow: 'Cashflow & Hauptbuch', all_time: 'Gesamte Zeit', this_year: 'Dieses Jahr', this_month: 'Dieser Monat', today: 'Heute', book_hours: 'Stunden erfassen', quote: 'Offerte', receipt: 'Beleg', invoice: 'Rechnung', planned: 'Geplant', actual_costs: 'Ist-Kosten', variance: 'Abweichung', pos: 'Pos', description: 'Beschreibung', qty: 'Menge', unit: 'Einh.', unit_price: 'EP', total: 'Total', subtotal: 'Zwischentotal', vat: 'MWST', total_amount: 'Bruttobetrag', budget_supplement: 'Nachtrag', internal_hours_time_tracking: 'Interne Stunden', date: 'Datum', budget_assignment: 'Budget-Zuweisung', credit_revenue: 'Haben (Umsatz)', debit_costs: 'Soll (Kosten)', balance_profit: 'Saldo', free_booking: 'Freie Buchung', status: 'Status', open: 'Offen', paid: 'Bezahlt', draft: 'Entwurf', no_bookings_period: 'Keine Buchungen.', book_costs: 'Kosten verbuchen', cancel: 'Abbrechen', take_photo: 'Foto aufnehmen', receipts_photos: 'Belege / Fotos', amount_chf: 'Betrag (CHF)', vendor_company: 'Firma', project: 'Projekt', book_receipt: 'Beleg erfassen', new_project: 'Neues Projekt', client: 'Kunde', new_variant: 'Neue Variante', duplicate_variant: 'Duplizieren', delete_variant: 'Löschen', approve: 'Freigeben', approve_revoke: 'Freigabe widerrufen', approved: 'Freigegeben', add_position: 'Position hinzufügen', new_phase: 'Neue Phase', status_updated: 'Status aktualisiert', update_error: 'Fehler', delete_confirm: 'Wirklich löschen?', booking_deleted: 'Gelöscht', delete_error: 'Fehler beim Löschen', hours_deleted: 'Stunden gelöscht', new_variant_created: 'Variante erstellt', variant_duplicated: 'Dupliziert', min_one_variant: 'Min. eine Variante', cant_delete_approved: 'Freigegebene können nicht gelöscht werden', variant_deleted: 'Gelöscht', revoke_confirm: 'Freigabe widerrufen?', approve_confirm: 'Freigeben?', approval_revoked: 'Widerrufen', budget_approved: 'Freigegeben', analyzing_ai: 'KI analysiert...', ai_failed: 'KI Fehler', receipt_live_received: 'Beleg erkannt!', project_profit: 'Projectgewinn', revenue: 'Umsatz', costs: 'Kosten', total_budget: 'Gesamtbudget', budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', no_budget_present: 'Kein Budget vorhanden', planned_vs_actual: 'Soll vs Ist', payment_control_inactive: 'Zahlungskontrolle Inaktiv', payment_control_inactive_desc: 'Gib ein Budget frei', total_project_excl_vat: 'Total Projekt (exkl. MwSt)', external_costs: 'Externe Kosten', invoices_total: 'Rechnungen Total', expenses_team: 'Spesen', ext_costs: 'Externe Kosten', open_quotes: 'Offene Offerten', quotes: 'Offerten', outgoing_invoices: 'Rechnungen', expenses: 'Spesen', no_entries: 'Keine Einträge', simple_internal: 'Einfach (Intern)', detailed_external: 'Detailliert (Extern)', generate_pdf_book: 'PDF generieren & verbuchen', rotate: 'Tabelle zeigen' },
   en: { finance_budget: 'Finance & Budget', overview: 'Overview', budget_plan: 'Budget Plan', payment_control: 'Payment Control', cashflow: 'Cashflow & Ledger', all_time: 'All Time', this_year: 'This Year', this_month: 'This Month', today: 'Today', book_hours: 'Book Hours', quote: 'Quote', receipt: 'Receipt', invoice: 'Invoice', planned: 'Planned', actual_costs: 'Actual Costs', variance: 'Variance', pos: 'Pos', description: 'Description', qty: 'Qty', unit: 'Unit', unit_price: 'Unit Price', total: 'Total', subtotal: 'Subtotal', vat: 'VAT', total_amount: 'Total Amount', budget_supplement: 'Supplement', internal_hours_time_tracking: 'Internal Hours', date: 'Date', budget_assignment: 'Budget Assignment', credit_revenue: 'Credit (Revenue)', debit_costs: 'Debit (Costs)', balance_profit: 'Balance', free_booking: 'Free Booking', status: 'Status', open: 'Open', paid: 'Paid', draft: 'Draft', no_bookings_period: 'No bookings.', book_costs: 'Book Costs', cancel: 'Cancel', take_photo: 'Take Photo', receipts_photos: 'Receipts / Photos', amount_chf: 'Amount (CHF)', vendor_company: 'Company', project: 'Project', book_receipt: 'Book Receipt', new_project: 'New Project', client: 'Client', new_variant: 'New Variant', duplicate_variant: 'Duplicate', delete_variant: 'Delete', approve: 'Approve', approve_revoke: 'Revoke', approved: 'Approved', add_position: 'Add Pos', new_phase: 'New Phase', status_updated: 'Status updated', update_error: 'Error', delete_confirm: 'Delete?', booking_deleted: 'Deleted', delete_error: 'Error', hours_deleted: 'Hours deleted', new_variant_created: 'Variant created', variant_duplicated: 'Duplicated', min_one_variant: 'Min 1 variant', cant_delete_approved: 'Cant delete approved', variant_deleted: 'Deleted', revoke_confirm: 'Revoke?', approve_confirm: 'Approve?', approval_revoked: 'Revoked', budget_approved: 'Approved', analyzing_ai: 'AI analyzing...', ai_failed: 'AI Failed', receipt_live_received: 'Receipt recognized!', project_profit: 'Project Profit', revenue: 'Revenue', costs: 'Costs', total_budget: 'Total Budget', budget_utilization: 'Budget Utilization', spent: 'Spent', no_budget_present: 'No budget', planned_vs_actual: 'Planned vs Actual', payment_control_inactive: 'Payment Control Inactive', payment_control_inactive_desc: 'Approve a budget', total_project_excl_vat: 'Total Project (excl. VAT)', external_costs: 'External Costs', invoices_total: 'Invoices Total', expenses_team: 'Expenses', ext_costs: 'Ext. Costs', open_quotes: 'Open Quotes', quotes: 'Quotes', outgoing_invoices: 'Invoices', expenses: 'Expenses', no_entries: 'No entries', simple_internal: 'Simple (Internal)', detailed_external: 'Detailed (External)', generate_pdf_book: 'Generate PDF & Book', rotate: 'Show Table' }
 };
 
@@ -108,16 +108,16 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
             {budgetGroups.map((group: any) => (
               <React.Fragment key={group.id}>
                 <View style={pdfStyles.groupRow} wrap={false}>
-                  <Text style={[pdfStyles.col1, pdfStyles.textBold, {color: settings.accentColor}]}>{group.pos}</Text>
-                  <Text style={[pdfStyles.col2, pdfStyles.textBold, {color: settings.accentColor}]}>{group.title}</Text>
+                  <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{group.pos}</Text>
+                  <Text style={[pdfStyles.col2, pdfStyles.textBold, { color: settings.accentColor }]}>{group.title}</Text>
                   <Text style={pdfStyles.col3}></Text>
                   <Text style={pdfStyles.col4}></Text>
                   <Text style={pdfStyles.col5}></Text>
-                  <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: settings.accentColor}]}>{formatCHF(calculateGroupTotal(group))}</Text>
+                  <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: settings.accentColor }]}>{formatCHF(calculateGroupTotal(group))}</Text>
                 </View>
                 {group.items.map((item: any) => (
                   <View style={pdfStyles.tableRow} key={item.id} wrap={false}>
-                    <Text style={[pdfStyles.col1, {fontSize: 8, color: '#6b7280'}]}>{item.pos}</Text>
+                    <Text style={[pdfStyles.col1, { fontSize: 8, color: '#6b7280' }]}>{item.pos}</Text>
                     <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{item.description}</Text>
                     <Text style={pdfStyles.col3}>{item.qty}</Text>
                     <Text style={pdfStyles.col4}>{item.unit}</Text>
@@ -128,16 +128,16 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               </React.Fragment>
             ))}
             <View style={{ marginTop: 20, alignItems: 'flex-end' }} wrap={false}>
-               <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', marginBottom: 5 }}>
-                 <Text>{t('subtotal')}</Text><Text style={pdfStyles.textBold}>{formatCHF(totalBudget)}</Text>
-               </View>
-               <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', marginBottom: 5 }}>
-                 <Text>{t('vat')} {vatRate}%</Text><Text style={pdfStyles.textBold}>{formatCHF(totalBudget * (vatRate/100))}</Text>
-               </View>
-               <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', borderTopWidth: 1, borderColor: '#d1d5db', paddingTop: 5, marginTop: 5 }}>
-                 <Text style={[pdfStyles.textBold, {color: settings.accentColor, fontSize: 12}]}>{t('total_amount').toUpperCase()}</Text>
-                 <Text style={[pdfStyles.textBold, {color: settings.accentColor, fontSize: 12}]}>{formatCHF(totalBudget * (1 + vatRate/100))}</Text>
-               </View>
+              <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', marginBottom: 5 }}>
+                <Text>{t('subtotal')}</Text><Text style={pdfStyles.textBold}>{formatCHF(totalBudget)}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', marginBottom: 5 }}>
+                <Text>{t('vat')} {vatRate}%</Text><Text style={pdfStyles.textBold}>{formatCHF(totalBudget * (vatRate / 100))}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', borderTopWidth: 1, borderColor: '#d1d5db', paddingTop: 5, marginTop: 5 }}>
+                <Text style={[pdfStyles.textBold, { color: settings.accentColor, fontSize: 12 }]}>{t('total_amount').toUpperCase()}</Text>
+                <Text style={[pdfStyles.textBold, { color: settings.accentColor, fontSize: 12 }]}>{formatCHF(totalBudget * (1 + vatRate / 100))}</Text>
+              </View>
             </View>
           </View>
         )}
@@ -148,13 +148,13 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('pos')}</Text>
               <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('description')}</Text>
               <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{t('planned')}</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: '#ef4444'}]}>{t('actual_costs')}</Text>
+              <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{t('actual_costs')}</Text>
               <Text style={[pdfStyles.col6, pdfStyles.textBold]}>{t('variance')}</Text>
             </View>
             {approvedVersions.map((v: any) => (
               <React.Fragment key={v.id}>
                 <View style={[{ backgroundColor: '#e5e7eb', paddingVertical: 5, marginTop: 5 }]} wrap={false}>
-                   <Text style={{ fontSize: 8, fontWeight: 'bold', textTransform: 'uppercase', paddingLeft: 5 }}>{t('budget_supplement')} {v.name}</Text>
+                  <Text style={{ fontSize: 8, fontWeight: 'bold', textTransform: 'uppercase', paddingLeft: 5 }}>{t('budget_supplement')} {v.name}</Text>
                 </View>
                 {v.groups.map((g: any) => {
                   const plan = calculateGroupTotal(g);
@@ -163,24 +163,24 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                   return (
                     <React.Fragment key={g.id}>
                       <View style={pdfStyles.groupRow} wrap={false}>
-                        <Text style={[pdfStyles.col1, pdfStyles.textBold, {color: settings.accentColor}]}>{g.pos}</Text>
-                        <Text style={[pdfStyles.col2, pdfStyles.textBold, {color: settings.accentColor}]}>{g.title}</Text>
+                        <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{g.pos}</Text>
+                        <Text style={[pdfStyles.col2, pdfStyles.textBold, { color: settings.accentColor }]}>{g.title}</Text>
                         <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{formatCHF(plan)}</Text>
-                        <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: '#ef4444'}]}>{formatCHF(actual)}</Text>
-                        <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: diff < 0 ? '#ef4444' : '#10b981'}]}>{(diff >= 0 ? '+' : '')}{formatCHF(diff)}</Text>
+                        <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(actual)}</Text>
+                        <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: diff < 0 ? '#ef4444' : '#10b981' }]}>{(diff >= 0 ? '+' : '')}{formatCHF(diff)}</Text>
                       </View>
                       {g.items.map((i: any) => {
-                         const itemActual = getAllTimeActualCostForItem(i.id);
-                         const itemDiff = i.total - itemActual;
-                         return (
-                           <View style={pdfStyles.tableRow} key={i.id} wrap={false}>
-                             <Text style={[pdfStyles.col1, {fontSize: 8, color: '#6b7280'}]}>{i.pos}</Text>
-                             <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{i.description}</Text>
-                             <Text style={pdfStyles.col5}>{formatCHF(i.total)}</Text>
-                             <Text style={[pdfStyles.col6, {color: '#ef4444'}]}>{itemActual > 0 ? formatCHF(itemActual) : '-'}</Text>
-                             <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: itemDiff < 0 ? '#ef4444' : '#10b981'}]}>{(itemDiff >= 0 ? '+' : '')}{formatCHF(itemDiff)}</Text>
-                           </View>
-                         )
+                        const itemActual = getAllTimeActualCostForItem(i.id);
+                        const itemDiff = i.total - itemActual;
+                        return (
+                          <View style={pdfStyles.tableRow} key={i.id} wrap={false}>
+                            <Text style={[pdfStyles.col1, { fontSize: 8, color: '#6b7280' }]}>{i.pos}</Text>
+                            <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{i.description}</Text>
+                            <Text style={pdfStyles.col5}>{formatCHF(i.total)}</Text>
+                            <Text style={[pdfStyles.col6, { color: '#ef4444' }]}>{itemActual > 0 ? formatCHF(itemActual) : '-'}</Text>
+                            <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: itemDiff < 0 ? '#ef4444' : '#10b981' }]}>{(itemDiff >= 0 ? '+' : '')}{formatCHF(itemDiff)}</Text>
+                          </View>
+                        )
                       })}
                     </React.Fragment>
                   )
@@ -188,23 +188,23 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               </React.Fragment>
             ))}
             <View style={pdfStyles.hrRow} wrap={false}>
-              <Text style={[pdfStyles.col1, pdfStyles.textBold, {color: '#ea580c'}]}>HR</Text>
-              <Text style={[pdfStyles.col2, pdfStyles.textBold, {color: '#ea580c'}]}>{t('internal_hours_time_tracking')} ({allTimeHours} h)</Text>
+              <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: '#ea580c' }]}>HR</Text>
+              <Text style={[pdfStyles.col2, pdfStyles.textBold, { color: '#ea580c' }]}>{t('internal_hours_time_tracking')} ({allTimeHours} h)</Text>
               <Text style={pdfStyles.col5}>-</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: '#ef4444'}]}>{formatCHF(allTimeHoursCost)}</Text>
-              <Text style={[pdfStyles.col6, pdfStyles.textBold, {color: '#ef4444'}]}>-{formatCHF(allTimeHoursCost)}</Text>
+              <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(allTimeHoursCost)}</Text>
+              <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>-{formatCHF(allTimeHoursCost)}</Text>
             </View>
             <View style={{ marginTop: 20, alignItems: 'flex-end' }} wrap={false}>
-               <View style={{ flexDirection: 'row', width: 350, justifyContent: 'space-between', borderTopWidth: 2, borderColor: '#9ca3af', paddingTop: 8, marginTop: 5 }}>
-                 <Text style={[pdfStyles.textBold, { fontSize: 12}]}>{t('total_project_excl_vat')}</Text>
-                 <View style={{ flexDirection: 'row', gap: 15 }}>
-                    <Text style={[pdfStyles.textBold, { fontSize: 12}]}>{formatCHF(overviewTotalBudget)}</Text>
-                    <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#ef4444'}]}>{formatCHF(totalActualCostsIncludingHoursAllTime)}</Text>
-                    <Text style={[pdfStyles.textBold, { fontSize: 12, color: (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? '#ef4444' : '#10b981' }]}>
-                      {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
-                    </Text>
-                 </View>
-               </View>
+              <View style={{ flexDirection: 'row', width: 350, justifyContent: 'space-between', borderTopWidth: 2, borderColor: '#9ca3af', paddingTop: 8, marginTop: 5 }}>
+                <Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{t('total_project_excl_vat')}</Text>
+                <View style={{ flexDirection: 'row', gap: 15 }}>
+                  <Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{formatCHF(overviewTotalBudget)}</Text>
+                  <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#ef4444' }]}>{formatCHF(totalActualCostsIncludingHoursAllTime)}</Text>
+                  <Text style={[pdfStyles.textBold, { fontSize: 12, color: (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? '#ef4444' : '#10b981' }]}>
+                    {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
         )}
@@ -212,12 +212,12 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
         {activeTab === 'cashflow' && (
           <View>
             <View style={pdfStyles.tableHeader} fixed>
-              <Text style={[pdfStyles.col1, pdfStyles.textBold, {width: '15%'}]}>{t('date')}</Text>
-              <Text style={[pdfStyles.col2, pdfStyles.textBold, {width: '35%'}]}>{t('description')}</Text>
-              <Text style={[pdfStyles.col5, pdfStyles.textBold, {width: '20%', textAlign: 'left'}]}>{t('budget_assignment')}</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold, {textAlign: 'right'}]}>Haben</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold, {textAlign: 'right'}]}>Soll</Text>
-              <Text style={[pdfStyles.col4, pdfStyles.textBold, {textAlign: 'right'}]}>Saldo</Text>
+              <Text style={[pdfStyles.col1, pdfStyles.textBold, { width: '15%' }]}>{t('date')}</Text>
+              <Text style={[pdfStyles.col2, pdfStyles.textBold, { width: '35%' }]}>{t('description')}</Text>
+              <Text style={[pdfStyles.col5, pdfStyles.textBold, { width: '20%', textAlign: 'left' }]}>{t('budget_assignment')}</Text>
+              <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Haben</Text>
+              <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Soll</Text>
+              <Text style={[pdfStyles.col4, pdfStyles.textBold, { textAlign: 'right' }]}>Saldo</Text>
             </View>
             {displayLedger.map((tx: any) => {
               const isQuote = tx.category === 'Offerte' || tx.category === 'Quote';
@@ -229,12 +229,12 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
 
               return (
                 <View style={pdfStyles.tableRow} key={tx.id} wrap={false}>
-                  <Text style={[{width: '15%', color: '#6b7280'}]}>{tx.date}</Text>
-                  <Text style={[{width: '35%'}, pdfStyles.textBold]}>{tx.description}</Text>
-                  <Text style={[{width: '20%', color: '#6b7280'}]}>{bdDetails ? `${bdDetails.phase} - ${bdDetails.item}` : t('free_booking')}</Text>
-                  <Text style={[{width: '10%', textAlign: 'right'}, pdfStyles.textBold, {color: '#10b981'}]}>{isQuote ? `(${formatCHF(displayAmount)})` : (isRevenue && displayAmount > 0 ? `+${formatCHF(displayAmount)}` : '')}</Text>
-                  <Text style={[{width: '10%', textAlign: 'right'}, pdfStyles.textBold, {color: '#ef4444'}]}>{!isQuote && !isRevenue && displayAmount > 0 ? `-${formatCHF(displayAmount)}` : ''}</Text>
-                  <Text style={[{width: '10%', textAlign: 'right'}, pdfStyles.textBold, {color: isQuote ? '#9ca3af' : (isBalanceNegative ? '#ef4444' : '#10b981')}]}>{isQuote ? '-' : formatCHF(tx.balance)}</Text>
+                  <Text style={[{ width: '15%', color: '#6b7280' }]}>{tx.date}</Text>
+                  <Text style={[{ width: '35%' }, pdfStyles.textBold]}>{tx.description}</Text>
+                  <Text style={[{ width: '20%', color: '#6b7280' }]}>{bdDetails ? `${bdDetails.phase} - ${bdDetails.item}` : t('free_booking')}</Text>
+                  <Text style={[{ width: '10%', textAlign: 'right' }, pdfStyles.textBold, { color: '#10b981' }]}>{isQuote ? `(${formatCHF(displayAmount)})` : (isRevenue && displayAmount > 0 ? `+${formatCHF(displayAmount)}` : '')}</Text>
+                  <Text style={[{ width: '10%', textAlign: 'right' }, pdfStyles.textBold, { color: '#ef4444' }]}>{!isQuote && !isRevenue && displayAmount > 0 ? `-${formatCHF(displayAmount)}` : ''}</Text>
+                  <Text style={[{ width: '10%', textAlign: 'right' }, pdfStyles.textBold, { color: isQuote ? '#9ca3af' : (isBalanceNegative ? '#ef4444' : '#10b981') }]}>{isQuote ? '-' : formatCHF(tx.balance)}</Text>
                 </View>
               )
             })}
@@ -272,7 +272,7 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
           <Text style={{ width: '40%', fontWeight: 'bold' }}>Beschreibung</Text>
           <Text style={{ width: '20%', fontWeight: 'bold', textAlign: 'right' }}>Betrag (CHF)</Text>
         </View>
-        
+
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 10 }}>
           <View style={{ width: '40%' }}>
             <Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontWeight: 'bold', fontSize: 8 }}>{incomingData.vendor || incomingData.company || 'Firma'}</Text>
@@ -316,13 +316,13 @@ export default function Finance() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   const { theme } = useTheme();
   const tooltipContentStyle = { backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', borderColor: theme === 'dark' ? '#27272a' : '#e4e4e7', color: theme === 'dark' ? '#fafafa' : '#09090b', borderRadius: '8px' };
-  
+
   const { activeProjectId, projects, projectMembers, timeEntries, addTimeEntry, isDemoMode, demoData } = useProject() as any;
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const currentProjectId = urlProjectId || activeProjectId;
-  
+
   const activeProject = projects?.find((p: any) => p.id === currentProjectId);
-  
+
   const currentMember = projectMembers?.find((m: any) => m.projectId === currentProjectId && m.userId === currentUser?.uid);
   const isReadOnly = currentMember ? (currentMember.projectRole === 'Viewer') : false;
 
@@ -355,7 +355,7 @@ export default function Finance() {
     const mediaQuery = window.matchMedia('(orientation: portrait)');
     const handleChange = (e: any) => setIsPortrait(e.matches);
     setIsPortrait(mediaQuery.matches);
-    
+
     // 🔥 FIX FÜR MOBILE CRASH: Apple Safari Kompatibilität
     if (mediaQuery.addEventListener) {
       mediaQuery.addEventListener('change', handleChange);
@@ -379,7 +379,7 @@ export default function Finance() {
           const docEl = document.documentElement as any;
           if (docEl.requestFullscreen) await docEl.requestFullscreen();
           else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
-          
+
           if (window.screen.orientation && 'lock' in window.screen.orientation) {
             await (window.screen.orientation as any).lock('landscape');
           }
@@ -409,14 +409,14 @@ export default function Finance() {
   const [includeOptions, setIncludeOptions] = useState(false);
   const [versions, setVersions] = useState<BudgetVersion[]>([{ id: 'v1', name: 'Variant 1', vatRate: 8.1, status: 'draft', groups: [{ id: 'g1', pos: '100', title: 'Phase', items: [] }] }]);
   const [activeVersionId, setActiveVersionId] = useState<string>('v1');
-  
+
   const activeVersion = versions.find(v => v.id === activeVersionId) || versions[0];
-  const approvedVersions = versions.filter(v => v.status === 'approved'); 
+  const approvedVersions = versions.filter(v => v.status === 'approved');
   const budgetGroups = activeVersion.groups;
   const vatRate = activeVersion.vatRate;
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
-  const [showQuoteModal, setShowQuoteModal] = useState(false); 
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showReceiptStudio, setShowReceiptStudio] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
@@ -434,7 +434,7 @@ export default function Finance() {
   const [timeData, setTimeData] = useState({ type: 'internal', userId: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', hours: 0, hourlyRate: 0, description: '', date: new Date().toISOString().split('T')[0] });
   const mobileCameraRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${opCostSessionId}`;
 
@@ -443,30 +443,30 @@ export default function Finance() {
     // 🔥 DEMO-BRÜCKE: Lade Daten aus deinem Template!
     if ((isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-')) && demoData) {
       if (demoData.financeGroups) {
-         setVersions([{ id: 'demo-v1', name: 'Originalbudget', vatRate: 8.1, status: 'approved', groups: demoData.financeGroups }]);
-         setActiveVersionId('demo-v1');
-         setProjectHeader(prev => ({ ...prev, project: demoData.project?.name || 'Demo Projekt', version: 'Originalbudget' }));
-         
-         const dummyTxs: any[] = [];
-         let txId = 1;
-         let totalPlan = 0;
-         const today = new Date();
-         
-         demoData.financeGroups.forEach((g: any) => {
-           g.items.forEach((item: any) => {
-              const itemTotal = ((item.qty || item.quantity || 0) * (item.unitPrice || 0));
-              totalPlan += itemTotal;
-              if (txId % 2 !== 0) {
-                const pastDate = new Date(today);
-                pastDate.setDate(today.getDate() - (Math.random() * 30));
-                dummyTxs.push({ id: `demo-tx-${txId}`, date: pastDate.toISOString().split('T')[0], description: `Teilrechnung: ${item.description}`, category: 'Kreditorenrechnung', amount: -(itemTotal * 0.65), status: 'Bezahlt', budgetPosId: item.id });
-              }
-              txId++;
-           });
-         });
+        setVersions([{ id: 'demo-v1', name: 'Originalbudget', vatRate: 8.1, status: 'approved', groups: demoData.financeGroups }]);
+        setActiveVersionId('demo-v1');
+        setProjectHeader(prev => ({ ...prev, project: demoData.project?.name || 'Demo Projekt', version: 'Originalbudget' }));
 
-         dummyTxs.push({ id: `demo-rev-1`, date: new Date().toISOString().split('T')[0], description: 'Akontozahlung Bauherr', category: 'Debitorenrechnung', amount: totalPlan * 0.7, status: 'Bezahlt' });
-         setTransactions(dummyTxs);
+        const dummyTxs: any[] = [];
+        let txId = 1;
+        let totalPlan = 0;
+        const today = new Date();
+
+        demoData.financeGroups.forEach((g: any) => {
+          g.items.forEach((item: any) => {
+            const itemTotal = ((item.qty || item.quantity || 0) * (item.unitPrice || 0));
+            totalPlan += itemTotal;
+            if (txId % 2 !== 0) {
+              const pastDate = new Date(today);
+              pastDate.setDate(today.getDate() - (Math.random() * 30));
+              dummyTxs.push({ id: `demo-tx-${txId}`, date: pastDate.toISOString().split('T')[0], description: `Teilrechnung: ${item.description}`, category: 'Kreditorenrechnung', amount: -(itemTotal * 0.65), status: 'Bezahlt', budgetPosId: item.id });
+            }
+            txId++;
+          });
+        });
+
+        dummyTxs.push({ id: `demo-rev-1`, date: new Date().toISOString().split('T')[0], description: 'Akontozahlung Bauherr', category: 'Debitorenrechnung', amount: totalPlan * 0.7, status: 'Bezahlt' });
+        setTransactions(dummyTxs);
       }
       setIsInitialLoad(false);
       return;
@@ -474,7 +474,7 @@ export default function Finance() {
 
     // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
     if (!currentUser || !currentUser.companyId || !currentProjectId) return;
-    
+
     const fetchData = async () => {
       const { data: txs } = await supabase
         .from('transactions')
@@ -566,9 +566,9 @@ export default function Finance() {
       .channel('finance-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${currentUser.companyId}` }, fetchData)
       .subscribe();
-    
+
     return () => {
-      if (channel) supabase.removeChannel(channel).catch(() => {});
+      if (channel) supabase.removeChannel(channel).catch(() => { });
     };
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject]);
 
@@ -720,31 +720,31 @@ export default function Finance() {
   const allTimeTimeEntries = effectiveTimeEntries.filter((e: any) => e.projectId === currentProjectId);
   const allTimeHoursCost = allTimeTimeEntries.reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (e.hourlyRate || 0)), 0);
   const allTimeHours = allTimeTimeEntries.reduce((sum: number, e: any) => sum + (Number(e.hours) || 0), 0);
-  
+
   const getFilteredActualCostForItem = (itemId: string) => filteredTransactions.filter(tx => tx.budgetPosId === itemId && tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const getFilteredActualCostForGroup = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + getFilteredActualCostForItem(item.id), 0);
 
   const getAllTimeActualCostForItem = (itemId: string) => transactions.filter(tx => tx.budgetPosId === itemId && tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const getAllTimeActualCostForGroup = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + getAllTimeActualCostForItem(item.id), 0);
 
-  const overviewTotalBudget = approvedVersions.length > 0 
+  const overviewTotalBudget = approvedVersions.length > 0
     ? approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + calculateGroupTotal(g), 0), 0)
     : totalBudget;
 
   const globalExtSpent = transactions.filter(tx => tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const globalSpent = globalExtSpent + allTimeHoursCost;
   const totalActualCostsIncludingHoursAllTime = approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + getAllTimeActualCostForGroup(g), 0), 0) + allTimeHoursCost;
-  const budgetRemaining = Math.max(0, overviewTotalBudget - filteredSpent); 
-  
+  const budgetRemaining = Math.max(0, overviewTotalBudget - filteredSpent);
+
   const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
   const pieData = [
-    { name: t('external_costs'), value: filteredExtSpent }, 
-    { name: t('internal_hours_time_tracking'), value: filteredHoursCost }, 
+    { name: t('external_costs'), value: filteredExtSpent },
+    { name: t('internal_hours_time_tracking'), value: filteredHoursCost },
     { name: t('remaining'), value: budgetRemaining > 0 ? budgetRemaining : 0 }
   ];
-  const PIE_COLORS = ['#f87171', '#f97316', '#3b82f6']; 
-  
+  const PIE_COLORS = ['#f87171', '#f97316', '#3b82f6'];
+
   const activeChartGroups = approvedVersions.length > 0 ? approvedVersions.flatMap(v => v.groups) : budgetGroups;
   const chartData = activeChartGroups.map(g => ({ name: g.title.length > 15 ? g.title.substring(0, 15) + '...' : g.title, [t('planned')]: calculateGroupTotal(g), [t('actual_costs')]: getFilteredActualCostForGroup(g) }));
 
@@ -756,7 +756,7 @@ export default function Finance() {
   const combinedLedgerAsc = [...rawTxs, ...rawTimes].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   let runningBalance = 0;
   const allLedgerTransactions = combinedLedgerAsc.map(tx => { if (tx.category !== 'Offerte') runningBalance += tx.amount; return { ...tx, balance: runningBalance }; });
-  
+
   const displayLedger = [...allLedgerTransactions].reverse().filter(tx => {
     if (timeFilter === 'all') return true;
     const txDate = new Date(tx.date); const now = new Date();
@@ -768,7 +768,7 @@ export default function Finance() {
 
   const getBudgetDetails = (posId?: string) => {
     if (!posId) return null;
-        for (const v of versions) {
+    for (const v of versions) {
       for (const g of v.groups) {
         const item = g.items.find(i => i.id === posId);
         if (item) return { phase: g.title, item: `${item.pos} ${item.description}`, versionName: v.name };
@@ -870,13 +870,13 @@ export default function Finance() {
       if (defectsData) projectDefects = defectsData;
 
       let csv = "Kategorie,Datum,Titel/Beschreibung,Betrag/Status\n";
-      
+
       transactions.forEach((t: any) => {
         const date = t.date || (t.createdAt ? new Date(t.createdAt).toISOString().split('T')[0] : '');
         const desc = (t.description || t.title || '').replace(/"/g, '""');
         csv += `"Finanzen","${date}","${desc}","${t.amount || 0}"\n`;
       });
-      
+
       projectDefects.forEach((d: any) => {
         const date = d.createdAt ? new Date(d.createdAt).toISOString().split('T')[0] : '';
         const desc = (d.title || d.description || '').replace(/"/g, '""');
@@ -890,7 +890,7 @@ export default function Finance() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       addToast('Export erfolgreich', 'success');
     } catch (e) {
       console.error('Export error:', e);
@@ -901,22 +901,22 @@ export default function Finance() {
   const handleDeleteTransaction = async (id: string) => {
     if (isReadOnly) return;
     if (window.confirm(t('delete_confirm'))) {
-      try { 
-        await supabase.from('transactions').delete().eq('id', id); 
+      try {
+        await supabase.from('transactions').delete().eq('id', id);
         setTransactions(prev => prev.filter(tx => tx.id !== id));
-        addToast(t('booking_deleted'), 'success'); 
-      } 
+        addToast(t('booking_deleted'), 'success');
+      }
       catch (error) { addToast(t('delete_error'), 'error'); }
     }
   };
 
   const updateTransactionStatus = async (id: string, newStatus: string) => {
     if (isReadOnly) return;
-    try { 
-      await supabase.from('transactions').update({ status: newStatus }).eq('id', id); 
+    try {
+      await supabase.from('transactions').update({ status: newStatus }).eq('id', id);
       setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
-      addToast(t('status_updated'), 'success'); 
-    } 
+      addToast(t('status_updated'), 'success');
+    }
     catch (e) { addToast(t('update_error'), 'error'); }
   };
 
@@ -970,7 +970,7 @@ export default function Finance() {
             const qty = field === 'qty' ? Number(value) : i.qty;
             const price = field === 'unitPrice' ? Number(value) : i.unitPrice;
             const unit = field === 'unit' ? String(value) : i.unit;
-            if (unit === 'Option') { updated.option = qty * price; updated.total = 0; } 
+            if (unit === 'Option') { updated.option = qty * price; updated.total = 0; }
             else { updated.total = qty * price; updated.option = 0; }
           }
           return updated;
@@ -1098,21 +1098,21 @@ export default function Finance() {
     const safeProjectId = currentProjectId || 'global';
     setIsSubmitting(true);
     try {
-      const fileName = `Buchung_${incomingData.vendor.replace(/\s/g,'_')}_${Date.now()}.pdf`;
+      const fileName = `Buchung_${incomingData.vendor.replace(/\s/g, '_')}_${Date.now()}.pdf`;
       const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const uploadedUrls = [finalPdfUrl];
-      
+
       const isExternal = incomingData.type === 'external';
       const descPrefix = isExternal && incomingData.company ? `${incomingData.company} (${incomingData.firstName} ${incomingData.lastName})` : (incomingData.vendor || 'Firma');
-      
+
       await supabase.from('transactions').insert({
-        date: incomingData.date || new Date().toISOString().split('T')[0], 
-        description: `${descPrefix} - ${incomingData.description || 'Beleg'}`, 
+        date: incomingData.date || new Date().toISOString().split('T')[0],
+        description: `${descPrefix} - ${incomingData.description || 'Beleg'}`,
         category: 'Kreditorenrechnung', amount: -Math.abs(Number(incomingData.amount) || 0), status: incomingData.status || 'Offen', project_id: safeProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, budget_pos_id: incomingData.budgetPosId || '', receipt_urls: uploadedUrls
       });
 
-      addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success'); 
+      addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success');
       setIsReceiptPdfStudioOpen(false); setShowReceiptStudio(false); setIncomingReceipts([]);
     } catch (e) { addToast('Fehler', 'error'); } finally { setIsSubmitting(false); }
   };
@@ -1154,45 +1154,45 @@ export default function Finance() {
     return createPortal(
       <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
         <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 p-4 lg:p-6 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
-           
-           <div className="flex justify-between items-center mb-4 shrink-0">
-             <h2 className="text-xl font-bold flex items-center gap-2 text-accent-ai"><RotateCw size={20}/> Tabellenansicht</h2>
-             <button onClick={() => setIsLandscapeMode(false)} className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2">
-               <X size={18}/> <span className="hidden sm:inline">Schließen</span>
-             </button>
-           </div>
-           
-           <div className="flex-1 overflow-auto custom-scrollbar -mx-4 px-4 lg:-mx-6 lg:px-6">
-             <div className="min-w-[1000px] pb-8">
-               
-               {activeTab === 'budget' && (
-                  <table className="w-full text-sm text-left border-collapse">
-                    <thead className="text-xs uppercase tracking-wider text-text-muted border-b border-border/50">
-                      <tr>
-                        <th className="px-4 py-3 w-16">{t('pos')}</th>
-                        <th className="px-4 py-3">{t('description')}</th>
-                        <th className="px-4 py-3 text-right w-24">{t('qty')}</th>
-                        <th className="px-4 py-3 w-24">{t('unit')}</th>
-                        <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
-                        {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
-                        <th className="px-4 py-3 text-right w-36 text-blue-400">{t('total')} (CHF)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30">
-                      {budgetGroups.map(group => {
-                        const groupPlanTotal = calculateGroupTotal(group);
-                        return (
+
+          <div className="flex justify-between items-center mb-4 shrink-0">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-accent-ai"><RotateCw size={20} /> Tabellenansicht</h2>
+            <button onClick={() => setIsLandscapeMode(false)} className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2">
+              <X size={18} /> <span className="hidden sm:inline">Schließen</span>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-auto custom-scrollbar -mx-4 px-4 lg:-mx-6 lg:px-6">
+            <div className="min-w-[1000px] pb-8">
+
+              {activeTab === 'budget' && (
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead className="text-xs uppercase tracking-wider text-text-muted border-b border-border/50">
+                    <tr>
+                      <th className="px-4 py-3 w-16">{t('pos')}</th>
+                      <th className="px-4 py-3">{t('description')}</th>
+                      <th className="px-4 py-3 text-right w-24">{t('qty')}</th>
+                      <th className="px-4 py-3 w-24">{t('unit')}</th>
+                      <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
+                      {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
+                      <th className="px-4 py-3 text-right w-36 text-blue-400">{t('total')} (CHF)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {budgetGroups.map(group => {
+                      const groupPlanTotal = calculateGroupTotal(group);
+                      return (
                         <React.Fragment key={group.id}>
                           <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
                             <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
                             <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
-                              <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, title: e.target.value} : g)} : v))} disabled={activeVersion.status === 'approved'} />
+                              <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} />
                             </td>
                             <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
                               {formatCHF(groupPlanTotal)}
                               {!isReadOnly && activeVersion.status !== 'approved' && (
                                 <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print">
-                                  <Trash2 size={16}/>
+                                  <Trash2 size={16} />
                                 </button>
                               )}
                             </td>
@@ -1226,8 +1226,8 @@ export default function Finance() {
                               <td className="px-4 py-2 text-right font-bold relative text-text-primary">
                                 <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
                                 {!isReadOnly && activeVersion.status !== 'approved' && (
-                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, items: g.items.filter(i => i.id !== item.id)} : g)} : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print">
-                                    <X size={14}/>
+                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print">
+                                    <X size={14} />
                                   </button>
                                 )}
                               </td>
@@ -1236,213 +1236,214 @@ export default function Finance() {
                           {!isReadOnly && activeVersion.status !== 'approved' && (
                             <tr className="no-print">
                               <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 bg-background/30">
-                                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0,1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }]} : g)} : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline">
-                                  <Plus size={14}/> {t('add_position')}
+                                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline">
+                                  <Plus size={14} /> {t('add_position')}
                                 </button>
                               </td>
                             </tr>
                           )}
                         </React.Fragment>
-                      )})}
-                      {!isReadOnly && activeVersion.status !== 'approved' && (
-                        <tr className="no-print">
-                          <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
-                            <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }]} : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors">
-                              <Plus size={18} /> {t('new_phase')}
-                            </button>
+                      )
+                    })}
+                    {!isReadOnly && activeVersion.status !== 'approved' && (
+                      <tr className="no-print">
+                        <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
+                          <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors">
+                            <Plus size={18} /> {t('new_phase')}
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-background border-t-2 border-border/50">
+                      <td colSpan={4} className="px-4 py-4"></td>
+                      <td className="px-4 py-4 text-right text-xs uppercase font-bold text-text-muted whitespace-nowrap">{t('subtotal')}</td>
+                      {includeOptions && <td className="px-4 py-4 text-right font-bold text-sm text-accent-ai whitespace-nowrap">{formatCHF(budgetGroups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.option, 0), 0))}</td>}
+                      <td className="px-4 py-4 text-right font-bold text-sm text-text-primary whitespace-nowrap">{formatCHF(totalBudget)}</td>
+                    </tr>
+                    <tr className="bg-background border-b border-border/50">
+                      <td colSpan={4} className="px-4 py-3"></td>
+                      <td className="px-4 py-3 text-right text-xs uppercase font-semibold text-text-muted flex justify-end items-center gap-2 whitespace-nowrap">
+                        {t('vat')}
+                        <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: Number(e.target.value) } : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
+                      </td>
+                      {includeOptions && <td></td>}
+                      <td className="px-4 py-3 text-right font-medium text-sm text-text-muted whitespace-nowrap">{formatCHF(totalBudget * (vatRate / 100))}</td>
+                    </tr>
+                    <tr className="bg-surface border-b-2 border-border">
+                      <td colSpan={4} className="px-4 py-5"></td>
+                      <td className="px-4 py-5 text-right font-bold text-sm uppercase text-text-primary whitespace-nowrap">{t('total_amount')}</td>
+                      {includeOptions && <td></td>}
+                      <td className="px-4 py-5 text-right font-bold text-sm text-blue-400 whitespace-nowrap">{formatCHF(totalBudget * (1 + vatRate / 100))}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+
+              {activeTab === 'control' && (
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead className="bg-surface border-b border-border/50">
+                    <tr>
+                      <th className="px-4 py-3 w-16 text-text-muted uppercase tracking-wider">{t('pos')}</th>
+                      <th className="px-4 py-3 text-text-muted uppercase tracking-wider min-w-[180px]">{t('description')}</th>
+                      <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-28">{t('planned')}</th>
+                      <th className="px-4 py-3 text-right text-red-500 uppercase tracking-wider w-28">{t('actual_costs')}</th>
+                      <th className="px-4 py-3 text-right text-accent-ai uppercase tracking-wider w-36">Restkosten (Prognose)</th>
+                      <th className="px-4 py-3 text-right text-text-primary uppercase tracking-wider w-36">Voraussichtl. Total</th>
+                      <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-28">{t('variance')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {approvedVersions.map((version) => (
+                      <React.Fragment key={version.id}>
+                        <tr className="bg-accent-ai/5">
+                          <td colSpan={7} className="px-4 py-2 font-bold text-xs uppercase text-accent-ai tracking-widest">{t('budget_supplement')} {version.name}</td>
+                        </tr>
+                        {version.groups.map(group => {
+                          const plan = calculateGroupTotal(group);
+                          const actual = getAllTimeActualCostForGroup(group);
+                          const groupRestkosten = group.items.reduce((sum, item) => sum + (restKostenPrognose[item.id] !== undefined ? restKostenPrognose[item.id] : Math.max(0, item.total - getAllTimeActualCostForItem(item.id))), 0);
+                          const forecastTotal = actual + groupRestkosten;
+                          const diff = plan - forecastTotal;
+                          const isGroupOver = actual > plan;
+                          return (
+                            <React.Fragment key={group.id}>
+                              <tr className="bg-surface/50 border-t border-border/50">
+                                <td className="px-4 py-3 font-bold text-text-primary">{group.pos}</td>
+                                <td className="px-4 py-3 font-bold text-text-primary flex items-center gap-2">
+                                  {group.title}
+                                  {isGroupOver && <span className="px-2 py-0.5 text-[10px] bg-red-500 text-white font-bold rounded-md uppercase">🔴 Über Budget</span>}
+                                </td>
+                                <td className="px-4 py-3 font-bold text-right text-text-primary">{formatCHF(plan)}</td>
+                                <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(actual)}</td>
+                                <td className="px-4 py-3 font-bold text-right text-accent-ai">{formatCHF(groupRestkosten)}</td>
+                                <td className="px-4 py-3 font-bold text-right text-text-primary">{formatCHF(forecastTotal)}</td>
+                                <td className={cn("px-4 py-3 font-bold text-right", diff < 0 ? "text-red-500" : "text-emerald-500")}>
+                                  {diff >= 0 ? '+' : ''}{formatCHF(diff)}
+                                </td>
+                              </tr>
+                              {group.items.map(item => {
+                                const itemActual = getAllTimeActualCostForItem(item.id);
+                                const itemRest = restKostenPrognose[item.id] !== undefined ? restKostenPrognose[item.id] : Math.max(0, item.total - itemActual);
+                                const itemForecast = itemActual + itemRest;
+                                const itemDiff = item.total - itemForecast;
+                                const isItemOver = itemActual > item.total;
+                                return (
+                                  <tr key={item.id} className={cn("hover:bg-white/5 transition-colors", isItemOver ? "bg-red-500/5" : "")}>
+                                    <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
+                                    <td className="px-4 py-2 text-text-primary font-medium flex items-center gap-2">
+                                      {item.description}
+                                      {isItemOver && <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">+CHF {formatCHF(itemActual - item.total)}</span>}
+                                    </td>
+                                    <td className="px-4 py-2 text-right text-text-primary">{formatCHF(item.total)}</td>
+                                    <td className="px-4 py-2 text-right text-red-500 font-bold">{itemActual > 0 ? formatCHF(itemActual) : '-'}</td>
+                                    <td className="px-4 py-2 text-right">
+                                      <input
+                                        type="number"
+                                        value={itemRest}
+                                        onChange={e => setRestKostenPrognose({ ...restKostenPrognose, [item.id]: parseFloat(e.target.value) || 0 })}
+                                        className="w-24 bg-background border border-border/50 rounded px-2 py-1 text-right font-mono text-xs text-accent-ai focus:border-accent-ai outline-none"
+                                        placeholder="0.00"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-bold text-text-primary">{formatCHF(itemForecast)}</td>
+                                    <td className={cn("px-4 py-2 text-right font-medium", itemDiff < 0 ? "text-red-500 font-bold" : "text-emerald-500")}>
+                                      {itemDiff >= 0 ? '+' : ''}{formatCHF(itemDiff)}
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </React.Fragment>
+                          )
+                        })}
+                      </React.Fragment>
+                    ))}
+                    <tr className="bg-orange-500/10 border-y-2 border-orange-500/20">
+                      <td className="px-4 py-3 font-bold text-orange-500">HR</td>
+                      <td className="px-4 py-3 font-bold text-orange-500">{t('internal_hours_time_tracking')} ({allTimeHours} h)</td>
+                      <td className="px-4 py-3 font-bold text-right text-orange-500">-</td>
+                      <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(allTimeHoursCost)}</td>
+                      <td className="px-4 py-3 font-bold text-right text-orange-500">0.00</td>
+                      <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(allTimeHoursCost)}</td>
+                      <td className="px-4 py-3 font-bold text-right text-red-500">-{formatCHF(allTimeHoursCost)}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-surface border-t-2 border-border/50">
+                      <td colSpan={2} className="px-4 py-5 text-right font-black uppercase tracking-wider text-text-primary">{t('total_project_excl_vat')}</td>
+                      <td className="px-4 py-5 text-right font-black text-text-primary">{formatCHF(overviewTotalBudget)}</td>
+                      <td className="px-4 py-5 text-right font-black text-red-500">{formatCHF(totalActualCostsIncludingHoursAllTime)}</td>
+                      <td className="px-4 py-5 text-right font-black text-accent-ai">
+                        {formatCHF(approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + g.items.reduce((iSum, i) => iSum + (restKostenPrognose[i.id] !== undefined ? restKostenPrognose[i.id] : Math.max(0, i.total - getAllTimeActualCostForItem(i.id))), 0), 0), 0))}
+                      </td>
+                      <td className="px-4 py-5 text-right font-black text-text-primary">
+                        {formatCHF(totalActualCostsIncludingHoursAllTime + approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + g.items.reduce((iSum, i) => iSum + (restKostenPrognose[i.id] !== undefined ? restKostenPrognose[i.id] : Math.max(0, i.total - getAllTimeActualCostForItem(i.id))), 0), 0), 0))}
+                      </td>
+                      <td className={cn("px-4 py-5 text-right font-black", (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? "text-red-500" : "text-emerald-500")}>
+                        {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+
+              {activeTab === 'cashflow' && (
+                <table className="w-full text-sm text-left border-collapse">
+                  <thead className="bg-surface border-b border-border/50">
+                    <tr>
+                      <th className="px-4 py-3 text-text-muted uppercase tracking-wider w-32">{t('date')}</th>
+                      <th className="px-4 py-3 text-text-muted uppercase tracking-wider min-w-[200px]">{t('description')}</th>
+                      <th className="px-4 py-3 text-text-muted uppercase tracking-wider w-48">{t('budget_assignment')}</th>
+                      <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('credit_revenue')}</th>
+                      <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('debit_costs')}</th>
+                      <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('balance_profit')}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {displayLedger.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted italic">{t('no_bookings_period')}</td></tr>
+                    )}
+                    {displayLedger.map((tx) => {
+                      const isQuote = tx.category === 'Offerte' || tx.category === 'Quote';
+                      const isTime = !!tx.isTimeEntry;
+                      const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && tx.amount > 0);
+                      const displayAmount = tx.amount === 0 ? 0 : Math.abs(tx.amount);
+                      const bdDetails = getBudgetDetails(tx.budgetPosId);
+                      const isBalanceNegative = 0 > tx.balance;
+
+                      return (
+                        <tr key={tx.id} className="hover:bg-white/5 transition-colors group">
+                          <td className="px-4 py-3 text-text-muted font-medium flex items-center gap-2">
+                            <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14} /></button>
+                            {tx.date}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-text-primary">{tx.description}</span>
+                              {!!sanitizeUrl(tx.url) && <a href={sanitizeUrl(tx.url)} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14} /></a>}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-text-muted font-medium">
+                            {bdDetails ? <div className="flex flex-col"><span>{bdDetails.phase}</span><span className="text-text-primary font-bold truncate max-w-[150px]">{bdDetails.item}</span></div> : <span className="italic opacity-50">{t('free_booking')}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-emerald-500">
+                            {isQuote ? <span className="text-text-muted italic">({formatCHF(displayAmount)})</span> : (isRevenue && displayAmount > 0 ? `+ ${formatCHF(displayAmount)}` : '')}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-red-500">
+                            {!isQuote && !isRevenue && displayAmount > 0 ? `- ${formatCHF(displayAmount)}` : ''}
+                          </td>
+                          <td className={cn("px-4 py-3 text-right font-bold", isQuote ? "text-text-muted" : (isBalanceNegative ? "text-red-500" : "text-emerald-500"))}>
+                            {isQuote ? '-' : formatCHF(tx.balance)}
                           </td>
                         </tr>
-                      )}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-background border-t-2 border-border/50">
-                        <td colSpan={4} className="px-4 py-4"></td>
-                        <td className="px-4 py-4 text-right text-xs uppercase font-bold text-text-muted whitespace-nowrap">{t('subtotal')}</td>
-                        {includeOptions && <td className="px-4 py-4 text-right font-bold text-sm text-accent-ai whitespace-nowrap">{formatCHF(budgetGroups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.option, 0), 0))}</td>}
-                        <td className="px-4 py-4 text-right font-bold text-sm text-text-primary whitespace-nowrap">{formatCHF(totalBudget)}</td>
-                      </tr>
-                      <tr className="bg-background border-b border-border/50">
-                        <td colSpan={4} className="px-4 py-3"></td>
-                        <td className="px-4 py-3 text-right text-xs uppercase font-semibold text-text-muted flex justify-end items-center gap-2 whitespace-nowrap">
-                          {t('vat')} 
-                          <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? {...v, vatRate: Number(e.target.value)} : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
-                        </td>
-                        {includeOptions && <td></td>}
-                        <td className="px-4 py-3 text-right font-medium text-sm text-text-muted whitespace-nowrap">{formatCHF(totalBudget * (vatRate/100))}</td>
-                      </tr>
-                      <tr className="bg-surface border-b-2 border-border">
-                        <td colSpan={4} className="px-4 py-5"></td>
-                        <td className="px-4 py-5 text-right font-bold text-sm uppercase text-text-primary whitespace-nowrap">{t('total_amount')}</td>
-                        {includeOptions && <td></td>}
-                        <td className="px-4 py-5 text-right font-bold text-sm text-blue-400 whitespace-nowrap">{formatCHF(totalBudget * (1 + vatRate/100))}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-               )}
-
-               {activeTab === 'control' && (
-                      <table className="w-full text-sm text-left border-collapse">
-                    <thead className="bg-surface border-b border-border/50">
-                      <tr>
-                        <th className="px-4 py-3 w-16 text-text-muted uppercase tracking-wider">{t('pos')}</th>
-                        <th className="px-4 py-3 text-text-muted uppercase tracking-wider min-w-[180px]">{t('description')}</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-28">{t('planned')}</th>
-                        <th className="px-4 py-3 text-right text-red-500 uppercase tracking-wider w-28">{t('actual_costs')}</th>
-                        <th className="px-4 py-3 text-right text-accent-ai uppercase tracking-wider w-36">Restkosten (Prognose)</th>
-                        <th className="px-4 py-3 text-right text-text-primary uppercase tracking-wider w-36">Voraussichtl. Total</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-28">{t('variance')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30">
-                      {approvedVersions.map((version) => (
-                        <React.Fragment key={version.id}>
-                          <tr className="bg-accent-ai/5">
-                            <td colSpan={7} className="px-4 py-2 font-bold text-xs uppercase text-accent-ai tracking-widest">{t('budget_supplement')} {version.name}</td>
-                          </tr>
-                          {version.groups.map(group => {
-                            const plan = calculateGroupTotal(group);
-                            const actual = getAllTimeActualCostForGroup(group);
-                            const groupRestkosten = group.items.reduce((sum, item) => sum + (restKostenPrognose[item.id] !== undefined ? restKostenPrognose[item.id] : Math.max(0, item.total - getAllTimeActualCostForItem(item.id))), 0);
-                            const forecastTotal = actual + groupRestkosten;
-                            const diff = plan - forecastTotal;
-                            const isGroupOver = actual > plan;
-                            return (
-                              <React.Fragment key={group.id}>
-                                <tr className="bg-surface/50 border-t border-border/50">
-                                  <td className="px-4 py-3 font-bold text-text-primary">{group.pos}</td>
-                                  <td className="px-4 py-3 font-bold text-text-primary flex items-center gap-2">
-                                    {group.title}
-                                    {isGroupOver && <span className="px-2 py-0.5 text-[10px] bg-red-500 text-white font-bold rounded-md uppercase">🔴 Über Budget</span>}
-                                  </td>
-                                  <td className="px-4 py-3 font-bold text-right text-text-primary">{formatCHF(plan)}</td>
-                                  <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(actual)}</td>
-                                  <td className="px-4 py-3 font-bold text-right text-accent-ai">{formatCHF(groupRestkosten)}</td>
-                                  <td className="px-4 py-3 font-bold text-right text-text-primary">{formatCHF(forecastTotal)}</td>
-                                  <td className={cn("px-4 py-3 font-bold text-right", diff < 0 ? "text-red-500" : "text-emerald-500")}>
-                                    {diff >= 0 ? '+' : ''}{formatCHF(diff)}
-                                  </td>
-                                </tr>
-                                {group.items.map(item => {
-                                  const itemActual = getAllTimeActualCostForItem(item.id);
-                                  const itemRest = restKostenPrognose[item.id] !== undefined ? restKostenPrognose[item.id] : Math.max(0, item.total - itemActual);
-                                  const itemForecast = itemActual + itemRest;
-                                  const itemDiff = item.total - itemForecast;
-                                  const isItemOver = itemActual > item.total;
-                                  return (
-                                    <tr key={item.id} className={cn("hover:bg-white/5 transition-colors", isItemOver ? "bg-red-500/5" : "")}>
-                                      <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
-                                      <td className="px-4 py-2 text-text-primary font-medium flex items-center gap-2">
-                                        {item.description}
-                                        {isItemOver && <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">+CHF {formatCHF(itemActual - item.total)}</span>}
-                                      </td>
-                                      <td className="px-4 py-2 text-right text-text-primary">{formatCHF(item.total)}</td>
-                                      <td className="px-4 py-2 text-right text-red-500 font-bold">{itemActual > 0 ? formatCHF(itemActual) : '-'}</td>
-                                      <td className="px-4 py-2 text-right">
-                                        <input 
-                                          type="number"
-                                          value={itemRest}
-                                          onChange={e => setRestKostenPrognose({ ...restKostenPrognose, [item.id]: parseFloat(e.target.value) || 0 })}
-                                          className="w-24 bg-background border border-border/50 rounded px-2 py-1 text-right font-mono text-xs text-accent-ai focus:border-accent-ai outline-none"
-                                          placeholder="0.00"
-                                        />
-                                      </td>
-                                      <td className="px-4 py-2 text-right font-bold text-text-primary">{formatCHF(itemForecast)}</td>
-                                      <td className={cn("px-4 py-2 text-right font-medium", itemDiff < 0 ? "text-red-500 font-bold" : "text-emerald-500")}>
-                                        {itemDiff >= 0 ? '+' : ''}{formatCHF(itemDiff)}
-                                      </td>
-                                    </tr>
-                                  )
-                                })}
-                              </React.Fragment>
-                            )
-                          })}
-                        </React.Fragment>
-                      ))}
-                      <tr className="bg-orange-500/10 border-y-2 border-orange-500/20">
-                        <td className="px-4 py-3 font-bold text-orange-500">HR</td>
-                        <td className="px-4 py-3 font-bold text-orange-500">{t('internal_hours_time_tracking')} ({allTimeHours} h)</td>
-                        <td className="px-4 py-3 font-bold text-right text-orange-500">-</td>
-                        <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(allTimeHoursCost)}</td>
-                        <td className="px-4 py-3 font-bold text-right text-orange-500">0.00</td>
-                        <td className="px-4 py-3 font-bold text-right text-red-500">{formatCHF(allTimeHoursCost)}</td>
-                        <td className="px-4 py-3 font-bold text-right text-red-500">-{formatCHF(allTimeHoursCost)}</td>
-                      </tr>
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-surface border-t-2 border-border/50">
-                        <td colSpan={2} className="px-4 py-5 text-right font-black uppercase tracking-wider text-text-primary">{t('total_project_excl_vat')}</td>
-                        <td className="px-4 py-5 text-right font-black text-text-primary">{formatCHF(overviewTotalBudget)}</td>
-                        <td className="px-4 py-5 text-right font-black text-red-500">{formatCHF(totalActualCostsIncludingHoursAllTime)}</td>
-                        <td className="px-4 py-5 text-right font-black text-accent-ai">
-                          {formatCHF(approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + g.items.reduce((iSum, i) => iSum + (restKostenPrognose[i.id] !== undefined ? restKostenPrognose[i.id] : Math.max(0, i.total - getAllTimeActualCostForItem(i.id))), 0), 0), 0))}
-                        </td>
-                        <td className="px-4 py-5 text-right font-black text-text-primary">
-                          {formatCHF(totalActualCostsIncludingHoursAllTime + approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + g.items.reduce((iSum, i) => iSum + (restKostenPrognose[i.id] !== undefined ? restKostenPrognose[i.id] : Math.max(0, i.total - getAllTimeActualCostForItem(i.id))), 0), 0), 0))}
-                        </td>
-                        <td className={cn("px-4 py-5 text-right font-black", (overviewTotalBudget - totalActualCostsIncludingHoursAllTime) < 0 ? "text-red-500" : "text-emerald-500")}>
-                          {((overviewTotalBudget - totalActualCostsIncludingHoursAllTime) >= 0 ? '+' : '')}{formatCHF(overviewTotalBudget - totalActualCostsIncludingHoursAllTime)}
-                        </td>
-                      </tr>
-                    </tfoot>
-                 </table>
-               )}
-
-               {activeTab === 'cashflow' && (
-                 <table className="w-full text-sm text-left border-collapse">
-                    <thead className="bg-surface border-b border-border/50">
-                      <tr>
-                        <th className="px-4 py-3 text-text-muted uppercase tracking-wider w-32">{t('date')}</th>
-                        <th className="px-4 py-3 text-text-muted uppercase tracking-wider min-w-[200px]">{t('description')}</th>
-                        <th className="px-4 py-3 text-text-muted uppercase tracking-wider w-48">{t('budget_assignment')}</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('credit_revenue')}</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('debit_costs')}</th>
-                        <th className="px-4 py-3 text-right text-text-muted uppercase tracking-wider w-32">{t('balance_profit')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30">
-                      {displayLedger.length === 0 && (
-                        <tr><td colSpan={6} className="px-4 py-8 text-center text-text-muted italic">{t('no_bookings_period')}</td></tr>
-                      )}
-                      {displayLedger.map((tx) => {
-                        const isQuote = tx.category === 'Offerte' || tx.category === 'Quote';
-                        const isTime = !!tx.isTimeEntry;
-                        const isRevenue = tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || (!isQuote && !isTime && tx.amount > 0);
-                        const displayAmount = tx.amount === 0 ? 0 : Math.abs(tx.amount);
-                        const bdDetails = getBudgetDetails(tx.budgetPosId);
-                        const isBalanceNegative = 0 > tx.balance;
-
-                        return (
-                          <tr key={tx.id} className="hover:bg-white/5 transition-colors group">
-                            <td className="px-4 py-3 text-text-muted font-medium flex items-center gap-2">
-                               <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14}/></button>
-                               {tx.date}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-text-primary">{tx.description}</span>
-                                {!!sanitizeUrl(tx.url) && <a href={sanitizeUrl(tx.url)} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14}/></a>}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-text-muted font-medium">
-                               {bdDetails ? <div className="flex flex-col"><span>{bdDetails.phase}</span><span className="text-text-primary font-bold truncate max-w-[150px]">{bdDetails.item}</span></div> : <span className="italic opacity-50">{t('free_booking')}</span>}
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold text-emerald-500">
-                              {isQuote ? <span className="text-text-muted italic">({formatCHF(displayAmount)})</span> : (isRevenue && displayAmount > 0 ? `+ ${formatCHF(displayAmount)}` : '')}
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold text-red-500">
-                              {!isQuote && !isRevenue && displayAmount > 0 ? `- ${formatCHF(displayAmount)}` : ''}
-                            </td>
-                            <td className={cn("px-4 py-3 text-right font-bold", isQuote ? "text-text-muted" : (isBalanceNegative ? "text-red-500" : "text-emerald-500"))}>
-                              {isQuote ? '-' : formatCHF(tx.balance)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-               )}
-             </div>
-           </div>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
         </div>
       </div>,
       document.body
@@ -1463,9 +1464,9 @@ export default function Finance() {
               <p className="text-sm text-text-muted mt-1 font-medium">{projectHeader.project}</p>
             </div>
             {(activeTab === 'budget' || activeTab === 'cashflow' || activeTab === 'control') && (
-               <button onClick={() => setIsLandscapeMode(true)} className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform">
-                  <RotateCw size={14}/> <span className="text-xs">{t('rotate')}</span>
-               </button>
+              <button onClick={() => setIsLandscapeMode(true)} className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform">
+                <RotateCw size={14} /> <span className="text-xs">{t('rotate')}</span>
+              </button>
             )}
           </div>
 
@@ -1478,63 +1479,63 @@ export default function Finance() {
             </div>
             <div className="hidden lg:block w-px h-6 bg-border/50 mx-1"></div>
             <button onClick={exportLedgerCSV} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="Hauptbuch als CSV herunterladen">
-               <Download size={15} /> <span className="hidden sm:inline">Hauptbuch CSV</span>
+              <Download size={15} /> <span className="hidden sm:inline">Hauptbuch CSV</span>
             </button>
             <button onClick={exportBudgetCSV} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="BKP Budget als CSV herunterladen">
-               <Download size={15} /> <span className="hidden sm:inline">BKP Budget CSV</span>
+              <Download size={15} /> <span className="hidden sm:inline">BKP Budget CSV</span>
             </button>
             <button onClick={() => setShowCsvImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-accent-ai/40 text-accent-ai rounded-lg text-xs font-bold hover:bg-accent-ai/10 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="BKP Positionen aus CSV importieren">
-               <Plus size={15} /> <span className="hidden sm:inline">BKP CSV Import</span>
+              <Plus size={15} /> <span className="hidden sm:inline">BKP CSV Import</span>
             </button>
             {activeTab !== 'overview' && (
               <button onClick={() => setIsPdfStudioOpen(true)} className="hidden lg:flex px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-2 h-[42px] cursor-pointer shrink-0">
-                 <FileText size={16} /> <span>PDF Studio</span>
+                <FileText size={16} /> <span>PDF Studio</span>
               </button>
             )}
           </div>
         </div>
 
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full">
-           <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
-              <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
-              <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
-              <button onClick={() => setActiveTab('control')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 relative whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}>
-                <ClipboardList size={16} /> {t('payment_control')}
-                {approvedVersions.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span>}
-              </button>
-              <button onClick={() => setActiveTab('cashflow')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><DollarSign size={16} />{t('cashflow')}</button>
-           </div>
-           
-           <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto hide-scrollbar pb-1 lg:pb-0">
-             {(activeTab === 'overview' || activeTab === 'cashflow') && (
-               <div className="flex items-center bg-surface border border-border/50 rounded-lg px-3 h-[42px] shrink-0">
-                 <CalendarDays size={16} className="text-text-muted mr-2" />
-                 <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value as any)} className="bg-transparent text-sm font-bold text-text-primary focus:outline-none cursor-pointer appearance-none outline-none">
-                   <option value="all" className="bg-surface">{t('all_time')}</option>
-                   <option value="year" className="bg-surface">{t('this_year')}</option>
-                   <option value="month" className="bg-surface">{t('this_month')}</option>
-                   <option value="today" className="bg-surface">{t('today')}</option>
-                 </select>
-               </div>
-             )}
+          <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
+            <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
+            <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
+            <button onClick={() => setActiveTab('control')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 relative whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}>
+              <ClipboardList size={16} /> {t('payment_control')}
+              {approvedVersions.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span>}
+            </button>
+            <button onClick={() => setActiveTab('cashflow')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><DollarSign size={16} />{t('cashflow')}</button>
+          </div>
 
-             {activeTab === 'budget' && (
-               <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
-                  <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-32 truncate shrink-0 appearance-none">
-                    {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
-                  </select>
-                  <div className="w-px h-4 bg-border mx-1"></div>
-                  {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
-                    <button onClick={handleToggleApproveVersion} className={cn("p-1 px-2 rounded text-xs font-bold transition-colors border mr-1 whitespace-nowrap", activeVersion.status === 'approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "hover:bg-white/5 text-text-muted border-border/50")} title={t('approve_revoke')}>
-                      {activeVersion.status === 'approved' ? t('approved') : t('approve')}
-                    </button>
-                  )}
-                  <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0" title={t('new_variant')}><Plus size={16} /></button>
-                  <button onClick={handleDuplicateVersion} className="p-1 hover:text-accent-ai text-text-muted transition-colors shrink-0" title={t('duplicate_variant')}><Copy size={14} /></button>
-                  <button onClick={() => handleDeleteVersion(activeVersionId)} className="p-1 hover:text-red-500 text-text-muted transition-colors shrink-0" title={t('delete_variant')}><Trash2 size={14} /></button>
-               </div>
-             )}
-           </div>
+          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto hide-scrollbar pb-1 lg:pb-0">
+            {(activeTab === 'overview' || activeTab === 'cashflow') && (
+              <div className="flex items-center bg-surface border border-border/50 rounded-lg px-3 h-[42px] shrink-0">
+                <CalendarDays size={16} className="text-text-muted mr-2" />
+                <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value as any)} className="bg-transparent text-sm font-bold text-text-primary focus:outline-none cursor-pointer appearance-none outline-none">
+                  <option value="all" className="bg-surface">{t('all_time')}</option>
+                  <option value="year" className="bg-surface">{t('this_year')}</option>
+                  <option value="month" className="bg-surface">{t('this_month')}</option>
+                  <option value="today" className="bg-surface">{t('today')}</option>
+                </select>
+              </div>
+            )}
+
+            {activeTab === 'budget' && (
+              <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
+                <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-32 truncate shrink-0 appearance-none">
+                  {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
+                </select>
+                <div className="w-px h-4 bg-border mx-1"></div>
+                {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
+                  <button onClick={handleToggleApproveVersion} className={cn("p-1 px-2 rounded text-xs font-bold transition-colors border mr-1 whitespace-nowrap", activeVersion.status === 'approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "hover:bg-white/5 text-text-muted border-border/50")} title={t('approve_revoke')}>
+                    {activeVersion.status === 'approved' ? t('approved') : t('approve')}
+                  </button>
+                )}
+                <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0" title={t('new_variant')}><Plus size={16} /></button>
+                <button onClick={handleDuplicateVersion} className="p-1 hover:text-accent-ai text-text-muted transition-colors shrink-0" title={t('duplicate_variant')}><Copy size={14} /></button>
+                <button onClick={() => handleDeleteVersion(activeVersionId)} className="p-1 hover:text-red-500 text-text-muted transition-colors shrink-0" title={t('delete_variant')}><Trash2 size={14} /></button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1560,7 +1561,7 @@ export default function Finance() {
             </button>
           </div>
         )}
-        
+
         {activeTab === 'overview' && (
           <div className="space-y-6 pt-4 lg:pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1570,13 +1571,13 @@ export default function Finance() {
               </div>
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <ArrowUpRight className="text-emerald-400" size={14}/> {t('revenue')}
+                  <ArrowUpRight className="text-emerald-400" size={14} /> {t('revenue')}
                 </h3>
                 <p className="text-2xl font-bold text-emerald-400 font-medium">CHF {formatCHF(filteredInvoiced)}</p>
               </div>
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <ArrowDownRight className="text-red-400" size={14}/> {t('costs')}
+                  <ArrowDownRight className="text-red-400" size={14} /> {t('costs')}
                 </h3>
                 <p className="text-2xl font-bold text-red-400 font-medium">CHF {formatCHF(filteredSpent)}</p>
               </div>
@@ -1613,7 +1614,7 @@ export default function Finance() {
               </div>
               <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-6 flex flex-col min-h-[380px]">
                 <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
-                  <TrendingUp className="text-accent-ai" size={18}/> {t('planned_vs_actual')}
+                  <TrendingUp className="text-accent-ai" size={18} /> {t('planned_vs_actual')}
                 </h3>
                 <div className="flex-1 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -1621,7 +1622,7 @@ export default function Finance() {
                       <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "#27272a" : "#e4e4e7"} vertical={false} />
                       <XAxis dataKey="name" stroke="#a1a1aa" fontSize={10} tickMargin={10} />
                       <YAxis stroke="#a1a1aa" fontSize={10} tickFormatter={(value) => `CHF ${value.toLocaleString()}`} />
-                      <RechartsTooltip cursor={{fill: theme === 'dark' ? '#27272a' : '#f4f4f5'}} contentStyle={tooltipContentStyle} />
+                      <RechartsTooltip cursor={{ fill: theme === 'dark' ? '#27272a' : '#f4f4f5' }} contentStyle={tooltipContentStyle} />
                       <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                       <Bar dataKey={t('planned')} fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
                       <Bar dataKey={t('actual_costs')} fill="#f87171" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -1638,27 +1639,27 @@ export default function Finance() {
         {/* ========================================================= */}
         {activeTab === 'budget' && (
           <div className="lg:hidden space-y-6 pb-6 pt-4">
-            
+
             {/* Header Karte Mobile */}
             <div className="bg-surface border border-border/50 rounded-xl p-4 space-y-4 shadow-sm">
-              <input className="text-xl font-extrabold bg-transparent outline-none w-full border-b border-border/50 focus:border-accent-ai/50 text-text-primary pb-2" value={projectHeader.project} onChange={e => setProjectHeader({...projectHeader, project: e.target.value})} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
+              <input className="text-xl font-extrabold bg-transparent outline-none w-full border-b border-border/50 focus:border-accent-ai/50 text-text-primary pb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
               <div className="space-y-3">
                 <div className="flex justify-between items-center border-b border-border/30 pb-2">
                   <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</span>
-                  <input type="date" value={projectHeader.date} onChange={e => setProjectHeader({...projectHeader, date: e.target.value})} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary" disabled={activeVersion.status === 'approved'} />
+                  <input type="date" value={projectHeader.date} onChange={e => setProjectHeader({ ...projectHeader, date: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary" disabled={activeVersion.status === 'approved'} />
                 </div>
                 <div className="flex justify-between items-center border-b border-border/30 pb-2">
                   <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('client')}</span>
-                  <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({...projectHeader, client: e.target.value})} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary w-1/2" placeholder="Kunde" disabled={activeVersion.status === 'approved'} />
+                  <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({ ...projectHeader, client: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary w-1/2" placeholder="Kunde" disabled={activeVersion.status === 'approved'} />
                 </div>
                 <div className="flex justify-between items-center border-b border-border/30 pb-2">
                   <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Version</span>
-                  <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({...projectHeader, version: e.target.value})} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary w-1/4" disabled={activeVersion.status === 'approved'} />
+                  <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({ ...projectHeader, version: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary w-1/4" disabled={activeVersion.status === 'approved'} />
                 </div>
                 <div className="pt-2">
                   <label className="flex items-center justify-between text-sm font-bold text-text-primary cursor-pointer">
                     <span className="text-xs text-text-muted uppercase tracking-widest">Optionen einrechnen</span>
-                    <input type="checkbox" checked={includeOptions} onChange={(e) => setIncludeOptions(e.target.checked)} className="rounded border-border text-accent-ai w-5 h-5 cursor-pointer" /> 
+                    <input type="checkbox" checked={includeOptions} onChange={(e) => setIncludeOptions(e.target.checked)} className="rounded border-border text-accent-ai w-5 h-5 cursor-pointer" />
                   </label>
                 </div>
               </div>
@@ -1666,88 +1667,88 @@ export default function Finance() {
 
             {/* Budget Groups Kacheln */}
             {budgetGroups.map(group => (
-               <div key={group.id} className="space-y-4">
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 shadow-sm relative">
-                     <div className="flex justify-between items-center mb-2">
-                       <span className="font-bold text-blue-500 text-sm">{group.pos}</span>
-                       <span className="font-bold text-blue-500 text-sm">{formatCHF(calculateGroupTotal(group))}</span>
-                     </div>
-                     <input className="bg-transparent text-blue-400 font-bold text-lg outline-none w-full pr-8" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, title: e.target.value} : g)} : v))} disabled={activeVersion.status === 'approved'} placeholder="Titel der Phase" />
-                     {!isReadOnly && activeVersion.status !== 'approved' && (
-                       <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-4 bottom-4 text-red-500 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20"><Trash2 size={16}/></button>
-                     )}
+              <div key={group.id} className="space-y-4">
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 shadow-sm relative">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-blue-500 text-sm">{group.pos}</span>
+                    <span className="font-bold text-blue-500 text-sm">{formatCHF(calculateGroupTotal(group))}</span>
                   </div>
+                  <input className="bg-transparent text-blue-400 font-bold text-lg outline-none w-full pr-8" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} placeholder="Titel der Phase" />
+                  {!isReadOnly && activeVersion.status !== 'approved' && (
+                    <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-4 bottom-4 text-red-500 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20"><Trash2 size={16} /></button>
+                  )}
+                </div>
 
-                  <div className="space-y-3 pl-3 border-l-2 border-border/30">
-                     {group.items.map(item => (
-                        <div key={item.id} className="bg-surface border border-border/50 rounded-xl p-4 shadow-sm relative space-y-3">
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-text-muted bg-background px-2 py-1 rounded border border-border/50">{item.pos}</span>
-                              {!isReadOnly && activeVersion.status !== 'approved' && (
-                                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, items: g.items.filter(i => i.id !== item.id)} : g)} : v))} className="text-text-muted hover:text-red-500 p-1 bg-background rounded-md"><X size={14}/></button>
-                              )}
-                           </div>
-                           <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-accent-ai/50" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
-                           
-                           <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('qty')}</label>
-                                <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit')}</label>
-                                <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none cursor-pointer" disabled={activeVersion.status === 'approved'}>
-                                  <option value="Std.">Std.</option><option value="Stk.">Stk.</option><option value="Pauschal">Pauschal</option><option value="m2">m2</option><option value="Option" className="font-bold text-accent-ai">Option</option>
-                                </select>
-                              </div>
-                           </div>
+                <div className="space-y-3 pl-3 border-l-2 border-border/30">
+                  {group.items.map(item => (
+                    <div key={item.id} className="bg-surface border border-border/50 rounded-xl p-4 shadow-sm relative space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-text-muted bg-background px-2 py-1 rounded border border-border/50">{item.pos}</span>
+                        {!isReadOnly && activeVersion.status !== 'approved' && (
+                          <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="text-text-muted hover:text-red-500 p-1 bg-background rounded-md"><X size={14} /></button>
+                        )}
+                      </div>
+                      <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-accent-ai/50" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
 
-                           <div className="grid grid-cols-2 gap-3 items-end border-b border-border/30 pb-3">
-                              <div>
-                                <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit_price')}</label>
-                                <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
-                              </div>
-                              <div className="text-right">
-                                <span className="text-[10px] text-text-muted font-bold uppercase block mb-1">Total (CHF)</span>
-                                <span className={cn("text-lg font-bold", item.option > 0 ? "text-accent-ai" : "text-text-primary")}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
-                              </div>
-                           </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('qty')}</label>
+                          <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
                         </div>
-                     ))}
-                     {!isReadOnly && activeVersion.status !== 'approved' && (
-                       <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0,1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }]} : g)} : v))} className="w-full py-2.5 bg-background border border-dashed border-accent-ai/30 text-accent-ai rounded-xl text-xs font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2">
-                         <Plus size={14}/> {t('add_position')}
-                       </button>
-                     )}
-                  </div>
-               </div>
+                        <div>
+                          <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit')}</label>
+                          <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none cursor-pointer" disabled={activeVersion.status === 'approved'}>
+                            <option value="Std.">Std.</option><option value="Stk.">Stk.</option><option value="Pauschal">Pauschal</option><option value="m2">m2</option><option value="Option" className="font-bold text-accent-ai">Option</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 items-end border-b border-border/30 pb-3">
+                        <div>
+                          <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit_price')}</label>
+                          <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-text-muted font-bold uppercase block mb-1">Total (CHF)</span>
+                          <span className={cn("text-lg font-bold", item.option > 0 ? "text-accent-ai" : "text-text-primary")}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {!isReadOnly && activeVersion.status !== 'approved' && (
+                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="w-full py-2.5 bg-background border border-dashed border-accent-ai/30 text-accent-ai rounded-xl text-xs font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2">
+                      <Plus size={14} /> {t('add_position')}
+                    </button>
+                  )}
+                </div>
+              </div>
             ))}
 
             {!isReadOnly && activeVersion.status !== 'approved' && (
-              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }]} : v))} className="w-full py-4 bg-surface border border-dashed border-accent-ai/50 text-accent-ai rounded-xl font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2 shadow-sm">
+              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-4 bg-surface border border-dashed border-accent-ai/50 text-accent-ai rounded-xl font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2 shadow-sm">
                 <Plus size={18} /> {t('new_phase')}
               </button>
             )}
 
             {/* Totals Mobile Card */}
             <div className="bg-surface border border-border/50 rounded-xl p-5 shadow-sm space-y-3">
-               <div className="flex justify-between items-center text-sm font-bold text-text-muted">
-                 <span>{t('subtotal')}</span><span>{formatCHF(totalBudget)}</span>
-               </div>
-               {includeOptions && (
-                 <div className="flex justify-between items-center text-sm font-bold text-accent-ai border-t border-border/30 pt-3">
-                   <span>Optionen Gesamt</span><span>{formatCHF(budgetGroups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.option, 0), 0))}</span>
-                 </div>
-               )}
-               <div className="flex justify-between items-center text-sm font-bold text-text-muted border-t border-border/30 pt-3">
-                 <span className="flex items-center gap-2">
-                   {t('vat')} <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? {...v, vatRate: Number(e.target.value)} : v))} className="w-14 bg-background border border-border/50 rounded p-1 outline-none text-text-primary text-center" disabled={activeVersion.status === 'approved'} />%
-                 </span>
-                 <span>{formatCHF(totalBudget * (vatRate/100))}</span>
-               </div>
-               <div className="flex justify-between items-center text-lg font-bold text-blue-400 border-t-2 border-border pt-4">
-                 <span className="uppercase">{t('total_amount')}</span><span>{formatCHF(totalBudget * (1 + vatRate/100))}</span>
-               </div>
+              <div className="flex justify-between items-center text-sm font-bold text-text-muted">
+                <span>{t('subtotal')}</span><span>{formatCHF(totalBudget)}</span>
+              </div>
+              {includeOptions && (
+                <div className="flex justify-between items-center text-sm font-bold text-accent-ai border-t border-border/30 pt-3">
+                  <span>Optionen Gesamt</span><span>{formatCHF(budgetGroups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.option, 0), 0))}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-sm font-bold text-text-muted border-t border-border/30 pt-3">
+                <span className="flex items-center gap-2">
+                  {t('vat')} <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: Number(e.target.value) } : v))} className="w-14 bg-background border border-border/50 rounded p-1 outline-none text-text-primary text-center" disabled={activeVersion.status === 'approved'} />%
+                </span>
+                <span>{formatCHF(totalBudget * (vatRate / 100))}</span>
+              </div>
+              <div className="flex justify-between items-center text-lg font-bold text-blue-400 border-t-2 border-border pt-4">
+                <span className="uppercase">{t('total_amount')}</span><span>{formatCHF(totalBudget * (1 + vatRate / 100))}</span>
+              </div>
             </div>
           </div>
         )}
@@ -1757,60 +1758,60 @@ export default function Finance() {
         {/* ========================================================= */}
         {activeTab === 'budget' && (
           <div className="hidden lg:flex flex-col w-full overflow-hidden">
-             <div className="bg-surface border border-border rounded-xl shadow-lg mt-0 w-full flex-col overflow-x-auto custom-scrollbar">
-                <div className="min-w-[800px]">
-                  <div className="p-8 bg-surface border-b border-border/50 w-full flex justify-between items-end">
-                    <div>
-                      <input className="text-3xl font-extrabold bg-transparent outline-none w-[600px] border-b border-transparent focus:border-accent-ai/50 text-text-primary mb-2" value={projectHeader.project} onChange={e => setProjectHeader({...projectHeader, project: e.target.value})} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
-                      <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}:</span>
-                          <input type="date" value={projectHeader.date} onChange={e => setProjectHeader({...projectHeader, date: e.target.value})} className="bg-transparent text-sm font-medium outline-none text-text-primary cursor-pointer border-b border-transparent focus:border-accent-ai/50 py-1" disabled={activeVersion.status === 'approved'} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('client')}:</span>
-                          <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({...projectHeader, client: e.target.value})} className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-48" placeholder="Kunde / Bauherr" disabled={activeVersion.status === 'approved'} />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Version:</span>
-                          <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({...projectHeader, version: e.target.value})} className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-16" placeholder="v1.0" disabled={activeVersion.status === 'approved'} />
-                        </div>
+            <div className="bg-surface border border-border rounded-xl shadow-lg mt-0 w-full flex-col overflow-x-auto custom-scrollbar">
+              <div className="min-w-[800px]">
+                <div className="p-8 bg-surface border-b border-border/50 w-full flex justify-between items-end">
+                  <div>
+                    <input className="text-3xl font-extrabold bg-transparent outline-none w-[600px] border-b border-transparent focus:border-accent-ai/50 text-text-primary mb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
+                    <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}:</span>
+                        <input type="date" value={projectHeader.date} onChange={e => setProjectHeader({ ...projectHeader, date: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-text-primary cursor-pointer border-b border-transparent focus:border-accent-ai/50 py-1" disabled={activeVersion.status === 'approved'} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('client')}:</span>
+                        <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({ ...projectHeader, client: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-48" placeholder="Kunde / Bauherr" disabled={activeVersion.status === 'approved'} />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Version:</span>
+                        <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({ ...projectHeader, version: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-16" placeholder="v1.0" disabled={activeVersion.status === 'approved'} />
                       </div>
                     </div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-text-muted cursor-pointer hover:text-text-primary transition-colors bg-background border border-border/50 px-3 py-2 rounded-lg shadow-sm">
-                      <input type="checkbox" checked={includeOptions} onChange={(e) => setIncludeOptions(e.target.checked)} className="rounded border-border text-accent-ai focus:ring-accent-ai w-4 h-4 cursor-pointer" /> 
-                      Optionen einrechnen
-                    </label>
                   </div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-text-muted cursor-pointer hover:text-text-primary transition-colors bg-background border border-border/50 px-3 py-2 rounded-lg shadow-sm">
+                    <input type="checkbox" checked={includeOptions} onChange={(e) => setIncludeOptions(e.target.checked)} className="rounded border-border text-accent-ai focus:ring-accent-ai w-4 h-4 cursor-pointer" />
+                    Optionen einrechnen
+                  </label>
+                </div>
 
-                  <div className="w-full">
-                    <table className="w-full text-sm text-left border-collapse bg-surface">
-                      <thead className="text-xs uppercase tracking-wider text-text-muted bg-background border-b border-border/50">
-                        <tr>
-                          <th className="px-4 py-3 w-16">{t('pos')}</th>
-                          <th className="px-4 py-3">{t('description')}</th>
-                          <th className="px-4 py-3 text-right w-24">{t('qty')}</th>
-                          <th className="px-4 py-3 w-24">{t('unit')}</th>
-                          <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
-                          {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
-                          <th className="px-4 py-3 text-right w-36 text-blue-400">{t('total')} (CHF)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30">
-                        {budgetGroups.map(group => {
-                          const groupPlanTotal = calculateGroupTotal(group);
-                          return (
+                <div className="w-full">
+                  <table className="w-full text-sm text-left border-collapse bg-surface">
+                    <thead className="text-xs uppercase tracking-wider text-text-muted bg-background border-b border-border/50">
+                      <tr>
+                        <th className="px-4 py-3 w-16">{t('pos')}</th>
+                        <th className="px-4 py-3">{t('description')}</th>
+                        <th className="px-4 py-3 text-right w-24">{t('qty')}</th>
+                        <th className="px-4 py-3 w-24">{t('unit')}</th>
+                        <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
+                        {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
+                        <th className="px-4 py-3 text-right w-36 text-blue-400">{t('total')} (CHF)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/30">
+                      {budgetGroups.map(group => {
+                        const groupPlanTotal = calculateGroupTotal(group);
+                        return (
                           <React.Fragment key={group.id}>
                             <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
                               <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
                               <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
-                                <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, title: e.target.value} : g)} : v))} disabled={activeVersion.status === 'approved'} />
+                                <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} />
                               </td>
                               <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
                                 {formatCHF(groupPlanTotal)}
                                 {!isReadOnly && activeVersion.status !== 'approved' && (
                                   <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print">
-                                    <Trash2 size={16}/>
+                                    <Trash2 size={16} />
                                   </button>
                                 )}
                               </td>
@@ -1844,8 +1845,8 @@ export default function Finance() {
                                 <td className="px-4 py-2 text-right font-bold relative text-text-primary">
                                   <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
                                   {!isReadOnly && activeVersion.status !== 'approved' && (
-                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, items: g.items.filter(i => i.id !== item.id)} : g)} : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print">
-                                      <X size={14}/>
+                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print">
+                                      <X size={14} />
                                     </button>
                                   )}
                                 </td>
@@ -1854,51 +1855,52 @@ export default function Finance() {
                             {!isReadOnly && activeVersion.status !== 'approved' && (
                               <tr className="no-print">
                                 <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 bg-background/30">
-                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: v.groups.map(g => g.id === group.id ? {...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0,1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }]} : g)} : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline">
-                                    <Plus size={14}/> {t('add_position')}
+                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline">
+                                    <Plus size={14} /> {t('add_position')}
                                   </button>
                                 </td>
                               </tr>
                             )}
                           </React.Fragment>
-                        )})}
-                        {!isReadOnly && activeVersion.status !== 'approved' && (
-                          <tr className="no-print">
-                            <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
-                              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? {...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }]} : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors">
-                                <Plus size={18} /> {t('new_phase')}
-                              </button>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                      <tfoot>
-                        <tr className="bg-background border-t-2 border-border/50">
-                          <td colSpan={4} className="px-4 py-4"></td>
-                          <td className="px-4 py-4 text-right text-xs uppercase font-bold text-text-muted whitespace-nowrap">{t('subtotal')}</td>
-                          {includeOptions && <td className="px-4 py-4 text-right font-bold text-sm text-accent-ai whitespace-nowrap">{formatCHF(budgetGroups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.option, 0), 0))}</td>}
-                          <td className="px-4 py-4 text-right font-bold text-sm text-text-primary whitespace-nowrap">{formatCHF(totalBudget)}</td>
-                        </tr>
-                        <tr className="bg-background border-b border-border/50">
-                          <td colSpan={4} className="px-4 py-3"></td>
-                          <td className="px-4 py-3 text-right text-xs uppercase font-semibold text-text-muted flex justify-end items-center gap-2 whitespace-nowrap">
-                            {t('vat')} 
-                            <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? {...v, vatRate: Number(e.target.value)} : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
+                        )
+                      })}
+                      {!isReadOnly && activeVersion.status !== 'approved' && (
+                        <tr className="no-print">
+                          <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
+                            <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors">
+                              <Plus size={18} /> {t('new_phase')}
+                            </button>
                           </td>
-                          {includeOptions && <td></td>}
-                          <td className="px-4 py-3 text-right font-medium text-sm text-text-muted whitespace-nowrap">{formatCHF(totalBudget * (vatRate/100))}</td>
                         </tr>
-                        <tr className="bg-surface border-b-2 border-border">
-                          <td colSpan={4} className="px-4 py-5"></td>
-                          <td className="px-4 py-5 text-right font-bold text-sm uppercase text-text-primary whitespace-nowrap">{t('total_amount')}</td>
-                          {includeOptions && <td></td>}
-                          <td className="px-4 py-5 text-right font-bold text-sm text-blue-400 whitespace-nowrap">{formatCHF(totalBudget * (1 + vatRate/100))}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-background border-t-2 border-border/50">
+                        <td colSpan={4} className="px-4 py-4"></td>
+                        <td className="px-4 py-4 text-right text-xs uppercase font-bold text-text-muted whitespace-nowrap">{t('subtotal')}</td>
+                        {includeOptions && <td className="px-4 py-4 text-right font-bold text-sm text-accent-ai whitespace-nowrap">{formatCHF(budgetGroups.reduce((sum, group) => sum + group.items.reduce((s, item) => s + item.option, 0), 0))}</td>}
+                        <td className="px-4 py-4 text-right font-bold text-sm text-text-primary whitespace-nowrap">{formatCHF(totalBudget)}</td>
+                      </tr>
+                      <tr className="bg-background border-b border-border/50">
+                        <td colSpan={4} className="px-4 py-3"></td>
+                        <td className="px-4 py-3 text-right text-xs uppercase font-semibold text-text-muted flex justify-end items-center gap-2 whitespace-nowrap">
+                          {t('vat')}
+                          <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: Number(e.target.value) } : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
+                        </td>
+                        {includeOptions && <td></td>}
+                        <td className="px-4 py-3 text-right font-medium text-sm text-text-muted whitespace-nowrap">{formatCHF(totalBudget * (vatRate / 100))}</td>
+                      </tr>
+                      <tr className="bg-surface border-b-2 border-border">
+                        <td colSpan={4} className="px-4 py-5"></td>
+                        <td className="px-4 py-5 text-right font-bold text-sm uppercase text-text-primary whitespace-nowrap">{t('total_amount')}</td>
+                        {includeOptions && <td></td>}
+                        <td className="px-4 py-5 text-right font-bold text-sm text-blue-400 whitespace-nowrap">{formatCHF(totalBudget * (1 + vatRate / 100))}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
-             </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1981,11 +1983,11 @@ export default function Finance() {
               </div>
             </div>
             {approvedVersions.length === 0 && (
-               <div className="mt-8 flex flex-col items-center justify-center p-12 border-2 border-dashed border-border/50 rounded-2xl bg-surface/30 text-text-muted sticky left-0">
-                 <AlertCircle size={48} className="mb-4 opacity-50" />
-                 <h3 className="text-lg font-bold mb-2 text-text-primary">{t('payment_control_inactive')}</h3>
-                 <p className="text-sm">{t('payment_control_inactive_desc')}</p>
-               </div>
+              <div className="mt-8 flex flex-col items-center justify-center p-12 border-2 border-dashed border-border/50 rounded-2xl bg-surface/30 text-text-muted sticky left-0">
+                <AlertCircle size={48} className="mb-4 opacity-50" />
+                <h3 className="text-lg font-bold mb-2 text-text-primary">{t('payment_control_inactive')}</h3>
+                <p className="text-sm">{t('payment_control_inactive_desc')}</p>
+              </div>
             )}
           </div>
         )}
@@ -2021,17 +2023,17 @@ export default function Finance() {
                       return (
                         <tr key={tx.id} className="hover:bg-white/5 transition-colors group">
                           <td className="px-4 py-3 text-text-muted font-medium flex items-center gap-2">
-                             <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14}/></button>
-                             {tx.date}
+                            <button onClick={() => handleDeleteTransaction(tx.id)} className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500/10 p-1 rounded transition-all"><Trash2 size={14} /></button>
+                            {tx.date}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-text-primary">{tx.description}</span>
-                              {!!sanitizeUrl(tx.url) && <a href={sanitizeUrl(tx.url)} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14}/></a>}
+                              {!!sanitizeUrl(tx.url) && <a href={sanitizeUrl(tx.url)} target="_blank" rel="noopener noreferrer" className="text-accent-ai hover:underline p-1 bg-accent-ai/10 rounded"><FileText size={14} /></a>}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-xs text-text-muted font-medium">
-                             {bdDetails ? <div className="flex flex-col"><span>{bdDetails.phase}</span><span className="text-text-primary font-bold truncate max-w-[150px]">{bdDetails.item}</span></div> : <span className="italic opacity-50">{t('free_booking')}</span>}
+                            {bdDetails ? <div className="flex flex-col"><span>{bdDetails.phase}</span><span className="text-text-primary font-bold truncate max-w-[150px]">{bdDetails.item}</span></div> : <span className="italic opacity-50">{t('free_booking')}</span>}
                           </td>
                           <td className="px-4 py-3 text-right font-bold text-emerald-500">
                             {isQuote ? <span className="text-text-muted italic">({formatCHF(displayAmount)})</span> : (isRevenue && displayAmount > 0 ? `+ ${formatCHF(displayAmount)}` : '')}
@@ -2054,48 +2056,48 @@ export default function Finance() {
       </div>
 
       {/* PDF Studios */}
-      <UniversalPDFStudio 
-        isOpen={isPdfStudioOpen} 
-        onClose={() => setIsPdfStudioOpen(false)} 
-        title={t('finance_budget')} 
+      <UniversalPDFStudio
+        isOpen={isPdfStudioOpen}
+        onClose={() => setIsPdfStudioOpen(false)}
+        title={t('finance_budget')}
         fileName={`Finanzen_${activeTab}_${Date.now()}`}
         onSaveCloud={handleSavePdfToCloud}
         defaultAccentColor={companyColor}
       >
         {(settings) => (
-          <FinancePDFDocument 
-             settings={settings}
-             activeTab={activeTab}
-             t={t}
-             projectHeader={projectHeader}
-             budgetGroups={budgetGroups}
-             approvedVersions={approvedVersions}
-             allTimeHours={allTimeHours}
-             allTimeHoursCost={allTimeHoursCost}
-             displayLedger={displayLedger}
-             getBudgetDetails={getBudgetDetails}
-             overviewTotalBudget={overviewTotalBudget}
-             totalActualCostsIncludingHoursAllTime={totalActualCostsIncludingHoursAllTime}
-             totalBudget={totalBudget}
-             vatRate={activeVersion.vatRate}
-             formatCHF={formatCHF}
-             calculateGroupTotal={calculateGroupTotal}
-             getAllTimeActualCostForGroup={getAllTimeActualCostForGroup}
-             getAllTimeActualCostForItem={getAllTimeActualCostForItem}
+          <FinancePDFDocument
+            settings={settings}
+            activeTab={activeTab}
+            t={t}
+            projectHeader={projectHeader}
+            budgetGroups={budgetGroups}
+            approvedVersions={approvedVersions}
+            allTimeHours={allTimeHours}
+            allTimeHoursCost={allTimeHoursCost}
+            displayLedger={displayLedger}
+            getBudgetDetails={getBudgetDetails}
+            overviewTotalBudget={overviewTotalBudget}
+            totalActualCostsIncludingHoursAllTime={totalActualCostsIncludingHoursAllTime}
+            totalBudget={totalBudget}
+            vatRate={activeVersion.vatRate}
+            formatCHF={formatCHF}
+            calculateGroupTotal={calculateGroupTotal}
+            getAllTimeActualCostForGroup={getAllTimeActualCostForGroup}
+            getAllTimeActualCostForItem={getAllTimeActualCostForItem}
           />
         )}
       </UniversalPDFStudio>
 
-      <UniversalPDFStudio 
-        isOpen={isReceiptPdfStudioOpen} 
-        onClose={() => setIsReceiptPdfStudioOpen(false)} 
-        title="Buchungsbeleg" 
-        fileName={`Buchung_${incomingData.vendor.replace(/\s/g,'_')}_${Date.now()}`}
+      <UniversalPDFStudio
+        isOpen={isReceiptPdfStudioOpen}
+        onClose={() => setIsReceiptPdfStudioOpen(false)}
+        title="Buchungsbeleg"
+        fileName={`Buchung_${incomingData.vendor.replace(/\s/g, '_')}_${Date.now()}`}
         onSaveCloud={handleSaveReceiptPdfToCloud}
         defaultAccentColor={companyColor}
       >
         {(settings) => (
-          <ReceiptPDFDocument 
+          <ReceiptPDFDocument
             settings={settings}
             incomingData={incomingData}
             incomingReceipts={incomingReceipts}
@@ -2112,58 +2114,58 @@ export default function Finance() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
-              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Clock className="text-orange-400" size={18}/> {t('book_hours')}</h3>
-              <button onClick={() => setShowTimeModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18}/></button>
+              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Clock className="text-orange-400" size={18} /> {t('book_hours')}</h3>
+              <button onClick={() => setShowTimeModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18} /></button>
             </div>
             <div className="p-6 overflow-y-auto">
               <form id="time-form" onSubmit={handleTimeSubmit} className="space-y-4">
-                
+
                 <div className="flex bg-background border border-border/50 rounded-lg p-1">
-                  <button type="button" onClick={() => setTimeData({...timeData, type: 'internal'})} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", timeData.type === 'internal' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('simple_internal')}</button>
-                  <button type="button" onClick={() => setTimeData({...timeData, type: 'external'})} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", timeData.type === 'external' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('detailed_external')}</button>
+                  <button type="button" onClick={() => setTimeData({ ...timeData, type: 'internal' })} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", timeData.type === 'internal' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('simple_internal')}</button>
+                  <button type="button" onClick={() => setTimeData({ ...timeData, type: 'external' })} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", timeData.type === 'external' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('detailed_external')}</button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                   <div>
-                     <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ressource</label>
-                     {timeData.type === 'internal' ? (
-                        <select required value={timeData.userId} onChange={(e) => setTimeData({...timeData, userId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none">
-                          <option value="" disabled className="bg-surface">Mitarbeiter wählen...</option>
-                          {projectMembers?.filter((m:any) => m.projectId === currentProjectId).map((member:any) => (
-                             <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
-                          ))}
-                        </select>
-                     ) : (
-                        <input type="text" required placeholder="Partner Firma" value={timeData.company} onChange={(e) => setTimeData({...timeData, company: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
-                     )}
-                   </div>
-                   <div>
-                     <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Datum</label>
-                     <input type="date" required value={timeData.date} onChange={(e) => setTimeData({...timeData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
-                   </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ressource</label>
+                    {timeData.type === 'internal' ? (
+                      <select required value={timeData.userId} onChange={(e) => setTimeData({ ...timeData, userId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none">
+                        <option value="" disabled className="bg-surface">Mitarbeiter wählen...</option>
+                        {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
+                          <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" required placeholder="Partner Firma" value={timeData.company} onChange={(e) => setTimeData({ ...timeData, company: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Datum</label>
+                    <input type="date" required value={timeData.date} onChange={(e) => setTimeData({ ...timeData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
-                    <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({...timeData, hours: Number(e.target.value)})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
+                    <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stundensatz (CHF)</label>
-                    <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({...timeData, hourlyRate: Number(e.target.value)})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
+                    <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
                   </div>
                 </div>
 
                 <div>
                   <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Beschreibung</label>
-                  <textarea required value={timeData.description} onChange={(e) => setTimeData({...timeData, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Was wurde gemacht..." />
+                  <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Was wurde gemacht..." />
                 </div>
               </form>
             </div>
             <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowTimeModal(false)} className="px-5 py-2 text-sm font-bold text-text-muted border border-border rounded-lg hover:text-text-primary transition-colors">{t('cancel')}</button>
               <button form="time-form" type="submit" disabled={isSubmitting} className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/20 disabled:opacity-50">
-                {isSubmitting && <Loader2 size={16} className="animate-spin"/>} Buchen
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />} Buchen
               </button>
             </div>
           </motion.div>
@@ -2173,160 +2175,160 @@ export default function Finance() {
       {isMounted && showReceiptStudio && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[95vh] h-full lg:h-auto">
-             
-             {/* LEFT SIDE: SCAN & UPLOAD */}
-             <div className="w-full lg:w-5/12 p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar">
-                <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-text-primary">
-                  <Receipt className="text-red-500" /> {t('receipts_photos')}
-                </h3>
-                
-                <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
-                   <label className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors shadow-sm relative overflow-hidden group">
-                     {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-red-500 animate-spin mb-2" /><span className="text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
-                     <Camera size={24} className="text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-                     <span className="text-xs font-bold text-center">{t('take_photo')}</span>
-                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleLocalImageUpload} />
-                   </label>
-                   <label className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors shadow-sm relative overflow-hidden group">
-                     {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-red-500 animate-spin mb-2" /><span className="text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
-                     <ImageIcon size={24} className="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
-                     <span className="text-xs font-bold text-center">Datei wählen</span>
-                     <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleLocalImageUpload} multiple />
-                   </label>
+
+            {/* LEFT SIDE: SCAN & UPLOAD */}
+            <div className="w-full lg:w-5/12 p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar">
+              <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-text-primary">
+                <Receipt className="text-red-500" /> {t('receipts_photos')}
+              </h3>
+
+              <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
+                <label className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors shadow-sm relative overflow-hidden group">
+                  {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-red-500 animate-spin mb-2" /><span className="text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
+                  <Camera size={24} className="text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold text-center">{t('take_photo')}</span>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleLocalImageUpload} />
+                </label>
+                <label className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors shadow-sm relative overflow-hidden group">
+                  {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-red-500 animate-spin mb-2" /><span className="text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
+                  <ImageIcon size={24} className="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold text-center">Datei wählen</span>
+                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleLocalImageUpload} multiple />
+                </label>
+              </div>
+
+              <div className="bg-surface border border-border rounded-xl p-6 flex flex-col items-center justify-center text-center shrink-0 mb-6 relative overflow-hidden">
+                {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={32} className="text-red-500 animate-spin mb-2" /><span className="text-xs font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
+                <div className="bg-white p-3 rounded-xl shadow-lg mb-4">
+                  <QRCode value={mobileUploadUrl} size={120} />
+                </div>
+                <p className="text-xs font-bold text-text-primary mb-1">Smartphone Scanner</p>
+                <p className="text-[10px] text-text-muted leading-relaxed max-w-[200px]">QR Code scannen, um Belege per Handy-Kamera direkt hierher zu senden.</p>
+              </div>
+
+              <div className="flex-1 min-h-0 flex flex-col">
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3 shrink-0">Gescannte Belege</h4>
+                {incomingReceipts.length === 0 ? (
+                  <div className="flex-1 border-2 border-dashed border-border/50 rounded-xl flex items-center justify-center text-text-muted text-xs p-6 text-center">Noch keine Belege hochgeladen.</div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                    {incomingReceipts.map((src, i) => (
+                      <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm group">
+                        <img src={sanitizeUrl(src)} className="w-full h-full object-cover" alt="Beleg" />
+                        <button onClick={() => setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT SIDE: DATA FORM */}
+            <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface">
+              <div className="p-6 border-b border-border/50 flex justify-between items-center shrink-0">
+                <h3 className="font-bold text-lg text-text-primary">Buchungsdetails</h3>
+                <button onClick={() => setShowReceiptStudio(false)} className="p-2 bg-background border border-border rounded-lg hover:text-red-500 transition-colors"><X size={18} /></button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="flex bg-background border border-border/50 rounded-lg p-1 mb-6">
+                  <button type="button" onClick={() => { setReceiptType('expense'); setIncomingData({ ...incomingData, type: 'internal' }); }} className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all", receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>Intern (Spesen)</button>
+                  <button type="button" onClick={() => { setReceiptType('external_cost'); setIncomingData({ ...incomingData, type: 'external' }); }} className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all", receiptType === 'external_cost' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>Externer Kreditor</button>
                 </div>
 
-                <div className="bg-surface border border-border rounded-xl p-6 flex flex-col items-center justify-center text-center shrink-0 mb-6 relative overflow-hidden">
-                   {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={32} className="text-red-500 animate-spin mb-2" /><span className="text-xs font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
-                   <div className="bg-white p-3 rounded-xl shadow-lg mb-4">
-                     <QRCode value={mobileUploadUrl} size={120} />
-                   </div>
-                   <p className="text-xs font-bold text-text-primary mb-1">Smartphone Scanner</p>
-                   <p className="text-[10px] text-text-muted leading-relaxed max-w-[200px]">QR Code scannen, um Belege per Handy-Kamera direkt hierher zu senden.</p>
-                </div>
+                <div className="space-y-5">
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vendor_company')}</label>
+                    <input type="text" value={incomingData.vendor} onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="Name des Lieferanten / Shops" />
+                  </div>
 
-                <div className="flex-1 min-h-0 flex flex-col">
-                  <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3 shrink-0">Gescannte Belege</h4>
-                  {incomingReceipts.length === 0 ? (
-                    <div className="flex-1 border-2 border-dashed border-border/50 rounded-xl flex items-center justify-center text-text-muted text-xs p-6 text-center">Noch keine Belege hochgeladen.</div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
-                       {incomingReceipts.map((src, i) => (
-                          <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm group">
-                             <img src={sanitizeUrl(src)} className="w-full h-full object-cover" alt="Beleg" />
-                             <button onClick={() => setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"><Trash2 size={14}/></button>
-                          </div>
-                       ))}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
+                      <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
+                      <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
+                      <select value={incomingData.skontoRate} onChange={e => setIncomingData({ ...incomingData, skontoRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <option value={0} className="bg-surface">0% Skonto</option>
+                        <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
+                        <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {incomingData.skontoRate > 0 && incomingData.amount && (
+                    <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
+                      <span>Skonto Abzug ({incomingData.skontoRate}%):</span>
+                      <span>Effektiv Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))}</span>
                     </div>
                   )}
-                </div>
-             </div>
 
-             {/* RIGHT SIDE: DATA FORM */}
-             <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface">
-                <div className="p-6 border-b border-border/50 flex justify-between items-center shrink-0">
-                   <h3 className="font-bold text-lg text-text-primary">Buchungsdetails</h3>
-                   <button onClick={() => setShowReceiptStudio(false)} className="p-2 bg-background border border-border rounded-lg hover:text-red-500 transition-colors"><X size={18}/></button>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                  <div className="flex bg-background border border-border/50 rounded-lg p-1 mb-6">
-                    <button type="button" onClick={() => { setReceiptType('expense'); setIncomingData({...incomingData, type: 'internal'}); }} className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all", receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>Intern (Spesen)</button>
-                    <button type="button" onClick={() => { setReceiptType('external_cost'); setIncomingData({...incomingData, type: 'external'}); }} className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all", receiptType === 'external_cost' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>Externer Kreditor</button>
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
+                    <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-medium text-text-primary outline-none resize-none h-20 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe?" />
                   </div>
 
-                  <div className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vendor_company')}</label>
-                      <input type="text" value={incomingData.vendor} onChange={e => setIncomingData({...incomingData, vendor: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="Name des Lieferanten / Shops" />
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
+                      <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <option value="" className="bg-surface">{t('free_booking')}</option>
+                        {approvedVersions.flatMap(v => v.groups).flatMap(g => g.items).map((item: any) => (
+                          <option key={item.id} value={item.id} className="bg-surface">{item.pos} {item.description}</option>
+                        ))}
+                      </select>
                     </div>
-                    
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
-                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({...incomingData, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
-                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({...incomingData, amount: e.target.value})} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
-                        <select value={incomingData.skontoRate} onChange={e => setIncomingData({...incomingData, skontoRate: Number(e.target.value)})} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value={0} className="bg-surface">0% Skonto</option>
-                          <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
-                          <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {incomingData.skontoRate > 0 && incomingData.amount && (
-                      <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                        <span>Skonto Abzug ({incomingData.skontoRate}%):</span>
-                        <span>Effektiv Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))}</span>
-                      </div>
-                    )}
-
                     <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
-                      <textarea value={incomingData.description} onChange={e => setIncomingData({...incomingData, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-medium text-text-primary outline-none resize-none h-20 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe?" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
-                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({...incomingData, budgetPosId: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value="" className="bg-surface">{t('free_booking')}</option>
-                          {approvedVersions.flatMap(v => v.groups).flatMap(g => g.items).map((item:any) => (
-                            <option key={item.id} value={item.id} className="bg-surface">{item.pos} {item.description}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('status')}</label>
-                        <select value={incomingData.status} onChange={e => setIncomingData({...incomingData, status: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value="Offen" className="bg-surface">{t('open')}</option>
-                          <option value="Bezahlt" className="bg-surface">{t('paid')}</option>
-                        </select>
-                      </div>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('status')}</label>
+                      <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <option value="Offen" className="bg-surface">{t('open')}</option>
+                        <option value="Bezahlt" className="bg-surface">{t('paid')}</option>
+                      </select>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="p-6 border-t border-border/50 bg-background/30 flex justify-end shrink-0">
-                   <button 
-                    onClick={() => {
-                      if (!hasFeature(currentUser, 'invoice_studio')) {
-                        window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
-                      } else {
-                        setIsReceiptPdfStudioOpen(true);
-                      }
-                    }} 
-                    disabled={!incomingData.vendor || !incomingData.amount || isSubmitting} 
-                    className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-50"
-                  >
-                     {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={18} />} {t('generate_pdf_book')}
-                   </button>
-                </div>
-             </div>
+              <div className="p-6 border-t border-border/50 bg-background/30 flex justify-end shrink-0">
+                <button
+                  onClick={() => {
+                    if (!hasFeature(currentUser, 'invoice_studio')) {
+                      window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
+                    } else {
+                      setIsReceiptPdfStudioOpen(true);
+                    }
+                  }}
+                  disabled={!incomingData.vendor || !incomingData.amount || isSubmitting}
+                  className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-50"
+                >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={18} />} {t('generate_pdf_book')}
+                </button>
+              </div>
+            </div>
           </motion.div>
         </div>, document.body
       )}
 
       <AnimatePresence>
         {showInvoiceModal && (
-          <InvoiceStudio 
-            type="invoice" 
-            onClose={() => setShowInvoiceModal(false)} 
-            onSave={handleSaveGeneratedInvoice} 
-            budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []} 
+          <InvoiceStudio
+            type="invoice"
+            onClose={() => setShowInvoiceModal(false)}
+            onSave={handleSaveGeneratedInvoice}
+            budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []}
           />
         )}
         {showQuoteModal && (
-          <InvoiceStudio 
-            type="quote" 
-            onClose={() => setShowQuoteModal(false)} 
-            onSave={handleSaveGeneratedQuote} 
-            budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []} 
+          <InvoiceStudio
+            type="quote"
+            onClose={() => setShowQuoteModal(false)}
+            onSave={handleSaveGeneratedQuote}
+            budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []}
           />
         )}
       </AnimatePresence>
@@ -2335,15 +2337,15 @@ export default function Finance() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
-              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Plus className="text-accent-ai" size={18}/> BKP CSV-Import</h3>
-              <button onClick={() => setShowCsvImportModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18}/></button>
+              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Plus className="text-accent-ai" size={18} /> BKP CSV-Import</h3>
+              <button onClick={() => setShowCsvImportModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18} /></button>
             </div>
             <div className="p-6 space-y-4">
               <p className="text-xs text-text-muted">Füge CSV-Zeilen im Format <code>Pos;Bezeichnung;Menge;Einheit;Einheitspreis</code> ein:</p>
-              <textarea 
-                value={csvImportText} 
-                onChange={e => setCsvImportText(e.target.value)} 
-                className="w-full bg-background border border-border/50 rounded-xl p-4 text-xs font-mono text-text-primary outline-none focus:border-accent-ai resize-none h-44 custom-scrollbar" 
+              <textarea
+                value={csvImportText}
+                onChange={e => setCsvImportText(e.target.value)}
+                className="w-full bg-background border border-border/50 rounded-xl p-4 text-xs font-mono text-text-primary outline-none focus:border-accent-ai resize-none h-44 custom-scrollbar"
                 placeholder="211;Mauerarbeiten Ziegel;120;m2;85&#10;212;Betonarbeiten Fundament;15;m3;320"
               />
             </div>

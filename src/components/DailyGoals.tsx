@@ -143,8 +143,14 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
 Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elektriker bezüglich Trassees kontaktieren", "Lieferschein Beton kontrollieren"]. Kein Markdown.`;
 
       const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-      const cleaned = (typeof res === 'string' ? res : JSON.stringify(res)).replace(/```json/g, '').replace(/```/g, '').trim();
-      const suggestions: string[] = JSON.parse(cleaned);
+      const rawText = res?.text || (typeof res === 'string' ? res : '');
+      const match = rawText.match(/\[[\s\S]*\]/);
+      let suggestions: string[] = [];
+      try {
+        suggestions = match ? JSON.parse(match[0]) : JSON.parse(rawText);
+      } catch (e) {
+        console.warn("Failed to parse DailyGoals AI response", e);
+      }
 
       if (Array.isArray(suggestions)) {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;

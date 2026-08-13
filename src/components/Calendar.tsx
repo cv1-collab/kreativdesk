@@ -21,6 +21,7 @@ import { usePermissions } from '../hooks/usePermissions';
 
 // SUPABASE IMPORT
 import { supabase } from '../lib/supabase';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { demoTemplates } from '../utils/demoTemplates';
 
 // NATIVE PDF ENGINE IMPORTS
@@ -625,11 +626,7 @@ export default function Calendar() {
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Projektplan_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, currentUser.companyId);
 
       const docCategory = currentProjectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolderLocal("Kalender & Zeitpläne", docCategory);

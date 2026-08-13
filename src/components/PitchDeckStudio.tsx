@@ -205,8 +205,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
       const aiRes = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       const rawText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || aiRes?.candidates?.[0]?.content?.parts?.[0]?.text || '');
-      const cleaned = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-      const generatedSlides = JSON.parse(cleaned);
+      const match = rawText.match(/\[[\s\S]*\]/);
+      let generatedSlides: any[] = [];
+      try {
+        generatedSlides = match ? JSON.parse(match[0]) : JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim());
+      } catch (e) {
+        console.warn("Failed to parse PitchDeck AI response", e);
+      }
 
       if (Array.isArray(generatedSlides) && generatedSlides.length > 0) {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;

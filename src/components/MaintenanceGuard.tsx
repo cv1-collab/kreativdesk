@@ -54,7 +54,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     }
   };
 
-  const isAdmin = checkIsSuperAdmin(currentUser?.email) || bypassUnlocked;
+  const isAdmin = checkIsSuperAdmin(currentUser?.email) || currentUser?.role === 'super_admin' || currentUser?.role === 'owner' || currentUser?.role === 'management' || bypassUnlocked;
   const isPublicRoute = location.pathname === '/login' || location.pathname === '/';
 
   const formatCountdown = (seconds: number) => {

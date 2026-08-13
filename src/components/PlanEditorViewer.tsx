@@ -16,7 +16,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import PremiumFeature from './PremiumFeature';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
 import { supabase } from '../lib/supabase';
-import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 // NATIVE PDF ENGINE IMPORTS
@@ -677,11 +677,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         return;
       }
 
-      const filePath = `${currentUser?.companyId}/cad_plans/${Date.now()}_${finalFileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, finalFileToUpload, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const url = pubData.publicUrl;
+      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, currentUser?.companyId || 'global', 'cad_plans');
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
@@ -724,11 +720,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          finalFileName = finalFileToUpload.name;
       }
 
-      const filePath = `${currentUser?.companyId}/cad_plans/overlay_${Date.now()}_${finalFileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, finalFileToUpload, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const url = pubData.publicUrl;
+      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, currentUser?.companyId || 'global', 'cad_plans');
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
@@ -1177,12 +1169,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       try {
         let imageUrl = '';
         if (defectPrompt.file) {
-          const filePath = `${currentUser?.companyId}/pdf_exports/${defectPrompt.file.name}`;
-          const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, defectPrompt.file, { upsert: true });
-          if (!upErr) {
-            const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-            imageUrl = pubData.publicUrl;
-          }
+          imageUrl = await uploadFileWithFallback(defectPrompt.file, defectPrompt.file.name, currentUser?.companyId || 'global', 'defects');
         }
 
         await supabase.from('defects').upsert({ 

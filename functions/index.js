@@ -11,6 +11,15 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ['AQ.Ab8RN6Kz_bs', '-arJ2yb
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
+function extractJson(text) {
+    const rawText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (match) {
+        return JSON.parse(match[0]);
+    }
+    return JSON.parse(rawText);
+}
+
 // ============================================================================
 // 1. VISIENKARTEN SCANNER (Bestehend)
 // ============================================================================
@@ -32,8 +41,7 @@ exports.analyzeVcard = onCall({
 
         const imageParts = [{ inlineData: { data: base64Image, mimeType: mimeType } }];
         const result = await model.generateContent([prompt, ...imageParts]);
-        let cleanedJson = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
-        return JSON.parse(cleanedJson);
+        return extractJson(result.response.text());
     } catch (error) {
         console.error("Backend Error Log - VCard:", error.message);
         throw new HttpsError('internal', 'KI-Verbindungsfehler: ' + error.message);
@@ -63,8 +71,7 @@ exports.analyzeReceipt = onCall({
 
         const imageParts = [{ inlineData: { data: base64Image, mimeType: mimeType } }];
         const result = await model.generateContent([prompt, ...imageParts]);
-        let cleanedJson = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
-        return JSON.parse(cleanedJson);
+        return extractJson(result.response.text());
     } catch (error) {
         console.error("Backend Error Log - Receipt:", error.message);
         throw new HttpsError('internal', 'KI-Verbindungsfehler: ' + error.message);
@@ -93,8 +100,7 @@ exports.analyzeDefect = onCall({
 
         const imageParts = [{ inlineData: { data: base64Image, mimeType: mimeType } }];
         const result = await model.generateContent([prompt, ...imageParts]);
-        let cleanedJson = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
-        return JSON.parse(cleanedJson);
+        return extractJson(result.response.text());
     } catch (error) {
         console.error("Backend Error Log - Defect Analysis:", error.message);
         throw new HttpsError('internal', 'KI-Verbindungsfehler: ' + error.message);

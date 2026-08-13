@@ -16,6 +16,7 @@ import { useVideoCall } from '../contexts/VideoCallContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { sendNotification } from '../lib/notifications';
+import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 
 const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -429,13 +430,8 @@ export default function MeetChat() {
     
     setIsUploadingFile(true);
     try {
-      const fileName = `${Date.now()}_${file.name}`;
       const safeComp = currentUser?.companyId || 'global';
-      const filePath = `${safeComp}/chat_attachments/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const url = pubData.publicUrl;
+      const url = await uploadFileWithFallback(file, file.name, safeComp, 'chat_attachments');
       
       await sendChatMessage({ text: `Dateianhang: ${file.name}`, fileUrl: url });
       

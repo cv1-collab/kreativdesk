@@ -155,8 +155,15 @@ export default function PublicLeadForm() {
     }
   };
 
+  const [honeypot, setHoneypot] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (honeypot) {
+      // Silent bot rejection
+      setIsSubmitted(true);
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     setSuccessMsg(null);
@@ -317,6 +324,7 @@ export default function PublicLeadForm() {
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
+            <input type="text" name="website_hp_field" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-bold text-text-primary">

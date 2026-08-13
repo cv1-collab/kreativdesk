@@ -17,6 +17,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { downloadICSFile } from '../utils/icsGenerator';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { sendNotification } from '../lib/notifications';
+import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -884,15 +885,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.uid) return;
+    if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
       const fileName = `${printType === 'rapport' ? 'Rapport' : 'Agenda'}_${Date.now()}.pdf`;
-      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadUrl = pubData.publicUrl;
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       const targetFolderId = await ensureFolder("01_FINANZEN");
       await supabase.from('documents').insert({
         name: fileName,

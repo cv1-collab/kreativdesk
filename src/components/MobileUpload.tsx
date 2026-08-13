@@ -6,6 +6,8 @@ import { UploadCloud, CheckCircle2, Loader2, Camera } from 'lucide-react';
 import { cn } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 
+import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
+
 export default function MobileUpload() {
   const { addToast } = useToast();
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -27,15 +29,8 @@ export default function MobileUpload() {
     setIsUploading(true);
     setUploadProgress(25);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `temp_mobile_uploads/${sessionId}_${Date.now()}.${fileExt}`;
       setUploadProgress(60);
-      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
-      let downloadUrl = '';
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-        downloadUrl = urlData.publicUrl;
-      }
+      const downloadUrl = await uploadFileWithFallback(file, file.name, sessionId, 'temp_mobile_uploads');
 
       setUploadProgress(90);
       await supabase.from('temp_receipts').insert({

@@ -15,6 +15,7 @@ import {
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
 import DocumentStudioModal from './DocumentStudioModal';
+import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { 
@@ -310,16 +311,12 @@ export default function Documents() {
 
     setIsUploading(true);
     try {
-      const filePath = `documents/${safeCompanyId}/${Date.now()}_${file.name}`;
-      const { error: uploadErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (uploadErr) throw uploadErr;
-
-      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const fileUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'documents');
 
       await supabase.from('documents').insert({
         name: file.name,
-        file_url: publicUrlData.publicUrl,
-        url: publicUrlData.publicUrl,
+        file_url: fileUrl,
+        url: fileUrl,
         size: `${Math.round(file.size / 1024)} KB`,
         type: file.type,
         category: activeTab,
