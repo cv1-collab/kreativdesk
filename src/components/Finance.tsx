@@ -623,7 +623,7 @@ export default function Finance() {
   // 🔥 SICHERE BERECHNUNG MIT FALLBACK
   const calculateGroupTotal = (group: BudgetGroup) => {
     if (!group || !group.items) return 0;
-    return group.items.reduce((sum, item) => sum + (Number(item.total) || (Number(item.qty || (item as any).quantity || 0) * Number(item.unitPrice || 0))) + (includeOptions ? (Number(item.option) || 0) : 0), 0);
+    return group.items.reduce((sum, item) => sum + (Number(item.total) || (Number(item.qty || (item as any).quantity || 0) * Number(item.unitPrice || (item as any).unit_price || 0))) + (includeOptions ? (Number(item.option) || 0) : 0), 0);
   };
 
   // Wenn noch geladen wird, zeige 0 statt NaN
