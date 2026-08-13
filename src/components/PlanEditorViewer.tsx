@@ -550,15 +550,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   }, [currentProjectId, currentUser]);
 
   const loadPlanDataToEditor = (planData: any) => {
+    if (!planData) return;
     setActivePlanId(planData.id);
-    setPlanImage(planData.planImage || null);
-    setPlanName(planData.planName || 'Unbenannt');
+    setPlanImage(planData.planImage || planData.plan_image || null);
+    setPlanName(planData.planName || planData.plan_name || 'Unbenannt');
     setElements(planData.elements || []);
     setLayers(planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }]);
-    setActiveLayerId(planData.activeLayerId || 'default');
-    setPaperFormat(planData.paperFormat || 'A3');
-    setPaperOrientation(planData.paperOrientation || 'landscape');
-    setPlanScale(planData.planScale || 50);
+    setActiveLayerId(planData.activeLayerId || planData.active_layer_id || 'default');
+    setPaperFormat(planData.paperFormat || planData.paper_format || 'A3');
+    setPaperOrientation(planData.paperOrientation || planData.paper_orientation || 'landscape');
+    setPlanScale(planData.planScale || planData.plan_scale || 50);
     setPan({ x: 0, y: 0 });
     setSelectedElement(null);
   };
@@ -1221,7 +1222,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       <header className="h-16 border-b border-border bg-surface/90 backdrop-blur-xl flex flex-row items-center justify-between px-6 shrink-0 z-30 shadow-sm flex-wrap overflow-hidden">
         <div className="flex items-center gap-4">
           <select value={activePlanId || ''} onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} className="bg-transparent font-bold text-sm outline-none cursor-pointer">
-            {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName}</option>)}
+            {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
           </select>
           {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded" title={t('delete_plan')}><Trash2 size={16}/></button>}
         </div>
