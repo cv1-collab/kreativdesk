@@ -483,8 +483,12 @@ export default function MeetChat() {
           }
         } catch (err) { console.error('Knowledge search fail', err); }
 
+        const langInstruction = currentLang === 'de' 
+          ? 'Bitte antworte vollständig auf Deutsch.' 
+          : 'Please respond completely in English.';
+
         const context = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
-        const prompt = `You are the "AI Concierge" for Kreativ-Desk OS. You are participating in a live project chat.\n${knowledgeContext}\nRecent chat history:\n${context}\nYou: ${userMessage}\nProvide a helpful, concise response. If you reference a document, include a reference tag at the end: [REF: Document Name].`;
+        const prompt = `You are the "AI Concierge" for Kreativ-Desk OS. You are participating in a live project chat.\n${knowledgeContext}\nRecent chat history:\n${context}\nYou: ${userMessage}\n${langInstruction}\nProvide a helpful, concise response. If you reference a document, include a reference tag at the end: [REF: Document Name].`;
 
         const response = await callGeminiAPI('gemini-2.5-flash', prompt);
         let responseText = response.text || 'I am here to help.';
@@ -510,12 +514,17 @@ export default function MeetChat() {
   const handleGenerateSummary = async () => {
     setIsGeneratingSummary(true);
     try {
-      const context = messages.map(m => `${m.sender}${m.isTranscript ? ' (gesprochen)' : ''}: ${m.text}`).join('\n');
-      const prompt = `Based on the following meeting chat and spoken transcript, generate a concise meeting summary with 3 bullet points of Action Items. Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
+      const context = messages.map(m => `${m.sender}${m.isTranscript ? (currentLang === 'de' ? ' (gesprochen)' : ' (spoken)') : ''}: ${m.text}`).join('\n');
+      const prompt = currentLang === 'de'
+        ? `Basierend auf folgendem Meeting-Chat und gesprochenem Transkript, erstelle eine prägnante Zusammenfassung auf Deutsch mit 3 Stichpunkten (Action Items). Bitte erstelle alle Überschriften und Inhalte VOLLSTÄNDIG auf Deutsch (z.B. "Zusammenfassung:", "Wichtige Aufgaben:"). Formatiere als klaren Text ohne Markdown-Sternchen (*), verwende einfache Bindestriche (-).\nTranskript:\n${context}`
+        : `Based on the following meeting chat and spoken transcript, generate a concise meeting summary in English with 3 bullet points of Action Items. Format headings and text completely in English (e.g., "Summary:", "Action Items:"). Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
+      
       const response = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       setMeetingSummary(typeof response === 'string' ? response : (response.text || JSON.stringify(response)));
       setShowChat(true);
-    } catch (error: any) { setMeetingSummary("Failed to generate summary."); } 
+    } catch (error: any) { 
+      setMeetingSummary(currentLang === 'de' ? "Fehler beim Erstellen der Zusammenfassung." : "Failed to generate summary."); 
+    } 
     finally { setIsGeneratingSummary(false); }
   };
 
@@ -702,6 +711,13 @@ export default function MeetChat() {
     const hostName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Kreativ Desk Team';
     const isDe = currentLang === 'de';
 
+    const parsedEmails = targetEmail
+      .split(/[,;\s\n]+/)
+      .map(e => e.trim())
+      .filter(e => e.length > 0 && e.includes('@'));
+
+    const recipientString = parsedEmails.length > 0 ? parsedEmails.join(',') : targetEmail.trim();
+
     const emailSubject = isDe 
       ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS`
       : `📹 Invitation to Live Video Call | Kreativ Desk OS`;
@@ -728,7 +744,23 @@ export default function MeetChat() {
 
     setIsSendingEmail(true);
     try {
-      if (targetEmail.trim()) {
+      if (parsedEmails.length > 0) {
+        await Promise.allSettled(
+          parsedEmails.map(email =>
+            fetch('/api/send-invite-webhook', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email,
+                roomUrl: inviteUrl,
+                roomId: activeCallRoomId,
+                senderName: hostName,
+                language: currentLang
+              })
+            }).catch(err => console.log("Webhook call note:", err))
+          )
+        );
+      } else if (targetEmail.trim()) {
         await fetch('/api/send-invite-webhook', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -742,8 +774,14 @@ export default function MeetChat() {
         }).catch(err => console.log("Webhook call note:", err));
       }
 
-      window.open(`mailto:${targetEmail.trim()}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
-      addToast(isDe ? `✉️ Einladung für ${targetEmail || 'Gast'} vorbereitet & gesendet!` : `✉️ Invite prepared for ${targetEmail || 'guest'}!`, 'success');
+      window.open(`mailto:${recipientString}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
+      const count = parsedEmails.length || 1;
+      addToast(
+        isDe 
+          ? `✉️ Einladung für ${count > 1 ? `${count} Teilnehmer` : targetEmail || 'Gast'} vorbereitet & gesendet!` 
+          : `✉️ Invite prepared for ${count > 1 ? `${count} participants` : targetEmail || 'guest'}!`, 
+        'success'
+      );
       setShowEmailModal(false);
       setTargetEmail('');
     } catch (err) {
@@ -1146,7 +1184,7 @@ export default function MeetChat() {
               <div className="flex items-center justify-between border-b border-border/50 pb-3">
                 <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
                   <Mail size={18} className="text-accent-ai" />
-                  {currentLang === 'de' ? 'E-Mail Einladung senden' : 'Send Email Invitation'}
+                  {currentLang === 'de' ? 'E-Mail Einladung(en) senden' : 'Send Email Invitation(s)'}
                 </h3>
                 <button onClick={() => setShowEmailModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-white/5">
                   <X size={18} />
@@ -1155,21 +1193,36 @@ export default function MeetChat() {
 
               <p className="text-xs text-text-muted leading-relaxed">
                 {currentLang === 'de' 
-                  ? 'Trage die E-Mail-Adresse deines Gastes oder Partners ein. Die Einladung wird im offiziellen Kreativ Desk OS Design (DE/EN) vorbereitet:'
-                  : 'Enter your guest\'s or partner\'s email address. The invitation will be prepared in official Kreativ Desk OS design (DE/EN):'}
+                  ? 'Trage eine oder mehrere E-Mail-Adressen deiner Gäste/Partner ein (durch Komma, Strichpunkt oder neue Zeile getrennt):'
+                  : 'Enter one or multiple email addresses for your guests/partners (separated by commas, semicolons, or newlines):'}
               </p>
 
               <form onSubmit={executeEmailInvite} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
-                    {currentLang === 'de' ? 'Empfänger E-Mail' : 'Recipient Email'}
-                  </label>
-                  <input 
-                    type="email"
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">
+                      {currentLang === 'de' ? 'Empfänger E-Mail(s)' : 'Recipient Email(s)'}
+                    </label>
+                    {(() => {
+                      const count = targetEmail
+                        .split(/[,;\s\n]+/)
+                        .map(e => e.trim())
+                        .filter(e => e.length > 0 && e.includes('@')).length;
+                      return count > 0 ? (
+                        <span className="text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          ✓ {count} {currentLang === 'de' ? (count === 1 ? 'Empfänger' : 'Empfänger') : (count === 1 ? 'recipient' : 'recipients')}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
+                  <textarea 
+                    rows={3}
                     value={targetEmail}
                     onChange={e => setTargetEmail(e.target.value)}
-                    placeholder="z.B. partner@firma.ch"
-                    className="w-full bg-background border border-border/80 rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-ai outline-none transition-colors"
+                    placeholder={currentLang === 'de' 
+                      ? "z.B. partner1@firma.ch, partner2@firma.ch\noder eine E-Mail pro Zeile..."
+                      : "e.g. partner1@example.com, partner2@example.com\nor one email per line..."}
+                    className="w-full bg-background border border-border/80 rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-ai outline-none transition-colors custom-scrollbar resize-none font-medium"
                     autoFocus
                   />
                 </div>
@@ -1189,7 +1242,7 @@ export default function MeetChat() {
                     className="px-5 py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer disabled:opacity-50"
                   >
                     {isSendingEmail ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    {currentLang === 'de' ? 'Einladung senden' : 'Send Invitation'}
+                    {currentLang === 'de' ? 'Einladung(en) senden' : 'Send Invitation(s)'}
                   </button>
                 </div>
               </form>
