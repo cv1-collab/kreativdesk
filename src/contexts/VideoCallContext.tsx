@@ -174,6 +174,21 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const activeChannelRef = useRef<any>(null);
+  const iceCandidateQueueRef = useRef<Record<string, RTCIceCandidateInit[]>>({});
+
+  const processIceQueue = async (peerId: string, pc: RTCPeerConnection) => {
+    const queue = iceCandidateQueueRef.current[peerId];
+    if (queue && queue.length > 0) {
+      for (const candidate of queue) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (e) {
+          console.warn("Queued ICE candidate error:", e);
+        }
+      }
+      iceCandidateQueueRef.current[peerId] = [];
+    }
+  };
 
   const createPeerConnection = (peerId: string, currentCallId: string, stream: MediaStream) => {
     const pc = new RTCPeerConnection(servers);
@@ -218,6 +233,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (payload.type === 'offer') {
           if (!pc) pc = createPeerConnection(peerId, currentCallId, stream);
           await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
+          await processIceQueue(peerId, pc);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           channel.send({
@@ -233,9 +249,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         } else if (payload.type === 'answer') {
           if (pc && pc.signalingState !== 'stable') {
             await pc.setRemoteDescription(new RTCSessionDescription(payload.answer));
+            await processIceQueue(peerId, pc);
           }
         } else if (payload.type === 'candidate') {
-          if (pc) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(console.error);
+          if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(console.error);
+          } else {
+            if (!iceCandidateQueueRef.current[peerId]) {
+              iceCandidateQueueRef.current[peerId] = [];
+            }
+            iceCandidateQueueRef.current[peerId].push(payload.candidate);
+          }
         }
       })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
