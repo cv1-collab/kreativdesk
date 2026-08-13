@@ -241,21 +241,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         const peerId = payload.peerId;
         if (peerId !== myId && !pcsRef.current[peerId]) {
-          if (myId > peerId) {
-            const pc = createPeerConnection(peerId, currentCallId, stream);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            channel.send({
-              type: 'broadcast',
-              event: 'signal',
-              payload: {
-                from: myId,
-                to: peerId,
-                type: 'offer',
-                offer: { sdp: offer.sdp, type: offer.type }
-              }
-            });
-          }
+          const pc = createPeerConnection(peerId, currentCallId, stream);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: {
+              from: myId,
+              to: peerId,
+              type: 'offer',
+              offer: { sdp: offer.sdp, type: offer.type }
+            }
+          });
         }
       })
       .subscribe((status) => {

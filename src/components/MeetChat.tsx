@@ -582,12 +582,14 @@ export default function MeetChat() {
     (projectMembers || []).some((pm: any) => pm.projectId === (projectId || activeProjectId) && pm.userId === u.id) && u.id !== currentUser?.uid
   );
 
+  const [sessionRoomId] = useState(() => `call-${Date.now()}`);
+  const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
+
   const toggleUserSelection = (id: string) => {
     setSelectedUserIds(prev => prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]);
   };
 
   const handleQuickInvite = (mode: 'copy' | 'whatsapp' | 'email') => {
-    const activeCallRoomId = callId || joinCallId || generatedMeetingId || `meet-${Date.now()}`;
     const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
     const textMsg = `Hallo! Du bist zu einem Live-Videocall eingeladen. Klicke einfach auf diesen Link, um ohne Login beizutreten:\n${inviteUrl}`;
 
@@ -672,7 +674,7 @@ export default function MeetChat() {
                   )}
                   
                   <div className="flex justify-center items-center gap-3 w-full mb-6">
-                    <button onClick={() => startCall(selectedUserIds)} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
+                    <button onClick={() => startCall(selectedUserIds, activeCallRoomId)} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
                       <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
                   </div>
@@ -749,10 +751,6 @@ export default function MeetChat() {
                     <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
                     <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
                     <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
-                    <button onClick={() => handleQuickInvite('copy')} className="p-3 md:p-4 rounded-xl transition-all bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 shadow-lg shadow-emerald-500/20 cursor-pointer flex items-center gap-2 font-bold text-xs" title="Gäste-Einladungslink kopieren">
-                      {copiedLink ? <CheckCircle2 size={20} /> : <UserPlus size={20} />}
-                      <span className="hidden lg:inline">Link kopieren</span>
-                    </button>
                     <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
                     <button onClick={hangUp} className="px-5 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2"><PhoneOff size={18} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
                   </div>
@@ -766,9 +764,9 @@ export default function MeetChat() {
                   <div className="absolute top-6 left-4 flex flex-col md:flex-row items-start md:items-center gap-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 px-4 py-2.5 rounded-xl shadow-lg z-30">
                     <div className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Meeting ID</span><span className="text-xs md:text-sm font-mono font-bold text-white">{callId || joinCallId}</span></div>
                     <div className="w-px h-8 bg-slate-700/60 hidden md:block mx-1"></div>
-                    <button onClick={() => { const joinUrl = `${window.location.origin}/guest-meet/${callId || joinCallId}`; navigator.clipboard.writeText(joinUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); addToast('Link kopiert!', 'success'); }} className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-bold text-slate-200 hover:text-white transition-colors">
-                      {copied ? <CheckCircle2 size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
-                      <span className="hidden sm:inline">{t('external_link')}</span>
+                    <button onClick={() => handleQuickInvite('copy')} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer" title="Gäste-Einladungslink kopieren">
+                      {copiedLink ? <CheckCircle2 size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
+                      <span className="hidden sm:inline">{copiedLink ? 'Link kopiert!' : t('external_link')}</span>
                     </button>
                   </div>
                 </div>
