@@ -124,7 +124,7 @@ export default function MeetChat() {
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
     const msgId = `msg-${Date.now()}`;
 
-    const payload: any = {
+    const payloadPrimary: any = {
       id: msgId,
       call_id: currentMeetingCallId,
       sender_id: currentUser?.uid || `user-${Date.now()}`,
@@ -133,15 +133,28 @@ export default function MeetChat() {
       created_at: new Date().toISOString()
     };
 
-    if (msgData.fileUrl) payload.file_url = msgData.fileUrl;
-    if (msgData.isAI) payload.is_ai = true;
-    if (msgData.isTranscript) payload.is_transcript = true;
-    if (msgData.reference) payload.reference = msgData.reference;
+    if (msgData.fileUrl) payloadPrimary.file_url = msgData.fileUrl;
+    if (msgData.isAI) payloadPrimary.is_ai = true;
+    if (msgData.isTranscript) payloadPrimary.is_transcript = true;
+    if (msgData.reference) payloadPrimary.reference = msgData.reference;
 
     try {
-      const { error: insErr } = await supabase.from('chat_messages').insert(payload);
+      const { error: insErr } = await supabase.from('chat_messages').insert(payloadPrimary);
       if (insErr) {
-        console.warn("Supabase chat_messages insert info:", insErr);
+        console.warn("Supabase primary insert warning, running fallback:", insErr.message);
+        const payloadFallback: any = {
+          id: msgId + '-fb',
+          call_id: currentMeetingCallId,
+          sender_id: currentUser?.uid || `user-${Date.now()}`,
+          sender: senderName,
+          text: msgData.text,
+          created_at: new Date().toISOString()
+        };
+        try {
+          await supabase.from('chat_messages').insert(payloadFallback);
+        } catch (fbErr) {
+          console.error("Fallback err:", fbErr);
+        }
       }
     } catch (err) {
       console.error("Failed to send chat message:", err);

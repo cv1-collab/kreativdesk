@@ -201,14 +201,30 @@ export default function GuestMeet() {
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
 
     try {
-      await supabase.from('chat_messages').insert({
+      const { error: err1 } = await supabase.from('chat_messages').insert({
         id: msgId,
         call_id: joinId,
-        sender: guestName,
         sender_id: 'guest-' + Date.now(),
-        text: text,
+        sender_name: guestName,
+        message: text,
         created_at: new Date().toISOString()
       });
+
+      if (err1) {
+        console.warn("Primary insert warning, trying fallback:", err1.message);
+        try {
+          await supabase.from('chat_messages').insert({
+            id: msgId + '-fb',
+            call_id: joinId,
+            sender_id: 'guest-' + Date.now(),
+            sender: guestName,
+            text: text,
+            created_at: new Date().toISOString()
+          });
+        } catch (fbErr) {
+          console.error("Fallback insert error:", fbErr);
+        }
+      }
     } catch (err) {
       console.error('Failed to send message:', err);
     }
