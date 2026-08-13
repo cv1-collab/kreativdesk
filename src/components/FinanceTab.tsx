@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  DollarSign, TrendingUp, Receipt, FileText, 
+import {
+  DollarSign, TrendingUp, Receipt, FileText,
   Plus, ArrowRight, Download, MoreVertical,
-  CheckCircle2, Clock, Loader2, FileSignature, Trash2, 
+  CheckCircle2, Clock, Loader2, FileSignature, Trash2,
   Building, Landmark, PieChart, Briefcase, X, Smartphone, Image as ImageIcon,
   Calendar, Sparkles, Search, Filter, CheckSquare, Square, ExternalLink
 } from 'lucide-react';
@@ -31,7 +31,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
 interface Transaction { id: string; type?: string; amount: number; client?: string; description: string; date: string; status: string; category?: string; createdAt?: string; receiptUrls?: string[]; url?: string; }
-interface FinanceTabProps { addToast: (msg: string, type: 'success'|'error'|'info') => void; setShowExpenseModal: (s: boolean) => void; setShowInvoiceModal: (s: boolean) => void; setShowQuoteModal: (s: boolean) => void; setNewFileAlerts?: any; }
+interface FinanceTabProps { addToast: (msg: string, type: 'success' | 'error' | 'info') => void; setShowExpenseModal: (s: boolean) => void; setShowInvoiceModal: (s: boolean) => void; setShowQuoteModal: (s: boolean) => void; setNewFileAlerts?: any; }
 
 const pdfStyles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
@@ -79,31 +79,31 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
-  
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
-  
+
   const [showOpCostModal, setShowOpCostModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  
+
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
 
   const [opCostData, setOpCostData] = useState({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
   const [opCostReceipts, setOpCostReceipts] = useState<string[]>([]);
-  
+
   const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mobileUploadUrl = typeof window !== 'undefined' ? `${window.location.origin}/mobile-upload/extern/${opCostSessionId}` : '';
-  
+
   const opCategories = ['AHV / Sozialleistungen', 'Pensionskasse (BVG)', 'SUVA / Versicherungen', 'Steuern & MWST', 'Treuhand & Beratung', 'Miete & Infrastruktur', 'Software & Lizenzen', 'Fremdleistungen & Subunternehmer', 'Fahrzeuge & Mobilität', 'Marketing & Akquise'];
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    
+
     const fetchData = async () => {
       const { data: txs } = await supabase
         .from('transactions')
@@ -183,7 +183,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       .subscribe();
 
     return () => {
-      if (channel) supabase.removeChannel(channel).catch(() => {});
+      if (channel) supabase.removeChannel(channel).catch(() => { });
     };
   }, [currentUser]);
 
@@ -220,35 +220,35 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     } catch (error) { addToast(t('ai_failed'), 'error'); } finally { setIsAnalyzingAI(false); }
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: string) => { 
-    try { 
-      await supabase.from('transactions').update({ status: newStatus }).eq('id', id); 
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    try {
+      await supabase.from('transactions').update({ status: newStatus }).eq('id', id);
       setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
-      addToast(t('status_updated'), "success"); 
-    } catch (e) { 
-      addToast(t('update_error'), "error"); 
-    } 
+      addToast(t('status_updated'), "success");
+    } catch (e) {
+      addToast(t('update_error'), "error");
+    }
   };
 
-  const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => { 
-    e.stopPropagation(); 
-    if (window.confirm(t('confirm_delete'))) { 
-      try { 
-        await supabase.from('transactions').delete().eq('id', id); 
+  const handleDeleteTransaction = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(t('confirm_delete'))) {
+      try {
+        await supabase.from('transactions').delete().eq('id', id);
         await supabase.from('time_entries').delete().eq('id', id);
         setTransactions(prev => prev.filter(tx => tx.id !== id));
-        addToast(t('entry_deleted'), "success"); 
-      } catch (e) { 
-        addToast(t('delete_error'), "error"); 
-      } 
-    } 
+        addToast(t('entry_deleted'), "success");
+      } catch (e) {
+        addToast(t('delete_error'), "error");
+      }
+    }
   };
 
   const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setIsUploadingImage(true);
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const reader = new FileReader();
@@ -268,9 +268,9 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
-    
+
     try {
-      const fileName = `Buchung_${opCostData.category.replace(/\s/g,'_')}_${Date.now()}.pdf`;
+      const fileName = `Buchung_${opCostData.category.replace(/\s/g, '_')}_${Date.now()}.pdf`;
       const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       let targetFolderId = 'root';
@@ -293,7 +293,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       await supabase.from('transactions').insert({
         type: 'operating_cost', amount: Number(opCostData.amount), category: opCostData.category, description: opCostData.description || opCostData.category, date: opCostData.date, status: 'Pending', project_id: 'global', owner_id: currentUser.uid, company_id: safeCompanyId, receipt_urls: [finalPdfUrl, ...opCostReceipts], created_at: new Date().toISOString()
       });
-      
+
       await supabase.from('documents').insert({
         name: fileName, url: finalPdfUrl, file_url: finalPdfUrl, type: 'application/pdf', size: `${Math.round(blob.size / 1024)} KB`, is_folder: false, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', folder_id: targetFolderId, category: 'company', uploaded_at: new Date().toISOString()
       });
@@ -369,7 +369,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   };
 
   const yearFiltered = selectedYear === 'all' ? transactions : transactions.filter(tx => (tx.date || tx.createdAt || '').includes(selectedYear));
-  
+
   const searchFiltered = yearFiltered.filter(tx => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
@@ -393,13 +393,13 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
   const totalOpCosts = operatingCosts.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
   const totalTimeCosts = timeEntriesList.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);
 
-  const activeCategoryItems = 
+  const activeCategoryItems =
     activeTabFilter === 'quotes' ? quotes :
-    activeTabFilter === 'invoices' ? invoices :
-    activeTabFilter === 'expenses' ? expenses :
-    activeTabFilter === 'operating_costs' ? operatingCosts :
-    activeTabFilter === 'time_entries' ? timeEntriesList :
-    searchFiltered;
+      activeTabFilter === 'invoices' ? invoices :
+        activeTabFilter === 'expenses' ? expenses :
+          activeTabFilter === 'operating_costs' ? operatingCosts :
+            activeTabFilter === 'time_entries' ? timeEntriesList :
+              searchFiltered;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 text-text-primary">
@@ -408,8 +408,8 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           <h2 className="text-2xl font-bold tracking-tight">{t('finance_analytics')}</h2>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-text-muted text-sm">{t('finance_overview_year')}</p>
-            <select 
-              value={selectedYear} 
+            <select
+              value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
               className="bg-background border border-border/50 rounded px-2 py-1 text-sm font-bold focus:border-accent-ai outline-none text-text-primary"
             >
@@ -428,7 +428,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           <button onClick={() => setShowOpCostModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-purple-600 transition-all flex items-center justify-center gap-2"><Landmark size={16} /> {t('record_ext_cost')}</button>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg"><FileSignature size={18} /></div><h3 className="font-semibold text-sm">{t('open_quotes')}</h3></div><p className="text-2xl font-bold">{quotes.filter(tx => tx.status !== 'Approved' && tx.status !== 'Angenommen' && tx.status !== 'Bezahlt').length}</p></div>
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><TrendingUp size={18} /></div><h3 className="font-semibold text-sm">{t('invoices_total')}</h3></div><p className="text-2xl font-bold">CHF {totalRevenue.toLocaleString('de-CH')}</p></div>
@@ -438,7 +438,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
       {/* PROJECT BUDGETS OVERVIEW */}
       <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm">
-        <h3 className="font-bold flex items-center gap-2 mb-4"><Briefcase size={16} className="text-indigo-500"/> Projekt Budgets (Übersicht)</h3>
+        <h3 className="font-bold flex items-center gap-2 mb-4"><Briefcase size={16} className="text-indigo-500" /> Projekt Budgets (Übersicht)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-background/50 text-text-muted text-xs uppercase">
@@ -484,7 +484,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           {/* SEARCH INPUT */}
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
-            <input 
+            <input
               type="text"
               placeholder="Durchsuchen nach Beschreibung, Firma, Betrag, Status..."
               value={searchQuery}
@@ -499,7 +499,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           </div>
 
           {/* EXPORT ALL CSV BUTTON */}
-          <button 
+          <button
             onClick={() => handleExportCSV(activeCategoryItems)}
             disabled={activeCategoryItems.length === 0}
             className="px-4 py-2.5 bg-surface border border-border hover:bg-white/5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-40"
@@ -510,37 +510,37 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
         {/* CATEGORY TABS */}
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar border-b border-border/30 pb-3">
-          <button 
+          <button
             onClick={() => setActiveTabFilter('all')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border", activeTabFilter === 'all' ? "bg-indigo-500/10 text-indigo-500 border-indigo-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
             Alle ({searchFiltered.length})
           </button>
-          <button 
+          <button
             onClick={() => setActiveTabFilter('quotes')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'quotes' ? "bg-blue-500/10 text-blue-500 border-blue-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
             <FileSignature size={14} /> Offerten ({quotes.length})
           </button>
-          <button 
+          <button
             onClick={() => setActiveTabFilter('invoices')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'invoices' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
             <FileText size={14} /> Ausgangsrechnungen ({invoices.length})
           </button>
-          <button 
+          <button
             onClick={() => setActiveTabFilter('expenses')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'expenses' ? "bg-orange-500/10 text-orange-500 border-orange-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
             <Receipt size={14} /> Spesen ({expenses.length})
           </button>
-          <button 
+          <button
             onClick={() => setActiveTabFilter('operating_costs')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'operating_costs' ? "bg-purple-500/10 text-purple-500 border-purple-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
             <Landmark size={14} /> Externe Kosten ({operatingCosts.length})
           </button>
-          <button 
+          <button
             onClick={() => setActiveTabFilter('time_entries')}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5", activeTabFilter === 'time_entries' ? "bg-amber-500/10 text-amber-500 border-amber-500/30" : "bg-surface border-border/40 text-text-muted hover:text-text-primary")}
           >
@@ -556,31 +556,31 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
               <span>{selectedIds.length} Einträge ausgewählt</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button 
+              <button
                 onClick={handleBulkDelete}
                 className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow"
               >
                 <Trash2 size={14} /> Ausgewählte löschen
               </button>
-              <button 
+              <button
                 onClick={() => handleBulkStatus('Bezahlt')}
                 className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow"
               >
                 <CheckCircle2 size={14} /> Als Bezahlt markieren
               </button>
-              <button 
+              <button
                 onClick={() => handleBulkStatus('Offen')}
                 className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow"
               >
                 Als Offen markieren
               </button>
-              <button 
+              <button
                 onClick={() => handleExportCSV(transactions.filter(t => selectedIds.includes(t.id)))}
                 className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
               >
                 <Download size={14} /> CSV Export
               </button>
-              <button 
+              <button
                 onClick={() => setSelectedIds([])}
                 className="text-xs text-white/80 hover:text-white font-bold ml-2 underline"
               >
@@ -596,7 +596,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
             <thead className="bg-background/80 text-text-muted text-xs uppercase tracking-wider border-b border-border/30">
               <tr>
                 <th className="p-3 w-10 text-center">
-                  <input 
+                  <input
                     type="checkbox"
                     checked={activeCategoryItems.length > 0 && activeCategoryItems.every(item => selectedIds.includes(item.id))}
                     onChange={() => toggleSelectAll(activeCategoryItems)}
@@ -631,7 +631,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                 return (
                   <tr key={item.id} className={cn("hover:bg-white/[0.03] transition-colors", isSelected && "bg-indigo-500/10")}>
                     <td className="p-3 text-center">
-                      <input 
+                      <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSelectId(item.id)}
@@ -655,7 +655,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                       CHF {Math.abs(Number(item.amount)).toFixed(2)}
                     </td>
                     <td className="p-3 text-center">
-                      <select 
+                      <select
                         value={item.status || 'Offen'}
                         onChange={(e) => handleUpdateStatus(item.id, e.target.value)}
                         className={cn(
@@ -663,8 +663,8 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                           item.status === 'Bezahlt' || item.status === 'paid' || item.status === 'Approved' || item.status === 'Angenommen'
                             ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30"
                             : item.status === 'Abgelehnt'
-                            ? "bg-red-500/10 text-red-500 border-red-500/30"
-                            : "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                              ? "bg-red-500/10 text-red-500 border-red-500/30"
+                              : "bg-amber-500/10 text-amber-500 border-amber-500/30"
                         )}
                       >
                         <option value="Offen" className="bg-surface text-text-primary">Offen</option>
@@ -676,9 +676,9 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <td className="p-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         {hasPdf && !!sanitizeUrl(pdfUrl) && (
-                          <a 
-                            href={sanitizeUrl(pdfUrl)} 
-                            target="_blank" 
+                          <a
+                            href={sanitizeUrl(pdfUrl)}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg border border-blue-500/20 transition-all flex items-center gap-1 text-xs font-bold"
                             title="Dokument / PDF anzeigen & herunterladen"
@@ -686,7 +686,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                             <FileText size={14} /> PDF
                           </a>
                         )}
-                        <button 
+                        <button
                           onClick={(e) => handleDeleteTransaction(item.id, e)}
                           className="p-1.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg border border-red-500/20 transition-all flex items-center gap-1 text-xs font-bold"
                           title="Eintrag löschen"
@@ -702,22 +702,22 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           </table>
         </div>
       </div>
-      
+
       {/* EXT. KOSTEN MODAL */}
       {showOpCostModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-4 border-b border-border/50 flex items-center justify-between shrink-0">
-              <h3 className="font-bold text-lg flex items-center gap-2"><Landmark className="text-purple-500"/> {t('record_ext_cost')}</h3>
+              <h3 className="font-bold text-lg flex items-center gap-2"><Landmark className="text-purple-500" /> {t('record_ext_cost')}</h3>
               {isAnalyzingAI && (<span className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 text-purple-500 text-xs font-bold rounded-full animate-pulse border border-purple-500/20 ml-4"><Sparkles size={12} /> {t('analyzing_ai')}</span>)}
-              <button onClick={() => setShowOpCostModal(false)} className="text-text-muted hover:text-text-primary ml-auto"><X size={20}/></button>
+              <button onClick={() => setShowOpCostModal(false)} className="text-text-muted hover:text-text-primary ml-auto"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 bg-background custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <form id="op-cost-form" onSubmit={(e) => { e.preventDefault(); setIsPdfStudioOpen(true); }} className="space-y-4">
-                  <div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('category')}</label><select value={opCostData.category} onChange={e => setOpCostData({...opCostData, category: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none text-text-primary">{opCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
-                  <div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('purpose_merchant')}</label><input required value={opCostData.description} onChange={e => setOpCostData({...opCostData, description: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-purple-500 text-text-primary" /></div>
-                  <div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('amount')} *</label><input type="number" step="0.05" required value={opCostData.amount} onChange={e => setOpCostData({...opCostData, amount: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none font-bold text-purple-500" /></div><div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</label><input type="date" required value={opCostData.date} onChange={e => setOpCostData({...opCostData, date: e.target.value})} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none text-text-primary" /></div></div>
+                  <div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('category')}</label><select value={opCostData.category} onChange={e => setOpCostData({ ...opCostData, category: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none text-text-primary">{opCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
+                  <div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('purpose_merchant')}</label><input required value={opCostData.description} onChange={e => setOpCostData({ ...opCostData, description: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-purple-500 text-text-primary" /></div>
+                  <div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('amount')} *</label><input type="number" step="0.05" required value={opCostData.amount} onChange={e => setOpCostData({ ...opCostData, amount: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none font-bold text-purple-500" /></div><div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</label><input type="date" required value={opCostData.date} onChange={e => setOpCostData({ ...opCostData, date: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none text-text-primary" /></div></div>
                 </form>
                 <div>
                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3 flex items-center justify-between"><span>{t('receipts_photos')}</span><span className="text-purple-500">{opCostReceipts.length} angehängt</span></h3>
@@ -727,7 +727,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
                     <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
                     <div className="aspect-square rounded-lg border border-purple-500/30 bg-purple-500/10 flex flex-col items-center justify-center p-2 text-center relative group" title="Scanne diesen Code mit dem Handy">
                       <div className="bg-white p-1 rounded mb-1 opacity-80"><QRCode value={mobileUploadUrl} size={64} /></div>
-                      <span className="text-[10px] font-bold text-purple-500 flex items-center gap-1"><Smartphone size={10}/> {t('live_scan')}</span>
+                      <span className="text-[10px] font-bold text-purple-500 flex items-center gap-1"><Smartphone size={10} /> {t('live_scan')}</span>
                     </div>
                   </div>
                 </div>
@@ -742,11 +742,11 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
         </div>
       )}
 
-      <UniversalPDFStudio 
-        isOpen={isPdfStudioOpen} 
-        onClose={() => setIsPdfStudioOpen(false)} 
-        title="Buchungsbeleg" 
-        fileName={`Buchung_${opCostData.category.replace(/\s/g,'_')}_${Date.now()}`}
+      <UniversalPDFStudio
+        isOpen={isPdfStudioOpen}
+        onClose={() => setIsPdfStudioOpen(false)}
+        title="Buchungsbeleg"
+        fileName={`Buchung_${opCostData.category.replace(/\s/g, '_')}_${Date.now()}`}
         onSaveCloud={handleSaveToCloud}
       >
         {(settings) => <ExternalCostPDFDocument settings={settings} opCostData={opCostData} opCostReceipts={opCostReceipts} formatCHF={formatCHF} t={t} />}

@@ -150,10 +150,12 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             title: d.title || '',
             content: d.content || '',
             imageUrl: d.image_url || d.imageUrl,
+            dataPayload: d.data_payload || d.dataPayload,
+            fontSize: d.font_size || d.fontSize,
             layout: d.layout || 'split',
             order_index: d.order_index || 0,
-            ownerId: d.owner_id || currentUser.uid,
-            projectId: d.project_id
+            ownerId: d.owner_id || d.ownerId || currentUser.uid,
+            projectId: d.project_id || d.projectId
           }));
           setSlides(loadedSlides);
           if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);

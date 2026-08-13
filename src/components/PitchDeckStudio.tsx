@@ -297,7 +297,21 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           query = query.eq('project_id', targetId);
         }
         const { data: loadedSlides } = await query;
-        if (loadedSlides) slidesArr = loadedSlides as any[];
+        if (loadedSlides) {
+          slidesArr = loadedSlides.map((d: any) => ({
+            ...d,
+            id: d.id,
+            title: d.title || '',
+            content: d.content || '',
+            imageUrl: d.image_url || d.imageUrl,
+            dataPayload: d.data_payload || d.dataPayload,
+            fontSize: d.font_size || d.fontSize,
+            layout: d.layout || 'split',
+            order_index: d.order_index || 0,
+            ownerId: d.owner_id || d.ownerId || currentUser?.uid,
+            projectId: d.project_id || d.projectId
+          }));
+        }
       } catch (err) {
         console.warn("Pitch deck slides fetch fallback handled:", err);
       }

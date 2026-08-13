@@ -186,7 +186,8 @@ export default function Settings() {
   };
 
   const handleManageSubscription = async () => {
-    if (!dbData?.stripeCustomerId) return;
+    const customerId = dbData?.stripe_customer_id || dbData?.stripeCustomerId;
+    if (!customerId) return;
     
     setIsPortalLoading(true);
     try {
@@ -196,7 +197,7 @@ export default function Settings() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ type: "reset", 
-          customerId: dbData.stripeCustomerId,
+          customerId: customerId,
           returnUrl: window.location.origin + '/app' 
         })
       });

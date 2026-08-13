@@ -138,7 +138,16 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
   
   // Zieht die ID aus Prop (Demo), URL oder Context!
   const currentProjectId = propProjectId || routeProjectId || projectCtx?.activeProjectId;
-  const activeProject = projects.find((p: any) => p.id === currentProjectId);
+  const rawProject = projects.find((p: any) => p.id === currentProjectId);
+  const activeProject = rawProject ? {
+    ...rawProject,
+    cam1Url: rawProject.cam1Url || rawProject.cam1_url || '',
+    cam2Url: rawProject.cam2Url || rawProject.cam2_url || '',
+    droneUrl: rawProject.droneUrl || rawProject.drone_url || '',
+    logisticsUrl: rawProject.logisticsUrl || rawProject.logistics_url || '',
+    accessUrl: rawProject.accessUrl || rawProject.access_url || '',
+    siteLocation: rawProject.siteLocation || rawProject.site_location || ''
+  } : null;
 
   const { isDemoMode } = projectCtx; // WICHTIG: Auslesen des Demo-Status
 
@@ -196,8 +205,18 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     
     setIsSavingLink(true);
     try {
+      const columnMap: Record<string, string> = {
+        cam1Url: 'cam1_url',
+        cam2Url: 'cam2_url',
+        droneUrl: 'drone_url',
+        logisticsUrl: 'logistics_url',
+        accessUrl: 'access_url'
+      };
+      const dbCol = columnMap[linkModal.type] || linkModal.type;
+
       await supabase.from('projects').update({
-        [linkModal.type]: linkModal.url
+        [linkModal.type]: linkModal.url,
+        [dbCol]: linkModal.url
       }).eq('id', activeProject.id);
 
       addToast(t('integration_linked_success'), "success");
