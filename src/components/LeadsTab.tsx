@@ -313,18 +313,18 @@ export default function LeadsTab() {
       if (data) {
         const mapped = data.map(d => ({
           id: d.id,
-          firstName: d.first_name || d.name || '',
-          lastName: d.last_name || '',
+          firstName: d.first_name || d.firstName || d.name || '',
+          lastName: d.last_name || d.lastName || '',
           company: d.company || '',
           email: d.email || '',
           phone: d.phone || '',
-          zipCode: d.zip_code || '',
+          zipCode: d.zip_code || d.zipCode || '',
           city: d.city || '',
           message: d.message || '',
           status: d.status || 'New',
           source: d.source || 'Webseite',
-          date: d.created_at ? new Date(d.created_at).toLocaleDateString('de-CH') : '',
-          companyId: d.company_id
+          date: d.created_at ? new Date(d.created_at).toLocaleDateString('de-CH') : (d.date || ''),
+          companyId: d.company_id || d.companyId
         }));
         setCollectedLeads(mapped);
       }

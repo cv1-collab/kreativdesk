@@ -557,7 +557,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           
           let targetFolderId = '';
           if (projectId) {
-            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', currentUser.companyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).single();
+            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', currentUser.companyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).maybeSingle();
             if (existingF) targetFolderId = existingF.id;
           }
           

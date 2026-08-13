@@ -264,7 +264,16 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         .from('defects')
         .select('*')
         .eq('project_id', currentProjectId);
-      setDefects(defs && defs.length > 0 ? (defs as any) : []);
+      if (defs && defs.length > 0) {
+        setDefects(defs.map((d: any) => ({
+          ...d,
+          dueDate: d.dueDate || d.due_date || '',
+          imageUrl: d.imageUrl || d.image_url || '',
+          projectId: d.projectId || d.project_id || currentProjectId
+        })));
+      } else {
+        setDefects([]);
+      }
     };
 
     fetchDefects();
@@ -372,7 +381,11 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     }
     try {
       if (editingId) { 
-        await supabase.from('defects').update({ ...currentDefect }).eq('id', editingId);
+        await supabase.from('defects').update({
+          ...currentDefect,
+          due_date: currentDefect.dueDate,
+          image_url: currentDefect.imageUrl
+        }).eq('id', editingId);
         setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
       } else { 
         const newId = `DEF-${Date.now()}`; 
@@ -380,6 +393,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           ...currentDefect, 
           id: newId, 
           project_id: currentProjectId, 
+          due_date: currentDefect.dueDate,
+          image_url: currentDefect.imageUrl,
           owner_id: currentUser.uid, 
           company_id: currentUser.companyId, 
           date: new Date().toISOString().split('T')[0] 
