@@ -124,9 +124,18 @@ export default function GuestMeet() {
     };
     fetchChat();
 
-    // Supabase Realtime channel subscription for instant chat messages
+    // Supabase Realtime channel subscription for instant broadcast & db changes
     const channel = supabase
       .channel(`chat_messages_${joinId}`)
+      .on('broadcast', { event: 'new_chat_msg' }, ({ payload }) => {
+        if (payload && payload.id) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === payload.id)) return prev;
+            return [...prev, payload];
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `call_id=eq.${joinId}` }, (payload) => {
         const d = payload.new;
         if (d) {
@@ -190,15 +199,24 @@ export default function GuestMeet() {
     setNewMessage('');
     const msgId = `msg-${Date.now()}`;
     
-    // Optimistic UI Update
-    setMessages(prev => [...prev, {
+    const msgObj = {
       id: msgId,
       sender: guestName,
       avatar: guestName.substring(0, 2).toUpperCase(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       text: text
-    }]);
+    };
+
+    // Optimistic UI Update
+    setMessages(prev => [...prev, msgObj]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+
+    // Broadcast in real-time to all connected peers
+    supabase.channel(`chat_messages_${joinId}`).send({
+      type: 'broadcast',
+      event: 'new_chat_msg',
+      payload: msgObj
+    }).catch(() => {});
 
     try {
       const { error: err1 } = await supabase.from('chat_messages').insert({

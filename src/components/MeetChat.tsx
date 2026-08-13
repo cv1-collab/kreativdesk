@@ -73,7 +73,13 @@ export default function MeetChat() {
     toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen
   } = useVideoCall();
   
-  const [sessionRoomId] = useState(() => `call-${Date.now()}`);
+  const [sessionRoomId] = useState(() => {
+    const saved = sessionStorage.getItem('kreativ_desk_active_room');
+    if (saved) return saved;
+    const newId = `call-${Date.now()}`;
+    sessionStorage.setItem('kreativ_desk_active_room', newId);
+    return newId;
+  });
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
   const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
 
@@ -123,6 +129,25 @@ export default function MeetChat() {
     const senderName = msgData.sender || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
     const msgId = `msg-${Date.now()}`;
+
+    const msgObj = {
+      id: msgId,
+      sender: senderName,
+      avatar: (senderName || 'U').substring(0, 2).toUpperCase(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: msgData.text,
+      isAI: msgData.isAI,
+      fileUrl: msgData.fileUrl,
+      reference: msgData.reference,
+      createdAt: new Date().toISOString()
+    };
+
+    // Live Broadcast to connected peers in room
+    supabase.channel(`chat_messages_${currentMeetingCallId}`).send({
+      type: 'broadcast',
+      event: 'new_chat_msg',
+      payload: msgObj
+    }).catch(() => {});
 
     const payloadPrimary: any = {
       id: msgId,
@@ -359,7 +384,16 @@ export default function MeetChat() {
     fetchUpcomingCalls();
 
     const channel = supabase
-      .channel(`chat-msg-changes-${currentMeetingCallId}`)
+      .channel(`chat_messages_${currentMeetingCallId}`)
+      .on('broadcast', { event: 'new_chat_msg' }, ({ payload }) => {
+        if (payload && payload.id) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === payload.id)) return prev;
+            return [...prev, payload];
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
         const d = payload.new;
         if (d && (d.call_id === currentMeetingCallId || d.project_id === (projectId || activeProjectId))) {
