@@ -119,36 +119,27 @@ export default function MeetChat() {
     const senderName = msgData.sender || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
     const avatarInitials = msgData.avatar || senderName.substring(0, 2).toUpperCase();
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
+    const msgId = `msg-${Date.now()}`;
 
     const payload: any = {
+      id: msgId,
       call_id: currentMeetingCallId,
       sender: senderName,
       avatar: avatarInitials,
-      sender_id: currentUser?.uid || 'user',
+      sender_id: currentUser?.uid || `user-${Date.now()}`,
       text: msgData.text,
-      timestamp: Date.now(),
       created_at: new Date().toISOString()
     };
 
-    if (currentUser?.companyId) {
-      payload.company_id = currentUser.companyId;
-    }
     if (msgData.fileUrl) payload.file_url = msgData.fileUrl;
     if (msgData.isAI) payload.is_ai = true;
     if (msgData.isTranscript) payload.is_transcript = true;
     if (msgData.reference) payload.reference = msgData.reference;
 
-    const targetProj = projectId || activeProjectId;
-    if (targetProj && targetProj !== 'global' && targetProj !== 'internal' && targetProj.length > 20) {
-      payload.project_id = targetProj;
-    }
-
     try {
       const { error: insErr } = await supabase.from('chat_messages').insert(payload);
       if (insErr) {
         console.warn("Supabase chat_messages insert info:", insErr);
-        const { company_id, project_id, ...minimalPayload } = payload;
-        await supabase.from('chat_messages').insert(minimalPayload);
       }
     } catch (err) {
       console.error("Failed to send chat message:", err);
@@ -273,7 +264,12 @@ export default function MeetChat() {
         let msgs: any[] = [];
         let query = supabase.from('chat_messages').select('*');
         if (currentMeetingCallId) {
-          query = query.or(`call_id.eq.${currentMeetingCallId},project_id.eq.${projectId || activeProjectId || 'global'}`);
+          query = query.eq('call_id', currentMeetingCallId);
+        } else {
+          const targetProj = projectId || activeProjectId;
+          if (targetProj && targetProj !== 'global' && targetProj !== 'internal' && targetProj.length > 20) {
+            query = query.eq('project_id', targetProj);
+          }
         }
         const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
 
@@ -649,14 +645,19 @@ export default function MeetChat() {
     const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
     const textMsg = `Hallo! Du bist zu einem Live-Videocall eingeladen. Klicke einfach auf diesen Link, um ohne Login beizutreten:\n${inviteUrl}`;
 
+    try {
+      navigator.clipboard.writeText(inviteUrl).catch(() => {});
+    } catch (e) {}
+
     if (mode === 'copy') {
-      navigator.clipboard.writeText(inviteUrl);
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
-      addToast('📋 Einladungs-Link kopiert! Externe Partner & Bauherren können ohne Login beitreten.', 'success');
+      addToast('📋 Einladungs-Link kopiert! Externe Partner können ohne Login beitreten.', 'success');
     } else if (mode === 'whatsapp') {
+      addToast('💬 WhatsApp wird geöffnet (Link wurde zusätzlich kopiert!)', 'success');
       window.open(`https://wa.me/?text=${encodeURIComponent(textMsg)}`, '_blank');
     } else if (mode === 'email') {
+      addToast('✉️ E-Mail-Programm wird geöffnet (Link wurde zusätzlich kopiert!)', 'success');
       window.open(`mailto:?subject=${encodeURIComponent('Videocall Einladung - Kreativ Desk')}&body=${encodeURIComponent(textMsg)}`, '_blank');
     }
   };
