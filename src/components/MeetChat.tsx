@@ -73,6 +73,10 @@ export default function MeetChat() {
     toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen
   } = useVideoCall();
   
+  const [sessionRoomId] = useState(() => `call-${Date.now()}`);
+  const [generatedMeetingId, setGeneratedMeetingId] = useState('');
+  const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
+
   const [activeView, setActiveView] = useState<'video' | 'whiteboard'>('video');
   const [showChat, setShowChat] = useState(() => window.innerWidth >= 1024);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -84,7 +88,6 @@ export default function MeetChat() {
   
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [newCallEvent, setNewCallEvent] = useState({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] as string[] });
-  const [generatedMeetingId, setGeneratedMeetingId] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
 
   const [copied, setCopied] = useState(false);
@@ -104,6 +107,54 @@ export default function MeetChat() {
 
   useEffect(() => { isTranscribingRef.current = isTranscribing; }, [isTranscribing]);
 
+  const sendChatMessage = async (msgData: {
+    text: string;
+    sender?: string;
+    avatar?: string;
+    fileUrl?: string;
+    isAI?: boolean;
+    isTranscript?: boolean;
+    reference?: string;
+  }) => {
+    const senderName = msgData.sender || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
+    const avatarInitials = msgData.avatar || senderName.substring(0, 2).toUpperCase();
+    const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
+
+    const payload: any = {
+      call_id: currentMeetingCallId,
+      sender: senderName,
+      avatar: avatarInitials,
+      sender_id: currentUser?.uid || 'user',
+      text: msgData.text,
+      timestamp: Date.now(),
+      created_at: new Date().toISOString()
+    };
+
+    if (currentUser?.companyId) {
+      payload.company_id = currentUser.companyId;
+    }
+    if (msgData.fileUrl) payload.file_url = msgData.fileUrl;
+    if (msgData.isAI) payload.is_ai = true;
+    if (msgData.isTranscript) payload.is_transcript = true;
+    if (msgData.reference) payload.reference = msgData.reference;
+
+    const targetProj = projectId || activeProjectId;
+    if (targetProj && targetProj !== 'global' && targetProj !== 'internal' && targetProj.length > 20) {
+      payload.project_id = targetProj;
+    }
+
+    try {
+      const { error: insErr } = await supabase.from('chat_messages').insert(payload);
+      if (insErr) {
+        console.warn("Supabase chat_messages insert info:", insErr);
+        const { company_id, project_id, ...minimalPayload } = payload;
+        await supabase.from('chat_messages').insert(minimalPayload);
+      }
+    } catch (err) {
+      console.error("Failed to send chat message:", err);
+    }
+  };
+
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -118,15 +169,8 @@ export default function MeetChat() {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
           const finalStr = event.results[i][0].transcript.trim();
-          if (finalStr && (callId || joinCallId) && currentUser?.companyId) {
-             supabase.from('chat_messages').insert({
-                sender: currentUser.displayName || 'Teilnehmer',
-                text: finalStr,
-                is_transcript: true,
-                timestamp: Date.now(),
-                project_id: projectId || activeProjectId || 'global',
-                company_id: currentUser.companyId
-             }).then(({ error }) => { if (error) console.error(error); });
+          if (finalStr && (callId || joinCallId || activeCallRoomId)) {
+            sendChatMessage({ text: finalStr, isTranscript: true });
           }
         } else {
           interim += event.results[i][0].transcript;
@@ -156,7 +200,7 @@ export default function MeetChat() {
         console.warn(e);
       }
     };
-  }, [callId, joinCallId, currentUser, activeProjectId, projectId, currentLang]);
+  }, [callId, joinCallId, activeCallRoomId, currentUser, activeProjectId, projectId, currentLang]);
 
   const toggleTranscription = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -221,17 +265,17 @@ export default function MeetChat() {
   }, [activeProjectId, setActiveProject, callStatus, joinCall, startCall]);
 
   useEffect(() => {
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
+    const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
     
     const fetchChatMessages = async () => {
       try {
         let msgs: any[] = [];
-        const { data, error } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .order('created_at', { ascending: true })
-          .limit(100);
+        let query = supabase.from('chat_messages').select('*');
+        if (currentMeetingCallId) {
+          query = query.or(`call_id.eq.${currentMeetingCallId},project_id.eq.${projectId || activeProjectId || 'global'}`);
+        }
+        const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
 
         if (!error && data) msgs = data;
         
@@ -239,7 +283,7 @@ export default function MeetChat() {
           setMessages(msgs.map(d => ({
             id: d.id, sender: d.sender || 'System', avatar: d.avatar || 'U',
             time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            text: d.text, isAI: d.is_ai, reference: d.reference, createdAt: d.created_at
+            text: d.text, isAI: d.is_ai, fileUrl: d.file_url, reference: d.reference, createdAt: d.created_at
           })));
         }
       } catch (chatErr) {
@@ -264,12 +308,14 @@ export default function MeetChat() {
 
         let configCalls: any[] = [];
         try {
-          const { data: config } = await supabase
-            .from('system_config')
-            .select('data')
-            .eq('id', `schedule_calls_${safeCompanyId}`)
-            .maybeSingle();
-          if (config?.data?.calls) configCalls = config.data.calls;
+          if (safeCompanyId) {
+            const { data: config } = await supabase
+              .from('system_config')
+              .select('data')
+              .eq('id', `schedule_calls_${safeCompanyId}`)
+              .maybeSingle();
+            if (config?.data?.calls) configCalls = config.data.calls;
+          }
         } catch (cfgErr) {
           console.warn("System config calls fallback handled:", cfgErr);
         }
@@ -296,8 +342,27 @@ export default function MeetChat() {
     fetchUpcomingCalls();
 
     const channel = supabase
-      .channel('chat-msg-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, fetchChatMessages)
+      .channel(`chat-msg-changes-${currentMeetingCallId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+        const d = payload.new;
+        if (d && (d.call_id === currentMeetingCallId || d.project_id === (projectId || activeProjectId))) {
+          setMessages(prev => {
+            if (prev.some(m => m.id === d.id)) return prev;
+            return [...prev, {
+              id: d.id,
+              sender: d.sender || 'System',
+              avatar: d.avatar || 'U',
+              time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              text: d.text,
+              isAI: d.is_ai,
+              fileUrl: d.file_url,
+              reference: d.reference,
+              createdAt: d.created_at
+            }];
+          });
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+      })
       .subscribe();
 
     return () => {
@@ -305,85 +370,23 @@ export default function MeetChat() {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId]);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream && !isScreenSharing) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(e => console.log(e));
-    }
-  }, [localStream, callStatus, isScreenSharing, activeView]);
-
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const canvasContainerRef = useRef<HTMLDivElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [strokeColor, setStrokeColor] = useState('#3b82f6');
-  const [strokeWidth, setStrokeWidth] = useState(3);
-
-  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  useEffect(() => scrollToBottom(), [messages, isAITyping]);
-
-  useEffect(() => {
-    if (activeView === 'whiteboard' && canvasRef.current && canvasContainerRef.current) {
-      const canvas = canvasRef.current;
-      const container = canvasContainerRef.current;
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
-    }
-  }, [activeView]);
-
-  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.beginPath(); ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    setIsDrawing(true);
-  };
-
-  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.strokeStyle = strokeColor; ctx.lineWidth = strokeWidth; ctx.stroke();
-  };
-
-  const stopDrawing = () => setIsDrawing(false);
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-  };
+  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId, activeCallRoomId]);
 
   const handleFileAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    if (!file) return;
     
     setIsUploadingFile(true);
     try {
       const fileName = `${Date.now()}_${file.name}`;
-      const filePath = `${currentUser.companyId}/chat_attachments/${fileName}`;
+      const safeComp = currentUser?.companyId || 'global';
+      const filePath = `${safeComp}/chat_attachments/${fileName}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const url = pubData.publicUrl;
       
-      const senderName = currentUser?.email?.split('@')[0] || 'User';
-      const avatarInitials = senderName.substring(0, 2).toUpperCase();
-      
-      await supabase.from('chat_messages').insert({
-        sender: senderName, avatar: avatarInitials, sender_id: currentUser.uid,
-        company_id: currentUser.companyId, 
-        project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: `Dateianhang: ${file.name}`, file_url: url, created_at: new Date().toISOString()
-      });
+      await sendChatMessage({ text: `Dateianhang: ${file.name}`, fileUrl: url });
       
     } catch (err) {
       console.error("Upload error", err);
@@ -396,27 +399,36 @@ export default function MeetChat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !currentUser?.companyId) return;
+    if (!newMessage.trim()) return;
     
     const userMessage = newMessage;
-    const senderName = currentUser?.email?.split('@')[0] || 'User';
+    const senderName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
     const avatarInitials = senderName.substring(0, 2).toUpperCase();
     setNewMessage('');
+
+    // Optimistic UI update
+    const optId = `msg-${Date.now()}`;
+    setMessages(prev => [...prev, {
+      id: optId,
+      sender: senderName,
+      avatar: avatarInitials,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: userMessage
+    }]);
+    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     
     try {
-      await supabase.from('chat_messages').insert({
-        sender: senderName, avatar: avatarInitials, sender_id: currentUser.uid,
-        company_id: currentUser.companyId, 
-        project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: userMessage, created_at: new Date().toISOString()
-      });
+      await sendChatMessage({ text: userMessage });
       
       if (userMessage.toLowerCase().includes('@ai') || userMessage.includes('?')) {
         setIsAITyping(true);
         let knowledgeContext = '';
         try {
-          const { data: docs } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId);
-          if (docs && docs.length > 0) {
-            knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${docs.slice(0, 3).map(c => `--- Document: ${c.name} ---\n${c.url}\n`).join('\n')}`;
+          if (currentUser?.companyId) {
+            const { data: docs } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId);
+            if (docs && docs.length > 0) {
+              knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${docs.slice(0, 3).map(c => `--- Document: ${c.name} ---\n${c.url}\n`).join('\n')}`;
+            }
           }
         } catch (err) { console.error('Knowledge search fail', err); }
 
@@ -433,11 +445,12 @@ export default function MeetChat() {
           responseText = responseText.replace(refMatch[0], '').trim();
         }
 
-        await supabase.from('chat_messages').insert({
-          sender: 'AI Concierge', avatar: 'AI', sender_id: currentUser.uid,
-          company_id: currentUser.companyId, 
-          project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: responseText, is_ai: true,
-          reference: reference || null, created_at: new Date().toISOString()
+        await sendChatMessage({
+          sender: 'AI Concierge',
+          avatar: 'AI',
+          text: responseText,
+          isAI: true,
+          reference: reference || undefined
         });
       }
     } catch (error: any) { console.error('AI chat fail', error); } finally { setIsAITyping(false); }
@@ -582,8 +595,51 @@ export default function MeetChat() {
     (projectMembers || []).some((pm: any) => pm.projectId === (projectId || activeProjectId) && pm.userId === u.id) && u.id !== currentUser?.uid
   );
 
-  const [sessionRoomId] = useState(() => `call-${Date.now()}`);
-  const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [strokeColor, setStrokeColor] = useState('#3b82f6');
+  const [strokeWidth, setStrokeWidth] = useState(3);
+
+  useEffect(() => {
+    if (activeView === 'whiteboard' && canvasRef.current && canvasContainerRef.current) {
+      const canvas = canvasRef.current;
+      const container = canvasContainerRef.current;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+    }
+  }, [activeView]);
+
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.beginPath(); ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.strokeStyle = strokeColor; ctx.lineWidth = strokeWidth; ctx.stroke();
+  };
+
+  const stopDrawing = () => setIsDrawing(false);
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   const toggleUserSelection = (id: string) => {
     setSelectedUserIds(prev => prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]);
