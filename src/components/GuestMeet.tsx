@@ -205,7 +205,6 @@ export default function GuestMeet() {
         id: msgId,
         call_id: joinId,
         sender: guestName,
-        avatar: guestName.substring(0, 2).toUpperCase(),
         sender_id: 'guest-' + Date.now(),
         text: text,
         created_at: new Date().toISOString()

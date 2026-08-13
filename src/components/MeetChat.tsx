@@ -117,7 +117,6 @@ export default function MeetChat() {
     reference?: string;
   }) => {
     const senderName = msgData.sender || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-    const avatarInitials = msgData.avatar || senderName.substring(0, 2).toUpperCase();
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
     const msgId = `msg-${Date.now()}`;
 
@@ -125,7 +124,6 @@ export default function MeetChat() {
       id: msgId,
       call_id: currentMeetingCallId,
       sender: senderName,
-      avatar: avatarInitials,
       sender_id: currentUser?.uid || `user-${Date.now()}`,
       text: msgData.text,
       created_at: new Date().toISOString()
@@ -277,7 +275,7 @@ export default function MeetChat() {
         
         if (msgs && msgs.length > 0) {
           setMessages(msgs.map(d => ({
-            id: d.id, sender: d.sender || 'System', avatar: d.avatar || 'U',
+            id: d.id, sender: d.sender || 'System', avatar: d.avatar || (d.sender || 'U').substring(0, 2).toUpperCase(),
             time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             text: d.text, isAI: d.is_ai, fileUrl: d.file_url, reference: d.reference, createdAt: d.created_at
           })));
@@ -347,7 +345,7 @@ export default function MeetChat() {
             return [...prev, {
               id: d.id,
               sender: d.sender || 'System',
-              avatar: d.avatar || 'U',
+              avatar: d.avatar || (d.sender || 'U').substring(0, 2).toUpperCase(),
               time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               text: d.text,
               isAI: d.is_ai,
@@ -814,7 +812,7 @@ export default function MeetChat() {
                     <div className="w-px h-8 bg-slate-700/60 hidden md:block mx-1"></div>
                     <button onClick={() => handleQuickInvite('copy')} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer" title="Gäste-Einladungslink kopieren">
                       {copiedLink ? <CheckCircle2 size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
-                      <span className="hidden sm:inline">{copiedLink ? 'Link kopiert!' : t('external_link')}</span>
+                      <span className="hidden sm:inline">{copiedLink ? 'Link kopiert!' : 'Link kopieren'}</span>
                     </button>
                   </div>
                 </div>
