@@ -824,7 +824,19 @@ export default function MeetChat() {
                   </div>
                   
                   <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20">
-                    <video ref={localVideoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")} />
+                    <video 
+                      ref={(el) => {
+                        localVideoRef.current = el;
+                        if (el && localStream && el.srcObject !== localStream) {
+                          el.srcObject = localStream;
+                          el.play().catch(e => console.log("Local video play err:", e));
+                        }
+                      }} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")} 
+                    />
                   </div>
 
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto">

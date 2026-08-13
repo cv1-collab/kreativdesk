@@ -10,9 +10,10 @@ scrubLocalStorageFileUrls();
 
 // Initialisiert den PWA Service Worker (Background Updates & Caching)
 if ('serviceWorker' in navigator) {
-  registerSW({ 
+  const updateSW = registerSW({ 
+    immediate: true,
     onNeedRefresh() {
-      // Keine automatische Seiten-Neuaktualisierung erzwingen
+      updateSW(true);
     },
     onOfflineReady() {}
   });
