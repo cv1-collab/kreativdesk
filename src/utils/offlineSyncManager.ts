@@ -90,10 +90,12 @@ export const offlineSyncManager = {
             project_id: d.project_id,
             company_id: d.company_id,
             owner_id: d.owner_id,
+            title: d.prompt,
             prompt: d.prompt,
             description: d.description,
             status: d.status,
             severity: d.severity,
+            priority: d.severity,
             position: d.position,
             image_url: d.image_url || '',
             created_at: d.created_at
