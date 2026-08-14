@@ -268,8 +268,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
 
 export default function Calendar() {
   const { projectId } = useParams<{ projectId: string }>();
-  const navigate = useNavigate();
-  const { projects, isDemoMode: projectIsDemoMode, demoData } = useProject() as any;
+  const { activeProjectId, projects, isDemoMode: projectIsDemoMode, demoData } = useProject() as any;
   const { hasPermission } = usePermissions();
   const isDemoMode = projectIsDemoMode || !hasPermission('canCreateProject');
   const { addToast } = useToast();
@@ -283,7 +282,7 @@ export default function Calendar() {
   const getMonths = () => language === 'en' ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
   const months = getMonths();
 
-  const currentProjectId = projectId || 'global';
+  const currentProjectId = projectId || activeProjectId || 'global';
   const project = projects?.find((p: any) => p.id === currentProjectId);
 
   const [viewMode, setViewMode] = useState<'gantt' | 'month' | 'day'>('gantt');
@@ -368,27 +367,29 @@ export default function Calendar() {
 
   // === MULTI-TENANT & GLOBAL SILO FIX ===
   useEffect(() => {
-    // DEMO-MODUS: Nur für echtes Demo-Projekt demo-1
-    if ((currentProjectId === 'demo-1') && demoData) {
+    // DEMO-MODUS: Wenn Demo-Projekt oder kein angemeldeter User (Landing Page / Demo App)
+    const isDemo = projectIsDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || activeProjectId === 'demo-1' || !currentUser;
+    if (isDemo) {
+       const effectiveDemoData = demoData || demoTemplates.construction;
        hasLoadedInitial.current = true;
        setIsInitialLoad(false);
        const today = new Date();
        
        let mappedTasks: GanttTask[] = [];
-       if (demoData.tasks) {
-          mappedTasks = demoData.tasks.map((t: any) => {
-             const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 40);
-             const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 40);
+       if (effectiveDemoData?.tasks && effectiveDemoData.tasks.length > 0) {
+          mappedTasks = effectiveDemoData.tasks.map((t: any) => {
+             const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 20);
+             const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 20);
              return { id: t.id, title: t.title, start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0], color: t.color, status: t.status };
           });
        } else {
           mappedTasks = DEFAULT_TASKS;
        }
        let mappedMarkers: SmartMarker[] = [];
-       if (demoData.smartMarkers) {
-          mappedMarkers = demoData.smartMarkers.map((m: any) => {
-             const date = new Date(today); date.setDate(date.getDate() + (m.daysOffset || 0) - 40);
-             return { id: m.id, date: date.toISOString().split('T')[0], label: m.title, color: m.color, style: m.style || 'solid' };
+       if (effectiveDemoData?.smartMarkers && effectiveDemoData.smartMarkers.length > 0) {
+          mappedMarkers = effectiveDemoData.smartMarkers.map((m: any) => {
+             const date = new Date(today); date.setDate(date.getDate() + (m.daysOffset || 0) - 20);
+             return { id: m.id, date: date.toISOString().split('T')[0], label: m.title || m.label, color: m.color, style: m.style || 'solid' };
           });
        } else {
           mappedMarkers = DEFAULT_MARKERS;
@@ -396,8 +397,9 @@ export default function Calendar() {
        setGanttTasks(mappedTasks);
        setSmartMarkers(mappedMarkers);
        setTargetYear(today.getFullYear());
-       setScheduleName(demoData.project?.name || 'Masterplan');
-       const demoSchedule: Schedule = { id: 'demo-s1', name: 'Masterplan Bau', targetYear: today.getFullYear(), ganttTasks: mappedTasks, smartMarkers: mappedMarkers, shapes: [] };
+       const name = effectiveDemoData?.project?.name || 'Masterplan Bau';
+       setScheduleName(name);
+       const demoSchedule: Schedule = { id: 'demo-s1', name: name, targetYear: today.getFullYear(), ganttTasks: mappedTasks, smartMarkers: mappedMarkers, shapes: [] };
        setSchedules([demoSchedule]);
        setActiveScheduleId('demo-s1');
        return;
