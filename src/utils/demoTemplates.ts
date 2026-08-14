@@ -15,8 +15,10 @@ export const demoTemplates: Record<string, any> = {
     camera: { url: '/demo-assets/bau_kamera.jpg' },
     
     documents: [
-      { name: 'Grundriss_EG_Freigabe.pdf', category: 'plans', url: '/demo-assets/bau_grundriss_eg.pdf' },
-      { name: 'Visualisierung_Projekt.jpg', category: 'plans', url: '/demo-assets/bau_pitch_render.jpg' }
+      { name: 'Grundriss_EG_Freigabe.pdf', category: 'projects', url: '/demo-assets/bau_grundriss_eg.pdf', size: '778 KB' },
+      { name: 'Visualisierung_Projekt.jpg', category: 'projects', url: '/demo-assets/bau_pitch_render.jpg', size: '81 KB' },
+      { name: 'Baukamera_Snapshot.jpg', category: 'projects', url: '/demo-assets/bau_kamera.jpg', size: '804 KB' },
+      { name: 'Mangelprotokoll_Betonriss.jpg', category: 'projects', url: '/demo-assets/mangel_betonriss.jpg', size: '490 KB' }
     ],
 
     members: [

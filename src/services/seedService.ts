@@ -225,6 +225,64 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     }
   }
 
+  // 3. Seed Demo Documents & CAD Plans
+  if (Array.isArray(template.documents)) {
+    for (const doc of template.documents) {
+      const { data: existingDoc } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('company_id', realCompanyId)
+        .eq('project_id', projId)
+        .eq('name', doc.name)
+        .maybeSingle();
+
+      if (!existingDoc) {
+        await supabase.from('documents').insert({
+          company_id: realCompanyId,
+          project_id: projId,
+          owner_id: ownerId,
+          uploaded_by: ownerId,
+          name: doc.name,
+          category: 'projects',
+          url: doc.url,
+          file_url: doc.url,
+          size: doc.size || '780 KB',
+          type: doc.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+          folder_id: 'root',
+          is_folder: false,
+          created_at: new Date().toISOString(),
+          uploaded_at: new Date().toISOString()
+        });
+      }
+    }
+  }
+
+  try {
+    const { data: existingCad } = await supabase
+      .from('cad_plans')
+      .select('id')
+      .eq('company_id', realCompanyId)
+      .eq('project_id', projId)
+      .maybeSingle();
+
+    if (!existingCad) {
+      await supabase.from('cad_plans').insert({
+        project_id: projId,
+        company_id: realCompanyId,
+        plan_name: 'Grundriss EG - Architektur & Tragwerk',
+        plan_image: '/demo-assets/bau_pitch_render.jpg',
+        paper_format: 'A3',
+        paper_orientation: 'landscape',
+        plan_scale: 50,
+        elements: [],
+        layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }],
+        active_layer_id: 'default',
+        created_at: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    console.warn('CAD plan seed fallback handled:', e);
+  }
 
   // 4. Seed Defects
   if (Array.isArray(template.defects)) {
