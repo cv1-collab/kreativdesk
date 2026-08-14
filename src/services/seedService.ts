@@ -242,10 +242,12 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
           project_id: projId,
           company_id: realCompanyId,
           owner_id: ownerId,
+          title: def.title,
           prompt: def.title,
           description: def.description,
           status: def.status || 'Offen',
           severity: def.priority || 'High',
+          priority: def.priority || 'High',
           position: { x: 0, y: 1.5, z: 0 },
           created_at: new Date().toISOString()
         });

@@ -15,7 +15,7 @@ const DEMO_AVATARS = [
 async function assignAvatars() {
   try {
     console.log('Suche nach CRM Kontakten ohne Avatar...');
-    const { data: contacts, error } = await supabase.from('contacts').select('*');
+    const { data: contacts, error } = await supabase.from('company_users').select('*');
     if (error) throw error;
 
     let updatedCount = 0;
@@ -25,7 +25,7 @@ async function assignAvatars() {
       if (!contact.photo_url && !contact.avatar) {
         const assignedAvatar = DEMO_AVATARS[avatarIndex % DEMO_AVATARS.length];
         await supabase
-          .from('contacts')
+          .from('company_users')
           .update({
             photo_url: assignedAvatar,
             avatar: assignedAvatar
