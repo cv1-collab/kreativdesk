@@ -755,16 +755,32 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
            });
         }
       } else {
-        const { data } = await supabase.from('project_schedules').select('*').eq('id', targetId).single();
-        if (data) {
-          const tasks = data.schedules?.[0]?.ganttTasks || [];
+        try {
+          const localCache = localStorage.getItem(`schedule_cache_${targetId}`);
+          let tasks: any[] = localCache ? (JSON.parse(localCache).ganttTasks || []) : [];
+          if (tasks.length === 0) {
+            const { data } = await supabase.from('system_config').select('*').eq('id', `schedule_${targetId}`).maybeSingle();
+            tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || demoTemplates.construction.tasks || [];
+          }
           if (tasks.length > 0) {
-            const sortedTasks = [...tasks].sort((a:any, b:any) => new Date(a.start).getTime() - new Date(b.start).getTime());
+            const sortedTasks = [...tasks].sort((a:any, b:any) => new Date(a.start || Date.now()).getTime() - new Date(b.start || Date.now()).getTime());
             milestones = sortedTasks.map((t: any) => ({
-              id: t.id, start: new Date(t.start).toISOString().split('T')[0], end: new Date(t.end).toISOString().split('T')[0],
-              title: t.title, progress: t.progress || 0, status: t.status
+              id: t.id, 
+              start: t.start ? new Date(t.start).toISOString().split('T')[0] : new Date().toISOString().split('T')[0], 
+              end: t.end ? new Date(t.end).toISOString().split('T')[0] : new Date(Date.now() + 30*86400000).toISOString().split('T')[0],
+              title: t.title, 
+              progress: t.progress || 0, 
+              status: t.status
             }));
           }
+        } catch (e) {
+          const tasks = demoTemplates.construction.tasks || [];
+          milestones = tasks.map((t: any) => ({
+            id: t.id,
+            start: new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0],
+            end: new Date(Date.now() + (t.daysOffsetEnd||0) * 86400000).toISOString().split('T')[0],
+            title: t.title, progress: t.progress || 0, status: t.status
+          }));
         }
       }
       

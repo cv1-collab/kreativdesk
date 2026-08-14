@@ -120,13 +120,15 @@ export default function Settings() {
   useEffect(() => {
     if (!currentUser) return;
     const fetchUser = async () => {
-      const { data } = await supabase.from('users').select('*').eq('id', currentUser.uid).single();
-      if (data) {
-        setDbData(data);
-        setPhone(data.phone || '');
-        setStreet(data.street || '');
-        setZipCity(data.zip_city || data.zipCity || '');
-      }
+      try {
+        const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
+        if (data) {
+          setDbData(data);
+          setPhone(data.phone || '');
+          setStreet(data.street || '');
+          setZipCity(data.zip_city || data.zipCity || '');
+        }
+      } catch (e) {}
       setIsLoadingDB(false);
     };
     fetchUser();
@@ -137,7 +139,7 @@ export default function Settings() {
     if (!currentUser) return;
     setIsUpdatingProfile(true);
     try {
-      await supabase.from('users').update({ phone, street, zip_city: zipCity, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      await supabase.from('profiles').update({ phone, street, zip_city: zipCity, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       setProfileSuccess(true);
       addToast(t('upload_success'), 'success');
       setTimeout(() => setProfileSuccess(false), 3000);
@@ -176,7 +178,7 @@ export default function Settings() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const photoURL = pubData.publicUrl;
-      await supabase.from('users').update({ photo_url: photoURL, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      await supabase.from('profiles').update({ photo_url: photoURL, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       addToast(t('upload_success'), 'success');
     } catch (error) {
       addToast(t('upload_failed'), 'error');
