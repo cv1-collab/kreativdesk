@@ -79,10 +79,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }).select().single();
 
       if (project) {
-        await supabaseAdmin.from('project_tasks').insert([
-          { project_id: project.id, title: 'Rohbauabnahme & Betongefüge prüfen', status: 'done', priority: 'high', company_id: companyId },
-          { project_id: project.id, title: 'BIM 3D-Modell & HKLS-Trassen abgleichen', status: 'in_progress', priority: 'high', company_id: companyId },
-          { project_id: project.id, title: 'Abnahme Brandschutzklappen OG1-OG3', status: 'todo', priority: 'medium', company_id: companyId }
+        await supabaseAdmin.from('defects').insert([
+          { project_id: project.id, prompt: 'Rohbauabnahme & Betongefüge prüfen', title: 'Rohbauabnahme & Betongefüge prüfen', status: 'Erledigt', priority: 'High', severity: 'High', company_id: companyId, created_at: now },
+          { project_id: project.id, prompt: 'BIM 3D-Modell & HKLS-Trassen abgleichen', title: 'BIM 3D-Modell & HKLS-Trassen abgleichen', status: 'In Arbeit', priority: 'High', severity: 'High', company_id: companyId, created_at: now },
+          { project_id: project.id, prompt: 'Abnahme Brandschutzklappen OG1-OG3', title: 'Abnahme Brandschutzklappen OG1-OG3', status: 'Offen', priority: 'Medium', severity: 'Medium', company_id: companyId, created_at: now }
         ]);
       }
     }
