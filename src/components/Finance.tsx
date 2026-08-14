@@ -28,6 +28,7 @@ import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
+import { demoTemplates } from '../utils/demoTemplates';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -463,11 +464,13 @@ export default function Finance() {
     // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
     if (!currentUser || !currentUser.companyId || !currentProjectId) return;
 
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     const fetchData = async () => {
+      if (!safeCompanyId) return;
       const { data: txs } = await supabase
         .from('transactions')
         .select('*')
-        .eq('company_id', currentUser.companyId)
+        .eq('company_id', safeCompanyId)
         .eq('project_id', currentProjectId)
         .order('created_at', { ascending: false });
 
@@ -548,7 +551,7 @@ export default function Finance() {
             data: {
               ...initialFinanceData,
               ownerId: currentUser.uid,
-              companyId: currentUser.companyId,
+              companyId: safeCompanyId,
               projectId: currentProjectId
             }
           });
@@ -562,7 +565,7 @@ export default function Finance() {
 
     const channel = supabase
       .channel('finance-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${currentUser.companyId}` }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
       .subscribe();
 
     return () => {
@@ -572,7 +575,8 @@ export default function Finance() {
 
   // AUTO-SAVE TO LOCAL STORAGE & SUPABASE SYSTEM_CONFIG ON BUDGET CHANGES
   useEffect(() => {
-    if (isDemoMode || isInitialLoad || !currentUser || !currentUser.companyId || isReadOnly || !currentProjectId) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (isDemoMode || isInitialLoad || !currentUser || !safeCompanyId || isReadOnly || !currentProjectId) return;
 
     const localCacheKey = `finance_cache_${currentProjectId}`;
     const saveData = {
@@ -581,7 +585,7 @@ export default function Finance() {
       projectHeader,
       includeOptions,
       ownerId: currentUser.uid,
-      companyId: currentUser.companyId,
+      companyId: safeCompanyId,
       projectId: currentProjectId
     };
     if (typeof localStorage !== 'undefined') {

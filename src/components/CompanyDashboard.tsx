@@ -93,7 +93,7 @@ export default function CompanyDashboard() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT?.(key) || key;
   
   const { currentUser, logout = async () => {} } = useAuth() || {};
-  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject, updateProjectStatus, addProject, fetchProjects } = useProject() as any;
+  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject, updateProjectStatus, addProject, fetchProjects, refreshAllData } = useProject() as any;
   const navigate = useNavigate();
   
   const { startTour } = useTour();
@@ -363,7 +363,9 @@ export default function CompanyDashboard() {
 
     try {
       const projId = await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, type);
-      if (fetchProjects) {
+      if (refreshAllData) {
+        await refreshAllData();
+      } else if (fetchProjects) {
         await fetchProjects();
       }
 

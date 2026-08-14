@@ -18,6 +18,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { demoTemplates } from '../utils/demoTemplates';
 import DailyGoals from './DailyGoals';
 
 // 🚀 NATIVES PDF STUDIO & VEKTOR ENGINE
@@ -155,14 +156,15 @@ export default function Dashboard() {
       return;
     }
     
-    if (!currentUser?.companyId || !activeProject?.id) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!safeCompanyId || !activeProject?.id) return;
     
     const fetchData = async () => {
       try {
         const { data: docsData } = await supabase
           .from('documents')
           .select('*')
-          .eq('company_id', currentUser.companyId)
+          .eq('company_id', safeCompanyId)
           .eq('project_id', activeProject.id);
 
         const docs = (docsData || []).map(d => ({ id: d.id, type: 'document', title: d.name, date: d.created_at || new Date().toISOString() }));
@@ -171,7 +173,7 @@ export default function Dashboard() {
         const { data: timesData } = await supabase
           .from('time_entries')
           .select('*')
-          .eq('company_id', currentUser.companyId)
+          .eq('company_id', safeCompanyId)
           .eq('project_id', activeProject.id);
 
         const times = (timesData || []).map(d => ({ id: d.id, type: 'time', title: `${d.hours}h: ${d.description}`, date: d.created_at || new Date().toISOString() }));
@@ -181,7 +183,7 @@ export default function Dashboard() {
         const { data: txsData } = await supabase
           .from('transactions')
           .select('*')
-          .eq('company_id', currentUser.companyId)
+          .eq('company_id', safeCompanyId)
           .eq('project_id', activeProject.id);
 
         if (txsData && txsData.length > 0) {
@@ -241,7 +243,7 @@ export default function Dashboard() {
                 },
                 includeOptions: false,
                 ownerId: currentUser?.uid,
-                companyId: currentUser?.companyId,
+                companyId: safeCompanyId,
                 projectId: activeProject.id
               }
             });
@@ -289,10 +291,11 @@ export default function Dashboard() {
   const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 
   const handleSavePdfToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!currentUser || !safeCompanyId) return;
     try {
       const fileName = `Executive_Summary_${Date.now()}.pdf`;
-      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, currentUser.companyId);
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
       await supabase.from('documents').insert({ 
         name: fileName, 
         url: downloadUrl, 
@@ -300,7 +303,7 @@ export default function Dashboard() {
         size: `${Math.round(blob.size / 1024)} KB`, 
         type: 'application/pdf', 
         owner_id: currentUser.uid,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         uploaded_by: currentUser.uid, 
         created_at: new Date().toISOString(), 
         uploaded_at: new Date().toISOString(), 

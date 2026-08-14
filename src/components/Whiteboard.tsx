@@ -184,15 +184,18 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   }, [bgImageSrc]);
 
   useEffect(() => {
-    if (currentUser && currentUser.companyId) {
+    if (currentUser) {
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
       const fetchNotes = async () => {
-        const { data } = await supabase
-          .from('audio_notes')
-          .select('*')
-          .eq('company_id', currentUser.companyId)
-          .eq('owner_id', currentUser.uid)
-          .order('created_at', { ascending: false });
-        if (data) setAudioNotes(data);
+        try {
+          const { data, error } = await supabase
+            .from('audio_notes')
+            .select('*')
+            .eq('company_id', safeCompanyId)
+            .eq('owner_id', currentUser.uid)
+            .order('created_at', { ascending: false });
+          if (!error && data) setAudioNotes(data);
+        } catch (e) {}
       };
       fetchNotes();
     }

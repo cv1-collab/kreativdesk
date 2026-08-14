@@ -13,9 +13,12 @@ export interface Defect { id: string; title: string; status: string; priority: s
 
 interface ProjectContextType {
   projects: Project[]; activeProjectId: string | null; companyUsers: CompanyUser[]; projectMembers: any[]; timeEntries: TimeEntry[]; defects: Defect[];
-  setActiveProject: (id: string | null) => void; addProject: (project: any) => Promise<void>; removeProject: (id: string) => Promise<void>;
+  setActiveProject: (id: string | null) => void; addProject: (project: any) => Promise<any>; removeProject: (id: string) => Promise<void>;
   updateProjectStatus: (id: string, status: string) => Promise<void>;
   fetchCompanyUsers: () => Promise<void>;
+  fetchProjects: () => Promise<void>;
+  fetchProjectDetails: () => Promise<void>;
+  refreshAllData: () => Promise<void>;
   addCompanyUser: (user: any) => Promise<void>; updateCompanyUser: (id: string, user: any) => Promise<void>; removeCompanyUser: (id: string) => Promise<void>;
   addProjectMember: (projectId: string, memberData: any) => Promise<void>; removeProjectMember: (projectId: string, userId: string) => Promise<void>;
   addTimeEntry: (entry: any) => Promise<void>; isDemoMode: boolean; demoData: any;
@@ -251,6 +254,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     };
   }, [currentUser, fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
 
+  const refreshAllData = useCallback(async () => {
+    await Promise.all([
+      fetchProjects(),
+      fetchCompanyUsers(),
+      fetchProjectDetails()
+    ]);
+  }, [fetchProjects, fetchCompanyUsers, fetchProjectDetails]);
+
   const addProject = async (projectData: any) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -290,10 +301,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
       } catch (e) {}
 
+      await refreshAllData();
       return createdProj;
     }
 
-    await fetchProjects();
+    await refreshAllData();
   };
 
   const removeProject = async (id: string) => {
@@ -412,8 +424,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ 
       projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects, 
-      setActiveProject: setActiveProjectId, addProject, removeProject, updateProjectStatus, fetchCompanyUsers, addCompanyUser, 
-      updateCompanyUser, removeCompanyUser, addProjectMember, removeProjectMember, 
+      setActiveProject: setActiveProjectId, addProject, removeProject, updateProjectStatus, 
+      fetchCompanyUsers, fetchProjects, fetchProjectDetails, refreshAllData,
+      addCompanyUser, updateCompanyUser, removeCompanyUser, addProjectMember, removeProjectMember, 
       addTimeEntry,
       isDemoMode: false,
       demoData: demoTemplates.construction

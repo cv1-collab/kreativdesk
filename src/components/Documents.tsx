@@ -256,7 +256,22 @@ export default function Documents() {
 
   useEffect(() => {
     fetchDocuments();
-  }, [currentUser]);
+
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const channel = supabase
+      .channel('documents-realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, () => {
+        fetchDocuments();
+      })
+      .subscribe();
+
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
+    };
+  }, [currentUser, activeProjectId, projects?.length]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;
