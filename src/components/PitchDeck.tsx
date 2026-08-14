@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { cn, sanitizeUrl } from '../utils';
+import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
 import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio from './PitchDeckStudio';
 import { demoTemplates } from '../utils/demoTemplates';
@@ -174,9 +175,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   }, [currentUser, currentProjectId]);
 
   useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    const cleanup = addFullscreenChangeListener(() => {
+      setIsFullscreen(isFullscreenActive());
+    });
+    return cleanup;
   }, []);
 
   const activeSlide = slides.find(s => s.id === activeSlideId) || null;
@@ -191,7 +193,13 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === 'Space') goNextSlide();
       if (e.key === 'ArrowLeft') goPrevSlide();
-      if (e.key === 'Escape' && isFullscreen) document.exitFullscreen();
+      if (e.key === 'Escape' && isFullscreen) {
+        if (isFullscreenActive()) {
+          safeExitFullscreen();
+        } else {
+          setIsFullscreen(false);
+        }
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -216,11 +224,17 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     }
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen().catch(err => console.error(err));
-    } else {
-      document.exitFullscreen();
+  const toggleFullscreen = async () => {
+    if (isFullscreenActive() || isFullscreen) {
+      if (isFullscreenActive()) {
+        await safeExitFullscreen();
+      }
+      setIsFullscreen(false);
+    } else if (containerRef.current) {
+      const success = await safeRequestFullscreen(containerRef.current);
+      if (!success) {
+        setIsFullscreen(true);
+      }
     }
   };
 
@@ -439,7 +453,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         </header>
       )}
 
-      <div ref={containerRef} className={cn("flex-1 relative flex items-center justify-center overflow-hidden", isFullscreen ? "bg-black" : "bg-zinc-950")}>
+      <div ref={containerRef} className={cn("flex-1 relative flex items-center justify-center overflow-hidden", isFullscreen ? "fixed inset-0 z-[9999] bg-black rounded-none border-none" : "bg-zinc-950")}>
         <div className="absolute inset-y-0 left-0 w-1/4 z-20 cursor-pointer flex items-center justify-start pl-4 md:pl-8 group" onClick={goPrevSlide}>
            <button disabled={!hasPrevSlide} className="p-3 md:p-4 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-0 transition-opacity hover:bg-black/80 backdrop-blur-md"><ChevronLeft size={32}/></button>
         </div>

@@ -9,7 +9,7 @@ import {
   Image as ImageIcon, Type, Trash2, CheckCircle2, AlertCircle,
   MousePointer2, Square, Circle, Minus, StickyNote, Edit2, Clock,
   FileText, Cloud, ImagePlus, Loader2, ListTree, ChevronDown, ZoomIn, ZoomOut,
-  LayoutDashboard, Users, Camera, AlertTriangle, Map, DollarSign, MonitorPlay, RotateCw
+  LayoutDashboard, Users, Camera, AlertTriangle, Map, DollarSign, MonitorPlay, RotateCw, Maximize
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useProject } from '../contexts/ProjectContext';
@@ -295,6 +295,8 @@ export default function Calendar() {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
 
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
+  const [forceLandscapeView, setForceLandscapeView] = useState(false);
+  const [isRotatedCss, setIsRotatedCss] = useState(false);
   const [isNativeLandscape, setIsNativeLandscape] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
   );
@@ -782,7 +784,7 @@ export default function Calendar() {
             
             {viewMode === 'gantt' && (
                <button 
-                 onClick={() => setIsLandscapeMode(true)} 
+                 onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); }} 
                  className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
                >
                   <RotateCw size={16}/> <span className="text-xs">{t('rotate')}</span>
@@ -858,26 +860,53 @@ export default function Calendar() {
         </header>
 
         {isMounted && isLandscapeMode && (
-          !isNativeLandscape ? createPortal(
+          !isNativeLandscape && !forceLandscapeView ? createPortal(
             <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95">
-              <div className="bg-surface border border-border p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm">
-                <RotateCw size={48} className="mb-6 text-accent-ai animate-[spin_3s_linear_infinite]" />
-                <h2 className="text-xl font-bold mb-3 text-text-primary">Bitte Smartphone drehen</h2>
-                <p className="text-sm text-text-muted mb-8 font-medium">Um die vollständige Masterplan-Ansicht zu nutzen, drehe dein Gerät bitte ins Querformat (Landscape).</p>
-                <button onClick={() => setIsLandscapeMode(false)} className="w-full py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl font-bold transition-colors">Abbrechen</button>
+              <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+                <RotateCw size={48} className="mb-4 text-accent-ai animate-[spin_3s_linear_infinite]" />
+                <h2 className="text-xl font-bold mb-2 text-text-primary">Masterplan im Vollbild</h2>
+                <p className="text-sm text-text-muted mb-6 font-medium">Drehe dein Smartphone ins Querformat oder öffne die Vollbild-Ansicht direkt.</p>
+                <div className="flex flex-col gap-3 w-full">
+                  <button 
+                    onClick={() => setForceLandscapeView(true)} 
+                    className="w-full py-3 bg-accent-ai text-white rounded-xl font-bold transition-all shadow-lg hover:bg-accent-ai/90 flex items-center justify-center gap-2"
+                  >
+                    <Maximize size={18} /> Masterplan jetzt öffnen
+                  </button>
+                  <button 
+                    onClick={() => { setForceLandscapeView(true); setIsRotatedCss(true); }} 
+                    className="w-full py-3 bg-surface border border-border/80 text-text-primary rounded-xl font-bold hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <RotateCw size={18} /> 90° Drehen (CSS)
+                  </button>
+                  <button 
+                    onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} 
+                    className="w-full py-2.5 text-text-muted hover:text-text-primary font-semibold text-sm transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                </div>
               </div>
             </div>,
             document.body
           ) : createPortal(
-            <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col touch-none">
+            <div style={{ zIndex: 999999 }} className={cn("fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col touch-none", isRotatedCss && "rotate-90 origin-center scale-90")}>
               <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
                 <div className="flex items-center justify-between p-3 border-b border-border/50 shrink-0 bg-surface z-50 relative">
                    <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
                       <CalendarIcon size={16} className="text-accent-ai"/> {docHeader.title}
                    </h3>
-                   <button onClick={() => setIsLandscapeMode(false)} className="p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border">
-                     <X size={18}/>
-                   </button>
+                   <div className="flex items-center gap-2">
+                     <button 
+                       onClick={() => setIsRotatedCss(prev => !prev)} 
+                       className={cn("px-3 py-1 rounded-lg border text-xs font-bold transition-colors flex items-center gap-1.5", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-background border-border text-text-primary")}
+                     >
+                       <RotateCw size={14} /> <span>90° Ansicht</span>
+                     </button>
+                     <button onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} className="p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border">
+                       <X size={18}/>
+                     </button>
+                   </div>
                 </div>
                 <div className="flex-1 overflow-hidden relative" onPointerMove={onGlobalPointerMove} onPointerUp={onGlobalPointerUp} onPointerLeave={onGlobalPointerUp}>
                   <div 

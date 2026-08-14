@@ -10,10 +10,11 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
-  Image as ImageIcon
+  Image as ImageIcon, Maximize
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
+import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive } from '../utils/fullscreen';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -336,6 +337,8 @@ export default function Finance() {
 
   // --- DIE NEUE ROTATIONS LOGIK FÜR iOS & MOBILE ---
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);
+  const [forceLandscapeView, setForceLandscapeView] = useState(false);
+  const [isRotatedCss, setIsRotatedCss] = useState(false);
   const [isPortrait, setIsPortrait] = useState(
     typeof window !== 'undefined' ? window.matchMedia('(orientation: portrait)').matches : false
   );
@@ -365,24 +368,23 @@ export default function Finance() {
     if (isLandscapeMode) {
       const lockScreen = async () => {
         try {
-          const docEl = document.documentElement as any;
-          if (docEl.requestFullscreen) await docEl.requestFullscreen();
-          else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+          if (!isFullscreenActive()) {
+            await safeRequestFullscreen(document.documentElement);
+          }
 
           if (window.screen.orientation && 'lock' in window.screen.orientation) {
             await (window.screen.orientation as any).lock('landscape');
           }
         } catch (e) {
-          // Fallback schlägt still fehl -> Nutzer muss manuell drehen (siehe Portal-Render-Logik unten)
+          // Fallback schlägt still fehl -> Nutzer muss manuell drehen
         }
       };
       lockScreen();
     } else {
       const unlockScreen = async () => {
         try {
-          if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
-            if (document.exitFullscreen) await document.exitFullscreen();
-            else if ((document as any).webkitExitFullscreen) await (document as any).webkitExitFullscreen();
+          if (isFullscreenActive()) {
+            await safeExitFullscreen();
           }
           if (window.screen.orientation && 'unlock' in window.screen.orientation) {
             window.screen.orientation.unlock();
@@ -1153,33 +1155,59 @@ export default function Finance() {
 
   // 🔥 NEU: Der VOLLBILD-LANDSCAPE Handler für Smartphones 🔥
   if (isLandscapeMode) {
-    // FALLBACK: Wenn das Handy hochkant (Portrait) ist, Overlay anzeigen, das zum Drehen auffordert.
-    // iOS verhindert oft das Drehen via API. Wir zwingen den Nutzer visuell dazu.
-    if (isPortrait) {
+    if (isPortrait && !forceLandscapeView) {
       return createPortal(
         <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95">
-          <div className="bg-surface border border-border p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm">
-            <RotateCw size={48} className="mb-6 text-accent-ai animate-[spin_3s_linear_infinite]" />
-            <h2 className="text-xl font-bold mb-3 text-text-primary">Bitte Smartphone drehen</h2>
-            <p className="text-sm text-text-muted mb-8 font-medium">Um die vollständige B2B-Tabellenansicht zu nutzen, drehe dein Gerät bitte ins Querformat (Landscape).</p>
-            <button onClick={() => setIsLandscapeMode(false)} className="w-full py-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl font-bold transition-colors">Abbrechen</button>
+          <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
+            <RotateCw size={48} className="mb-4 text-accent-ai animate-[spin_3s_linear_infinite]" />
+            <h2 className="text-xl font-bold mb-2 text-text-primary">Tabellenansicht im Vollbild</h2>
+            <p className="text-sm text-text-muted mb-6 font-medium">Drehe dein Smartphone ins Querformat oder öffne die Vollbild-Tabelle direkt.</p>
+            <div className="flex flex-col gap-3 w-full">
+              <button 
+                onClick={() => setForceLandscapeView(true)} 
+                className="w-full py-3 bg-accent-ai text-white rounded-xl font-bold transition-all shadow-lg hover:bg-accent-ai/90 flex items-center justify-center gap-2"
+              >
+                <Maximize size={18} /> Tabelle jetzt öffnen
+              </button>
+              <button 
+                onClick={() => { setForceLandscapeView(true); setIsRotatedCss(true); }} 
+                className="w-full py-3 bg-surface border border-border/80 text-text-primary rounded-xl font-bold hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
+              >
+                <RotateCw size={18} /> 90° Drehen (CSS)
+              </button>
+              <button 
+                onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} 
+                className="w-full py-2.5 text-text-muted hover:text-text-primary font-semibold text-sm transition-colors"
+              >
+                Abbrechen
+              </button>
+            </div>
           </div>
         </div>,
         document.body
       );
     }
 
-    // Wenn physisch im Landscape Modus, zeige die Tabelle im Vollbild:
-    // HIGHLIGHT: zIndex 999999 als inline-style garantiert, dass nichts (kein Header) mehr überlappt.
     return createPortal(
-      <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col">
+      <div style={{ zIndex: 999999 }} className={cn("fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col", isRotatedCss && "rotate-90 origin-center scale-90")}>
         <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 p-4 lg:p-6 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
 
           <div className="flex justify-between items-center mb-4 shrink-0">
             <h2 className="text-xl font-bold flex items-center gap-2 text-accent-ai"><RotateCw size={20} /> Tabellenansicht</h2>
-            <button onClick={() => setIsLandscapeMode(false)} className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2">
-              <X size={18} /> <span className="hidden sm:inline">Schließen</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsRotatedCss(prev => !prev)} 
+                className={cn("px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-surface border-border/50 text-text-primary hover:bg-white/5")}
+              >
+                <RotateCw size={14} /> <span>90° Ansicht</span>
+              </button>
+              <button 
+                onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} 
+                className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2"
+              >
+                <X size={18} /> <span className="hidden sm:inline">Schließen</span>
+              </button>
+            </div>
           </div>
 
           <div className="flex-1 overflow-auto custom-scrollbar -mx-4 px-4 lg:-mx-6 lg:px-6">
@@ -1484,7 +1512,7 @@ export default function Finance() {
               <p className="text-sm text-text-muted mt-1 font-medium">{projectHeader.project}</p>
             </div>
             {(activeTab === 'budget' || activeTab === 'cashflow' || activeTab === 'control') && (
-              <button onClick={() => setIsLandscapeMode(true)} className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform">
+              <button onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); }} className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform">
                 <RotateCw size={14} /> <span className="text-xs">{t('rotate')}</span>
               </button>
             )}

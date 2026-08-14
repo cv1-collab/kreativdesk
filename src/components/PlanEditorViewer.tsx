@@ -1256,7 +1256,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       <div className="flex-1 flex overflow-hidden relative bg-background touch-none">
         
         {/* WERKZEUGLEISTE LINKS */}
-        <aside className="absolute left-6 top-6 w-14 flex flex-col items-center gap-2 py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-y-auto max-h-[80%] custom-scrollbar">
+        <aside className="absolute left-2 sm:left-6 top-2 sm:top-6 w-12 sm:w-14 flex flex-col items-center gap-1.5 sm:gap-2 py-2 sm:py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-y-auto max-h-[80%] custom-scrollbar">
            {['pan', 'image', 'polygon', 'rect', 'circle', 'titleblock', 'scalebar', 'defect', 'text', 'pen', 'measure'].map(tool => (
              <button 
                key={tool} 

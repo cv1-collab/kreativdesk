@@ -17,6 +17,7 @@ import {
   Hand, CheckCircle2, Plus, Edit2, Trash2, FileText, Cloud, PenTool, Smartphone, LayoutDashboard, CalendarDays, Users, AlertTriangle, DollarSign, MonitorPlay, Map
 } from 'lucide-react';
 import { cn } from '../utils';
+import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
 
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
@@ -708,12 +709,31 @@ export default function BIMViewer() {
     return newF ? newF.id : '';
   };
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const cleanup = addFullscreenChangeListener(() => {
+      setIsFullscreen(isFullscreenActive());
+    });
+    return cleanup;
+  }, []);
+
   const handleSelect = (id: string, details?: any) => { setSelectedId(id); if (details) { setSelectedDetails(details); } else { setSelectedDetails(null); } };
   const handleMeasureClick = (point: THREE.Vector3) => { if (measurePoints.length >= 2) { setMeasurePoints([point]); } else { setMeasurePoints([...measurePoints, point]); } };
   const handleDefectClick = async (point: THREE.Vector3, normal: THREE.Vector3) => { setDefectPrompt({ isOpen: true, point, normal, value: "" }); };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) { viewerRef.current?.requestFullscreen().catch(err => console.error(err)); } else { document.exitFullscreen(); }
+  const toggleFullscreen = async () => {
+    if (isFullscreenActive() || isFullscreen) {
+      if (isFullscreenActive()) {
+        await safeExitFullscreen();
+      }
+      setIsFullscreen(false);
+    } else if (viewerRef.current) {
+      const success = await safeRequestFullscreen(viewerRef.current);
+      if (!success) {
+        setIsFullscreen(true);
+      }
+    }
   };
 
   const handleDefectSubmit = async (e: React.FormEvent) => {
@@ -1194,7 +1214,7 @@ export default function BIMViewer() {
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
           
-          <div ref={viewerRef} className="flex-1 bg-black border border-border rounded-xl relative overflow-hidden flex flex-col min-h-0 z-10">
+          <div ref={viewerRef} className={cn("flex-1 bg-black border border-border rounded-xl relative overflow-hidden flex flex-col min-h-0 z-10", isFullscreen && "fixed inset-0 z-[9999] rounded-none border-none")}>
             
             {isMobile && !forceMobile3D ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 p-6 text-center relative overflow-hidden">

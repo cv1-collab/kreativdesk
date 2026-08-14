@@ -9,6 +9,7 @@ import {
   Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check
 } from 'lucide-react';
 import { cn } from '../utils';
+import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { fal } from "@fal-ai/client";
 
@@ -202,14 +203,24 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   }, [currentUser]);
 
   useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    const cleanup = addFullscreenChangeListener(() => {
+      setIsFullscreen(isFullscreenActive());
+    });
+    return cleanup;
   }, []);
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) containerRef.current?.requestFullscreen().catch(err => console.error(err));
-    else document.exitFullscreen();
+  const toggleFullscreen = async () => {
+    if (isFullscreenActive() || isFullscreen) {
+      if (isFullscreenActive()) {
+        await safeExitFullscreen();
+      }
+      setIsFullscreen(false);
+    } else if (containerRef.current) {
+      const success = await safeRequestFullscreen(containerRef.current);
+      if (!success) {
+        setIsFullscreen(true);
+      }
+    }
   };
 
   useEffect(() => {
@@ -757,7 +768,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         <div className="flex-1 flex flex-col lg:flex-row min-h-0 h-full overflow-hidden">
           
           {/* WHITEBOARD CANVAS */}
-          <div className={cn("flex-1 relative overflow-hidden flex-col bg-[#f9fafb] dark:bg-[#09090b]", mobileTab === 'whiteboard' ? "flex h-full" : "hidden lg:flex h-full")} ref={containerRef}>
+          <div className={cn("flex-1 relative overflow-hidden flex-col bg-[#f9fafb] dark:bg-[#09090b]", mobileTab === 'whiteboard' ? "flex h-full" : "hidden lg:flex h-full", isFullscreen && "fixed inset-0 z-[9999] rounded-none border-none")} ref={containerRef}>
             
             {/* TOOLBAR */}
             <div className="absolute bottom-4 md:top-4 md:bottom-auto left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-2rem)] custom-scrollbar">
