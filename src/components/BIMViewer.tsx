@@ -619,12 +619,13 @@ export default function BIMViewer() {
       if (data) {
         const loadedPins: any[] = [];
         data.forEach(d => {
-          if (d.model_id === activeModelId && d.title) {
+          const pinTitle = d.title || d.prompt;
+          if (d.model_id === activeModelId && pinTitle) {
              loadedPins.push({
                id: d.id,
-               position: new THREE.Vector3(d.pos_x || 0, d.pos_y || 0, d.pos_z || 0),
+               position: new THREE.Vector3(d.pos_x || d.position?.x || 0, d.pos_y || d.position?.y || 0, d.pos_z || d.position?.z || 0),
                normal: new THREE.Vector3(0, 1, 0),
-               title: d.title,
+               title: pinTitle,
                description: d.description || '',
                status: d.status || 'To Do',
                modelId: d.model_id 
@@ -746,6 +747,7 @@ export default function BIMViewer() {
         await supabase.from('defects').insert({ 
           id: newPin.id, 
           title: desc || 'Neuer Mangel', 
+          prompt: desc || 'Neuer Mangel',
           status: 'To Do', 
           priority: 'Medium', 
           assignee: 'Unassigned', 

@@ -1175,6 +1175,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         await supabase.from('defects').upsert({ 
           id: newPin.id, 
           title: newPin.description, 
+          prompt: newPin.description,
           status: 'To Do', 
           priority: 'High', 
           assignee: 'Unassigned', 
