@@ -354,14 +354,13 @@ export default function MeetChat() {
           if (safeCompanyId) {
             const { data: config } = await supabase
               .from('system_config')
-              .select('data')
+              .select('*')
               .eq('id', `schedule_calls_${safeCompanyId}`)
               .maybeSingle();
-            if (config?.data?.calls) configCalls = config.data.calls;
+            const cData = (config as any)?.data || config;
+            if (cData?.calls) configCalls = cData.calls;
           }
-        } catch (cfgErr) {
-          console.warn("System config calls fallback handled:", cfgErr);
-        }
+        } catch (cfgErr) {}
 
         const dbCalls = (events || []).map((e: any) => ({
           id: e.id,
@@ -577,22 +576,20 @@ export default function MeetChat() {
 
       // 2. Backup to system_config (both calls and agenda events)
       try {
-        const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `schedule_calls_${currentUser.companyId}`).maybeSingle();
-        const existingCalls = existingConfig?.data?.calls || [];
+        const { data: existingConfig } = await supabase.from('system_config').select('*').eq('id', `schedule_calls_${currentUser.companyId}`).maybeSingle();
+        const cCalls = (existingConfig as any)?.data?.calls || existingConfig?.calls || [];
         await supabase.from('system_config').upsert({
           id: `schedule_calls_${currentUser.companyId}`,
-          data: { calls: [newCallObj, ...existingCalls], companyId: currentUser.companyId }
+          data: { calls: [newCallObj, ...cCalls], companyId: currentUser.companyId }
         });
 
-        const { data: agendaConfig } = await supabase.from('system_config').select('data').eq('id', `agenda_events_${currentUser.companyId}`).maybeSingle();
-        const existingAgendaEvents = agendaConfig?.data?.events || [];
+        const { data: agendaConfig } = await supabase.from('system_config').select('*').eq('id', `agenda_events_${currentUser.companyId}`).maybeSingle();
+        const cEvents = (agendaConfig as any)?.data?.events || agendaConfig?.events || [];
         await supabase.from('system_config').upsert({
           id: `agenda_events_${currentUser.companyId}`,
-          data: { events: [newCallObj, ...existingAgendaEvents], companyId: currentUser.companyId }
+          data: { events: [newCallObj, ...cEvents], companyId: currentUser.companyId }
         });
-      } catch (backupErr) {
-        console.warn("Call backup fail:", backupErr);
-      }
+      } catch (backupErr) {}
 
       // 3. Insert into calendar_events with schema resilience
       try {

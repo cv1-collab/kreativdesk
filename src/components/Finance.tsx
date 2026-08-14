@@ -482,35 +482,41 @@ export default function Finance() {
         setTransactions([]);
       }
 
-      // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG
-      const { data: finConfig } = await supabase
-        .from('system_config')
-        .select('*')
-        .eq('id', `finance_${currentProjectId}`)
-        .maybeSingle();
+      // LocalStorage Cache Key
+      const localCacheKey = `finance_cache_${currentProjectId}`;
+      const cachedStr = typeof localStorage !== 'undefined' ? localStorage.getItem(localCacheKey) : null;
+      let cachedData: any = null;
+      if (cachedStr) {
+        try { cachedData = JSON.parse(cachedStr); } catch (e) {}
+      }
 
-      const configData = (finConfig as any)?.data || finConfig;
+      // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG (silently handle missing column/table error)
+      let finConfig: any = null;
+      try {
+        const res = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('id', `finance_${currentProjectId}`)
+          .maybeSingle();
+        finConfig = res.data;
+      } catch (e) {}
+
+      const configData = (finConfig as any)?.data || finConfig || cachedData;
       const hasValidGroups = Array.isArray(configData?.versions) &&
         configData.versions.length > 0 &&
         Array.isArray(configData.versions[0]?.groups) &&
         configData.versions[0].groups.length > 0;
 
-      if (finConfig?.data && hasValidGroups) {
-        if (Array.isArray(finConfig.data.versions) && finConfig.data.versions.length > 0) {
-          setVersions(finConfig.data.versions);
-        }
-        if (finConfig.data.activeVersionId) {
-          setActiveVersionId(finConfig.data.activeVersionId);
-        }
-        if (finConfig.data.projectHeader) {
-          setProjectHeader(finConfig.data.projectHeader);
-        }
-        if (finConfig.data.includeOptions !== undefined) {
-          setIncludeOptions(finConfig.data.includeOptions);
-        }
+      if (hasValidGroups) {
+        setVersions(configData.versions);
+        if (configData.activeVersionId) setActiveVersionId(configData.activeVersionId);
+        if (configData.projectHeader) setProjectHeader(configData.projectHeader);
+        if (configData.includeOptions !== undefined) setIncludeOptions(configData.includeOptions);
       } else {
-        // FALLBACK: Clean empty state
-        const initGroups: any[] = [];
+        // FALLBACK: Use construction template groups so new / un-configured projects are not blank!
+        const initGroups = (demoTemplates.construction?.financeGroups && demoTemplates.construction.financeGroups.length > 0)
+          ? demoTemplates.construction.financeGroups
+          : [];
         const initVersion: BudgetVersion = {
           id: `v-approved-${currentProjectId}`,
           name: 'Originalbudget',
@@ -518,31 +524,35 @@ export default function Finance() {
           status: 'approved',
           groups: initGroups
         };
+        const initialFinanceData = {
+          versions: [initVersion],
+          activeVersionId: initVersion.id,
+          projectHeader: {
+            project: activeProject?.name || 'Quartier Neubau Süd',
+            client: 'Bauherrschaft AG',
+            date: new Date().toISOString().split('T')[0],
+            version: 'Originalbudget'
+          },
+          includeOptions: false
+        };
         setVersions([initVersion]);
         setActiveVersionId(initVersion.id);
-        setProjectHeader(prev => ({
-          ...prev,
-          project: activeProject?.name || 'Projektbudget',
-          client: activeProject?.company_name || 'Kunde',
-          version: 'Originalbudget'
-        }));
-        await supabase.from('system_config').upsert({
-          id: `finance_${currentProjectId}`,
-          data: {
-            versions: [initVersion],
-            activeVersionId: initVersion.id,
-            projectHeader: {
-              project: activeProject?.name || 'Projektbudget',
-              client: 'Bauherrschaft AG',
-              date: new Date().toISOString().split('T')[0],
-              version: 'Originalbudget'
-            },
-            includeOptions: false,
-            ownerId: currentUser.uid,
-            companyId: currentUser.companyId,
-            projectId: currentProjectId
-          }
-        });
+        setProjectHeader(initialFinanceData.projectHeader);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem(localCacheKey, JSON.stringify(initialFinanceData));
+        }
+
+        try {
+          await supabase.from('system_config').upsert({
+            id: `finance_${currentProjectId}`,
+            data: {
+              ...initialFinanceData,
+              ownerId: currentUser.uid,
+              companyId: currentUser.companyId,
+              projectId: currentProjectId
+            }
+          });
+        } catch (e) {}
       }
 
       setIsInitialLoad(false);
@@ -560,26 +570,31 @@ export default function Finance() {
     };
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject]);
 
-  // AUTO-SAVE TO SUPABASE SYSTEM_CONFIG ON BUDGET CHANGES
+  // AUTO-SAVE TO LOCAL STORAGE & SUPABASE SYSTEM_CONFIG ON BUDGET CHANGES
   useEffect(() => {
     if (isDemoMode || isInitialLoad || !currentUser || !currentUser.companyId || isReadOnly || !currentProjectId) return;
+
+    const localCacheKey = `finance_cache_${currentProjectId}`;
+    const saveData = {
+      versions,
+      activeVersionId,
+      projectHeader,
+      includeOptions,
+      ownerId: currentUser.uid,
+      companyId: currentUser.companyId,
+      projectId: currentProjectId
+    };
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(localCacheKey, JSON.stringify(saveData));
+    }
+
     const timeout = setTimeout(async () => {
       try {
         await supabase.from('system_config').upsert({
           id: `finance_${currentProjectId}`,
-          data: {
-            versions,
-            activeVersionId,
-            projectHeader,
-            includeOptions,
-            ownerId: currentUser.uid,
-            companyId: currentUser.companyId,
-            projectId: currentProjectId
-          }
+          data: saveData
         });
-      } catch (e) {
-        console.error('Error saving finance system_config:', e);
-      }
+      } catch (e) {}
     }, 1500);
     return () => clearTimeout(timeout);
   }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, isReadOnly, isDemoMode, isInitialLoad]);

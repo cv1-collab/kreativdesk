@@ -412,17 +412,30 @@ export default function Calendar() {
 
     const fetchSchedule = async () => {
       try {
-        const { data } = await supabase
-          .from('system_config')
-          .select('data')
-          .eq('id', `schedule_${scheduleDocId}`)
-          .single();
+        const localCacheKey = `schedule_cache_${scheduleDocId}`;
+        const cachedStr = typeof localStorage !== 'undefined' ? localStorage.getItem(localCacheKey) : null;
+        let cachedData: any = null;
+        if (cachedStr) {
+          try { cachedData = JSON.parse(cachedStr); } catch (e) {}
+        }
 
-        if (data?.data?.schedules && data.data.schedules.length > 0) {
-          const scheds = data.data.schedules;
+        let rawData: any = null;
+        try {
+          const res = await supabase
+            .from('system_config')
+            .select('*')
+            .eq('id', `schedule_${scheduleDocId}`)
+            .maybeSingle();
+          rawData = res.data;
+        } catch (e) {}
+
+        const configData = (rawData as any)?.data || rawData || cachedData;
+
+        if (configData?.schedules && configData.schedules.length > 0) {
+          const scheds = configData.schedules;
           setSchedules(scheds);
           if (!hasLoadedInitial.current) {
-            const activeId = data.data.activeScheduleId || scheds[0].id;
+            const activeId = configData.activeScheduleId || scheds[0].id;
             const target = scheds.find((s: Schedule) => s.id === activeId) || scheds[0];
             setActiveScheduleId(target.id);
             setScheduleName(target.name || 'Masterplan');
@@ -433,11 +446,11 @@ export default function Calendar() {
             hasLoadedInitial.current = true;
           }
         } else {
-          const isDemo = currentProjectId === 'demo-1';
           const today = new Date();
           let initTasks: GanttTask[] = [];
           let initMarkers: SmartMarker[] = [];
-          if (isDemo && demoTemplates.construction) {
+          
+          if (demoTemplates.construction) {
             initTasks = demoTemplates.construction.tasks.map((t: any) => {
               const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 20);
               const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 20);
@@ -454,10 +467,18 @@ export default function Calendar() {
           const initialSchedule: Schedule = { id: `s-${Date.now()}`, name: 'Masterplan', targetYear: today.getFullYear(), ganttTasks: initTasks, smartMarkers: initMarkers, shapes: [] };
           setSchedules([initialSchedule]);
           setActiveScheduleId(initialSchedule.id);
-          await supabase.from('system_config').upsert({
-            id: `schedule_${scheduleDocId}`,
-            data: { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId }
-          });
+          
+          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId };
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(localCacheKey, JSON.stringify(schedPayload));
+          }
+
+          try {
+            await supabase.from('system_config').upsert({
+              id: `schedule_${scheduleDocId}`,
+              data: schedPayload
+            });
+          } catch (e) {}
         }
       } catch (err) {
         console.error("Calendar schedule error:", err);

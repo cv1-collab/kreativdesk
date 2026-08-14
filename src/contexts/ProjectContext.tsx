@@ -168,13 +168,17 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('company_id', safeCompanyId);
 
-      const { data: configTime } = await supabase
-        .from('system_config')
-        .select('data')
-        .eq('id', `time_entries_${safeCompanyId}`)
-        .maybeSingle();
+      let configTime: any = null;
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('id', `time_entries_${safeCompanyId}`)
+          .maybeSingle();
+        configTime = data;
+      } catch (e) {}
 
-      const configTimes = configTime?.data?.entries || [];
+      const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
       const timeMap = new Map();
       [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
         if (t && (t.id || t.description || t.hours)) {
@@ -254,10 +258,26 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
-    await fetchProjects();
     if (newProj) {
-      setActiveProjectId(newProj.id);
+      const createdProj: Project = {
+        id: newProj.id,
+        name: newProj.name,
+        description: newProj.description || '',
+        status: (newProj.status as any) || 'planning',
+        role: 'owner',
+        createdAt: newProj.created_at || new Date().toISOString(),
+        ownerId: newProj.owner_id || currentUser.uid,
+        companyId: newProj.company_id || safeCompanyId
+      };
+      setProjects(prev => [createdProj, ...prev.filter(p => p.id !== createdProj.id)]);
+      setActiveProjectId(createdProj.id);
+      
+      try {
+        await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
+      } catch (e) {}
     }
+
+    await fetchProjects();
   };
 
   const removeProject = async (id: string) => {

@@ -132,13 +132,17 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
       const rawCache = localStorage.getItem(localCacheKey);
       const localCachedTimes: any[] = rawCache ? JSON.parse(rawCache) : [];
 
-      const { data: configTime } = await supabase
-        .from('system_config')
-        .select('data')
-        .eq('id', `time_entries_${safeCompanyId}`)
-        .maybeSingle();
+      let configTime: any = null;
+      try {
+        const resTime = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('id', `time_entries_${safeCompanyId}`)
+          .maybeSingle();
+        configTime = resTime.data;
+      } catch (e) {}
 
-      const configTimes = configTime?.data?.entries || [];
+      const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
 
       const timeMap = new Map();
       [...localCachedTimes, ...configTimes, ...(times || [])].forEach((t: any) => {

@@ -385,13 +385,17 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           .select('*')
           .eq('company_id', safeCompanyId);
 
-        const { data: config } = await supabase
-          .from('system_config')
-          .select('data')
-          .eq('id', `agenda_events_${safeCompanyId}`)
-          .maybeSingle();
+        let config: any = null;
+        try {
+          const res = await supabase
+            .from('system_config')
+            .select('*')
+            .eq('id', `agenda_events_${safeCompanyId}`)
+            .maybeSingle();
+          config = res.data;
+        } catch (e) {}
 
-        const configEvents = config?.data?.events || [];
+        const configEvents = (config as any)?.data?.events || config?.events || [];
         const eventMap = new Map();
         [...localCachedEvents, ...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
           if (evt && (evt.title || evt.id)) {
@@ -416,13 +420,17 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         const rawTimeCache = localStorage.getItem(timeCacheKey);
         const localCachedTimes: any[] = rawTimeCache ? JSON.parse(rawTimeCache) : [];
 
-        const { data: configTime } = await supabase
-          .from('system_config')
-          .select('data')
-          .eq('id', `time_entries_${safeCompanyId}`)
-          .maybeSingle();
+        let configTime: any = null;
+        try {
+          const resTime = await supabase
+            .from('system_config')
+            .select('*')
+            .eq('id', `time_entries_${safeCompanyId}`)
+            .maybeSingle();
+          configTime = resTime.data;
+        } catch (e) {}
 
-        const configTimes = configTime?.data?.entries || [];
+        const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
 
         const { data: dbTimes } = await supabase
           .from('time_entries')
@@ -601,15 +609,13 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
       // 2. Backup in system_config
       try {
-        const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
-        const existingEntries = existingConfig?.data?.entries || [];
+        const { data: existingConfig } = await supabase.from('system_config').select('*').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
+        const existingEntries = (existingConfig as any)?.data?.entries || existingConfig?.entries || [];
         await supabase.from('system_config').upsert({
           id: `time_entries_${safeCompanyId}`,
           data: { entries: [newEntryObj, ...existingEntries], companyId: safeCompanyId }
         });
-      } catch (backupErr) {
-        console.warn("Time entry backup warning:", backupErr);
-      }
+      } catch (backupErr) {}
 
       // 3. Insert into Supabase time_entries
       await supabase.from('time_entries').insert({
@@ -726,15 +732,13 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
       // Backup to system_config
       try {
-        const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `agenda_events_${safeCompanyId}`).maybeSingle();
-        const existingEvents = existingConfig?.data?.events || [];
+        const { data: existingConfig } = await supabase.from('system_config').select('*').eq('id', `agenda_events_${safeCompanyId}`).maybeSingle();
+        const existingEvents = (existingConfig as any)?.data?.events || existingConfig?.events || [];
         await supabase.from('system_config').upsert({
           id: `agenda_events_${safeCompanyId}`,
           data: { events: [normalizedFinal, ...existingEvents], companyId: safeCompanyId }
         });
-      } catch (backupErr) {
-        console.warn("Agenda event backup fail:", backupErr);
-      }
+      } catch (backupErr) {}
 
       // Trigger notification bell
       await sendNotification({
@@ -936,22 +940,21 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           try {
             const { data: configTime } = await supabase
               .from('system_config')
-              .select('data')
+              .select('*')
               .eq('id', `time_entries_${safeCompanyId}`)
               .maybeSingle();
 
-            if (configTime?.data?.entries) {
-              const updatedConfigEntries = configTime.data.entries.filter((t: any) => 
+            const cData = (configTime as any)?.data || configTime;
+            if (cData?.entries) {
+              const updatedConfigEntries = cData.entries.filter((t: any) => 
                 t.id !== entryId && `time-${t.date}-${t.hours}` !== entryId
               );
               await supabase.from('system_config').upsert({
                 id: `time_entries_${safeCompanyId}`,
-                data: { ...configTime.data, entries: updatedConfigEntries }
+                data: { ...cData, entries: updatedConfigEntries }
               });
             }
-          } catch (cfgErr) {
-            console.warn("Error updating system_config on delete:", cfgErr);
-          }
+          } catch (cfgErr) {}
         }
 
         addToast(t('delete') + ' ' + t('completed'), 'success');

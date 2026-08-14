@@ -368,26 +368,36 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       smartMarkers: mappedMarkers,
       shapes: []
     };
-    await supabase.from('system_config').upsert({
-      id: scheduleConfigId,
-      data: {
-        schedules: [demoSchedule],
-        activeScheduleId: demoSchedule.id,
-        companyId: realCompanyId,
-        projectId: projId
-      }
-    });
+    const schedPayload = {
+      schedules: [demoSchedule],
+      activeScheduleId: demoSchedule.id,
+      companyId: realCompanyId,
+      projectId: projId
+    };
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`schedule_cache_${projId}`, JSON.stringify(schedPayload));
+    }
+    try {
+      await supabase.from('system_config').upsert({
+        id: scheduleConfigId,
+        data: schedPayload
+      });
+    } catch (e) {}
   }
 
   // 8. Seed Finance (Budgetplan) to system_config
   const financeConfigId = `finance_${projId}`;
-  const { data: existingFinance } = await supabase
-    .from('system_config')
-    .select('id, data')
-    .eq('id', financeConfigId)
-    .maybeSingle();
+  let existingFinance: any = null;
+  try {
+    const res = await supabase
+      .from('system_config')
+      .select('*')
+      .eq('id', financeConfigId)
+      .maybeSingle();
+    existingFinance = res.data;
+  } catch (e) {}
 
-  const existingGroups = existingFinance?.data?.versions?.[0]?.groups;
+  const existingGroups = (existingFinance as any)?.data?.versions?.[0]?.groups || existingFinance?.versions?.[0]?.groups;
   const hasGroups = Array.isArray(existingGroups) && existingGroups.length > 0;
 
   if ((!existingFinance || !hasGroups) && Array.isArray(template.financeGroups)) {
@@ -398,23 +408,29 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
       status: 'approved',
       groups: template.financeGroups
     };
-    await supabase.from('system_config').upsert({
-      id: financeConfigId,
-      data: {
-        versions: [demoVersion],
-        activeVersionId: demoVersion.id,
-        projectHeader: {
-          project: projData.name || 'Quartier Neubau Süd',
-          client: 'Bauherrschaft AG',
-          date: new Date().toISOString().split('T')[0],
-          version: 'Originalbudget'
-        },
-        includeOptions: false,
-        ownerId: ownerId,
-        companyId: realCompanyId,
-        projectId: projId
-      }
-    });
+    const finPayload = {
+      versions: [demoVersion],
+      activeVersionId: demoVersion.id,
+      projectHeader: {
+        project: projData.name || 'Quartier Neubau Süd',
+        client: 'Bauherrschaft AG',
+        date: new Date().toISOString().split('T')[0],
+        version: 'Originalbudget'
+      },
+      includeOptions: false,
+      ownerId: ownerId,
+      companyId: realCompanyId,
+      projectId: projId
+    };
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(`finance_cache_${projId}`, JSON.stringify(finPayload));
+    }
+    try {
+      await supabase.from('system_config').upsert({
+        id: financeConfigId,
+        data: finPayload
+      });
+    } catch (e) {}
   }
 
   return projId;

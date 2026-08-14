@@ -82,16 +82,15 @@ export default function Login() {
       try {
         const { data } = await supabase
           .from('system_config')
-          .select('data')
+          .select('*')
           .eq('id', 'global_master')
           .maybeSingle();
 
-        if (data?.data?.loginBgImage) {
-          setCustomBg(data.data.loginBgImage);
+        const configData = (data as any)?.data || data;
+        if (configData?.loginBgImage) {
+          setCustomBg(configData.loginBgImage);
         }
-      } catch (e) {
-        console.error("Login custom background error:", e);
-      }
+      } catch (e) {}
     };
     fetchBg();
   }, []);

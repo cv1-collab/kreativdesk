@@ -85,11 +85,11 @@ export default function Layout() {
       try {
         const { data } = await supabase
           .from('system_config')
-          .select('data')
+          .select('*')
           .eq('id', 'global_master')
           .maybeSingle();
 
-        const config = data?.data || {};
+        const config = (data as any)?.data || data || {};
         if (config.announcementActive && config.announcementText) {
           setAnnouncement({
             text: config.announcementText,
@@ -98,7 +98,7 @@ export default function Layout() {
           });
         }
       } catch (e) {
-        console.error("Announcement fetch error:", e);
+        // Silently ignore system_config fetch errors
       }
     };
     fetchAnnouncement();

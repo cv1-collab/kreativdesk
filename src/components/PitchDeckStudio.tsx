@@ -708,8 +708,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
            });
         }
       } else {
-        const { data: finConfig } = await supabase.from('system_config').select('data').eq('id', `finance_${targetId}`).maybeSingle();
-        const data = finConfig?.data;
+        let finConfig: any = null;
+        try {
+          const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetId}`).maybeSingle();
+          finConfig = res.data;
+        } catch (e) {}
+        const data = (finConfig as any)?.data || finConfig;
         if (data) {
           const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
           if (activeVersion && activeVersion.groups && activeVersion.groups.length > 0) {

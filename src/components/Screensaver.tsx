@@ -31,11 +31,11 @@ export default function Screensaver() {
       try {
         const { data: sysData } = await supabase
           .from('system_config')
-          .select('data')
+          .select('*')
           .eq('id', 'global_master')
           .maybeSingle();
 
-        const sysConf = sysData?.data || {};
+        const sysConf = (sysData as any)?.data || sysData || {};
 
         let compData = null;
         if (currentUser?.companyId || currentUser?.uid) {

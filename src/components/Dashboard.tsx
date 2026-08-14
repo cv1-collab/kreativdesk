@@ -190,21 +190,35 @@ export default function Dashboard() {
           setTransactions([]);
         }
 
-        const { data: finConfig } = await supabase
-          .from('system_config')
-          .select('data')
-          .eq('id', `finance_${activeProject.id}`)
-          .maybeSingle();
+        const localCacheKey = `finance_cache_${activeProject.id}`;
+        const cachedStr = typeof localStorage !== 'undefined' ? localStorage.getItem(localCacheKey) : null;
+        let cachedData: any = null;
+        if (cachedStr) {
+          try { cachedData = JSON.parse(cachedStr); } catch (e) {}
+        }
 
-        const hasValidGroups = Array.isArray(finConfig?.data?.versions) &&
-          finConfig.data.versions.length > 0 &&
-          Array.isArray(finConfig.data.versions[0]?.groups) &&
-          finConfig.data.versions[0].groups.length > 0;
+        let finConfig: any = null;
+        try {
+          const res = await supabase
+            .from('system_config')
+            .select('*')
+            .eq('id', `finance_${activeProject.id}`)
+            .maybeSingle();
+          finConfig = res.data;
+        } catch (e) {}
 
-        if (finConfig?.data && hasValidGroups) {
-          setVersions(finConfig.data.versions);
+        const configData = (finConfig as any)?.data || finConfig || cachedData;
+        const hasValidGroups = Array.isArray(configData?.versions) &&
+          configData.versions.length > 0 &&
+          Array.isArray(configData.versions[0]?.groups) &&
+          configData.versions[0].groups.length > 0;
+
+        if (hasValidGroups) {
+          setVersions(configData.versions);
         } else {
-          const initGroups: any[] = [];
+          const initGroups = (demoTemplates.construction?.financeGroups && demoTemplates.construction.financeGroups.length > 0)
+            ? demoTemplates.construction.financeGroups
+            : [];
           const initVersion = {
             id: `v-approved-${activeProject.id}`,
             name: 'Originalbudget',
@@ -213,23 +227,25 @@ export default function Dashboard() {
             groups: initGroups
           };
           setVersions([initVersion]);
-          await supabase.from('system_config').upsert({
-            id: `finance_${activeProject.id}`,
-            data: {
-              versions: [initVersion],
-              activeVersionId: initVersion.id,
-              projectHeader: {
-                project: activeProject.name || 'Projektbudget',
-                client: 'Bauherrschaft AG',
-                date: new Date().toISOString().split('T')[0],
-                version: 'Originalbudget'
-              },
-              includeOptions: false,
-              ownerId: currentUser.uid,
-              companyId: currentUser.companyId,
-              projectId: activeProject.id
-            }
-          });
+          try {
+            await supabase.from('system_config').upsert({
+              id: `finance_${activeProject.id}`,
+              data: {
+                versions: [initVersion],
+                activeVersionId: initVersion.id,
+                projectHeader: {
+                  project: activeProject.name || 'Projektbudget',
+                  client: 'Bauherrschaft AG',
+                  date: new Date().toISOString().split('T')[0],
+                  version: 'Originalbudget'
+                },
+                includeOptions: false,
+                ownerId: currentUser?.uid,
+                companyId: currentUser?.companyId,
+                projectId: activeProject.id
+              }
+            });
+          } catch (e) {}
         }
       } catch (err) {
         console.error("Dashboard fetch data error:", err);

@@ -79,17 +79,19 @@ export const sendNotification = async ({
 
     if (error) {
       // Fallback: Backup to system_config
-      const { data: existingConfig } = await supabase
-        .from('system_config')
-        .select('data')
-        .eq('id', `notifications_${companyId}`)
-        .maybeSingle();
+      try {
+        const { data: existingConfig } = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('id', `notifications_${companyId}`)
+          .maybeSingle();
 
-      const existingNotifs = existingConfig?.data?.notifications || [];
-      await supabase.from('system_config').upsert({
-        id: `notifications_${companyId}`,
-        data: { notifications: [notifObj, ...existingNotifs].slice(0, 50), companyId }
-      });
+        const existingNotifs = (existingConfig as any)?.data?.notifications || existingConfig?.notifications || [];
+        await supabase.from('system_config').upsert({
+          id: `notifications_${companyId}`,
+          data: { notifications: [notifObj, ...existingNotifs].slice(0, 50), companyId }
+        });
+      } catch (e) {}
     }
   } catch (err) {
     // Silent fallback catch

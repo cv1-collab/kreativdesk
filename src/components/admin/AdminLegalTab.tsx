@@ -17,16 +17,15 @@ export default function AdminLegalTab() {
     try {
       const { data } = await supabase
         .from('system_config')
-        .select('data')
+        .select('*')
         .eq('id', 'legal_documents')
-        .single();
+        .maybeSingle();
 
-      if (data?.data) {
-        setLegalDocs(data.data);
+      const config = (data as any)?.data || data;
+      if (config) {
+        setLegalDocs(config);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {

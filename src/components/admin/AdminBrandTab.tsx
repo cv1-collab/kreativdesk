@@ -61,14 +61,13 @@ export default function AdminBrandTab() {
       try {
         const { data } = await supabase
           .from('system_config')
-          .select('data')
+          .select('*')
           .eq('id', 'global_master')
-          .single();
+          .maybeSingle();
 
-        if (data?.data) setConfig(prev => ({ ...prev, ...data.data }));
-      } catch (e) {
-        console.error("Error fetching system config:", e);
-      }
+        const config = (data as any)?.data || data;
+        if (config) setConfig(prev => ({ ...prev, ...config }));
+      } catch (e) {}
     };
     fetchConfig();
   }, []);
