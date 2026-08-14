@@ -141,21 +141,37 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .eq('company_id', safeCompanyId);
 
       if (defs) {
-        setDefects(defs.map(d => ({
-          id: d.id,
-          title: d.title,
-          status: d.status,
-          priority: d.priority || 'Medium',
-          assignee: d.assignee || '',
-          date: d.created_at || new Date().toISOString(),
-          trade: d.trade || '',
-          location: d.location || '',
-          description: d.description || '',
-          imageUrl: d.image_url,
-          ownerId: d.owner_id || currentUser.uid,
-          companyId: d.company_id,
-          projectId: d.project_id
-        })));
+        setDefects(defs.map(d => {
+          const rawStatus = d.status || 'To Do';
+          const lowerSt = rawStatus.toLowerCase().trim();
+          const normStatus = (lowerSt === 'offen' || lowerSt === 'to do') ? 'To Do' :
+                             (lowerSt === 'in arbeit' || lowerSt === 'in progress') ? 'In Progress' :
+                             (lowerSt === 'in prüfung' || lowerSt === 'in review') ? 'In Review' :
+                             (lowerSt === 'erledigt' || lowerSt === 'behoben' || lowerSt === 'done') ? 'Done' : rawStatus;
+
+          const rawSev = d.severity || d.priority || 'Medium';
+          const lowerSev = rawSev.toLowerCase().trim();
+          const normSev = (lowerSev === 'kritisch' || lowerSev === 'critical') ? 'Critical' :
+                          (lowerSev === 'hoch' || lowerSev === 'high') ? 'High' :
+                          (lowerSev === 'mittel' || lowerSev === 'medium') ? 'Medium' :
+                          (lowerSev === 'leicht' || lowerSev === 'low') ? 'Low' : rawSev;
+
+          return {
+            id: d.id,
+            title: d.title || d.prompt || 'Mangel',
+            status: normStatus,
+            priority: normSev,
+            assignee: d.assignee || '',
+            date: d.created_at || new Date().toISOString(),
+            trade: d.trade || '',
+            location: d.location || '',
+            description: d.description || '',
+            imageUrl: d.image_url,
+            ownerId: d.owner_id || currentUser.uid,
+            companyId: d.company_id,
+            projectId: d.project_id || d.projectId
+          };
+        }));
       }
 
       // Multi-tier TimeEntries Fetching

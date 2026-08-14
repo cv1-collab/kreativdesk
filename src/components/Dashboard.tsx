@@ -267,7 +267,7 @@ export default function Dashboard() {
   };
 
   const totalDefects = (defects || []).filter((d:any) => d.projectId === activeProject?.id).length;
-  const openDefects = (defects || []).filter((d:any) => d.projectId === activeProject?.id && d.status !== 'Erledigt').length;
+  const openDefects = (defects || []).filter((d:any) => d.projectId === activeProject?.id && d.status !== 'Erledigt' && d.status !== 'Done' && d.status !== 'Behoben').length;
   const totalHours = (timeEntries || []).filter((e:any) => e.projectId === activeProject?.id).reduce((s:number, e:any) => s + e.hours, 0);
   const totalHoursCost = (timeEntries || []).filter((e:any) => e.projectId === activeProject?.id).reduce((s:number, e:any) => s + (e.hours * (e.hourlyRate || 150)), 0);
 

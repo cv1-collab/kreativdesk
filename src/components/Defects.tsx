@@ -259,6 +259,26 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       return;
     }
 
+    const normalizeStatus = (st: string) => {
+      if (!st) return 'To Do';
+      const lower = st.toLowerCase().trim();
+      if (lower === 'offen' || lower === 'to do' || lower === 'todo') return 'To Do';
+      if (lower === 'in arbeit' || lower === 'in progress' || lower === 'in_progress') return 'In Progress';
+      if (lower === 'in prüfung' || lower === 'in review' || lower === 'in_review') return 'In Review';
+      if (lower === 'erledigt' || lower === 'behoben' || lower === 'done') return 'Done';
+      return st;
+    };
+
+    const normalizePriority = (pr: string) => {
+      if (!pr) return 'Medium';
+      const lower = pr.toLowerCase().trim();
+      if (lower === 'kritisch' || lower === 'critical') return 'Critical';
+      if (lower === 'hoch' || lower === 'high') return 'High';
+      if (lower === 'mittel' || lower === 'medium') return 'Medium';
+      if (lower === 'leicht' || lower === 'niedrig' || lower === 'low') return 'Low';
+      return pr;
+    };
+
     const fetchDefects = async () => {
       const { data: defs } = await supabase
         .from('defects')
@@ -267,6 +287,11 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       if (defs && defs.length > 0) {
         setDefects(defs.map((d: any) => ({
           ...d,
+          id: d.id,
+          title: d.title || d.prompt || 'Mangel',
+          description: d.description || '',
+          status: normalizeStatus(d.status),
+          priority: normalizePriority(d.severity || d.priority),
           dueDate: d.dueDate || d.due_date || '',
           imageUrl: d.imageUrl || d.image_url || '',
           projectId: d.projectId || d.project_id || currentProjectId
