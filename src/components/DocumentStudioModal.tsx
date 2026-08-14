@@ -250,7 +250,7 @@ export default function DocumentStudioModal({
   initialContent
 }: DocumentStudioModalProps) {
   const { currentUser } = useAuth();
-  const { activeProjectId, projects } = useProject() as any;
+  const { activeProjectId, projects, isDemoMode } = useProject() as any;
   const activeProject = projects?.find((p: any) => p.id === activeProjectId);
   const { addToast } = useToast();
   const { language } = useLanguage();
@@ -349,6 +349,10 @@ export default function DocumentStudioModal({
   };
 
   const handleSaveDocument = async () => {
+    if (isDemoMode) {
+      addToast('Aktion in der Demo blockiert. Erstelle einen kostenlosen Account!', 'info');
+      return;
+    }
     if (!docContent || isSaving) return;
     setIsSaving(true);
     try {
@@ -438,6 +442,10 @@ ${footerText}
   };
 
   const handleSavePdfCloud = async (blob: Blob) => {
+    if (isDemoMode) {
+      addToast('Aktion in der Demo blockiert. Erstelle einen kostenlosen Account!', 'info');
+      return;
+    }
     try {
       const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
       const isProjectScope = saveScope === 'project';

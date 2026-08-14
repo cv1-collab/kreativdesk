@@ -174,11 +174,11 @@ const COMPANY_FOLDER_PRESETS: Record<string, { label: string; desc: string; icon
 export default function Documents() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-  const { projects = [], activeProjectId } = useProject() as any;
+  const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
-  const canUpload = hasPermission('canUploadFiles');
-  const canDelete = hasPermission('canDeleteFiles');
+  const canUpload = !isDemoMode && hasPermission('canUploadFiles');
+  const canDelete = !isDemoMode && hasPermission('canDeleteFiles');
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -279,6 +279,10 @@ export default function Documents() {
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemoMode) {
+      addToast('Aktion in der Demo blockiert', 'info');
+      return;
+    }
     if (!newFolderName.trim() || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
@@ -306,6 +310,10 @@ export default function Documents() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (isDemoMode) {
+      addToast('Aktion in der Demo blockiert', 'info');
+      return;
+    }
     if (!file || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
@@ -396,6 +404,10 @@ export default function Documents() {
   };
 
   const handleDelete = async (id: string, isFolder: boolean) => {
+    if (isDemoMode) {
+      addToast('Aktion in der Demo blockiert', 'info');
+      return;
+    }
     if (!window.confirm(t('confirm_delete'))) return;
     try {
       await supabase.from('documents').delete().eq('id', id);
