@@ -289,6 +289,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       try {
         await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
       } catch (e) {}
+
+      return createdProj;
     }
 
     await fetchProjects();

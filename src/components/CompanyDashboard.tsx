@@ -348,10 +348,11 @@ export default function CompanyDashboard() {
 
   const handleLogout = async () => { try { await logout(); navigate('/login'); } catch (error) { console.error('Failed to log out'); } };
   const handleProjectClick = (projectId: string) => {
-    if (!setActiveProject) return;
-    addToast(t('loading_project'), 'info');
-    setActiveProject(projectId);
-    setTimeout(() => navigate(`/project/${projectId}`), 500);
+    if (!projectId) return;
+    if (setActiveProject) {
+      setActiveProject(projectId);
+    }
+    navigate(`/project/${projectId}`);
   };
 
   const handleCreateDemoProject = async (type: string = 'construction') => {
@@ -423,12 +424,14 @@ export default function CompanyDashboard() {
     
     setIsSubmitting(true);
     try {
+      let createdId: string | null = null;
       if (addProject) {
-        await addProject({
+        const res = await addProject({
           name: newProjectData.name,
           description: newProjectData.description || '',
           status: newProjectData.status || 'active'
         });
+        createdId = res?.id || null;
       } else {
         const realCompanyId = await getOrCreateRealCompanyId(currentUser.companyId || '', currentUser.uid);
         const { data: newProj, error } = await supabase
@@ -444,6 +447,7 @@ export default function CompanyDashboard() {
           .single();
 
         if (error) throw error;
+        createdId = newProj?.id || null;
         if (fetchProjects) {
           await fetchProjects();
         }
@@ -452,6 +456,10 @@ export default function CompanyDashboard() {
       setIsNewProjectModalOpen(false);
       setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
       addToast(t('upload_success'), 'success');
+
+      if (createdId) {
+        handleProjectClick(createdId);
+      }
     } catch (err) { 
       console.error(err);
       addToast(t('upload_failed'), 'error'); 
