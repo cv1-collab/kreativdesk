@@ -44,10 +44,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       let { data: projs } = await supabase
         .from('projects')
         .select('*')
-        .eq('company_id', safeCompanyId)
+        .or(`company_id.eq.${safeCompanyId},owner_id.eq.${currentUser.uid}`)
         .order('created_at', { ascending: false });
-
-
 
       if (projs) {
         const mappedProjects: Project[] = projs.map(p => ({

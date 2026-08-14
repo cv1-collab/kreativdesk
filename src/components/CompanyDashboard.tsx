@@ -421,32 +421,37 @@ export default function CompanyDashboard() {
       return handleCreateDemoProject(type);
     }
     
-    const realCompanyId = await getOrCreateRealCompanyId(currentUser.companyId || '', currentUser.uid);
     setIsSubmitting(true);
     try {
-      const { data: newProj, error } = await supabase
-        .from('projects')
-        .insert({
+      if (addProject) {
+        await addProject({
           name: newProjectData.name,
           description: newProjectData.description || '',
-          status: newProjectData.status || 'active',
-          company_id: realCompanyId,
-          owner_id: currentUser.uid
-        })
-        .select()
-        .single();
+          status: newProjectData.status || 'active'
+        });
+      } else {
+        const realCompanyId = await getOrCreateRealCompanyId(currentUser.companyId || '', currentUser.uid);
+        const { data: newProj, error } = await supabase
+          .from('projects')
+          .insert({
+            name: newProjectData.name,
+            description: newProjectData.description || '',
+            status: newProjectData.status || 'active',
+            company_id: realCompanyId,
+            owner_id: currentUser.uid
+          })
+          .select()
+          .single();
 
-      if (error) throw error;
-      if (fetchProjects) {
-        await fetchProjects();
+        if (error) throw error;
+        if (fetchProjects) {
+          await fetchProjects();
+        }
       }
 
       setIsNewProjectModalOpen(false);
       setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
       addToast(t('upload_success'), 'success');
-      if (newProj) {
-        handleProjectClick(newProj.id);
-      }
     } catch (err) { 
       console.error(err);
       addToast(t('upload_failed'), 'error'); 

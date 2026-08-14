@@ -246,6 +246,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (session?.user) {
+        if (_event === 'TOKEN_REFRESHED' && currentUser) {
+          setLoading(false);
+          return;
+        }
         fetchOrCreateUserProfile(session.user);
       } else {
         setCurrentUser(null);
