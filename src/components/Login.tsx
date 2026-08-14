@@ -75,6 +75,27 @@ export default function Login() {
     }
   }, [currentUser, navigate]);
 
+  const [customBg, setCustomBg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchBg = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('data')
+          .eq('id', 'global_master')
+          .maybeSingle();
+
+        if (data?.data?.loginBgImage) {
+          setCustomBg(data.data.loginBgImage);
+        }
+      } catch (e) {
+        console.error("Login custom background error:", e);
+      }
+    };
+    fetchBg();
+  }, []);
+
   if (currentUser && !loading) {
     if (checkIsSuperAdmin(currentUser.email)) return <Navigate to="/admin" />;
     return <Navigate to="/app" />;
@@ -161,26 +182,7 @@ export default function Login() {
     }
   }
 
-  const [customBg, setCustomBg] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    const fetchBg = async () => {
-      try {
-        const { data } = await supabase
-          .from('system_config')
-          .select('data')
-          .eq('id', 'global_master')
-          .maybeSingle();
-
-        if (data?.data?.loginBgImage) {
-          setCustomBg(data.data.loginBgImage);
-        }
-      } catch (e) {
-        console.error("Login custom background error:", e);
-      }
-    };
-    fetchBg();
-  }, []);
 
   return (
     <div 
