@@ -225,7 +225,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
             </tbody>
           </table>
 
-          <div className="md:hidden flex flex-col gap-4 p-4 pb-24">
+          <div className="md:hidden flex flex-col gap-4 p-4 pb-36">
             {currentMembers.length === 0 && <div className="text-center text-text-muted py-12 text-sm font-medium border-2 border-dashed border-border/50 rounded-2xl bg-surface/30">{t('no_team_members')}</div>}
             {currentMembers.map((member: any) => {
               const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
