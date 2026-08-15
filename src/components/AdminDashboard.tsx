@@ -204,8 +204,8 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        <div className="md:hidden flex items-center gap-2 px-4 py-3 bg-surface/90 backdrop-blur-md border-b border-border/50 overflow-x-auto hide-scrollbar shrink-0 w-full z-20">
-          <button onClick={() => navigate('/app')} className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border bg-background text-text-muted border-border/50">
+        <div className="md:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-md border-b border-border/50 overflow-x-auto custom-scrollbar shrink-0 w-full z-20 touch-pan-x">
+          <button onClick={() => navigate('/app')} className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border bg-background text-text-muted border-border/50 shrink-0">
              <ArrowLeft size={14} /> Workspace
           </button>
           <div className="w-px h-6 bg-border mx-1 shrink-0"></div>
@@ -214,8 +214,8 @@ export default function AdminDashboard() {
               key={item.id} 
               onClick={() => setActiveTab(item.id)} 
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0", 
-                activeTab === item.id ? "bg-red-500 text-white border-red-500 shadow-md" : "bg-background text-text-muted border-border/50 hover:bg-white/5",
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0", 
+                activeTab === item.id ? "bg-red-500 text-white border-red-500 shadow-md font-extrabold" : "bg-background text-text-muted border-border/50 hover:bg-white/5",
                 item.className
               )}
             >
@@ -226,12 +226,17 @@ export default function AdminDashboard() {
                 )}
               </div>
               {item.label}
+              {item.id === 'leads' && newLeadsCount > 0 && (
+                <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-black", activeTab === item.id ? "bg-white text-red-500" : "bg-red-500 text-white")}>
+                  {newLeadsCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-background relative z-10">
-          <div className="max-w-[1400px] mx-auto pb-12">
+          <div className="max-w-[1400px] mx-auto pb-32 md:pb-12">
             {activeTab === 'overview' && <AdminOverviewTab stats={{ users: 0, revenue: 0 }} />}
             {activeTab === 'leads' && <AdminLeadsTab />} 
             {activeTab === 'users' && <AdminUsersTab />}
