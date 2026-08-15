@@ -846,7 +846,7 @@ export default function MeetChat() {
             
             {activeView === 'video' ? (
               callStatus === 'idle' ? (
-                <div className="flex flex-col items-center justify-start md:justify-center min-h-full py-6 px-4 md:p-8 max-w-md mx-auto text-center animate-in zoom-in-95 pb-28 md:pb-8">
+                <div className="flex flex-col items-center justify-start md:justify-center min-h-full py-6 px-4 md:p-8 max-w-md mx-auto text-center animate-in zoom-in-95 pb-36 md:pb-8">
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-accent-ai/10 text-accent-ai rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 shrink-0"><Users size={36} /></div>
                   <h3 className="text-base md:text-lg font-bold text-text-primary mb-1 md:mb-2">{t('start_call')}</h3>
                   <p className="text-xs md:text-sm text-text-muted mb-4 md:mb-6 font-medium">{t('who_to_call')}</p>
