@@ -38,8 +38,8 @@ export default function AdminSalesTab() {
 
   const fetchTransactions = async () => {
     try {
-      // 1. Resolve user profiles & company names for transaction rows
-      const { data: profs } = await supabase.from('profiles').select('id, email, company_name, name');
+      // 1. Resolve user profiles for transaction rows
+      const { data: profs } = await supabase.from('profiles').select('id, email, name');
       const profileMap = new Map();
       if (profs) {
         profs.forEach(p => profileMap.set(p.id, p));

@@ -636,61 +636,113 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       pdf.save(fileName);
       addToast(t('pdf_exported'), "success"); setIsPrintModalOpen(false);
     } catch (error: any) { addToast(t('upload_failed'), "error"); } finally { setIsGeneratingPdf(false); }
+  };  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+        setNewContact({
+          firstName: '', lastName: '', email: '', phone: '', company: '',
+          street: '', zipCity: '', website: '', uid: '', vat: '',
+          description: 'Foto-Scan per Smartphone-Kamera erfasst.',
+          isExternal: true, status: 'neu'
+        });
+        setIsAddModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
-    <div className="h-full flex flex-col gap-6 animate-in fade-in duration-300 text-text-primary">
+    <div className="h-full flex flex-col gap-4 md:gap-6 animate-in fade-in duration-300 text-text-primary">
       
       {/* HEADER & TOP BAR */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
-        <div><h2 className="text-2xl font-bold tracking-tight text-text-primary">{t('smart_crm')}</h2></div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 shrink-0">
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary">{t('smart_crm')}</h2>
+        </div>
         
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto">
+          {/* Visitenkarte Kamera Scan Button für Smartphones */}
+          <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleCameraCapture} />
+          <button 
+            onClick={() => cameraInputRef.current?.click()} 
+            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            title="Visitenkarte mit Smartphone-Kamera abfotografieren"
+          >
+            <Camera size={16} /> <span>Visitenkarte scannen</span>
+          </button>
+
           <input type="file" accept=".vcf" ref={vcfInputRef} className="hidden" onChange={handleVcfImport} />
-          <button onClick={() => { setDocHeader(prev => ({...prev, title: (selectedContact && !isSelectionMode) ? 'Contact Dossier' : 'CRM Report'})); setIsPrintModalOpen(true); }} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-lg text-sm font-bold hover:bg-background transition-all flex items-center gap-2 shadow-sm"><Download size={16} /> <span className="hidden sm:inline">{t('export_pdf')}</span></button>
-          <button onClick={handleExportCSV} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-lg text-sm font-bold hover:bg-background transition-all flex items-center gap-2 shadow-sm"><FileText size={16} /> <span className="hidden sm:inline">{t('export_csv')}</span></button>
-          <button onClick={() => vcfInputRef.current?.click()} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-lg text-sm font-bold hover:bg-background transition-all flex items-center gap-2 shadow-sm"><FileUp size={16} /> <span className="hidden sm:inline">{t('vcf_import')}</span></button>
-          <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("px-4 py-2 border rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-sm", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={16} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
+          <button onClick={() => { setDocHeader(prev => ({...prev, title: (selectedContact && !isSelectionMode) ? 'Contact Dossier' : 'CRM Report'})); setIsPrintModalOpen(true); }} className="px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><Download size={15} /> <span className="hidden sm:inline">{t('export_pdf')}</span></button>
+          <button onClick={handleExportCSV} className="px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><FileText size={15} /> <span className="hidden sm:inline">{t('export_csv')}</span></button>
+          <button onClick={() => vcfInputRef.current?.click()} className="px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><FileUp size={15} /> <span className="hidden sm:inline">{t('vcf_import')}</span></button>
+          <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("px-3 py-2 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={15} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
           {hasPermission('canManageUsers') && (
-            <button onClick={() => { setNewContact((prev: any) => ({ ...prev, isExternal: true })); setIsAddModalOpen(true); }} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all flex items-center gap-2"><UserPlus size={16} /> <span className="hidden sm:inline">{t('new_contact')}</span></button>
+            <button onClick={() => { setNewContact((prev: any) => ({ ...prev, isExternal: true })); setIsAddModalOpen(true); }} className="px-3.5 py-2 bg-accent-ai text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:bg-accent-ai/90 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"><UserPlus size={16} /> <span>{t('new_contact')}</span></button>
           )}
         </div>
       </div>
 
       {/* SPLIT VIEW ARCHITEKTUR */}
-      <div className="flex flex-1 gap-6 overflow-hidden min-h-[600px]">
+      <div className="flex flex-1 gap-6 overflow-hidden min-h-[500px]">
         
-        {/* LINKE SPALTE */}
-        <div className="w-full md:w-[380px] bg-surface border border-border rounded-3xl flex flex-col overflow-hidden shadow-sm relative">
-          <div className="p-5 border-b border-border bg-surface/80 backdrop-blur-md space-y-4 z-10">
-            <div className="relative"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" /><input type="text" placeholder={t('search_contacts')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-accent-ai transition-colors placeholder:text-text-muted text-text-primary" /></div>
-            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1">
+        {/* LINKE SPALTE / MOBILES GRID */}
+        <div className="w-full md:w-[380px] bg-surface border border-border rounded-2xl md:rounded-3xl flex flex-col overflow-hidden shadow-sm relative shrink-0">
+          <div className="p-4 md:p-5 border-b border-border bg-surface/80 backdrop-blur-md space-y-3 z-10">
+            <div className="relative"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" /><input type="text" placeholder={t('search_contacts')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:border-accent-ai transition-colors placeholder:text-text-muted text-text-primary font-medium" /></div>
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
               {[{ id: 'alle', label: t('filter_all') }, { id: 'team', label: t('filter_team') }, { id: 'neu', label: t('filter_new_scanned') }, { id: 'lead', label: t('filter_leads') }, { id: 'partner', label: t('filter_partners') }].map(f => (
-                <button key={f.id} onClick={() => setActiveFilter(f.id as any)} className={cn("px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300", activeFilter === f.id ? "bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shadow-sm" : "bg-background text-text-muted border border-border/50 hover:bg-white/5 hover:text-text-primary")}>{f.label}</button>
+                <button key={f.id} onClick={() => setActiveFilter(f.id as any)} className={cn("px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 cursor-pointer", activeFilter === f.id ? "bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shadow-sm" : "bg-background text-text-muted border border-border/50 hover:bg-white/5 hover:text-text-primary")}>{f.label}</button>
               ))}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1 pb-24 bg-background">
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 pb-24 bg-background">
             {filteredContacts.map(contact => {
               const isSelected = selectedContact?.id === contact.id; const isChecked = selectedIds.includes(contact.id); const isTeam = contact.isAppUser || contact.status === 'team' || !contact.isExternal;
               return (
-                <div key={contact.id} onClick={() => isSelectionMode ? handleToggleSelection(contact.id, {stopPropagation: () => {}} as any) : setSelectedContact(contact)} className={cn("p-3 rounded-2xl cursor-pointer transition-all duration-200 flex items-center justify-between group border", (isSelected && !isSelectionMode) ? "bg-accent-ai/10 border-accent-ai/20 shadow-sm" : "hover:bg-white/5 border-transparent", (isChecked && isSelectionMode) ? "bg-accent-ai/10 border-accent-ai/30 shadow-sm" : "")}>
+                <div 
+                  key={contact.id} 
+                  onClick={() => {
+                    if (isSelectionMode) {
+                      handleToggleSelection(contact.id, {stopPropagation: () => {}} as any);
+                    } else {
+                      setSelectedContact(contact);
+                      setIsMobileDetailOpen(true);
+                    }
+                  }} 
+                  className={cn(
+                    "p-3 rounded-2xl cursor-pointer transition-all duration-200 flex items-center justify-between group border",
+                    (isSelected && !isSelectionMode) ? "bg-accent-ai/10 border-accent-ai/20 shadow-sm" : "hover:bg-white/5 bg-surface md:bg-transparent border-border/40 md:border-transparent",
+                    (isChecked && isSelectionMode) ? "bg-accent-ai/10 border-accent-ai/30 shadow-sm" : ""
+                  )}
+                >
                   <div className="flex items-center gap-3 overflow-hidden">
                     {isSelectionMode && <div className={cn("w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors bg-surface", isChecked ? "bg-accent-ai border-accent-ai text-white" : "border-border")}>{isChecked && <CheckSquare size={12} />}</div>}
-                    <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold overflow-hidden shrink-0 border border-border/50", isTeam ? "bg-purple-500/10 text-purple-500" : "bg-blue-500/10 text-blue-500")}>
+                    <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold overflow-hidden shrink-0 border border-border/50 shadow-sm text-base", isTeam ? "bg-purple-500/10 text-purple-500" : "bg-blue-500/10 text-blue-500")}>
                       {!!sanitizeUrl(contact.photoURL) ? <img src={sanitizeUrl(contact.photoURL)} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
                     </div>
-                    <div className="overflow-hidden"><div className={cn("font-bold text-sm truncate", (isSelected && !isSelectionMode) ? "text-accent-ai" : "text-text-primary")}>{formatName(contact)}</div><div className="text-xs text-text-muted truncate mt-0.5 font-medium">{contact.company || contact.email || t('no_company')}</div></div>
+                    <div className="overflow-hidden">
+                      <div className={cn("font-bold text-sm truncate", (isSelected && !isSelectionMode) ? "text-accent-ai" : "text-text-primary")}>{formatName(contact)}</div>
+                      <div className="text-xs text-text-muted truncate mt-0.5 font-medium">{contact.company || contact.email || t('no_company')}</div>
+                      {contact.phone && <div className="text-[11px] text-text-muted/70 truncate md:hidden flex items-center gap-1 mt-0.5"><Phone size={10}/> {contact.phone}</div>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {contact.status === 'neu' && !isTeam && !isSelectionMode && <div className="w-2 h-2 rounded-full bg-accent-ai shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0 ml-1" />}
+                    {contact.status === 'neu' && !isTeam && !isSelectionMode && <div className="w-2.5 h-2.5 rounded-full bg-accent-ai shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0 ml-1" />}
                     {!isSelectionMode && contact.email !== currentUser?.email && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleDeleteContact(contact.id); }} 
-                        className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all md:opacity-0 md:group-hover:opacity-100" 
+                        className="p-2 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all md:opacity-0 md:group-hover:opacity-100 cursor-pointer" 
                         title={t('delete')}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     )}
                   </div>
@@ -707,14 +759,14 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                   <select onChange={(e) => { if(e.target.value) handleBatchStatus(e.target.value); }} className="flex-1 bg-background border border-border text-xs font-bold px-2 py-2 rounded-lg outline-none text-text-primary">
                     <option value="">{t('change_status')}</option><option value="lead">{t('mark_as_lead')}</option><option value="partner">{t('mark_as_partner')}</option>
                   </select>
-                  <button onClick={handleBatchDelete} className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                  <button onClick={handleBatchDelete} className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors cursor-pointer"><Trash2 size={16} /></button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* RECHTE SPALTE */}
+        {/* RECHTE SPALTE (DESKTOP) */}
         <div className="hidden md:flex flex-col flex-1 bg-surface border border-border rounded-3xl p-10 overflow-y-auto custom-scrollbar relative shadow-sm">
           {selectedContact && !isSelectionMode ? (
             <motion.div key={selectedContact.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-10 w-full">
@@ -724,12 +776,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
                     <option value="neu" className="bg-surface">{t('status_new_scan')}</option><option value="lead" className="bg-surface">{t('status_lead')}</option><option value="partner" className="bg-surface">{t('status_partner')}</option><option value="team" className="bg-surface">{t('status_team')}</option>
                   </select>
                 )}
-                {/* 🔥 MASTER KEY VERBAUT: Zeige Mülleimer immer an, außer beim eigenen Account */}
                 {selectedContact.email !== currentUser?.email && <div className="h-4 w-px bg-border mx-1" />}
                 {hasPermission('canManageUsers') && (
                   <>
-                    <button onClick={openEditModal} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors" title={t('edit_contact')}><Edit2 size={16} /></button>
-                    {selectedContact.email !== currentUser?.email && <button onClick={() => handleDeleteContact(selectedContact.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title={t('delete')}><Trash2 size={16} /></button>}
+                    <button onClick={openEditModal} className="p-1.5 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors cursor-pointer" title={t('edit_contact')}><Edit2 size={16} /></button>
+                    {selectedContact.email !== currentUser?.email && <button onClick={() => handleDeleteContact(selectedContact.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer" title={t('delete')}><Trash2 size={16} /></button>}
                   </>
                 )}
               </div>
@@ -794,6 +845,119 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           )}
         </div>
       </div>
+
+      {/* MOBILE KONTAKT DETAIL MODAL */}
+      <AnimatePresence>
+        {isMobileDetailOpen && selectedContact && (
+          <div className="fixed inset-0 z-[150] flex md:hidden items-end justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4">
+            <motion.div 
+              initial={{ y: '100%' }} 
+              animate={{ y: 0 }} 
+              exit={{ y: '100%' }} 
+              className="bg-surface border-t border-border rounded-t-3xl sm:rounded-3xl w-full max-h-[85vh] overflow-y-auto p-6 space-y-6 shadow-2xl relative text-text-primary"
+            >
+              <div className="flex items-center justify-between border-b border-border/50 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-background border border-border flex items-center justify-center font-bold text-lg overflow-hidden text-accent-ai shrink-0">
+                    {!!sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
+                  </div>
+                  <div className="overflow-hidden">
+                    <h3 className="font-bold text-base text-text-primary truncate">{formatName(selectedContact)}</h3>
+                    <p className="text-xs text-text-muted truncate">{selectedContact.company || t('no_company')}</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsMobileDetailOpen(false)} className="p-2 text-text-muted hover:text-text-primary bg-background rounded-full border border-border cursor-pointer shrink-0">
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                {selectedContact.phone ? (
+                  <a href={`tel:${selectedContact.phone}`} className="py-3 px-4 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                    <Phone size={16} /> Anrufen
+                  </a>
+                ) : (
+                  <div className="py-3 px-4 bg-background text-text-muted border border-border/50 rounded-xl font-bold text-xs text-center opacity-50">
+                    Keine Nummer
+                  </div>
+                )}
+                {selectedContact.email ? (
+                  <a href={`mailto:${selectedContact.email}`} className="py-3 px-4 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                    <Mail size={16} /> E-Mail senden
+                  </a>
+                ) : (
+                  <div className="py-3 px-4 bg-background text-text-muted border border-border/50 rounded-xl font-bold text-xs text-center opacity-50">
+                    Keine E-Mail
+                  </div>
+                )}
+              </div>
+
+              {/* Status Picker & Actions */}
+              <div className="space-y-3 pt-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-widest block">Status & Bearbeitung</label>
+                {(!selectedContact.isAppUser && selectedContact.isExternal !== false) && (
+                  <select 
+                    onChange={(e) => handleUpdateStatus(selectedContact.id, e.target.value)} 
+                    value={selectedContact.status || 'neu'} 
+                    className="w-full bg-background border border-border text-xs font-bold px-4 py-3 rounded-xl outline-none text-text-primary cursor-pointer"
+                  >
+                    <option value="neu">{t('status_new_scan')}</option>
+                    <option value="lead">{t('mark_as_lead')}</option>
+                    <option value="partner">{t('mark_as_partner')}</option>
+                    <option value="team">{t('status_team')}</option>
+                  </select>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button 
+                    onClick={() => { setIsMobileDetailOpen(false); openEditModal(); }} 
+                    className="flex-1 py-3 bg-background border border-border rounded-xl font-bold text-xs flex items-center justify-center gap-2 text-text-primary cursor-pointer"
+                  >
+                    <Edit2 size={16} /> {t('edit_contact')}
+                  </button>
+                  {selectedContact.email !== currentUser?.email && (
+                    <button 
+                      onClick={() => { setIsMobileDetailOpen(false); handleDeleteContact(selectedContact.id); }} 
+                      className="py-3 px-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4 pt-2 border-t border-border/50 text-xs">
+                {selectedContact.email && (
+                  <div>
+                    <span className="text-text-muted font-medium block">E-Mail</span>
+                    <span className="font-bold text-text-primary">{selectedContact.email}</span>
+                  </div>
+                )}
+                {selectedContact.phone && (
+                  <div>
+                    <span className="text-text-muted font-medium block">Telefon</span>
+                    <span className="font-bold text-text-primary">{selectedContact.phone}</span>
+                  </div>
+                )}
+                {(selectedContact.street || selectedContact.zipCity) && (
+                  <div>
+                    <span className="text-text-muted font-medium block">Adresse</span>
+                    <span className="font-bold text-text-primary">{selectedContact.street} {selectedContact.zipCity}</span>
+                  </div>
+                )}
+                {selectedContact.description && (
+                  <div>
+                    <span className="text-text-muted font-medium block">Notizen</span>
+                    <p className="font-medium text-text-primary bg-background p-3 rounded-xl border border-border mt-1 whitespace-pre-wrap">{selectedContact.description}</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* KONTAKT ERFASSEN / BEARBEITEN MODAL */}
       <AnimatePresence>

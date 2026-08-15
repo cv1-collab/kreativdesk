@@ -223,8 +223,8 @@ export default function AdminUsersTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface border border-border p-4 rounded-xl shadow-sm gap-4">
-        <div className="relative w-full sm:w-96">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center bg-surface border border-border p-4 rounded-xl shadow-sm gap-4">
+        <div className="relative w-full sm:w-80 md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={18} />
           <input 
             type="text" 
@@ -235,16 +235,16 @@ export default function AdminUsersTab() {
           />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleCleanupTestUsers}
-            className="px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-sm"
+            className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-sm text-center"
           >
             Test-Nutzer löschen
           </button>
           <button
             onClick={() => setIsPreprovisionOpen(true)}
-            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 shrink-0"
+            className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
           >
             <Shield size={16} /> 🚀 Kunde vorab einrichten (VIP Concierge)
           </button>
@@ -405,7 +405,7 @@ export default function AdminUsersTab() {
       {/* VIP CONCIERGE PREPROVISION MODAL */}
       {isPreprovisionOpen && createPortal(
         <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#121215] border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6 text-white">
+          <div className="bg-[#121215] border border-white/10 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 shadow-2xl space-y-6 text-white">
             <div className="flex justify-between items-center border-b border-white/10 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-500">

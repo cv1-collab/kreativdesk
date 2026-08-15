@@ -1189,7 +1189,23 @@ export default function Finance() {
     }
 
     return createPortal(
-      <div style={{ zIndex: 999999 }} className={cn("fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col", isRotatedCss && "rotate-90 origin-center scale-90")}>
+      <div 
+        style={isRotatedCss ? {
+          zIndex: 999999,
+          width: '100vh',
+          height: '100vw',
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%) rotate(90deg)',
+          transformOrigin: 'center center'
+        } : {
+          zIndex: 999999,
+          position: 'fixed',
+          inset: 0
+        }} 
+        className="bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
+      >
         <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 p-4 lg:p-6 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
 
           <div className="flex justify-between items-center mb-4 shrink-0">
@@ -1197,13 +1213,13 @@ export default function Finance() {
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setIsRotatedCss(prev => !prev)} 
-                className={cn("px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-surface border-border/50 text-text-primary hover:bg-white/5")}
+                className={cn("px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-surface border-border/50 text-text-primary hover:bg-white/5")}
               >
                 <RotateCw size={14} /> <span>90° Ansicht</span>
               </button>
               <button 
                 onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} 
-                className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2"
+                className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2 cursor-pointer"
               >
                 <X size={18} /> <span className="hidden sm:inline">Schließen</span>
               </button>
@@ -1511,11 +1527,13 @@ export default function Finance() {
               </h1>
               <p className="text-sm text-text-muted mt-1 font-medium">{projectHeader.project}</p>
             </div>
-            {(activeTab === 'budget' || activeTab === 'cashflow' || activeTab === 'control') && (
-              <button onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); }} className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform">
-                <RotateCw size={14} /> <span className="text-xs">{t('rotate')}</span>
-              </button>
-            )}
+            <button 
+              onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); setIsRotatedCss(true); }} 
+              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
+              title="Tabelle im Querformat (90°) anzeigen"
+            >
+              <RotateCw size={14} /> <span className="text-xs">{t('rotate')}</span>
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">

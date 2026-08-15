@@ -481,35 +481,11 @@ export default function Layout() {
           })}
         </div>
 
-        <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 lg:p-6 z-10 pb-20 lg:pb-6 tour-proj-content">
+        <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 lg:p-6 z-10 pb-6 tour-proj-content">
           <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="w-10 h-10 text-accent-ai animate-spin" /></div>}>
             <Outlet />
           </Suspense>
         </div>
-
-        {/* SMARTPHONE BOTTOM BAR NAVIGATION */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-surface/95 backdrop-blur-2xl border-t border-border flex justify-around items-center px-2 py-2 shadow-2xl">
-          <NavLink to={`/project/${projectId}`} end className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-            <LayoutDashboard size={18} />
-            <span>Übersicht</span>
-          </NavLink>
-          <NavLink to={`/project/${projectId}/defects`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-            <ShieldAlert size={18} />
-            <span>Mängel</span>
-          </NavLink>
-          <NavLink to={`/project/${projectId}/calendar`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-            <Calendar size={18} />
-            <span>Kalender</span>
-          </NavLink>
-          <NavLink to={`/project/${projectId}/site`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-            <Camera size={18} />
-            <span>Baustelle</span>
-          </NavLink>
-          <NavLink to={`/project/${projectId}/documents`} className={({ isActive }) => cn("flex flex-col items-center py-1 px-3 rounded-xl text-[10px] font-bold transition-all", isActive ? "text-accent-ai bg-accent-ai/10" : "text-text-muted hover:text-text-primary")}>
-            <FileText size={18} />
-            <span>Akte</span>
-          </NavLink>
-        </nav>
       </main>
 
       {showPitchModal && (

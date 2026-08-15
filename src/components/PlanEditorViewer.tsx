@@ -410,6 +410,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [calibrationMetersInput, setCalibrationMetersInput] = useState('5.0');
   const [isCalibratingMode, setIsCalibratingMode] = useState(false);
   const [calibrationLine, setCalibrationLine] = useState<{start: {x:number, y:number}, end: {x:number, y:number}} | null>(null);
+  const [showMobileRightPanel, setShowMobileRightPanel] = useState(false);
 
   const handleApplyScaleCalibration = () => {
     if (!calibrationLine) return;
@@ -1207,16 +1208,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <PremiumFeature>
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
-      <header className="h-16 border-b border-border bg-surface/90 backdrop-blur-xl flex flex-row items-center justify-between px-6 shrink-0 z-30 shadow-sm flex-wrap overflow-hidden">
-        <div className="flex items-center gap-4">
-          <select value={activePlanId || ''} onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} className="bg-transparent font-bold text-sm outline-none cursor-pointer">
+      <header className="min-h-14 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-row items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-3 overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-3 shrink-0">
+          <select value={activePlanId || ''} onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} className="bg-transparent font-bold text-xs sm:text-sm outline-none cursor-pointer max-w-[140px] sm:max-w-[200px] truncate">
             {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
           </select>
           {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded" title={t('delete_plan')}><Trash2 size={16}/></button>}
         </div>
 
         {planImage && (
-          <div className="hidden lg:flex items-center gap-3 bg-background border border-border px-4 py-1.5 rounded-xl shadow-inner mx-4">
+          <div className="hidden lg:flex items-center gap-3 bg-background border border-border px-4 py-1.5 rounded-xl shadow-inner mx-2 shrink-0">
              <Layers size={14} className="text-text-muted"/>
              <select value={paperFormat} onChange={e => setPaperFormat(e.target.value)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                {Object.keys(PAPER_DIMENSIONS).map(f => <option key={f} value={f} className="bg-surface">{f}</option>)}
@@ -1233,22 +1234,25 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
         )}
 
-        <div className="flex items-center gap-3">
-          <button onClick={() => { setIsCalibratingMode(true); setCalibrationModalOpen(true); }} className="px-3.5 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5">
-            <Ruler size={14}/> TrueScale™ Kalibrieren
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => { setIsCalibratingMode(true); setCalibrationModalOpen(true); }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+            <Ruler size={14}/> <span className="hidden sm:inline">TrueScale™</span> Kalibrieren
           </button>
-          <button onClick={handleSaveSnapshotToPitchDeck} className="px-3.5 py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5">
+          <button onClick={handleSaveSnapshotToPitchDeck} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
             <ImageIcon size={14}/> Pitch Deck
           </button>
-          <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-surface border border-border rounded-xl text-xs font-bold shadow-sm hover:bg-white/5 transition-colors">
-            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} {t('upload_plan')}
+          <label className="cursor-pointer flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-xl text-xs font-bold shadow-sm hover:bg-white/5 transition-colors whitespace-nowrap">
+            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">{t('upload_plan')}</span><span className="sm:hidden">Hochladen</span>
             <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading} className="hidden" />
           </label>
-          <button onClick={handleOpenPdfStudio} disabled={isGeneratingPdf || !planImage} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50">
-            {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} PDF Export
+          <button onClick={handleOpenPdfStudio} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
+            {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span className="hidden sm:inline">PDF Export</span><span className="sm:hidden">PDF</span>
           </button>
-          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan'} className="px-5 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500 shadow-lg flex items-center gap-2 disabled:opacity-50">
+          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan'} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500 shadow-lg flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
             {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} {t('save')}
+          </button>
+          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center">
+            <Layers size={16}/>
           </button>
         </div>
       </header>
@@ -1256,7 +1260,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       <div className="flex-1 flex overflow-hidden relative bg-background touch-none">
         
         {/* WERKZEUGLEISTE LINKS */}
-        <aside className="absolute left-2 sm:left-6 top-2 sm:top-6 w-12 sm:w-14 flex flex-col items-center gap-1.5 sm:gap-2 py-2 sm:py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-y-auto max-h-[80%] custom-scrollbar">
+        <aside className="absolute left-2 sm:left-6 top-2 sm:top-6 w-10 sm:w-14 flex flex-col items-center gap-1 sm:gap-2 py-1.5 sm:py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-xl sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[75%] custom-scrollbar">
            {['pan', 'image', 'polygon', 'rect', 'circle', 'titleblock', 'scalebar', 'defect', 'text', 'pen', 'measure'].map(tool => (
              <button 
                key={tool} 
@@ -1264,32 +1268,32 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                  if (tool === 'image') imageInputRef.current?.click();
                  else setActiveTool(tool as ToolType);
                }} 
-               className={cn("p-2.5 rounded-xl transition-all relative", activeTool === tool ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-110" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}
+               className={cn("p-2 sm:p-2.5 rounded-xl transition-all relative", activeTool === tool ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-105 sm:scale-110" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}
                title={tool.charAt(0).toUpperCase() + tool.slice(1)}
              >
-               {tool === 'pan' && <MousePointer2 size={18}/>}
+               {tool === 'pan' && <MousePointer2 size={16} className="sm:w-[18px] sm:h-[18px]"/>}
                {tool === 'image' && (
                   <>
-                    {isUploadingOverlay ? <Loader2 size={18} className="animate-spin text-indigo-400"/> : <ImagePlus size={18} />}
+                    {isUploadingOverlay ? <Loader2 size={16} className="animate-spin text-indigo-400 sm:w-[18px] sm:h-[18px]"/> : <ImagePlus size={16} className="sm:w-[18px] sm:h-[18px]" />}
                     <input type="file" ref={imageInputRef} accept="image/*,application/pdf" onChange={handleOverlayUpload} disabled={isUploadingOverlay} className="hidden" />
                   </>
                )}
-               {tool === 'polygon' && <Hexagon size={18}/>}
-               {tool === 'rect' && <Square size={18}/>}
-               {tool === 'circle' && <Circle size={18}/>}
-               {tool === 'titleblock' && <LayoutTemplate size={18}/>}
-               {tool === 'scalebar' && <MoveHorizontal size={18}/>}
-               {tool === 'defect' && <MapPin size={18}/>}
-               {tool === 'text' && <Type size={18}/>}
-               {tool === 'pen' && <PenTool size={18}/>}
-               {tool === 'measure' && <Ruler size={18}/>}
+               {tool === 'polygon' && <Hexagon size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'rect' && <Square size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'circle' && <Circle size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'titleblock' && <LayoutTemplate size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'scalebar' && <MoveHorizontal size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'defect' && <MapPin size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'text' && <Type size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'pen' && <PenTool size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'measure' && <Ruler size={16} className="sm:w-[18px] sm:h-[18px]"/>}
              </button>
            ))}
         </aside>
 
         {/* EBENEN & PROPERTIES RECHTS */}
         {planImage && (
-          <aside className="absolute right-6 top-6 bottom-6 w-80 flex flex-col gap-4 z-30 pointer-events-none">
+          <aside className={cn("absolute right-2 sm:right-6 top-2 sm:top-6 bottom-2 sm:bottom-6 w-72 sm:w-80 flex-col gap-4 z-30 pointer-events-none", showMobileRightPanel ? "flex pointer-events-auto" : "hidden md:flex")}>
             
             {/* LAYERS */}
             <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 flex flex-col pointer-events-auto max-h-[40%] shrink-0">

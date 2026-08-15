@@ -842,21 +842,21 @@ export default function MeetChat() {
 
         <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0 relative">
           
-          <div className="flex-1 bg-surface border border-border/50 rounded-3xl overflow-hidden flex flex-col shadow-sm relative min-h-[50vh] md:min-h-0">
+          <div className="flex-1 bg-surface border border-border/50 rounded-2xl md:rounded-3xl overflow-y-auto custom-scrollbar flex flex-col shadow-sm relative min-h-[50vh] md:min-h-0">
             
             {activeView === 'video' ? (
               callStatus === 'idle' ? (
-                <div className="flex flex-col items-center justify-center h-full p-8 max-w-md mx-auto text-center animate-in zoom-in-95">
-                  <div className="w-20 h-20 bg-accent-ai/10 text-accent-ai rounded-full flex items-center justify-center mx-auto mb-6"><Users size={40} /></div>
-                  <h3 className="text-lg font-bold text-text-primary mb-2">{t('start_call')}</h3>
-                  <p className="text-sm text-text-muted mb-6 font-medium">{t('who_to_call')}</p>
+                <div className="flex flex-col items-center justify-start md:justify-center min-h-full py-6 px-4 md:p-8 max-w-md mx-auto text-center animate-in zoom-in-95 pb-28 md:pb-8">
+                  <div className="w-16 h-16 md:w-20 md:h-20 bg-accent-ai/10 text-accent-ai rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 shrink-0"><Users size={36} /></div>
+                  <h3 className="text-base md:text-lg font-bold text-text-primary mb-1 md:mb-2">{t('start_call')}</h3>
+                  <p className="text-xs md:text-sm text-text-muted mb-4 md:mb-6 font-medium">{t('who_to_call')}</p>
                   
                   {currentProjectMembers.length > 0 && (
-                    <div className="flex flex-wrap justify-center gap-3 mb-8">
+                    <div className="flex flex-wrap justify-center gap-3 mb-6 md:mb-8">
                       {currentProjectMembers.map((user: any) => {
                         const isSelected = selectedUserIds.includes(user.id);
                         return (
-                          <button key={user.id} onClick={() => toggleUserSelection(user.id)} className={cn("flex flex-col items-center gap-1 transition-all", isSelected ? "opacity-100 scale-110" : "opacity-50 hover:opacity-80 grayscale hover:grayscale-0")}>
+                          <button key={user.id} onClick={() => toggleUserSelection(user.id)} className={cn("flex flex-col items-center gap-1 transition-all cursor-pointer", isSelected ? "opacity-100 scale-110" : "opacity-50 hover:opacity-80 grayscale hover:grayscale-0")}>
                             <div className={cn("w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white border-2", isSelected ? "border-accent-ai bg-accent-ai" : "border-border bg-surface")}>
                               {!!sanitizeUrl(user.avatar) ? <img src={sanitizeUrl(user.avatar)} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
                             </div>
@@ -867,23 +867,23 @@ export default function MeetChat() {
                     </div>
                   )}
                   
-                  <div className="flex justify-center items-center gap-3 w-full mb-6">
-                    <button onClick={() => startCall(selectedUserIds, activeCallRoomId)} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
+                  <div className="flex justify-center items-center gap-3 w-full mb-5">
+                    <button onClick={() => startCall(selectedUserIds, activeCallRoomId)} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
                       <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
                   </div>
 
                   {/* 🔥 Schnell-Teilen per WhatsApp & E-Mail für externe Partner */}
-                  <div className="w-full bg-surface/50 border border-border/80 p-4 rounded-2xl space-y-3 mb-6">
+                  <div className="w-full bg-surface/50 border border-border/80 p-3.5 md:p-4 rounded-2xl space-y-3 mb-5">
                     <div className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted flex items-center justify-center gap-1.5">
-                      <Sparkles size={14} className="text-emerald-500" />
-                      Schnell-Einladung für externe Partner & Bauherren
+                      <Sparkles size={14} className="text-emerald-500 shrink-0" />
+                      <span>Schnell-Einladung für externe Partner & Bauherren</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <button
                         onClick={() => handleQuickInvite('copy')}
-                        className="px-3 py-2 bg-background hover:bg-surface border border-border rounded-xl font-bold text-xs text-text-primary flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        className="px-3 py-2.5 bg-background hover:bg-surface border border-border rounded-xl font-bold text-xs text-text-primary flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         {copiedLink ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
                         Link kopieren
@@ -891,25 +891,25 @@ export default function MeetChat() {
 
                       <button
                         onClick={() => handleQuickInvite('whatsapp')}
-                        className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        className="px-3 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         💬 WhatsApp
                       </button>
 
                       <button
                         onClick={() => handleQuickInvite('email')}
-                        className="px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        className="px-3 py-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 border border-blue-500/30 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         ✉️ E-Mail
                       </button>
                     </div>
                   </div>
 
-                  <div className="relative flex items-center gap-2 w-full mb-6"><div className="flex-1 h-px bg-border/50"></div><span className="text-xs text-text-muted font-bold uppercase tracking-widest">ODER</span><div className="flex-1 h-px bg-border/50"></div></div>
+                  <div className="relative flex items-center gap-2 w-full mb-5"><div className="flex-1 h-px bg-border/50"></div><span className="text-xs text-text-muted font-bold uppercase tracking-widest">ODER</span><div className="flex-1 h-px bg-border/50"></div></div>
 
                   <div className="w-full flex gap-2">
                     <input type="text" value={joinCallId} onChange={e => setJoinCallId(e.target.value)} placeholder="Meeting-ID..." className="flex-1 bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
-                    <button onClick={() => joinCall()} disabled={!joinCallId.trim()} className="px-6 py-2.5 bg-surface border border-border rounded-xl font-bold text-text-primary hover:bg-white/5 disabled:opacity-50 transition-all flex items-center gap-2"><PhoneForwarded size={16} /> Join</button>
+                    <button onClick={() => joinCall()} disabled={!joinCallId.trim()} className="px-5 py-2.5 bg-surface border border-border rounded-xl font-bold text-text-primary hover:bg-white/5 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"><PhoneForwarded size={16} /> Join</button>
                   </div>
                 </div>
               ) : (

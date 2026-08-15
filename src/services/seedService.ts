@@ -182,45 +182,59 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
     projId = newProj.id;
   }
 
+function getDeterministicUUID(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(12, '0').slice(0, 12);
+  return `00000000-0000-4000-8000-${hex}`;
+}
+
   // 2. Seed Demo Team Members & Profiles (Avatars)
   if (Array.isArray(template.members)) {
     for (const m of template.members) {
-      const demoUserId = `demo_user_${m.name.toLowerCase().replace(/\s+/g, '_')}`;
+      const demoUserId = getDeterministicUUID(m.name || m.email || 'demo_user');
 
       // Ensure profile exists with photoURL / avatar
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', demoUserId)
-        .maybeSingle();
+      try {
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('id', demoUserId)
+          .maybeSingle();
 
-      if (!existingProfile) {
-        await supabase.from('profiles').insert({
-          id: demoUserId,
-          email: m.email,
-          name: m.name,
-          role: 'member',
-          company_id: realCompanyId,
-          photo_url: m.photoURL || '',
-          created_at: new Date().toISOString()
-        });
-      }
+        if (!existingProfile) {
+          await supabase.from('profiles').insert({
+            id: demoUserId,
+            email: m.email,
+            name: m.name,
+            role: 'member',
+            company_id: realCompanyId,
+            photo_url: m.photoURL || '',
+            created_at: new Date().toISOString()
+          });
+        }
 
-      // Add to project_members
-      const { data: existingMem } = await supabase
-        .from('project_members')
-        .select('id')
-        .eq('company_id', realCompanyId)
-        .eq('project_id', projId)
-        .eq('user_id', demoUserId)
-        .maybeSingle();
+        // Add to project_members
+        const { data: existingMem } = await supabase
+          .from('project_members')
+          .select('id')
+          .eq('company_id', realCompanyId)
+          .eq('project_id', projId)
+          .eq('user_id', demoUserId)
+          .maybeSingle();
 
-      if (!existingMem) {
-        await supabase.from('project_members').insert({
-          project_id: projId,
-          user_id: demoUserId,
-          company_id: realCompanyId
-        });
+        if (!existingMem) {
+          await supabase.from('project_members').insert({
+            project_id: projId,
+            user_id: demoUserId,
+            company_id: realCompanyId
+          });
+        }
+      } catch (e) {
+        console.warn('Demo member seed fallback handled:', e);
       }
     }
   }

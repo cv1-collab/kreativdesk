@@ -890,7 +890,23 @@ export default function Calendar() {
             </div>,
             document.body
           ) : createPortal(
-            <div style={{ zIndex: 999999 }} className={cn("fixed inset-0 bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col touch-none", isRotatedCss && "rotate-90 origin-center scale-90")}>
+            <div 
+              style={isRotatedCss ? {
+                zIndex: 999999,
+                width: '100vh',
+                height: '100vw',
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) rotate(90deg)',
+                transformOrigin: 'center center'
+              } : {
+                zIndex: 999999,
+                position: 'fixed',
+                inset: 0
+              }} 
+              className="bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col touch-none"
+            >
               <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
                 <div className="flex items-center justify-between p-3 border-b border-border/50 shrink-0 bg-surface z-50 relative">
                    <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
@@ -899,11 +915,11 @@ export default function Calendar() {
                    <div className="flex items-center gap-2">
                      <button 
                        onClick={() => setIsRotatedCss(prev => !prev)} 
-                       className={cn("px-3 py-1 rounded-lg border text-xs font-bold transition-colors flex items-center gap-1.5", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-background border-border text-text-primary")}
+                       className={cn("px-3 py-1 rounded-lg border text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-background border-border text-text-primary")}
                      >
                        <RotateCw size={14} /> <span>90° Ansicht</span>
                      </button>
-                     <button onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} className="p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border">
+                     <button onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} className="p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border cursor-pointer">
                        <X size={18}/>
                      </button>
                    </div>

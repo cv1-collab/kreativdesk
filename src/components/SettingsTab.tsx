@@ -210,7 +210,7 @@ export default function SettingsTab() {
   useEffect(() => {
     if (!currentUser?.companyId) return;
     const fetchCompany = async () => {
-      const { data } = await supabase.from('companies').select('*').eq('id', currentUser.companyId).single();
+      const { data } = await supabase.from('companies').select('*').eq('id', currentUser.companyId).maybeSingle();
       if (data) {
         setAgencyName(data.name || '');
         setContactPerson(data.contact_person || data.contactPerson || '');
@@ -822,7 +822,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   useEffect(() => {
     if (!currentUser?.companyId) return;
     const fetchSettings = async () => {
-      const { data: d } = await supabase.from('company_settings').select('*').eq('company_id', currentUser.companyId).single();
+      const { data: d } = await supabase.from('company_settings').select('*').eq('company_id', currentUser.companyId).maybeSingle();
       if (d) {
         setActive(d.screensaver_active ?? false);
         setTimeoutVal(d.screensaver_timeout ?? 5);

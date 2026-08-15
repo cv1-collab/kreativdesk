@@ -640,21 +640,21 @@ export default function Documents() {
           <p className="text-text-muted text-sm font-medium">{t('cloud_storage_desc')}</p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
           <button
             onClick={handleSeedDemoData}
             disabled={isSeeding}
-            className="px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs rounded-xl hover:bg-purple-500/20 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs rounded-xl hover:bg-purple-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
           >
             {isSeeding ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
             {t('seed_demo_btn')}
           </button>
 
           {canUpload && (
-            <>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setIsCreatingFolder(true)}
-                className="px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center gap-2 shadow-sm"
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
               >
                 <FolderPlus size={16} />
                 {t('new_folder')}
@@ -664,12 +664,12 @@ export default function Documents() {
               <button 
                 onClick={() => fileInputRef.current?.click()} 
                 disabled={isUploading}
-                className="px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50"
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50"
               >
                 {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                 {t('upload')}
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>

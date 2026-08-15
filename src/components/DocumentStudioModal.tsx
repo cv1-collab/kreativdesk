@@ -508,31 +508,31 @@ ${footerText}
     <div className="fixed inset-0 z-[100000] bg-black/80 backdrop-blur-md flex flex-col justify-between overflow-hidden animate-in fade-in duration-200 print:bg-white print:static print:h-auto print:overflow-visible">
       
       {/* Top Header Control Toolbar */}
-      <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 flex items-center justify-between shrink-0 z-50 shadow-md print:hidden">
+      <header className="h-auto md:h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-3 md:py-0 flex flex-col md:flex-row items-stretch md:items-center justify-between shrink-0 z-50 shadow-md gap-3 print:hidden">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-md">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-md shrink-0">
             <Sparkles size={20} />
           </div>
-          <div>
-            <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-wide flex items-center gap-2">
-              {t('studio_title')} <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black uppercase">{t('din_a4_live')}</span>
+          <div className="overflow-hidden">
+            <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-wide flex items-center gap-2 truncate">
+              {t('studio_title')} <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black uppercase shrink-0">{t('din_a4_live')}</span>
             </h2>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{t('studio_subtitle')}</p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate">{t('studio_subtitle')}</p>
           </div>
         </div>
 
         {/* Action Buttons Toolbar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto shrink-0 pb-1 md:pb-0 justify-end">
           <button
             onClick={() => setIsPdfStudioOpen(true)}
-            className="px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
+            className="px-3 md:px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
           >
             <Sparkles size={15} /> {t('open_pdf_studio')}
           </button>
           
           <button
             onClick={handleCopyText}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+            className="px-3 md:px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap shrink-0"
           >
             {isCopied ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
             {isCopied ? t('copied') : t('copy_text')}
@@ -542,7 +542,7 @@ ${footerText}
             onClick={handleSaveDocument}
             disabled={isSaving}
             className={cn(
-              "px-5 py-2 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50",
+              "px-4 md:px-5 py-2 text-white font-bold text-xs rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0",
               saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
             )}
           >
@@ -552,7 +552,7 @@ ${footerText}
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 transition-colors ml-2 cursor-pointer"
+            className="p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 transition-colors ml-1 cursor-pointer shrink-0"
             title={t('close')}
           >
             <X size={20} />
@@ -561,10 +561,10 @@ ${footerText}
       </header>
 
       {/* Main Studio Canvas Area */}
-      <div className="flex-1 flex overflow-hidden bg-slate-100 dark:bg-slate-950 print:bg-white print:overflow-visible">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden bg-slate-100 dark:bg-slate-950 print:bg-white print:overflow-visible">
         
         {/* Left Sidebar Control Panel */}
-        <aside className="w-80 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200 print:hidden">
+        <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 md:p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200 print:hidden">
           
           {/* Target Scope Selection */}
           <div className="space-y-2">
@@ -638,53 +638,36 @@ ${footerText}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
             />
 
-            {/* Logo Customization */}
-            <div className="pt-2">
-              <input 
-                type="file" 
-                ref={logoInputRef} 
-                onChange={handleLogoUpload} 
-                accept="image/*" 
-                className="hidden" 
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => logoInputRef.current?.click()}
-                  className="flex-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Upload size={14} className="text-amber-500" /> {t('upload_logo')}
-                </button>
-                {companyData.logo && (
-                  <button
-                    type="button"
-                    onClick={() => setCompanyData(prev => ({ ...prev, logo: '' }))}
-                    className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl border border-red-500/20 cursor-pointer"
-                    title={t('remove_logo')}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
+            {/* Logo Upload */}
+            <input type="file" ref={logoInputRef} onChange={handleLogoUpload} accept="image/*" className="hidden" />
+            <button
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              className="w-full py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+            >
+              <Upload size={14} />
+              {companyData.logo ? t('logo_uploaded') : t('upload_logo')}
+            </button>
+          </div>
 
-            {/* Accent Color picker */}
-            <div className="pt-2 flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{t('accent_color')}:</span>
-              <div className="flex items-center gap-1.5">
-                {['#09090b', '#2563eb', '#059669', '#d97706', '#7c3aed'].map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setAccentColor(color)}
-                    className={cn(
-                      "w-5 h-5 rounded-full border-2 transition-transform cursor-pointer",
-                      accentColor === color ? "scale-125 border-amber-500" : "border-transparent opacity-80 hover:opacity-100"
-                    )}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+          <hr className="border-slate-200 dark:border-slate-800" />
+
+          {/* Color Preset Selector */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('accent_color')}</label>
+            <div className="flex items-center gap-2 flex-wrap">
+              {['#09090b', '#2563eb', '#059669', '#d97706', '#7c3aed'].map((hex) => (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => setAccentColor(hex)}
+                  className={cn(
+                    "w-6 h-6 rounded-full border-2 transition-transform cursor-pointer",
+                    accentColor === hex ? "scale-125 border-amber-500 shadow-md" : "border-transparent hover:scale-110"
+                  )}
+                  style={{ backgroundColor: hex }}
+                />
+              ))}
             </div>
           </div>
 
@@ -761,7 +744,7 @@ ${footerText}
                     type="text"
                     value={clientSignatory}
                     onChange={e => setClientSignatory(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
                   />
                 </div>
                 <div>
@@ -770,28 +753,30 @@ ${footerText}
                     type="text"
                     value={architectSignatory}
                     onChange={e => setArchitectSignatory(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
                   />
                 </div>
               </>
             )}
-
-            <div className="pt-2">
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">{t('footer_text')}:</span>
-              <textarea
-                value={footerText}
-                onChange={e => setFooterText(e.target.value)}
-                rows={2}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-[11px] text-slate-900 dark:text-white focus:border-amber-500 outline-none font-mono mt-1 resize-none"
-              />
-            </div>
           </div>
+
+          <div className="space-y-2">
+            <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('footer_details')}</label>
+            <input
+              type="text"
+              value={footerText}
+              onChange={e => setFooterText(e.target.value)}
+              placeholder={t('footer_info')}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+            />
+          </div>
+
         </aside>
 
         {/* Right Canvas (A4 Page Multi-page Container) */}
-        <main className="flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50 p-4 md:p-10 flex justify-center custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
+        <main className="flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50 p-2 sm:p-4 md:p-10 flex justify-center custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
           <div 
-            className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-8 md:p-[20mm] border border-slate-200 flex flex-col justify-between relative print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none"
+            className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-4 sm:p-8 md:p-[20mm] border border-slate-200 flex flex-col justify-between relative print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none"
           >
             <div>
               {/* Swiss Letter Header */}
@@ -817,7 +802,7 @@ ${footerText}
               </div>
 
               {/* Recipient Address & Meta Data Grid */}
-              <div className="grid grid-cols-2 gap-8 mb-10 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-10 text-xs">
                 <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Empfänger</div>
                   <div className="font-bold text-slate-900 text-sm">{recipientName}</div>

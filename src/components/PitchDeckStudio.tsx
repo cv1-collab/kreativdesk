@@ -1119,15 +1119,15 @@ const handleGenerateTeamSlide = async () => {
     );
   };
 
-  if (isLoading) { return <div className="h-[100dvh] w-full bg-[#09090b] flex flex-col items-center justify-center text-white"><Loader2 className="animate-spin text-purple-500 mb-4" size={48} /><p className="tracking-widest uppercase text-sm font-bold text-white/50">{t('loading')}</p></div>; }
+  if (isLoading) { return <div className="h-[100dvh] w-full bg-background flex flex-col items-center justify-center text-text-primary"><Loader2 className="animate-spin text-purple-500 mb-4" size={48} /><p className="tracking-widest uppercase text-sm font-bold text-text-muted">{t('loading')}</p></div>; }
   
   if (slides.length === 0) { 
     return (
-      <div className="fixed inset-0 z-[100000] w-full h-[100dvh] bg-[#09090b] flex flex-col items-center justify-center text-white p-8 text-center relative">
+      <div className="fixed inset-0 z-[100000] w-full h-[100dvh] bg-background flex flex-col items-center justify-center text-text-primary p-8 text-center relative">
          <h2 className="text-2xl font-bold mb-2">{t('no_slides')}</h2>
-         <p className="text-white/50 mb-6">{t('empty_deck')}</p>
+         <p className="text-text-muted mb-6">{t('empty_deck')}</p>
          {currentUser && <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="mt-4 px-6 py-2 bg-purple-500/20 text-purple-400 font-bold rounded-lg hover:bg-purple-500/30 transition-colors">{t('new_slide')}</button>}
-         <button type="button" onClick={onClose} className="mt-8 px-4 py-2 text-white/50 hover:text-white transition-colors">{t('close_studio')}</button>
+         <button type="button" onClick={onClose} className="mt-8 px-4 py-2 text-text-muted hover:text-text-primary transition-colors">{t('close_studio')}</button>
       </div>
     ); 
   }
@@ -1137,25 +1137,25 @@ const handleGenerateTeamSlide = async () => {
       <div className={cn("fixed inset-0 z-[100000] bg-background text-text-primary flex flex-col lg:flex-row overflow-hidden h-[100dvh]")}>
       
       {/* === MOBILE LAYOUT === */}
-      <div className="lg:hidden flex flex-col w-full h-full bg-[#09090b] overflow-hidden">
+      <div className="lg:hidden flex flex-col w-full h-full bg-background overflow-hidden">
         
-        <header className="h-14 flex items-center justify-between px-4 border-b border-white/10 bg-black shrink-0 sticky top-0 z-50">
+        <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-surface shrink-0 sticky top-0 z-50">
           <div className="flex items-center gap-2">
-            <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("p-2 rounded-lg text-xs font-bold transition-all", isPreviewMode?"bg-purple-600 text-white":"text-white/50 hover:text-white")}>
+            <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("p-2 rounded-lg text-xs font-bold transition-all", isPreviewMode?"bg-purple-600 text-white":"text-text-muted hover:text-text-primary")}>
               <Eye size={18}/>
             </button>
           </div>
           <div className="flex items-center gap-3">
-             <span className="text-xs font-mono text-white/50 bg-white/5 px-2 py-1 rounded border border-white/10">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
+             <span className="text-xs font-mono text-text-muted bg-surface border border-border px-2 py-1 rounded">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
              <button type="button" onClick={onClose} className="p-2 bg-red-500/20 text-red-500 rounded-lg"><X size={18}/></button>
           </div>
         </header>
 
-        <div className="w-full relative shrink-0 bg-black overflow-hidden border-b border-white/10 flex justify-center items-center" style={{ height: isPreviewMode ? 'calc(100dvh - 56px)' : `${562 * canvasScale}px` }}>
+        <div className="w-full relative shrink-0 bg-background/50 overflow-hidden border-b border-border flex justify-center items-center" style={{ height: isPreviewMode ? 'calc(100dvh - 56px)' : `${562 * canvasScale}px` }}>
           {isPreviewMode && (
             <>
-              <button onClick={goPrevSlide} disabled={!hasPrevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 z-[100] disabled:opacity-10 transition-all"><ChevronLeft size={20}/></button>
-              <button onClick={goNextSlide} disabled={!hasNextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full hover:bg-black/80 z-[100] disabled:opacity-10 transition-all"><ChevronRight size={20}/></button>
+              <button onClick={goPrevSlide} disabled={!hasPrevSlide} className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-surface/80 text-text-primary rounded-full hover:bg-surface z-[100] disabled:opacity-10 transition-all border border-border"><ChevronLeft size={20}/></button>
+              <button onClick={goNextSlide} disabled={!hasNextSlide} className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-surface/80 text-text-primary rounded-full hover:bg-surface z-[100] disabled:opacity-10 transition-all border border-border"><ChevronRight size={20}/></button>
             </>
           )}
           {activeSlide ? (
@@ -1165,29 +1165,29 @@ const handleGenerateTeamSlide = async () => {
               </div>
             </div>
           ) : (
-            <Loader2 className="animate-spin text-white/50" />
+            <Loader2 className="animate-spin text-text-muted" />
           )}
         </div>
 
         {!isPreviewMode && (
-          <div className="flex border-b border-white/10 p-2 gap-2 overflow-x-auto hide-scrollbar bg-black shrink-0 shadow-lg relative z-40">
-            <button type="button" onClick={()=>setMobileTab('slides')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='slides'?"bg-purple-500/20 text-purple-400":"text-white/50")}>
+          <div className="flex border-b border-border p-2 gap-2 overflow-x-auto hide-scrollbar bg-surface shrink-0 shadow-lg relative z-40">
+            <button type="button" onClick={()=>setMobileTab('slides')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='slides'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
               <Layers size={14} className="inline mr-1 mb-0.5"/> Folien
             </button>
-            <button type="button" onClick={()=>setMobileTab('content')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='content'?"bg-purple-500/20 text-purple-400":"text-white/50")}>
+            <button type="button" onClick={()=>setMobileTab('content')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='content'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
               <PenTool size={14} className="inline mr-1 mb-0.5"/> Inhalt
             </button>
-            <button type="button" onClick={()=>setMobileTab('design')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='design'?"bg-purple-500/20 text-purple-400":"text-white/50")}>
+            <button type="button" onClick={()=>setMobileTab('design')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='design'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
               <PaintBucket size={14} className="inline mr-1 mb-0.5"/> Design
             </button>
-            <button type="button" onClick={()=>setMobileTab('import')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='import'?"bg-purple-500/20 text-purple-400":"text-white/50")}>
+            <button type="button" onClick={()=>setMobileTab('import')} className={cn("px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap", mobileTab==='import'?"bg-purple-500/20 text-purple-400":"text-text-muted")}>
               <DownloadCloud size={14} className="inline mr-1 mb-0.5"/> Import
             </button>
           </div>
         )}
 
         {!isPreviewMode && (
-          <div className="flex-1 overflow-y-auto p-4 bg-black text-white custom-scrollbar pb-24 relative z-30">
+          <div className="flex-1 overflow-y-auto p-4 bg-background text-text-primary custom-scrollbar pb-24 relative z-30">
             
             {mobileTab === 'slides' && (
               <div className="space-y-6">
@@ -1196,26 +1196,26 @@ const handleGenerateTeamSlide = async () => {
                    <AnimatePresence>
                      {showAddMenu && (
                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex flex-col gap-2 mt-2">
-                         <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
-                         <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
-                         <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 flex items-center gap-3"><ImageIcon size={16}/> {t('image_slide')}</button>
-                         <button type="button" onClick={() => handleAddSlide('text-only', t('text_block'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-white/5 rounded-lg border border-white/10 hover:bg-white/10 flex items-center gap-3"><Layout size={16}/> {t('text_block')}</button>
+                         <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
+                         <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
+                         <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><ImageIcon size={16}/> {t('image_slide')}</button>
+                         <button type="button" onClick={() => handleAddSlide('text-only', t('text_block'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Layout size={16}/> {t('text_block')}</button>
                        </motion.div>
                      )}
                    </AnimatePresence>
                  </div>
                  
-                 <div className="flex justify-between items-center mb-2 border-t border-white/10 pt-4">
-                    <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{t('slides_count')} ({slides.length})</span>
-                    {slides.length > 0 && <button type="button" onClick={handleClearAllSlides} className="p-1.5 text-white/50 hover:text-red-500 bg-red-500/10 rounded transition-colors"><Trash2 size={14}/></button>}
+                 <div className="flex justify-between items-center mb-2 border-t border-border pt-4">
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('slides_count')} ({slides.length})</span>
+                    {slides.length > 0 && <button type="button" onClick={handleClearAllSlides} className="p-1.5 text-text-muted hover:text-red-500 bg-red-500/10 rounded transition-colors"><Trash2 size={14}/></button>}
                  </div>
 
                  <div className="grid grid-cols-2 gap-3">
                    {slides.map((s,i)=>(
-                     <div key={s.id} onClick={()=>setActiveSlideId(s.id)} className={cn("p-3 rounded-xl border relative", activeSlideId===s.id?"bg-purple-500/20 border-purple-500":"bg-white/5 border-white/10")}>
-                       <h4 className="text-xs font-bold truncate mb-1 pr-6">{s.title}</h4>
-                       <span className="text-[10px] text-white/50">{t('slide')} {i+1}</span>
-                       <button type="button" onClick={(e) => handleDeleteSlide(e, s.id)} className="absolute top-2 right-2 p-1 text-white/50 hover:text-red-400"><Trash2 size={14}/></button>
+                     <div key={s.id} onClick={()=>setActiveSlideId(s.id)} className={cn("p-3 rounded-xl border relative cursor-pointer", activeSlideId===s.id?"bg-purple-500/20 border-purple-500":"bg-surface border-border")}>
+                       <h4 className="text-xs font-bold truncate mb-1 pr-6 text-text-primary">{s.title}</h4>
+                       <span className="text-[10px] text-text-muted">{t('slide')} {i+1}</span>
+                       <button type="button" onClick={(e) => handleDeleteSlide(e, s.id)} className="absolute top-2 right-2 p-1 text-text-muted hover:text-red-400"><Trash2 size={14}/></button>
                      </div>
                    ))}
                  </div>
@@ -1225,14 +1225,14 @@ const handleGenerateTeamSlide = async () => {
             {mobileTab === 'content' && activeSlide && (
               <div className="space-y-6">
                  <div>
-                    <label className="text-xs font-bold text-white/50 uppercase mb-2 block">Titel</label>
-                    <input type="text" value={localTitle} onChange={e => handleLocalUpdate('title', e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-base font-bold text-white outline-none focus:border-purple-500 transition-colors" />
+                    <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Titel</label>
+                    <input type="text" value={localTitle} onChange={e => handleLocalUpdate('title', e.target.value)} className="w-full bg-surface border border-border rounded-xl px-4 py-4 text-base font-bold text-text-primary outline-none focus:border-purple-500 transition-colors" />
                  </div>
                  
                  {activeSlide.layout !== 'title-only' && activeSlide.layout !== 'image-focus' && (
                     <div>
-                      <label className="text-xs font-bold text-white/50 uppercase mb-2 block">Text</label>
-                      <textarea value={localContent} onChange={e => handleLocalUpdate('content', e.target.value)} className="w-full h-40 bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white resize-none custom-scrollbar outline-none focus:border-purple-500 transition-colors" />
+                      <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Text</label>
+                      <textarea value={localContent} onChange={e => handleLocalUpdate('content', e.target.value)} className="w-full h-40 bg-surface border border-border rounded-xl px-4 py-4 text-sm text-text-primary resize-none custom-scrollbar outline-none focus:border-purple-500 transition-colors" />
                     </div>
                  )}
                  
@@ -1248,12 +1248,12 @@ const handleGenerateTeamSlide = async () => {
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-3">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
-                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-400":"bg-white/5 border-white/10 text-white")}>{thm.n}</button>
+                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold cursor-pointer", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-400":"bg-surface border-border text-text-primary")}>{thm.n}</button>
                   ))}
                 </div>
                 <div className="pt-2">
-                  <label className="text-xs font-bold text-white/50 uppercase mb-2 block">Footer Text</label>
-                  <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm text-white outline-none focus:border-purple-500" />
+                  <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Footer Text</label>
+                  <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="w-full bg-surface border border-border rounded-xl px-4 py-4 text-sm text-text-primary outline-none focus:border-purple-500" />
                 </div>
               </div>
             )}
@@ -1261,10 +1261,10 @@ const handleGenerateTeamSlide = async () => {
             {mobileTab === 'import' && (
               <div className="flex flex-col gap-4">
                 {!projectId && (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-2">
-                    <label className="text-xs font-bold text-white/50 uppercase tracking-widest mb-2 block">Projekt für Import</label>
-                    <select value={importProjectId} onChange={(e) => setImportProjectId(e.target.value)} className="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm font-bold text-white outline-none focus:border-purple-500">
-                      <option value="" className="text-white/50">-- Projekt wählen --</option>
+                  <div className="bg-surface border border-border rounded-xl p-4 mb-2">
+                    <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2 block">Projekt für Import</label>
+                    <select value={importProjectId} onChange={(e) => setImportProjectId(e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm font-bold text-text-primary outline-none focus:border-purple-500">
+                      <option value="" className="text-text-muted">-- Projekt wählen --</option>
                       {projects.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
