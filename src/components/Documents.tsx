@@ -629,15 +629,15 @@ export default function Documents() {
   const customRootFolders = sortedFolders.filter(f => !presetKeys.includes(f.name));
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 pb-32 md:pb-8 animate-in fade-in duration-300">
       {/* Top Header Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-border p-6 rounded-3xl shadow-sm gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-border p-4 md:p-6 rounded-3xl shadow-sm gap-4">
         <div>
-          <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
-            <FolderOpen className="text-blue-500" size={24} />
+          <h3 className="text-lg md:text-xl font-black text-text-primary flex items-center gap-2">
+            <FolderOpen className="text-blue-500" size={22} />
             {t('document_hub')}
           </h3>
-          <p className="text-text-muted text-sm font-medium">{t('cloud_storage_desc')}</p>
+          <p className="text-text-muted text-xs md:text-sm font-medium">{t('cloud_storage_desc')}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
@@ -675,8 +675,8 @@ export default function Documents() {
       </div>
 
       {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen & Layout Switcher */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/70 pb-1">
-        <div className="flex border-b border-transparent gap-2">
+      <div className="flex flex-row justify-between items-center gap-2 border-b border-border/70 pb-1 overflow-x-auto custom-scrollbar">
+        <div className="flex border-b border-transparent gap-1.5 shrink-0">
           <button
             onClick={() => {
               setActiveTab('company');
@@ -686,13 +686,13 @@ export default function Documents() {
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
-              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl cursor-pointer",
+              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
               activeTab === 'company'
                 ? "border-blue-500 text-blue-500 bg-blue-500/10 shadow-sm font-extrabold"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
-            <Building2 size={18} />
+            <Building2 size={16} />
             {t('company_docs')}
           </button>
 
@@ -705,19 +705,19 @@ export default function Documents() {
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
-              "px-6 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2.5 rounded-t-xl cursor-pointer",
+              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
               activeTab === 'projects'
                 ? "border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-extrabold"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
-            <Briefcase size={18} />
+            <Briefcase size={16} />
             {t('project_docs')}
           </button>
         </div>
 
         {/* View Mode Toggle: Grid Kacheln vs Liste */}
-        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl shadow-sm self-end sm:self-auto">
+        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl shadow-sm shrink-0">
           <button
             onClick={() => setViewMode('grid')}
             className={cn(
