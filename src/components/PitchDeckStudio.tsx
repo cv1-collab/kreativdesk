@@ -1187,7 +1187,7 @@ const handleGenerateTeamSlide = async () => {
         )}
 
         {!isPreviewMode && (
-          <div className="flex-1 overflow-y-auto p-4 bg-background text-text-primary custom-scrollbar pb-24 relative z-30">
+          <div className="flex-1 overflow-y-auto p-4 bg-background text-text-primary custom-scrollbar pb-36 relative z-30">
             
             {mobileTab === 'slides' && (
               <div className="space-y-6">
