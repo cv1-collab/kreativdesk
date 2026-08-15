@@ -604,21 +604,23 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col min-h-0 bg-background text-text-primary relative">
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 custom-scrollbar">
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-            <div><h1 className="text-2xl font-semibold tracking-tight">{t('defects_title')}</h1><p className="text-text-muted text-sm mt-1">{t('defects_desc')}</p></div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex bg-surface border border-border rounded-lg p-1 w-full sm:w-auto">
-                <button onClick={() => setViewMode('board')} className={cn("flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2", viewMode === 'board' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><LayoutGrid size={16} /> {t('board')}</button>
-                <button onClick={() => setViewMode('list')} className={cn("flex-1 px-4 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2", viewMode === 'list' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><ListIcon size={16} /> {t('list')}</button>
+            <div><h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{t('defects_title')}</h1><p className="text-text-muted text-xs sm:text-sm mt-1">{t('defects_desc')}</p></div>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="flex bg-surface border border-border rounded-xl p-1 w-full sm:w-auto">
+                <button onClick={() => setViewMode('board')} className={cn("flex-1 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2", viewMode === 'board' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><LayoutGrid size={16} /> {t('board')}</button>
+                <button onClick={() => setViewMode('list')} className={cn("flex-1 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2", viewMode === 'list' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><ListIcon size={16} /> {t('list')}</button>
               </div>
-              <button onClick={() => setIsPdfStudioOpen(true)} className="flex-1 sm:flex-none px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                <FileText size={16} /> <span className="hidden sm:inline">PDF Studio</span>
-              </button>
-              <button onClick={openAddModal} className="flex-1 sm:flex-none px-4 py-2 bg-accent-ai text-white rounded-md text-sm font-medium hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-2"><Plus size={16} /> {t('add_defect')}</button>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button onClick={() => setIsPdfStudioOpen(true)} className="flex-1 sm:flex-none px-3.5 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                  <FileText size={16} /> <span>PDF Export</span>
+                </button>
+                <button onClick={openAddModal} className="flex-1 sm:flex-none px-4 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-1.5 whitespace-nowrap"><Plus size={16} /> {t('add_defect')}</button>
+              </div>
             </div>
           </header>
 
           <div className="flex items-center gap-4 shrink-0">
-             <button onClick={generateAIInsights} disabled={isAnalyzing} className="w-full sm:w-auto justify-center px-4 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-sm font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-2 disabled:opacity-50">
+             <button onClick={generateAIInsights} disabled={isAnalyzing} className="w-full sm:w-auto justify-center px-4 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-2 disabled:opacity-50">
                {isAnalyzing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />} {isAnalyzing ? t('ai_analyzing_defects') : t('ai_insights')}
              </button>
           </div>
@@ -632,7 +634,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           )}
 
           {viewMode === 'board' ? (
-            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-4 -mx-2 md:mx-0 px-2 md:px-0">
+            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-24 -mx-2 md:mx-0 px-2 md:px-0">
               <div className="flex gap-4 md:gap-6 h-full min-w-[900px]">
                 {STATUS_COLUMNS.map(status => {
                   const colDefects = defects.filter(d => d.status === status);
