@@ -287,21 +287,21 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     <>
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col min-h-0 h-full bg-background text-text-primary">
 
-        <div className="flex-1 overflow-y-auto p-2 md:p-6 pb-24 md:pb-6 custom-scrollbar space-y-6">
+        <div className="flex-1 overflow-y-auto p-2 md:p-6 pb-32 md:pb-8 custom-scrollbar space-y-6">
           
           <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0 px-2 md:px-0">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">{t('site_monitoring_title')}</h1>
-              <p className="text-text-muted text-sm mt-1">{t('site_monitoring_desc')}</p>
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{t('site_monitoring_title')}</h1>
+              <p className="text-text-muted text-xs sm:text-sm mt-1">{t('site_monitoring_desc')}</p>
             </div>
           </header>
 
-          <div className="flex bg-surface border border-border rounded-lg p-1 w-full md:w-fit shrink-0 shadow-sm overflow-x-auto hide-scrollbar mx-2 md:mx-0">
-             <button onClick={() => setActiveTab('overview')} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><Camera size={16}/> {t('overview_tab')}</button>
-             <button onClick={() => setActiveTab('safety')} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'safety' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><HardHat size={16}/> {t('ai_safety')}</button>
-             <button onClick={() => setActiveTab('access')} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'access' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><Scan size={16}/> {t('safety_access')}</button>
-             <button onClick={() => setActiveTab('logistics')} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'logistics' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><Truck size={16}/> {t('logistics')}</button>
-             <button onClick={() => setActiveTab('drones')} className={cn("px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap", activeTab === 'drones' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:text-text-primary")}><Plane size={16}/> {t('drone_survey')}</button>
+          <div className="flex bg-surface border border-border rounded-xl p-1 w-full md:w-fit shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 mx-0">
+             <button onClick={() => setActiveTab('overview')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Camera size={14}/> {t('overview_tab')}</button>
+             <button onClick={() => setActiveTab('safety')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'safety' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><HardHat size={14}/> {t('ai_safety')}</button>
+             <button onClick={() => setActiveTab('access')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'access' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Scan size={14}/> {t('safety_access')}</button>
+             <button onClick={() => setActiveTab('logistics')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'logistics' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Truck size={14}/> {t('logistics')}</button>
+             <button onClick={() => setActiveTab('drones')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'drones' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Plane size={14}/> {t('drone_survey')}</button>
           </div>
 
           {activeTab === 'overview' && (
