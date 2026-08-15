@@ -8,12 +8,12 @@ import { scrubLocalStorageFileUrls } from './utils';
 
 scrubLocalStorageFileUrls();
 
-// Initialisiert den PWA Service Worker (Background Updates & Caching)
+// Initialisiert den PWA Service Worker (Hintergrund-Caching ohne störendes Neuladen)
 if ('serviceWorker' in navigator) {
-  const updateSW = registerSW({ 
+  registerSW({ 
     immediate: true,
     onNeedRefresh() {
-      updateSW(true);
+      // Aktualisiert Caches geräuschlos im Hintergrund ohne die App neu zu laden
     },
     onOfflineReady() {}
   });
