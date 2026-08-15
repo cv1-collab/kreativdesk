@@ -770,8 +770,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           {/* WHITEBOARD CANVAS */}
           <div className={cn("flex-1 relative overflow-hidden flex-col bg-[#f9fafb] dark:bg-[#09090b]", mobileTab === 'whiteboard' ? "flex h-full" : "hidden lg:flex h-full", isFullscreen && "fixed inset-0 z-[9999] rounded-none border-none")} ref={containerRef}>
             
-            {/* TOOLBAR */}
-            <div className="absolute bottom-4 md:top-4 md:bottom-auto left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-2rem)] custom-scrollbar">
+            {/* TOOLBAR OBEN PLAZIERT UM ÜBERLAPPUNG ZU VERMEIDEN */}
+            <div className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-1rem)] custom-scrollbar">
               <div className="flex items-center gap-1 px-1.5 border-r border-border mr-1 shrink-0">
                 {AVAILABLE_COLORS.map(c => (
                   <button key={c} onClick={() => setActiveColor(c)} className={cn("w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-all shrink-0", activeColor === c ? "border-text-primary scale-110" : "border-transparent hover:scale-110")} style={{ backgroundColor: c }} title="Farbe wählen" />
@@ -843,7 +843,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
               <button onClick={clearBoard} className="p-1.5 md:p-2 hover:bg-red-500/20 rounded-lg text-red-500 transition-colors text-[10px] md:text-xs font-bold uppercase tracking-wider shrink-0">{globalT('delete')}</button>
             </div>
 
-            <div className="absolute top-16 md:top-auto md:bottom-4 left-4 bg-background/90 backdrop-blur-md border border-border rounded-lg p-1.5 flex items-center gap-1 z-20 shadow-lg">
+            <div className="absolute top-14 md:top-auto md:bottom-4 left-4 bg-background/90 backdrop-blur-md border border-border rounded-lg p-1.5 flex items-center gap-1 z-20 shadow-lg">
                <button onClick={() => handleZoomButton(1 / 1.2)} className="p-1.5 text-text-muted hover:text-text-primary transition-colors hover:bg-white/5 rounded-md"><ZoomOut size={14} /></button>
                <span className="text-[10px] md:text-xs font-bold w-10 md:w-12 text-center text-text-primary select-none">{Math.round(stageScale * 100)}%</span>
                <button onClick={() => handleZoomButton(1.2)} className="p-1.5 text-text-muted hover:text-text-primary transition-colors hover:bg-white/5 rounded-md"><ZoomIn size={14} /></button>
@@ -852,7 +852,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
                <button onClick={toggleFullscreen} className="p-1.5 text-text-muted hover:text-text-primary transition-colors hover:bg-white/5 rounded-md" title={isFullscreen ? t('exit_fullscreen') : t('fullscreen')}>{isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}</button>
             </div>
 
-            <div className="absolute top-16 md:top-auto md:bottom-4 right-4 z-20">
+            <div className="absolute top-14 md:top-auto md:bottom-4 right-4 z-20">
               <button onClick={() => setShowLayersPanel(!showLayersPanel)} className={cn("p-2.5 md:p-3 rounded-full shadow-lg transition-all border", showLayersPanel ? "bg-accent-ai text-white border-accent-ai" : "bg-background/90 backdrop-blur-md text-text-primary border-border hover:bg-surface")}><Layers size={18} /></button>
               <AnimatePresence>
                 {showLayersPanel && (
@@ -1006,7 +1006,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
               ))}
             </div>
 
-            <div className="p-4 border-t border-border bg-surface text-center shrink-0">
+            <div className="p-4 pb-24 md:pb-4 pr-16 md:pr-4 border-t border-border bg-surface text-center shrink-0">
               <p className="text-xs font-medium text-text-muted mb-4">{t('info_text')}</p>
               <button onClick={isRecording ? stopRecording : startRecording} className={cn("w-full py-3.5 rounded-xl text-sm font-bold transition-all shadow-lg flex items-center justify-center gap-2", isRecording ? "bg-red-500 hover:bg-red-600 text-white shadow-red-500/20 animate-pulse" : "bg-accent-ai text-white hover:bg-accent-ai/90 shadow-accent-ai/20")}>
                 {isRecording ? <StopIcon size={18} className="fill-current" /> : <Mic size={18} />}
