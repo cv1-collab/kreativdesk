@@ -672,10 +672,18 @@ export default function CompanyDashboard() {
           })}
         </nav>
         <div className="p-4 border-t border-border bg-surface/50 shrink-0">
-          <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-center xl:justify-start gap-3 px-2 xl:px-3 py-2 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
-            <div className="w-7 h-7 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai shrink-0">{currentUser?.email?.charAt(0).toUpperCase()}</div>
-            <div className="hidden xl:block text-left overflow-hidden"><div className="truncate text-xs">{currentUser?.email?.split('@')[0]}</div><div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{userRole}</div></div>
-          </button>
+          {(() => {
+            const userDisplayName = currentUser?.name || currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'User');
+            return (
+              <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-center xl:justify-start gap-3 px-2 xl:px-3 py-2 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
+                <div className="w-7 h-7 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
+                <div className="hidden xl:block text-left overflow-hidden">
+                  <div className="truncate text-xs font-bold text-text-primary">{userDisplayName}</div>
+                  <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{userRole}</div>
+                </div>
+              </button>
+            );
+          })()}
         </div>
       </aside>
 

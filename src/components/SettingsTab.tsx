@@ -153,7 +153,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function SettingsTab() {
   const { language, t: globalT } = useLanguage();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, updateCurrentUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
   
@@ -367,9 +367,14 @@ export default function SettingsTab() {
           url: payloadStr,
           file_url: payloadStr,
           type: 'application/json',
-          created_at: new Date().toISOString(),
-          uploaded_at: new Date().toISOString()
         });
+      }
+
+      if (contactPerson.trim() && currentUser?.uid) {
+        await supabase.from('profiles').update({ name: contactPerson.trim() }).eq('id', currentUser.uid);
+        if (typeof updateCurrentUser === 'function') {
+          updateCurrentUser({ name: contactPerson.trim(), displayName: contactPerson.trim() });
+        }
       }
 
       setWebsite(formattedWebsite);
