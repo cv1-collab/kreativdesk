@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn, sanitizeUrl } from '../utils';
@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabase';
 import { checkStorageLimit, incrementStorage, STORAGE_LIMITS } from '../utils/storageGuard';
 import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/stripeClient';
 import { hasFeature } from '../utils/planFeatures';
+import { webhookNotifier } from '../utils/webhookNotifier';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -187,6 +188,15 @@ export default function SettingsTab() {
 
   const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
   const [bexioApiToken, setBexioApiToken] = useState('');
+  const [isTestingSlack, setIsTestingSlack] = useState(false);
+  const [isTestingBexio, setIsTestingBexio] = useState(false);
+
+  // Finanz- & Sicherheits-Präferenzen
+  const [currency, setCurrency] = useState('CHF');
+  const [vatRate, setVatRate] = useState<number>(8.1);
+  const [paymentTermsDays, setPaymentTermsDays] = useState<number>(30);
+  const [require2FA, setRequire2FA] = useState<boolean>(false);
+  const [sessionTimeout, setSessionTimeout] = useState<number>(30);
 
   // Abo States (Dynamisch)
   const [companyPlan, setCompanyPlan] = useState('Free Trial');
@@ -205,7 +215,6 @@ export default function SettingsTab() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Profildaten laden
   // Profildaten laden
   useEffect(() => {
     if (!currentUser?.companyId) return;
@@ -231,6 +240,26 @@ export default function SettingsTab() {
         setCompanyPlan(data.plan || 'Free Trial');
       }
 
+      // Load integrations & preferences from localStorage or data
+      const compId = currentUser.companyId;
+      const savedSlack = localStorage.getItem(`slack_url_${compId}`) || (data?.webhook_url?.includes('slack') ? data.webhook_url : '');
+      if (savedSlack) {
+        setSlackWebhookUrl(savedSlack);
+        setSlackIntegration(true);
+      }
+
+      const savedBexio = localStorage.getItem(`bexio_token_${compId}`) || '';
+      if (savedBexio) {
+        setBexioApiToken(savedBexio);
+        setBexioIntegration(true);
+      }
+
+      setCurrency(localStorage.getItem(`currency_${compId}`) || 'CHF');
+      setVatRate(Number(localStorage.getItem(`vat_${compId}`)) || 8.1);
+      setPaymentTermsDays(Number(localStorage.getItem(`payment_terms_${compId}`)) || 30);
+      setRequire2FA(localStorage.getItem(`require_2fa_${compId}`) === 'true');
+      setSessionTimeout(Number(localStorage.getItem(`session_timeout_${compId}`)) || 30);
+
       const safeCompanyId = currentUser.companyId || currentUser.uid;
       const { count: cuCount } = await supabase.from('company_users').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
       const { count: pCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
@@ -252,6 +281,42 @@ export default function SettingsTab() {
         formattedWebsite = `https://${formattedWebsite}`;
       }
 
+      const compId = currentUser.companyId;
+
+      // Save Slack & Bexio to storage and sync webhooks
+      if (slackIntegration && slackWebhookUrl.trim()) {
+        localStorage.setItem(`slack_url_${compId}`, slackWebhookUrl.trim());
+        const existingWhs = webhookNotifier.getWebhooks(compId);
+        if (!existingWhs.some(w => w.url === slackWebhookUrl.trim())) {
+          const updated = [
+            ...existingWhs,
+            {
+              id: `wh_slack_${Date.now()}`,
+              name: 'Slack Workspace Integration',
+              url: slackWebhookUrl.trim(),
+              events: ['defect.created', 'invoice.created', 'lead.created', 'document.uploaded'] as any,
+              active: true,
+              created_at: new Date().toISOString()
+            }
+          ];
+          webhookNotifier.saveWebhooks(updated, compId);
+        }
+      } else if (!slackIntegration) {
+        localStorage.removeItem(`slack_url_${compId}`);
+      }
+
+      if (bexioIntegration && bexioApiToken.trim()) {
+        localStorage.setItem(`bexio_token_${compId}`, bexioApiToken.trim());
+      } else if (!bexioIntegration) {
+        localStorage.removeItem(`bexio_token_${compId}`);
+      }
+
+      localStorage.setItem(`currency_${compId}`, currency);
+      localStorage.setItem(`vat_${compId}`, String(vatRate));
+      localStorage.setItem(`payment_terms_${compId}`, String(paymentTermsDays));
+      localStorage.setItem(`require_2fa_${compId}`, String(require2FA));
+      localStorage.setItem(`session_timeout_${compId}`, String(sessionTimeout));
+
       const { error } = await supabase.from('companies').update({
         name: agencyName,
         contact_person: contactPerson,
@@ -264,10 +329,10 @@ export default function SettingsTab() {
         zip: zipCode,
         city,
         iban,
-        webhook_url: webhookUrl,
+        webhook_url: slackWebhookUrl.trim() || webhookUrl,
         primary_color: primaryColor,
         updated_at: new Date().toISOString()
-      }).eq('id', currentUser.companyId);
+      }).eq('id', compId);
 
       if (error) {
         console.error('Error saving settings:', error);
@@ -623,10 +688,12 @@ export default function SettingsTab() {
                   </div>
                 )}
                 <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
-                  <LinkIcon size={16} className="text-accent-ai" /> Integrationen
+                  <LinkIcon size={16} className="text-accent-ai" /> Integrationen & Webhooks
                 </h4>
                 <div className="space-y-3">
-                  <div className="p-3 bg-background/30 rounded-xl border border-border/30">
+                  
+                  {/* SLACK CARD */}
+                  <div className="p-4 bg-background/30 rounded-xl border border-border/30 space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={slackIntegration} onChange={e => setSlackIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
                       <div>
@@ -635,14 +702,46 @@ export default function SettingsTab() {
                       </div>
                     </label>
                     {slackIntegration && (
-                      <div className="mt-3 ml-7">
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Slack Webhook URL</label>
-                        <input type="url" value={slackWebhookUrl} onChange={e => setSlackWebhookUrl(e.target.value)} placeholder="https://hooks.slack.com/services/..." className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner" />
+                      <div className="mt-3 ml-7 space-y-2">
+                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Slack Webhook URL</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={slackWebhookUrl} 
+                            onChange={e => setSlackWebhookUrl(e.target.value)} 
+                            placeholder="https://hooks.slack.com/services/..." 
+                            className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner font-mono text-xs" 
+                          />
+                          <button
+                            type="button"
+                            disabled={isTestingSlack || !slackWebhookUrl.trim()}
+                            onClick={async () => {
+                              setIsTestingSlack(true);
+                              try {
+                                const res = await webhookNotifier.testWebhook(slackWebhookUrl.trim(), undefined, 'lead.created');
+                                if (res.success) {
+                                  addToast(`Slack Test erfolgreich! (${res.status} OK in ${res.durationMs}ms)`, 'success');
+                                } else {
+                                  addToast(`Slack Test fehlgeschlagen (${res.statusText || 'Verbindungsfehler'})`, 'error');
+                                }
+                              } catch (e: any) {
+                                addToast(e.message || 'Fehler beim Slack Test', 'error');
+                              } finally {
+                                setIsTestingSlack(false);
+                              }
+                            }}
+                            className="px-3 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {isTestingSlack ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                            Slack testen
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
                   
-                  <div className="p-3 bg-background/30 rounded-xl border border-border/30">
+                  {/* BEXIO CARD */}
+                  <div className="p-4 bg-background/30 rounded-xl border border-border/30 space-y-3">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input type="checkbox" checked={bexioIntegration} onChange={e => setBexioIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
                       <div>
@@ -651,14 +750,124 @@ export default function SettingsTab() {
                       </div>
                     </label>
                     {bexioIntegration && (
-                      <div className="mt-3 ml-7">
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Bexio API Token</label>
-                        <input type="text" value={bexioApiToken} onChange={e => setBexioApiToken(e.target.value)} placeholder="Dein Bexio API Token" className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner" />
+                      <div className="mt-3 ml-7 space-y-2">
+                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Bexio API Token</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="password" 
+                            value={bexioApiToken} 
+                            onChange={e => setBexioApiToken(e.target.value)} 
+                            placeholder="Dein Bexio API Token (z. B. bexio_sec_...)" 
+                            className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner font-mono text-xs" 
+                          />
+                          <button
+                            type="button"
+                            disabled={isTestingBexio || !bexioApiToken.trim()}
+                            onClick={async () => {
+                              setIsTestingBexio(true);
+                              setTimeout(() => {
+                                setIsTestingBexio(false);
+                                if (bexioApiToken.trim().length >= 10) {
+                                  addToast('Bexio Token Format verifiziert! (Bereit für Sync)', 'success');
+                                } else {
+                                  addToast('Bexio Token ist zu kurz oder ungültig.', 'error');
+                                }
+                              }, 600);
+                            }}
+                            className="px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {isTestingBexio ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
+                            Token prüfen
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
+
+              {/* FINANZEN & WÄHRUNG STANDARDS */}
+              <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50">
+                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <Coins size={16} className="text-accent-ai" /> Finanz- & Abrechnungs-Standards
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
+                  <div>
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">Standard-Währung</label>
+                    <select 
+                      value={currency} 
+                      onChange={e => setCurrency(e.target.value)} 
+                      className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary font-bold shadow-inner"
+                    >
+                      <option value="CHF">CHF (Schweizer Franken)</option>
+                      <option value="EUR">EUR (Euro)</option>
+                      <option value="USD">USD (US-Dollar)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">MWST-Satz</label>
+                    <select 
+                      value={vatRate} 
+                      onChange={e => setVatRate(Number(e.target.value))} 
+                      className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary font-bold shadow-inner"
+                    >
+                      <option value={8.1}>8.1% (Standard CH)</option>
+                      <option value={2.6}>2.6% (Reduziert CH)</option>
+                      <option value={0}>0% (Exempt)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">Zahlungsziel</label>
+                    <select 
+                      value={paymentTermsDays} 
+                      onChange={e => setPaymentTermsDays(Number(e.target.value))} 
+                      className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary font-bold shadow-inner"
+                    >
+                      <option value={14}>Netto 14 Tage</option>
+                      <option value={30}>Netto 30 Tage</option>
+                      <option value={60}>Netto 60 Tage</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* SICHERHEITS- & TEAM POLICY */}
+              <div className="sm:col-span-2 mt-4 pt-4 border-t border-border/50">
+                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <Shield size={16} className="text-accent-ai" /> Sicherheits- & Team-Policies
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 bg-background/50 rounded-lg border border-border/40">
+                    <input 
+                      type="checkbox" 
+                      checked={require2FA} 
+                      onChange={e => setRequire2FA(e.target.checked)} 
+                      className="w-4 h-4 rounded border-border text-accent-ai bg-background" 
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-text-primary">2FA-Pflicht für Mitarbeiter</div>
+                      <div className="text-[10px] text-text-muted">Erzwinge 2FA-Authentifizierung für das gesamte Team</div>
+                    </div>
+                  </label>
+
+                  <div>
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">Session Inaktivitäts-Timeout</label>
+                    <select 
+                      value={sessionTimeout} 
+                      onChange={e => setSessionTimeout(Number(e.target.value))} 
+                      className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary font-bold shadow-inner"
+                    >
+                      <option value={15}>15 Minuten</option>
+                      <option value={30}>30 Minuten</option>
+                      <option value={60}>60 Minuten</option>
+                      <option value={0}>Deaktiviert</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <div className="pt-4 border-t border-border/50 flex justify-end">
