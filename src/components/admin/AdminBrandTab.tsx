@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../../utils/configHelper';
 import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -100,37 +101,18 @@ export default function AdminBrandTab() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      addToast('Logo-Datei darf maximal 5 MB groß sein.', 'error');
-      return;
-    }
-
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `master_logo_${Date.now()}.${fileExt}`;
-      const filePath = `branding/${fileName}`;
+      const filePath = `branding/master_logo_${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
 
-      const { error: uploadErr } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadErr) {
-        // Fallback to data URL if storage upload fails
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setConfig(prev => ({ ...prev, masterLogo: reader.result as string }));
-          addToast('Logo als Daten-URL geladen', 'info');
-        };
-        reader.readAsDataURL(file);
-      } else {
-        const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-        setConfig(prev => ({ ...prev, masterLogo: publicUrlData.publicUrl }));
-        addToast('Logo erfolgreich hochgeladen!', 'success');
-      }
-    } catch (err) {
-      console.error("Upload error:", err);
-      addToast('Fehler beim Hochladen des Logos', 'error');
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setConfig(prev => ({ ...prev, masterLogo: pubData.publicUrl }));
+      addToast(t('upload_success'), 'success');
+    } catch (e) {
+      console.error("Logo upload error:", e);
+      addToast('Fehler beim Upload', 'error');
     } finally {
       setIsUploading(false);
     }
@@ -140,12 +122,7 @@ export default function AdminBrandTab() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await supabase
-        .from('system_config')
-        .upsert({
-          id: 'global_master',
-          data: config
-        });
+      await saveSystemConfigJSON('global_master', config);
       addToast(t('branding_saved'), 'success');
     } catch (e) {
       console.error("Save config error:", e);

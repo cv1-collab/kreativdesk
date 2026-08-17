@@ -23,6 +23,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { demoTemplates } from '../utils/demoTemplates';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -423,15 +424,10 @@ export default function Calendar() {
 
         let rawData: any = null;
         try {
-          const res = await supabase
-            .from('system_config')
-            .select('*')
-            .eq('id', `schedule_${scheduleDocId}`)
-            .maybeSingle();
-          rawData = res.data;
+          rawData = await fetchSystemConfigJSON(`schedule_${scheduleDocId}`, currentUser.companyId);
         } catch (e) {}
 
-        const configData = (rawData as any)?.data || rawData || cachedData;
+        const configData = rawData || cachedData;
 
         if (configData?.schedules && configData.schedules.length > 0) {
           const scheds = configData.schedules;
@@ -476,10 +472,7 @@ export default function Calendar() {
           }
 
           try {
-            await supabase.from('system_config').upsert({
-              id: `schedule_${scheduleDocId}`,
-              data: schedPayload
-            });
+            await saveSystemConfigJSON(`schedule_${scheduleDocId}`, schedPayload, currentUser.companyId, currentUser.uid);
           } catch (e) {}
         }
       } catch (err) {

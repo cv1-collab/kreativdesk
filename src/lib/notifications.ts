@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 
 export interface AppNotification {
   id: string;
@@ -16,7 +17,7 @@ export const sendNotification = async ({
   title,
   message,
   type = 'info',
-  link = ''
+  link
 }: {
   companyId: string;
   title: string;
@@ -26,71 +27,35 @@ export const sendNotification = async ({
 }) => {
   if (!companyId) return;
 
-  const notifObj: AppNotification = {
-    id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+  const notifObj = {
+    id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     company_id: companyId,
     title,
     message,
     type,
-    link,
+    link: link || '',
     is_read: false,
     created_at: new Date().toISOString()
   };
 
-  // 1. Update LocalStorage Cache for instant UI update
   try {
     const cacheKey = `notifs_cache_${companyId}`;
-    const raw = localStorage.getItem(cacheKey);
-    const existing: AppNotification[] = raw ? JSON.parse(raw) : [];
-    const updated = [notifObj, ...existing.filter(n => n.id !== notifObj.id)];
-    localStorage.setItem(cacheKey, JSON.stringify(updated.slice(0, 50)));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
-    }
-  } catch (err) {
-    console.warn("Notification local storage save error:", err);
-  }
+    const rawCache = localStorage.getItem(cacheKey);
+    const existingCache: AppNotification[] = rawCache ? JSON.parse(rawCache) : [];
+    const updatedCache = [notifObj, ...existingCache].slice(0, 50);
+    localStorage.setItem(cacheKey, JSON.stringify(updatedCache));
 
-  // 2. Insert into Supabase notifications table
-  try {
-    let { error } = await supabase.from('notifications').insert({
-      id: notifObj.id,
+    const { error } = await supabase.from('audit_logs').insert({
       company_id: companyId,
-      title,
-      message,
-      type,
-      link,
-      is_read: false,
-      created_at: notifObj.created_at
+      action: 'NOTIFICATION',
+      details: JSON.stringify(notifObj)
     });
 
-    if (error && (error.code === 'PGRST204' || error.message?.includes('is_read'))) {
-      const res = await supabase.from('notifications').insert({
-        id: notifObj.id,
-        company_id: companyId,
-        title,
-        message,
-        type,
-        link,
-        created_at: notifObj.created_at
-      });
-      error = res.error;
-    }
-
     if (error) {
-      // Fallback: Backup to system_config
       try {
-        const { data: existingConfig } = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', `notifications_${companyId}`)
-          .maybeSingle();
-
-        const existingNotifs = (existingConfig as any)?.data?.notifications || existingConfig?.notifications || [];
-        await supabase.from('system_config').upsert({
-          id: `notifications_${companyId}`,
-          data: { notifications: [notifObj, ...existingNotifs].slice(0, 50), companyId }
-        });
+        const existingConfig = await fetchSystemConfigJSON<{ notifications?: AppNotification[] }>(`notifications_${companyId}`, companyId);
+        const existingNotifs = existingConfig?.notifications || [];
+        await saveSystemConfigJSON(`notifications_${companyId}`, { notifications: [notifObj, ...existingNotifs].slice(0, 50), companyId }, companyId);
       } catch (e) {}
     }
   } catch (err) {
@@ -108,17 +73,12 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
 
     let configNotifs: AppNotification[] = [];
     try {
-      const { data: config } = await supabase
-        .from('system_config')
-        .select('*')
-        .eq('id', `notifications_${companyId}`)
-        .maybeSingle();
-
-      if (config?.data?.notifications) {
-        configNotifs = config.data.notifications;
+      const config = await fetchSystemConfigJSON<{ notifications?: AppNotification[] }>(`notifications_${companyId}`, companyId);
+      if (config?.notifications) {
+        configNotifs = config.notifications;
       }
     } catch (e) {
-      // Ignore system_config fallback errors
+      // Ignore fallback errors
     }
 
     let dbNotifs: any[] = [];

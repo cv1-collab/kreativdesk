@@ -17,6 +17,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
 import { sendNotification } from '../lib/notifications';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 
 const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -574,21 +575,15 @@ export default function MeetChat() {
         console.warn("Agenda cache sync fail:", cacheErr);
       }
 
-      // 2. Backup to system_config (both calls and agenda events)
+      // 2. Backup to documents (both calls and agenda events)
       try {
-        const { data: existingConfig } = await supabase.from('system_config').select('*').eq('id', `schedule_calls_${currentUser.companyId}`).maybeSingle();
-        const cCalls = (existingConfig as any)?.data?.calls || existingConfig?.calls || [];
-        await supabase.from('system_config').upsert({
-          id: `schedule_calls_${currentUser.companyId}`,
-          data: { calls: [newCallObj, ...cCalls], companyId: currentUser.companyId }
-        });
+        const existingConfig = await fetchSystemConfigJSON<{ calls?: any[] }>(`schedule_calls_${currentUser.companyId}`, currentUser.companyId);
+        const cCalls = existingConfig?.calls || [];
+        await saveSystemConfigJSON(`schedule_calls_${currentUser.companyId}`, { calls: [newCallObj, ...cCalls], companyId: currentUser.companyId }, currentUser.companyId, currentUser.uid);
 
-        const { data: agendaConfig } = await supabase.from('system_config').select('*').eq('id', `agenda_events_${currentUser.companyId}`).maybeSingle();
-        const cEvents = (agendaConfig as any)?.data?.events || agendaConfig?.events || [];
-        await supabase.from('system_config').upsert({
-          id: `agenda_events_${currentUser.companyId}`,
-          data: { events: [newCallObj, ...cEvents], companyId: currentUser.companyId }
-        });
+        const agendaConfig = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${currentUser.companyId}`, currentUser.companyId);
+        const cEvents = agendaConfig?.events || [];
+        await saveSystemConfigJSON(`agenda_events_${currentUser.companyId}`, { events: [newCallObj, ...cEvents], companyId: currentUser.companyId }, currentUser.companyId, currentUser.uid);
       } catch (backupErr) {}
 
       // 3. Insert into calendar_events with schema resilience

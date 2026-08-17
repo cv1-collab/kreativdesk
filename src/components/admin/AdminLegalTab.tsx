@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Scale, FileText, Upload, CheckCircle2, Loader2, Shield, Activity, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useToast } from '../../contexts/ToastContext';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../../utils/configHelper';
 
 export default function AdminLegalTab() {
   const { addToast } = useToast();
@@ -15,13 +16,7 @@ export default function AdminLegalTab() {
 
   const fetchLegalDocs = async () => {
     try {
-      const { data } = await supabase
-        .from('system_config')
-        .select('*')
-        .eq('id', 'legal_documents')
-        .maybeSingle();
-
-      const config = (data as any)?.data || data;
+      const config = await fetchSystemConfigJSON('legal_documents');
       if (config) {
         setLegalDocs(config);
       }
@@ -54,12 +49,7 @@ export default function AdminLegalTab() {
         }
       };
 
-      await supabase
-        .from('system_config')
-        .upsert({
-          id: 'legal_documents',
-          data: newDocs
-        });
+      await saveSystemConfigJSON('legal_documents', newDocs);
 
       setLegalDocs(newDocs);
       addToast('Rechtsdokument erfolgreich aktualisiert!', 'success');

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
 import { ensureDefaultCompanyFolders } from '../services/seedService';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 
 export interface Project { 
   id: string; 
@@ -426,12 +427,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     });
 
     try {
-      const { data: existingConfig } = await supabase.from('system_config').select('data').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
-      const existingEntries = existingConfig?.data?.entries || [];
-      await supabase.from('system_config').upsert({
-        id: `time_entries_${safeCompanyId}`,
-        data: { entries: [newEntry, ...existingEntries], companyId: safeCompanyId }
-      });
+      const existingConfig = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
+      const existingEntries = existingConfig?.entries || [];
+      await saveSystemConfigJSON(`time_entries_${safeCompanyId}`, { entries: [newEntry, ...existingEntries], companyId: safeCompanyId }, safeCompanyId);
     } catch (err) {
       console.warn("ProjectContext addTimeEntry backup warning:", err);
     }

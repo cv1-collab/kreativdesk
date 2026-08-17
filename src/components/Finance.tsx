@@ -23,6 +23,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
@@ -498,15 +499,10 @@ export default function Finance() {
       // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG (silently handle missing column/table error)
       let finConfig: any = null;
       try {
-        const res = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', `finance_${currentProjectId}`)
-          .maybeSingle();
-        finConfig = res.data;
+        finConfig = await fetchSystemConfigJSON(`finance_${currentProjectId}`, safeCompanyId);
       } catch (e) {}
 
-      const configData = (finConfig as any)?.data || finConfig || cachedData;
+      const configData = finConfig || cachedData;
       const hasValidGroups = Array.isArray(configData?.versions) &&
         configData.versions.length > 0 &&
         Array.isArray(configData.versions[0]?.groups) &&
@@ -548,15 +544,12 @@ export default function Finance() {
         }
 
         try {
-          await supabase.from('system_config').upsert({
-            id: `finance_${currentProjectId}`,
-            data: {
-              ...initialFinanceData,
-              ownerId: currentUser.uid,
-              companyId: safeCompanyId,
-              projectId: currentProjectId
-            }
-          });
+          await saveSystemConfigJSON(`finance_${currentProjectId}`, {
+            ...initialFinanceData,
+            ownerId: currentUser.uid,
+            companyId: safeCompanyId,
+            projectId: currentProjectId
+          }, safeCompanyId, currentUser.uid);
         } catch (e) {}
       }
 
@@ -575,7 +568,7 @@ export default function Finance() {
     };
   }, [currentUser, currentProjectId, isDemoMode, demoData, activeProject]);
 
-  // AUTO-SAVE TO LOCAL STORAGE & SUPABASE SYSTEM_CONFIG ON BUDGET CHANGES
+  // AUTO-SAVE TO LOCAL STORAGE & SUPABASE DOCUMENTS ON BUDGET CHANGES
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     if (isDemoMode || isInitialLoad || !currentUser || !safeCompanyId || isReadOnly || !currentProjectId) return;
@@ -596,10 +589,7 @@ export default function Finance() {
 
     const timeout = setTimeout(async () => {
       try {
-        await supabase.from('system_config').upsert({
-          id: `finance_${currentProjectId}`,
-          data: saveData
-        });
+        await saveSystemConfigJSON(`finance_${currentProjectId}`, saveData, safeCompanyId, currentUser.uid);
       } catch (e) {}
     }, 1500);
     return () => clearTimeout(timeout);
@@ -662,8 +652,8 @@ export default function Finance() {
         const localTimes = localCached ? JSON.parse(localCached) : [];
 
         const { data: times } = await supabase.from('time_entries').select('*').eq('company_id', safeCompanyId);
-        const { data: configTime } = await supabase.from('system_config').select('data').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
-        const configTimes = configTime?.data?.entries || [];
+        const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
+        const configTimes = configTime?.entries || [];
 
         const map = new Map();
         [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {

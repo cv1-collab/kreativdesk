@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { demoTemplates } from '../utils/demoTemplates';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 
 export function generateDemoTransactions(financeGroups: any[], projectId: string, companyId: string, ownerId: string) {
   const dummyTxs: any[] = [];
@@ -451,26 +452,18 @@ function getDeterministicUUID(str: string): string {
       localStorage.setItem(`schedule_cache_${projId}`, JSON.stringify(schedPayload));
     }
     try {
-      await supabase.from('system_config').upsert({
-        id: scheduleConfigId,
-        data: schedPayload
-      });
+      await saveSystemConfigJSON(scheduleConfigId, schedPayload, realCompanyId, ownerId);
     } catch (e) {}
   }
 
-  // 8. Seed Finance (Budgetplan) to system_config
+  // 8. Seed Finance (Budgetplan)
   const financeConfigId = `finance_${projId}`;
   let existingFinance: any = null;
   try {
-    const res = await supabase
-      .from('system_config')
-      .select('*')
-      .eq('id', financeConfigId)
-      .maybeSingle();
-    existingFinance = res.data;
+    existingFinance = await fetchSystemConfigJSON(financeConfigId, realCompanyId);
   } catch (e) {}
 
-  const existingGroups = (existingFinance as any)?.data?.versions?.[0]?.groups || existingFinance?.versions?.[0]?.groups;
+  const existingGroups = existingFinance?.versions?.[0]?.groups;
   const hasGroups = Array.isArray(existingGroups) && existingGroups.length > 0;
 
   if ((!existingFinance || !hasGroups) && Array.isArray(template.financeGroups)) {
@@ -499,10 +492,7 @@ function getDeterministicUUID(str: string): string {
       localStorage.setItem(`finance_cache_${projId}`, JSON.stringify(finPayload));
     }
     try {
-      await supabase.from('system_config').upsert({
-        id: financeConfigId,
-        data: finPayload
-      });
+      await saveSystemConfigJSON(financeConfigId, finPayload, realCompanyId, ownerId);
     } catch (e) {}
   }
 

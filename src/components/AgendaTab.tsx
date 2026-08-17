@@ -18,6 +18,7 @@ import { downloadICSFile } from '../utils/icsGenerator';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { sendNotification } from '../lib/notifications';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -607,14 +608,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         return next;
       });
 
-      // 2. Backup in system_config
+      // 2. Backup in documents
       try {
-        const { data: existingConfig } = await supabase.from('system_config').select('*').eq('id', `time_entries_${safeCompanyId}`).maybeSingle();
-        const existingEntries = (existingConfig as any)?.data?.entries || existingConfig?.entries || [];
-        await supabase.from('system_config').upsert({
-          id: `time_entries_${safeCompanyId}`,
-          data: { entries: [newEntryObj, ...existingEntries], companyId: safeCompanyId }
-        });
+        const existingConfig = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
+        const existingEntries = existingConfig?.entries || [];
+        await saveSystemConfigJSON(`time_entries_${safeCompanyId}`, { entries: [newEntryObj, ...existingEntries], companyId: safeCompanyId }, safeCompanyId, currentUser.uid);
       } catch (backupErr) {}
 
       // 3. Insert into Supabase time_entries
@@ -730,14 +728,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         return next;
       });
 
-      // Backup to system_config
+      // Backup to documents
       try {
-        const { data: existingConfig } = await supabase.from('system_config').select('*').eq('id', `agenda_events_${safeCompanyId}`).maybeSingle();
-        const existingEvents = (existingConfig as any)?.data?.events || existingConfig?.events || [];
-        await supabase.from('system_config').upsert({
-          id: `agenda_events_${safeCompanyId}`,
-          data: { events: [normalizedFinal, ...existingEvents], companyId: safeCompanyId }
-        });
+        const existingConfig = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${safeCompanyId}`, safeCompanyId);
+        const existingEvents = existingConfig?.events || [];
+        await saveSystemConfigJSON(`agenda_events_${safeCompanyId}`, { events: [normalizedFinal, ...existingEvents], companyId: safeCompanyId }, safeCompanyId, currentUser.uid);
       } catch (backupErr) {}
 
       // Trigger notification bell
