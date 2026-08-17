@@ -268,6 +268,7 @@ export default function SettingsTab() {
         setCity(loadedConfig.city || '');
         setIban(loadedConfig.iban || '');
         setWebhookUrl(loadedConfig.webhookUrl || '');
+        setLogoUrl(loadedConfig.logoUrl || '');
         setPrimaryColor(loadedConfig.primaryColor || '#10b981');
         setTermsPdfUrl(loadedConfig.termsPdfUrl || '');
         setPrivacyPdfUrl(loadedConfig.privacyPdfUrl || '');
@@ -287,6 +288,55 @@ export default function SettingsTab() {
     fetchCompany();
   }, [currentUser?.companyId, currentUser?.uid]);
 
+  // Helper zum direkten Speichern von Teil-Updates in Supabase documents
+  const updateCompanyProfileConfig = async (updates: Record<string, any>) => {
+    const compId = currentUser?.companyId;
+    const ownerId = currentUser?.uid;
+    if (!compId || !ownerId) return;
+
+    const { data: existingDoc } = await supabase
+      .from('documents')
+      .select('id, file_url, url')
+      .eq('company_id', compId)
+      .eq('category', 'company_settings')
+      .eq('name', 'company_profile_config')
+      .maybeSingle();
+
+    let currentConfig: any = {};
+    if (existingDoc?.file_url || existingDoc?.url) {
+      try { currentConfig = JSON.parse(existingDoc.file_url || existingDoc.url); } catch (e) {}
+    }
+
+    const updatedConfig = { ...currentConfig, ...updates, updatedAt: new Date().toISOString() };
+    const payloadStr = JSON.stringify(updatedConfig);
+
+    localStorage.setItem(`company_profile_${compId}`, payloadStr);
+
+    if (existingDoc?.id) {
+      await supabase.from('documents').update({
+        url: payloadStr,
+        file_url: payloadStr,
+        uploaded_at: new Date().toISOString()
+      }).eq('id', existingDoc.id);
+    } else {
+      await supabase.from('documents').insert({
+        company_id: compId,
+        owner_id: ownerId,
+        uploaded_by: ownerId,
+        name: 'company_profile_config',
+        category: 'company_settings',
+        project_id: 'global',
+        folder_id: 'root',
+        is_folder: false,
+        url: payloadStr,
+        file_url: payloadStr,
+        type: 'application/json',
+        created_at: new Date().toISOString(),
+        uploaded_at: new Date().toISOString()
+      });
+    }
+  };
+
   // Einstellungen speichern
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,7 +349,6 @@ export default function SettingsTab() {
       }
 
       const compId = currentUser.companyId;
-      const ownerId = currentUser.uid;
 
       // Complete Company Config Payload
       const profileConfig = {
@@ -315,6 +364,7 @@ export default function SettingsTab() {
         city: city.trim(),
         iban: iban.trim(),
         webhookUrl: webhookUrl.trim(),
+        logoUrl,
         primaryColor,
         termsPdfUrl,
         privacyPdfUrl,
@@ -326,49 +376,12 @@ export default function SettingsTab() {
         updatedAt: new Date().toISOString()
       };
 
-      const payloadStr = JSON.stringify(profileConfig);
+      await updateCompanyProfileConfig(profileConfig);
 
-      // Save to localStorage cache
-      localStorage.setItem(`company_profile_${compId}`, payloadStr);
-      localStorage.setItem(`currency_${compId}`, currency);
-      localStorage.setItem(`vat_${compId}`, String(vatRate));
-      localStorage.setItem(`payment_terms_${compId}`, String(paymentTermsDays));
-
-      // 1. Update existing columns on companies table
+      // Update existing columns on companies table
       await supabase.from('companies').update({
         name: agencyName.trim()
       }).eq('id', compId);
-
-      // 2. Persist full settings JSON to documents table in Supabase
-      const { data: existingDoc } = await supabase
-        .from('documents')
-        .select('id')
-        .eq('company_id', compId)
-        .eq('category', 'company_settings')
-        .eq('name', 'company_profile_config')
-        .maybeSingle();
-
-      if (existingDoc?.id) {
-        await supabase.from('documents').update({
-          url: payloadStr,
-          file_url: payloadStr,
-          uploaded_at: new Date().toISOString()
-        }).eq('id', existingDoc.id);
-      } else {
-        await supabase.from('documents').insert({
-          company_id: compId,
-          owner_id: ownerId,
-          uploaded_by: ownerId,
-          name: 'company_profile_config',
-          category: 'company_settings',
-          project_id: 'global',
-          folder_id: 'root',
-          is_folder: false,
-          url: payloadStr,
-          file_url: payloadStr,
-          type: 'application/json',
-        });
-      }
 
       if (contactPerson.trim() && currentUser?.uid) {
         await supabase.from('profiles').update({ name: contactPerson.trim() }).eq('id', currentUser.uid);
@@ -398,10 +411,16 @@ export default function SettingsTab() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const downloadUrl = pubData.publicUrl;
-      await supabase.from('companies').update({ logo_url: downloadUrl }).eq('id', currentUser.companyId);
+      
       setLogoUrl(downloadUrl);
-    } catch (error) { addToast('Fehler beim Logo-Upload', 'error'); } 
-    finally { setIsUploadingLogo(false); }
+      await updateCompanyProfileConfig({ logoUrl: downloadUrl });
+      addToast('Logo erfolgreich hochgeladen und in Supabase gespeichert!', 'success');
+    } catch (error: any) { 
+      console.error("Logo Upload Error:", error);
+      addToast(`Fehler beim Logo-Upload: ${error.message || 'Storage Fehler'}`, 'error'); 
+    } finally { 
+      setIsUploadingLogo(false); 
+    }
   };
 
   const handleTermsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -414,11 +433,13 @@ export default function SettingsTab() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const downloadUrl = pubData.publicUrl;
-      await supabase.from('companies').update({ terms_pdf_url: downloadUrl }).eq('id', currentUser.companyId);
+
       setTermsPdfUrl(downloadUrl);
-      addToast('AGB erfolgreich hochgeladen', 'success');
-    } catch (error) {
-      addToast('Fehler beim Upload', 'error');
+      await updateCompanyProfileConfig({ termsPdfUrl: downloadUrl });
+      addToast('AGB erfolgreich hochgeladen und in Supabase gespeichert!', 'success');
+    } catch (error: any) {
+      console.error("Terms Upload Error:", error);
+      addToast(`Fehler beim Upload: ${error.message || 'Storage Fehler'}`, 'error');
     } finally {
       setIsUploadingTerms(false);
       if (e.target) e.target.value = '';
@@ -435,11 +456,13 @@ export default function SettingsTab() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const downloadUrl = pubData.publicUrl;
-      await supabase.from('companies').update({ privacy_pdf_url: downloadUrl }).eq('id', currentUser.companyId);
+
       setPrivacyPdfUrl(downloadUrl);
-      addToast('Datenschutzrichtlinie erfolgreich hochgeladen', 'success');
-    } catch (error) {
-      addToast('Fehler beim Upload', 'error');
+      await updateCompanyProfileConfig({ privacyPdfUrl: downloadUrl });
+      addToast('Datenschutzrichtlinie erfolgreich hochgeladen und in Supabase gespeichert!', 'success');
+    } catch (error: any) {
+      console.error("Privacy Upload Error:", error);
+      addToast(`Fehler beim Upload: ${error.message || 'Storage Fehler'}`, 'error');
     } finally {
       setIsUploadingPrivacy(false);
       if (e.target) e.target.value = '';
