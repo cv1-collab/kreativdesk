@@ -916,7 +916,7 @@ const handleGenerateTeamSlide = async () => {
            await supabase.from('slides').update({ 
               data_payload: { ...currentSlide.dataPayload, members: newMembers },
               dataPayload: { ...currentSlide.dataPayload, members: newMembers } 
-           }).eq('id', slideId).catch(() => {});
+           }).eq('id', slideId);
            addToast('Bild aktualisiert!', 'success');
          }
        }
@@ -946,7 +946,7 @@ const handleGenerateTeamSlide = async () => {
   const upc = (field: keyof Slide, value: any) => {
     if (!isPreviewMode && activeSlide) {
       const dbField = field === 'dataPayload' ? 'data_payload' : field === 'fontSize' ? 'font_size' : field;
-      supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).catch(() => {});
+      supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).then(() => {}, () => {});
     }
   };
 

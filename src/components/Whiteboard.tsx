@@ -655,7 +655,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
             name: `Whiteboard_Export_${Date.now()}.jpg`,
             url: downloadUrl,
             file_url: downloadUrl,
-            project_id: currentProjectId || 'global',
+            project_id: activeProjectId || 'global',
             owner_id: currentUser.uid,
             company_id: currentUser.companyId,
             category: 'whiteboard',
