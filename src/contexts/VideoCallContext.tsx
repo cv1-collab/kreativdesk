@@ -210,7 +210,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     pc.ontrack = (event) => {
-      setRemoteStreams(prev => ({ ...prev, [peerId]: event.streams[0] }));
+      const incomingStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+      setRemoteStreams(prev => ({ ...prev, [peerId]: incomingStream }));
     };
 
     pc.onicecandidate = (event) => {
@@ -238,6 +239,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         } catch (e) {
           console.error("ICE restart error:", e);
         }
+      } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
+        setRemoteStreams(prev => {
+          const next = { ...prev };
+          delete next[peerId];
+          return next;
+        });
       }
     };
 
@@ -247,8 +254,32 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const joinMeshNetwork = async (currentCallId: string, stream: MediaStream) => {
     const myId = myIdRef.current;
     
-    const channel = supabase.channel(`call_${currentCallId}`);
+    const channel = supabase.channel(`call_${currentCallId}`, {
+      config: { presence: { key: myId } }
+    });
     activeChannelRef.current = channel;
+
+    const initiateOfferToPeer = async (peerId: string) => {
+      if (peerId !== myId && !pcsRef.current[peerId]) {
+        try {
+          const pc = createPeerConnection(peerId, currentCallId, stream);
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: {
+              from: myId,
+              to: peerId,
+              type: 'offer',
+              offer: { sdp: offer.sdp, type: offer.type }
+            }
+          });
+        } catch (err) {
+          console.error(`Error creating WebRTC offer for ${peerId}:`, err);
+        }
+      }
+    };
 
     channel
       .on('broadcast', { event: 'signal' }, async ({ payload }) => {
@@ -290,24 +321,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         const peerId = payload.peerId;
-        if (peerId !== myId && !pcsRef.current[peerId]) {
-          const pc = createPeerConnection(peerId, currentCallId, stream);
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          channel.send({
-            type: 'broadcast',
-            event: 'signal',
-            payload: {
-              from: myId,
-              to: peerId,
-              type: 'offer',
-              offer: { sdp: offer.sdp, type: offer.type }
-            }
-          });
-        }
+        await initiateOfferToPeer(peerId);
       })
-      .subscribe((status) => {
+      .on('presence', { event: 'sync' }, () => {
+        const presenceState = channel.presenceState();
+        Object.keys(presenceState).forEach(peerId => {
+          if (peerId !== myId && !pcsRef.current[peerId]) {
+            initiateOfferToPeer(peerId);
+          }
+        });
+      })
+      .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
+          await channel.track({ peerId: myId, joinedAt: Date.now() });
           channel.send({
             type: 'broadcast',
             event: 'join',

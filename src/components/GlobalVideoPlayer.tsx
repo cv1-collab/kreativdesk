@@ -8,12 +8,28 @@ import { cn } from '../utils';
 const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(e => console.warn(e));
+    const video = videoRef.current;
+    if (video && stream) {
+      video.srcObject = stream;
+      video.play().catch(e => console.warn("Remote video play note:", e));
+
+      const handleTrackUpdate = () => {
+        if (video) {
+          video.srcObject = stream;
+          video.play().catch(() => {});
+        }
+      };
+
+      stream.onaddtrack = handleTrackUpdate;
+      stream.onremovetrack = handleTrackUpdate;
+
+      return () => {
+        stream.onaddtrack = null;
+        stream.onremovetrack = null;
+      };
     }
   }, [stream]);
-  return <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />;
+  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />;
 };
 
 export function GlobalVideoPlayer() {
