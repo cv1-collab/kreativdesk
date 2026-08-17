@@ -860,7 +860,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       const nDefect: DefectMarker = { id: `defect_${Date.now()}`, type: 'defect', x: nx, y: ny, title: t('defect'), description: '', priority: 'Medium', trade: 'Planung', status: 'open', isSynced: false, layerId: activeLayerId };
       setDefectPrompt({ isOpen: true, element: nDefect, file: null, preview: null }); setActiveTool('pan');
     } else if (activeTool === 'pen') {
-      setDraftElement({ id: `pen_${Date.now()}`, type: 'pen', x: nx, y: ny, points: [{x: nx, y: ny}], color: '#ef4444', thickness: 1, opacity: 1, layerId: activeLayerId });
+      setDraftElement({ id: `pen_${Date.now()}`, type: 'pen', x: nx, y: ny, points: [{x: nx, y: ny}, {x: nx, y: ny}], color: '#ef4444', thickness: 2, opacity: 1, layerId: activeLayerId });
     } else if (activeTool === 'measure') {
       setDraftElement({ id: `measure_${Date.now()}`, type: 'measure', x: nx, y: ny, start: {x: nx, y: ny}, end: {x: nx, y: ny}, color: '#3b82f6', layerId: activeLayerId });
     } else if (activeTool === 'scalebar') {
@@ -1482,7 +1482,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 })}
 
                 {/* 3. VEKTOR SVG EBENE (LEICHT & SCHNELL) */}
-                <svg id="cad-svg-layer" viewBox={`0 0 ${internalW} ${internalH}`} className="absolute inset-0 w-full h-full" onPointerDown={handlePaperPointerDown} onPointerMove={handlePaperPointerMove} onPointerUp={handlePaperPointerUp}>
+                <svg 
+                  id="cad-svg-layer" 
+                  viewBox={`0 0 ${internalW} ${internalH}`} 
+                  className="absolute inset-0 w-full h-full" 
+                  style={{ pointerEvents: activeTool === 'pan' ? 'auto' : 'all' }}
+                  onPointerDown={handlePaperPointerDown} 
+                  onPointerMove={handlePaperPointerMove} 
+                  onPointerUp={handlePaperPointerUp}
+                >
+                  {/* HAUPT HINTERGRUND HIT-TEST RECHTECK FÜR WERKZEUGE */}
+                  <rect 
+                    x="0" 
+                    y="0" 
+                    width={internalW} 
+                    height={internalH} 
+                    fill="transparent" 
+                    style={{ pointerEvents: 'all', cursor: activeTool === 'pan' ? 'grab' : 'crosshair' }} 
+                  />
                   
                   {/* Fertige Zeichnungen (ohne Bilder) */}
                   {renderSvgElements(allElementsToRender.filter(e => e.type !== 'image'), false)}
