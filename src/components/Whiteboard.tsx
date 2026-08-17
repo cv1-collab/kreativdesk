@@ -46,6 +46,24 @@ let wbCache = {
   stageScale: 1, stagePos: { x: 0, y: 0 }, activeColor: '#3b82f6'
 };
 
+const getDraftStorageKey = (pid: string | undefined) => `wb_draft_${pid || 'global'}`;
+
+const loadProjectDraft = (pid: string | undefined) => {
+  try {
+    const key = getDraftStorageKey(pid);
+    const saved = localStorage.getItem(key) || localStorage.getItem('wb_draft_latest');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed && Array.isArray(parsed.layers) && parsed.layers.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load whiteboard draft from localStorage:", e);
+  }
+  return null;
+};
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { title: 'Whiteboard & Audio Hub', desc: 'Interactive canvas for ideation and AI-transcribed voice notes.', import_media: 'Import Media', export_pdf: 'Export PDF', export_img: 'Export Image', save_cloud: 'Save to Cloud', saving_cloud: 'Saving...', saved_cloud: 'Saved to Documents!', send_slides: 'Send to Pitch Deck', sending: 'Sending...', sent: 'Sent to Slides!', draw_polygon: 'Draw Polygon', img_adjust: 'Image Adjustments', brightness: 'Brightness', contrast: 'Contrast', saturation: 'Saturation', delete_btn: 'Delete', close_shape: 'Close shape', ai_analyzing: 'AI is analyzing...', no_data: 'No voice notes yet.', ai_summary: 'AI Summary', full_transcript: 'Full Transcription', info_text: 'The AI will transcribe your voice note and extract key tasks automatically.', stop_rec: 'Stop Recording', start_rec: 'Record Voice Note', click_points: 'Click to add points...', clear_canvas: 'Clear Canvas?', mic_error: 'Microphone access denied.', ai_error: 'Failed to analyze audio.', pdf_success: 'PDF exported successfully!', add_text: 'Insert Text', enter_text: 'Add Text', type_text_here: 'Enter text...', cancel: 'Cancel', delete_note: 'Delete Note', confirm_delete_note: 'Are you sure you want to delete this voice note?', note_deleted: 'Voice note deleted!', tool_pan: 'Pan Canvas', tool_select: 'Select / Move', reset_zoom: 'Reset Zoom & Pan', fullscreen: 'Fullscreen', exit_fullscreen: 'Exit Fullscreen', layers: 'Layers', add_layer: 'Add Layer', base_layer: 'Base Layer', ai_render: 'AI Rendering', ai_render_desc: 'Transform your sketch into a photorealistic concept render.', describe_vision: 'Describe your vision (e.g. Futuristic sports car, neon colors, cyberpunk style)...', generate_render: 'Generate Concept', rendering: 'Rendering...', add_to_canvas: 'Add to Canvas as Base Layer', your_sketch: 'Your Sketch' },
   de: { title: 'Whiteboard & Audio Hub', desc: 'Interaktive Zeichenfläche und KI-transkribierte Sprachnotizen.', import_media: 'Import (Bild/PDF)', export_pdf: 'Als PDF Exportieren', export_img: 'Als Bild Exportieren', save_cloud: 'In Cloud speichern', saving_cloud: 'Speichert...', saved_cloud: 'Im Dokumenten-Ordner gespeichert!', send_slides: 'An Pitch Deck', sending: 'Sende...', sent: 'Gesendet!', draw_polygon: 'Polygon', img_adjust: 'Bildbearbeitung', brightness: 'Helligkeit', contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schließen', ai_analyzing: 'KI analysiert...', no_data: 'Noch keine Sprachnotizen.', ai_summary: 'KI Zusammenfassung', full_transcript: 'Transkription', info_text: 'Die KI analysiert deine Aufnahme und leitet automatisch Aufgaben ab.', stop_rec: 'Aufnahme stoppen', start_rec: 'Sprachnotiz aufnehmen', click_points: 'Klicke auf Punkte...', clear_canvas: 'Canvas komplett löschen?', mic_error: 'Mikrofon blockiert.', ai_error: 'KI-Analyse fehlgeschlagen.', pdf_success: 'PDF erfolgreich exportiert!', add_text: 'Einfügen', enter_text: 'Text hinzufügen', type_text_here: 'Text eingeben...', cancel: 'Abbrechen', delete_note: 'Notiz löschen', confirm_delete_note: 'Bist du sicher, dass du diese Sprachnotiz unwiderruflich löschen möchtest?', note_deleted: 'Sprachnotiz gelöscht!', tool_pan: 'Ansicht verschieben (Pan)', tool_select: 'Auswählen / Bewegen', reset_zoom: 'Ansicht zentrieren', fullscreen: 'Vollbild', exit_fullscreen: 'Vollbild verlassen', layers: 'Ebenen', add_layer: 'Neue Ebene', base_layer: 'Basis-Ebene', ai_render: 'AI Rendering', ai_render_desc: 'Verwandle deine Skizze in ein fotorealistisches Konzept-Design.', describe_vision: 'Beschreibe deine Vision (z.B. Comicfigur, Neonfarben, Cyberpunk Stil)...', generate_render: 'Skizze Rendern', rendering: 'KI generiert Bild...', add_to_canvas: 'Als neue Basis-Ebene einfügen', your_sketch: 'Deine Skizze' }
@@ -115,19 +133,64 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   
   const t = (key: string) => localTranslations[language as 'en'|'de'][key] || globalT(key);
 
+  const initialDraft = useRef(loadProjectDraft(projectId)).current;
+
   const [mobileTab, setMobileTab] = useState<'whiteboard' | 'audio'>('whiteboard');
   const [tool, setTool] = useState('pen');
-  const [activeColor, setActiveColor] = useState(wbCache.activeColor);
+  const [activeColor, setActiveColor] = useState(initialDraft?.activeColor || wbCache.activeColor);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
-  const [layers, setLayers] = useState<LayerData[]>(wbCache.layers);
-  const [activeLayerId, setActiveLayerId] = useState<string>(wbCache.activeLayerId);
+  const [layers, setLayers] = useState<LayerData[]>(initialDraft?.layers || wbCache.layers);
+  const [activeLayerId, setActiveLayerId] = useState<string>(initialDraft?.activeLayerId || wbCache.activeLayerId);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
-  const [stageScale, setStageScale] = useState(wbCache.stageScale);
-  const [stagePos, setStagePos] = useState(wbCache.stagePos);
-  const [bgImagePos, setBgImagePos] = useState(wbCache.bgImagePos);
-  const [bgImageSrc, setBgImageSrc] = useState<string | null>(wbCache.bgImageSrc);
+  const [stageScale, setStageScale] = useState(initialDraft?.stageScale || wbCache.stageScale);
+  const [stagePos, setStagePos] = useState(initialDraft?.stagePos || wbCache.stagePos);
+  const [bgImagePos, setBgImagePos] = useState(initialDraft?.bgImagePos || wbCache.bgImagePos);
+  const [bgImageSrc, setBgImageSrc] = useState<string | null>(initialDraft?.bgImageSrc || wbCache.bgImageSrc);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+
+  // Load draft whenever projectId changes
+  useEffect(() => {
+    const draft = loadProjectDraft(projectId);
+    if (draft && Array.isArray(draft.layers) && draft.layers.length > 0) {
+      setLayers(draft.layers);
+      if (draft.activeLayerId && draft.layers.some((l: any) => l.id === draft.activeLayerId)) {
+        setActiveLayerId(draft.activeLayerId);
+      } else {
+        setActiveLayerId(draft.layers[0].id);
+      }
+      setBgImageSrc(draft.bgImageSrc || null);
+      setBgImagePos(draft.bgImagePos || { x: 0, y: 0 });
+      setStageScale(draft.stageScale || 1);
+      setStagePos(draft.stagePos || { x: 0, y: 0 });
+      setActiveColor(draft.activeColor || '#3b82f6');
+    }
+  }, [projectId]);
+
+  // Auto-save draft on every change
+  useEffect(() => {
+    wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor };
+    
+    const draftData = {
+      layers,
+      activeLayerId,
+      bgImageSrc,
+      bgImagePos,
+      stageScale,
+      stagePos,
+      activeColor,
+      updatedAt: new Date().toISOString()
+    };
+    
+    try {
+      const key = getDraftStorageKey(projectId);
+      const json = JSON.stringify(draftData);
+      localStorage.setItem(key, json);
+      localStorage.setItem('wb_draft_latest', json);
+    } catch (e) {
+      console.warn("Failed to save whiteboard draft to localStorage:", e);
+    }
+  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId]);
   
   const isDrawing = useRef(false);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -428,10 +491,23 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const clearBoard = () => {
-    if(window.confirm(t('clear_canvas'))) {
-      setLayers([{ id: 'layer-1', name: t('base_layer'), visible: true, items: [] }]);
-      setActiveLayerId('layer-1'); setBgImageSrc(null); setBgImage(null); setCurrentPolygon([]); setTool('pen');
-      setStageScale(1); setStagePos({x: 0, y: 0}); setSelectedShapeId(null);
+    if (window.confirm(t('clear_canvas'))) {
+      const defaultLayers = [{ id: 'layer-1', name: t('base_layer'), visible: true, items: [] }];
+      setLayers(defaultLayers);
+      setActiveLayerId('layer-1'); 
+      setBgImageSrc(null); 
+      setBgImage(null); 
+      setCurrentPolygon([]); 
+      setTool('pen');
+      setStageScale(1); 
+      setStagePos({ x: 0, y: 0 }); 
+      setSelectedShapeId(null);
+
+      try {
+        const key = getDraftStorageKey(projectId);
+        localStorage.removeItem(key);
+        localStorage.removeItem('wb_draft_latest');
+      } catch (e) {}
     }
   };
 
