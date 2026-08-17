@@ -333,8 +333,44 @@ export default function Finance() {
 
 
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'budget' | 'control' | 'cashflow'>('overview');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'year' | 'month' | 'today'>('all');
+  const finStorageKey = `fin_state_${currentProjectId || 'global'}`;
+  const [activeTab, setActiveTabRaw] = useState<'overview' | 'budget' | 'control' | 'cashflow'>(() => {
+    try {
+      const saved = localStorage.getItem(finStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.activeTab) return parsed.activeTab;
+      }
+    } catch (e) {}
+    return 'overview';
+  });
+
+  const [timeFilter, setTimeFilterRaw] = useState<'all' | 'year' | 'month' | 'today'>(() => {
+    try {
+      const saved = localStorage.getItem(finStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.timeFilter) return parsed.timeFilter;
+      }
+    } catch (e) {}
+    return 'all';
+  });
+
+  const setActiveTab = (tab: 'overview' | 'budget' | 'control' | 'cashflow') => {
+    setActiveTabRaw(tab);
+    try {
+      const saved = JSON.parse(localStorage.getItem(finStorageKey) || '{}');
+      localStorage.setItem(finStorageKey, JSON.stringify({ ...saved, activeTab: tab }));
+    } catch (e) {}
+  };
+
+  const setTimeFilter = (tf: 'all' | 'year' | 'month' | 'today') => {
+    setTimeFilterRaw(tf);
+    try {
+      const saved = JSON.parse(localStorage.getItem(finStorageKey) || '{}');
+      localStorage.setItem(finStorageKey, JSON.stringify({ ...saved, timeFilter: tf }));
+    } catch (e) {}
+  };
 
   // --- DIE NEUE ROTATIONS LOGIK FÜR iOS & MOBILE ---
   const [isLandscapeMode, setIsLandscapeMode] = useState(false);

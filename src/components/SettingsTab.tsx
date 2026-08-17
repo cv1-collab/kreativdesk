@@ -213,18 +213,23 @@ export default function SettingsTab() {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>('general');
+  const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>(() => (localStorage.getItem('settings_active_subtab') as any) || 'general');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSubTabChangeState = (subTab: 'general' | 'api') => {
+    setActiveSubTab(subTab);
+    localStorage.setItem('settings_active_subtab', subTab);
+  };
 
   useEffect(() => {
     const handleSubTabChange = (e: Event) => {
       const customEv = e as CustomEvent;
       const detail = customEv.detail;
       if (detail === 'api' || detail === 'webhooks') {
-        setActiveSubTab('api');
+        handleSubTabChangeState('api');
       } else if (detail === 'general' || detail === 'profile') {
-        setActiveSubTab('general');
+        handleSubTabChangeState('general');
       }
     };
     window.addEventListener('change-settings-tab', handleSubTabChange);
@@ -1224,8 +1229,26 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
         const { data: cuMembers } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
         const { data: profMembers } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
         const map = new Map();
-        (profMembers || []).forEach((p: any) => map.set(p.id || p.email, { ...p, role: p.role || 'owner' }));
-        (cuMembers || []).forEach((c: any) => map.set(c.id || c.email, { ...c, email: c.email || c.name }));
+        (profMembers || []).forEach((p: any) => {
+          const key = p.id || p.email;
+          map.set(key, {
+            ...p,
+            role: p.role || 'owner',
+            canViewFinance: p.can_view_finance ?? p.canViewFinance ?? false,
+            canApproveBudget: p.can_approve_budget ?? p.canApproveBudget ?? false
+          });
+        });
+        (cuMembers || []).forEach((c: any) => {
+          const key = c.id || c.email;
+          const existing = map.get(key) || {};
+          map.set(key, {
+            ...existing,
+            ...c,
+            email: c.email || c.name,
+            canViewFinance: c.can_view_finance ?? c.canViewFinance ?? existing.canViewFinance ?? false,
+            canApproveBudget: c.can_approve_budget ?? c.canApproveBudget ?? existing.canApproveBudget ?? false
+          });
+        });
         setTeamMembers(Array.from(map.values()));
       } catch (err) {
         console.error("Error fetching team", err);
@@ -1249,10 +1272,12 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
     try {
+      const newValue = !currentValue;
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
-      await supabase.from('profiles').update({ [colName]: !currentValue }).eq('id', userId);
-      setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: !currentValue } : m));
-      addToast('Berechtigung aktualisiert', 'success');
+      await supabase.from('profiles').update({ [colName]: newValue }).eq('id', userId);
+      await supabase.from('company_users').update({ [colName]: newValue }).eq('id', userId);
+      setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: newValue, [colName]: newValue } : m));
+      addToast('Berechtigung erfolgreich aktualisiert', 'success');
     } catch (err) {
       addToast('Fehler beim Aktualisieren der Berechtigung', 'error');
     }

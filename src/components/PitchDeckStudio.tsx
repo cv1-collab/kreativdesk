@@ -101,7 +101,25 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const [importProjectId, setImportProjectId] = useState<string>(projectId || '');
   const [slides, setSlides] = useState<Slide[]>([]);
-  const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
+  const [activeSlideId, setActiveSlideIdRaw] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`pitch_activeSlideId_${projectId || 'global'}`) || null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  const setActiveSlideId = (id: string | null | ((prev: string | null) => string | null)) => {
+    setActiveSlideIdRaw(prev => {
+      const nextId = typeof id === 'function' ? id(prev) : id;
+      try {
+        if (nextId) localStorage.setItem(`pitch_activeSlideId_${projectId || 'global'}`, nextId);
+        else localStorage.removeItem(`pitch_activeSlideId_${projectId || 'global'}`);
+      } catch (e) {}
+      return nextId;
+    });
+  };
+
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);

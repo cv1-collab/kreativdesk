@@ -196,7 +196,20 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const { isDemoMode } = projectCtx; // WICHTIG: Auslesen des Demo-Status
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'safety' | 'logistics' | 'drones' | 'access'>('overview');
+  const [activeTab, setActiveTabRaw] = useState<'overview' | 'safety' | 'logistics' | 'drones' | 'access'>(() => {
+    try {
+      const saved = localStorage.getItem(`camera_activeTab_${currentProjectId}`);
+      if (saved && ['overview', 'safety', 'logistics', 'drones', 'access'].includes(saved)) return saved as any;
+    } catch (e) {}
+    return 'overview';
+  });
+
+  const setActiveTab = (tab: 'overview' | 'safety' | 'logistics' | 'drones' | 'access') => {
+    setActiveTabRaw(tab);
+    try {
+      localStorage.setItem(`camera_activeTab_${currentProjectId}`, tab);
+    } catch (e) {}
+  };
   const { addToast } = useToast();
   
   const languageCtx = useLanguage() as any;

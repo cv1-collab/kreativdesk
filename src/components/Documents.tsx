@@ -185,8 +185,38 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const defaultProjId = propProjectId || routeProjectId || null;
-  const [activeTab, setActiveTab] = useState<'company' | 'projects'>(defaultProjId ? 'projects' : 'company');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const docsStorageKey = `docs_state_${defaultProjId || 'global'}`;
+
+  const [activeTab, setActiveTabRaw] = useState<'company' | 'projects'>(() => {
+    if (defaultProjId) return 'projects';
+    try {
+      const saved = localStorage.getItem(`${docsStorageKey}_tab`);
+      if (saved && (saved === 'company' || saved === 'projects')) return saved;
+    } catch (e) {}
+    return 'company';
+  });
+
+  const setActiveTab = (tab: 'company' | 'projects') => {
+    setActiveTabRaw(tab);
+    try {
+      localStorage.setItem(`${docsStorageKey}_tab`, tab);
+    } catch (e) {}
+  };
+
+  const [viewMode, setViewModeRaw] = useState<'grid' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem(`${docsStorageKey}_viewMode`);
+      if (saved && (saved === 'grid' || saved === 'list')) return saved;
+    } catch (e) {}
+    return 'grid';
+  });
+
+  const setViewMode = (mode: 'grid' | 'list') => {
+    setViewModeRaw(mode);
+    try {
+      localStorage.setItem(`${docsStorageKey}_viewMode`, mode);
+    } catch (e) {}
+  };
   const [documents, setDocuments] = useState<any[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(defaultProjId);

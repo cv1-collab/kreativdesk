@@ -190,7 +190,20 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const activeProject = projects?.find((p: any) => p.id === currentProjectId);
 
   const [defects, setDefects] = useState<Defect[]>([]);
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
+  const [viewMode, setViewModeRaw] = useState<'board' | 'list'>(() => {
+    try {
+      const saved = localStorage.getItem(`defects_viewMode_${currentProjectId}`);
+      if (saved && (saved === 'board' || saved === 'list')) return saved;
+    } catch (e) {}
+    return 'board';
+  });
+
+  const setViewMode = (mode: 'board' | 'list') => {
+    setViewModeRaw(mode);
+    try {
+      localStorage.setItem(`defects_viewMode_${currentProjectId}`, mode);
+    } catch (e) {}
+  };
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);

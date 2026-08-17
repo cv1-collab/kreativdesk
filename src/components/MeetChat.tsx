@@ -101,13 +101,46 @@ export default function MeetChat() {
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
   const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
 
-  const [activeView, setActiveView] = useState<'video' | 'whiteboard'>('video');
+  const currentProjectId = routeProjectId || activeProjectId || 'global';
+
+  const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
+    try {
+      const saved = localStorage.getItem(`meetchat_activeView_${currentProjectId}`);
+      if (saved && (saved === 'video' || saved === 'whiteboard')) return saved;
+    } catch (e) {}
+    return 'video';
+  });
+
+  const setActiveView = (view: 'video' | 'whiteboard') => {
+    setActiveViewRaw(view);
+    try {
+      localStorage.setItem(`meetchat_activeView_${currentProjectId}`, view);
+    } catch (e) {}
+  };
+
   const [showChat, setShowChat] = useState(() => window.innerWidth >= 1024);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [meetingSummary, setMeetingSummary] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [upcomingCalls, setUpcomingCalls] = useState<any[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessageRaw] = useState<string>(() => {
+    try {
+      return localStorage.getItem(`meetchat_draft_${currentProjectId}`) || '';
+    } catch (e) {
+      return '';
+    }
+  });
+
+  const setNewMessage = (val: string | ((prev: string) => string)) => {
+    setNewMessageRaw(prev => {
+      const nextVal = typeof val === 'function' ? val(prev) : val;
+      try {
+        if (nextVal) localStorage.setItem(`meetchat_draft_${currentProjectId}`, nextVal);
+        else localStorage.removeItem(`meetchat_draft_${currentProjectId}`);
+      } catch (e) {}
+      return nextVal;
+    });
+  };
   const [isAITyping, setIsAITyping] = useState(false);
 
   const [showEmailModal, setShowEmailModal] = useState(false);

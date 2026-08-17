@@ -286,7 +286,20 @@ export default function Calendar() {
   const currentProjectId = projectId || activeProjectId || 'global';
   const project = projects?.find((p: any) => p.id === currentProjectId);
 
-  const [viewMode, setViewMode] = useState<'gantt' | 'month' | 'day'>('gantt');
+  const [viewMode, setViewModeRaw] = useState<'gantt' | 'month' | 'day'>(() => {
+    try {
+      const saved = localStorage.getItem(`cal_viewMode_${currentProjectId}`);
+      if (saved && ['gantt', 'month', 'day'].includes(saved)) return saved as any;
+    } catch (e) {}
+    return 'gantt';
+  });
+
+  const setViewMode = (mode: 'gantt' | 'month' | 'day') => {
+    setViewModeRaw(mode);
+    try {
+      localStorage.setItem(`cal_viewMode_${currentProjectId}`, mode);
+    } catch (e) {}
+  };
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { setTimeout(() => setIsMounted(true), 0); }, []);
