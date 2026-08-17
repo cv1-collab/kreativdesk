@@ -9,15 +9,10 @@ const servers: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:stun.services.mozilla.com' },
     {
       urls: [
         'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443',
-        'turn:openrelay.metered.ca:443?transport=tcp'
+        'turn:openrelay.metered.ca:443'
       ],
       username: 'openrelayproject',
       credential: 'openrelayproject'
@@ -321,13 +316,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         const peerId = payload.peerId;
-        await initiateOfferToPeer(peerId);
+        if (peerId !== myId && !pcsRef.current[peerId] && myId < peerId) {
+          await initiateOfferToPeer(peerId);
+        }
       })
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState();
         Object.keys(presenceState).forEach(peerId => {
           if (peerId !== myId && !pcsRef.current[peerId]) {
-            initiateOfferToPeer(peerId);
+            if (myId < peerId) {
+              initiateOfferToPeer(peerId);
+            }
           }
         });
       })
