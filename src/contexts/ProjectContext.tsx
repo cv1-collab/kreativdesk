@@ -6,7 +6,29 @@ import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
 import { ensureDefaultCompanyFolders } from '../services/seedService';
 
-export interface Project { id: string; name: string; description: string; status: 'active' | 'planning' | 'completed'; role: 'owner' | 'admin' | 'viewer'; createdAt: string; ownerId: string; companyId: string; memberIds?: string[]; }
+export interface Project { 
+  id: string; 
+  name: string; 
+  description: string; 
+  status: 'active' | 'planning' | 'completed'; 
+  role: 'owner' | 'admin' | 'viewer'; 
+  createdAt: string; 
+  ownerId: string; 
+  companyId: string; 
+  memberIds?: string[];
+  siteLocation?: string;
+  site_location?: string;
+  cam1Url?: string;
+  cam1_url?: string;
+  cam2Url?: string;
+  cam2_url?: string;
+  droneUrl?: string;
+  drone_url?: string;
+  logisticsUrl?: string;
+  logistics_url?: string;
+  accessUrl?: string;
+  access_url?: string;
+}
 export interface CompanyUser { id: string; name: string; email: string; role: 'Admin' | 'Internal' | 'External Planner' | 'Client'; department?: string; hourlyRate?: number; avatar?: string; ownerId: string; companyId: string; }
 export interface TimeEntry { id: string; userId: string; projectId: string; date: string; hours: number; description: string; hourlyRate?: number; ownerId: string; companyId: string; }
 export interface Defect { id: string; title: string; status: string; priority: string; assignee: string; date: string; trade: string; location: string; description: string; imageUrl?: string; ownerId: string; companyId: string; projectId: string; dueDate?: string; }
@@ -59,7 +81,19 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           role: 'owner',
           createdAt: p.created_at || new Date().toISOString(),
           ownerId: p.owner_id || currentUser.uid,
-          companyId: p.company_id
+          companyId: p.company_id,
+          siteLocation: p.site_location || p.siteLocation || '',
+          site_location: p.site_location || p.siteLocation || '',
+          cam1Url: p.cam1_url || p.cam1Url || '',
+          cam1_url: p.cam1_url || p.cam1Url || '',
+          cam2Url: p.cam2_url || p.cam2Url || '',
+          cam2_url: p.cam2_url || p.cam2Url || '',
+          droneUrl: p.drone_url || p.droneUrl || '',
+          drone_url: p.drone_url || p.droneUrl || '',
+          logisticsUrl: p.logistics_url || p.logisticsUrl || '',
+          logistics_url: p.logistics_url || p.logisticsUrl || '',
+          accessUrl: p.access_url || p.accessUrl || '',
+          access_url: p.access_url || p.accessUrl || ''
         }));
         setProjects(mappedProjects);
         setActiveProjectId(prev => prev || (mappedProjects.length > 0 ? mappedProjects[0].id : null));

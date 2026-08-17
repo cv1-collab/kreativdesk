@@ -167,8 +167,13 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const [locationInput, setLocationInput] = useState('');
+  const [customLocation, setCustomLocation] = useState<string | null>(null);
   const [weatherData, setWeatherData] = useState<{temp: number, wind: number, rain: number, name: string} | null>(null);
   const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+
+  const effectiveLocation = customLocation !== null 
+    ? customLocation 
+    : (activeProject?.siteLocation || activeProject?.site_location || '');
 
   // === 🔥 NEU: Der kugelsichere Modal-Öffner ===
   const handleOpenLinkModal = (e: React.MouseEvent | undefined, type: 'droneUrl' | 'logisticsUrl' | 'accessUrl' | 'cam1Url' | 'cam2Url', url: string) => {
@@ -185,7 +190,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       addToast(t('demo_disabled'), 'info');
       return;
     }
-    setLocationInput(activeProject?.siteLocation || ''); 
+    setLocationInput(effectiveLocation || ''); 
     setIsWeatherModalOpen(true);
   };
 
@@ -214,14 +219,22 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       };
       const dbCol = columnMap[linkModal.type] || linkModal.type;
 
-      await supabase.from('projects').update({
+      const { error } = await supabase.from('projects').update({
         [linkModal.type]: linkModal.url,
         [dbCol]: linkModal.url
       }).eq('id', activeProject.id);
 
-      addToast(t('integration_linked_success'), "success");
-      setLinkModal(null);
-    } catch (error) {
+      if (error) {
+        console.error("Link Save Supabase Error:", error);
+        addToast(`Fehler beim Speichern: ${error.message}`, "error");
+      } else {
+        if (typeof projectCtx?.fetchProjects === 'function') {
+          projectCtx.fetchProjects();
+        }
+        addToast(t('integration_linked_success'), "success");
+        setLinkModal(null);
+      }
+    } catch (error: any) {
       console.error("Link Save Error:", error);
       addToast(t('error_saving'), "error");
     } finally {
@@ -231,10 +244,10 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   useEffect(() => {
     const fetchWeather = async () => {
-      if (!activeProject?.siteLocation) return;
+      if (!effectiveLocation) return;
       setIsFetchingWeather(true);
       try {
-        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(activeProject.siteLocation)}&count=1`);
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(effectiveLocation)}&count=1`);
         const geoData = await geoRes.json();
         
         if (!geoData.results || geoData.results.length === 0) {
@@ -260,7 +273,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     };
 
     fetchWeather();
-  }, [activeProject?.siteLocation]);
+  }, [effectiveLocation]);
 
   const handleSaveLocation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,12 +284,27 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     }
 
     if (!activeProject) return;
+    const trimmedLoc = locationInput.trim();
     setIsSavingLink(true);
     try {
-      await supabase.from('projects').update({ site_location: locationInput }).eq('id', activeProject.id);
-      addToast(t('location_saved'), "success");
-      setIsWeatherModalOpen(false);
-    } catch (error) {
+      setCustomLocation(trimmedLoc);
+
+      const { error } = await supabase.from('projects').update({
+        site_location: trimmedLoc
+      }).eq('id', activeProject.id);
+
+      if (error) {
+        console.error("Location Save Supabase Error:", error);
+        addToast(`Fehler beim Speichern: ${error.message}`, "error");
+      } else {
+        if (typeof projectCtx?.fetchProjects === 'function') {
+          projectCtx.fetchProjects();
+        }
+        addToast(t('location_saved'), "success");
+        setIsWeatherModalOpen(false);
+      }
+    } catch (error: any) {
+      console.error("Location Save Error:", error);
       addToast(t('error_saving'), "error");
     } finally {
       setIsSavingLink(false);
