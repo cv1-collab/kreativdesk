@@ -5,12 +5,25 @@ import { useProject } from './ProjectContext';
 import { useToast } from './ToastContext';
 import { supabase } from '../lib/supabase';
 
-const servers = {
+const servers: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'turn:global.relay.metered.ca:80', username: '24338600', credential: 'KreativDesk2026!' },
-    { urls: 'turn:global.relay.metered.ca:443', username: '24338600', credential: 'KreativDesk2026!' }
-  ]
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    {
+      urls: [
+        'turn:openrelay.metered.ca:80',
+        'turn:openrelay.metered.ca:443',
+        'turn:openrelay.metered.ca:443?transport=tcp'
+      ],
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ],
+  iceCandidatePoolSize: 10
 };
 
 interface IncomingCall {
@@ -212,6 +225,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             candidate: event.candidate.toJSON()
           }
         });
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'failed') {
+        console.warn(`[WebRTC] ICE Connection failed for ${peerId}, attempting ICE restart...`);
+        try {
+          if (typeof (pc as any).restartIce === 'function') {
+            (pc as any).restartIce();
+          }
+        } catch (e) {
+          console.error("ICE restart error:", e);
+        }
       }
     };
 
