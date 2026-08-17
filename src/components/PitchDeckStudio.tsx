@@ -236,7 +236,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           layout: s.layout,
           order_index: s.order_index,
           company_id: s.companyId,
-          owner_id: s.ownerId,
           project_id: s.projectId,
           created_at: (s as any).created_at
         })));
@@ -396,6 +395,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const handleLocalUpdate = (field: 'title' | 'content', value: string) => {
     if (field === 'title') setLocalTitle(value);
     if (field === 'content') setLocalContent(value);
+
+    if (activeSlide) {
+      setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, [field]: value } : s));
+    }
 
     if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
     updateTimeoutRef.current = setTimeout(() => {
@@ -684,26 +687,50 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string) => {
-    if (!currentUser || !currentUser.companyId) return;
-    const targetId = projectId || importProjectId;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const targetId = projectId || importProjectId || 'global';
     const newId = `slide-${Date.now()}`;
     const newSlide: Slide = {
       id: newId, title, content: t('type_text_here'), order_index: slides.length, 
-      ownerId: currentUser.uid, companyId: currentUser.companyId, projectId: targetId || 'global', 
+      ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
       layout, fontSize: 18, dataPayload, ...(imageUrl && { imageUrl })
     };
     try {
-      await supabase.from('slides').insert({ ...newSlide, created_at: new Date().toISOString() });
+      const dbPayload: any = {
+        id: newId,
+        project_id: targetId,
+        company_id: safeCompanyId,
+        title: title || 'Neue Folie',
+        content: t('type_text_here'),
+        layout: layout || 'split',
+        order_index: slides.length,
+        created_at: new Date().toISOString()
+      };
+      if (imageUrl) dbPayload.image_url = imageUrl;
+      if (dataPayload) dbPayload.data_payload = dataPayload;
+
+      await supabase.from('slides').insert(dbPayload);
+      setSlides(prev => [...prev, newSlide]);
       setActiveSlideId(newId);
       setShowAddMenu(false);
-    } catch (error) { addToast(t('error_create'), "error"); }
+    } catch (error) { 
+      console.error("handleAddSlide error:", error);
+      addToast(t('error_create'), "error"); 
+    }
   };
 
   const handleDeleteSlide = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (!window.confirm(t('delete_slide_confirm'))) return;
-    try { await supabase.from('slides').delete().eq('id', id); if (activeSlideId === id) setActiveSlideId(slides[0]?.id || null); } 
-    catch (error) { addToast(globalT('error'), "error"); }
+    try { 
+      await supabase.from('slides').delete().eq('id', id); 
+      setSlides(prev => {
+        const remaining = prev.filter(s => s.id !== id);
+        if (activeSlideId === id) setActiveSlideId(remaining[0]?.id || null);
+        return remaining;
+      });
+    } catch (error) { addToast(globalT('error'), "error"); }
   };
 
   const handleClearAllSlides = async () => {
@@ -892,12 +919,13 @@ const handleGenerateTeamSlide = async () => {
 
   const openMediaPicker = async (mediaType: 'cad' | 'render' | 'whiteboard' | 'bim', title: string, action: 'slide'|'team' = 'slide', meta: any = null) => {
     const targetId = projectId || importProjectId || 'global';
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     setMediaPickerType({ folderId: mediaType, title, action, meta });
     setIsMediaLoading(true);
     try {
-      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId).eq('project_id', targetId);
+      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId).eq('project_id', targetId);
       const filteredDocs = (docs || []).filter((d:any) => (d.url || d.file_url) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
       setAvailableMedia(filteredDocs.map((d: any) => ({...d, url: d.url || d.file_url})));
     } catch(e) { addToast(t('error_load'), "error"); }

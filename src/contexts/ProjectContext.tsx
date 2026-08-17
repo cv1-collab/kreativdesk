@@ -388,18 +388,43 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const addProjectMember = async (projectId: string, memberData: any) => {
-    if (!currentUser?.companyId) return;
-    await supabase.from('project_members').insert({
-      project_id: projectId,
-      user_id: memberData.userId,
-      company_id: currentUser.companyId
-    });
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const newMember = {
+      id: `pm-${Date.now()}`,
+      projectId,
+      userId: memberData.userId,
+      userEmail: memberData.userEmail || '',
+      projectRole: memberData.projectRole || 'Viewer',
+      companyRole: memberData.companyRole || 'External Partner',
+      companyId: safeCompanyId
+    };
+
+    setProjectMembers(prev => [...prev, newMember]);
+
+    try {
+      await supabase.from('project_members').insert({
+        project_id: projectId,
+        user_id: memberData.userId,
+        company_id: safeCompanyId
+      });
+    } catch (err) {
+      console.warn("addProjectMember error:", err);
+    }
     fetchProjectDetails();
   };
 
   const removeProjectMember = async (projectId: string, userId: string) => {
-    if (!currentUser?.companyId) return;
-    await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId);
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    
+    setProjectMembers(prev => prev.filter(m => !(m.projectId === projectId && m.userId === userId)));
+
+    try {
+      await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId);
+    } catch (err) {
+      console.warn("removeProjectMember error:", err);
+    }
     fetchProjectDetails();
   };
 

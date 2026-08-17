@@ -465,9 +465,10 @@ export default function Finance() {
     }
 
     // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return;
+    if (!currentUser || !currentProjectId) return;
 
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!safeCompanyId) return;
     const fetchData = async () => {
       if (!safeCompanyId) return;
       const { data: txs } = await supabase
@@ -597,13 +598,14 @@ export default function Finance() {
 
   const [companyColor, setCompanyColor] = useState('#10b981');
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!safeCompanyId) return;
     const fetchCompanyData = async () => {
       try {
         const { data: comp } = await supabase
           .from('companies')
           .select('*')
-          .eq('id', currentUser.companyId)
+          .eq('id', safeCompanyId)
           .maybeSingle();
         if (comp && (comp.primary_color || comp.primaryColor)) {
           setCompanyColor(comp.primary_color || comp.primaryColor);
