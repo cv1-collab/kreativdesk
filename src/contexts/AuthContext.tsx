@@ -99,7 +99,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const userName = profile.name || user.email?.split('@')[0] || 'User';
+        const rawName = profile?.name || profile?.full_name || profile?.display_name;
+        const userName = rawName || (user.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : user.email?.split('@')[0] || 'User');
 
         const appUser: AppUser = {
           id: user.id,
@@ -107,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: user.email,
           name: userName,
           displayName: userName,
-          photoURL: '',
+          photoURL: profile?.avatar || profile?.photo_url || '',
           emailVerified: true,
           role: (profile.role as Role) || 'owner',
           hasActiveSubscription: profile.has_active_subscription ?? true,

@@ -369,8 +369,15 @@ export default function Layout() {
 
           {currentUser && (
             <div className="flex items-center gap-3 px-3 py-2 bg-background border border-border/50 rounded-lg mb-3">
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold shrink-0">{currentUser.email?.charAt(0).toUpperCase()}</div>
-              <div className="overflow-hidden"><p className="text-xs font-bold text-text-primary truncate">{currentUser.email}</p><p className="text-[10px] text-text-muted truncate font-medium">Workspace</p></div>
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold shrink-0">
+                {(currentUser.displayName || currentUser.name || (currentUser.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser.email))?.charAt(0).toUpperCase()}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold text-text-primary truncate">
+                  {currentUser.displayName || currentUser.name || (currentUser.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser.email)}
+                </p>
+                <p className="text-[10px] text-text-muted truncate font-medium">{currentUser.email}</p>
+              </div>
             </div>
           )}
           <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-all text-sm border border-red-500/20"><LogOut size={14} /> {t('logout')}</button>
