@@ -501,16 +501,21 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       }
 
       // Step 1: Multimodal Sketch Analysis via Gemini Vision API
-      let visionPrompt = renderPrompt;
+      let visionPrompt = renderPrompt.trim();
       if (sketchDataUrl) {
         try {
           const base64Data = sketchDataUrl.includes(',') ? sketchDataUrl.split(',')[1] : sketchDataUrl;
-          const geminiPromptText = `Analyze this hand-drawn whiteboard sketch thoroughly.
+          const geminiPromptText = `You are an expert AI concept artist and architect.
+Analyze this hand-drawn whiteboard sketch image carefully.
 User requested style: "${activeStyle}".
-User prompt instructions: "${renderPrompt}".
-Identify what is drawn in the sketch (facial features, character, objects, shapes, architectural structures, etc.).
-Generate a single, detailed English image generation prompt for AI (2-3 sentences) that combines the exact subjects drawn in the sketch with the requested style.
-Output ONLY the detailed prompt text, without meta commentary or quotes.`;
+User specific prompt: "${renderPrompt.trim()}".
+
+Task:
+1. Identify all subjects, facial features, character traits, shapes, or architectural elements drawn in the sketch image.
+2. Formulate a rich, descriptive 2-3 sentence English image generation prompt for an AI model (Flux/Stable Diffusion).
+3. Combine the exact drawn subjects from the sketch with the requested style ("${activeStyle}") and user intent ("${renderPrompt.trim()}").
+4. Make sure to describe a fully rendered, high quality finished visual asset rather than just raw pencil sketch lines.
+Output ONLY the final English prompt text string without quotes or preamble.`;
 
           const aiVisionRes = await callGeminiAPI('gemini-2.5-flash', [
             { inlineData: { data: base64Data, mimeType: 'image/png' } },
@@ -558,7 +563,7 @@ Output ONLY the detailed prompt text, without meta commentary or quotes.`;
 
       // Step 3: High-Performance Flux AI Engine Fallback (Instant & Reliable)
       if (!finalImageUrl) {
-        const cleanPrompt = `${visionPrompt}, high resolution concept design, ${activeStyle} style`;
+        const cleanPrompt = `${visionPrompt}, high resolution concept design, ${activeStyle} style, 8k quality`;
         const seed = Math.floor(Math.random() * 1000000);
         finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
       }
@@ -766,49 +771,144 @@ Output ONLY the detailed prompt text, without meta commentary or quotes.`;
     } catch (err) { setIsSending(false); addToast(globalT('error'), 'error'); }
   };
 
+  const recordedMimeTypeRef = useRef<string>('audio/webm');
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder; audioChunksRef.current = [];
-      mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunksRef.current.push(event.data); };
-      mediaRecorder.start(); setIsRecording(true); setRecordingTime(0);
+      
+      let mimeType = 'audio/webm';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) mimeType = 'audio/webm;codecs=opus';
+        else if (MediaRecorder.isTypeSupported('audio/webm')) mimeType = 'audio/webm';
+        else if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+        else if (MediaRecorder.isTypeSupported('audio/aac')) mimeType = 'audio/aac';
+      }
+      recordedMimeTypeRef.current = mimeType;
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder; 
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => { 
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data); 
+        }
+      };
+      
+      mediaRecorder.start(250); 
+      setIsRecording(true); 
+      setRecordingTime(0);
+      
+      if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    } catch (err) { addToast(t('mic_error'), "error"); }
+    } catch (err) { 
+      console.error("Microphone error:", err);
+      addToast(t('mic_error'), "error"); 
+    }
   };
 
   const stopRecording = async () => {
     if (!mediaRecorderRef.current || !currentUser || !currentUser.companyId) return;
     return new Promise<void>((resolve) => {
       mediaRecorderRef.current!.onstop = async () => {
-        setIsRecording(false); if (timerRef.current) clearInterval(timerRef.current); setIsAnalyzingAudio(true);
+        setIsRecording(false); 
+        if (timerRef.current) clearInterval(timerRef.current); 
+        setIsAnalyzingAudio(true);
+        
         try {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          const reader = new FileReader(); reader.readAsDataURL(audioBlob);
+          const mimeType = recordedMimeTypeRef.current || 'audio/webm';
+          const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          
+          if (audioBlob.size === 0) {
+            addToast('Keine Audiodaten empfangen. Bitte erneut versuchen.', 'error');
+            setIsAnalyzingAudio(false);
+            return resolve();
+          }
+
+          const reader = new FileReader(); 
+          reader.readAsDataURL(audioBlob);
           reader.onloadend = async () => {
             try {
               const base64Audio = (reader.result as string).split(',')[1];
-              const prompt = language === 'de' ? `Transkribiere exakt. Erstelle Zusammenfassung (max 2 Sätze). Format JSON: { "transcription": "...", "summary": "..." }` : `Transcribe exactly. Provide summary (max 2 sentences). Format JSON: { "transcription": "...", "summary": "..." }`;
-              const response = await callGeminiAPI('gemini-1.5-pro', [{ inlineData: { data: base64Audio, mimeType: 'audio/webm' } }, { text: prompt }]);
+              const cleanMime = mimeType.split(';')[0];
+              const promptText = language === 'de' 
+                ? `Transkribiere die Sprachaufnahme exakt Wort für Wort auf Deutsch. Erstelle eine kurze Zusammenfassung (max 2 Sätze). Antworte im Format JSON: { "transcription": "...", "summary": "..." }`
+                : `Transcribe audio exactly word for word. Create a short summary (max 2 sentences). Output JSON format: { "transcription": "...", "summary": "..." }`;
               
-              let resultText = response.text || '{}';
-              const jsonRegex = new RegExp('`{3}json', 'g');
-              const backtickRegex = new RegExp('`{3}', 'g');
-              resultText = resultText.replace(jsonRegex, '').replace(backtickRegex, '').trim();
+              const response = await callGeminiAPI('gemini-2.5-flash', [
+                { inlineData: { data: base64Audio, mimeType: cleanMime } }, 
+                { text: promptText }
+              ]);
               
-              const result = JSON.parse(resultText); 
+              let transcription = 'Sprachaufzeichnung';
+              let summary = 'Audio-Aufnahme gespeichert.';
+
+              if (response) {
+                const rawText = typeof response === 'string' 
+                  ? response 
+                  : (response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '');
+                try {
+                  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                  if (jsonMatch) {
+                    const parsed = JSON.parse(jsonMatch[0]);
+                    if (parsed.transcription) transcription = parsed.transcription;
+                    if (parsed.summary) summary = parsed.summary;
+                  } else if (rawText.trim()) {
+                    transcription = rawText.trim();
+                    summary = rawText.trim().slice(0, 150) + '...';
+                  }
+                } catch (e) {
+                  if (rawText.trim()) {
+                    transcription = rawText.trim();
+                    summary = rawText.trim().slice(0, 150) + '...';
+                  }
+                }
+              }
+
               const id = `an-${Date.now()}`;
-              await supabase.from('audio_notes').insert({
-                id, title: `Field Note ${new Date().toLocaleDateString()}`, time: 'Gerade eben', duration: `0:${recordingTime.toString().padStart(2, '0')}`,
-                ai_summary: result.summary || 'Summary failed.', transcription: result.transcription || 'Transcription failed.', audio_data: base64Audio, owner_id: currentUser.uid, company_id: currentUser.companyId, created_at: new Date().toISOString()
-              });
-              setActiveNoteId(id); resolve();
-            } catch (error: any) { addToast(t('ai_error'), "error"); resolve(); } 
-            finally { setIsAnalyzingAudio(false); setRecordingTime(0); mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop()); }
+              const durationStr = `${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`;
+              
+              const newNoteRecord = {
+                id,
+                title: `Sprachnotiz ${new Date().toLocaleDateString('de-CH')}`,
+                time: new Date().toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' }),
+                duration: durationStr,
+                ai_summary: summary,
+                transcription: transcription,
+                audio_data: base64Audio,
+                owner_id: currentUser.uid,
+                company_id: currentUser.companyId,
+                created_at: new Date().toISOString()
+              };
+
+              await supabase.from('audio_notes').insert(newNoteRecord);
+              
+              setAudioNotes(prev => [newNoteRecord, ...prev]);
+              setActiveNoteId(id); 
+              addToast('Sprachnotiz erfolgreich transkribiert & gespeichert!', 'success');
+              resolve();
+            } catch (error: any) { 
+              console.error("Audio processing error:", error);
+              addToast(t('ai_error'), "error"); 
+              resolve(); 
+            } finally { 
+              setIsAnalyzingAudio(false); 
+              setRecordingTime(0); 
+              if (mediaRecorderRef.current?.stream) {
+                mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop()); 
+              }
+            }
           };
-        } catch (error: any) { setIsAnalyzingAudio(false); resolve(); }
+        } catch (error: any) { 
+          setIsAnalyzingAudio(false); 
+          resolve(); 
+        }
       };
-      mediaRecorderRef.current!.stop();
+      
+      if (mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
     });
   };
 
@@ -1188,12 +1288,23 @@ Output ONLY the detailed prompt text, without meta commentary or quotes.`;
                       <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-3">Stil & Kreativität</label>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         {[
-                          { id: 'realistic', name: 'Kreativ & Realistisch', strength: 0.75, prompt: 'Transform this hand-drawn sketch into a high-quality, realistic rendering. Add beautiful details.' },
-                          { id: 'comic', name: 'Comic & Illustration', strength: 0.65, prompt: 'Transform this sketch into a colorful, professional comic book style illustration with bold outlines.' },
-                          { id: 'sketch', name: 'Skizze Verfeinern', strength: 0.5, prompt: 'Keep the exact lines of this sketch, but make it look like a highly professional, detailed pencil/ink drawing.' },
-                          { id: 'colorize', name: 'Streng (Nur Ausmalen)', strength: 0.4, prompt: 'Do not change the shapes or lines at all! Only add flat colors and basic shading according to the prompt.' }
+                          { id: 'realistic', name: 'Kreativ & Realistisch' },
+                          { id: 'comic', name: 'Comic & Illustration' },
+                          { id: 'sketch', name: 'Skizze Verfeinern' },
+                          { id: 'colorize', name: 'Streng (Nur Ausmalen)' }
                         ].map(style => (
-                          <button key={style.id} onClick={() => { setActiveStyle(style.id); setRenderPrompt(style.prompt + '\n\n' + renderPrompt); }} className={`p-2 text-xs font-medium text-left rounded-lg border transition-all duration-200 ${activeStyle === style.id ? "bg-accent-ai/10 border-accent-ai/50 text-accent-ai shadow-sm" : "bg-background border-transparent text-text-muted hover:bg-surface hover:text-text-primary"}`}>{style.name}</button>
+                          <button 
+                            key={style.id} 
+                            type="button"
+                            onClick={() => setActiveStyle(style.id)} 
+                            className={`p-2.5 text-xs font-semibold text-left rounded-lg border transition-all duration-200 ${
+                              activeStyle === style.id 
+                                ? "bg-accent-ai/15 border-accent-ai text-accent-ai shadow-sm" 
+                                : "bg-background border-border/50 text-text-muted hover:bg-surface hover:text-text-primary"
+                            }`}
+                          >
+                            {style.name}
+                          </button>
                         ))}
                       </div>
                       <label className="block text-xs font-bold uppercase tracking-widest text-text-muted mb-2">Dein Prompt</label>
