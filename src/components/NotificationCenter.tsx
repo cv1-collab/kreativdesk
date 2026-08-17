@@ -130,8 +130,9 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
 
   return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-[999999] bg-black/75 backdrop-blur-md flex justify-end">
+      <div className="fixed inset-0 z-[999999] bg-black/75 backdrop-blur-md flex justify-end" onClick={onClose}>
         <motion.div 
+          onClick={(e) => e.stopPropagation()}
           initial={{ x: 350, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 350, opacity: 0 }}

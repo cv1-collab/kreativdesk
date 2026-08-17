@@ -3,8 +3,10 @@ import { Joyride, Step } from 'react-joyride';
 import { useTour } from '../contexts/TourContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { cn } from '../utils';
 import { 
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
@@ -14,11 +16,13 @@ import {
 export default function ProductTour() {
   const { isTourRunning, stopTour } = useTour();
   const { language } = useLanguage();
+  const { theme } = useTheme();
   const location = useLocation();
   const { currentUser } = useAuth();
   const [steps, setSteps] = useState<Step[]>([]);
 
   const isGerman = language === 'de';
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     if (!isTourRunning) {
@@ -34,26 +38,36 @@ export default function ProductTour() {
       IconComponent: any, 
       proTip?: string
     ) => (
-      <div className="flex flex-col gap-3 p-1 text-left max-w-sm text-white">
-        <div className="flex items-center justify-between border-b border-white/15 pb-3 mb-1">
+      <div className={cn("flex flex-col gap-3 p-1 text-left max-w-sm", isDark ? "text-white" : "text-slate-900")}>
+        <div className={cn("flex items-center justify-between border-b pb-3 mb-1", isDark ? "border-slate-800" : "border-slate-200")}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center shrink-0 shadow-md text-blue-400">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-md",
+              isDark 
+                ? "bg-blue-500/20 border border-blue-500/40 text-blue-400" 
+                : "bg-blue-50 border border-blue-200 text-blue-600"
+            )}>
               <IconComponent size={20} />
             </div>
             <div>
-              <span className="font-extrabold text-base text-white leading-tight block">{title}</span>
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-400">
+              <span className={cn("font-extrabold text-base leading-tight block", isDark ? "text-white" : "text-slate-900")}>{title}</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-500">
                 {isGerman ? `Schritt ${stepNum} von ${total}` : `Step ${stepNum} of ${total}`}
               </span>
             </div>
           </div>
         </div>
-        <p className="text-xs text-slate-100 leading-relaxed font-medium">{content}</p>
+        <p className={cn("text-xs leading-relaxed font-medium", isDark ? "text-slate-200" : "text-slate-700")}>{content}</p>
         {proTip && (
-          <div className="mt-2 bg-blue-950/80 border border-blue-500/40 rounded-xl p-3 flex gap-2.5 items-start shadow-inner">
-            <Sparkles size={16} className="text-blue-400 shrink-0 mt-0.5" />
-            <div className="text-[11px] font-medium leading-relaxed text-slate-100">
-              <strong className="block mb-0.5 text-blue-300 font-bold">{isGerman ? 'Pro-Tipp:' : 'Pro Tip:'}</strong>
+          <div className={cn(
+            "mt-2 rounded-xl p-3 flex gap-2.5 items-start border shadow-sm",
+            isDark 
+              ? "bg-blue-950/60 border-blue-500/30 text-slate-200" 
+              : "bg-blue-50/80 border-blue-200 text-slate-800"
+          )}>
+            <Sparkles size={16} className={cn("shrink-0 mt-0.5", isDark ? "text-blue-400" : "text-blue-600")} />
+            <div className="text-[11px] font-medium leading-relaxed">
+              <strong className={cn("block mb-0.5 font-bold", isDark ? "text-blue-300" : "text-blue-700")}>{isGerman ? 'Pro-Tipp:' : 'Pro Tip:'}</strong>
               {proTip}
             </div>
           </div>
@@ -70,7 +84,7 @@ export default function ProductTour() {
       IconComponent: any, 
       proTip?: string,
       placement: any = 'right', 
-      disableBeacon = true
+      disableBeacon = false
     ): Step => ({
       target, 
       content: buildStepContent(stepNum, total, title, content, IconComponent, proTip),
@@ -136,7 +150,7 @@ export default function ProductTour() {
     });
 
     setSteps(validSteps);
-  }, [isTourRunning, location.pathname, language]);
+  }, [isTourRunning, location.pathname, language, theme, isDark]);
 
   const handleJoyrideCallback = async (data: any) => {
     const { status, action } = data;
@@ -176,27 +190,28 @@ export default function ProductTour() {
         callback: handleJoyrideCallback,
         styles: {
           options: {
-            primaryColor: '#3b82f6',
-            backgroundColor: '#0f172a',
-            textColor: '#ffffff',
-            arrowColor: '#0f172a',
-            overlayColor: 'rgba(0, 0, 0, 0.75)',
+            primaryColor: '#ef4444',
+            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+            textColor: isDark ? '#ffffff' : '#0f172a',
+            arrowColor: isDark ? '#0f172a' : '#ffffff',
+            overlayColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(15, 23, 42, 0.45)',
             zIndex: 100000,
+            beaconSize: 36,
           },
           tooltip: {
-            backgroundColor: '#0f172a',
-            color: '#ffffff',
+            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+            color: isDark ? '#ffffff' : '#0f172a',
             borderRadius: '1.25rem',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.10)',
             padding: '1.25rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+            boxShadow: isDark ? '0 25px 50px -12px rgba(0, 0, 0, 0.9)' : '0 20px 40px -10px rgba(0, 0, 0, 0.15)',
           },
           tooltipContainer: {
             textAlign: 'left',
-            color: '#ffffff',
+            color: isDark ? '#ffffff' : '#0f172a',
           },
           tooltipContent: {
-            color: '#ffffff',
+            color: isDark ? '#ffffff' : '#0f172a',
             padding: 0,
           },
           buttonNext: {
@@ -210,14 +225,23 @@ export default function ProductTour() {
           },
           buttonBack: {
             marginRight: '0.5rem',
-            color: '#94a3b8',
+            color: isDark ? '#94a3b8' : '#64748b',
             fontSize: '0.875rem',
             fontWeight: '600',
           },
           buttonSkip: {
-            color: '#94a3b8',
+            color: isDark ? '#94a3b8' : '#64748b',
             fontSize: '0.875rem',
             fontWeight: '600',
+          },
+          beacon: {
+            inner: {
+              backgroundColor: '#ef4444'
+            },
+            outer: {
+              backgroundColor: 'rgba(239, 68, 68, 0.4)',
+              borderColor: '#ef4444'
+            }
           }
         }
       } as any)}

@@ -85,13 +85,20 @@ body {
   background: #3f3f46;
 }
 
-/* Joyride Product Tour Modal Contrast & Background Overrides */
-.react-joyride__tooltip {
+/* Joyride Product Tour Tooltip & Red Pulsating Beacon */
+.dark .react-joyride__tooltip {
   background-color: #0f172a !important;
   color: #ffffff !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 1.25rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85) !important;
+}
+
+.light .react-joyride__tooltip,
+:root:not(.dark) .react-joyride__tooltip {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15) !important;
 }
 
 .react-joyride__tooltip [class*="tooltip__content"],
@@ -102,4 +109,25 @@ body {
 .react-joyride__tooltip h3,
 .react-joyride__tooltip div {
   color: inherit;
+}
+
+.react-joyride__beacon {
+  outline: none !important;
+}
+
+.react-joyride__beacon span:nth-child(1) {
+  background-color: rgba(239, 68, 68, 0.35) !important;
+  border: 2px solid #ef4444 !important;
+  animation: joyride-beacon-outer 1.2s infinite ease-in-out !important;
+}
+
+.react-joyride__beacon span:nth-child(2) {
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.9) !important;
+}
+
+@keyframes joyride-beacon-outer {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.4); opacity: 0.3; }
+  100% { transform: scale(1); opacity: 0.9; }
 }
