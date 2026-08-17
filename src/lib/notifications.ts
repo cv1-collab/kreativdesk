@@ -83,13 +83,13 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
 
     let dbNotifs: any[] = [];
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('company_id', companyId)
         .order('created_at', { ascending: false })
         .limit(50);
-      if (data) dbNotifs = data;
+      if (data && !error) dbNotifs = data;
     } catch (dbErr) {
       // Ignore missing notifications table
     }
