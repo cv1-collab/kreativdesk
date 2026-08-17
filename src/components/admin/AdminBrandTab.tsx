@@ -39,10 +39,10 @@ export default function AdminBrandTab() {
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
-  
+
   const { addToast } = useToast();
-  
-  const [config, setConfig] = useState({ 
+
+  const [config, setConfig] = useState({
     masterLogo: '', accentColor: '#ef4444',
     companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
     screensaverActive: false,
@@ -68,7 +68,7 @@ export default function AdminBrandTab() {
 
         const config = (data as any)?.data || data;
         if (config) setConfig(prev => ({ ...prev, ...config }));
-      } catch (e) {}
+      } catch (e) { }
     };
     fetchConfig();
   }, []);
@@ -135,7 +135,7 @@ export default function AdminBrandTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <form onSubmit={handleSave} className="space-y-6">
-        
+
         {/* Header Box */}
         <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -145,9 +145,9 @@ export default function AdminBrandTab() {
             </h3>
             <p className="text-text-muted text-sm font-medium">{t('branding_desc')}</p>
           </div>
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
+          <button
+            type="submit"
+            disabled={isSubmitting}
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shrink-0 cursor-pointer"
           >
             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}
@@ -187,10 +187,10 @@ export default function AdminBrandTab() {
 
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1">Logo URL (Alternativ)</label>
-                <input 
-                  type="url" 
-                  placeholder="https://deine-domain.ch/logo.png" 
-                  value={config.masterLogo} 
+                <input
+                  type="url"
+                  placeholder="https://deine-domain.ch/logo.png"
+                  value={config.masterLogo}
                   onChange={(e) => setConfig({ ...config, masterLogo: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -201,15 +201,15 @@ export default function AdminBrandTab() {
             <div className="space-y-3 pt-4 border-t border-border/50">
               <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('accent_color')}</label>
               <div className="flex items-center gap-3">
-                <input 
-                  type="color" 
-                  value={config.accentColor || '#ef4444'} 
+                <input
+                  type="color"
+                  value={config.accentColor || '#ef4444'}
                   onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
                   className="w-10 h-10 rounded-xl border border-border bg-background cursor-pointer p-1"
                 />
-                <input 
-                  type="text" 
-                  value={config.accentColor || '#ef4444'} 
+                <input
+                  type="text"
+                  value={config.accentColor || '#ef4444'}
                   onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
                   className="w-32 px-3 py-2 bg-background border border-border/50 rounded-xl text-sm font-mono font-bold text-text-primary uppercase"
                 />
@@ -246,9 +246,9 @@ export default function AdminBrandTab() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('company_name')}</label>
-                <input 
-                  type="text" 
-                  value={config.companyName} 
+                <input
+                  type="text"
+                  value={config.companyName}
                   onChange={(e) => setConfig({ ...config, companyName: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -258,10 +258,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Hash size={12} /> {t('uid')}
                 </label>
-                <input 
-                  type="text" 
-                  placeholder="CHE-123.456.789 HR/MWST" 
-                  value={config.uid} 
+                <input
+                  type="text"
+                  placeholder="CHE-123.456.789 HR/MWST"
+                  value={config.uid}
                   onChange={(e) => setConfig({ ...config, uid: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -271,10 +271,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Globe size={12} /> {t('website')}
                 </label>
-                <input 
-                  type="url" 
-                  placeholder="https://kreativdesk.ch" 
-                  value={config.website} 
+                <input
+                  type="url"
+                  placeholder="https://kreativdesk.ch"
+                  value={config.website}
                   onChange={(e) => setConfig({ ...config, website: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -284,10 +284,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Mail size={12} /> {t('email')}
                 </label>
-                <input 
-                  type="email" 
-                  placeholder="support@kreativdesk.ch" 
-                  value={config.email} 
+                <input
+                  type="email"
+                  placeholder="support@kreativdesk.ch"
+                  value={config.email}
                   onChange={(e) => setConfig({ ...config, email: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -297,10 +297,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Phone size={12} /> {t('phone')}
                 </label>
-                <input 
-                  type="text" 
-                  placeholder="+41 44 123 45 67" 
-                  value={config.phone} 
+                <input
+                  type="text"
+                  placeholder="+41 44 123 45 67"
+                  value={config.phone}
                   onChange={(e) => setConfig({ ...config, phone: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -310,10 +310,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <MapPin size={12} /> {t('address')}
                 </label>
-                <input 
-                  type="text" 
-                  placeholder="Musterstrasse 12" 
-                  value={config.address} 
+                <input
+                  type="text"
+                  placeholder="Musterstrasse 12"
+                  value={config.address}
                   onChange={(e) => setConfig({ ...config, address: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -321,10 +321,10 @@ export default function AdminBrandTab() {
 
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('zip')}</label>
-                <input 
-                  type="text" 
-                  placeholder="8000" 
-                  value={config.zipCode} 
+                <input
+                  type="text"
+                  placeholder="8000"
+                  value={config.zipCode}
                   onChange={(e) => setConfig({ ...config, zipCode: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -332,10 +332,10 @@ export default function AdminBrandTab() {
 
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('city')}</label>
-                <input 
-                  type="text" 
-                  placeholder="Zürich" 
-                  value={config.city} 
+                <input
+                  type="text"
+                  placeholder="Zürich"
+                  value={config.city}
                   onChange={(e) => setConfig({ ...config, city: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -345,10 +345,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <CreditCard size={12} /> {t('iban')}
                 </label>
-                <input 
-                  type="text" 
-                  placeholder="CH93 0000 0000 0000 0000 0" 
-                  value={config.iban} 
+                <input
+                  type="text"
+                  placeholder="CH93 0000 0000 0000 0000 0"
+                  value={config.iban}
                   onChange={(e) => setConfig({ ...config, iban: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-mono font-bold text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -366,8 +366,8 @@ export default function AdminBrandTab() {
                   <p className="text-xs text-text-muted">Definiere das Standard-Hintergrundbild und den Inaktivitäts-Timer für alle Workspaces.</p>
                 </div>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setConfig(prev => ({ ...prev, screensaverActive: !prev.screensaverActive }))}
                 className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border", config.screensaverActive ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
               >
@@ -379,11 +379,11 @@ export default function AdminBrandTab() {
               <div className="space-y-3">
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Inaktivitäts-Timer (Minuten)</label>
                 <div className="flex items-center gap-3">
-                  <input 
-                    type="number" 
-                    min={1} 
-                    max={120} 
-                    value={config.screensaverTimeout || 5} 
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={config.screensaverTimeout || 5}
                     onChange={(e) => setConfig({ ...config, screensaverTimeout: Math.max(1, parseInt(e.target.value) || 5) })}
                     className="w-24 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-bold text-text-primary text-center"
                   />
@@ -394,8 +394,8 @@ export default function AdminBrandTab() {
               <div className="md:col-span-2 space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Master Wallpaper URL / Datei</label>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => {
                       if (!config.screensaverImage) return;
                       setConfig(prev => ({ ...prev, loginBgImage: prev.screensaverImage }));
@@ -407,10 +407,10 @@ export default function AdminBrandTab() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input 
-                    type="url" 
-                    placeholder="https://images.unsplash.com/photo-... oder Datei hochladen" 
-                    value={config.screensaverImage || ''} 
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/photo-... oder Datei hochladen"
+                    value={config.screensaverImage || ''}
                     onChange={(e) => setConfig({ ...config, screensaverImage: e.target.value })}
                     className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                   />
@@ -432,7 +432,7 @@ export default function AdminBrandTab() {
                   { name: 'Minimal Interior Studio', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000&auto=format&fit=crop' },
                   { name: 'Dark Cyberpunk Glass', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop' }
                 ].map(w => (
-                  <div 
+                  <div
                     key={w.url}
                     onClick={() => setConfig({ ...config, screensaverImage: w.url })}
                     className={cn(
@@ -460,8 +460,8 @@ export default function AdminBrandTab() {
                   <p className="text-xs text-text-muted">Blende wichtige Hinweise (z.B. Wartungsarbeiten, Releases) oben bei allen eingeloggten Nutzern ein.</p>
                 </div>
               </div>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setConfig(prev => ({ ...prev, announcementActive: !prev.announcementActive }))}
                 className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border", config.announcementActive ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
               >
@@ -472,10 +472,10 @@ export default function AdminBrandTab() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2 space-y-2">
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Ankündigungstext</label>
-                <input 
-                  type="text" 
-                  placeholder="z.B. Wartungsarbeiten am Samstag ab 22:00 Uhr. Plattform bleibt erreichbar." 
-                  value={config.announcementText || ''} 
+                <input
+                  type="text"
+                  placeholder="z.B. Wartungsarbeiten am Samstag ab 22:00 Uhr. Plattform bleibt erreichbar."
+                  value={config.announcementText || ''}
                   onChange={(e) => setConfig({ ...config, announcementText: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -499,10 +499,10 @@ export default function AdminBrandTab() {
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1">
                   <LinkIcon size={12} /> Link URL (Optional)
                 </label>
-                <input 
-                  type="url" 
-                  placeholder="https://kreativdesk.ch/updates" 
-                  value={config.announcementLink || ''} 
+                <input
+                  type="url"
+                  placeholder="https://kreativdesk.ch/updates"
+                  value={config.announcementLink || ''}
                   onChange={(e) => setConfig({ ...config, announcementLink: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -523,8 +523,8 @@ export default function AdminBrandTab() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Login Wallpaper URL / Datei</label>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => {
                     if (!config.loginBgImage) return;
                     setConfig(prev => ({ ...prev, screensaverImage: prev.loginBgImage }));
@@ -536,10 +536,10 @@ export default function AdminBrandTab() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <input 
-                  type="url" 
-                  placeholder="https://images.unsplash.com/photo-... oder Datei hochladen" 
-                  value={config.loginBgImage || ''} 
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/photo-... oder Datei hochladen"
+                  value={config.loginBgImage || ''}
                   onChange={(e) => setConfig({ ...config, loginBgImage: e.target.value })}
                   className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
@@ -560,7 +560,7 @@ export default function AdminBrandTab() {
                   { name: 'Dark Cyberpunk Glass', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop' },
                   { name: 'Abstract Gradient Wave', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop' }
                 ].map(w => (
-                  <div 
+                  <div
                     key={w.url}
                     onClick={() => setConfig({ ...config, loginBgImage: w.url })}
                     className={cn(
@@ -582,9 +582,9 @@ export default function AdminBrandTab() {
 
         {/* Footer Action Bar */}
         <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm flex justify-end">
-          <button 
-            type="submit" 
-            disabled={isSubmitting} 
+          <button
+            type="submit"
+            disabled={isSubmitting}
             className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}

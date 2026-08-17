@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { 
+import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
   Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus
 } from 'lucide-react';
@@ -30,7 +30,7 @@ const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
       const handleTrackUpdate = () => {
         if (video) {
           video.srcObject = stream;
-          video.play().catch(() => {});
+          video.play().catch(() => { });
         }
       };
 
@@ -56,7 +56,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     meeting_title: 'Meeting Title', date: 'Date', time: 'Time', description: 'Description', cancel: 'Cancel', schedule: 'Schedule',
     upcoming_calls: 'Upcoming Calls', no_upcoming_calls: 'No upcoming calls.', join_now: 'Join Now', mobile_blocked_title: 'Desktop Only Feature',
     mobile_blocked_desc: 'Video calls and live collaboration are only available on desktop devices to ensure a stable connection.',
-    who_to_call: 'Who do you want to call? (Optional)', start_call: 'Start Project Call', start_rundruf: 'Start Group Call', 
+    who_to_call: 'Who do you want to call? (Optional)', start_call: 'Start Project Call', start_rundruf: 'Start Group Call',
     call_selected: 'Call selected people', invite_participants: 'Invite Participants', external_link: 'External Invite Link'
   },
   de: {
@@ -67,7 +67,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     meeting_title: 'Meeting Titel', date: 'Datum', time: 'Zeit', description: 'Beschreibung', cancel: 'Abbrechen', schedule: 'Planen',
     upcoming_calls: 'Bevorstehende Video Calls', no_upcoming_calls: 'Keine geplanten Calls vorhanden.', join_now: 'Teilnehmen', mobile_blocked_title: 'Nur auf Desktop verfügbar',
     mobile_blocked_desc: 'Video-Calls und das Live-Whiteboard sind auf Smartphones deaktiviert, um Verbindungsabbrüche zu verhindern.',
-    who_to_call: 'Wen möchtest du anrufen? (Optional)', start_call: 'Projekt-Call starten', start_rundruf: 'Projekt-Rundruf starten', 
+    who_to_call: 'Wen möchtest du anrufen? (Optional)', start_call: 'Projekt-Call starten', start_rundruf: 'Projekt-Rundruf starten',
     call_selected: 'Person(en) anrufen', invite_participants: 'Teilnehmer einladen', external_link: 'Link für externe Partner'
   }
 };
@@ -81,16 +81,16 @@ export default function MeetChat() {
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const { activeProjectId, setActiveProject, projectMembers, companyUsers } = useProject();
-  
+
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
-  
-  const { 
+
+  const {
     localStream, remoteStreams, screenStream, isMicOn, isCamOn, isScreenSharing,
     callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp,
     toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen
   } = useVideoCall();
-  
+
   const [sessionRoomId] = useState(() => {
     const saved = sessionStorage.getItem('kreativ_desk_active_room');
     if (saved) return saved;
@@ -106,14 +106,14 @@ export default function MeetChat() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [meetingSummary, setMeetingSummary] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [upcomingCalls, setUpcomingCalls] = useState<any[]>([]); 
+  const [upcomingCalls, setUpcomingCalls] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isAITyping, setIsAITyping] = useState(false);
-  
+
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [targetEmail, setTargetEmail] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  
+
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [newCallEvent, setNewCallEvent] = useState({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] as string[] });
   const [copiedLink, setCopiedLink] = useState(false);
@@ -121,13 +121,13 @@ export default function MeetChat() {
   const [copied, setCopied] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const hasAutoJoined = useRef(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mainVideoRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-  
+
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
@@ -165,7 +165,7 @@ export default function MeetChat() {
       type: 'broadcast',
       event: 'new_chat_msg',
       payload: msgObj
-    }).catch(() => {});
+    }).catch(() => { });
 
     const payloadPrimary: any = {
       id: msgId,
@@ -232,10 +232,10 @@ export default function MeetChat() {
       console.warn("Speech recognition error:", event.error);
       if (event.error === 'not-allowed') setIsTranscribing(false);
     };
-    
+
     recognition.onend = () => {
       if (isTranscribingRef.current) {
-         try { recognition.start(); } catch(e){ console.warn(e); }
+        try { recognition.start(); } catch (e) { console.warn(e); }
       }
     };
 
@@ -253,19 +253,19 @@ export default function MeetChat() {
 
   const toggleTranscription = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-       addToast("ℹ️ Live-Transkription wird in Firefox nicht unterstützt. Bitte nutze Chrome, Safari oder Edge für Live-Untertitel.", "info");
-       return;
+      addToast("ℹ️ Live-Transkription wird in Firefox nicht unterstützt. Bitte nutze Chrome, Safari oder Edge für Live-Untertitel.", "info");
+      return;
     }
     if (isTranscribing) {
-       setIsTranscribing(false);
-       if (recognitionRef.current) recognitionRef.current.stop();
-       setCurrentTranscript('');
-       addToast("Live-Transkription deaktiviert", "info");
+      setIsTranscribing(false);
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setCurrentTranscript('');
+      addToast("Live-Transkription deaktiviert", "info");
     } else {
-       setIsTranscribing(true);
-       if (recognitionRef.current) {
-          try { recognitionRef.current.start(); addToast("Live-Transkription gestartet", "success"); } catch(e){ console.warn(e); }
-       }
+      setIsTranscribing(true);
+      if (recognitionRef.current) {
+        try { recognitionRef.current.start(); addToast("Live-Transkription gestartet", "success"); } catch (e) { console.warn(e); }
+      }
     }
   };
 
@@ -295,7 +295,7 @@ export default function MeetChat() {
     const pathParts = window.location.pathname.split('/');
     const projIndex = pathParts.indexOf('project');
     let currentProj = activeProjectId;
-    
+
     if (!currentProj && projIndex !== -1 && pathParts.length > projIndex + 1) {
       currentProj = pathParts[projIndex + 1];
       setActiveProject(currentProj);
@@ -303,7 +303,7 @@ export default function MeetChat() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const joinId = urlParams.get('join');
-    
+
     if (joinId && callStatus === 'idle' && !hasAutoJoined.current) {
       hasAutoJoined.current = true;
       const autoConnect = async () => {
@@ -316,7 +316,7 @@ export default function MeetChat() {
   useEffect(() => {
     const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
-    
+
     const fetchChatMessages = async () => {
       try {
         let msgs: any[] = [];
@@ -332,7 +332,7 @@ export default function MeetChat() {
         const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
 
         if (!error && data) msgs = data;
-        
+
         if (msgs && msgs.length > 0) {
           setMessages(msgs.map(d => ({
             id: d.id,
@@ -377,7 +377,7 @@ export default function MeetChat() {
             const cData = (config as any)?.data || config;
             if (cData?.calls) configCalls = cData.calls;
           }
-        } catch (cfgErr) {}
+        } catch (cfgErr) { }
 
         const dbCalls = (events || []).map((e: any) => ({
           id: e.id,
@@ -435,7 +435,7 @@ export default function MeetChat() {
 
     return () => {
       if (channel) {
-        supabase.removeChannel(channel).catch(() => {});
+        supabase.removeChannel(channel).catch(() => { });
       }
     };
   }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId, activeCallRoomId]);
@@ -443,14 +443,14 @@ export default function MeetChat() {
   const handleFileAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     setIsUploadingFile(true);
     try {
       const safeComp = currentUser?.companyId || 'global';
       const url = await uploadFileWithFallback(file, file.name, safeComp, 'chat_attachments');
-      
+
       await sendChatMessage({ text: `Dateianhang: ${file.name}`, fileUrl: url });
-      
+
     } catch (err) {
       console.error("Upload error", err);
       addToast('Fehler beim Hochladen der Datei', 'error');
@@ -463,7 +463,7 @@ export default function MeetChat() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    
+
     const userMessage = newMessage;
     const senderName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
     const avatarInitials = senderName.substring(0, 2).toUpperCase();
@@ -479,10 +479,10 @@ export default function MeetChat() {
       text: userMessage
     }]);
     setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    
+
     try {
       await sendChatMessage({ text: userMessage });
-      
+
       if (userMessage.toLowerCase().includes('@ai') || userMessage.includes('?')) {
         setIsAITyping(true);
         let knowledgeContext = '';
@@ -495,8 +495,8 @@ export default function MeetChat() {
           }
         } catch (err) { console.error('Knowledge search fail', err); }
 
-        const langInstruction = currentLang === 'de' 
-          ? 'Bitte antworte vollständig auf Deutsch.' 
+        const langInstruction = currentLang === 'de'
+          ? 'Bitte antworte vollständig auf Deutsch.'
           : 'Please respond completely in English.';
 
         const context = messages.map(m => `${m.sender}: ${m.text}`).join('\n');
@@ -505,7 +505,7 @@ export default function MeetChat() {
         const response = await callGeminiAPI('gemini-2.5-flash', prompt);
         let responseText = response.text || 'I am here to help.';
         let reference = undefined;
-        
+
         const refMatch = responseText.match(/\[REF:\s*(.*?)\]/);
         if (refMatch) {
           reference = refMatch[1];
@@ -530,13 +530,13 @@ export default function MeetChat() {
       const prompt = currentLang === 'de'
         ? `Basierend auf folgendem Meeting-Chat und gesprochenem Transkript, erstelle eine prägnante Zusammenfassung auf Deutsch mit 3 Stichpunkten (Action Items). Bitte erstelle alle Überschriften und Inhalte VOLLSTÄNDIG auf Deutsch (z.B. "Zusammenfassung:", "Wichtige Aufgaben:"). Formatiere als klaren Text ohne Markdown-Sternchen (*), verwende einfache Bindestriche (-).\nTranskript:\n${context}`
         : `Based on the following meeting chat and spoken transcript, generate a concise meeting summary in English with 3 bullet points of Action Items. Format headings and text completely in English (e.g., "Summary:", "Action Items:"). Format as clean text without markdown asterisks if possible, just use bullet points (-).\nTranscript:\n${context}`;
-      
+
       const response = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       setMeetingSummary(typeof response === 'string' ? response : (response.text || JSON.stringify(response)));
       setShowChat(true);
-    } catch (error: any) { 
-      setMeetingSummary(currentLang === 'de' ? "Fehler beim Erstellen der Zusammenfassung." : "Failed to generate summary."); 
-    } 
+    } catch (error: any) {
+      setMeetingSummary(currentLang === 'de' ? "Fehler beim Erstellen der Zusammenfassung." : "Failed to generate summary.");
+    }
     finally { setIsGeneratingSummary(false); }
   };
 
@@ -547,7 +547,7 @@ export default function MeetChat() {
       const eventId = `evt-${Date.now()}`;
       const targetProjectId = projectId || activeProjectId || 'internal';
       const meetingId = generatedMeetingId || `meet-${Date.now()}`;
-      
+
       // 1. Pre-register video call so external links work
       try {
         await supabase.from('video_calls').upsert({
@@ -600,7 +600,7 @@ export default function MeetChat() {
         const agendaConfig = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${currentUser.companyId}`, currentUser.companyId);
         const cEvents = agendaConfig?.events || [];
         await saveSystemConfigJSON(`agenda_events_${currentUser.companyId}`, { events: [newCallObj, ...cEvents], companyId: currentUser.companyId }, currentUser.companyId, currentUser.uid);
-      } catch (backupErr) {}
+      } catch (backupErr) { }
 
       // 3. Insert into calendar_events with schema resilience
       try {
@@ -612,7 +612,7 @@ export default function MeetChat() {
           description: newCallEvent.description || '',
           id: eventId,
           owner_id: currentUser.uid,
-          company_id: currentUser.companyId, 
+          company_id: currentUser.companyId,
           project_id: targetProjectId,
           participants: newCallEvent.participants || [],
           timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
@@ -628,7 +628,7 @@ export default function MeetChat() {
       } catch (calInsErr) {
         console.warn("Calendar events insert handled:", calInsErr);
       }
-      
+
       // Trigger notification bell
       await sendNotification({
         companyId: currentUser.companyId,
@@ -640,22 +640,22 @@ export default function MeetChat() {
 
       setIsScheduleModalOpen(false);
       setNewCallEvent({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] });
-      
+
       const sysMsgText = language === 'de' ? `Ein neuer Video-Call "${newCallEvent.title}" wurde für den ${newCallEvent.date} um ${newCallEvent.time} Uhr geplant.` : `A new video call "${newCallEvent.title}" has been scheduled for ${newCallEvent.date} at ${newCallEvent.time}.`;
 
       await supabase.from('chat_messages').insert({
         sender: 'System', avatar: 'SYS', sender_id: currentUser.uid,
-        company_id: currentUser.companyId, 
+        company_id: currentUser.companyId,
         project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: sysMsgText, created_at: new Date().toISOString()
       });
       addToast('Call erfolgreich in Agenda & Chat eingetragen!', 'success');
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
-      addToast('Call erfolgreich geplant!', 'success'); 
+      addToast('Call erfolgreich geplant!', 'success');
     }
   };
 
-  const currentProjectMembers = (companyUsers || []).filter((u: any) => 
+  const currentProjectMembers = (companyUsers || []).filter((u: any) =>
     (projectMembers || []).some((pm: any) => pm.projectId === (projectId || activeProjectId) && pm.userId === u.id) && u.id !== currentUser?.uid
   );
 
@@ -722,29 +722,29 @@ export default function MeetChat() {
 
     const recipientString = parsedEmails.length > 0 ? parsedEmails.join(',') : targetEmail.trim();
 
-    const emailSubject = isDe 
+    const emailSubject = isDe
       ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS`
       : `📹 Invitation to Live Video Call | Kreativ Desk OS`;
 
     const emailBody = isDe
       ? `Hallo,\n\n${hostName} lädt dich zu einem Live-Videocall auf Kreativ Desk OS ein!\n\n` +
-        `📌 MEETING DETAILS:\n` +
-        `• Raum-ID: ${activeCallRoomId}\n` +
-        `• Direkt-Link: ${inviteUrl}\n\n` +
-        `✨ HINWEIS FÜR GÄSTE:\n` +
-        `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
-        `Freundliche Grüsse,\n` +
-        `Kreativ Desk OS\n` +
-        `https://www.kreativdesk.ch`
+      `📌 MEETING DETAILS:\n` +
+      `• Raum-ID: ${activeCallRoomId}\n` +
+      `• Direkt-Link: ${inviteUrl}\n\n` +
+      `✨ HINWEIS FÜR GÄSTE:\n` +
+      `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
+      `Freundliche Grüsse,\n` +
+      `Kreativ Desk OS\n` +
+      `https://www.kreativdesk.ch`
       : `Hello,\n\n${hostName} invites you to a live video call on Kreativ Desk OS!\n\n` +
-        `📌 MEETING DETAILS:\n` +
-        `• Room ID: ${activeCallRoomId}\n` +
-        `• Direct Link: ${inviteUrl}\n\n` +
-        `✨ NOTE FOR GUESTS:\n` +
-        `No login or software download required. Simply click the link above, enter your name, and join immediately.\n\n` +
-        `Best regards,\n` +
-        `Kreativ Desk OS\n` +
-        `https://www.kreativdesk.ch`;
+      `📌 MEETING DETAILS:\n` +
+      `• Room ID: ${activeCallRoomId}\n` +
+      `• Direct Link: ${inviteUrl}\n\n` +
+      `✨ NOTE FOR GUESTS:\n` +
+      `No login or software download required. Simply click the link above, enter your name, and join immediately.\n\n` +
+      `Best regards,\n` +
+      `Kreativ Desk OS\n` +
+      `https://www.kreativdesk.ch`;
 
     setIsSendingEmail(true);
     try {
@@ -781,9 +781,9 @@ export default function MeetChat() {
       window.open(`mailto:${recipientString}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
       const count = parsedEmails.length || 1;
       addToast(
-        isDe 
-          ? `✉️ Einladung für ${count > 1 ? `${count} Teilnehmer` : targetEmail || 'Gast'} vorbereitet & gesendet!` 
-          : `✉️ Invite prepared for ${count > 1 ? `${count} participants` : targetEmail || 'guest'}!`, 
+        isDe
+          ? `✉️ Einladung für ${count > 1 ? `${count} Teilnehmer` : targetEmail || 'Gast'} vorbereitet & gesendet!`
+          : `✉️ Invite prepared for ${count > 1 ? `${count} participants` : targetEmail || 'guest'}!`,
         'success'
       );
       setShowEmailModal(false);
@@ -822,8 +822,8 @@ export default function MeetChat() {
       : `📹 *Invitation to Live Video Call (Kreativ Desk OS)*\n\nHello! You are invited to a video call. Simply click the link to join without login:\n👉 ${inviteUrl}`;
 
     try {
-      navigator.clipboard.writeText(inviteUrl).catch(() => {});
-    } catch (e) {}
+      navigator.clipboard.writeText(inviteUrl).catch(() => { });
+    } catch (e) { }
 
     if (mode === 'copy') {
       setCopiedLink(true);
@@ -839,15 +839,15 @@ export default function MeetChat() {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-background relative overflow-hidden text-text-primary">
-      
+
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-1 flex-col min-h-0 space-y-4 h-full">
-        
+
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 shrink-0 overflow-x-auto pb-2">
           <div className="shrink-0 flex flex-col">
             <h1 className="text-2xl font-semibold tracking-tight">{t('live_collaboration')}</h1>
             <p className="text-text-muted text-sm mt-1">{t('weekly_coordination')}</p>
           </div>
-          
+
           {/* 🔥 HIER SIND DIE BEIDEN KLASSEN HINZUGEFÜGT (tour-meet-modes) */}
           <div className="tour-meet-modes flex bg-surface border border-border rounded-lg p-1 shadow-sm shrink-0">
             <button onClick={() => setActiveView('video')} className={cn("tour-meet-video px-4 py-1.5 rounded-md text-sm font-bold transition-colors flex items-center gap-2", activeView === 'video' ? "bg-accent-ai/10 text-accent-ai" : "text-text-muted hover:text-text-primary")}>
@@ -870,16 +870,16 @@ export default function MeetChat() {
         </header>
 
         <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0 relative">
-          
+
           <div className="flex-1 bg-surface border border-border/50 rounded-2xl md:rounded-3xl overflow-y-auto custom-scrollbar flex flex-col shadow-sm relative min-h-[50vh] md:min-h-0">
-            
+
             {activeView === 'video' ? (
               callStatus === 'idle' ? (
                 <div className="flex flex-col items-center justify-start md:justify-center min-h-full py-6 px-4 md:p-8 max-w-md mx-auto text-center animate-in zoom-in-95 pb-36 md:pb-8">
                   <div className="w-16 h-16 md:w-20 md:h-20 bg-accent-ai/10 text-accent-ai rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6 shrink-0"><Users size={36} /></div>
                   <h3 className="text-base md:text-lg font-bold text-text-primary mb-1 md:mb-2">{t('start_call')}</h3>
                   <p className="text-xs md:text-sm text-text-muted mb-4 md:mb-6 font-medium">{t('who_to_call')}</p>
-                  
+
                   {currentProjectMembers.length > 0 && (
                     <div className="flex flex-wrap justify-center gap-3 mb-6 md:mb-8">
                       {currentProjectMembers.map((user: any) => {
@@ -895,7 +895,7 @@ export default function MeetChat() {
                       })}
                     </div>
                   )}
-                  
+
                   <div className="flex justify-center items-center gap-3 w-full mb-5">
                     <button onClick={async () => { await ensureCallRegistered(activeCallRoomId); await startCall(selectedUserIds, activeCallRoomId); }} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
                       <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
@@ -944,13 +944,13 @@ export default function MeetChat() {
               ) : (
                 <div className="w-full h-full relative bg-black">
                   <div ref={mainVideoRef} className="absolute inset-0 bg-transparent z-0" />
-                  
-                  <div className={cn("absolute inset-0 z-10 grid gap-1", 
+
+                  <div className={cn("absolute inset-0 z-10 grid gap-1",
                     Object.keys(remoteStreams).length === 0 ? "grid-cols-1" :
-                    Object.keys(remoteStreams).length === 1 ? "grid-cols-1" :
-                    Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
-                    Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
-                    "grid-cols-3 grid-rows-2"
+                      Object.keys(remoteStreams).length === 1 ? "grid-cols-1" :
+                        Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
+                          Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
+                            "grid-cols-3 grid-rows-2"
                   )}>
                     {Object.entries(remoteStreams).map(([peerId, stream]) => (
                       <div key={peerId} className="w-full h-full relative overflow-hidden bg-zinc-900 border border-white/5">
@@ -964,20 +964,20 @@ export default function MeetChat() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20">
-                    <video 
+                    <video
                       ref={(el) => {
                         localVideoRef.current = el;
                         if (el && localStream && el.srcObject !== localStream) {
                           el.srcObject = localStream;
                           el.play().catch(e => console.log("Local video play err:", e));
                         }
-                      }} 
-                      autoPlay 
-                      playsInline 
-                      muted 
-                      className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")} 
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")}
                     />
                   </div>
 
@@ -1034,7 +1034,7 @@ export default function MeetChat() {
             </div>
 
             <div className="p-4 border-b border-border/50 bg-background/30 shrink-0">
-              <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Clock size={14}/> {t('upcoming_calls')}</h3>
+              <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Clock size={14} /> {t('upcoming_calls')}</h3>
               {upcomingCalls.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {upcomingCalls.slice(0, 2).map((call, idx) => (
@@ -1101,83 +1101,83 @@ export default function MeetChat() {
             </div>
           </div>
         </div>
-        
+
         {/* SCHEDULE MODAL (PORTAL) */}
         {isScheduleModalOpen && typeof document !== 'undefined' && createPortal(
           <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="bg-surface border border-border/50 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between mb-6 border-b border-border/50 pb-4 bg-surface/50">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-text-primary"><Calendar size={20} className="text-accent-ai"/> {t('schedule_video_call')}</h2>
+                <h2 className="text-lg font-bold flex items-center gap-2 text-text-primary"><Calendar size={20} className="text-accent-ai" /> {t('schedule_video_call')}</h2>
                 <button onClick={() => setIsScheduleModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-1.5 rounded-lg"><X size={20} /></button>
               </div>
               <form onSubmit={handleScheduleCall} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('meeting_title')}</label>
-                  <input type="text" value={newCallEvent.title} onChange={e => setNewCallEvent({...newCallEvent, title: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
+                  <input type="text" value={newCallEvent.title} onChange={e => setNewCallEvent({ ...newCallEvent, title: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('date')}</label>
-                    <input type="date" value={newCallEvent.date} onChange={e => setNewCallEvent({...newCallEvent, date: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
+                    <input type="date" value={newCallEvent.date} onChange={e => setNewCallEvent({ ...newCallEvent, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('time')}</label>
-                    <input type="time" value={newCallEvent.time} onChange={e => setNewCallEvent({...newCallEvent, time: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
+                    <input type="time" value={newCallEvent.time} onChange={e => setNewCallEvent({ ...newCallEvent, time: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai text-text-primary font-bold" required />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1">{t('description')}</label>
-                  <textarea value={newCallEvent.description} onChange={e => setNewCallEvent({...newCallEvent, description: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai resize-none h-20 text-text-primary font-medium custom-scrollbar" />
+                  <textarea value={newCallEvent.description} onChange={e => setNewCallEvent({ ...newCallEvent, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-accent-ai resize-none h-20 text-text-primary font-medium custom-scrollbar" />
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <Users size={14}/> {t('invite_participants')}
+                    <Users size={14} /> {t('invite_participants')}
                   </label>
                   <div className="bg-background border border-border/50 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar grid grid-cols-1 gap-2">
                     {currentProjectMembers.map((user: any) => (
                       <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-surface rounded-lg cursor-pointer transition-colors border border-transparent hover:border-border/50">
-                        <input 
-                          type="checkbox" 
-                          checked={newCallEvent.participants?.includes(user.id)} 
+                        <input
+                          type="checkbox"
+                          checked={newCallEvent.participants?.includes(user.id)}
                           onChange={(e) => {
                             const current = newCallEvent.participants || [];
                             setNewCallEvent({
-                              ...newCallEvent, 
-                              participants: e.target.checked 
-                                ? [...current, user.id] 
+                              ...newCallEvent,
+                              participants: e.target.checked
+                                ? [...current, user.id]
                                 : current.filter(id => id !== user.id)
                             });
                           }}
                           className="rounded border-border/50 text-accent-ai focus:ring-accent-ai bg-surface"
                         />
                         <div className="flex items-center gap-2 overflow-hidden">
-                           <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-accent-ai shrink-0">
-                             {!!sanitizeUrl(user.avatar) ? <img src={sanitizeUrl(user.avatar)} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
-                           </div>
-                           <p className="text-xs font-bold truncate text-text-primary">{user.name}</p>
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-accent-ai shrink-0">
+                            {!!sanitizeUrl(user.avatar) ? <img src={sanitizeUrl(user.avatar)} className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
+                          </div>
+                          <p className="text-xs font-bold truncate text-text-primary">{user.name}</p>
                         </div>
                       </label>
                     ))}
                     {currentProjectMembers.length === 0 && (
-                       <p className="text-xs text-text-muted p-2 col-span-full">Keine weiteren Teammitglieder im Projekt.</p>
+                      <p className="text-xs text-text-muted p-2 col-span-full">Keine weiteren Teammitglieder im Projekt.</p>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
-                    <LinkIcon size={14}/> {t('external_link')}
+                    <LinkIcon size={14} /> {t('external_link')}
                   </label>
                   <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={`${window.location.origin}/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`} 
-                      className="flex-1 bg-surface border border-border/50 rounded-xl py-2.5 px-4 text-xs font-medium text-text-muted outline-none" 
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${window.location.origin}/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`}
+                      className="flex-1 bg-surface border border-border/50 rounded-xl py-2.5 px-4 text-xs font-medium text-text-muted outline-none"
                     />
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(`${window.location.origin}/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`);
                         setCopiedLink(true);
@@ -1198,7 +1198,7 @@ export default function MeetChat() {
               </form>
             </div>
           </div>,
-          document.body 
+          document.body
         )}
         {showEmailModal && typeof document !== 'undefined' && createPortal(
           <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -1214,7 +1214,7 @@ export default function MeetChat() {
               </div>
 
               <p className="text-xs text-text-muted leading-relaxed">
-                {currentLang === 'de' 
+                {currentLang === 'de'
                   ? 'Trage eine oder mehrere E-Mail-Adressen deiner Gäste/Partner ein (durch Komma, Strichpunkt oder neue Zeile getrennt):'
                   : 'Enter one or multiple email addresses for your guests/partners (separated by commas, semicolons, or newlines):'}
               </p>
@@ -1237,11 +1237,11 @@ export default function MeetChat() {
                       ) : null;
                     })()}
                   </div>
-                  <textarea 
+                  <textarea
                     rows={3}
                     value={targetEmail}
                     onChange={e => setTargetEmail(e.target.value)}
-                    placeholder={currentLang === 'de' 
+                    placeholder={currentLang === 'de'
                       ? "z.B. partner1@firma.ch, partner2@firma.ch\noder eine E-Mail pro Zeile..."
                       : "e.g. partner1@example.com, partner2@example.com\nor one email per line..."}
                     className="w-full bg-background border border-border/80 rounded-xl px-4 py-2.5 text-sm text-text-primary focus:border-accent-ai outline-none transition-colors custom-scrollbar resize-none font-medium"
