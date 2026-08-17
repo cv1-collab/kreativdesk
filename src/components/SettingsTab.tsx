@@ -816,8 +816,8 @@ export default function SettingsTab() {
                       className="w-4 h-4 rounded border-border text-accent-ai bg-background" 
                     />
                     <div>
-                      <div className="text-xs font-bold text-text-primary">2FA-Pflicht für Mitarbeiter</div>
-                      <div className="text-[10px] text-text-muted">Erzwinge 2FA-Authentifizierung für das gesamte Team</div>
+                      <div className="text-xs font-bold text-text-primary">2FA-Pflicht für alle Mitarbeiter (Team)</div>
+                      <div className="text-[10px] text-text-muted">Erzwinge 2FA-Authentifizierung für alle Benutzer dieser Firma</div>
                     </div>
                   </label>
 
@@ -849,7 +849,7 @@ export default function SettingsTab() {
           {/* SICHERHEIT & SUPPORT BLOCK */}
           <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-              <Shield size={16} /> {t('security_support')}
+              <Shield size={16} /> {t('security_support')} (Persönlicher Account)
             </h3>
             <div className="flex flex-col sm:flex-row gap-4">
               <button onClick={handleResetPassword} disabled={isResetLoading} className="flex-1 py-3 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
@@ -868,7 +868,7 @@ export default function SettingsTab() {
                 }}
                 className={cn("flex-1 py-3 border rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm", is2FAEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-background border-border text-text-primary hover:bg-white/5")}
               >
-                <Shield size={16} /> {is2FAEnabled ? '2FA Aktiviert' : '2FA Aktivieren'}
+                <Shield size={16} /> {is2FAEnabled ? 'Mein 2FA ist Aktiv' : 'Mein 2FA einrichten'}
               </button>
               <a href="mailto:support@kreativdesk.ch" className="flex-1 py-3 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm">
                 <LifeBuoy size={16} /> {t('contact_support')}
