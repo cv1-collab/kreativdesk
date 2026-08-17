@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn, sanitizeUrl } from '../utils';
@@ -219,48 +219,66 @@ export default function SettingsTab() {
   useEffect(() => {
     if (!currentUser?.companyId) return;
     const fetchCompany = async () => {
-      const { data } = await supabase.from('companies').select('*').eq('id', currentUser.companyId).maybeSingle();
-      if (data) {
-        setAgencyName(data.name || '');
-        setContactPerson(data.contact_person || data.contactPerson || '');
-        setEmail(data.email || '');
-        setPhone(data.phone || '');
-        setWebsite(data.website || '');
-        setUidNumber(data.uid || '');
-        setVatNumber(data.vat || '');
-        setAddress(data.address || '');
-        setZipCode(data.zip || '');
-        setCity(data.city || '');
-        setIban(data.iban || '');
-        setWebhookUrl(data.webhook_url || data.webhookUrl || '');
-        setLogoUrl(data.logo_url || data.logoUrl || '');
-        setPrimaryColor(data.primary_color || data.primaryColor || '#10b981');
-        setTermsPdfUrl(data.terms_pdf_url || data.termsPdfUrl || '');
-        setPrivacyPdfUrl(data.privacy_pdf_url || data.privacyPdfUrl || '');
-        setCompanyPlan(data.plan || 'Free Trial');
-      }
-
-      // Load integrations & preferences from localStorage or data
       const compId = currentUser.companyId;
-      const savedSlack = localStorage.getItem(`slack_url_${compId}`) || (data?.webhook_url?.includes('slack') ? data.webhook_url : '');
-      if (savedSlack) {
-        setSlackWebhookUrl(savedSlack);
-        setSlackIntegration(true);
+      
+      // 1. Fetch Company row
+      const { data: comp } = await supabase.from('companies').select('*').eq('id', compId).maybeSingle();
+      if (comp) {
+        setAgencyName(comp.name || '');
+        setCompanyPlan(comp.plan || 'Free Trial');
       }
 
-      const savedBexio = localStorage.getItem(`bexio_token_${compId}`) || '';
-      if (savedBexio) {
-        setBexioApiToken(savedBexio);
-        setBexioIntegration(true);
+      // 2. Fetch Company Profile Settings document from Supabase
+      const { data: configDoc } = await supabase
+        .from('documents')
+        .select('url, file_url')
+        .eq('company_id', compId)
+        .eq('category', 'company_settings')
+        .eq('name', 'company_profile_config')
+        .maybeSingle();
+
+      let loadedConfig: any = null;
+      if (configDoc?.file_url || configDoc?.url) {
+        try {
+          loadedConfig = JSON.parse(configDoc.file_url || configDoc.url);
+        } catch (e) {
+          console.warn("Failed to parse company_profile_config document:", e);
+        }
       }
 
-      setCurrency(localStorage.getItem(`currency_${compId}`) || 'CHF');
-      setVatRate(Number(localStorage.getItem(`vat_${compId}`)) || 8.1);
-      setPaymentTermsDays(Number(localStorage.getItem(`payment_terms_${compId}`)) || 30);
-      setRequire2FA(localStorage.getItem(`require_2fa_${compId}`) === 'true');
-      setSessionTimeout(Number(localStorage.getItem(`session_timeout_${compId}`)) || 30);
+      // Fallback cache key
+      const cacheKey = `company_profile_${compId}`;
+      if (!loadedConfig) {
+        const localCached = localStorage.getItem(cacheKey);
+        if (localCached) {
+          try { loadedConfig = JSON.parse(localCached); } catch (e) {}
+        }
+      }
 
-      const safeCompanyId = currentUser.companyId || currentUser.uid;
+      if (loadedConfig) {
+        if (loadedConfig.agencyName) setAgencyName(loadedConfig.agencyName);
+        setContactPerson(loadedConfig.contactPerson || '');
+        setEmail(loadedConfig.email || '');
+        setPhone(loadedConfig.phone || '');
+        setWebsite(loadedConfig.website || '');
+        setUidNumber(loadedConfig.uidNumber || '');
+        setVatNumber(loadedConfig.vatNumber || '');
+        setAddress(loadedConfig.address || '');
+        setZipCode(loadedConfig.zipCode || '');
+        setCity(loadedConfig.city || '');
+        setIban(loadedConfig.iban || '');
+        setWebhookUrl(loadedConfig.webhookUrl || '');
+        setPrimaryColor(loadedConfig.primaryColor || '#10b981');
+        setTermsPdfUrl(loadedConfig.termsPdfUrl || '');
+        setPrivacyPdfUrl(loadedConfig.privacyPdfUrl || '');
+        setCurrency(loadedConfig.currency || 'CHF');
+        setVatRate(loadedConfig.vatRate !== undefined ? loadedConfig.vatRate : 8.1);
+        setPaymentTermsDays(loadedConfig.paymentTermsDays || 30);
+        setRequire2FA(loadedConfig.require2FA === true);
+        setSessionTimeout(loadedConfig.sessionTimeout !== undefined ? loadedConfig.sessionTimeout : 30);
+      }
+
+      const safeCompanyId = compId || currentUser.uid;
       const { count: cuCount } = await supabase.from('company_users').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
       const { count: pCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
       const totalSeats = Math.max(1, (cuCount || 0) + (pCount || 0));
@@ -275,72 +293,87 @@ export default function SettingsTab() {
     if (!currentUser?.companyId) return;
     setIsSaving(true);
     try {
-      // Webseite automatisch formatieren (z. B. vesciodesign.ch -> https://vesciodesign.ch)
       let formattedWebsite = website.trim();
       if (formattedWebsite && !/^https?:\/\//i.test(formattedWebsite)) {
         formattedWebsite = `https://${formattedWebsite}`;
       }
 
       const compId = currentUser.companyId;
+      const ownerId = currentUser.uid;
 
-      // Save Slack & Bexio to storage and sync webhooks
-      if (slackIntegration && slackWebhookUrl.trim()) {
-        localStorage.setItem(`slack_url_${compId}`, slackWebhookUrl.trim());
-        const existingWhs = webhookNotifier.getWebhooks(compId);
-        if (!existingWhs.some(w => w.url === slackWebhookUrl.trim())) {
-          const updated = [
-            ...existingWhs,
-            {
-              id: `wh_slack_${Date.now()}`,
-              name: 'Slack Workspace Integration',
-              url: slackWebhookUrl.trim(),
-              events: ['defect.created', 'invoice.created', 'lead.created', 'document.uploaded'] as any,
-              active: true,
-              created_at: new Date().toISOString()
-            }
-          ];
-          webhookNotifier.saveWebhooks(updated, compId);
-        }
-      } else if (!slackIntegration) {
-        localStorage.removeItem(`slack_url_${compId}`);
-      }
+      // Complete Company Config Payload
+      const profileConfig = {
+        agencyName: agencyName.trim(),
+        contactPerson: contactPerson.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        website: formattedWebsite,
+        uidNumber: uidNumber.trim(),
+        vatNumber: vatNumber.trim(),
+        address: address.trim(),
+        zipCode: zipCode.trim(),
+        city: city.trim(),
+        iban: iban.trim(),
+        webhookUrl: webhookUrl.trim(),
+        primaryColor,
+        termsPdfUrl,
+        privacyPdfUrl,
+        currency,
+        vatRate,
+        paymentTermsDays,
+        require2FA,
+        sessionTimeout,
+        updatedAt: new Date().toISOString()
+      };
 
-      if (bexioIntegration && bexioApiToken.trim()) {
-        localStorage.setItem(`bexio_token_${compId}`, bexioApiToken.trim());
-      } else if (!bexioIntegration) {
-        localStorage.removeItem(`bexio_token_${compId}`);
-      }
+      const payloadStr = JSON.stringify(profileConfig);
 
+      // Save to localStorage cache
+      localStorage.setItem(`company_profile_${compId}`, payloadStr);
       localStorage.setItem(`currency_${compId}`, currency);
       localStorage.setItem(`vat_${compId}`, String(vatRate));
       localStorage.setItem(`payment_terms_${compId}`, String(paymentTermsDays));
-      localStorage.setItem(`require_2fa_${compId}`, String(require2FA));
-      localStorage.setItem(`session_timeout_${compId}`, String(sessionTimeout));
 
-      const { error } = await supabase.from('companies').update({
-        name: agencyName,
-        contact_person: contactPerson,
-        email,
-        phone,
-        website: formattedWebsite,
-        uid: uidNumber,
-        vat: vatNumber,
-        address,
-        zip: zipCode,
-        city,
-        iban,
-        webhook_url: slackWebhookUrl.trim() || webhookUrl,
-        primary_color: primaryColor,
-        updated_at: new Date().toISOString()
+      // 1. Update existing columns on companies table
+      await supabase.from('companies').update({
+        name: agencyName.trim()
       }).eq('id', compId);
 
-      if (error) {
-        console.error('Error saving settings:', error);
-        addToast(`Fehler beim Speichern: ${error.message}`, 'error');
+      // 2. Persist full settings JSON to documents table in Supabase
+      const { data: existingDoc } = await supabase
+        .from('documents')
+        .select('id')
+        .eq('company_id', compId)
+        .eq('category', 'company_settings')
+        .eq('name', 'company_profile_config')
+        .maybeSingle();
+
+      if (existingDoc?.id) {
+        await supabase.from('documents').update({
+          url: payloadStr,
+          file_url: payloadStr,
+          uploaded_at: new Date().toISOString()
+        }).eq('id', existingDoc.id);
       } else {
-        setWebsite(formattedWebsite);
-        addToast('Einstellungen erfolgreich gespeichert!', 'success');
+        await supabase.from('documents').insert({
+          company_id: compId,
+          owner_id: ownerId,
+          uploaded_by: ownerId,
+          name: 'company_profile_config',
+          category: 'company_settings',
+          project_id: 'global',
+          folder_id: 'root',
+          is_folder: false,
+          url: payloadStr,
+          file_url: payloadStr,
+          type: 'application/json',
+          created_at: new Date().toISOString(),
+          uploaded_at: new Date().toISOString()
+        });
       }
+
+      setWebsite(formattedWebsite);
+      addToast('Einstellungen erfolgreich in Supabase gespeichert!', 'success');
     } catch (error: any) {
       console.error('Unexpected error saving settings:', error);
       addToast('Fehler beim Speichern', 'error');
@@ -687,101 +720,37 @@ export default function SettingsTab() {
                     </button>
                   </div>
                 )}
-                <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
-                  <LinkIcon size={16} className="text-accent-ai" /> Integrationen & Webhooks
+                <h4 className="text-sm font-bold text-text-primary mb-2 flex items-center gap-2">
+                  <LinkIcon size={16} className="text-accent-ai" /> Webhooks & Externe Integrationen
                 </h4>
-                <div className="space-y-3">
-                  
-                  {/* SLACK CARD */}
-                  <div className="p-4 bg-background/30 rounded-xl border border-border/30 space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={slackIntegration} onChange={e => setSlackIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
-                      <div>
-                        <div className="text-sm font-bold text-text-primary">Slack Integration</div>
-                        <div className="text-[10px] text-text-muted">Sende Benachrichtigungen in deinen Slack-Workspace</div>
-                      </div>
-                    </label>
-                    {slackIntegration && (
-                      <div className="mt-3 ml-7 space-y-2">
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Slack Webhook URL</label>
-                        <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            value={slackWebhookUrl} 
-                            onChange={e => setSlackWebhookUrl(e.target.value)} 
-                            placeholder="https://hooks.slack.com/services/..." 
-                            className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner font-mono text-xs" 
-                          />
-                          <button
-                            type="button"
-                            disabled={isTestingSlack || !slackWebhookUrl.trim()}
-                            onClick={async () => {
-                              setIsTestingSlack(true);
-                              try {
-                                const res = await webhookNotifier.testWebhook(slackWebhookUrl.trim(), undefined, 'lead.created');
-                                if (res.success) {
-                                  addToast(`Slack Test erfolgreich! (${res.status} OK in ${res.durationMs}ms)`, 'success');
-                                } else {
-                                  addToast(`Slack Test fehlgeschlagen (${res.statusText || 'Verbindungsfehler'})`, 'error');
-                                }
-                              } catch (e: any) {
-                                addToast(e.message || 'Fehler beim Slack Test', 'error');
-                              } finally {
-                                setIsTestingSlack(false);
-                              }
-                            }}
-                            className="px-3 py-2 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                          >
-                            {isTestingSlack ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                            Slack testen
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                <p className="text-xs text-text-muted mb-4 leading-relaxed">
+                  Verbinde Kreativ Desk OS über universelle Webhooks mit beliebigen Drittanbietern und Tools (z. B. Slack, Bexio, Make.com, Zapier, n8n oder deinen eigenen Servern).
+                </p>
+
+                <div className="p-4 bg-background/30 rounded-xl border border-border/30 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">B2B Lead & System Webhook URL</label>
+                    <input 
+                      type="text" 
+                      value={webhookUrl} 
+                      onChange={e => setWebhookUrl(e.target.value)} 
+                      placeholder="https://make.com/hooks/..." 
+                      className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner font-mono text-xs" 
+                    />
+                    <p className="text-[11px] text-text-muted mt-1.5">Sende neue Leads, Rechnungen und Mängelberichte automatisch an externe Webhook-Empfänger.</p>
                   </div>
-                  
-                  {/* BEXIO CARD */}
-                  <div className="p-4 bg-background/30 rounded-xl border border-border/30 space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input type="checkbox" checked={bexioIntegration} onChange={e => setBexioIntegration(e.target.checked)} className="w-4 h-4 rounded border-border text-accent-ai bg-background" />
-                      <div>
-                        <div className="text-sm font-bold text-text-primary">Bexio Integration</div>
-                        <div className="text-[10px] text-text-muted">Synchronisiere Kontakte und Rechnungen mit Bexio</div>
-                      </div>
-                    </label>
-                    {bexioIntegration && (
-                      <div className="mt-3 ml-7 space-y-2">
-                        <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Bexio API Token</label>
-                        <div className="flex gap-2">
-                          <input 
-                            type="password" 
-                            value={bexioApiToken} 
-                            onChange={e => setBexioApiToken(e.target.value)} 
-                            placeholder="Dein Bexio API Token (z. B. bexio_sec_...)" 
-                            className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-sm focus:border-accent-ai outline-none text-text-primary transition-all shadow-inner font-mono text-xs" 
-                          />
-                          <button
-                            type="button"
-                            disabled={isTestingBexio || !bexioApiToken.trim()}
-                            onClick={async () => {
-                              setIsTestingBexio(true);
-                              setTimeout(() => {
-                                setIsTestingBexio(false);
-                                if (bexioApiToken.trim().length >= 10) {
-                                  addToast('Bexio Token Format verifiziert! (Bereit für Sync)', 'success');
-                                } else {
-                                  addToast('Bexio Token ist zu kurz oder ungültig.', 'error');
-                                }
-                              }, 600);
-                            }}
-                            className="px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                          >
-                            {isTestingBexio ? <Loader2 size={14} className="animate-spin" /> : <Shield size={14} />}
-                            Token prüfen
-                          </button>
-                        </div>
-                      </div>
-                    )}
+
+                  <div className="pt-3 border-t border-border/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="text-xs text-text-muted">
+                      <span className="font-semibold text-text-primary">Beispiel-Plattformen:</span> Slack, Bexio, Zapier, Make, custom REST APIs.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent('change-settings-tab', { detail: 'api' }))}
+                      className="px-3.5 py-2 bg-accent-ai/10 hover:bg-accent-ai/20 text-accent-ai font-bold rounded-lg text-xs flex items-center gap-2 transition-colors shrink-0"
+                    >
+                      <Terminal size={14} /> Webhook-Verwaltung & API-Keys (API Tab)
+                    </button>
                   </div>
                 </div>
               </div>
