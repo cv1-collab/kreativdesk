@@ -112,22 +112,38 @@ body {
 }
 
 .react-joyride__beacon {
+  border: none !important;
+  background: transparent !important;
   outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 .react-joyride__beacon span:nth-child(1) {
-  background-color: rgba(239, 68, 68, 0.35) !important;
-  border: 2px solid #ef4444 !important;
-  animation: joyride-beacon-outer 1.2s infinite ease-in-out !important;
+  background-color: rgba(239, 68, 68, 0.45) !important;
+  border: none !important;
+  border-radius: 50% !important;
+  animation: joyride-beacon-pulse 1.5s infinite ease-in-out !important;
 }
 
 .react-joyride__beacon span:nth-child(2) {
   background-color: #ef4444 !important;
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.9) !important;
+  border: none !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.85) !important;
 }
 
-@keyframes joyride-beacon-outer {
-  0% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.4); opacity: 0.3; }
-  100% { transform: scale(1); opacity: 0.9; }
+@keyframes joyride-beacon-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
 }
