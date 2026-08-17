@@ -750,43 +750,32 @@ export default function BIMViewer() {
       return;
     }
 
-    if (currentUser && currentUser.companyId) {
+    if (currentUser) {
       try {
-        const base64DataUrl = typeof (window as any).captureBimSnapshot === 'function' ? (window as any).captureBimSnapshot() : canvasRef.current?.toDataURL('image/png');
-        let imageUrl = '';
-        if (base64DataUrl) {
-          const blob = new Blob([new Uint8Array(atob(base64DataUrl.split(',')[1]).split('').map(c => c.charCodeAt(0)))], {type: 'image/png'});
-          const imgPath = `${currentUser.companyId}/defects/${newPin.id}.png`;
-          const { error: upErr } = await supabase.storage.from('avatars').upload(imgPath, blob, { upsert: true });
-          if (!upErr) {
-            const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(imgPath);
-            imageUrl = pubData.publicUrl;
-          }
+        const payload: any = {
+          prompt: desc || 'Neuer 3D Mangel',
+          description: `Erfasst im 3D-Viewer (${activeProject?.name || 'Modell'}).`,
+          status: 'To Do',
+          severity: 'High',
+          project_id: projectId || 'global',
+          company_id: currentUser.companyId || null,
+          owner_id: currentUser.uid || null,
+          model_id: activeModelId,
+          position: { x: point.x, y: point.y, z: point.z },
+          normal: { x: normal.x, y: normal.y, z: normal.z },
+          created_at: new Date().toISOString()
+        };
+
+        const { data: created, error } = await supabase.from('defects').insert(payload).select().single();
+        if (error) throw error;
+
+        if (created?.id) {
+          setDefectPins(prev => prev.map(p => p.id === newPin.id ? { ...p, id: created.id } : p));
         }
-        
-        await supabase.from('defects').insert({ 
-          id: newPin.id, 
-          title: desc || 'Neuer Mangel', 
-          prompt: desc || 'Neuer Mangel',
-          status: 'To Do', 
-          priority: 'Medium', 
-          assignee: 'Unassigned', 
-          date: new Date().toISOString().split('T')[0], 
-          trade: 'Architektur', 
-          location: `3D Model`, 
-          description: `Erfasst im 3D-Viewer.`, 
-          image_url: imageUrl || '', 
-          owner_id: currentUser.uid, 
-          company_id: currentUser.companyId, 
-          project_id: projectId,
-          model_id: activeModelId, 
-          pos_x: point.x,
-          pos_y: point.y,
-          pos_z: point.z
-        });
+
         addToast(t('defect_saved'), 'success');
       } catch (err) { 
-        console.error("Defect Error:", err);
+        console.error("3D Defect Error:", err);
         addToast(t('error_saving_defect'), 'error'); 
       }
     }

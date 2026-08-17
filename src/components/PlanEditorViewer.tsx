@@ -1166,34 +1166,31 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       return;
     }
     
-    if (currentUser && currentUser.companyId) {
+    if (currentUser) {
       try {
-        let imageUrl = '';
-        if (defectPrompt.file) {
-          imageUrl = await uploadFileWithFallback(defectPrompt.file, defectPrompt.file.name, currentUser?.companyId || 'global', 'defects');
-        }
+        const payload: any = {
+          prompt: newPin.description || 'CAD Mangel',
+          description: `Erfasst im 2D Plan Editor (${planName || 'Unbenannt'}).`,
+          status: 'To Do',
+          severity: 'High',
+          project_id: currentProjectId || 'global',
+          company_id: currentUser.companyId || null,
+          owner_id: currentUser.uid || null,
+          position: { x: newPin.x, y: newPin.y, z: 0 },
+          created_at: new Date().toISOString()
+        };
 
-        await supabase.from('defects').upsert({ 
-          id: newPin.id, 
-          title: newPin.description, 
-          prompt: newPin.description,
-          status: 'To Do', 
-          priority: 'High', 
-          assignee: 'Unassigned', 
-          date: new Date().toISOString().split('T')[0], 
-          created_at: new Date().toISOString(), 
-          trade: 'Planung', 
-          location: `2D Plan (${planName || 'Unbenannt'})`, 
-          description: `Erfasst im 2D Plan Editor.`, 
-          image_url: imageUrl, 
-          owner_id: currentUser.uid, 
-          company_id: currentUser.companyId,
-          project_id: currentProjectId 
-        });
+        const { data: created, error } = await supabase.from('defects').insert(payload).select().single();
+        if (error) throw error;
+
+        if (created?.id) {
+          setElements(prev => prev.map(el => el.id === newPin.id ? { ...el, id: created.id } : el));
+        }
 
         addToast(t('defect_saved'), 'success'); 
         setDefectPrompt(null);
       } catch (err) { 
+        console.error("CAD Defect Error:", err);
         addToast(t('error_saving_defect'), 'error'); 
       } finally { 
         setIsSavingDefect(false); 

@@ -407,31 +407,46 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     try {
       if (editingId) { 
         await supabase.from('defects').update({
-          ...currentDefect,
-          due_date: currentDefect.dueDate,
-          image_url: currentDefect.imageUrl
+          prompt: currentDefect.title || 'Mangel',
+          description: currentDefect.description || '',
+          status: currentDefect.status || 'To Do',
+          severity: currentDefect.priority || 'Medium'
         }).eq('id', editingId);
         setDefects(prev => prev.map(d => d.id === editingId ? { ...d, ...currentDefect } as Defect : d));
       } else { 
-        const newId = `DEF-${Date.now()}`; 
-        const newDefectItem = { 
-          ...currentDefect, 
-          id: newId, 
+        const payload: any = { 
           project_id: currentProjectId, 
-          due_date: currentDefect.dueDate,
-          image_url: currentDefect.imageUrl,
-          owner_id: currentUser.uid, 
-          company_id: currentUser.companyId, 
-          date: new Date().toISOString().split('T')[0] 
+          company_id: currentUser.companyId || null,
+          owner_id: currentUser.uid || null,
+          prompt: currentDefect.title || 'Neuer Mangel',
+          description: currentDefect.description || '',
+          status: currentDefect.status || 'To Do',
+          severity: currentDefect.priority || 'Medium',
+          created_at: new Date().toISOString()
         };
-        await supabase.from('defects').insert(newDefectItem); 
-        setDefects(prev => [...prev, { ...newDefectItem, projectId: currentProjectId } as Defect]);
+        const { data: created, error } = await supabase.from('defects').insert(payload).select().single();
+        if (error) throw error;
+
+        const newDefectItem: any = {
+          id: created?.id || `DEF-${Date.now()}`,
+          title: currentDefect.title || 'Neuer Mangel',
+          description: currentDefect.description || '',
+          status: currentDefect.status || 'To Do',
+          priority: currentDefect.priority || 'Medium',
+          trade: currentDefect.trade || '',
+          location: currentDefect.location || '',
+          dueDate: currentDefect.dueDate || new Date().toISOString().split('T')[0],
+          imageUrl: currentDefect.imageUrl || '',
+          projectId: currentProjectId
+        };
+        setDefects(prev => [...prev, newDefectItem as Defect]);
       }
       setIsModalOpen(false); 
       setCurrentDefect(DEFAULT_DEFECT); 
       setShowQrScanner(false); 
       addToast(t('upload_success'), 'success');
     } catch (error: any) { 
+      console.error("Save Defect Error:", error);
       addToast('Fehler beim Speichern', 'error'); 
     } finally { 
       setIsSubmitting(false); 
