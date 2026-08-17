@@ -267,11 +267,46 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }
   }, [activeProject?.deckSettings]);
 
-  const updateDeckSettings = (newSettings: Partial<DeckSettings>) => {
+  const updateDeckSettings = async (newSettings: Partial<DeckSettings>) => {
     const updated = { ...deckSettings, ...newSettings };
     setDeckSettings(updated);
     if (activeProject?.id && activeProject.id !== 'global' && !activeProject.id.startsWith('demo-')) {
-       supabase.from('projects').update({ deck_settings: updated }).eq('id', activeProject.id);
+       const payloadStr = JSON.stringify(updated);
+       localStorage.setItem(`pitch_deck_settings_${activeProject.id}`, payloadStr);
+       try {
+         const compId = activeProject.companyId || 'global';
+         const { data: existingDoc } = await supabase
+           .from('documents')
+           .select('id')
+           .eq('project_id', activeProject.id)
+           .eq('category', 'pitch_deck_config')
+           .eq('name', 'deck_settings')
+           .maybeSingle();
+
+         if (existingDoc?.id) {
+           await supabase.from('documents').update({
+             url: payloadStr,
+             file_url: payloadStr,
+             uploaded_at: new Date().toISOString()
+           }).eq('id', existingDoc.id);
+         } else {
+           await supabase.from('documents').insert({
+             company_id: compId,
+             project_id: activeProject.id,
+             owner_id: activeProject.ownerId || 'global',
+             uploaded_by: activeProject.ownerId || 'global',
+             name: 'deck_settings',
+             category: 'pitch_deck_config',
+             folder_id: 'root',
+             is_folder: false,
+             url: payloadStr,
+             file_url: payloadStr,
+             type: 'application/json'
+           });
+         }
+       } catch (err) {
+         console.warn("PitchDeck settings save warning:", err);
+       }
     }
   };
 

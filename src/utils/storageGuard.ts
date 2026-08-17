@@ -12,18 +12,21 @@ export const STORAGE_LIMITS = {
 
 export const checkStorageLimit = async (companyId: string, fileSize: number): Promise<boolean> => {
   try {
-    const { data } = await supabase
+    const { data: comp } = await supabase
       .from('companies')
-      .select('plan, storage_used')
+      .select('plan')
       .eq('id', companyId)
-      .single();
+      .maybeSingle();
 
-    if (!data) return true; 
-    
-    const plan = data.plan || 'Free Trial';
+    const plan = comp?.plan || 'Free Trial';
     const limit = STORAGE_LIMITS[plan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'];
-    const currentUsed = data.storage_used || 0;
-    
+
+    const { data: docs } = await supabase
+      .from('documents')
+      .select('size')
+      .eq('company_id', companyId);
+
+    const currentUsed = (docs || []).reduce((acc, d) => acc + (Number(d.size) || 0), 0);
     return (currentUsed + fileSize) <= limit;
   } catch (error) {
     console.error("Fehler beim Prüfen des Storage-Limits:", error);
@@ -32,39 +35,9 @@ export const checkStorageLimit = async (companyId: string, fileSize: number): Pr
 };
 
 export const incrementStorage = async (companyId: string, fileSize: number): Promise<void> => {
-  try {
-    const { data } = await supabase
-      .from('companies')
-      .select('storage_used')
-      .eq('id', companyId)
-      .single();
-
-    const currentUsed = data?.storage_used || 0;
-    await supabase
-      .from('companies')
-      .update({ storage_used: currentUsed + fileSize })
-      .eq('id', companyId);
-  } catch (error) {
-    console.error("Fehler beim Aktualisieren des Storage-Zählers:", error);
-  }
+  // Storage is automatically calculated dynamically from documents table sizes
 };
 
 export const decrementStorage = async (companyId: string, fileSize: number): Promise<void> => {
-  try {
-    const { data } = await supabase
-      .from('companies')
-      .select('storage_used')
-      .eq('id', companyId)
-      .single();
-
-    const currentUsed = data?.storage_used || 0;
-    const newUsed = Math.max(0, currentUsed - fileSize);
-    
-    await supabase
-      .from('companies')
-      .update({ storage_used: newUsed })
-      .eq('id', companyId);
-  } catch (error) {
-    console.error("Fehler beim Verringern des Storage-Zählers:", error);
-  }
+  // Storage is automatically calculated dynamically from documents table sizes
 };

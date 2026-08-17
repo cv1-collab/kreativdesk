@@ -212,7 +212,6 @@ function getDeterministicUUID(str: string): string {
             name: m.name,
             role: 'member',
             company_id: realCompanyId,
-            photo_url: m.photoURL || '',
             created_at: new Date().toISOString()
           });
         }

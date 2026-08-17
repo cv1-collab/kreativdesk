@@ -178,7 +178,8 @@ export default function Settings() {
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const photoURL = pubData.publicUrl;
-      await supabase.from('profiles').update({ photo_url: photoURL, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      if (photoURL) localStorage.setItem(`avatar_${currentUser.uid}`, photoURL);
       addToast(t('upload_success'), 'success');
     } catch (error) {
       addToast(t('upload_failed'), 'error');

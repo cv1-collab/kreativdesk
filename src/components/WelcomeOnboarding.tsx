@@ -63,7 +63,6 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
           .from('profiles')
           .update({
             name,
-            photo_url: photoURL,
             has_completed_onboarding: true
           })
           .eq('id', userId);
