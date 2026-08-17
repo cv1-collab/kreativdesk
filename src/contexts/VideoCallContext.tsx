@@ -202,7 +202,22 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const pc = new RTCPeerConnection(servers);
     pcsRef.current[peerId] = pc;
 
-    stream.getTracks().forEach(track => pc.addTrack(track, stream));
+    stream.getTracks().forEach(track => {
+      const sender = pc.addTrack(track, stream);
+      if (track.kind === 'video') {
+        setTimeout(() => {
+          try {
+            const params = sender.getParameters();
+            if (!params.encodings || params.encodings.length === 0) {
+              params.encodings = [{}];
+            }
+            const peerCount = Object.keys(pcsRef.current).length;
+            params.encodings[0].maxBitrate = peerCount > 3 ? 500000 : 1500000;
+            sender.setParameters(params).catch(() => {});
+          } catch (e) {}
+        }, 500);
+      }
+    });
 
     pc.ontrack = (event) => {
       const incomingStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
