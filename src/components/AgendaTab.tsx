@@ -274,8 +274,22 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [printType, setPrintType] = useState<'rapport' | 'agenda'>('rapport');
 
   // FILTER & AI STATES
-  const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
-  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
+  const [selectedTypeFilter, setSelectedTypeFilterRaw] = useState<string>(() => {
+    try { return localStorage.getItem('agenda_typeFilter') || 'all'; } catch (e) { return 'all'; }
+  });
+  const [selectedProjectFilter, setSelectedProjectFilterRaw] = useState<string>(() => {
+    try { return localStorage.getItem('agenda_projectFilter') || 'all'; } catch (e) { return 'all'; }
+  });
+
+  const setSelectedTypeFilter = (filter: string) => {
+    setSelectedTypeFilterRaw(filter);
+    try { localStorage.setItem('agenda_typeFilter', filter); } catch (e) {}
+  };
+
+  const setSelectedProjectFilter = (filter: string) => {
+    setSelectedProjectFilterRaw(filter);
+    try { localStorage.setItem('agenda_projectFilter', filter); } catch (e) {}
+  };
   const [isGeneratingAIRapport, setIsGeneratingAIRapport] = useState(false);
   const [aiRapportModalOpen, setAiRapportModalOpen] = useState(false);
   const [aiRapportText, setAiRapportText] = useState<string>('');
