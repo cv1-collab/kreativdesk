@@ -246,18 +246,42 @@ export default function SettingsTab() {
     if (!currentUser?.companyId) return;
     setIsSaving(true);
     try {
-      await supabase.from('companies').update({
+      // Webseite automatisch formatieren (z. B. vesciodesign.ch -> https://vesciodesign.ch)
+      let formattedWebsite = website.trim();
+      if (formattedWebsite && !/^https?:\/\//i.test(formattedWebsite)) {
+        formattedWebsite = `https://${formattedWebsite}`;
+      }
+
+      const { error } = await supabase.from('companies').update({
         name: agencyName,
-        contact_person: contactPerson, email, phone, website,
-        uid: uidNumber, vat: vatNumber,
-        address, zip: zipCode, city,
-        iban, webhook_url: webhookUrl,
+        contact_person: contactPerson,
+        email,
+        phone,
+        website: formattedWebsite,
+        uid: uidNumber,
+        vat: vatNumber,
+        address,
+        zip: zipCode,
+        city,
+        iban,
+        webhook_url: webhookUrl,
         primary_color: primaryColor,
         updated_at: new Date().toISOString()
       }).eq('id', currentUser.companyId);
-      addToast('Einstellungen erfolgreich gespeichert!', 'success');
-    } catch (error) { addToast('Fehler beim Speichern', 'error'); } 
-    finally { setIsSaving(false); }
+
+      if (error) {
+        console.error('Error saving settings:', error);
+        addToast(`Fehler beim Speichern: ${error.message}`, 'error');
+      } else {
+        setWebsite(formattedWebsite);
+        addToast('Einstellungen erfolgreich gespeichert!', 'success');
+      }
+    } catch (error: any) {
+      console.error('Unexpected error saving settings:', error);
+      addToast('Fehler beim Speichern', 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Logo hochladen
@@ -501,7 +525,12 @@ export default function SettingsTab() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('website')}</label>
-                <input type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://www..." className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner" />
+                <input type="text" value={website} onChange={e => setWebsite(e.target.value)} onBlur={() => {
+                  let formatted = website.trim();
+                  if (formatted && !/^https?:\/\//i.test(formatted)) {
+                    setWebsite(`https://${formatted}`);
+                  }
+                }} placeholder="www.vesciodesign.ch" className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner" />
               </div>
               <div className="sm:col-span-2">
                 <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('headquarters')}</label>
