@@ -1161,35 +1161,75 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     fetchTeam();
   }, [currentUser?.companyId, currentUser?.uid]);
 
+  const updateRole = async (userId: string, newRole: string) => {
+    try {
+      await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+      await supabase.from('company_users').update({ role: newRole }).eq('id', userId);
+      setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, role: newRole } : m));
+      addToast('Rolle erfolgreich aktualisiert', 'success');
+    } catch (err) {
+      addToast('Fehler beim Aktualisieren der Rolle', 'error');
+    }
+  };
+
   const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
     try {
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
       await supabase.from('profiles').update({ [colName]: !currentValue }).eq('id', userId);
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: !currentValue } : m));
-      addToast('Permissions updated', 'success');
+      addToast('Berechtigung aktualisiert', 'success');
     } catch (err) {
-      addToast('Update failed', 'error');
+      addToast('Fehler beim Aktualisieren der Berechtigung', 'error');
     }
   };
 
   return (
     <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
-      <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-        <Users size={16} /> {t('roles_permissions')}
-      </h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-border/50 gap-2">
+        <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
+          <Users size={16} /> {t('roles_permissions')}
+        </h3>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'crm' }))}
+          className="text-xs font-bold text-accent-ai hover:underline flex items-center gap-1"
+        >
+          + Neue Teammitglieder in CRM & Team verwalten →
+        </button>
+      </div>
       
       {isLoading ? (
         <div className="flex justify-center p-4"><Loader2 size={24} className="animate-spin text-accent-ai" /></div>
       ) : teamMembers.length === 0 ? (
-        <p className="text-sm text-text-muted text-center p-4">{t('no_team_members')}</p>
+        <div className="text-center p-6 space-y-2">
+          <p className="text-sm text-text-muted">{t('no_team_members')}</p>
+          <p className="text-xs text-text-muted">Lade Mitarbeiter im Bereich <strong>CRM & Team</strong> ein, um Rollen und Berechtigungen festzulegen.</p>
+        </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {teamMembers.map(member => (
             <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-background/30 border border-border/30 rounded-xl gap-4">
-              <div>
-                <p className="text-sm font-bold text-text-primary">{member.email}</p>
-                <p className="text-[10px] text-text-muted">{member.role || 'Member'}</p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-text-primary">{member.email || member.name}</p>
+                  {member.role === 'super_admin' && (
+                    <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded text-[10px] font-black uppercase">Super Admin</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={member.role || 'Internal'}
+                    onChange={e => updateRole(member.id, e.target.value)}
+                    className="bg-background border border-border/50 rounded px-2 py-1 text-[11px] font-semibold text-text-primary outline-none focus:border-accent-ai"
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Internal">Interner Mitarbeiter</option>
+                    <option value="External Planner">Externer Planer</option>
+                    <option value="Client">Kunde / Auftraggeber</option>
+                  </select>
+                </div>
               </div>
+
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <div className="relative">
