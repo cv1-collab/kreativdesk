@@ -49,7 +49,19 @@ export default function AdminDashboard() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTabRaw] = useState(() => {
+    try {
+      const saved = localStorage.getItem('admin_activeTab');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'overview';
+  });
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabRaw(tab);
+    try { localStorage.setItem('admin_activeTab', tab); } catch (e) {}
+  };
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [newLeadsCount, setNewLeadsCount] = useState(0); 
   const [kdCompany, setKdCompany] = useState<any>(null);

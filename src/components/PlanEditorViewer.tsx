@@ -374,11 +374,53 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
+  const cadStorageKey = `cad_state_${currentProjectId}`;
   const [projectPlans, setProjectPlans] = useState<any[]>([]);
-  const [activePlanId, setActivePlanId] = useState<string | null>(null);
+  
+  const [activePlanId, setActivePlanIdRaw] = useState<string | null>(() => {
+    try {
+      const saved = localStorage.getItem(cadStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.activePlanId) return parsed.activePlanId;
+      }
+    } catch (e) {}
+    return null;
+  });
+
+  const setActivePlanId = (id: string | null | ((prev: string | null) => string | null)) => {
+    setActivePlanIdRaw(prev => {
+      const nextId = typeof id === 'function' ? id(prev) : id;
+      try {
+        const saved = JSON.parse(localStorage.getItem(cadStorageKey) || '{}');
+        localStorage.setItem(cadStorageKey, JSON.stringify({ ...saved, activePlanId: nextId }));
+      } catch (e) {}
+      return nextId;
+    });
+  };
+
   const [planImage, setPlanImage] = useState<string | null>(null);
   const [planName, setPlanName] = useState<string>('');
-  const [activeTool, setActiveTool] = useState<ToolType>('pan');
+  
+  const [activeTool, setActiveToolRaw] = useState<ToolType>(() => {
+    try {
+      const saved = localStorage.getItem(cadStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.activeTool) return parsed.activeTool;
+      }
+    } catch (e) {}
+    return 'pan';
+  });
+
+  const setActiveTool = (tool: ToolType) => {
+    setActiveToolRaw(tool);
+    try {
+      const saved = JSON.parse(localStorage.getItem(cadStorageKey) || '{}');
+      localStorage.setItem(cadStorageKey, JSON.stringify({ ...saved, activeTool: tool }));
+    } catch (e) {}
+  };
+
   const [paperFormat, setPaperFormat] = useState<string>('A3');
   const [paperOrientation, setPaperOrientation] = useState<'landscape'|'portrait'>('landscape');
   const [planScale, setPlanScale] = useState<number>(50); 

@@ -218,9 +218,39 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     } catch (e) {}
   };
   const [documents, setDocuments] = useState<any[]>([]);
-  const [currentFolderId, setCurrentFolderId] = useState<string>('root');
+  const [currentFolderId, setCurrentFolderIdRaw] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem(`${docsStorageKey}_folderId`);
+      if (saved) return saved;
+    } catch (e) {}
+    return 'root';
+  });
+
+  const [folderPath, setFolderPathRaw] = useState<{ id: string; name: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem(`${docsStorageKey}_folderPath`);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [{ id: 'root', name: 'Root' }];
+  });
+
+  const setCurrentFolderId = (folderId: string | ((prev: string) => string)) => {
+    setCurrentFolderIdRaw(prev => {
+      const nextId = typeof folderId === 'function' ? folderId(prev) : folderId;
+      try { localStorage.setItem(`${docsStorageKey}_folderId`, nextId); } catch (e) {}
+      return nextId;
+    });
+  };
+
+  const setFolderPath = (path: { id: string; name: string }[] | ((prev: { id: string; name: string }[]) => { id: string; name: string }[])) => {
+    setFolderPathRaw(prev => {
+      const nextPath = typeof path === 'function' ? path(prev) : path;
+      try { localStorage.setItem(`${docsStorageKey}_folderPath`, JSON.stringify(nextPath)); } catch (e) {}
+      return nextPath;
+    });
+  };
+
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(defaultProjId);
-  const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([{ id: 'root', name: 'Root' }]);
 
   const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
   const [searchTerm, setSearchTerm] = useState('');

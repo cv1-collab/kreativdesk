@@ -496,11 +496,21 @@ export default function BIMViewer() {
     return () => { console.warn = originalWarn; console.error = originalError; };
   }, []);
   
-  const [layerVis, setLayerVis] = useState<Record<string, boolean>>({
-    arch: true, tga: true, fire: false, struct: true
+  const bimStorageKey = `bim_state_${projectId || 'global'}`;
+
+  const [layerVis, setLayerVis] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem(`${bimStorageKey}_layers`);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return { arch: true, tga: true, fire: false, struct: true };
   });
 
-  const toggleLayer = (id: string) => setLayerVis(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleLayer = (id: string) => setLayerVis(prev => {
+    const next = { ...prev, [id]: !prev[id] };
+    try { localStorage.setItem(`${bimStorageKey}_layers`, JSON.stringify(next)); } catch (e) {}
+    return next;
+  });
 
   const layersInfo = [
     { id: 'arch', name: t('layer_arch'), visible: layerVis['arch'], color: 'bg-zinc-400' },
@@ -509,7 +519,22 @@ export default function BIMViewer() {
     { id: 'struct', name: t('layer_struct'), visible: layerVis['struct'], color: 'bg-orange-500' },
   ];
 
-  const [activeFloor, setActiveFloor] = useState<number | null>(null);
+  const [activeFloor, setActiveFloorRaw] = useState<number | null>(() => {
+    try {
+      const saved = localStorage.getItem(`${bimStorageKey}_floor`);
+      if (saved !== null && saved !== undefined) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  });
+
+  const setActiveFloor = (val: number | null | ((prev: number | null) => number | null)) => {
+    setActiveFloorRaw(prev => {
+      const nextVal = typeof val === 'function' ? val(prev) : val;
+      try { localStorage.setItem(`${bimStorageKey}_floor`, JSON.stringify(nextVal)); } catch (e) {}
+      return nextVal;
+    });
+  };
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
   
@@ -517,7 +542,19 @@ export default function BIMViewer() {
   const [isAuditing, setIsAuditing] = useState(false);
   const [auditReport, setAuditReport] = useState<string | null>(null);
   
-  const [isExploded, setIsExploded] = useState(false);
+  const [isExploded, setIsExplodedRaw] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`${bimStorageKey}_exploded`) === 'true';
+    } catch (e) { return false; }
+  });
+
+  const setIsExploded = (val: boolean | ((prev: boolean) => boolean)) => {
+    setIsExplodedRaw(prev => {
+      const nextVal = typeof val === 'function' ? val(prev) : val;
+      try { localStorage.setItem(`${bimStorageKey}_exploded`, String(nextVal)); } catch (e) {}
+      return nextVal;
+    });
+  };
   const [cameraMode, setCameraMode] = useState<'rotate' | 'pan'>('rotate');
   
   const [measureMode, setMeasureMode] = useState(false);

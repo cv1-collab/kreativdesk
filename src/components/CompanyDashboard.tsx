@@ -98,7 +98,20 @@ export default function CompanyDashboard() {
   
   const { startTour } = useTour();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit' | 'meet'>('dashboard');
+  const [activeTab, setActiveTabRaw] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit' | 'meet'>(() => {
+    try {
+      const saved = localStorage.getItem('company_activeTab');
+      if (saved && ['dashboard', 'projects', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(saved)) {
+        return saved as any;
+      }
+    } catch (e) {}
+    return 'dashboard';
+  });
+
+  const setActiveTab = (tab: any) => {
+    setActiveTabRaw(tab);
+    try { localStorage.setItem('company_activeTab', tab); } catch (e) {}
+  };
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -244,7 +257,18 @@ export default function CompanyDashboard() {
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState('');
 
   // --- ARCHIV-LOGIK ---
-  const [activeProjectFilter, setActiveProjectFilter] = useState<'active' | 'archived' | string>('active');
+  const [activeProjectFilter, setActiveProjectFilterRaw] = useState<'active' | 'archived' | string>(() => {
+    try {
+      const saved = localStorage.getItem('company_activeProjectFilter');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'active';
+  });
+
+  const setActiveProjectFilter = (filter: any) => {
+    setActiveProjectFilterRaw(filter);
+    try { localStorage.setItem('company_activeProjectFilter', filter); } catch (e) {}
+  };
 
   const safeProjects = Array.isArray(projects) ? projects : [];
 
