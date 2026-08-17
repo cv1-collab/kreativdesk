@@ -202,9 +202,29 @@ export default function CompanyDashboard() {
       setHasNewDocBadge(true);
       localStorage.setItem('has_new_document', 'true');
     };
+    const handleNavigateTab = (e: Event) => {
+      const customEv = e as CustomEvent;
+      const detail = customEv.detail;
+      const target = typeof detail === 'string' ? detail : (detail?.tab || detail);
+      if (!target) return;
+      const tab = target.toLowerCase();
+      if (tab === 'crm' || tab === 'team') {
+        setActiveTab('team');
+      } else if (tab === 'api' || tab === 'webhooks') {
+        setActiveTab('settings');
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('change-settings-tab', { detail: 'api' }));
+        }, 50);
+      } else if (['dashboard', 'projects', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(tab)) {
+        setActiveTab(tab as any);
+      }
+    };
+
     window.addEventListener('document_created', handleDocCreated);
+    window.addEventListener('navigate-to-tab', handleNavigateTab);
     return () => {
       window.removeEventListener('document_created', handleDocCreated);
+      window.removeEventListener('navigate-to-tab', handleNavigateTab);
     };
   }, []);
 

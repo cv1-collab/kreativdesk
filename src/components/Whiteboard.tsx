@@ -483,7 +483,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     if (!renderPrompt.trim()) return addToast('Bitte Prompt eingeben.', 'info');
     setIsRendering(true);
     try {
-      let uploadedImageUrl = undefined;
+      let uploadedImageUrl: string | undefined = undefined;
       
       if (sketchDataUrl && currentUser) {
         try {
@@ -496,45 +496,90 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             uploadedImageUrl = data.publicUrl;
           }
         } catch (e) {
-          console.warn("Storage upload failed, falling back to data URL:", e);
+          console.warn("Storage upload failed for AI rendering:", e);
         }
       }
 
-      if (!uploadedImageUrl) {
-         throw new Error("Fehler: Skizze konnte nicht für das Rendering hochgeladen werden. Bitte überprüfe deine Verbindung.");
+      // Step 1: Multimodal Sketch Analysis via Gemini Vision API
+      let visionPrompt = renderPrompt;
+      if (sketchDataUrl) {
+        try {
+          const base64Data = sketchDataUrl.includes(',') ? sketchDataUrl.split(',')[1] : sketchDataUrl;
+          const geminiPromptText = `Analyze this hand-drawn whiteboard sketch thoroughly.
+User requested style: "${activeStyle}".
+User prompt instructions: "${renderPrompt}".
+Identify what is drawn in the sketch (facial features, character, objects, shapes, architectural structures, etc.).
+Generate a single, detailed English image generation prompt for AI (2-3 sentences) that combines the exact subjects drawn in the sketch with the requested style.
+Output ONLY the detailed prompt text, without meta commentary or quotes.`;
+
+          const aiVisionRes = await callGeminiAPI('gemini-2.5-flash', [
+            { inlineData: { data: base64Data, mimeType: 'image/png' } },
+            { text: geminiPromptText }
+          ]);
+
+          const parsedText = typeof aiVisionRes === 'string' 
+            ? aiVisionRes 
+            : (aiVisionRes?.text || aiVisionRes?.candidates?.[0]?.content?.parts?.[0]?.text);
+          if (parsedText && parsedText.trim().length > 5) {
+            visionPrompt = parsedText.trim().replace(/^["'`]|["'`]$/g, '');
+          }
+        } catch (visionErr) {
+          console.warn("Gemini vision analysis for sketch failed, using user prompt:", visionErr);
+        }
       }
 
-      let styleStrength = 0.75;
-      if (activeStyle === 'colorize') styleStrength = 0.4;
-      if (activeStyle === 'sketch') styleStrength = 0.5;
-      if (activeStyle === 'comic') styleStrength = 0.65;
+      let finalImageUrl = '';
 
-      const prompt = `Transform a hand-drawn sketch into a high-quality rendering. Follow this user instruction exactly: "${renderPrompt}". Do not limit yourself to architecture. Render characters, products, scenes, or comics exactly as requested by the user, matching the shape and flow.`;
-      
-      // Call fal.ai via proxy for image generation
-      const response = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
-        input: {
-          prompt: prompt,
-          image_url: uploadedImageUrl,
-          strength: styleStrength,
-        },
-        logs: true,
-      }) as any;
+      // Step 2: Attempt fal.ai image-to-image if available
+      if (uploadedImageUrl) {
+        try {
+          let styleStrength = 0.75;
+          if (activeStyle === 'colorize') styleStrength = 0.4;
+          if (activeStyle === 'sketch') styleStrength = 0.5;
+          if (activeStyle === 'comic') styleStrength = 0.65;
 
-      const responseData = response.data || response;
-      if (!responseData || !responseData.images || responseData.images.length === 0) {
-        throw new Error("API Antwort: " + JSON.stringify(response || "Keine Antwort"));
+          const response = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
+            input: {
+              prompt: visionPrompt,
+              image_url: uploadedImageUrl,
+              strength: styleStrength,
+            },
+            logs: false,
+          }) as any;
+
+          const responseData = response?.data || response;
+          if (responseData?.images && responseData.images.length > 0 && responseData.images[0].url) {
+            finalImageUrl = responseData.images[0].url;
+          }
+        } catch (falErr) {
+          console.warn("fal.ai API proxy subscription error, switching to Flux renderer:", falErr);
+        }
       }
-      
-      const dataUrl = responseData.images[0].url;
-      setRenderedImage(dataUrl);
+
+      // Step 3: High-Performance Flux AI Engine Fallback (Instant & Reliable)
+      if (!finalImageUrl) {
+        const cleanPrompt = `${visionPrompt}, high resolution concept design, ${activeStyle} style`;
+        const seed = Math.floor(Math.random() * 1000000);
+        finalImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true&model=flux`;
+      }
+
+      // Step 4: Validate and Preload Image
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = finalImageUrl;
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      setRenderedImage(finalImageUrl);
       addToast('Design erfolgreich generiert!', 'success');
-      setIsRendering(false);
-      
-    } catch (error) {
+
+    } catch (error: any) {
       console.error("AI Render API Error:", error);
-      addToast('Fehler bei der Bildgenerierung.', 'error');
-      setRenderedImage('https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=2000&q=80');
+      addToast('Fehler bei der Bildgenerierung. Bitte erstelle erneut einen Versuch.', 'error');
+      setRenderedImage(null);
+    } finally {
       setIsRendering(false);
     }
   };

@@ -10,6 +10,7 @@ import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
+import { getCompanyProfileConfig } from '../utils/companySettings';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -138,10 +139,33 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [isMounted, setIsMounted] = useState(false);
-  useEffect(() => { setTimeout(() => setIsMounted(true), 0); }, []);
+  useEffect(() => { 
+    setTimeout(() => setIsMounted(true), 0);
+    if (!currentUser?.companyId) return;
+    getCompanyProfileConfig(currentUser.companyId).then(cfg => {
+      const senderLines = [cfg.agencyName, cfg.address, `${cfg.zipCode || ''} ${cfg.city || ''}`.trim()].filter(Boolean).join('\n');
+      setFormData(prev => ({
+        ...prev,
+        vatRate: cfg.vatRate !== undefined ? cfg.vatRate : 8.1,
+        sender: senderLines || prev.sender,
+        paymentInfo: type === 'invoice'
+          ? `Bitte überweisen Sie den Betrag innerhalb von ${cfg.paymentTermsDays || 30} Tagen auf folgendes Konto:\nIBAN: ${cfg.iban || 'CH00 0000 0000 0000 0000 0'}\n${cfg.agencyName || 'Kreativ-Desk Studio'}`
+          : `Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: ${cfg.paymentTermsDays || 30} Tage`
+      }));
+    });
+  }, [currentUser?.companyId, type]);
 
   const [activeProjectId, setActiveProjectId] = useState<string>('global');
-  const [formData, setFormData] = useState(() => ({ invoiceNumber: type === 'invoice' ? `RE-${Date.now().toString().slice(-6)}` : `OFF-${Date.now().toString().slice(-6)}`, date: new Date().toISOString().split('T')[0], location: 'Zürich', projectName: 'Neues Projekt', sender: 'Kreativ-Desk Studio\nBahnhofstrasse 1\n8001 Zürich', recipient: 'Kunden Name\nMusterstrasse 12\n8000 Zürich', paymentInfo: type === 'invoice' ? 'Bitte überweisen Sie den Betrag innerhalb von 30 Tagen auf folgendes Konto:\nIBAN: CH00 0000 0000 0000 0000 0\nBank: Musterbank AG' : 'Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: 30 Tage', vatRate: 8.1 }));
+  const [formData, setFormData] = useState(() => ({ 
+    invoiceNumber: type === 'invoice' ? `RE-${Date.now().toString().slice(-6)}` : `OFF-${Date.now().toString().slice(-6)}`, 
+    date: new Date().toISOString().split('T')[0], 
+    location: 'Zürich', 
+    projectName: 'Neues Projekt', 
+    sender: 'Kreativ-Desk Studio\nBahnhofstrasse 1\n8001 Zürich', 
+    recipient: 'Kunden Name\nMusterstrasse 12\n8000 Zürich', 
+    paymentInfo: type === 'invoice' ? 'Bitte überweisen Sie den Betrag innerhalb von 30 Tagen auf folgendes Konto:\nIBAN: CH00 0000 0000 0000 0000 0\nBank: Musterbank AG' : 'Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: 30 Tage', 
+    vatRate: 8.1 
+  }));
   const [positions, setPositions] = useState([{ id: 'pos1', pos: '1.0', title: 'Planungshonorar', description: 'Pauschal gemäss Absprache', qty: 1, unit: 'Pauschal', unitPrice: 0, total: 0 }]);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [showBudgetImport, setShowBudgetImport] = useState(false);

@@ -15,6 +15,7 @@ import { checkStorageLimit, incrementStorage, STORAGE_LIMITS } from '../utils/st
 import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/stripeClient';
 import { hasFeature } from '../utils/planFeatures';
 import { webhookNotifier } from '../utils/webhookNotifier';
+import API from './API';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -212,8 +213,23 @@ export default function SettingsTab() {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>('general');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleSubTabChange = (e: Event) => {
+      const customEv = e as CustomEvent;
+      const detail = customEv.detail;
+      if (detail === 'api' || detail === 'webhooks') {
+        setActiveSubTab('api');
+      } else if (detail === 'general' || detail === 'profile') {
+        setActiveSubTab('general');
+      }
+    };
+    window.addEventListener('change-settings-tab', handleSubTabChange);
+    return () => window.removeEventListener('change-settings-tab', handleSubTabChange);
+  }, []);
 
   // Profildaten laden
   useEffect(() => {
@@ -606,8 +622,38 @@ export default function SettingsTab() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300 pb-24">
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+    <div className="space-y-6 animate-in fade-in duration-300 pb-24">
+      <div className="flex items-center gap-2 border-b border-border/50 pb-4">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('general')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border",
+            activeSubTab === 'general'
+              ? "bg-accent-ai text-white border-accent-ai shadow-md"
+              : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
+          )}
+        >
+          <Building2 size={15} /> Allgemeine Einstellungen
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('api')}
+          className={cn(
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border",
+            activeSubTab === 'api'
+              ? "bg-accent-ai text-white border-accent-ai shadow-md"
+              : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
+          )}
+        >
+          <Terminal size={15} /> Webhook-Verwaltung & API-Keys
+        </button>
+      </div>
+
+      {activeSubTab === 'api' ? (
+        <API />
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         
         {/* RECHTE SPALTE (2/3) - PROFIL & EINSTELLUNGEN */}
         <div className="xl:col-span-2 space-y-6">
@@ -1035,6 +1081,7 @@ export default function SettingsTab() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -1219,8 +1266,8 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
         </h3>
         <button
           type="button"
-          onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'crm' }))}
-          className="text-xs font-bold text-accent-ai hover:underline flex items-center gap-1"
+          onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'team' }))}
+          className="text-xs font-bold text-accent-ai hover:underline flex items-center gap-1 cursor-pointer"
         >
           + Neue Teammitglieder in CRM & Team verwalten →
         </button>
