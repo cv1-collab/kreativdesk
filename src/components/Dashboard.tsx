@@ -19,6 +19,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { demoTemplates } from '../utils/demoTemplates';
+import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import DailyGoals from './DailyGoals';
 
 // 🚀 NATIVES PDF STUDIO & VEKTOR ENGINE
@@ -201,15 +202,10 @@ export default function Dashboard() {
 
         let finConfig: any = null;
         try {
-          const res = await supabase
-            .from('system_config')
-            .select('*')
-            .eq('id', `finance_${activeProject.id}`)
-            .maybeSingle();
-          finConfig = res.data;
+          finConfig = await fetchSystemConfigJSON(`finance_${activeProject.id}`, safeCompanyId);
         } catch (e) {}
 
-        const configData = (finConfig as any)?.data || finConfig || cachedData;
+        const configData = finConfig || cachedData;
         const hasValidGroups = Array.isArray(configData?.versions) &&
           configData.versions.length > 0 &&
           Array.isArray(configData.versions[0]?.groups) &&
@@ -230,23 +226,20 @@ export default function Dashboard() {
           };
           setVersions([initVersion]);
           try {
-            await supabase.from('system_config').upsert({
-              id: `finance_${activeProject.id}`,
-              data: {
-                versions: [initVersion],
-                activeVersionId: initVersion.id,
-                projectHeader: {
-                  project: activeProject.name || 'Projektbudget',
-                  client: 'Bauherrschaft AG',
-                  date: new Date().toISOString().split('T')[0],
-                  version: 'Originalbudget'
-                },
-                includeOptions: false,
-                ownerId: currentUser?.uid,
-                companyId: safeCompanyId,
-                projectId: activeProject.id
-              }
-            });
+            await saveSystemConfigJSON(`finance_${activeProject.id}`, {
+              versions: [initVersion],
+              activeVersionId: initVersion.id,
+              projectHeader: {
+                project: activeProject.name || 'Projektbudget',
+                client: 'Bauherrschaft AG',
+                date: new Date().toISOString().split('T')[0],
+                version: 'Originalbudget'
+              },
+              includeOptions: false,
+              ownerId: currentUser?.uid,
+              companyId: safeCompanyId,
+              projectId: activeProject.id
+            }, safeCompanyId, currentUser?.uid || 'global');
           } catch (e) {}
         }
       } catch (err) {

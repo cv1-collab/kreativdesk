@@ -388,15 +388,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         let config: any = null;
         try {
-          const res = await supabase
-            .from('system_config')
-            .select('*')
-            .eq('id', `agenda_events_${safeCompanyId}`)
-            .maybeSingle();
-          config = res.data;
+          config = await fetchSystemConfigJSON(`agenda_events_${safeCompanyId}`, safeCompanyId);
         } catch (e) {}
 
-        const configEvents = (config as any)?.data?.events || config?.events || [];
+        const configEvents = config?.events || [];
         const eventMap = new Map();
         [...localCachedEvents, ...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
           if (evt && (evt.title || evt.id)) {
@@ -423,15 +418,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         let configTime: any = null;
         try {
-          const resTime = await supabase
-            .from('system_config')
-            .select('*')
-            .eq('id', `time_entries_${safeCompanyId}`)
-            .maybeSingle();
-          configTime = resTime.data;
+          configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
         } catch (e) {}
 
-        const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
+        const configTimes = configTime?.entries || [];
 
         const { data: dbTimes } = await supabase
           .from('time_entries')
@@ -930,24 +920,15 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         // 2. Aus Supabase time_entries löschen
         await supabase.from('time_entries').delete().eq('id', entryId);
 
-        // 3. Aus system_config Backup entfernen
+        // 3. Aus documents Backup entfernen
         if (safeCompanyId) {
           try {
-            const { data: configTime } = await supabase
-              .from('system_config')
-              .select('*')
-              .eq('id', `time_entries_${safeCompanyId}`)
-              .maybeSingle();
-
-            const cData = (configTime as any)?.data || configTime;
-            if (cData?.entries) {
-              const updatedConfigEntries = cData.entries.filter((t: any) => 
+            const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
+            if (configTime?.entries) {
+              const updatedConfigEntries = configTime.entries.filter((t: any) => 
                 t.id !== entryId && `time-${t.date}-${t.hours}` !== entryId
               );
-              await supabase.from('system_config').upsert({
-                id: `time_entries_${safeCompanyId}`,
-                data: { ...cData, entries: updatedConfigEntries }
-              });
+              await saveSystemConfigJSON(`time_entries_${safeCompanyId}`, { ...configTime, entries: updatedConfigEntries }, safeCompanyId, currentUser.uid);
             }
           } catch (cfgErr) {}
         }

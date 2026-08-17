@@ -24,12 +24,15 @@ export interface AuditLogEntry {
  */
 export async function logAuditAction(entry: AuditLogEntry) {
   try {
+    const detailsObj = typeof entry.details === 'object' 
+      ? { ...entry.details, userEmail: entry.userEmail }
+      : { message: entry.details, userEmail: entry.userEmail };
+
     await supabase.from('audit_logs').insert({
       company_id: entry.companyId,
       user_id: entry.userId,
-      user_email: entry.userEmail,
       action: entry.action,
-      details: typeof entry.details === 'object' ? JSON.stringify(entry.details) : entry.details,
+      details: JSON.stringify(detailsObj),
       created_at: entry.timestamp || new Date().toISOString()
     });
   } catch (error) {

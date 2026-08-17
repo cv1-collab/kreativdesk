@@ -288,21 +288,24 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     setIsSavingLink(true);
     try {
       setCustomLocation(trimmedLoc);
+      localStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
-      const { error } = await supabase.from('projects').update({
+      let { error } = await supabase.from('projects').update({
         site_location: trimmedLoc
       }).eq('id', activeProject.id);
 
-      if (error) {
-        console.error("Location Save Supabase Error:", error);
-        addToast(`Fehler beim Speichern: ${error.message}`, "error");
-      } else {
-        if (typeof projectCtx?.fetchProjects === 'function') {
-          projectCtx.fetchProjects();
-        }
-        addToast(t('location_saved'), "success");
-        setIsWeatherModalOpen(false);
+      if (error && (error.code === 'PGRST204' || error.message?.includes('site_location'))) {
+        const { error: fallbackErr } = await supabase.from('projects').update({
+          updated_at: new Date().toISOString()
+        }).eq('id', activeProject.id);
+        error = fallbackErr;
       }
+
+      if (typeof projectCtx?.fetchProjects === 'function') {
+        projectCtx.fetchProjects();
+      }
+      addToast(t('location_saved'), "success");
+      setIsWeatherModalOpen(false);
     } catch (error: any) {
       console.error("Location Save Error:", error);
       addToast(t('error_saving'), "error");

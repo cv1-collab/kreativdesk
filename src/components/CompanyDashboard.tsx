@@ -559,7 +559,7 @@ export default function CompanyDashboard() {
       
       await supabase.from('documents').insert({
         name: file.name, url: downloadUrl, file_url: downloadUrl, type: docType, size: sizeText,
-        is_folder: false, folder_id: activeFolderId, parent_id: activeFolderId, category: currentFolder.category,
+        is_folder: false, folder_id: activeFolderId, category: currentFolder.category,
         owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid,
         project_id: (currentFolder as any)?.isProject ? currentFolder.id : 'global', created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });

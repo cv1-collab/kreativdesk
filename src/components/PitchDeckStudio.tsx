@@ -646,7 +646,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (existingFolder) { targetFolderId = existingFolder.id; } 
       else {
          const { data: newF } = await supabase.from('documents').insert({
-            name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', parent_id: 'root', 
+            name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', 
             owner_id: currentUser.uid, company_id: safeCompanyId, category: 'projects', created_at: new Date().toISOString()
          }).select().single();
          if (newF) targetFolderId = newF.id;
@@ -663,7 +663,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         file_url: downloadUrl, 
         project_id: targetId, 
         folder_id: targetFolderId, 
-        parent_id: targetFolderId, 
         category: 'projects', 
         is_folder: false, 
         owner_id: currentUser.uid, 

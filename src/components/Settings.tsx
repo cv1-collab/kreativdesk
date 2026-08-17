@@ -139,7 +139,8 @@ export default function Settings() {
     if (!currentUser) return;
     setIsUpdatingProfile(true);
     try {
-      await supabase.from('profiles').update({ phone, street, zip_city: zipCity, updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
+      localStorage.setItem(`user_contact_${currentUser.uid}`, JSON.stringify({ phone, street, zipCity }));
+      await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       setProfileSuccess(true);
       addToast(t('upload_success'), 'success');
       setTimeout(() => setProfileSuccess(false), 3000);
