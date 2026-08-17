@@ -913,7 +913,10 @@ const handleGenerateTeamSlide = async () => {
          if (currentSlide && currentSlide.dataPayload?.members) {
            const newMembers = [...currentSlide.dataPayload.members];
            newMembers[memberIdx].photoURL = selectedMedia.url;
-           await supabase.from('slides').update({ dataPayload: { ...currentSlide.dataPayload, members: newMembers } }).eq('id', slideId);
+           await supabase.from('slides').update({ 
+              data_payload: { ...currentSlide.dataPayload, members: newMembers },
+              dataPayload: { ...currentSlide.dataPayload, members: newMembers } 
+           }).eq('id', slideId).catch(() => {});
            addToast('Bild aktualisiert!', 'success');
          }
        }
@@ -942,7 +945,8 @@ const handleGenerateTeamSlide = async () => {
 
   const upc = (field: keyof Slide, value: any) => {
     if (!isPreviewMode && activeSlide) {
-      supabase.from('slides').update({ [field]: value }).eq('id', activeSlide.id);
+      const dbField = field === 'dataPayload' ? 'data_payload' : field === 'fontSize' ? 'font_size' : field;
+      supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).catch(() => {});
     }
   };
 

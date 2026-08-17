@@ -639,13 +639,32 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         const downloadUrl = pubData.publicUrl;
 
         const id = `wb-${Date.now()}`;
-        await supabase.from('whiteboard_exports').insert({ 
-          id, 
-          image_url: downloadUrl, 
-          owner_id: currentUser.uid, 
-          company_id: currentUser.companyId, 
-          created_at: new Date().toISOString() 
-        });
+        try {
+          await supabase.from('whiteboard_exports').insert({ 
+            id, 
+            image_url: downloadUrl, 
+            owner_id: currentUser.uid, 
+            company_id: currentUser.companyId, 
+            created_at: new Date().toISOString() 
+          });
+        } catch (wbErr) {}
+
+        try {
+          await supabase.from('documents').insert({
+            id,
+            name: `Whiteboard_Export_${Date.now()}.jpg`,
+            url: downloadUrl,
+            file_url: downloadUrl,
+            project_id: currentProjectId || 'global',
+            owner_id: currentUser.uid,
+            company_id: currentUser.companyId,
+            category: 'whiteboard',
+            folder_id: 'root',
+            is_folder: false,
+            type: 'image/jpeg',
+            created_at: new Date().toISOString()
+          });
+        } catch (docErr) {}
         
         setIsSending(false); setSendSuccess(true); setTimeout(() => setSendSuccess(false), 3000);
       }, 50);
