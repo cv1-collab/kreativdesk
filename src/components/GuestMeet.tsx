@@ -100,6 +100,17 @@ export default function GuestMeet() {
           setError('');
         } else {
           if (joinId && joinId.length >= 3) {
+            try {
+              await supabase.from('video_calls').upsert({
+                id: joinId,
+                project_id: 'global',
+                company_id: 'guest',
+                caller_name: 'Guest Room',
+                created_at: new Date().toISOString()
+              });
+            } catch (e) {
+              console.warn("Guest room upsert handled:", e);
+            }
             setError('');
           } else {
             setError('Dieses Meeting existiert nicht oder wurde bereits beendet.');

@@ -795,9 +795,27 @@ export default function MeetChat() {
     }
   };
 
-  const handleQuickInvite = (mode: 'copy' | 'whatsapp' | 'email') => {
+  const ensureCallRegistered = async (roomId: string) => {
+    try {
+      const targetProjectId = projectId || activeProjectId || 'global';
+      await supabase.from('video_calls').upsert({
+        id: roomId,
+        project_id: targetProjectId,
+        company_id: currentUser?.companyId || 'global',
+        caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Host',
+        caller_id: currentUser?.uid || 'host',
+        created_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.warn("Pre-register video call handled:", err);
+    }
+  };
+
+  const handleQuickInvite = async (mode: 'copy' | 'whatsapp' | 'email') => {
     const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
     const isDe = currentLang === 'de';
+
+    await ensureCallRegistered(activeCallRoomId);
 
     const whatsappMsg = isDe
       ? `📹 *Einladung zum Live-Videocall (Kreativ Desk OS)*\n\nHallo! Du bist zu einem Videocall eingeladen. Klicke einfach auf den Link, um ohne Login beizutreten:\n👉 ${inviteUrl}`
@@ -879,7 +897,7 @@ export default function MeetChat() {
                   )}
                   
                   <div className="flex justify-center items-center gap-3 w-full mb-5">
-                    <button onClick={() => startCall(selectedUserIds, activeCallRoomId)} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <button onClick={async () => { await ensureCallRegistered(activeCallRoomId); await startCall(selectedUserIds, activeCallRoomId); }} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
                       <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
                   </div>
