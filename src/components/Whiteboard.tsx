@@ -6,7 +6,7 @@ import Konva from 'konva';
 import { 
   PenTool, Mic, Square, Circle, Type, Image as ImageIcon, Sparkles, Send, Eraser, 
   CheckCircle2, Loader2, Play, Square as StopIcon, FileAudio, FileText, Download, 
-  Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check
+  Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check, RefreshCw
 } from 'lucide-react';
 import { cn } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
@@ -170,6 +170,56 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [audioNotes, setAudioNotes] = useState<any[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [isAnalyzingAudio, setIsAnalyzingAudio] = useState(false);
+
+  // KI Audit States & Handler
+  const [isAiAuditing, setIsAiAuditing] = useState(false);
+  const [aiAuditReport, setAiAuditReport] = useState<string | null>(null);
+  const [isAiAuditModalOpen, setIsAiAuditModalOpen] = useState(false);
+
+  const handleRunAiAudit = async () => {
+    setIsAiAuditing(true);
+    setIsAiAuditModalOpen(true);
+    setAiAuditReport(null);
+
+    try {
+      if (!stageRef.current) {
+        setIsAiAuditing(false);
+        return;
+      }
+
+      const safeScale = Math.min(1, 800 / stageRef.current.width());
+      const dataUrl = getCanvasDataUrl(safeScale, 'image/png', true);
+      if (!dataUrl) {
+        addToast('Keine Skizze auf dem Whiteboard gefunden.', 'info');
+        setIsAiAuditing(false);
+        return;
+      }
+
+      const base64Data = dataUrl.split(',')[1];
+      const prompt = `Du bist ein erfahrener Schweizer Architekt und Bauingenieur. Analysiere diese Skizze/Zeichnung auf dem Whiteboard gründlich.
+Erstelle einen professionellen KI-Auditbericht mit folgenden Abschnitten:
+1. 📐 Entwurfskonzept & Raumordnung: Analyse der sichtbaren Elemente, Anordnungen und Ideen.
+2. 🏗️ Machbarkeit & Bauphysik: Einschätzung zu Konstruktion, Materialien und Normen.
+3. 💡 Empfehlungen & Nächste Schritte: Konkrete Optimierungsvorschläge und To-Dos.
+
+Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und Stichpunkten auf Deutsch.`;
+
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: base64Data, mimeType: 'image/png' } },
+        { text: prompt }
+      ]);
+
+      const reportText = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || 'Kein Audit-Ergebnis generiert.');
+      setAiAuditReport(reportText);
+      addToast('KI-Audit erfolgreich abgeschlossen!', 'success');
+    } catch (err) {
+      console.error("AI Audit error:", err);
+      setAiAuditReport("Fehler beim Erstellen des KI-Audits. Bitte überprüfe die Verbindung und versuche es erneut.");
+      addToast('Fehler beim KI-Audit.', 'error');
+    } finally {
+      setIsAiAuditing(false);
+    }
+  };
 
   const canvasBgColor = '#ffffff';
 
@@ -339,7 +389,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       return;
     }
     isDrawing.current = true; const id = Date.now().toString();
-    if (tool === 'pen' || tool === 'eraser') addItemToActiveLayer({ type: 'line', tool, points: [pos.x, pos.y], id, x: 0, y: 0, color: tool === 'eraser' ? canvasBgColor : activeColor });
+    if (tool === 'pen' || tool === 'eraser') addItemToActiveLayer({ type: 'line', tool, points: [pos.x, pos.y, pos.x, pos.y], id, x: 0, y: 0, color: tool === 'eraser' ? canvasBgColor : activeColor });
     else if (tool === 'rect') addItemToActiveLayer({ type: 'rect', x: pos.x, y: pos.y, width: 0, height: 0, id, color: activeColor });
     else if (tool === 'circle') addItemToActiveLayer({ type: 'circle', x: pos.x, y: pos.y, radius: 0, id, color: activeColor });
     else if (tool === 'text') { setTextPrompt({ isOpen: true, x: pos.x, y: pos.y, value: '' }); isDrawing.current = false; }
@@ -743,6 +793,10 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
               <Wand2 size={16} /> <span className="hidden md:inline">{t('ai_render')}</span>
             </button>
 
+            <button onClick={handleRunAiAudit} className="px-3 md:px-4 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-md text-sm font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-2 shadow-sm">
+              <Sparkles size={16} /> <span className="hidden md:inline">KI Audit</span>
+            </button>
+
             <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
 
             <button onClick={handleSaveToCloud} disabled={isSavingToCloud} className="px-3 md:px-4 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md text-sm font-bold hover:bg-blue-500/20 transition-colors flex items-center gap-2 disabled:opacity-50">
@@ -939,7 +993,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
                   draggable={tool === 'pan'} onDragEnd={(e) => { if (e.target === stageRef.current) setStagePos({ x: e.target.x(), y: e.target.y() }); }}
                 >
                   <KonvaLayer>
-                    <Rect className="background-rect" name="background-rect" x={-stagePos.x / stageScale} y={-stagePos.y / stageScale} width={stageSize.width / stageScale} height={stageSize.height / stageScale} fill="transparent" />
+                    <Rect className="background-rect" name="background-rect" x={-stagePos.x / stageScale - 5000} y={-stagePos.y / stageScale - 5000} width={stageSize.width / stageScale + 10000} height={stageSize.height / stageScale + 10000} fill="#ffffff" listening={true} />
                     {bgImage && (
                       <KonvaImage image={bgImage} ref={imageNodeRef} x={bgImagePos.x} y={bgImagePos.y} draggable={tool === 'select'} onDragEnd={(e) => { e.cancelBubble = true; setBgImagePos({ x: e.target.x(), y: e.target.y() }); }} filters={[Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.HSL]} brightness={imageFilters.brightness} contrast={imageFilters.contrast} luminance={imageFilters.saturation} />
                     )}
@@ -1143,6 +1197,44 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
                   </div>
                 </form>
               </div>
+            </div>
+          )}
+          {/* KI AUDIT MODAL */}
+          {isAiAuditModalOpen && (
+            <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden relative flex flex-col max-h-[85vh]">
+                <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
+                  <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary">
+                    <Sparkles size={20} className="text-purple-400" /> Whiteboard KI-Audit & Entwurfsanalyse
+                  </h3>
+                  <button onClick={() => setIsAiAuditModalOpen(false)} className="text-text-muted hover:text-text-primary p-2">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+                  {isAiAuditing ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-4">
+                      <Loader2 size={40} className="animate-spin text-purple-500" />
+                      <p className="text-base font-bold text-text-primary">KI analysiert deine Skizze & Raumordnung...</p>
+                      <p className="text-xs text-text-muted">Prüfe Konstruktionskonzept, Machbarkeit und Empfehlungen.</p>
+                    </div>
+                  ) : (
+                    <div className="prose prose-invert max-w-none text-sm text-text-primary leading-relaxed whitespace-pre-wrap bg-background p-5 rounded-xl border border-border/50 font-sans">
+                      {aiAuditReport}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 border-t border-border/50 bg-background flex justify-between items-center">
+                  <button onClick={handleRunAiAudit} disabled={isAiAuditing} className="px-4 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-2">
+                    <RefreshCw size={14} className={isAiAuditing ? "animate-spin" : ""} /> Audit erneut ausführen
+                  </button>
+                  <button onClick={() => setIsAiAuditModalOpen(false)} className="px-5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold hover:bg-accent-ai/90 transition-all">
+                    Schließen
+                  </button>
+                </div>
+              </motion.div>
             </div>
           )}
         </>,

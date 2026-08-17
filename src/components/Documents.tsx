@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -171,7 +172,8 @@ const COMPANY_FOLDER_PRESETS: Record<string, { label: string; desc: string; icon
   }
 };
 
-export default function Documents() {
+export default function Documents({ projectId: propProjectId }: { projectId?: string } = {}) {
+  const { id: routeProjectId } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
@@ -182,11 +184,12 @@ export default function Documents() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [activeTab, setActiveTab] = useState<'company' | 'projects'>('company');
+  const defaultProjId = propProjectId || routeProjectId || null;
+  const [activeTab, setActiveTab] = useState<'company' | 'projects'>(defaultProjId ? 'projects' : 'company');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [documents, setDocuments] = useState<any[]>([]);
   const [currentFolderId, setCurrentFolderId] = useState<string>('root');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(defaultProjId);
   const [folderPath, setFolderPath] = useState<{ id: string; name: string }[]>([{ id: 'root', name: 'Root' }]);
 
   const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
@@ -302,11 +305,15 @@ export default function Documents() {
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
+      const targetProjId = activeTab === 'projects' 
+        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId || 'global') 
+        : 'global';
+
       await supabase.from('documents').insert({
         name: newFolderName.trim(),
         is_folder: true,
         category: activeTab,
-        project_id: activeTab === 'projects' ? (selectedProjectId || activeProjectId || 'global') : 'global',
+        project_id: targetProjId,
         folder_id: currentFolderId,
         owner_id: currentUser.uid,
         uploaded_by: currentUser.uid,
@@ -335,6 +342,9 @@ export default function Documents() {
     setIsUploading(true);
     try {
       const fileUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'documents');
+      const targetProjId = activeTab === 'projects' 
+        ? (selectedProjectId || propProjectId || routeProjectId || activeProjectId || 'global') 
+        : 'global';
 
       await supabase.from('documents').insert({
         name: file.name,
@@ -343,7 +353,7 @@ export default function Documents() {
         size: `${Math.round(file.size / 1024)} KB`,
         type: file.type,
         category: activeTab,
-        project_id: activeTab === 'projects' ? (selectedProjectId || activeProjectId || 'global') : 'global',
+        project_id: targetProjId,
         folder_id: currentFolderId,
         is_folder: false,
         owner_id: currentUser.uid,
@@ -474,8 +484,9 @@ export default function Documents() {
       return isCompanyCategory && doc.folder_id === currentFolderId;
     } else {
       const isProjectCategory = doc.category === 'projects' || (doc.project_id && doc.project_id !== 'global');
-      if (selectedProjectId) {
-        return isProjectCategory && doc.project_id === selectedProjectId && (currentFolderId === 'root' ? (doc.folder_id === 'root' || !doc.folder_id) : doc.folder_id === currentFolderId);
+      const currentProj = selectedProjectId || propProjectId || routeProjectId || activeProjectId;
+      if (currentProj) {
+        return isProjectCategory && (doc.project_id === currentProj || doc.project_id === 'global') && (currentFolderId === 'root' ? (doc.folder_id === 'root' || !doc.folder_id) : doc.folder_id === currentFolderId);
       }
       if (currentFolderId === 'root') {
         return isProjectCategory && (doc.folder_id === 'root' || !doc.folder_id);

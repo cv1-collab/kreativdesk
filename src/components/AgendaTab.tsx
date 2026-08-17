@@ -396,13 +396,18 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         [...localCachedEvents, ...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
           if (evt && (evt.title || evt.id)) {
             const dateStr = evt.date || evt.event_date || evt.start_date || (evt.created_at ? evt.created_at.split('T')[0] : '');
+            const link = evt.meetingLink || evt.meeting_link || null;
             const normalized = {
               ...evt,
               id: evt.id || `evt-${Date.now()}-${Math.random()}`,
               date: dateStr,
               event_date: dateStr,
               start_date: dateStr,
-              projectId: evt.projectId || evt.project_id || 'global'
+              projectId: evt.projectId || evt.project_id || 'global',
+              project_id: evt.projectId || evt.project_id || 'global',
+              meetingLink: link,
+              meeting_link: link,
+              type: evt.type || 'meeting'
             };
             eventMap.set(normalized.id, normalized);
           }
@@ -709,7 +714,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         date: newEvent.date,
         event_date: newEvent.date,
         start_date: newEvent.date,
-        projectId: targetProjectId
+        projectId: targetProjectId,
+        project_id: targetProjectId,
+        meetingLink: meetingLink,
+        meeting_link: meetingLink,
+        type: newEvent.type
       };
 
       setCalendarEvents(prev => {
@@ -718,20 +727,47 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         return next;
       });
 
-      // Backup to documents
+      // Backup to documents config (agenda_events & schedule_calls)
       try {
         const existingConfig = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${safeCompanyId}`, safeCompanyId);
         const existingEvents = existingConfig?.events || [];
         await saveSystemConfigJSON(`agenda_events_${safeCompanyId}`, { events: [normalizedFinal, ...existingEvents], companyId: safeCompanyId }, safeCompanyId, currentUser.uid);
+
+        if (newEvent.type === 'call') {
+          const scheduleConfig = await fetchSystemConfigJSON<{ calls?: any[] }>(`schedule_calls_${safeCompanyId}`, safeCompanyId);
+          const existingCalls = scheduleConfig?.calls || [];
+          await saveSystemConfigJSON(`schedule_calls_${safeCompanyId}`, { calls: [normalizedFinal, ...existingCalls], companyId: safeCompanyId }, safeCompanyId, currentUser.uid);
+        }
       } catch (backupErr) {}
+
+      // Send chat notification message if it's a video call
+      if (newEvent.type === 'call') {
+        try {
+          const sysMsgText = currentLang === 'de'
+            ? `Ein neuer Video-Call "${newEvent.title}" wurde für den ${newEvent.date} um ${newEvent.time} Uhr in der Agenda geplant.`
+            : `A new video call "${newEvent.title}" has been scheduled for ${newEvent.date} at ${newEvent.time} in Agenda.`;
+          await supabase.from('chat_messages').insert({
+            sender: 'System',
+            avatar: 'SYS',
+            sender_id: currentUser.uid,
+            company_id: safeCompanyId,
+            project_id: targetProjectId,
+            timestamp: Date.now(),
+            text: sysMsgText,
+            created_at: new Date().toISOString()
+          });
+        } catch (chatErr) {
+          console.warn("Failed to insert sys chat message:", chatErr);
+        }
+      }
 
       // Trigger notification bell
       await sendNotification({
         companyId: safeCompanyId,
-        title: 'Neuer Termin in der Agenda',
+        title: newEvent.type === 'call' ? 'Neuer Video Call geplant' : 'Neuer Termin in der Agenda',
         message: `Termin "${newEvent.title}" am ${newEvent.date} um ${newEvent.time} Uhr eingetragen.`,
-        type: 'meeting',
-        link: '/agenda'
+        type: newEvent.type === 'call' ? 'call' : 'meeting',
+        link: meetingLink || '/agenda'
       });
 
       setIsEventModalOpen(false);
@@ -746,22 +782,63 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const handleUpdateCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEvent || (!selectedEvent.projectId && !selectedEvent.project_id)) return;
-    const projId = selectedEvent.projectId || selectedEvent.project_id;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    const projId = selectedEvent.projectId || selectedEvent.project_id || 'global';
+
+    let meetingLink = selectedEvent.meetingLink || selectedEvent.meeting_link || null;
+
+    if (selectedEvent.type === 'call' && !meetingLink) {
+      const callMeetingId = `meet-${Date.now()}`;
+      meetingLink = `/project/${projId}/meet?join=${callMeetingId}`;
+
+      try {
+        await supabase.from('video_calls').upsert({
+          id: callMeetingId,
+          project_id: projId,
+          company_id: safeCompanyId,
+          caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Host',
+          caller_id: currentUser?.uid,
+          created_at: new Date().toISOString()
+        });
+      } catch (callErr) {
+        console.error("Failed to pre-register video call:", callErr);
+      }
+    }
+
     try {
-      const updateData = {
+      const updateData: any = {
         title: selectedEvent.title,
         date: selectedEvent.date,
+        event_date: selectedEvent.date,
         time: selectedEvent.time,
+        type: selectedEvent.type || 'meeting',
         description: selectedEvent.description || '',
         project_id: projId,
-        participants: selectedEvent.participants || []
+        participants: selectedEvent.participants || [],
+        meeting_link: meetingLink
       };
 
       const { data: updatedEvent, error } = await supabase.from('calendar_events').update(updateData).eq('id', selectedEvent.id).select().single();
 
       if (error) throw error;
-      const finalUpdated = updatedEvent || { ...selectedEvent, ...updateData };
-      setCalendarEvents(prev => prev.map(ev => ev.id === selectedEvent.id ? finalUpdated : ev));
+      const finalUpdated = {
+        ...(updatedEvent || { ...selectedEvent, ...updateData }),
+        date: selectedEvent.date,
+        event_date: selectedEvent.date,
+        projectId: projId,
+        project_id: projId,
+        meetingLink: meetingLink,
+        meeting_link: meetingLink,
+        type: selectedEvent.type || 'meeting'
+      };
+
+      setCalendarEvents(prev => {
+        const next = prev.map(ev => ev.id === selectedEvent.id ? finalUpdated : ev);
+        if (safeCompanyId) {
+          localStorage.setItem(`agenda_cache_${safeCompanyId}`, JSON.stringify(next));
+        }
+        return next;
+      });
 
       addToast(t('completed'), 'success');
       setSelectedEvent(null);
@@ -798,7 +875,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   };
 
   const handleCopyInviteLink = async (meetingLink: string) => {
-    const fullLink = `${window.location.origin}${meetingLink}`;
+    if (!meetingLink) return;
+    const fullLink = meetingLink.startsWith('http') ? meetingLink : `${window.location.origin}${meetingLink}`;
     try {
       await navigator.clipboard.writeText(fullLink);
       addToast(t('link_copied'), 'success');
@@ -1167,17 +1245,61 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                       </optgroup>
                     </select>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <input type="date" value={selectedEvent.date} onChange={e => setSelectedEvent({ ...selectedEvent, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary" />
-                      <input type="time" value={selectedEvent.time} onChange={e => setSelectedEvent({ ...selectedEvent, time: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary" />
+                    <div className="grid grid-cols-3 gap-3">
+                      <select
+                        value={selectedEvent.type || 'meeting'}
+                        onChange={e => {
+                          const newType = e.target.value;
+                          let meetingLink = selectedEvent.meetingLink || selectedEvent.meeting_link;
+                          if (newType === 'call' && !meetingLink) {
+                            const projId = selectedEvent.projectId || selectedEvent.project_id || 'global';
+                            const callMeetingId = `meet-${Date.now()}`;
+                            meetingLink = `/project/${projId}/meet?join=${callMeetingId}`;
+                          }
+                          setSelectedEvent({
+                            ...selectedEvent,
+                            type: newType,
+                            meetingLink,
+                            meeting_link: meetingLink
+                          });
+                        }}
+                        className="bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-accent-ai"
+                      >
+                        <option value="meeting" className="bg-surface">{t('meeting')}</option>
+                        <option value="call" className="bg-surface">{t('video_call')}</option>
+                        <option value="site-visit" className="bg-surface">{t('site_visit')}</option>
+                      </select>
+                      <input type="date" value={selectedEvent.date} onChange={e => setSelectedEvent({ ...selectedEvent, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary" />
+                      <input type="time" value={selectedEvent.time} onChange={e => setSelectedEvent({ ...selectedEvent, time: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary" />
                     </div>
 
                     <textarea value={selectedEvent.description || ''} onChange={e => setSelectedEvent({ ...selectedEvent, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-medium text-text-primary h-24 resize-none custom-scrollbar" placeholder={t('activity_desc')} />
 
-                    {selectedEvent.meetingLink && (
-                      <button type="button" onClick={() => handleCopyInviteLink(selectedEvent.meetingLink)} className="w-full py-3 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-blue-500/20 transition-all">
-                        <LinkIcon size={14} /> {t('copy_link')}
-                      </button>
+                    {(selectedEvent.type === 'call' || selectedEvent.meetingLink || selectedEvent.meeting_link) && (
+                      <div className="space-y-2 pt-2 border-t border-border/50">
+                        {(selectedEvent.meetingLink || selectedEvent.meeting_link) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const link = selectedEvent.meetingLink || selectedEvent.meeting_link;
+                              setSelectedEvent(null);
+                              navigate(link);
+                            }}
+                            className="w-full py-2.5 bg-accent-ai text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-accent-ai/90 shadow-md shadow-accent-ai/20 transition-all"
+                          >
+                            <Video size={14} /> {t('join_call')}
+                          </button>
+                        )}
+                        {(selectedEvent.meetingLink || selectedEvent.meeting_link) && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyInviteLink(selectedEvent.meetingLink || selectedEvent.meeting_link)}
+                            className="w-full py-2.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-blue-500/20 transition-all"
+                          >
+                            <LinkIcon size={14} /> {t('copy_link')}
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     <div className="pt-4 flex justify-between gap-3 border-t border-border/50">

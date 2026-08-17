@@ -19,6 +19,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { logAuditAction } from '../utils/auditLogger';
 import { offboardCompanyUser } from '../services/userService';
 import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { callGeminiAPI } from '../utils/geminiClient';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -195,8 +196,64 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
-    if (!isAddModalOpen) return;
-  }, [vcardSessionId, isAddModalOpen, t]);
+    if (!vcardSessionId) return;
+
+    const channel = supabase.channel(`vcard_upload_${vcardSessionId}`)
+      .on('broadcast', { event: 'vcard_scanned' }, ({ payload }) => {
+        if (payload) {
+          setScannedContactData({
+            firstName: payload.firstName || '',
+            lastName: payload.lastName || '',
+            company: payload.company || '',
+            email: payload.email || '',
+            phone: payload.phone || '',
+            street: payload.street || '',
+            zipCity: payload.zipCity || '',
+            website: payload.website || '',
+            description: payload.description || 'Gefunden per Smartphone-Visitenkartenscan'
+          });
+          setIsScannerModalOpen(true);
+        }
+      })
+      .subscribe();
+
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await supabase
+          .from('temp_receipts')
+          .select('*')
+          .eq('session_id', vcardSessionId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const rec = data[0];
+          let parsed: any = null;
+          try { parsed = JSON.parse(rec.file_name); } catch (e) {}
+          if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
+            setScannedContactData({
+              firstName: parsed.firstName || '',
+              lastName: parsed.lastName || '',
+              company: parsed.company || '',
+              email: parsed.email || '',
+              phone: parsed.phone || '',
+              street: parsed.street || '',
+              zipCity: parsed.zipCity || '',
+              website: parsed.website || '',
+              description: parsed.description || 'Gefunden per Smartphone-Visitenkartenscan'
+            });
+            setIsScannerModalOpen(true);
+            await supabase.from('temp_receipts').delete().eq('id', rec.id);
+          }
+        }
+      } catch (err) {}
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [vcardSessionId]);
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
 
@@ -636,25 +693,152 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       pdf.save(fileName);
       addToast(t('pdf_exported'), "success"); setIsPrintModalOpen(false);
     } catch (error: any) { addToast(t('upload_failed'), "error"); } finally { setIsGeneratingPdf(false); }
-  };  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  };
 
-  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+  const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
+  const [isScanningCard, setIsScanningCard] = useState(false);
+  const [scannedCardPreview, setScannedCardPreview] = useState<string | null>(null);
+  const scannerInputRef = useRef<HTMLInputElement>(null);
+
+  const [scannedContactData, setScannedContactData] = useState({
+    firstName: '',
+    lastName: '',
+    company: '',
+    email: '',
+    phone: '',
+    street: '',
+    zipCity: '',
+    website: '',
+    description: ''
+  });
+
+  const handleBusinessCardScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-        setNewContact({
-          firstName: '', lastName: '', email: '', phone: '', company: '',
-          street: '', zipCity: '', website: '', uid: '', vat: '',
-          description: 'Foto-Scan per Smartphone-Kamera erfasst.',
-          isExternal: true, status: 'neu'
+    if (!file) return;
+
+    setIsScanningCard(true);
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const dataUrl = reader.result as string;
+      setScannedCardPreview(dataUrl);
+      const base64Data = dataUrl.split(',')[1];
+
+      const prompt = `Analysiere diese Visitenkarte. Extrahiere alle Kontaktdaten als striktes JSON-Objekt mit exakt folgenden Schlüsselnamen:
+"firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "street" (Strasse & Hausnummer), "zipCity" (PLZ & Ort), "website", "description" (Jobtitel, Position oder Notizen).
+Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung oder Erklärungen.`;
+
+      try {
+        const response = await callGeminiAPI('gemini-2.5-flash', [
+          { inlineData: { data: base64Data, mimeType: file.type } },
+          { text: prompt }
+        ]);
+
+        let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        const data = JSON.parse(text);
+        setScannedContactData({
+          firstName: data.firstName || '',
+          lastName: data.lastName || '',
+          company: data.company || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          street: data.street || '',
+          zipCity: data.zipCity || '',
+          website: data.website || '',
+          description: data.description || 'Gefunden per KI-Visitenkartenscan'
         });
-        setIsAddModalOpen(true);
+        addToast('Visitenkarte erfolgreich per KI ausgelesen!', 'success');
+      } catch (err) {
+        console.error('OCR Error:', err);
+        addToast('Fehler beim KI-Auslesen der Visitenkarte. Bitte Daten manuell überprüfen.', 'error');
+      } finally {
+        setIsScanningCard(false);
+        if (scannerInputRef.current) scannerInputRef.current.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveScannedContactToCRM = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scannedContactData.lastName && !scannedContactData.company && !scannedContactData.firstName) {
+      addToast(t('name_or_company_required'), 'error');
+      return;
+    }
+    if (!currentUser || !currentUser.uid) return;
+
+    setIsSubmitting(true);
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+
+    try {
+      let photoURL = null;
+      if (scannedCardPreview) {
+        try {
+          const blob = await (await fetch(scannedCardPreview)).blob();
+          const file = new File([blob], `business_card_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          photoURL = await uploadFileWithFallback(file, file.name, safeCompanyId, 'crm_avatars');
+        } catch (e) {
+          console.warn('Avatar upload fallback handled:', e);
+        }
+      }
+
+      const fullName = [scannedContactData.firstName, scannedContactData.lastName].filter(Boolean).join(' ');
+
+      const dbPayload: any = {
+        company_id: safeCompanyId,
+        first_name: scannedContactData.firstName || null,
+        last_name: scannedContactData.lastName || null,
+        name: fullName || scannedContactData.company || t('unknown'),
+        email: scannedContactData.email || null,
+        phone: scannedContactData.phone || null,
+        company: scannedContactData.company || null,
+        role: 'partner',
+        status: 'neu',
+        created_at: new Date().toISOString()
       };
-      reader.readAsDataURL(file);
+
+      const { data: created, error: insertErr } = await supabase.from('company_users').insert(dbPayload).select().single();
+
+      if (insertErr) {
+        console.error("Error inserting contact:", insertErr);
+        addToast(t('upload_failed'), 'error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const finalContact = {
+        ...scannedContactData,
+        ...dbPayload,
+        id: created ? created.id : `user-${Date.now()}`,
+        photoURL,
+        isExternal: true
+      };
+
+      setCrmUsers((prev: any[]) => [finalContact, ...prev]);
+      setSelectedContact(finalContact);
+
+      await logAuditAction({
+        action: 'USER_INVITED',
+        userId: currentUser.uid,
+        companyId: safeCompanyId,
+        details: { invitedUserId: finalContact.id, isExternal: true, source: 'ai_card_scan' }
+      });
+
+      addToast('Kontakt erfolgreich per Visitenkartenscan im CRM gespeichert!', 'success');
+      setIsScannerModalOpen(false);
+      setScannedCardPreview(null);
+      setScannedContactData({
+        firstName: '', lastName: '', company: '', email: '', phone: '',
+        street: '', zipCity: '', website: '', description: ''
+      });
+      fetchCompanyUsers?.();
+    } catch (err) {
+      console.error("Save scanned contact error:", err);
+      addToast(t('upload_failed'), 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -668,12 +852,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         </div>
         
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto">
-          {/* Visitenkarte Kamera Scan Button für Smartphones */}
-          <input type="file" accept="image/*" capture="environment" ref={cameraInputRef} className="hidden" onChange={handleCameraCapture} />
+          {/* Visitenkarte KI Scanner Button */}
           <button 
-            onClick={() => cameraInputRef.current?.click()} 
+            onClick={() => setIsScannerModalOpen(true)} 
             className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
-            title="Visitenkarte mit Smartphone-Kamera abfotografieren"
+            title="Visitenkarte scannen & per KI auslesen"
           >
             <Camera size={16} /> <span>Visitenkarte scannen</span>
           </button>
@@ -1136,6 +1319,137 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
               </div>
             </div>
           </div>
+        </div>,
+        document.body
+      )}
+
+      {/* VISITENKARTE SCANNER MODAL */}
+      {isScannerModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+            
+            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary">
+                <Camera size={20} className="text-accent-ai" /> Visitenkarte scannen & KI-Erfassung
+              </h3>
+              <button onClick={() => { setIsScannerModalOpen(false); setScannedCardPreview(null); }} className="text-text-muted hover:text-text-primary p-2">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1">
+              
+              {/* AKTIONEN: FOTO NEHMEN / HOCHLADEN */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-background border border-border/50 rounded-xl p-5 flex flex-col items-center justify-center text-center">
+                  <input type="file" accept="image/*" capture="environment" ref={scannerInputRef} className="hidden" onChange={handleBusinessCardScan} />
+                  <button
+                    type="button"
+                    onClick={() => scannerInputRef.current?.click()}
+                    disabled={isScanningCard}
+                    className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-2.5 shadow-md transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isScanningCard ? <Loader2 size={18} className="animate-spin" /> : <Camera size={18} />}
+                    {isScanningCard ? 'Analysiere Visitenkarte...' : 'Visitenkarte fotografieren / Bild wählen'}
+                  </button>
+                  <p className="text-xs text-text-muted mt-2 font-medium">
+                    Fotografiere eine Visitenkarte – KI liest Name, Firma, E-Mail & Telefon automatisch aus.
+                  </p>
+                </div>
+
+                <div className="bg-background border border-blue-500/20 rounded-xl p-4 flex flex-col items-center text-center">
+                  <h4 className="text-xs font-bold text-blue-500 mb-1 flex items-center gap-1.5"><Smartphone size={14} /> Smartphone QR-Scan</h4>
+                  <p className="text-[11px] text-text-muted mb-2 font-medium">Scanne diesen Code mit der Handy-Kamera:</p>
+                  <div className="bg-white p-2 rounded-lg border border-border shadow-sm">
+                    <QRCode value={mobileUploadUrl} size={110} />
+                  </div>
+                </div>
+              </div>
+
+              {/* BILD VORSCHAU & KI STATUS */}
+              {isScanningCard && (
+                <div className="p-6 bg-accent-ai/10 border border-accent-ai/20 rounded-xl text-center flex flex-col items-center justify-center gap-3">
+                  <Loader2 size={28} className="animate-spin text-accent-ai" />
+                  <p className="text-sm font-bold text-accent-ai">Visitenkarte wird per KI analysiert und ausgelesen...</p>
+                </div>
+              )}
+
+              {scannedCardPreview && !isScanningCard && (
+                <div className="flex items-center gap-4 p-3 bg-background border border-border/50 rounded-xl">
+                  <div className="w-24 h-16 rounded-lg overflow-hidden border border-border shrink-0 bg-black">
+                    <img src={scannedCardPreview} alt="Scanned card" className="w-full h-full object-cover" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-text-primary">Visitenkarten-Foto erfasst</p>
+                    <p className="text-[11px] text-text-muted">Klicke unten auf "Kontakt im CRM speichern", um diesen Eintrag zu erstellen.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* GESCANNTE FORMULAR DATEN */}
+              <form onSubmit={handleSaveScannedContactToCRM} className="space-y-4 pt-2 border-t border-border/50">
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest">Gescannte Kontaktdaten (KI-Vorausgefüllt)</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Vorname</label>
+                    <input type="text" value={scannedContactData.firstName} onChange={e => setScannedContactData({ ...scannedContactData, firstName: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="Vorname" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Nachname</label>
+                    <input type="text" value={scannedContactData.lastName} onChange={e => setScannedContactData({ ...scannedContactData, lastName: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="Nachname" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Firma</label>
+                    <input type="text" value={scannedContactData.company} onChange={e => setScannedContactData({ ...scannedContactData, company: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="Firma" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Position / Jobtitel</label>
+                    <input type="text" value={scannedContactData.description} onChange={e => setScannedContactData({ ...scannedContactData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="Position / Notizen" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">E-Mail</label>
+                    <input type="email" value={scannedContactData.email} onChange={e => setScannedContactData({ ...scannedContactData, email: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="email@firma.ch" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Telefon</label>
+                    <input type="text" value={scannedContactData.phone} onChange={e => setScannedContactData({ ...scannedContactData, phone: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="+41 ..." />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Strasse & Hausnummer</label>
+                    <input type="text" value={scannedContactData.street} onChange={e => setScannedContactData({ ...scannedContactData, street: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="Strasse 12" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">PLZ & Ort</label>
+                    <input type="text" value={scannedContactData.zipCity} onChange={e => setScannedContactData({ ...scannedContactData, zipCity: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="8000 Zürich" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-text-muted uppercase">Webseite</label>
+                    <input type="text" value={scannedContactData.website} onChange={e => setScannedContactData({ ...scannedContactData, website: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" placeholder="www.firma.ch" />
+                  </div>
+                </div>
+
+                <div className="pt-4 flex justify-end gap-3 border-t border-border/50">
+                  <button type="button" onClick={() => { setIsScannerModalOpen(false); setScannedCardPreview(null); }} className="px-5 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors">
+                    {t('cancel')}
+                  </button>
+                  <button type="submit" disabled={isSubmitting || isScanningCard} className="px-7 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center gap-2 disabled:opacity-50">
+                    {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                    {t('save_contact')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
         </div>,
         document.body
       )}

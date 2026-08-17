@@ -300,6 +300,66 @@ export default function LeadsTab() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    if (!vcardSessionId) return;
+
+    const channel = supabase.channel(`vcard_upload_${vcardSessionId}`)
+      .on('broadcast', { event: 'vcard_scanned' }, ({ payload }) => {
+        if (payload) {
+          setScannedData({
+            firstName: payload.firstName || '',
+            lastName: payload.lastName || '',
+            company: payload.company || '',
+            email: payload.email || '',
+            phone: payload.phone || '',
+            street: payload.street || '',
+            zipCity: payload.zipCity || '',
+            description: payload.description || ''
+          });
+          setLeadTab('scanner');
+          addToast('Visitenkarte vom Smartphone empfangen & per KI ausgelesen!', 'success');
+        }
+      })
+      .subscribe();
+
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await supabase
+          .from('temp_receipts')
+          .select('*')
+          .eq('session_id', vcardSessionId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (data && data.length > 0) {
+          const rec = data[0];
+          let parsed: any = null;
+          try { parsed = JSON.parse(rec.file_name); } catch (e) {}
+          if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
+            setScannedData({
+              firstName: parsed.firstName || '',
+              lastName: parsed.lastName || '',
+              company: parsed.company || '',
+              email: parsed.email || '',
+              phone: parsed.phone || '',
+              street: parsed.street || '',
+              zipCity: parsed.zipCity || '',
+              description: parsed.description || ''
+            });
+            setLeadTab('scanner');
+            addToast('Visitenkarte vom Smartphone empfangen & per KI ausgelesen!', 'success');
+            await supabase.from('temp_receipts').delete().eq('id', rec.id);
+          }
+        }
+      } catch (err) {}
+    }, 3000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [vcardSessionId]);
+
   const fetchLeads = async () => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -658,6 +718,26 @@ export default function LeadsTab() {
         <div className="bg-surface border border-border rounded-xl p-6 md:p-8 max-w-4xl mx-auto w-full relative shadow-sm animate-in fade-in">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
+            <div className="lg:col-span-3 mb-2">
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment" 
+                ref={mobileFileInputRef} 
+                onChange={handleMobileCardScan} 
+                className="hidden" 
+              />
+              <button 
+                type="button"
+                onClick={() => mobileFileInputRef.current?.click()} 
+                disabled={isScanningCard} 
+                className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isScanningCard ? <Loader2 className="animate-spin" size={20}/> : <Camera size={20}/>}
+                {isScanningCard ? t('analyzing') : t('take_photo')}
+              </button>
+            </div>
+
             {!isMobileOrTablet && (
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-background border border-blue-500/20 rounded-xl p-6 flex flex-col items-center text-center relative overflow-hidden group">
@@ -668,27 +748,6 @@ export default function LeadsTab() {
                     <QRCode value={mobileUploadUrl} size={150}/>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {isMobileOrTablet && (
-              <div className="lg:col-span-3 mb-2">
-                <button 
-                  onClick={() => mobileFileInputRef.current?.click()} 
-                  disabled={isScanningCard} 
-                  className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
-                >
-                  {isScanningCard ? <Loader2 className="animate-spin" size={20}/> : <Camera size={20}/>}
-                  {isScanningCard ? t('analyzing') : t('take_photo')}
-                </button>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment" 
-                  ref={mobileFileInputRef} 
-                  onChange={handleMobileCardScan} 
-                  className="hidden" 
-                />
               </div>
             )}
 
