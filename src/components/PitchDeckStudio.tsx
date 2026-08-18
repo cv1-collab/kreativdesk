@@ -13,7 +13,7 @@ import {
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
-  Copy, Zap, Check, Edit3
+  Copy, Zap, Check, Edit3, Wand2
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -97,7 +97,7 @@ interface Slide {
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut'; 
   fontSize?: number; 
   dataPayload?: any; 
 }
@@ -106,6 +106,7 @@ interface DeckSettings {
   footerText: string; 
   themeColor: string; 
   themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech'; 
+  transitionEffect?: 'fade' | 'slide' | 'zoom';
 }
 
 export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () => void, projectId?: string }) {
@@ -198,10 +199,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [presenterIndex, setPresenterIndex] = useState(0);
   const [presenterSeconds, setPresenterSeconds] = useState(0);
 
-  // Check connected project modules for live badges
-  const targetId = projectId || importProjectId;
-  const hasRealDefects = (defects || []).some((d: any) => d.projectId === targetId);
-  const hasRealTeam = (projectMembers || []).some((m: any) => m.projectId === targetId);
+  // Connected project modules check for live badges
+  const targetProjId = projectId || importProjectId;
+  const hasRealDefects = (defects || []).some((d: any) => d.projectId === targetProjId);
+  const hasRealTeam = (projectMembers || []).some((m: any) => m.projectId === targetProjId);
 
   useEffect(() => {
     let timer: any;
@@ -254,7 +255,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const handleDuplicateSlide = async () => {
     if (!activeSlide || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     const newId = `slide-${Date.now()}`;
     const duplicated: Slide = {
       ...activeSlide,
@@ -267,7 +268,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     try {
       await supabase.from('slides').insert({
         id: newId,
-        project_id: targetProjId,
+        project_id: targetId,
         company_id: safeCompanyId,
         title: duplicated.title,
         content: duplicated.content,
@@ -297,15 +298,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       {
         "title": "Foliene Titel",
         "content": "Stichpunkte oder Fliesstext...",
-        "layout": "title-only" | "split" | "image-focus" | "text-only" | "data-budget" | "smart-calendar" | "defect-grid" | "team-grid",
-        "dataPayload": optionales Objekt (z.B. { "budgetGroups": [...] } für budget, { "milestones": [...] } für calendar, { "defects": [...] } für defects, { "members": [...] } für team)
+        "layout": "title-only" | "split" | "image-focus" | "text-only" | "data-budget" | "smart-calendar" | "defect-grid" | "team-grid" | "chart-donut",
+        "dataPayload": optionales Objekt (z.B. { "budgetGroups": [...] } für budget, { "chartSegments": [ { "label": "BKP 1", "value": 65000, "color": "#3b82f6" } ] } für chart-donut, { "milestones": [...] } für calendar)
       }
-
-      Beispiel-Layouts & Payload Struktur wenn passend:
-      - data-budget: dataPayload = { "totalBudget": 450000, "budgetGroups": [ { "pos": "BKP 1", "title": "Honorare & Planung", "total": 80000 }, { "pos": "BKP 2", "title": "Ausführung & Rohbau", "total": 370000 } ] }
-      - smart-calendar: dataPayload = { "milestones": [ { "title": "Konzept & Entwurf", "start": "2026-01-01", "end": "2026-03-01", "status": "Abgeschlossen" }, { "title": "Bewilligung & Ausführung", "start": "2026-03-01", "end": "2026-09-01", "status": "Aktiv" } ] }
-      - defect-grid: dataPayload = { "defects": [ { "title": "Fensterrahmen EG West nachbessern", "location": "EG Wohnen", "status": "offen", "priority": "hoch" } ] }
-      - team-grid: dataPayload = { "members": [ { "name": "Dipl. Arch. ETH", "role": "Projektleitung", "email": "architektur@kreativdesk.ch" } ] }
 
       Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array, ohne Markdown oder Einleitung!`;
 
@@ -321,7 +316,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
       if (Array.isArray(generatedSlides) && generatedSlides.length > 0) {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-        const targetProjId = projectId || importProjectId || 'global';
+        const targetId = projectId || importProjectId || 'global';
 
         const newSlideObjects: Slide[] = generatedSlides.map((s, idx) => ({
           id: `slide-ai-${Date.now()}-${idx}`,
@@ -332,7 +327,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           order_index: slides.length + idx,
           ownerId: currentUser?.uid || '',
           companyId: safeCompanyId,
-          projectId: targetProjId,
+          projectId: targetId,
           created_at: new Date().toISOString()
         }));
 
@@ -363,7 +358,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const [deckSettings, setDeckSettings] = useState<DeckSettings>({
-    logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'swiss' 
+    logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'swiss', transitionEffect: 'fade'
   });
 
   const activeProject = projects.find((p: any) => p.id === (projectId || importProjectId));
@@ -434,15 +429,15 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   useEffect(() => {
     if (!currentUser || !currentUser.companyId) return;
     
-    const targetProjId = projectId || importProjectId;
+    const targetId = projectId || importProjectId;
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     
     const fetchSlides = async () => {
       let slidesArr: any[] = [];
       try {
         let query = supabase.from('slides').select('*');
-        if (targetProjId && targetProjId !== 'global') {
-          query = query.eq('project_id', targetProjId);
+        if (targetId && targetId !== 'global') {
+          query = query.eq('project_id', targetId);
         }
         const { data: loadedSlides } = await query;
         if (loadedSlides) {
@@ -464,7 +459,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         console.warn("Pitch deck slides fetch fallback handled:", err);
       }
 
-      if (slidesArr.length === 0 && targetProjId && (targetProjId.startsWith('prj-demo-') || targetProjId.startsWith('demo-'))) {
+      if (slidesArr.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
         try {
           const demoSlides = [
             { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', order_index: 0 },
@@ -474,9 +469,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           ];
           
           const slidesToInsert = demoSlides.map((s, i) => ({
-            id: `slide-demo-${targetProjId}-${i}`,
+            id: `slide-demo-${targetId}-${i}`,
             ...s,
-            project_id: targetProjId,
+            project_id: targetId,
             company_id: currentUser?.companyId || safeCompanyId,
             owner_id: currentUser?.uid,
             created_at: new Date().toISOString()
@@ -530,7 +525,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     setIsUploadingImage(true);
     try {
       const fileExt = file.name.split('.').pop();
@@ -544,7 +539,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       const newDoc = {
         name: file.name, url: downloadUrl, file_url: downloadUrl, size: `${Math.round(file.size / 1024)} KB`, type: file.type,
         owner_id: currentUser.uid, company_id: safeCompanyId,
-        project_id: targetProjId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
+        project_id: targetId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
       };
       const { data: created } = await supabase.from('documents').insert(newDoc).select().single();
       const docId = created ? created.id : `doc-${Date.now()}`;
@@ -704,6 +699,22 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         const tb = slide.dataPayload.totalBudget || slide.dataPayload.budgetGroups.reduce((acc:number, grp:any)=>acc+(grp.total||0), 0);
         docPdf.text(`Total Budget: CHF ${tb.toLocaleString('de-CH')}`, pw - 70, finalY + 10);
       }
+      else if (slide.layout === 'chart-donut' && slide.dataPayload?.chartSegments) {
+        const segments = slide.dataPayload.chartSegments;
+        const tData: any[] = segments.map((s: any) => {
+          const total = segments.reduce((acc: number, item: any) => acc + (item.value || 0), 0) || 1;
+          const pct = Math.round(((s.value || 0) / total) * 100);
+          return [s.label, `${pct}%`, `CHF ${(s.value || 0).toLocaleString('de-CH')}`];
+        });
+        autoTable(docPdf, { 
+          startY: cy, margin: { left: 15, right: 15 }, head: [['Kategorie', 'Anteil', 'Betrag']], body: tData, 
+          theme: 'grid', headStyles: { fillColor: deckSettings.themeColor }, styles: { fontSize: 9, cellPadding: 3, fillColor: isDarkTheme ? [40, 40, 40] : [255, 255, 255], textColor: isDarkTheme ? [255, 255, 255] : [20, 20, 20] }
+        });
+        const finalY = (docPdf as any).lastAutoTable.finalY || cy;
+        docPdf.setFontSize(12); docPdf.setTextColor(isDarkTheme ? 255 : 0); 
+        const totalAmt = slide.dataPayload.totalAmount || segments.reduce((acc: number, s: any) => acc + (s.value || 0), 0);
+        docPdf.text(`Baukosten Gesamt: CHF ${totalAmt.toLocaleString('de-CH')}`, pw - 80, finalY + 10);
+      }
     }
     return docPdf.output('blob');
   }, [slides, deckSettings, t]);
@@ -744,12 +755,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSavingToCloud(true);
     try {
-      const targetProjId = projectId || importProjectId || 'global';
+      const targetId = projectId || importProjectId || 'global';
       const { data: existingFolder } = await supabase
         .from('documents')
         .select('id')
         .eq('company_id', safeCompanyId)
-        .eq('project_id', targetProjId)
+        .eq('project_id', targetId)
         .eq('is_folder', true)
         .eq('name', 'Pitch Decks')
         .single();
@@ -758,7 +769,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (existingFolder) { targetFolderId = existingFolder.id; } 
       else {
          const { data: newF } = await supabase.from('documents').insert({
-            name: 'Pitch Decks', is_folder: true, project_id: targetProjId, folder_id: 'root', 
+            name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', 
             owner_id: currentUser.uid, company_id: safeCompanyId, category: 'projects', created_at: new Date().toISOString()
          }).select().single();
          if (newF) targetFolderId = newF.id;
@@ -773,7 +784,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         type: 'application/pdf', 
         url: downloadUrl, 
         file_url: downloadUrl, 
-        project_id: targetProjId, 
+        project_id: targetId, 
         folder_id: targetFolderId, 
         category: 'projects', 
         is_folder: false, 
@@ -783,7 +794,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         uploaded_at: new Date().toISOString()
       });
 
-      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', targetProjId);
+      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', targetId);
 
       addToast(t('upload_success'), 'success'); 
       setIsPdfModalOpen(false);
@@ -798,17 +809,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     const newId = `slide-${Date.now()}`;
     const newSlide: Slide = {
       id: newId, title, content: t('type_text_here'), order_index: slides.length, 
-      ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetProjId, 
+      ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
       layout, fontSize: 18, dataPayload, ...(imageUrl && { imageUrl })
     };
     try {
       const dbPayload: any = {
         id: newId,
-        project_id: targetProjId,
+        project_id: targetId,
         company_id: safeCompanyId,
         title: title || 'Neue Folie',
         content: t('type_text_here'),
@@ -860,18 +871,103 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     await Promise.all(newSlides.map((s, i) => supabase.from('slides').update({ order_index: i }).eq('id', s.id)));
   };
 
-  // ENHANCED REPORTING SLIDE GENERATORS WITH RICH SWISS ARCHITECTURE & CONSTRUCTION TEMPLATE FALLBACKS
+  // NEW FEATURE 1: INTERAKTIVE KREISDIAGRAMME (DONUT CHARTS FOR BAUKOSTEN SHARE)
+  const handleGenerateChartSlide = async () => {
+    const targetId = projectId || importProjectId || 'global';
+    let chartSegments: any[] = [];
+    let totalAmount = 0;
+
+    if (targetId && !targetId.startsWith('demo-')) {
+      try {
+        const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetId}`).maybeSingle();
+        const data = res.data?.data || res.data;
+        if (data) {
+          const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
+          if (activeVersion && activeVersion.groups) {
+            const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
+            chartSegments = activeVersion.groups.map((g: any, idx: number) => {
+              const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || (item.qty * item.unitPrice) || 0), 0);
+              totalAmount += groupTotal;
+              return { label: `${g.pos} ${g.title}`, value: groupTotal, color: colors[idx % colors.length] };
+            });
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (chartSegments.length === 0) {
+      chartSegments = [
+        { label: 'BKP 1 Vorbereitung & Honorare', value: 65000, color: '#3b82f6' },
+        { label: 'BKP 2 Gebäude & Rohbau', value: 520000, color: '#8b5cf6' },
+        { label: 'BKP 3 Haustechnik & Elektro', value: 185000, color: '#ec4899' },
+        { label: 'BKP 4 Innenausbau & Umgebung', value: 140000, color: '#10b981' }
+      ];
+      totalAmount = 910000;
+    }
+
+    await handleAddSlide('chart-donut', 'Baukosten-Verteilung (BKP Share)', { chartSegments, totalAmount });
+    addToast('Kreisdiagramm-Folie erstellt!', 'success');
+    setMobileTab('slides');
+  };
+
+  // NEW FEATURE 2: DIREKT-IMPORT AUS DEM WHITEBOARD
+  const handleImportWhiteboard = async () => {
+    const targetId = projectId || importProjectId || 'global';
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+
+    let whiteboardImage = '';
+    let sketchTitle = 'Whiteboard Skizze';
+
+    try {
+      const { data: docs } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('company_id', safeCompanyId)
+        .eq('project_id', targetId);
+
+      const whiteboardDocs = (docs || []).filter((d: any) => 
+        (d.url || d.file_url) && 
+        (d.category === 'whiteboard' || d.name?.toLowerCase().includes('whiteboard') || d.url?.includes('whiteboardExports'))
+      );
+
+      if (whiteboardDocs.length > 0) {
+        whiteboardImage = whiteboardDocs[0].url || whiteboardDocs[0].file_url;
+        sketchTitle = whiteboardDocs[0].name.split('.')[0] || 'Whiteboard Skizze';
+      }
+    } catch (e) {}
+
+    if (!whiteboardImage) {
+      try {
+        const localDraft = localStorage.getItem(`whiteboard_export_${targetId}`) || localStorage.getItem('whiteboard_draft');
+        if (localDraft && localDraft.startsWith('data:image')) {
+          whiteboardImage = localDraft;
+        }
+      } catch (e) {}
+    }
+
+    if (!whiteboardImage) {
+      whiteboardImage = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80';
+      sketchTitle = 'Whiteboard Architektur Skizze';
+    }
+
+    await handleAddSlide('image-focus', sketchTitle, null, whiteboardImage);
+    addToast('Whiteboard Skizze importiert!', 'success');
+    setMobileTab('slides');
+  };
+
+  // ENHANCED REPORTING SLIDE GENERATORS
   const handleGenerateBudgetSlide = async () => {
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     
     try {
       let budgetGroups: any[] = []; 
       let totalBudget = 0;
       
-      if (targetProjId && !targetProjId.startsWith('demo-')) {
+      if (targetId && !targetId.startsWith('demo-')) {
         let finConfig: any = null;
         try {
-          const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetProjId}`).maybeSingle();
+          const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetId}`).maybeSingle();
           finConfig = res.data;
         } catch (e) {}
         const data = (finConfig as any)?.data || finConfig;
@@ -887,7 +983,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         }
       }
 
-      // RICH SWISS BKP TEMPLATE FALLBACK IF NO REAL PROJECT BUDGET EXISTS
       if (budgetGroups.length === 0) {
         budgetGroups = [
           { 
@@ -930,16 +1025,16 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleGenerateTimelineSlide = async () => {
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     
     try {
       let milestones: any[] = [];
-      if (targetProjId && !targetProjId.startsWith('demo-')) {
+      if (targetId && !targetId.startsWith('demo-')) {
         try {
-          const localCache = localStorage.getItem(`schedule_cache_${targetProjId}`);
+          const localCache = localStorage.getItem(`schedule_cache_${targetId}`);
           let tasks: any[] = localCache ? (JSON.parse(localCache).ganttTasks || []) : [];
           if (tasks.length === 0) {
-            const { data } = await supabase.from('system_config').select('*').eq('id', `schedule_${targetProjId}`).maybeSingle();
+            const { data } = await supabase.from('system_config').select('*').eq('id', `schedule_${targetId}`).maybeSingle();
             tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || [];
           }
           if (tasks.length > 0) {
@@ -956,7 +1051,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         } catch (e) {}
       }
       
-      // RICH GANTT TIMELINE TEMPLATE FALLBACK
       if (milestones.length === 0) {
         const today = new Date();
         milestones = [
@@ -973,14 +1067,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleImportDefects = async () => {
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     
     let projectDefects: any[] = [];
-    if (targetProjId && !targetProjId.startsWith('demo-')) {
-      projectDefects = (defects || []).filter((d:any) => d.projectId === targetProjId && d.status !== 'erledigt').slice(0, 4);
+    if (targetId && !targetId.startsWith('demo-')) {
+      projectDefects = (defects || []).filter((d:any) => d.projectId === targetId && d.status !== 'erledigt').slice(0, 4);
     }
     
-    // RICH DEFECT TICKETS TEMPLATE FALLBACK IF NO REAL TICKETS EXIST
     if (projectDefects.length === 0) {
       projectDefects = [
         { id: 'def-1', title: 'Kratzer an Fensterrahmen EG West', location: 'Erdgeschoss Wohnzimmer', status: 'offen', priority: 'hoch', imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80' },
@@ -996,12 +1089,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleGenerateTeamSlide = async () => {
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     
     let teamMembers: any[] = [];
     
-    if (targetProjId && !targetProjId.startsWith('demo-')) {
-      teamMembers = (projectMembers || []).filter((m: any) => m.projectId === targetProjId).map((m: any) => {
+    if (targetId && !targetId.startsWith('demo-')) {
+      teamMembers = (projectMembers || []).filter((m: any) => m.projectId === targetId).map((m: any) => {
         const user = (companyUsers || []).find((u: any) => u.id === m.userId);
         const avatar = user?.photoURL || user?.avatar || m.avatar || m.photoURL || '';
         return { 
@@ -1014,7 +1107,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       }).filter(Boolean);
     }
 
-    // RICH TEAM TEMPLATE FALLBACK IF NO REAL MEMBERS ASSIGNED
     if (teamMembers.length === 0) {
       teamMembers = [
         { name: 'Dipl. Arch. ETH / SIA', role: 'Hauptarchitektur & Entwurf', email: 'architektur@kreativdesk.ch', phone: '+41 44 123 45 67', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
@@ -1030,14 +1122,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const openMediaPicker = async (mediaType: 'cad' | 'render' | 'whiteboard' | 'bim', title: string, action: 'slide'|'team' = 'slide', meta: any = null) => {
-    const targetProjId = projectId || importProjectId || 'global';
+    const targetId = projectId || importProjectId || 'global';
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     setMediaPickerType({ folderId: mediaType, title, action, meta });
     setIsMediaLoading(true);
     try {
-      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId).eq('project_id', targetProjId);
+      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId).eq('project_id', targetId);
       const filteredDocs = (docs || []).filter((d:any) => (d.url || d.file_url) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
       setAvailableMedia(filteredDocs.map((d: any) => ({...d, url: d.url || d.file_url})));
     } catch(e) { addToast(t('error_load'), "error"); }
@@ -1084,6 +1176,34 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }
   };
 
+  const getTransitionVariants = () => {
+    const effect = deckSettings.transitionEffect || 'fade';
+    switch (effect) {
+      case 'slide':
+        return {
+          initial: { opacity: 0, x: 60 },
+          animate: { opacity: 1, x: 0 },
+          exit: { opacity: 0, x: -60 },
+          transition: { duration: 0.35 }
+        };
+      case 'zoom':
+        return {
+          initial: { opacity: 0, scale: 0.92 },
+          animate: { opacity: 1, scale: 1 },
+          exit: { opacity: 0, scale: 1.05 },
+          transition: { duration: 0.35 }
+        };
+      case 'fade':
+      default:
+        return {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 },
+          transition: { duration: 0.3 }
+        };
+    }
+  };
+
   const upc = (field: keyof Slide, value: any) => {
     if (!isPreviewMode && activeSlide) {
       const validCols = ['title', 'subtitle', 'content', 'layout', 'image_url', 'order_index'];
@@ -1117,6 +1237,68 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         </div>
         
         <div className="h-[75%] w-full flex items-start z-10 pt-4 overflow-hidden">
+          {/* FEATURE 1: INTERAKTIVER DONUT / KREISDIAGRAMM */}
+          {slide.layout === 'chart-donut' && slide.dataPayload?.chartSegments && (
+             <div className="w-full h-full flex flex-col md:flex-row items-center justify-center gap-8 col-span-full p-4 overflow-hidden">
+                <div className="relative w-64 h-64 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    {(() => {
+                      const segments = slide.dataPayload.chartSegments;
+                      const total = segments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
+                      let cumulativePercent = 0;
+
+                      return segments.map((seg: any, idx: number) => {
+                        const percent = (seg.value || 0) / total;
+                        const strokeDasharray = `${percent * 282.7} 282.7`;
+                        const strokeDashoffset = -cumulativePercent * 282.7;
+                        cumulativePercent += percent;
+
+                        return (
+                          <circle
+                            key={idx}
+                            cx="50"
+                            cy="50"
+                            r="45"
+                            fill="transparent"
+                            stroke={seg.color || ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'][idx % 5]}
+                            strokeWidth="10"
+                            strokeDasharray={strokeDasharray}
+                            strokeDashoffset={strokeDashoffset}
+                            className="transition-all duration-700 hover:opacity-80 cursor-pointer"
+                          />
+                        );
+                      });
+                    })()}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Gesamt</span>
+                    <span className="text-xl font-extrabold truncate max-w-[140px]" style={{ color: deckSettings.themeColor }}>
+                      CHF {(slide.dataPayload.totalAmount || slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0)).toLocaleString('de-CH')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-h-full overflow-y-auto custom-scrollbar">
+                  {slide.dataPayload.chartSegments.map((seg: any, idx: number) => {
+                    const total = slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
+                    const pct = Math.round(((seg.value || 0) / total) * 100);
+                    return (
+                      <div key={idx} className={cn("p-4 rounded-xl border flex items-center justify-between shadow-sm", isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
+                        <div className="flex items-center gap-3 truncate pr-2">
+                          <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: seg.color || ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'][idx % 5] }}></span>
+                          <div className="truncate">
+                            <div className={cn("font-bold text-sm truncate", tc)}>{seg.label}</div>
+                            <div className="text-xs opacity-60 font-mono">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                          </div>
+                        </div>
+                        <div className="text-lg font-black font-mono shrink-0 opacity-80" style={{ color: seg.color }}>{pct}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+             </div>
+          )}
+
           {slide.layout === 'smart-calendar' && slide.dataPayload?.milestones && (
              <div className="w-full h-full flex flex-col col-span-full">
                 <div className={cn("flex-1 flex flex-col border rounded-2xl overflow-hidden shadow-2xl", isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
@@ -1358,9 +1540,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           )}
           {activeSlide ? (
             <div className="flex items-center justify-center shrink-0" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
-              <div style={{ width: 1000, height: 562 }} className="shrink-0 shadow-2xl">
-                 {renderSlideContent(activeSlide)}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div key={activeSlide.id} {...getTransitionVariants()} style={{ width: 1000, height: 562 }} className="shrink-0 shadow-2xl">
+                   {renderSlideContent(activeSlide)}
+                </motion.div>
+              </AnimatePresence>
             </div>
           ) : (
             <Loader2 className="animate-spin text-text-muted" />
@@ -1449,6 +1633,27 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold cursor-pointer", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-400":"bg-surface border-border text-text-primary")}>{thm.n}</button>
                   ))}
                 </div>
+
+                <div className="pt-2">
+                  <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Folien-Animation</label>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'fade', label: 'Überblenden (Fade)' },
+                      { id: 'slide', label: 'Gleiten (Slide)' },
+                      { id: 'zoom', label: 'Zoom' }
+                    ].map(fx => (
+                      <button
+                        key={fx.id}
+                        type="button"
+                        onClick={() => updateDeckSettings({ transitionEffect: fx.id as any })}
+                        className={cn("flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/20 border-purple-500 text-purple-400" : "bg-surface border-border text-text-primary")}
+                      >
+                        {fx.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="pt-2">
                   <label className="text-xs font-bold text-text-muted uppercase mb-2 block">Footer Text</label>
                   <input type="text" value={deckSettings.footerText} onChange={e => updateDeckSettings({ footerText: e.target.value })} className="w-full bg-surface border border-border rounded-xl px-4 py-4 text-sm text-text-primary outline-none focus:border-purple-500" />
@@ -1472,6 +1677,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
                     <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
+                  <button type="button" onClick={handleGenerateChartSlide} className="w-full p-4 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><PieChart size={18}/> Baukosten Chart</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 rounded font-mono">Donut</span>
+                  </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><CalendarDays size={18}/>{t('generate_roadmap')}</span>
                     <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-mono">Vorlage</span>
@@ -1484,9 +1693,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <span className="flex items-center gap-3"><AlertTriangle size={18}/>{t('import_defects')}</span>
                     <span className="text-[10px] px-2 py-0.5 bg-red-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
-                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-4 rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-3"><Box size={18}/>{t('import_renderings')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-pink-500/20 rounded font-mono">Medien</span>
+                  <button type="button" onClick={handleImportWhiteboard} className="w-full p-4 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><PenTool size={18}/> Whiteboard Skizze</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 rounded font-mono">Import</span>
                   </button>
                 </div>
               </div>
@@ -1503,6 +1712,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           <div className="w-72 bg-surface border-r border-border flex-col shrink-0 shadow-2xl z-20 flex">
             <div className="h-16 flex items-center px-5 border-b border-border"><MonitorPlay className="mr-3 text-purple-400" size={18} /><h2 className="font-bold text-sm uppercase">{t('deck_engine')}</h2></div>
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+              
+              {/* MASTER TEMPLATES & ANIMATIONS */}
               <div className="tour-deck-template">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
                 <div className="grid grid-cols-1 gap-1.5">
@@ -1513,7 +1724,28 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     </button>
                   ))}
                 </div>
+
+                <div className="pt-4 border-t border-border mt-4">
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2"><Wand2 size={14}/> Folien-Animation</h3>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'fade', label: 'Fade' },
+                      { id: 'slide', label: 'Slide' },
+                      { id: 'zoom', label: 'Zoom' }
+                    ].map(fx => (
+                      <button
+                        key={fx.id}
+                        type="button"
+                        onClick={() => updateDeckSettings({ transitionEffect: fx.id as any })}
+                        className={cn("py-1.5 px-2 rounded-md border text-center transition-all text-[11px] font-bold", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/10 border-purple-500 text-purple-400 shadow-sm" : "bg-background border-border text-text-muted hover:text-text-primary")}
+                      >
+                        {fx.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
+
               <div className="pt-4 border-t border-border">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><LayoutDashboard size={14}/> {t('import_app_data')}</h3>
                 {!projectId && (
@@ -1526,6 +1758,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-bold border border-emerald-500/20">
                     <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300">BKP Plan</span>
+                  </button>
+                  <button type="button" onClick={handleGenerateChartSlide} className="w-full p-2.5 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-between hover:bg-purple-500/20 transition-all text-xs font-bold border border-purple-500/20">
+                    <span className="flex items-center gap-2.5"><PieChart size={15}/> Baukosten Chart</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-purple-500/20 text-purple-300">Donut</span>
                   </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-between hover:bg-orange-500/20 transition-all text-xs font-bold border border-orange-500/20">
                     <span className="flex items-center gap-2.5"><CalendarDays size={15}/>{t('generate_roadmap')}</span>
@@ -1540,6 +1776,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
                   <div className="w-full h-px bg-border/50 my-1"></div>
+                  <button type="button" onClick={handleImportWhiteboard} className="w-full p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-between hover:bg-cyan-500/20 transition-all text-xs font-bold border border-cyan-500/20">
+                    <span className="flex items-center gap-2.5"><PenTool size={15}/> Whiteboard Skizze</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-cyan-500/20 text-cyan-300">Skizze</span>
+                  </button>
                   <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-between hover:bg-pink-500/20 transition-all text-xs font-bold border border-pink-500/20">
                     <span className="flex items-center gap-2.5"><Box size={15}/>{t('import_renderings')}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-pink-500/20 text-pink-300">Medien</span>
@@ -1550,7 +1790,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           </div>
         )}
 
-        {/* DESKTOP RIGHT SIDEBAR (Slide List & In-line Quick Editor) */}
+        {/* DESKTOP RIGHT SIDEBAR */}
         {!isPreviewMode && (
           <div className="w-60 bg-background border-r border-border flex-col shrink-0 z-10 flex">
             <div className="h-16 px-4 border-b border-border flex justify-between items-center relative">
@@ -1567,6 +1807,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
                     <button type="button" onClick={() => handleAddSlide('text-only', t('text_block'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Layout size={14}/> {t('text_block')}</button>
+                    <button type="button" onClick={handleGenerateChartSlide} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><PieChart size={14}/> Baukosten Donut</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1601,13 +1842,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 <div className="flex items-center gap-3">
                   <div className="h-6 w-px bg-border mx-1"></div>
                   
-                  {/* LAYOUT SELECTOR BUTTONS WITH DIRECT STATE SYNC */}
+                  {/* LAYOUT SELECTOR BUTTONS */}
                   <div className="flex flex-row bg-background border border-border rounded-lg p-0.5">
                     {[
                       { id: 'title-only', icon: Type, title: 'Titel-Folie' },
                       { id: 'split', icon: Columns, title: 'Text & Bild' },
                       { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
-                      { id: 'text-only', icon: Layout, title: 'Nur Text' }
+                      { id: 'text-only', icon: Layout, title: 'Nur Text' },
+                      { id: 'chart-donut', icon: PieChart, title: 'Baukosten Donut Chart' }
                     ].map((l) => (
                       <button 
                         type="button" 
@@ -1621,7 +1863,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     ))}
                   </div>
                   
-                  {/* FONT SIZE CONTROLS WITH DIRECT STATE SYNC */}
+                  {/* FONT SIZE CONTROLS */}
                   <div className="flex flex-row items-center bg-background border border-border rounded-lg p-0.5">
                     <button type="button" onClick={() => handleFontSizeChange(-2)} className="p-1.5 text-text-muted hover:text-text-primary" title="Schrift verkleinern"><Minus size={14} /></button>
                     <span className="text-xs font-bold w-6 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
@@ -1677,9 +1919,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             <div className="w-full h-full flex items-center justify-center">
               {activeSlide ? (
                 <div className="flex items-center justify-center shrink-0" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
-                  <div style={{ width: 1000, height: 562 }} className="shadow-2xl shrink-0 transition-transform duration-300">
-                    {renderSlideContent(activeSlide)}
-                  </div>
+                  <AnimatePresence mode="wait">
+                    <motion.div key={activeSlide.id} {...getTransitionVariants()} style={{ width: 1000, height: 562 }} className="shadow-2xl shrink-0 transition-transform duration-300">
+                      {renderSlideContent(activeSlide)}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               ) : null}
             </div>
@@ -1798,7 +2042,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         )}
       </AnimatePresence>
 
-      {/* FULLSCREEN PRESENTER MODE OVERLAY */}
+      {/* FULLSCREEN PRESENTER MODE OVERLAY WITH ANIMATIONS */}
       {isPresenterMode && slides[presenterIndex] && (
         <div className="fixed inset-0 z-[200000] bg-black text-white flex flex-col items-center justify-between p-6 select-none animate-in fade-in duration-200">
           <div className="w-full flex items-center justify-between border-b border-white/10 pb-4">
@@ -1818,10 +2062,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             </div>
           </div>
 
-          <div className="flex-1 w-full flex items-center justify-center p-4">
-            <div style={{ width: 1000, height: 562, transform: 'scale(1.25)', transformOrigin: 'center' }} className="shadow-2xl rounded-xl overflow-hidden shrink-0 border border-white/20">
-              {renderSlideContent(slides[presenterIndex])}
-            </div>
+          <div className="flex-1 w-full flex items-center justify-center p-4 overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={slides[presenterIndex].id} 
+                {...getTransitionVariants()} 
+                style={{ width: 1000, height: 562, transform: 'scale(1.25)', transformOrigin: 'center' }} 
+                className="shadow-2xl rounded-xl overflow-hidden shrink-0 border border-white/20"
+              >
+                {renderSlideContent(slides[presenterIndex])}
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           <div className="w-full flex items-center justify-between border-t border-white/10 pt-4">

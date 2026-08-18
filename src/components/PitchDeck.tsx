@@ -20,7 +20,7 @@ interface Slide {
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut'; 
   fontSize?: number; 
   dataPayload?: any; 
 }
