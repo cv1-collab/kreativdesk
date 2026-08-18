@@ -217,7 +217,6 @@ export default function GuestMeet() {
       .on('broadcast', { event: 'new_chat_msg' }, ({ payload }) => {
         if (payload && payload.id) {
           setMessages(prev => {
-            if (prev.some(m => m.id === payload.id)) return prev;
             let rawText = payload.text || payload.message || '';
             let fileUrl = payload.fileUrl || payload.file_url || null;
             if (rawText && rawText.includes('[FILE:')) {
@@ -227,6 +226,7 @@ export default function GuestMeet() {
                 rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
               }
             }
+            if (prev.some(m => m.id === payload.id || (m.sender === (payload.sender || payload.sender_name) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
             return [...prev, {
               id: payload.id,
               sender: payload.sender || payload.sender_name || 'Gast',
@@ -252,7 +252,7 @@ export default function GuestMeet() {
             }
           }
           setMessages(prev => {
-            if (prev.some(m => m.id === d.id)) return prev;
+            if (prev.some(m => m.id === d.id || (m.sender === (d.sender_name || d.sender) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
             return [...prev, {
               id: d.id,
               sender: d.sender_name || d.sender || 'Gast',

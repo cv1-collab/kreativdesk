@@ -645,7 +645,7 @@ export default function MeetChat() {
           }
 
           setMessages(prev => {
-            if (prev.some(m => m.id === payload.id)) return prev;
+            if (prev.some(m => m.id === payload.id || (m.sender === (payload.sender || payload.sender_name) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
             return [...prev, {
               id: payload.id,
               sender: payload.sender || payload.sender_name || 'System',
@@ -675,7 +675,7 @@ export default function MeetChat() {
           }
 
           setMessages(prev => {
-            if (prev.some(m => m.id === d.id)) return prev;
+            if (prev.some(m => m.id === d.id || (m.sender === (d.sender_name || d.sender) && m.text === rawText && m.fileUrl === fileUrl))) return prev;
             return [...prev, {
               id: d.id,
               sender: d.sender_name || d.sender || 'System',
@@ -725,20 +725,7 @@ export default function MeetChat() {
     if (!newMessage.trim()) return;
 
     const userMessage = newMessage;
-    const senderName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-    const avatarInitials = senderName.substring(0, 2).toUpperCase();
     setNewMessage('');
-
-    // Optimistic UI update
-    const optId = `msg-${Date.now()}`;
-    setMessages(prev => [...prev, {
-      id: optId,
-      sender: senderName,
-      avatar: avatarInitials,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: userMessage
-    }]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
     try {
       await sendChatMessage({ text: userMessage });
