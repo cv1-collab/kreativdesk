@@ -664,7 +664,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [targetYearCalendar, setTargetYearCalendar] = useState(new Date().getFullYear());
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [] as string[], description: '' });
+  const [newEvent, setNewEvent] = useState({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [] as string[], description: '', videoProvider: 'kreativdesk', customLink: '' });
 
   const handleSaveCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -676,8 +676,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const targetProjectId = newEvent.projectId || 'global';
 
     try {
-      const callMeetingId = newEvent.type === 'call' ? `meet-${Date.now()}` : null;
-      const meetingLink = newEvent.type === 'call' ? `/project/${targetProjectId}/meet?join=${callMeetingId}` : null;
+      const callMeetingId = newEvent.type === 'call' ? (generatedMeetingId || `meet-${Date.now()}`) : null;
+      const meetingLink = newEvent.type === 'call'
+        ? (newEvent.videoProvider === 'custom' && newEvent.customLink ? newEvent.customLink : `/project/${targetProjectId}/meet?join=${callMeetingId}`)
+        : null;
 
       // 1. If it's a video call, pre-register in video_calls so external link works
       if (callMeetingId) {
@@ -785,7 +787,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       });
 
       setIsEventModalOpen(false);
-      setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '' });
+      setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '', videoProvider: 'kreativdesk', customLink: '' });
       addToast('Termin erfolgreich in der Agenda eingetragen!', 'success');
     } catch (err) {
       console.error(err);
@@ -1366,11 +1368,85 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                       <input type="date" required value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} className="bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" />
                       <input type="time" value={newEvent.time} onChange={e => setNewEvent({ ...newEvent, time: e.target.value })} className="bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none focus:border-accent-ai" />
                     </div>
+
+                    {/* VIDEOCALL LINK & PROVIDER HIGHLIGHT BOX */}
+                    {newEvent.type === 'call' && (
+                      <div className="space-y-3 p-4 bg-blue-500/5 border border-blue-500/30 rounded-xl animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-blue-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <Video size={14} /> Videocall Link & Provider
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setNewEvent({ ...newEvent, videoProvider: 'kreativdesk' })}
+                              className={cn("px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border cursor-pointer", newEvent.videoProvider === 'kreativdesk' ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-background text-text-muted border-border/50 hover:bg-white/5")}
+                            >
+                              KreativDesk Raum
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNewEvent({ ...newEvent, videoProvider: 'custom' })}
+                              className={cn("px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border cursor-pointer", newEvent.videoProvider === 'custom' ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-background text-text-muted border-border/50 hover:bg-white/5")}
+                            >
+                              Externer Link (Google/Teams/Zoom)
+                            </button>
+                          </div>
+                        </div>
+
+                        {newEvent.videoProvider === 'kreativdesk' ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                readOnly
+                                value={`${window.location.origin}/guest-meet/${generatedMeetingId || 'auto-room'}`}
+                                className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-xs font-mono font-bold text-text-primary select-all"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleCopyInviteLink(`/guest-meet/${generatedMeetingId || 'auto-room'}`)}
+                                className="px-3 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
+                              >
+                                <LinkIcon size={12} /> Link kopieren
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-text-muted font-medium">
+                              ✨ Externe Partner & Bauherren treten direkt ohne Login über diesen Gast-Link bei!
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <input
+                              type="url"
+                              placeholder="https://meet.google.com/abc-defg-hij oder https://zoom.us/j/..."
+                              value={newEvent.customLink || ''}
+                              onChange={(e) => setNewEvent({ ...newEvent, customLink: e.target.value })}
+                              className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                            />
+                            <p className="text-[11px] text-text-muted font-medium">
+                              Gib hier deinen individuellen Google Meet, Microsoft Teams oder Zoom Link ein.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('activity_desc')}</label>
+                      <textarea
+                        value={newEvent.description || ''}
+                        onChange={e => setNewEvent({ ...newEvent, description: e.target.value })}
+                        className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary h-20 resize-none custom-scrollbar outline-none focus:border-accent-ai"
+                        placeholder="Traktanden, Agenda-Notizen oder Treffpunkt..."
+                      />
+                    </div>
+
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                         <Users size={14} /> {t('invite_participants')}
                       </label>
-                      <div className="bg-background border border-border/50 rounded-xl p-4 max-h-40 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div className="bg-background border border-border/50 rounded-xl p-4 max-h-36 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2">
                         {allContacts.map((user: any) => (
                           <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-surface rounded-lg cursor-pointer transition-colors border border-transparent hover:border-border/50">
                             <input
