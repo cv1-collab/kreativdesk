@@ -75,22 +75,20 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675) * 0.95;
 
   useEffect(() => {
-    if (!currentProjectId) return;
-
     const loadDemoSlides = () => {
       const tpl = demoTemplates.construction;
       const dynamicSlides: Slide[] = [
         {
           id: `demo-slide-1`, title: tpl.project?.name || 'Projekt', content: tpl.project?.description || '',
-          order_index: 0, ownerId: 'demo', projectId: currentProjectId, layout: 'image-focus', fontSize: 32, imageUrl: tpl.camera?.url || ''
+          order_index: 0, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'image-focus', fontSize: 32, imageUrl: tpl.camera?.url || ''
         },
         {
           id: `demo-slide-2`, title: tpl.pitchDeck?.slides?.[0]?.title || 'Die Vision', content: tpl.pitchDeck?.slides?.[0]?.content || '',
-          order_index: 1, ownerId: 'demo', projectId: currentProjectId, layout: 'split', fontSize: 18, imageUrl: tpl.camera?.url || ''
+          order_index: 1, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'split', fontSize: 18, imageUrl: tpl.camera?.url || ''
         },
         {
           id: `demo-slide-3`, title: 'Projekt-Budget (Live-Status)', content: '',
-          order_index: 2, ownerId: 'demo', projectId: currentProjectId, layout: 'data-budget',
+          order_index: 2, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'data-budget',
           dataPayload: {
             totalBudget: tpl.financeGroups ? tpl.financeGroups.reduce((acc: number, g: any) => acc + g.items.reduce((sum: number, i: any) => sum + ((i.qty || i.quantity || 0) * (i.unitPrice || 0)), 0), 0) : 0,
             budgetGroups: tpl.financeGroups ? tpl.financeGroups.map((g:any) => ({
@@ -101,7 +99,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         },
         {
           id: `demo-slide-4`, title: 'Meilensteine & Terminplan', content: '',
-          order_index: 3, ownerId: 'demo', projectId: currentProjectId, layout: 'smart-calendar',
+          order_index: 3, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'smart-calendar',
           dataPayload: {
              milestones: tpl.tasks ? tpl.tasks.map((t:any) => {
                 const s = new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0];
@@ -112,12 +110,12 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         },
         {
           id: `demo-slide-5`, title: 'Aktuelle Mängel & Pendenzen', content: '',
-          order_index: 4, ownerId: 'demo', projectId: currentProjectId, layout: 'defect-grid',
+          order_index: 4, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'defect-grid',
           dataPayload: { defects: tpl.defects || [] }
         },
         {
           id: `demo-slide-6`, title: 'Das Projekt-Team', content: '',
-          order_index: 5, ownerId: 'demo', projectId: currentProjectId, layout: 'team-grid',
+          order_index: 5, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'team-grid',
           dataPayload: { members: tpl.members || [] }
         }
       ];
@@ -127,14 +125,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       setIsLoading(false);
     };
 
-    const isDemo = currentProjectId === 'demo-1';
-    if (isDemo) {
+    if (!currentProjectId || !currentUser || currentProjectId === 'demo-1') {
       loadDemoSlides();
       return;
     }
 
-    if (!currentUser) return;
-    
     const fetchSlides = async () => {
       try {
         const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -161,11 +156,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           setSlides(loadedSlides);
           if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
         } else {
-          setSlides([]);
-          setActiveSlideId(null);
+          loadDemoSlides();
         }
       } catch (e) {
         console.error(e);
+        loadDemoSlides();
       } finally {
         setIsLoading(false);
       }
