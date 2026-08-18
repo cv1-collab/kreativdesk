@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import { Outlet, NavLink, useParams, useNavigate } from 'react-router-dom';
+import ErrorBoundary from './ErrorBoundary';
 import { useProject } from '../contexts/ProjectContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -489,9 +490,11 @@ export default function Layout() {
         </div>
 
         <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 lg:p-6 z-10 pb-6 tour-proj-content">
-          <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="w-10 h-10 text-accent-ai animate-spin" /></div>}>
-            <Outlet />
-          </Suspense>
+          <ErrorBoundary fallbackTitle="Projekt-Modul konnte nicht geladen werden">
+            <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="w-10 h-10 text-accent-ai animate-spin" /></div>}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </main>
 

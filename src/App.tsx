@@ -11,6 +11,7 @@ import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import MaintenanceGuard from './components/MaintenanceGuard';
 import Screensaver from './components/Screensaver';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Context-Provider
 import { AuthProvider } from './contexts/AuthContext';
@@ -112,79 +113,80 @@ export default function App() {
                           </Suspense>
 
                           <Suspense fallback={<GlobalSuspenseFallback />}>
+                            <ErrorBoundary>
+                              <Routes>
+                                {/* Öffentliche Routen */}
+                                <Route path="/" element={<LandingPage />} />
+                                <Route path="/login" element={<Login />} />
+                                <Route path="/signup" element={<Signup />} />
+                                <Route path="/reset-password" element={<ResetPassword />} />
+                                <Route path="/pricing" element={<PricingPage />} />
+                                <Route path="/success" element={<SuccessPage />} />
+                                <Route path="/guest-meet/:joinId" element={<GuestMeet />} />
 
-                            <Routes>
-                              {/* Öffentliche Routen */}
-                              <Route path="/" element={<LandingPage />} />
-                              <Route path="/login" element={<Login />} />
-                              <Route path="/signup" element={<Signup />} />
-                              <Route path="/reset-password" element={<ResetPassword />} />
-                              <Route path="/pricing" element={<PricingPage />} />
-                              <Route path="/success" element={<SuccessPage />} />
-                              <Route path="/guest-meet/:joinId" element={<GuestMeet />} />
+                                {/* Legal Routen */}
+                                <Route path="/privacy" element={<PrivacyPolicy />} />
+                                <Route path="/imprint" element={<Imprint />} />
+                                <Route path="/terms" element={<TermsOfService />} />
 
-                              {/* Legal Routen */}
-                              <Route path="/privacy" element={<PrivacyPolicy />} />
-                              <Route path="/imprint" element={<Imprint />} />
-                              <Route path="/terms" element={<TermsOfService />} />
+                                <Route path="/lead-form/:companyId" element={<PublicLeadForm />} />
+                                <Route path="/lead-form" element={<PublicLeadForm />} />
 
-                              <Route path="/lead-form/:companyId" element={<PublicLeadForm />} />
-                              <Route path="/lead-form" element={<PublicLeadForm />} />
+                                <Route path="/mobile-upload/:type/:sessionId" element={<MobileUpload />} />
+                                <Route path="/deck" element={<PitchDeck />} />
 
-                              <Route path="/mobile-upload/:type/:sessionId" element={<MobileUpload />} />
-                              <Route path="/deck" element={<PitchDeck />} />
+                                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
-                              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                                {/* +++ HIER WIRD DER TRIAL GUARD INTEGRIERT +++ */}
+                                <Route path="/app" element={
+                                  <PrivateRoute>
+                                    <EmailVerificationGuard>
+                                      <TrialGuard>
+                                        <CompanyDashboard />
+                                      </TrialGuard>
+                                    </EmailVerificationGuard>
+                                  </PrivateRoute>
+                                } />
 
-                              {/* +++ HIER WIRD DER TRIAL GUARD INTEGRIERT +++ */}
-                              <Route path="/app" element={
-                                <PrivateRoute>
-                                  <EmailVerificationGuard>
-                                    <TrialGuard>
-                                      <CompanyDashboard />
-                                    </TrialGuard>
-                                  </EmailVerificationGuard>
-                                </PrivateRoute>
-                              } />
+                                {/* Settings, Help, Meet und Dashboard-Tabs bleiben OHNE ein spezifisches Projekt erreichbar */}
+                                <Route path="/help" element={<PrivateRoute><EmailVerificationGuard><HelpCenter /></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/settings" element={<PrivateRoute><EmailVerificationGuard><Settings /></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/meet" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/agenda" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/finance" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/projects" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/documents" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/templates" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/leads" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/crm" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/audit" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
 
-                              {/* Settings, Help, Meet und Dashboard-Tabs bleiben OHNE ein spezifisches Projekt erreichbar */}
-                              <Route path="/help" element={<PrivateRoute><EmailVerificationGuard><HelpCenter /></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/settings" element={<PrivateRoute><EmailVerificationGuard><Settings /></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/meet" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/agenda" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/finance" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/projects" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/documents" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/templates" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/leads" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/crm" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-                              <Route path="/audit" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
-
-                              {/* +++ PROJEKT BEREICH (KOMPLETT GESCHÜTZT) +++ */}
-                              <Route path="/project/:projectId" element={
-                                <PrivateRoute>
-                                  <EmailVerificationGuard>
-                                    <TrialGuard>
-                                      <Layout />
-                                    </TrialGuard>
-                                  </EmailVerificationGuard>
-                                </PrivateRoute>
-                              }>
-                                <Route index element={<Dashboard />} />
-                                <Route path="team" element={<ProjectTeam />} />
-                                <Route path="calendar" element={<Calendar />} />
-                                <Route path="finance" element={<Finance />} />
-                                <Route path="bim" element={<BIMViewer />} />
-                                <Route path="plans" element={<PlanEditorViewer />} />
-                                <Route path="meet" element={<MeetChat />} />
-                                <Route path="crm" element={<CRM />} />
-                                <Route path="whiteboard" element={<Whiteboard />} />
-                                <Route path="pitch" element={<PitchDeck />} />
-                                <Route path="defects" element={<Defects />} />
-                                <Route path="documents" element={<Documents />} />
-                                <Route path="site" element={<SiteMonitoring />} />
-                              </Route>
-                            </Routes>
+                                {/* +++ PROJEKT BEREICH (KOMPLETT GESCHÜTZT) +++ */}
+                                <Route path="/project/:projectId" element={
+                                  <PrivateRoute>
+                                    <EmailVerificationGuard>
+                                      <TrialGuard>
+                                        <Layout />
+                                      </TrialGuard>
+                                    </EmailVerificationGuard>
+                                  </PrivateRoute>
+                                }>
+                                  <Route index element={<Dashboard />} />
+                                  <Route path="team" element={<ProjectTeam />} />
+                                  <Route path="calendar" element={<Calendar />} />
+                                  <Route path="finance" element={<Finance />} />
+                                  <Route path="bim" element={<BIMViewer />} />
+                                  <Route path="plans" element={<PlanEditorViewer />} />
+                                  <Route path="meet" element={<MeetChat />} />
+                                  <Route path="crm" element={<CRM />} />
+                                  <Route path="whiteboard" element={<Whiteboard />} />
+                                  <Route path="pitch" element={<PitchDeck />} />
+                                  <Route path="defects" element={<Defects />} />
+                                  <Route path="documents" element={<Documents />} />
+                                  <Route path="site" element={<SiteMonitoring />} />
+                                </Route>
+                              </Routes>
+                            </ErrorBoundary>
                           </Suspense>
 
                         </MaintenanceGuard>
