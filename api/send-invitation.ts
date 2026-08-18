@@ -17,11 +17,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { title, date, time, description, meetingLink, recipients, senderName, companyId } = req.body || {};
 
-    if (!title || !recipients || !Array.isArray(recipients) || recipients.length === 0) {
+    if (!title || !recipients || (Array.isArray(recipients) && recipients.length === 0)) {
       return res.status(400).json({ error: 'Missing title or recipients' });
     }
 
     const host = senderName || 'Carlo Vescio';
+    const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+    const recipientEmailStr = recipientList.join(',');
+    const primaryTo = recipientList[0] || recipientEmailStr;
+
     const emailSubject = `📹 Einladung zum Live-Videocall | Kreativ Desk OS`;
     const emailBody = `Hallo,\n\n${host} lädt dich zu einem Live-Videocall auf Kreativ Desk OS ein!\n\n` +
       `🚀 MEETING DETAILS:\n` +
@@ -45,14 +49,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event: 'calendar_invitation',
+            to: primaryTo,
+            email: primaryTo,
+            recipients: recipientList,
             subject: emailSubject,
             body: emailBody,
+            message: emailBody,
             title,
             date,
             time,
             description: description || '',
             meetingLink: meetingLink || '',
-            recipients,
             senderName: host,
             companyId: companyId || 'default'
           })
@@ -65,15 +72,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({
       success: true,
-      message: `Invitation triggered for ${recipients.join(', ')}`,
+      message: `Invitation triggered for ${recipientEmailStr}`,
       webhookSent,
       invitationDetails: {
+        to: primaryTo,
         subject: emailSubject,
         body: emailBody,
         title,
         date,
         time,
-        recipients,
+        recipients: recipientList,
         meetingLink
       }
     });

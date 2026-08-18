@@ -789,11 +789,15 @@ export default function MeetChat() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
+                to: email,
                 email,
                 roomUrl: inviteUrl,
                 roomId: activeCallRoomId,
                 senderName: hostName,
-                language: currentLang
+                language: currentLang,
+                subject: emailSubject,
+                body: emailBody,
+                message: emailBody
               })
             }).catch(err => console.log("Webhook call note:", err))
           )
@@ -803,11 +807,15 @@ export default function MeetChat() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            to: targetEmail.trim(),
             email: targetEmail.trim(),
             roomUrl: inviteUrl,
             roomId: activeCallRoomId,
             senderName: hostName,
-            language: currentLang
+            language: currentLang,
+            subject: emailSubject,
+            body: emailBody,
+            message: emailBody
           })
         }).catch(err => console.log("Webhook call note:", err));
       }
