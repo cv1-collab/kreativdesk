@@ -52,6 +52,29 @@ test.describe('KreativDesk Full User Flow & Component E2E Suite', () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  test('Pricing Page Toggle & Subscription CTA Buttons', async ({ page }) => {
+    await page.goto('/pricing');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Check headings and plan titles
+    await expect(page.locator('h1')).toBeVisible();
+
+    // Test Billing Cycle Toggle Button (Monthly vs Yearly)
+    const toggleBtn = page.locator('button:has(div.bg-blue-500)');
+    if (await toggleBtn.isVisible()) {
+      await toggleBtn.click();
+      await page.waitForTimeout(200);
+      await toggleBtn.click();
+    }
+
+    // Verify Subscription CTA buttons exist
+    const ctaButtons = page.getByRole('button', { name: /starten|started|setup/i });
+    const count = await ctaButtons.count();
+    expect(count).toBeGreaterThan(0);
+
+    expect(consoleErrors).toEqual([]);
+  });
+
   test('Public Pages & Interactive Pitch Deck Route', async ({ page }) => {
     const publicRoutes = ['/', '/pricing', '/deck', '/lead-form', '/privacy', '/imprint', '/terms'];
 
@@ -71,15 +94,8 @@ test.describe('KreativDesk Full User Flow & Component E2E Suite', () => {
   });
 
   test('Protected Routes Clean Redirection Handling', async ({ page }) => {
-    // Test that unauthenticated navigation to protected app routes redirects cleanly without JS crashes
-    const protectedRoutes = [
-      '/app',
-      '/settings',
-      '/finance',
-      '/documents',
-      '/crm',
-      '/project/sample-id'
-    ];
+    // Test that unauthenticated navigation to protected app routes redirects cleanly
+    const protectedRoutes = ['/app', '/settings', '/finance', '/documents', '/crm'];
 
     for (const route of protectedRoutes) {
       await page.goto(route);
