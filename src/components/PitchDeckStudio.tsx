@@ -1591,14 +1591,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           initial: { opacity: 0, x: 80 },
           animate: { opacity: 1, x: 0 },
           exit: { opacity: 0, x: -80 },
-          transition: { duration: 0.35, ease: "easeOut" }
+          transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }
         };
       case 'zoom':
         return {
           initial: { opacity: 0, scale: 0.88 },
           animate: { opacity: 1, scale: 1 },
           exit: { opacity: 0, scale: 1.08 },
-          transition: { duration: 0.35, ease: "easeOut" }
+          transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }
         };
       case 'fade':
       default:
@@ -1608,6 +1608,16 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           exit: { opacity: 0 },
           transition: { duration: 0.3 }
         };
+    }
+  };
+
+  const upc = (field: keyof Slide, value: any) => {
+    if (!isPreviewMode && activeSlide) {
+      const validCols = ['title', 'subtitle', 'content', 'layout', 'image_url', 'order_index'];
+      const dbField = field === 'imageUrl' ? 'image_url' : field;
+      if (validCols.includes(dbField)) {
+        supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).then(() => {}, () => {});
+      }
     }
   };
 
@@ -2018,9 +2028,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       )}
 
                       {!isPreviewMode ? (
-                        <input type="text" value={m.role} onChange={(e) => handleUpdateTeamMember(slide.id, i, 'role', e.target.value)} style={{ fontSize: `${Math.max(11, contentFs - 4)}px` }} placeholder="Rolle eingeben..." className="font-bold text-center bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500 mb-2" style={{ color: deckSettings.themeColor }} />
+                        <input type="text" value={m.role} onChange={(e) => handleUpdateTeamMember(slide.id, i, 'role', e.target.value)} style={{ fontSize: `${Math.max(11, contentFs - 4)}px`, color: deckSettings.themeColor }} placeholder="Rolle eingeben..." className="font-bold text-center bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500 mb-2" />
                       ) : (
-                        <div style={{ fontSize: `${Math.max(11, contentFs - 4)}px` }} className="font-bold mb-2 truncate w-full" style={{ color: deckSettings.themeColor }}>{m.role || 'Team'}</div>
+                        <div style={{ fontSize: `${Math.max(11, contentFs - 4)}px`, color: deckSettings.themeColor }} className="font-bold mb-2 truncate w-full">{m.role || 'Team'}</div>
                       )}
 
                       <div className={cn("w-full space-y-1 border-t pt-2 mt-auto", isDarkTheme ? "border-white/10" : "border-black/10")}>
