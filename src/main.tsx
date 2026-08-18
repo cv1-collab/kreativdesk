@@ -37,10 +37,17 @@ Sentry.init({
     Sentry.replayIntegration(),
   ],
   // Performance Monitoring
-  tracesSampleRate: 1.0, 
+  tracesSampleRate: 0.2, 
   // Session Replay
-  replaysSessionSampleRate: 0.1, 
+  replaysSessionSampleRate: 0.05, 
   replaysOnErrorSampleRate: 1.0, 
+  beforeSend(event) {
+    // Verhindert Sentry-Meldungen bei unterbrochenen Netzwerkverbindungen oder Browser-Blockern
+    if (event.exception?.values?.some(v => v.value?.includes('NetworkError') || v.value?.includes('CORS'))) {
+      return null;
+    }
+    return event;
+  }
 });
 
 createRoot(document.getElementById('root')!).render(
