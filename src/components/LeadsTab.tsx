@@ -514,7 +514,10 @@ export default function LeadsTab() {
     if (window.confirm(t('delete_user_confirm'))) { 
       try {
         setCollectedLeads((prev: any[]) => prev.filter(l => l.id !== id));
-        await supabase.from('leads').delete().eq('id', id);
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        let query = supabase.from('leads').delete().eq('id', id);
+        if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+        await query;
         addToast(t('delete') + ' ' + t('completed'), 'info'); 
         if (editingLead?.id === id) setIsModalOpen(false);
         fetchLeads();
@@ -534,7 +537,10 @@ export default function LeadsTab() {
     if (!editingLead) return;
     setIsSubmittingScanner(true);
     try {
-      await supabase.from('leads').update({ status: editingLead.status || 'Neu' }).eq('id', editingLead.id);
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      let query = supabase.from('leads').update({ status: editingLead.status || 'Neu' }).eq('id', editingLead.id);
+      if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+      await query;
       addToast(t('save') + ' ' + t('completed'), 'success'); 
       setIsModalOpen(false);
       fetchLeads();
@@ -565,7 +571,9 @@ export default function LeadsTab() {
         addToast(t('upload_failed'), 'error');
         return;
       }
-      await supabase.from('leads').update({ status: 'Converted' }).eq('id', lead.id);
+      let updQuery = supabase.from('leads').update({ status: 'Converted' }).eq('id', lead.id);
+      if (safeCompanyId) updQuery = updQuery.eq('company_id', safeCompanyId);
+      await updQuery;
       addToast('Lead in CRM übertragen!', 'success');
       if (editingLead?.id === lead.id) setIsModalOpen(false);
       fetchLeads();

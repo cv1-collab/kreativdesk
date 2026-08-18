@@ -16,19 +16,15 @@ export const offboardCompanyUser = async (userId: string, companyId: string) => 
       await supabase.from('company_users').delete().eq('id', userId).eq('company_id', companyId);
       await supabase.from('project_members').delete().eq('user_id', userId).eq('company_id', companyId);
       
-      // Mängel (Defects) neutralisieren
-      await supabase
-        .from('defects')
-        .update({ assignee_id: 'unassigned', assignee_name: 'Nicht zugewiesen' })
-        .eq('assignee_id', userId)
-        .eq('company_id', companyId);
+      // Mängel (Defects) & Leads für diesen Benutzer bei der Abmeldung neutralisieren
+      try {
+        await supabase
+          .from('defects')
+          .update({ owner_id: null })
+          .eq('owner_id', userId)
+          .eq('company_id', companyId);
+      } catch (_) {}
 
-      // Leads neutralisieren
-      await supabase
-        .from('leads')
-        .update({ assignee_id: 'unassigned', assignee_name: 'Nicht zugewiesen' })
-        .eq('assignee_id', userId)
-        .eq('company_id', companyId);
     } else {
       await supabase.from('profiles').delete().eq('id', userId);
       await supabase.from('project_members').delete().eq('user_id', userId);

@@ -125,7 +125,7 @@ export default function AdminBrandTab() {
       await saveSystemConfigJSON('global_master', config);
       await supabase.from('system_config').upsert({
         id: 'global_master',
-        data: config,
+        brand_logo: config.masterLogo || '',
         updated_at: new Date().toISOString()
       });
       addToast(t('branding_saved'), 'success');

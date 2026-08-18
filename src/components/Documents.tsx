@@ -495,9 +495,15 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     }
     if (!window.confirm(t('confirm_delete'))) return;
     try {
-      await supabase.from('documents').delete().eq('id', id);
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      let delQuery = supabase.from('documents').delete().eq('id', id);
+      if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
+      await delQuery;
+
       if (isFolder) {
-        await supabase.from('documents').delete().eq('folder_id', id);
+        let subDelQuery = supabase.from('documents').delete().eq('folder_id', id);
+        if (safeCompanyId) subDelQuery = subDelQuery.eq('company_id', safeCompanyId);
+        await subDelQuery;
       }
       addToast("Gelöscht", "info");
       fetchDocuments();

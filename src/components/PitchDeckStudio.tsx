@@ -991,8 +991,11 @@ const handleGenerateTeamSlide = async () => {
 
   const upc = (field: keyof Slide, value: any) => {
     if (!isPreviewMode && activeSlide) {
-      const dbField = field === 'dataPayload' ? 'data_payload' : field === 'fontSize' ? 'font_size' : field;
-      supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).then(() => {}, () => {});
+      const validCols = ['title', 'subtitle', 'content', 'layout', 'image_url', 'order_index'];
+      const dbField = field === 'imageUrl' ? 'image_url' : field;
+      if (validCols.includes(dbField)) {
+        supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).then(() => {}, () => {});
+      }
     }
   };
 
@@ -1459,9 +1462,15 @@ const handleGenerateTeamSlide = async () => {
                   </div>
                   
                   <div className="flex flex-row items-center bg-background border border-border rounded-lg p-0.5">
-                    <button type="button" onClick={() => supabase.from('slides').update({ font_size: Math.max(10, (activeSlide.fontSize || 18) - 2) }).eq('id', activeSlide.id)} className="p-1.5 text-text-muted hover:text-text-primary"><Minus size={14} /></button>
+                    <button type="button" onClick={() => {
+                      const newFs = Math.max(10, (activeSlide.fontSize || 18) - 2);
+                      setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, fontSize: newFs } : s));
+                    }} className="p-1.5 text-text-muted hover:text-text-primary"><Minus size={14} /></button>
                     <span className="text-xs font-bold w-6 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
-                    <button type="button" onClick={() => supabase.from('slides').update({ font_size: Math.min(120, (activeSlide.fontSize || 18) + 2) }).eq('id', activeSlide.id)} className="p-1.5 text-text-muted hover:text-text-primary"><Plus size={14} /></button>
+                    <button type="button" onClick={() => {
+                      const newFs = Math.min(120, (activeSlide.fontSize || 18) + 2);
+                      setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, fontSize: newFs } : s));
+                    }} className="p-1.5 text-text-muted hover:text-text-primary"><Plus size={14} /></button>
                   </div>
                 </div>
               )}

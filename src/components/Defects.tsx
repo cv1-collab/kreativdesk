@@ -293,10 +293,17 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     };
 
     const fetchDefects = async () => {
-      const { data: defs } = await supabase
+      let query = supabase
         .from('defects')
         .select('*')
         .eq('project_id', currentProjectId);
+      
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      if (safeCompanyId) {
+        query = query.eq('company_id', safeCompanyId);
+      }
+
+      const { data: defs } = await query;
       if (defs && defs.length > 0) {
         setDefects(defs.map((d: any) => ({
           ...d,

@@ -854,13 +854,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
             ? `Ein neuer Video-Call "${newEvent.title}" wurde für den ${newEvent.date} um ${newEvent.time} Uhr in der Agenda geplant.`
             : `A new video call "${newEvent.title}" has been scheduled for ${newEvent.date} at ${newEvent.time} in Agenda.`;
           await supabase.from('chat_messages').insert({
-            sender: 'System',
-            avatar: 'SYS',
             sender_id: currentUser.uid,
-            company_id: safeCompanyId,
-            project_id: targetProjectId,
-            timestamp: Date.now(),
-            text: sysMsgText,
+            sender_name: 'System',
+            message: sysMsgText,
             created_at: new Date().toISOString()
           });
         } catch (chatErr) {

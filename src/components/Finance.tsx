@@ -952,7 +952,10 @@ export default function Finance() {
     if (isReadOnly) return;
     if (window.confirm(t('delete_confirm'))) {
       try {
-        await supabase.from('transactions').delete().eq('id', id);
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+        let query = supabase.from('transactions').delete().eq('id', id);
+        if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+        await query;
         setTransactions(prev => prev.filter(tx => tx.id !== id));
         addToast(t('booking_deleted'), 'success');
       }
@@ -963,7 +966,10 @@ export default function Finance() {
   const updateTransactionStatus = async (id: string, newStatus: string) => {
     if (isReadOnly) return;
     try {
-      await supabase.from('transactions').update({ status: newStatus }).eq('id', id);
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      let query = supabase.from('transactions').update({ status: newStatus }).eq('id', id);
+      if (safeCompanyId) query = query.eq('company_id', safeCompanyId);
+      await query;
       setTransactions(prev => prev.map(tx => tx.id === id ? { ...tx, status: newStatus } : tx));
       addToast(t('status_updated'), 'success');
     }
