@@ -41,7 +41,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     import_defects: 'Import Defects & Tickets', import_whiteboard: 'Import Whiteboard Sketches', slides_count: 'Slides',
     standard_layouts: 'Standard Layouts', title_slide: 'Title Slide', text_and_image: 'Text & Image',
     image_slide: 'Image Focus', text_block: 'Text Only', slide: 'Slide', preview_active: 'Preview Active',
-    editor_mode: 'Editor Mode', typo_size: 'Font Size', export_pdf_native: 'Export PDF',
+    editor_mode: 'Editor Mode', typo_size: 'Font Size', export_pdf_native: 'PDF Export',
     no_slide_selected: 'No slide selected.', select_project: 'Please select a project first.',
     budget_imported: 'Budget imported!', team_imported: 'Team imported!', roadmap_imported: 'Calendar imported!',
     defects_imported: 'Defects imported!', error_load: 'Error loading data.', error_create: 'Error creating slide.',
@@ -285,7 +285,174 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }
   };
 
-  // 1-KLICK MASTER DECK BUNDLE GENERATOR (Echte charakteristische Vorlagen)
+  // GENERIC PAYLOAD UPDATER FOR ALL SLIDE TYPES (TEAM, BUDGET, DONUT, CALENDAR, DEFECTS)
+  const updateSlidePayload = async (slideId: string, newPayload: any) => {
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, dataPayload: newPayload } : s));
+    try {
+      await supabase.from('slides').update({
+        data_payload: newPayload,
+        dataPayload: newPayload
+      }).eq('id', slideId);
+    } catch (err) {
+      console.warn("Payload update error:", err);
+    }
+  };
+
+  // TEAM MEMBER EDIT HANDLERS
+  const handleUpdateTeamMember = (slideId: string, idx: number, field: string, value: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.members) return;
+    const newMembers = [...slide.dataPayload.members];
+    newMembers[idx] = { ...newMembers[idx], [field]: value };
+    updateSlidePayload(slideId, { ...slide.dataPayload, members: newMembers });
+  };
+
+  const handleAddTeamMember = (slideId: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentMembers = slide.dataPayload?.members || [];
+    const newMember = {
+      name: 'Neues Mitglied',
+      role: 'Projekt-Spezialist',
+      email: 'kontakt@kreativdesk.ch',
+      phone: '+41 44 000 00 00',
+      photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'
+    };
+    updateSlidePayload(slideId, { ...slide.dataPayload, members: [...currentMembers, newMember] });
+  };
+
+  const handleDeleteTeamMember = (slideId: string, idx: number) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.members) return;
+    const newMembers = slide.dataPayload.members.filter((_: any, i: number) => i !== idx);
+    updateSlidePayload(slideId, { ...slide.dataPayload, members: newMembers });
+  };
+
+  // DONUT CHART EDIT HANDLERS
+  const handleUpdateChartSegment = (slideId: string, idx: number, field: string, value: any) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.chartSegments) return;
+    const newSegments = [...slide.dataPayload.chartSegments];
+    newSegments[idx] = { ...newSegments[idx], [field]: field === 'value' ? parseFloat(value) || 0 : value };
+    const totalAmount = newSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0);
+    updateSlidePayload(slideId, { ...slide.dataPayload, chartSegments: newSegments, totalAmount });
+  };
+
+  const handleAddChartSegment = (slideId: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentSegments = slide.dataPayload?.chartSegments || [];
+    const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
+    const newSeg = { label: 'Neues Segment', value: 100000, color: colors[currentSegments.length % colors.length] };
+    const newSegments = [...currentSegments, newSeg];
+    const totalAmount = newSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0);
+    updateSlidePayload(slideId, { ...slide.dataPayload, chartSegments: newSegments, totalAmount });
+  };
+
+  const handleDeleteChartSegment = (slideId: string, idx: number) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.chartSegments) return;
+    const newSegments = slide.dataPayload.chartSegments.filter((_: any, i: number) => i !== idx);
+    const totalAmount = newSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0);
+    updateSlidePayload(slideId, { ...slide.dataPayload, chartSegments: newSegments, totalAmount });
+  };
+
+  // SMART CALENDAR MILESTONE EDIT HANDLERS
+  const handleUpdateMilestone = (slideId: string, idx: number, field: string, value: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.milestones) return;
+    const newMilestones = [...slide.dataPayload.milestones];
+    newMilestones[idx] = { ...newMilestones[idx], [field]: value };
+    updateSlidePayload(slideId, { ...slide.dataPayload, milestones: newMilestones });
+  };
+
+  const handleAddMilestone = (slideId: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentMs = slide.dataPayload?.milestones || [];
+    const today = new Date().toISOString().split('T')[0];
+    const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0];
+    const newMs = { start: today, end: nextMonth, title: 'Neue Phase / Meilenstein', status: 'Geplant', progress: 0 };
+    updateSlidePayload(slideId, { ...slide.dataPayload, milestones: [...currentMs, newMs] });
+  };
+
+  const handleDeleteMilestone = (slideId: string, idx: number) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.milestones) return;
+    const newMs = slide.dataPayload.milestones.filter((_: any, i: number) => i !== idx);
+    updateSlidePayload(slideId, { ...slide.dataPayload, milestones: newMs });
+  };
+
+  // BUDGET TABLE EDIT HANDLERS
+  const handleUpdateBudgetGroup = (slideId: string, groupIdx: number, field: string, value: any) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.budgetGroups) return;
+    const newGroups = [...slide.dataPayload.budgetGroups];
+    newGroups[groupIdx] = { ...newGroups[groupIdx], [field]: field === 'total' ? parseFloat(value) || 0 : value };
+    const totalBudget = newGroups.reduce((acc: number, g: any) => acc + (g.total || 0), 0);
+    updateSlidePayload(slideId, { ...slide.dataPayload, budgetGroups: newGroups, totalBudget });
+  };
+
+  const handleUpdateBudgetItem = (slideId: string, groupIdx: number, itemIdx: number, field: string, value: any) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.budgetGroups) return;
+    const newGroups = [...slide.dataPayload.budgetGroups];
+    const group = { ...newGroups[groupIdx] };
+    const items = [...(group.items || [])];
+    items[itemIdx] = { ...items[itemIdx], [field]: field === 'total' ? parseFloat(value) || 0 : value };
+    group.items = items;
+    group.total = items.reduce((acc: number, it: any) => acc + (it.total || 0), 0);
+    newGroups[groupIdx] = group;
+    const totalBudget = newGroups.reduce((acc: number, g: any) => acc + (g.total || 0), 0);
+    updateSlidePayload(slideId, { ...slide.dataPayload, budgetGroups: newGroups, totalBudget });
+  };
+
+  const handleAddBudgetItem = (slideId: string, groupIdx: number) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.budgetGroups) return;
+    const newGroups = [...slide.dataPayload.budgetGroups];
+    const group = { ...newGroups[groupIdx] };
+    const items = [...(group.items || [])];
+    items.push({ pos: `${group.pos || 'BKP'}.${items.length + 1}`, title: 'Neue Unterposition', total: 10000 });
+    group.items = items;
+    group.total = items.reduce((acc: number, it: any) => acc + (it.total || 0), 0);
+    newGroups[groupIdx] = group;
+    const totalBudget = newGroups.reduce((acc: number, g: any) => acc + (g.total || 0), 0);
+    updateSlidePayload(slideId, { ...slide.dataPayload, budgetGroups: newGroups, totalBudget });
+  };
+
+  // DEFECT REPORT EDIT HANDLERS
+  const handleUpdateDefect = (slideId: string, idx: number, field: string, value: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.defects) return;
+    const newDefects = [...slide.dataPayload.defects];
+    newDefects[idx] = { ...newDefects[idx], [field]: value };
+    updateSlidePayload(slideId, { ...slide.dataPayload, defects: newDefects });
+  };
+
+  const handleAddDefect = (slideId: string) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide) return;
+    const currentDefs = slide.dataPayload?.defects || [];
+    const newDef = {
+      id: `def-${Date.now()}`,
+      title: 'Neuer Mangel / Befund',
+      location: 'Bezeichnung Ort / Raum',
+      status: 'offen',
+      priority: 'mittel',
+      imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80'
+    };
+    updateSlidePayload(slideId, { ...slide.dataPayload, defects: [...currentDefs, newDef] });
+  };
+
+  const handleDeleteDefect = (slideId: string, idx: number) => {
+    const slide = slides.find(s => s.id === slideId);
+    if (!slide || !slide.dataPayload?.defects) return;
+    const newDefs = slide.dataPayload.defects.filter((_: any, i: number) => i !== idx);
+    updateSlidePayload(slideId, { ...slide.dataPayload, defects: newDefs });
+  };
+
+  // 1-KLICK MASTER DECK BUNDLE GENERATOR
   const handleLoadMasterDeckBundle = async (bundleType: 'architecture' | 'luxury' | 'eco' | 'tech') => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -834,6 +1001,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         const totalAmt = slide.dataPayload.totalAmount || segments.reduce((acc: number, s: any) => acc + (s.value || 0), 0);
         docPdf.text(`Baukosten Gesamt: CHF ${totalAmt.toLocaleString('de-CH')}`, pw - 80, finalY + 10);
       }
+      else if (slide.layout === 'team-grid' && slide.dataPayload?.members) {
+        const members = slide.dataPayload.members;
+        const tData: any[] = members.map((m: any) => [m.name || '', m.role || '', m.email || '', m.phone || '']);
+        autoTable(docPdf, { 
+          startY: cy, margin: { left: 15, right: 15 }, head: [['Name', 'Rolle / Funktion', 'E-Mail', 'Telefon']], body: tData, 
+          theme: 'grid', headStyles: { fillColor: deckSettings.themeColor }, styles: { fontSize: 9, cellPadding: 3, fillColor: isDarkTheme ? [40, 40, 40] : [255, 255, 255], textColor: isDarkTheme ? [255, 255, 255] : [20, 20, 20] }
+        });
+      }
     }
     return docPdf.output('blob');
   }, [slides, deckSettings, t]);
@@ -1264,12 +1439,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
          if (currentSlide && currentSlide.dataPayload?.members) {
            const newMembers = [...currentSlide.dataPayload.members];
            newMembers[memberIdx].photoURL = selectedMedia.url;
-           await supabase.from('slides').update({ 
-              data_payload: { ...currentSlide.dataPayload, members: newMembers },
-              dataPayload: { ...currentSlide.dataPayload, members: newMembers } 
-           }).eq('id', slideId);
-           setSlides(prev => prev.map(s => s.id === slideId ? { ...s, dataPayload: { ...s.dataPayload, members: newMembers } } : s));
-           addToast('Bild aktualisiert!', 'success');
+           updateSlidePayload(slideId, { ...currentSlide.dataPayload, members: newMembers });
+           addToast('Foto aktualisiert!', 'success');
          }
        }
     } else {
@@ -1361,7 +1532,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
         <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
           {!isPreviewMode && !isMobile ? (
-            <input type="text" value={displayTitle} onChange={(e) => handleLocalUpdate('title', e.target.value)} className={cn("bg-transparent outline-none w-full font-bold", slide.layout === 'title-only' ? "text-4xl md:text-6xl text-center" : "text-2xl md:text-4xl", tc)} />
+            <input type="text" value={displayTitle} onChange={(e) => handleLocalUpdate('title', e.target.value)} className={cn("bg-transparent outline-none w-full font-bold border-b border-transparent focus:border-purple-500/50 transition-colors", slide.layout === 'title-only' ? "text-4xl md:text-6xl text-center" : "text-2xl md:text-4xl", tc)} />
           ) : (
             <h2 className={cn("w-full font-bold truncate leading-tight", slide.layout === 'title-only' ? "text-4xl md:text-6xl text-center" : "text-2xl md:text-4xl", tc)}>{displayTitle}</h2>
           )}
@@ -1409,103 +1580,176 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   </div>
                 </div>
 
-                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-h-full overflow-y-auto custom-scrollbar">
-                  {slide.dataPayload.chartSegments.map((seg: any, idx: number) => {
-                    const total = slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
-                    const pct = Math.round(((seg.value || 0) / total) * 100);
-                    return (
-                      <div key={idx} className={cn("p-4 rounded-xl border flex items-center justify-between shadow-sm", isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
-                        <div className="flex items-center gap-3 truncate pr-2">
-                          <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: seg.color || ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'][idx % 5] }}></span>
-                          <div className="truncate">
-                            <div className={cn("font-bold text-sm truncate", tc)}>{seg.label}</div>
-                            <div className="text-xs opacity-60 font-mono">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                <div className="flex-1 flex flex-col w-full max-h-full overflow-y-auto custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    {slide.dataPayload.chartSegments.map((seg: any, idx: number) => {
+                      const total = slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
+                      const pct = Math.round(((seg.value || 0) / total) * 100);
+                      return (
+                        <div key={idx} className={cn("p-3 rounded-xl border flex items-center justify-between shadow-sm relative group", isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
+                          <div className="flex items-center gap-2 truncate pr-2 flex-1">
+                            {!isPreviewMode ? (
+                              <input type="color" value={seg.color || '#3b82f6'} onChange={(e) => handleUpdateChartSegment(slide.id, idx, 'color', e.target.value)} className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent shrink-0" />
+                            ) : (
+                              <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: seg.color || '#3b82f6' }}></span>
+                            )}
+                            <div className="truncate flex-1">
+                              {!isPreviewMode ? (
+                                <input type="text" value={seg.label} onChange={(e) => handleUpdateChartSegment(slide.id, idx, 'label', e.target.value)} className={cn("font-bold text-xs bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500", tc)} />
+                              ) : (
+                                <div className={cn("font-bold text-xs truncate", tc)}>{seg.label}</div>
+                              )}
+                              {!isPreviewMode ? (
+                                <input type="number" value={seg.value} onChange={(e) => handleUpdateChartSegment(slide.id, idx, 'value', e.target.value)} className="text-[11px] opacity-80 font-mono bg-transparent outline-none w-full" />
+                              ) : (
+                                <div className="text-[11px] opacity-60 font-mono">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                              )}
+                            </div>
                           </div>
+                          <div className="text-sm font-black font-mono shrink-0 opacity-80" style={{ color: seg.color }}>{pct}%</div>
+                          {!isPreviewMode && (
+                            <button type="button" onClick={() => handleDeleteChartSegment(slide.id, idx)} className="ml-1 p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+                          )}
                         </div>
-                        <div className="text-lg font-black font-mono shrink-0 opacity-80" style={{ color: seg.color }}>{pct}%</div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  {!isPreviewMode && (
+                    <button type="button" onClick={() => handleAddChartSegment(slide.id)} className="py-2 px-3 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-purple-500/30">
+                      <Plus size={14} /> <span>Segment hinzufügen</span>
+                    </button>
+                  )}
                 </div>
              </div>
           )}
 
+          {/* SMART CALENDAR / ROADMAP */}
           {slide.layout === 'smart-calendar' && slide.dataPayload?.milestones && (
              <div className="w-full h-full flex flex-col col-span-full">
                 <div className={cn("flex-1 flex flex-col border rounded-2xl overflow-hidden shadow-2xl", isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
-                  <div className={cn("flex flex-row w-full border-b p-5 items-center text-xs font-bold uppercase tracking-widest shrink-0", isDarkTheme ? "bg-zinc-900/80 border-white/10 text-white/50" : "bg-zinc-200/80 border-black/10 text-black/50")}>
+                  <div className={cn("flex flex-row w-full border-b p-4 items-center text-xs font-bold uppercase tracking-widest shrink-0 justify-between", isDarkTheme ? "bg-zinc-900/80 border-white/10 text-white/50" : "bg-zinc-200/80 border-black/10 text-black/50")}>
                     <div className="w-1/3 pl-2">Phase / Task</div>
                     <div className="w-24">Status</div>
                     <div className="flex-1 flex justify-between relative px-2">
                        <span>Start</span><span>Timeline</span><span>Ende</span>
                     </div>
                   </div>
-                  <div className="flex-1 p-5 space-y-6 overflow-y-auto custom-scrollbar relative pointer-events-none">
-                    <div className="absolute inset-y-0 right-5 left-[calc(33.333%+6rem)] flex justify-between px-2 pointer-events-none">
-                       {[...Array(4)].map((_, i) => <div key={i} className={cn("w-px h-full", isDarkTheme ? "bg-white/5" : "bg-black/5")}></div>)}
-                    </div>
-                    
-                    {(() => {
+                  <div className="flex-1 p-4 space-y-4 overflow-y-auto custom-scrollbar relative">
+                    {slide.dataPayload.milestones.map((ms: any, idx: number) => {
                       const milestones = slide.dataPayload.milestones;
-                      if (milestones.length === 0) return null;
-                      
-                      const minDate = Math.min(...milestones.map((m:any) => new Date(m.start).getTime()));
-                      const maxDate = Math.max(...milestones.map((m:any) => new Date(m.end).getTime()));
+                      const minDate = Math.min(...milestones.map((m: any) => new Date(m.start).getTime()));
+                      const maxDate = Math.max(...milestones.map((m: any) => new Date(m.end).getTime()));
                       const totalDuration = Math.max(maxDate - minDate, 1);
+                      const startT = new Date(ms.start).getTime();
+                      const endT = new Date(ms.end).getTime();
+                      const left = ((startT - minDate) / totalDuration) * 100;
+                      const width = Math.max(((endT - startT) / totalDuration) * 100, 2);
 
-                      return milestones.map((ms:any, idx:number) => {
-                        const startT = new Date(ms.start).getTime();
-                        const endT = new Date(ms.end).getTime();
-                        const left = ((startT - minDate) / totalDuration) * 100;
-                        const width = Math.max(((endT - startT) / totalDuration) * 100, 2); 
-                        
-                        return (
-                          <div key={idx} className="flex flex-row items-center relative z-10">
-                            <div className="w-1/3 pr-4">
-                              <div className={cn("text-lg font-bold truncate", tc)}>{ms.title}</div>
-                              <div className="text-[10px] opacity-50 font-mono mt-1">{ms.start} - {ms.end}</div>
-                            </div>
-                            <div className="w-24">
-                              <span className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase", isDarkTheme ? "bg-white/10 text-white/70" : "bg-black/10 text-black/70")}>{ms.status || 'Aktiv'}</span>
-                            </div>
-                            <div className={cn("flex-1 relative h-10 rounded-lg border flex flex-row items-center p-1", isDarkTheme ? "bg-black/20 border-white/5" : "bg-black/5 border-black/10")}>
-                              <motion.div 
-                                initial={{ width: 0 }} animate={{ width: `${width}%` }} transition={{ duration: 1, delay: idx * 0.1 }}
-                                className={cn("absolute h-8 rounded-md shadow-lg border", isDarkTheme ? "border-white/20" : "border-black/20")}
-                                style={{ left: `${left}%`, backgroundColor: deckSettings.themeColor }}
-                              />
-                            </div>
+                      return (
+                        <div key={idx} className="flex flex-row items-center relative z-10 group">
+                          <div className="w-1/3 pr-3">
+                            {!isPreviewMode ? (
+                              <input type="text" value={ms.title} onChange={(e) => handleUpdateMilestone(slide.id, idx, 'title', e.target.value)} className={cn("text-sm font-bold bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500", tc)} />
+                            ) : (
+                              <div className={cn("text-base font-bold truncate", tc)}>{ms.title}</div>
+                            )}
+                            {!isPreviewMode ? (
+                              <div className="flex gap-1 text-[10px] font-mono opacity-60 mt-1">
+                                <input type="date" value={ms.start} onChange={(e) => handleUpdateMilestone(slide.id, idx, 'start', e.target.value)} className="bg-transparent outline-none" />
+                                <span>-</span>
+                                <input type="date" value={ms.end} onChange={(e) => handleUpdateMilestone(slide.id, idx, 'end', e.target.value)} className="bg-transparent outline-none" />
+                              </div>
+                            ) : (
+                              <div className="text-[10px] opacity-50 font-mono mt-0.5">{ms.start} - {ms.end}</div>
+                            )}
                           </div>
-                        );
-                      });
-                    })()}
+                          <div className="w-24">
+                            {!isPreviewMode ? (
+                              <select value={ms.status || 'Aktiv'} onChange={(e) => handleUpdateMilestone(slide.id, idx, 'status', e.target.value)} className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-transparent border border-border outline-none cursor-pointer", tc)}>
+                                <option value="Geplant" className="bg-surface text-text-primary">Geplant</option>
+                                <option value="Aktiv" className="bg-surface text-text-primary">Aktiv</option>
+                                <option value="In Ausführung" className="bg-surface text-text-primary">Ausführung</option>
+                                <option value="Abgeschlossen" className="bg-surface text-text-primary">Fertig</option>
+                              </select>
+                            ) : (
+                              <span className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase", isDarkTheme ? "bg-white/10 text-white/70" : "bg-black/10 text-black/70")}>{ms.status || 'Aktiv'}</span>
+                            )}
+                          </div>
+                          <div className={cn("flex-1 relative h-9 rounded-lg border flex flex-row items-center p-1", isDarkTheme ? "bg-black/20 border-white/5" : "bg-black/5 border-black/10")}>
+                            <motion.div 
+                              initial={{ width: 0 }} animate={{ width: `${width}%` }} transition={{ duration: 0.5 }}
+                              className={cn("absolute h-7 rounded-md shadow-lg border", isDarkTheme ? "border-white/20" : "border-black/20")}
+                              style={{ left: `${left}%`, backgroundColor: deckSettings.themeColor }}
+                            />
+                          </div>
+                          {!isPreviewMode && (
+                            <button type="button" onClick={() => handleDeleteMilestone(slide.id, idx)} className="ml-2 p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!isPreviewMode && (
+                      <button type="button" onClick={() => handleAddMilestone(slide.id)} className="w-full py-2 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-purple-500/30">
+                        <Plus size={14} /> <span>Phase / Meilenstein hinzufügen</span>
+                      </button>
+                    )}
                   </div>
                 </div>
              </div>
           )}
 
+          {/* BKP BUDGET TABLE */}
           {slide.layout === 'data-budget' && slide.dataPayload?.budgetGroups && (
-             <div className={cn("w-full h-full flex flex-col border rounded-2xl overflow-hidden col-span-full shadow-2xl pointer-events-none", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
+             <div className={cn("w-full h-full flex flex-col border rounded-2xl overflow-hidden col-span-full shadow-2xl", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
                <div className={cn("flex flex-row w-full p-4 font-bold text-xs uppercase tracking-widest shrink-0", isDarkTheme ? "bg-zinc-900 text-white" : "bg-zinc-200 text-black")}>
                   <div className="w-16">{t('pos')}</div>
                   <div className="flex-1">{t('text')}</div>
                   <div className="w-32 text-right">CHF</div>
                </div>
-               <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                 {slide.dataPayload.budgetGroups.map((g:any, i:number) => (
-                   <div key={i} className="mb-4">
+               <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-4">
+                 {slide.dataPayload.budgetGroups.map((g: any, i: number) => (
+                   <div key={i} className="group/grp">
                      <div className={cn("flex flex-row w-full border-b-2 pb-2 mb-2 text-sm items-center font-bold", isDarkTheme ? "border-white/20" : "border-black/20", tc)}>
-                        <div className="w-16 opacity-60">{g.pos}</div>
-                        <div className="flex-1 truncate pr-2">{g.title}</div>
-                        <div className="w-32 text-right">{(g.total || 0).toLocaleString('de-CH')}</div>
+                        {!isPreviewMode ? (
+                          <input type="text" value={g.pos} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'pos', e.target.value)} className="w-16 opacity-80 font-mono bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
+                        ) : (
+                          <div className="w-16 opacity-60">{g.pos}</div>
+                        )}
+                        {!isPreviewMode ? (
+                          <input type="text" value={g.title} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'title', e.target.value)} className="flex-1 pr-2 bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
+                        ) : (
+                          <div className="flex-1 truncate pr-2">{g.title}</div>
+                        )}
+                        {!isPreviewMode ? (
+                          <input type="number" value={g.total} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'total', e.target.value)} className="w-32 text-right font-mono bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
+                        ) : (
+                          <div className="w-32 text-right">{(g.total || 0).toLocaleString('de-CH')}</div>
+                        )}
                      </div>
-                     {g.items && g.items.map((item:any, j:number) => (
-                       <div key={j} className={cn("flex flex-row w-full border-b py-1.5 text-xs items-center opacity-80", isDarkTheme ? "border-white/5" : "border-black/5")}>
-                          <div className="w-16 opacity-50 font-mono">{item.pos}</div>
-                          <div className="flex-1 truncate pr-2">{item.title}</div>
-                          <div className="w-32 text-right font-medium">{(item.total || 0).toLocaleString('de-CH')}</div>
+                     {g.items && g.items.map((item: any, j: number) => (
+                       <div key={j} className={cn("flex flex-row w-full border-b py-1.5 text-xs items-center opacity-80 group/item", isDarkTheme ? "border-white/5" : "border-black/5")}>
+                          {!isPreviewMode ? (
+                            <input type="text" value={item.pos} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'pos', e.target.value)} className="w-16 opacity-60 font-mono bg-transparent outline-none" />
+                          ) : (
+                            <div className="w-16 opacity-50 font-mono">{item.pos}</div>
+                          )}
+                          {!isPreviewMode ? (
+                            <input type="text" value={item.title} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'title', e.target.value)} className="flex-1 pr-2 bg-transparent outline-none" />
+                          ) : (
+                            <div className="flex-1 truncate pr-2">{item.title}</div>
+                          )}
+                          {!isPreviewMode ? (
+                            <input type="number" value={item.total} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'total', e.target.value)} className="w-32 text-right font-mono bg-transparent outline-none" />
+                          ) : (
+                            <div className="w-32 text-right font-medium">{(item.total || 0).toLocaleString('de-CH')}</div>
+                          )}
                        </div>
                      ))}
+                     {!isPreviewMode && (
+                        <button type="button" onClick={() => handleAddBudgetItem(slide.id, i)} className="mt-1 text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                          <Plus size={10} /> <span>Unterposition hinzufügen</span>
+                        </button>
+                     )}
                    </div>
                  ))}
                </div>
@@ -1582,36 +1826,118 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             </div>
           )}
 
+          {/* MÄNGEL & TICKETS */}
           {slide.layout === 'defect-grid' && slide.dataPayload?.defects && (
-             <div className="w-full h-full grid grid-cols-2 gap-6 col-span-full pointer-events-none">
-                {slide.dataPayload.defects.map((d:any, i:number) => (
-                  <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border shadow-sm", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
-                    <div className="h-40 bg-zinc-200 relative overflow-hidden shrink-0">
-                      {!!sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><ImageIcon size={32}/></div>}
-                      <div className={cn("absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white shadow-lg", d.status === 'offen' ? 'bg-red-500' : 'bg-amber-500')}>{d.status}</div>
+             <div className="w-full h-full flex flex-col col-span-full">
+                <div className="grid grid-cols-2 gap-4 flex-1 overflow-y-auto custom-scrollbar">
+                  {slide.dataPayload.defects.map((d: any, i: number) => (
+                    <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border shadow-sm relative group", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
+                      <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'slide')} className="h-32 bg-zinc-800 relative overflow-hidden shrink-0 cursor-pointer">
+                        {!!sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-zinc-500"><ImageIcon size={28}/></div>}
+                        {!isPreviewMode ? (
+                          <select value={d.status} onChange={(e) => handleUpdateDefect(slide.id, i, 'status', e.target.value)} className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-black/60 text-white border border-white/20 outline-none cursor-pointer">
+                            <option value="offen">offen</option>
+                            <option value="in Bearbeitung">in Bearbeitung</option>
+                            <option value="erledigt">erledigt</option>
+                          </select>
+                        ) : (
+                          <div className={cn("absolute top-2 right-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-white shadow-lg", d.status === 'offen' ? 'bg-red-500' : 'bg-amber-500')}>{d.status}</div>
+                        )}
+                      </div>
+                      <div className="p-3 flex flex-col flex-1">
+                        {!isPreviewMode ? (
+                          <input type="text" value={d.title} onChange={(e) => handleUpdateDefect(slide.id, i, 'title', e.target.value)} className={cn("font-bold text-sm bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500 mb-1", tc)} />
+                        ) : (
+                          <div className="font-bold text-sm leading-tight mb-1 line-clamp-2">{d.title}</div>
+                        )}
+                        <div className="text-[11px] font-bold opacity-60 flex justify-between items-center mt-auto">
+                          {!isPreviewMode ? (
+                            <input type="text" value={d.location} onChange={(e) => handleUpdateDefect(slide.id, i, 'location', e.target.value)} className="bg-transparent outline-none w-1/2" placeholder="Ort..." />
+                          ) : (
+                            <span className="truncate">Ort: {d.location}</span>
+                          )}
+                          {!isPreviewMode ? (
+                            <select value={d.priority} onChange={(e) => handleUpdateDefect(slide.id, i, 'priority', e.target.value)} className="bg-transparent outline-none font-bold">
+                              <option value="niedrig">Prio: niedrig</option>
+                              <option value="mittel">Prio: mittel</option>
+                              <option value="hoch">Prio: hoch</option>
+                            </select>
+                          ) : (
+                            <span className={d.priority === 'hoch' ? 'text-red-500 font-bold' : ''}>Prio: {d.priority}</span>
+                          )}
+                        </div>
+                      </div>
+                      {!isPreviewMode && (
+                        <button type="button" onClick={() => handleDeleteDefect(slide.id, i)} className="absolute top-2 left-2 p-1.5 bg-red-500/80 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+                      )}
                     </div>
-                    <div className="p-5 flex flex-col flex-1"><div className="font-bold text-lg leading-tight mb-2 line-clamp-2">{d.title}</div><div className="text-xs font-bold opacity-60 flex justify-between mt-auto"><span>Ort: {d.location}</span><span className={d.priority === 'hoch' ? 'text-red-500' : ''}>Prio: {d.priority}</span></div></div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {!isPreviewMode && (
+                  <button type="button" onClick={() => handleAddDefect(slide.id)} className="mt-3 py-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-red-500/30">
+                    <Plus size={14} /> <span>Mangel / Ticket hinzufügen</span>
+                  </button>
+                )}
              </div>
           )}
 
+          {/* DAS PROJEKT-TEAM (INTERAKTIV & DIREST EDITIERBAR) */}
           {slide.layout === 'team-grid' && slide.dataPayload?.members && (
-             <div className="w-full h-full grid grid-cols-2 md:grid-cols-4 gap-6 content-start col-span-full overflow-y-auto custom-scrollbar">
-                {slide.dataPayload.members.map((m:any, i:number) => (
-                  <div key={i} className={cn("p-5 flex flex-col items-center text-center border rounded-2xl shadow-sm", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
-                    <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("w-24 h-24 rounded-full mb-4 bg-zinc-800 overflow-hidden shrink-0 border-4 relative group", !isPreviewMode && "cursor-pointer")} style={{ borderColor: deckSettings.themeColor }}>
-                      {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-6 text-zinc-500" size={32}/>}
-                      {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"><Camera size={18} /></div>}
+             <div className="w-full h-full flex flex-col col-span-full">
+                <div className="w-full flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 content-start overflow-y-auto custom-scrollbar">
+                  {slide.dataPayload.members.map((m: any, i: number) => (
+                    <div key={i} className={cn("p-4 flex flex-col items-center text-center border rounded-2xl shadow-sm relative group transition-all", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
+                      <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("w-20 h-20 rounded-full mb-3 bg-zinc-800 overflow-hidden shrink-0 border-4 relative group/avatar cursor-pointer shadow-md")} style={{ borderColor: deckSettings.themeColor }}>
+                        {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-5 text-zinc-500" size={28}/>}
+                        {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity text-white"><Camera size={16} /><span className="text-[9px] font-bold">Foto</span></div>}
+                      </div>
+                      
+                      {/* EDTIERBARER NAME */}
+                      {!isPreviewMode ? (
+                        <input type="text" value={m.name} onChange={(e) => handleUpdateTeamMember(slide.id, i, 'name', e.target.value)} placeholder="Name eingeben..." className={cn("font-bold text-sm text-center bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500 mb-1", tc)} />
+                      ) : (
+                        <div className={cn("font-bold text-sm truncate w-full mb-0.5", tc)}>{m.name}</div>
+                      )}
+
+                      {/* EDTIERBARE ROLLE */}
+                      {!isPreviewMode ? (
+                        <input type="text" value={m.role} onChange={(e) => handleUpdateTeamMember(slide.id, i, 'role', e.target.value)} placeholder="Rolle eingeben..." className="text-xs font-bold text-center bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500 mb-2" style={{ color: deckSettings.themeColor }} />
+                      ) : (
+                        <div className="text-xs font-bold mb-2 truncate w-full" style={{ color: deckSettings.themeColor }}>{m.role || 'Team'}</div>
+                      )}
+
+                      {/* EDTIERBARE EMAIL & TELEFON */}
+                      <div className={cn("w-full space-y-1 border-t pt-2 mt-auto", isDarkTheme ? "border-white/10" : "border-black/10")}>
+                        {!isPreviewMode ? (
+                          <div className="flex items-center gap-1 text-[10px] opacity-80">
+                            <Mail size={10} className="shrink-0"/>
+                            <input type="text" value={m.email || ''} onChange={(e) => handleUpdateTeamMember(slide.id, i, 'email', e.target.value)} placeholder="E-Mail..." className="bg-transparent outline-none w-full text-center" />
+                          </div>
+                        ) : (
+                          m.email && <div className="text-[10px] opacity-70 truncate w-full flex items-center justify-center gap-1.5"><Mail size={10}/> {m.email}</div>
+                        )}
+                        {!isPreviewMode ? (
+                          <div className="flex items-center gap-1 text-[10px] opacity-80">
+                            <Phone size={10} className="shrink-0"/>
+                            <input type="text" value={m.phone || ''} onChange={(e) => handleUpdateTeamMember(slide.id, i, 'phone', e.target.value)} placeholder="Telefon..." className="bg-transparent outline-none w-full text-center" />
+                          </div>
+                        ) : (
+                          m.phone && <div className="text-[10px] opacity-70 truncate w-full flex items-center justify-center gap-1.5"><Phone size={10}/> {m.phone}</div>
+                        )}
+                      </div>
+
+                      {/* LÖSCHEN BUTTON */}
+                      {!isPreviewMode && (
+                        <button type="button" onClick={() => handleDeleteTeamMember(slide.id, i)} className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40 rounded-full"><Trash2 size={12}/></button>
+                      )}
                     </div>
-                    <div className={cn("font-bold text-base truncate w-full", tc)}>{m.name}</div>
-                    <div className="text-xs font-bold mb-3 truncate w-full" style={{ color: deckSettings.themeColor }}>{m.role || 'Team'}</div>
-                    <div className={cn("w-full space-y-1 border-t pt-3 mt-auto", isDarkTheme ? "border-white/10" : "border-black/10")}>
-                      {m.email && <div className="text-[10px] opacity-70 truncate w-full flex items-center justify-center gap-1.5"><Mail size={10}/> {m.email}</div>}
-                      {m.phone && <div className="text-[10px] opacity-70 truncate w-full flex items-center justify-center gap-1.5"><Phone size={10}/> {m.phone}</div>}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                {!isPreviewMode && (
+                  <button type="button" onClick={() => handleAddTeamMember(slide.id)} className="mt-3 py-2.5 bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-blue-500/30">
+                    <Plus size={14} /> <span>Teammitglied hinzufügen</span>
+                  </button>
+                )}
              </div>
           )}
         </div>
@@ -2011,18 +2337,20 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
         {/* CENTER WORKSPACE */}
         <div className="flex-1 flex flex-col bg-[#09090b] relative min-w-0">
-          <header className="h-16 flex items-center justify-between px-6 border-b border-border bg-surface shadow-sm z-20 shrink-0">
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all", isPreviewMode?"bg-purple-600 text-white shadow-lg shadow-purple-600/20":"border border-border text-text-muted hover:bg-background")}>
-                <Eye size={14}/> {isPreviewMode?t('preview_active'):t('editor_mode')}
+          
+          {/* RESPONSIVE TOP HEADER TOOLBAR */}
+          <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-border bg-surface shadow-sm z-20 shrink-0 gap-2 overflow-x-auto hide-scrollbar">
+            <div className="flex items-center gap-3 shrink-0">
+              <button type="button" onClick={()=>setIsPreviewMode(!isPreviewMode)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 transition-all shrink-0", isPreviewMode?"bg-purple-600 text-white shadow-lg shadow-purple-600/20":"border border-border text-text-muted hover:bg-background")}>
+                <Eye size={14}/> <span>{isPreviewMode?t('preview_active'):t('editor_mode')}</span>
               </button>
               
               {!isPreviewMode && activeSlide && (
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-px bg-border mx-1"></div>
+                <div className="flex items-center gap-2 lg:gap-3 shrink-0">
+                  <div className="h-6 w-px bg-border hidden sm:block"></div>
                   
                   {/* LAYOUT SELECTOR BUTTONS */}
-                  <div className="flex flex-row bg-background border border-border rounded-lg p-0.5">
+                  <div className="flex flex-row bg-background border border-border rounded-lg p-0.5 shrink-0">
                     {[
                       { id: 'title-only', icon: Type, title: 'Titel-Folie' },
                       { id: 'split', icon: Columns, title: 'Text & Bild' },
@@ -2043,39 +2371,40 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   </div>
                   
                   {/* FONT SIZE CONTROLS */}
-                  <div className="flex flex-row items-center bg-background border border-border rounded-lg p-0.5">
+                  <div className="flex flex-row items-center bg-background border border-border rounded-lg p-0.5 shrink-0">
                     <button type="button" onClick={() => handleFontSizeChange(-2)} className="p-1.5 text-text-muted hover:text-text-primary" title="Schrift verkleinern"><Minus size={14} /></button>
                     <span className="text-xs font-bold w-6 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
                     <button type="button" onClick={() => handleFontSizeChange(2)} className="p-1.5 text-text-muted hover:text-text-primary" title="Schrift vergrössern"><Plus size={14} /></button>
                   </div>
 
                   {/* QUICK SLIDE ACTION BUTTONS */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button type="button" onClick={handleDuplicateSlide} title="Folie duplizieren" className="p-1.5 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
                       <Copy size={14} />
                     </button>
                     {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
                       <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title="Bild wählen" className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
-                        <ImageIcon size={14} /> <span>Bild</span>
+                        <ImageIcon size={14} /> <span className="hidden xl:inline">Bild</span>
                       </button>
                     )}
                   </div>
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-3">
-              <button type="button" onClick={() => setIsAiGeneratorOpen(true)} className="px-3.5 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-2 items-center shadow-md transition-all flex">
-                <Sparkles size={14}/> <span>KI Deck erstellen</span>
+
+            <div className="flex items-center gap-2 lg:gap-3 shrink-0 ml-auto">
+              <button type="button" onClick={() => setIsAiGeneratorOpen(true)} className="px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0">
+                <Sparkles size={14}/> <span className="hidden xl:inline">KI Deck erstellen</span>
               </button>
-              <button type="button" onClick={() => { setPresenterIndex(slides.findIndex(s => s.id === activeSlideId) || 0); setIsPresenterMode(true); }} disabled={slides.length === 0} className="px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-bold gap-2 items-center shadow-md disabled:opacity-50 transition-all flex">
-                <Play size={14}/> <span>Präsentationsmodus</span>
+              <button type="button" onClick={() => { setPresenterIndex(slides.findIndex(s => s.id === activeSlideId) || 0); setIsPresenterMode(true); }} disabled={slides.length === 0} className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0">
+                <Play size={14}/> <span className="hidden xl:inline">Präsentationsmodus</span>
               </button>
-              <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-2 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex">
+              <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-3.5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex shrink-0">
                  <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
               </button>
-              <div className="h-6 w-px bg-border mx-1"></div>
-              <button type="button" onClick={onClose} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors border border-red-500/20">
-                <LogOut size={16} className="w-4 h-4" /> <span>{t('close_studio')}</span>
+              <div className="h-6 w-px bg-border hidden sm:block"></div>
+              <button type="button" onClick={onClose} className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-red-500/20 shrink-0">
+                <LogOut size={15} /> <span className="hidden xl:inline">{t('close_studio')}</span>
               </button>
             </div>
           </header>
