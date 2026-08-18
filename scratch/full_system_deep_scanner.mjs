@@ -8,15 +8,13 @@ dotenv.config({ path: './.env' });
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
-
-function getFiles(dir, extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs'], files = []) {
+function getFiles(dir, extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'], files = []) {
   if (!fs.existsSync(dir)) return files;
   const fileList = fs.readdirSync(dir);
   for (const file of fileList) {
     const name = path.join(dir, file);
     if (fs.statSync(name).isDirectory()) {
-      if (file !== 'node_modules' && file !== 'dist' && file !== '.git') {
+      if (file !== 'node_modules' && file !== 'dist' && file !== '.git' && file !== 'playwright-report' && file !== 'test-results') {
         getFiles(name, extensions, files);
       }
     } else if (extensions.some(ext => name.endsWith(ext))) {
@@ -26,9 +24,22 @@ function getFiles(dir, extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs'], file
   return files;
 }
 
+function getRootFiles(dir, extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']) {
+  if (!fs.existsSync(dir)) return [];
+  const fileList = fs.readdirSync(dir);
+  const files = [];
+  for (const file of fileList) {
+    const name = path.join(dir, file);
+    if (!fs.statSync(name).isDirectory() && extensions.some(ext => name.endsWith(ext))) {
+      files.push(name);
+    }
+  }
+  return files;
+}
+
 async function deepSystemScanner() {
   console.log('====================================================');
-  console.log('=== FULL SYSTEM DEEP SCANNER (GROUPED REPORT) ===');
+  console.log('=== COMPLETE ENTIRE CODEBASE SCANNER (ROOT & TESTS) ===');
   console.log('====================================================\n');
 
   const openApiRes = await fetch(`${SUPABASE_URL}/rest/v1/`, {
@@ -51,9 +62,12 @@ async function deepSystemScanner() {
   }
 
   const allFiles = [
+    ...getRootFiles('./'),
     ...getFiles('./src'),
     ...getFiles('./api'),
-    ...getFiles('./scripts')
+    ...getFiles('./scripts'),
+    ...getFiles('./tests'),
+    ...getFiles('./functions')
   ];
 
   const fileIssuesMap = {};
@@ -113,7 +127,7 @@ async function deepSystemScanner() {
   }
 
   const fileKeys = Object.keys(fileIssuesMap);
-  console.log(`TOTAL FILES WITH SCHEMA ISSUES: ${fileKeys.length}\n`);
+  console.log(`TOTAL FILES WITH SCHEMA ISSUES IN ENTIRE REPOSITORY: ${fileKeys.length}\n`);
 
   for (const file of fileKeys) {
     console.log(`📂 FILE: ${file}`);
