@@ -361,12 +361,16 @@ export default function MeetChat() {
         payload: msgObj
       }).catch(() => { });
 
+      const textWithEmbeddedFile = msgData.fileUrl
+        ? (msgData.text ? `${msgData.text} [FILE:${msgData.fileUrl}]` : `[FILE:${msgData.fileUrl}]`)
+        : msgData.text;
+
       const payloadPrimary: any = {
         id: msgId,
         call_id: currentMeetingCallId,
         sender_id: currentUser?.uid || `user-${Date.now()}`,
         sender_name: senderName,
-        message: msgData.text,
+        message: textWithEmbeddedFile,
         created_at: new Date().toISOString()
       };
 
@@ -378,25 +382,19 @@ export default function MeetChat() {
       try {
         const { error: insErr } = await supabase.from('chat_messages').insert(payloadPrimary);
         if (insErr) {
-          console.warn("Supabase primary insert warning, running fallback:", insErr.message);
           const payloadFallback: any = {
             id: msgId + '-fb',
             call_id: currentMeetingCallId,
             sender_id: currentUser?.uid || `user-${Date.now()}`,
-            sender: senderName,
-            text: msgData.text,
+            sender_name: senderName,
+            message: textWithEmbeddedFile,
             created_at: new Date().toISOString()
           };
-          if (msgData.fileUrl) payloadFallback.file_url = msgData.fileUrl;
           try {
             await supabase.from('chat_messages').insert(payloadFallback);
-          } catch (fbErr) {
-            console.error("Fallback err:", fbErr);
-          }
+          } catch (fbErr) {}
         }
-      } catch (err) {
-        console.error("Failed to send chat message:", err);
-      }
+      } catch (err) {}
     };
 
   useEffect(() => {
@@ -530,17 +528,28 @@ export default function MeetChat() {
         if (!error && data) msgs = data;
 
         if (msgs && msgs.length > 0) {
-          setMessages(msgs.map(d => ({
-            id: d.id,
-            sender: d.sender_name || d.sender || 'System',
-            avatar: (d.sender_name || d.sender || 'U').substring(0, 2).toUpperCase(),
-            time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            text: d.message || d.text,
-            isAI: d.is_ai,
-            fileUrl: d.file_url || d.fileUrl,
-            reference: d.reference,
-            createdAt: d.created_at
-          })));
+          setMessages(msgs.map(d => {
+            let rawText = d.message || d.text || '';
+            let fileUrl = d.file_url || d.fileUrl || null;
+            if (rawText && rawText.includes('[FILE:')) {
+              const match = rawText.match(/\[FILE:(.*?)\]/);
+              if (match) {
+                if (!fileUrl) fileUrl = match[1];
+                rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
+              }
+            }
+            return {
+              id: d.id,
+              sender: d.sender_name || d.sender || 'System',
+              avatar: (d.sender_name || d.sender || 'U').substring(0, 2).toUpperCase(),
+              time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              text: rawText,
+              isAI: d.is_ai,
+              fileUrl: fileUrl,
+              reference: d.reference,
+              createdAt: d.created_at
+            };
+          }));
         }
       } catch (chatErr) {
         console.warn("Chat fetch fallback handled:", chatErr);
@@ -600,6 +609,16 @@ export default function MeetChat() {
       .channel(`chat_messages_${currentMeetingCallId}`)
       .on('broadcast', { event: 'new_chat_msg' }, ({ payload }) => {
         if (payload && payload.id) {
+          let rawText = payload.text || payload.message || '';
+          let fileUrl = payload.fileUrl || payload.file_url || null;
+          if (rawText && rawText.includes('[FILE:')) {
+            const match = rawText.match(/\[FILE:(.*?)\]/);
+            if (match) {
+              if (!fileUrl) fileUrl = match[1];
+              rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
+            }
+          }
+
           setMessages(prev => {
             if (prev.some(m => m.id === payload.id)) return prev;
             return [...prev, {
@@ -607,9 +626,9 @@ export default function MeetChat() {
               sender: payload.sender || payload.sender_name || 'System',
               avatar: payload.avatar || (payload.sender || 'U').substring(0, 2).toUpperCase(),
               time: payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: payload.text || payload.message,
+              text: rawText,
               isAI: payload.isAI || payload.is_ai,
-              fileUrl: payload.fileUrl || payload.file_url,
+              fileUrl: fileUrl,
               reference: payload.reference,
               createdAt: payload.createdAt || payload.created_at
             }];
@@ -620,6 +639,16 @@ export default function MeetChat() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
         const d = payload.new;
         if (d && (d.call_id === currentMeetingCallId || d.project_id === (projectId || activeProjectId))) {
+          let rawText = d.message || d.text || '';
+          let fileUrl = d.file_url || d.fileUrl || null;
+          if (rawText && rawText.includes('[FILE:')) {
+            const match = rawText.match(/\[FILE:(.*?)\]/);
+            if (match) {
+              if (!fileUrl) fileUrl = match[1];
+              rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
+            }
+          }
+
           setMessages(prev => {
             if (prev.some(m => m.id === d.id)) return prev;
             return [...prev, {
@@ -627,9 +656,9 @@ export default function MeetChat() {
               sender: d.sender_name || d.sender || 'System',
               avatar: (d.sender_name || d.sender || 'U').substring(0, 2).toUpperCase(),
               time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: d.message || d.text,
+              text: rawText,
               isAI: d.is_ai,
-              fileUrl: d.file_url || d.fileUrl,
+              fileUrl: fileUrl,
               reference: d.reference,
               createdAt: d.created_at
             }];

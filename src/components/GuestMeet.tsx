@@ -197,13 +197,22 @@ export default function GuestMeet() {
         if (payload && payload.id) {
           setMessages(prev => {
             if (prev.some(m => m.id === payload.id)) return prev;
+            let rawText = payload.text || payload.message || '';
+            let fileUrl = payload.fileUrl || payload.file_url || null;
+            if (rawText && rawText.includes('[FILE:')) {
+              const match = rawText.match(/\[FILE:(.*?)\]/);
+              if (match) {
+                if (!fileUrl) fileUrl = match[1];
+                rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
+              }
+            }
             return [...prev, {
               id: payload.id,
               sender: payload.sender || payload.sender_name || 'Gast',
               avatar: payload.avatar || (payload.sender || 'G').substring(0, 2).toUpperCase(),
               time: payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: payload.text || payload.message,
-              fileUrl: payload.fileUrl || payload.file_url
+              text: rawText,
+              fileUrl: fileUrl
             }];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -212,6 +221,15 @@ export default function GuestMeet() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `call_id=eq.${joinId}` }, (payload) => {
         const d = payload.new;
         if (d) {
+          let rawText = d.message || d.text || '';
+          let fileUrl = d.file_url || d.fileUrl || null;
+          if (rawText && rawText.includes('[FILE:')) {
+            const match = rawText.match(/\[FILE:(.*?)\]/);
+            if (match) {
+              if (!fileUrl) fileUrl = match[1];
+              rawText = rawText.replace(/\[FILE:.*?\]/g, '').trim();
+            }
+          }
           setMessages(prev => {
             if (prev.some(m => m.id === d.id)) return prev;
             return [...prev, {
@@ -219,8 +237,8 @@ export default function GuestMeet() {
               sender: d.sender_name || d.sender || 'Gast',
               avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
               time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              text: d.message || d.text,
-              fileUrl: d.file_url || d.fileUrl
+              text: rawText,
+              fileUrl: fileUrl
             }];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -274,12 +292,13 @@ export default function GuestMeet() {
       const url = await uploadFileWithFallback(file, file.name, 'guest', 'chat_attachments');
       const msgId = `msg-${Date.now()}`;
       const text = `Dateianhang: ${file.name}`;
+      const textWithFile = `Dateianhang: ${file.name} [FILE:${url}]`;
       const msgObj = {
         id: msgId,
         sender: guestName || 'Gast',
         avatar: (guestName || 'G').substring(0, 2).toUpperCase(),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: text,
+        text: `Dateianhang: ${file.name}`,
         fileUrl: url
       };
 
@@ -292,15 +311,23 @@ export default function GuestMeet() {
         payload: msgObj
       }).catch(() => {});
 
-      await supabase.from('chat_messages').insert({
+      const payloadGuest: any = {
         id: msgId,
         call_id: joinId,
         sender_id: 'guest-' + Date.now(),
         sender_name: guestName || 'Gast',
-        message: text,
-        file_url: url,
+        message: textWithFile,
         created_at: new Date().toISOString()
-      });
+      };
+
+      try {
+        const { error: insErr } = await supabase.from('chat_messages').insert(payloadGuest);
+        if (insErr) {
+          // Retry with standard columns if file_url doesn't exist
+          delete payloadGuest.file_url;
+          await supabase.from('chat_messages').insert(payloadGuest);
+        }
+      } catch (e) {}
     } catch (err) {
       console.error("Guest file upload error:", err);
     } finally {
@@ -347,23 +374,18 @@ export default function GuestMeet() {
       });
 
       if (err1) {
-        console.warn("Primary insert warning, trying fallback:", err1.message);
         try {
           await supabase.from('chat_messages').insert({
             id: msgId + '-fb',
             call_id: joinId,
             sender_id: 'guest-' + Date.now(),
-            sender: guestName,
-            text: text,
+            sender_name: guestName,
+            message: text,
             created_at: new Date().toISOString()
           });
-        } catch (fbErr) {
-          console.error("Fallback insert error:", fbErr);
-        }
+        } catch (fbErr) {}
       }
-    } catch (err) {
-      console.error('Failed to send message:', err);
-    }
+    } catch (err) {}
   };
 
   const handleLeave = () => {
