@@ -146,19 +146,29 @@ export default function UniversalPDFStudio({
             {/* Universelle Settings: Logo, Farbe, Fusszeile */}
             <div className="space-y-6">
               <div className="space-y-3">
-                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Logo Hochladen</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Logo</label>
+                  {logo && (
+                    <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      ✓ Aus Briefkopf übernommen
+                    </span>
+                  )}
+                </div>
                 <div 
-                  className="border-2 border-dashed border-border/50 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:bg-white/5 transition-colors cursor-pointer relative bg-background"
+                  className="border-2 border-dashed border-border/50 rounded-lg p-3 flex flex-col items-center justify-center text-center hover:bg-white/5 transition-colors cursor-pointer relative bg-background"
                   onClick={() => logoRef.current?.click()}
                 >
                   <input type="file" accept="image/*" ref={logoRef} onChange={handleLogoUpload} className="hidden" />
                   {logo ? (
-                    <img src={logo} alt="Logo" className="max-h-12 object-contain" />
+                    <div className="flex flex-col items-center gap-2">
+                      <img src={logo} alt="Logo" className="max-h-12 object-contain" />
+                      <span className="text-[10px] text-text-muted font-bold">Klicken zum Ändern</span>
+                    </div>
                   ) : (
-                    <><ImageIcon size={24} className="text-text-muted mb-2" /><span className="text-xs text-text-muted font-medium">Logo hochladen</span></>
+                    <><ImageIcon size={24} className="text-text-muted mb-1" /><span className="text-xs text-text-muted font-medium">Logo hochladen</span></>
                   )}
                 </div>
-                {logo && <button onClick={() => setLogo(null)} className="text-xs text-red-500 hover:text-red-400 font-bold w-full text-center">Logo entfernen</button>}
+                {logo && <button onClick={() => setLogo(null)} className="text-xs text-red-500 hover:text-red-400 font-bold w-full text-center cursor-pointer">Logo entfernen</button>}
               </div>
 
               <div className="space-y-2">
