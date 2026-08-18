@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/server.mjs --external:express --external:vite --external:@google/genai --external:dotenv --external:stripe --external:@supabase/supabase-js",
-
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives ",
     "start": "node dist/server.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",
@@ -59,7 +59,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
+    "@playwright/test": "^1.62.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/express": "^5.0.6",
     "@types/file-saver": "^2.0.7",
