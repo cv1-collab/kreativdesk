@@ -26,43 +26,64 @@ import { AIProvider } from './contexts/AIContext';
 import { TourProvider } from './contexts/TourContext';
 import ProductTour from './components/ProductTour';
 
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  componentImport: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    try {
+      const component = await componentImport();
+      sessionStorage.removeItem('page_has_reloaded_for_chunk');
+      return component;
+    } catch (error: any) {
+      console.warn("[Chunk Load Error] Retrying / reloading page for fresh assets...", error);
+      const pageHasAlreadyBeenReloaded = sessionStorage.getItem('page_has_reloaded_for_chunk');
+      if (!pageHasAlreadyBeenReloaded) {
+        sessionStorage.setItem('page_has_reloaded_for_chunk', 'true');
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
 // +++ NEU: Globales Cookie Banner +++
-const CookieBanner = lazy(() => import('./components/CookieBanner'));
-const ResetPassword = lazy(() => import('./components/ResetPassword'));
+const CookieBanner = lazyWithRetry(() => import('./components/CookieBanner'));
+const ResetPassword = lazyWithRetry(() => import('./components/ResetPassword'));
 
 // +++ NEU: Der Trial Guard (Paywall) +++
-const TrialGuard = lazy(() => import('./components/TrialGuard'));
-const EmailVerificationGuard = lazy(() => import('./components/EmailVerificationGuard'));
+const TrialGuard = lazyWithRetry(() => import('./components/TrialGuard'));
+const EmailVerificationGuard = lazyWithRetry(() => import('./components/EmailVerificationGuard'));
 
 // === LAZY LOADING (CODE SPLITTING) ===
-const Layout = lazy(() => import('./components/Layout'));
-const Dashboard = lazy(() => import('./components/Dashboard'));
-const Finance = lazy(() => import('./components/Finance'));
-const BIMViewer = lazy(() => import('./components/BIMViewer'));
-const MeetChat = lazy(() => import('./components/MeetChat'));
-const Calendar = lazy(() => import('./components/Calendar'));
-const CRM = lazy(() => import('./components/CRM'));
-const Whiteboard = lazy(() => import('./components/Whiteboard'));
-const PitchDeck = lazy(() => import('./components/PitchDeck'));
-const Defects = lazy(() => import('./components/Defects'));
-const Documents = lazy(() => import('./components/Documents'));
-const SiteMonitoring = lazy(() => import('./components/SiteMonitoring'));
-const CompanyDashboard = lazy(() => import('./components/CompanyDashboard'));
-const ProjectTeam = lazy(() => import('./components/ProjectTeam'));
-const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
-const AIConcierge = lazy(() => import('./components/AIConcierge'));
-const HelpCenter = lazy(() => import('./components/HelpCenter'));
-const PricingPage = lazy(() => import('./components/PricingPage'));
-const DemoApp = lazy(() => import('./components/DemoApp'));
-const PrivacyPolicy = lazy(() => import('./components/PrivacyPolicy'));
-const Imprint = lazy(() => import('./components/Imprint'));
-const TermsOfService = lazy(() => import('./components/LegalPage'));
-const Settings = lazy(() => import('./components/Settings'));
-const PublicLeadForm = lazy(() => import('./components/PublicLeadForm'));
-const SuccessPage = lazy(() => import('./components/SuccessPage'));
-const PlanEditorViewer = lazy(() => import('./components/PlanEditorViewer'));
-const MobileUpload = lazy(() => import('./components/MobileUpload'));
-const GuestMeet = lazy(() => import('./components/GuestMeet'));
+const Layout = lazyWithRetry(() => import('./components/Layout'));
+const Dashboard = lazyWithRetry(() => import('./components/Dashboard'));
+const Finance = lazyWithRetry(() => import('./components/Finance'));
+const BIMViewer = lazyWithRetry(() => import('./components/BIMViewer'));
+const MeetChat = lazyWithRetry(() => import('./components/MeetChat'));
+const Calendar = lazyWithRetry(() => import('./components/Calendar'));
+const CRM = lazyWithRetry(() => import('./components/CRM'));
+const Whiteboard = lazyWithRetry(() => import('./components/Whiteboard'));
+const PitchDeck = lazyWithRetry(() => import('./components/PitchDeck'));
+const Defects = lazyWithRetry(() => import('./components/Defects'));
+const Documents = lazyWithRetry(() => import('./components/Documents'));
+const SiteMonitoring = lazyWithRetry(() => import('./components/SiteMonitoring'));
+const CompanyDashboard = lazyWithRetry(() => import('./components/CompanyDashboard'));
+const ProjectTeam = lazyWithRetry(() => import('./components/ProjectTeam'));
+const AdminDashboard = lazyWithRetry(() => import('./components/AdminDashboard'));
+const AIConcierge = lazyWithRetry(() => import('./components/AIConcierge'));
+const HelpCenter = lazyWithRetry(() => import('./components/HelpCenter'));
+const PricingPage = lazyWithRetry(() => import('./components/PricingPage'));
+const DemoApp = lazyWithRetry(() => import('./components/DemoApp'));
+const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
+const Imprint = lazyWithRetry(() => import('./components/Imprint'));
+const TermsOfService = lazyWithRetry(() => import('./components/LegalPage'));
+const Settings = lazyWithRetry(() => import('./components/Settings'));
+const PublicLeadForm = lazyWithRetry(() => import('./components/PublicLeadForm'));
+const SuccessPage = lazyWithRetry(() => import('./components/SuccessPage'));
+const PlanEditorViewer = lazyWithRetry(() => import('./components/PlanEditorViewer'));
+const MobileUpload = lazyWithRetry(() => import('./components/MobileUpload'));
+const GuestMeet = lazyWithRetry(() => import('./components/GuestMeet'));
 const GlobalSuspenseFallback = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-background">
     <Loader2 className="w-10 h-10 text-accent-ai animate-spin" />

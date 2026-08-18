@@ -29,8 +29,19 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-          maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit 
+          maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit
+          navigateFallback: 'index.html',
+          navigateFallbackDenylist: [/^\/api/],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+              handler: 'NetworkOnly'
+            }
+          ]
         }
       })
     ],

@@ -8,12 +8,40 @@ import { scrubLocalStorageFileUrls } from './utils';
 
 scrubLocalStorageFileUrls();
 
-// Initialisiert den PWA Service Worker (Hintergrund-Caching ohne störendes Neuladen)
+// Automatische Wiederherstellung bei Vercel-Deployments & veralteten JS-Chunks
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    const msg = event.message || '';
+    if (msg.includes('error loading dynamically imported module') || msg.includes('Failed to fetch dynamically imported module') || msg.includes('Importing a module script failed')) {
+      console.warn('[Chunk Error] Veraltetes Modul nach Deployment erkannt. Lade Seite neu...');
+      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload_attempted', 'true');
+        window.location.reload();
+      }
+    }
+  });
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const reason = event.reason?.message || String(event.reason || '');
+    if (reason.includes('error loading dynamically imported module') || reason.includes('Failed to fetch dynamically imported module') || reason.includes('Importing a module script failed')) {
+      console.warn('[Chunk Rejection] Veralteter Chunk. Lade Seite neu...');
+      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload_attempted', 'true');
+        window.location.reload();
+      }
+    }
+  });
+}
+
+// Initialisiert den PWA Service Worker mit automatischer Cache-Aktualisierung
 if ('serviceWorker' in navigator) {
-  registerSW({ 
+  const updateSW = registerSW({ 
     immediate: true,
     onNeedRefresh() {
-      // Aktualisiert Caches geräuschlos im Hintergrund ohne die App neu zu laden
+      console.log('[PWA SW] Neues Deployment verfügbar, Service Worker aktualisiert Caches...');
+      updateSW(true);
     },
     onOfflineReady() {}
   });
