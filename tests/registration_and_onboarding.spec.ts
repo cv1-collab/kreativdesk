@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Registration & Onboarding End-to-End Suite', () => {
   test('Verify Signup page renders all form inputs, terms checkbox, and buttons', async ({ page }) => {
-    await page.goto('http://localhost:3000/signup');
+    await page.goto('/signup');
     await page.waitForLoadState('networkidle');
 
     // Email field
@@ -23,7 +23,7 @@ test.describe('Registration & Onboarding End-to-End Suite', () => {
   });
 
   test('Verify Login page renders email, password, and Google login option', async ({ page }) => {
-    await page.goto('http://localhost:3000/login');
+    await page.goto('/login');
     await page.waitForLoadState('networkidle');
 
     const emailInput = page.locator('input[type="email"]');
@@ -37,7 +37,7 @@ test.describe('Registration & Onboarding End-to-End Suite', () => {
   });
 
   test('Verify password mismatch error is displayed on signup', async ({ page }) => {
-    await page.goto('http://localhost:3000/signup');
+    await page.goto('/signup');
     await page.waitForLoadState('networkidle');
 
     await page.fill('input[type="email"]', 'testuser@example.com');

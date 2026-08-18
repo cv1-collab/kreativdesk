@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('Verify ResetPassword route renders correctly', async ({ page }) => {
-  await page.goto('http://localhost:3000/reset-password');
+  await page.goto('/reset-password');
   await page.waitForLoadState('networkidle');
 
   // Verify heading

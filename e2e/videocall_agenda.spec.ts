@@ -16,7 +16,7 @@ test.describe('Agenda & Videocall Integration E2E Suite', () => {
   });
 
   test('Public Lead Form route loads and validates inputs', async ({ page }) => {
-    await page.goto('/lead');
+    await page.goto('/lead-form');
     
     // Page should load clean
     const body = page.locator('body');

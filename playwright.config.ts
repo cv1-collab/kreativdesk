@@ -1,14 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
-  testDir: './e2e',
+  testDir: '.',
+  testMatch: ['e2e/**/*.spec.ts', 'tests/**/*.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'https://www.kreativdesk.ch',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -18,10 +19,4 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 120000,
-  },
 });

@@ -59,7 +59,7 @@ test.describe('E2E Lifecycle & Audit: Registration, Onboarding, BAU Project, Fea
   });
 
   test('Step 2: Login & Navigation to App Workspace', async ({ page }) => {
-    await page.goto('http://localhost:3000/login');
+    await page.goto('/login');
     await page.waitForLoadState('networkidle');
 
     await page.fill('input[type="email"]', TEST_EMAIL);
@@ -68,20 +68,20 @@ test.describe('E2E Lifecycle & Audit: Registration, Onboarding, BAU Project, Fea
 
     // Wait for boot sequence & session set
     await page.waitForTimeout(3000);
-    await page.goto('http://localhost:3000/app');
+    await page.goto('/app');
     await page.waitForLoadState('networkidle');
 
     expect(page.url()).toContain('/app');
   });
 
   test('Step 3: Create BAU Bauprojekt Testdummy', async ({ page }) => {
-    await page.goto('http://localhost:3000/login');
+    await page.goto('/login');
     await page.fill('input[type="email"]', TEST_EMAIL);
     await page.fill('input[type="password"]', TEST_PASSWORD);
     await page.click('button[type="submit"]');
 
     await page.waitForTimeout(3000);
-    await page.goto('http://localhost:3000/app');
+    await page.goto('/app');
 
     const newProjectBtn = page.locator('button:has-text("Neues Projekt")')
       .or(page.locator('button:has-text("New Project")'))
@@ -106,12 +106,12 @@ test.describe('E2E Lifecycle & Audit: Registration, Onboarding, BAU Project, Fea
   });
 
   test('Step 4: Audit core app modules and buttons', async ({ page }) => {
-    await page.goto('http://localhost:3000/login');
+    await page.goto('/login');
     await page.fill('input[type="email"]', TEST_EMAIL);
     await page.fill('input[type="password"]', TEST_PASSWORD);
     await page.click('button[type="submit"]');
     await page.waitForTimeout(3000);
-    await page.goto('http://localhost:3000/app');
+    await page.goto('/app');
 
     const modulesToTest = ['Mängel', 'Agenda', 'Finanzen', 'PDF Studio', 'Whiteboard'];
 
@@ -125,7 +125,7 @@ test.describe('E2E Lifecycle & Audit: Registration, Onboarding, BAU Project, Fea
   });
 
   test('Step 5: Verify Password Reset Request Flow', async ({ page }) => {
-    await page.goto('http://localhost:3000/login');
+    await page.goto('/login');
     await page.waitForLoadState('networkidle');
 
     const forgotLink = page.locator('text=Passwort vergessen?').or(page.locator('text=Forgot password?')).first();

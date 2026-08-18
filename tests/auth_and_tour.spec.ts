@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('Registration, Tour Guide, and Password Reset Flow', async ({ page }) => {
   // 1. Go to signup page
   console.log('Navigating to signup...');
-  await page.goto('http://localhost:3000/signup');
+  await page.goto('/signup');
 
   // 2. Fill out signup form
   const testEmail = `test_account_${Date.now()}@example.com`;
@@ -45,7 +45,7 @@ test('Registration, Tour Guide, and Password Reset Flow', async ({ page }) => {
 
   // 4. Test Password Reset flow
   console.log('Navigating to login page for password reset test...');
-  await page.goto('http://localhost:3000/login');
+  await page.goto('/login');
   
   // Click forgot password link
   const forgotPwBtn = page.locator('text=Passwort vergessen?');
