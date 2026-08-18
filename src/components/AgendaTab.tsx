@@ -664,6 +664,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [targetYearCalendar, setTargetYearCalendar] = useState(new Date().getFullYear());
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [generatedMeetingId, setGeneratedMeetingId] = useState<string>(() => `meet-${Date.now()}`);
   const [newEvent, setNewEvent] = useState({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [] as string[], description: '', videoProvider: 'kreativdesk', customLink: '' });
 
   const handleSaveCalendarEvent = async (e: React.FormEvent) => {
