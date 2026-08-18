@@ -817,10 +817,9 @@ export default function MeetChat() {
       try {
         await supabase.from('video_calls').upsert({
           id: meetingId,
-          project_id: targetProjectId,
-          company_id: currentUser.companyId,
-          caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
-          caller_id: currentUser.uid,
+          host_id: currentUser.uid || 'user',
+          room_name: targetProjectId,
+          status: 'active',
           created_at: new Date().toISOString()
         });
       } catch (vcErr) {
@@ -867,28 +866,35 @@ export default function MeetChat() {
         await saveSystemConfigJSON(`agenda_events_${currentUser.companyId}`, { events: [newCallObj, ...cEvents], companyId: currentUser.companyId }, currentUser.companyId, currentUser.uid);
       } catch (backupErr) { }
 
-      // 3. Insert into calendar_events with schema resilience
+      // 3. Insert into calendar_events with standard DB schema
       try {
+        const descParts = [
+          newCallEvent.description || '',
+          newCallEvent.time ? `Uhrzeit: ${newCallEvent.time}` : '',
+          'Typ: call',
+          meetingLink ? `Meeting Link: ${meetingLink}` : '',
+          allParticipants.length ? `Teilnehmer: ${allParticipants.join(', ')}` : ''
+        ].filter(Boolean).join('\n');
+
         const eventToInsert: any = {
           title: newCallEvent.title,
-          date: newCallEvent.date,
-          time: newCallEvent.time,
-          type: 'call',
-          description: newCallEvent.description || '',
-          id: eventId,
-          owner_id: currentUser.uid,
+          description: descParts,
+          start_date: newCallEvent.date || new Date().toISOString().split('T')[0],
+          end_date: newCallEvent.date || new Date().toISOString().split('T')[0],
+          location: meetingLink || '',
           company_id: currentUser.companyId,
           project_id: targetProjectId,
-          participants: allParticipants,
-          timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
-          created_at: new Date().toISOString(),
-          meeting_link: meetingLink
+          created_at: new Date().toISOString()
         };
 
         const { error: insertErr } = await supabase.from('calendar_events').insert(eventToInsert);
         if (insertErr) {
-          const { company_id, ...withoutCompanyId } = eventToInsert;
-          await supabase.from('calendar_events').insert(withoutCompanyId);
+          await supabase.from('calendar_events').insert({
+            title: newCallEvent.title,
+            description: descParts,
+            company_id: currentUser.companyId,
+            created_at: new Date().toISOString()
+          });
         }
       } catch (calInsErr) {
         console.warn("Calendar events insert handled:", calInsErr);
@@ -1133,10 +1139,9 @@ export default function MeetChat() {
       const targetProjectId = projectId || activeProjectId || 'global';
       await supabase.from('video_calls').upsert({
         id: roomId,
-        project_id: targetProjectId,
-        company_id: currentUser?.companyId || 'global',
-        caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Host',
-        caller_id: currentUser?.uid || 'host',
+        host_id: currentUser?.uid || 'host',
+        room_name: targetProjectId,
+        status: 'active',
         created_at: new Date().toISOString()
       });
     } catch (err) {

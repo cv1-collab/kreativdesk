@@ -762,10 +762,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         try {
           await supabase.from('video_calls').upsert({
             id: callMeetingId,
-            project_id: targetProjectId,
-            company_id: safeCompanyId,
-            caller_name: currentUser.displayName || currentUser.email?.split('@')[0] || 'Host',
-            caller_id: currentUser.uid,
+            host_id: currentUser.uid || 'user',
+            room_name: targetProjectId,
+            status: 'active',
             created_at: new Date().toISOString()
           });
         } catch (callErr) {
@@ -778,26 +777,37 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         ...(newEvent.externalEmails || [])
       ]));
 
-      // 2. Insert into calendar_events with schema cache resilience
+      const descParts = [
+        newEvent.description || '',
+        newEvent.time ? `Uhrzeit: ${newEvent.time}` : '',
+        newEvent.type ? `Typ: ${newEvent.type}` : '',
+        meetingLink ? `Meeting Link: ${meetingLink}` : '',
+        combinedParticipants.length ? `Teilnehmer: ${combinedParticipants.join(', ')}` : ''
+      ].filter(Boolean).join('\n');
+
+      // 2. Insert into calendar_events with standard DB schema
       const eventToInsert: any = {
         title: newEvent.title,
-        event_date: newEvent.date,
-        time: newEvent.time,
-        type: newEvent.type,
-        description: newEvent.description || '',
-        participants: combinedParticipants,
-        created_at: new Date().toISOString(),
-        meeting_link: meetingLink,
+        description: descParts,
+        start_date: newEvent.date || new Date().toISOString().split('T')[0],
+        end_date: newEvent.date || new Date().toISOString().split('T')[0],
+        location: meetingLink || '',
         company_id: safeCompanyId,
-        owner_id: currentUser.uid,
-        project_id: targetProjectId
+        project_id: targetProjectId,
+        created_at: new Date().toISOString()
       };
 
       let createdEvent: any = null;
       let { data, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
 
       if (error) {
-        const retryRes = await supabase.from('calendar_events').insert({ ...eventToInsert, date: newEvent.date }).select().single();
+        // Retry with minimal columns if table has custom constraint
+        const retryRes = await supabase.from('calendar_events').insert({
+          title: newEvent.title,
+          description: descParts,
+          company_id: safeCompanyId,
+          created_at: new Date().toISOString()
+        }).select().single();
         if (!retryRes.error) {
           createdEvent = retryRes.data;
         }

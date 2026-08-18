@@ -162,9 +162,9 @@ export default function GuestMeet() {
             try {
               await supabase.from('video_calls').upsert({
                 id: joinId,
-                project_id: 'global',
-                company_id: 'guest',
-                caller_name: 'Guest Room',
+                host_id: 'guest',
+                room_name: 'global',
+                status: 'active',
                 created_at: new Date().toISOString()
               });
             } catch (e) {

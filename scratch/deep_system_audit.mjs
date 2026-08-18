@@ -63,30 +63,47 @@ async function runDeepAudit() {
     console.log("⚠️ Found file:/// references:", fileUrlIssues);
   }
 
-  // 3. Scan codebase for supabase.from('...').select('...') for missing columns
-  console.log("\n--- SUPABASE SELECT COLUMN CHECK ---");
-  const selectIssues = [];
+  // 3. Scan codebase for supabase.from('...').select/eq/insert for missing columns & missing tables
+  console.log("\n--- SUPABASE CODEBASE QUERY AUDIT ---");
+  const columnIssues = [];
+  const missingTableIssues = [];
   
-  function scanSelects(dir) {
+  function scanQueries(dir) {
     const files = fs.readdirSync(dir);
     for (const f of files) {
       const fullPath = path.join(dir, f);
       const stat = fs.statSync(fullPath);
       if (stat.isDirectory()) {
-        scanSelects(fullPath);
+        scanQueries(fullPath);
       } else if (f.endsWith('.tsx') || f.endsWith('.ts')) {
         const content = fs.readFileSync(fullPath, 'utf8');
-        const matches = content.matchAll(/supabase\s*\.\s*from\(\s*['"](\w+)['"]\s*\)\s*\.\s*select\(\s*['"]([^'"]+)['"]\s*\)/g);
-        for (const m of matches) {
+        
+        // Match .from('table')
+        const fromMatches = content.matchAll(/supabase\s*\.\s*from\(\s*['"](\w+)['"]\s*\)([\s\S]*?)(?=\.from|\n\n|;\n|$)/g);
+        for (const m of fromMatches) {
           const tableName = m[1];
-          const colString = m[2];
-          const realCols = schemas[tableName];
-          if (realCols && realCols.length > 0) {
-            // parse simple columns
-            const cols = colString.split(',').map(c => c.trim().split(' ')[0].split('(')[0]);
-            for (const col of cols) {
-              if (col !== '*' && !col.includes('!') && !col.includes(':') && !col.includes('count') && !realCols.includes(col)) {
-                selectIssues.push({ file: fullPath, table: tableName, invalidCol: col });
+          const queryChain = m[2];
+          
+          if (schemas[tableName] === null) {
+            missingTableIssues.push({ file: fullPath, table: tableName });
+          } else if (schemas[tableName] && schemas[tableName].length > 0) {
+            const realCols = schemas[tableName];
+            
+            // Check .eq('col', ...)
+            const eqMatches = queryChain.matchAll(/\.eq\(\s*['"](\w+)['"]/g);
+            for (const eq of eqMatches) {
+              const col = eq[1];
+              if (!realCols.includes(col)) {
+                columnIssues.push({ file: fullPath, type: '.eq()', table: tableName, invalidCol: col });
+              }
+            }
+            
+            // Check .order('col')
+            const orderMatches = queryChain.matchAll(/\.order\(\s*['"](\w+)['"]/g);
+            for (const ord of orderMatches) {
+              const col = ord[1];
+              if (!realCols.includes(col)) {
+                columnIssues.push({ file: fullPath, type: '.order()', table: tableName, invalidCol: col });
               }
             }
           }
@@ -95,11 +112,45 @@ async function runDeepAudit() {
     }
   }
 
-  scanSelects(srcDir);
-  if (selectIssues.length === 0) {
-    console.log("✅ All Supabase select queries target valid existing columns!");
+  scanQueries(srcDir);
+  if (missingTableIssues.length === 0) {
+    console.log("✅ All Supabase table queries target existing database tables!");
   } else {
-    console.log("⚠️ Select column issues:", selectIssues);
+    console.log("⚠️ Missing Table references found in code:", missingTableIssues);
+  }
+
+  // 5. Test video_calls upsert and calendar_events insert with valid schemas
+  console.log("\n--- TESTING VALID SCHEMA INSERTS ---");
+  const vcPayload = {
+    id: `call_${Date.now()}`,
+    host_id: 'u1',
+    room_name: 'p1',
+    status: 'active',
+    created_at: new Date().toISOString()
+  };
+  const { data: vcData, error: vcErr } = await supabaseAdmin.from('video_calls').upsert(vcPayload).select().single();
+  if (vcErr) {
+    console.log('❌ video_calls Upsert Error:', vcErr.code, vcErr.message);
+  } else {
+    console.log('✅ video_calls Upsert Success! ID:', vcData.id);
+    await supabaseAdmin.from('video_calls').delete().eq('id', vcData.id);
+  }
+
+  const calPayload = {
+    title: 'Test Call Schedule',
+    description: 'Typ: call\nLink: /meet?join=123',
+    start_date: '2026-08-20',
+    end_date: '2026-08-20',
+    company_id: 'c1',
+    project_id: 'p1',
+    created_at: new Date().toISOString()
+  };
+  const { data: calData, error: calErr } = await supabaseAdmin.from('calendar_events').insert(calPayload).select().single();
+  if (calErr) {
+    console.log('❌ calendar_events Insert Error:', calErr.code, calErr.message);
+  } else {
+    console.log('✅ calendar_events Insert Success! ID:', calData.id);
+    await supabaseAdmin.from('calendar_events').delete().eq('id', calData.id);
   }
 }
 
