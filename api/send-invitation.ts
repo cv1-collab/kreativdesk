@@ -21,6 +21,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing title or recipients' });
     }
 
+    const host = senderName || 'Carlo Vescio';
+    const emailSubject = `📹 Einladung zum Live-Videocall | Kreativ Desk OS`;
+    const emailBody = `Hallo,\n\n${host} lädt dich zu einem Live-Videocall auf Kreativ Desk OS ein!\n\n` +
+      `🚀 MEETING DETAILS:\n` +
+      `• Titel: ${title}\n` +
+      `• Datum: ${date} um ${time} Uhr\n` +
+      `${description ? `• Notizen: ${description}\n` : ''}` +
+      `• Direkt-Link: ${meetingLink || 'https://www.kreativdesk.ch'}\n\n` +
+      `✨ HINWEIS FÜR GÄSTE:\n` +
+      `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
+      `Freundliche Grüsse,\n` +
+      `Kreativ Desk OS\n` +
+      `https://www.kreativdesk.ch`;
+
     const webhookUrl = process.env.WELCOME_WEBHOOK_URL || process.env.EMAIL_INVITE_WEBHOOK_URL;
     let webhookSent = false;
 
@@ -31,13 +45,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event: 'calendar_invitation',
+            subject: emailSubject,
+            body: emailBody,
             title,
             date,
             time,
             description: description || '',
             meetingLink: meetingLink || '',
             recipients,
-            senderName: senderName || 'KreativDesk User',
+            senderName: host,
             companyId: companyId || 'default'
           })
         });
@@ -52,6 +68,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: `Invitation triggered for ${recipients.join(', ')}`,
       webhookSent,
       invitationDetails: {
+        subject: emailSubject,
+        body: emailBody,
         title,
         date,
         time,

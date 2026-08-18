@@ -862,10 +862,24 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           console.warn("API invitation dispatch handled:", apiErr);
         }
 
-        // 2. Open prefilled mailto link for direct mail app dispatch
-        const subject = encodeURIComponent(`[KreativDesk] Einladung zum Termin: ${newEvent.title}`);
+        // 2. Open prefilled mailto link for direct mail app dispatch (Meet & Chat template format)
+        const host = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+        const isCall = newEvent.type === 'call';
+        const subject = encodeURIComponent(
+          isCall ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS` : `📅 Einladung zum Termin | Kreativ Desk OS`
+        );
         const bodyText = encodeURIComponent(
-          `Guten Tag,\n\nSie wurden zu folgendem Termin in KreativDesk OS eingeladen:\n\nTitel: ${newEvent.title}\nDatum: ${newEvent.date} um ${newEvent.time} Uhr\n${newEvent.description ? `Notizen: ${newEvent.description}\n` : ''}\nLink zum Beitritt / Vorschau:\n${joinUrl}\n\nFreundliche Grüsse\n${currentUser?.displayName || currentUser?.email?.split('@')[0] || 'KreativDesk Team'}`
+          `Hallo,\n\n${host} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein!\n\n` +
+          `🚀 MEETING DETAILS:\n` +
+          `• Titel: ${newEvent.title}\n` +
+          `• Datum: ${newEvent.date} um ${newEvent.time} Uhr\n` +
+          `${newEvent.description ? `• Notizen: ${newEvent.description}\n` : ''}` +
+          `• Direkt-Link: ${joinUrl}\n\n` +
+          `✨ HINWEIS FÜR GÄSTE:\n` +
+          `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
+          `Freundliche Grüsse,\n` +
+          `Kreativ Desk OS\n` +
+          `https://www.kreativdesk.ch`
         );
 
         const mailtoUrl = `mailto:${recipients.join(',')}?subject=${subject}&body=${bodyText}`;
@@ -1449,10 +1463,24 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                                 if (extEmails.length === 0) return;
                                 const link = selectedEvent.meetingLink || selectedEvent.meeting_link;
                                 const recipients = extEmails.join(',');
-                                const subject = encodeURIComponent(`[KreativDesk] Einladung zum Termin: ${selectedEvent.title}`);
+                                const host = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+                                const isCall = selectedEvent.type === 'call';
+                                const subject = encodeURIComponent(
+                                  isCall ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS` : `📅 Einladung zum Termin | Kreativ Desk OS`
+                                );
                                 const joinUrl = link?.startsWith('/') ? `${window.location.origin}${link}` : (link || window.location.href);
                                 const bodyText = encodeURIComponent(
-                                  `Guten Tag,\n\nSie wurden zu folgendem Termin in KreativDesk OS eingeladen:\n\nTitel: ${selectedEvent.title}\nDatum: ${selectedEvent.date} um ${selectedEvent.time} Uhr\n${selectedEvent.description ? `Notizen: ${selectedEvent.description}\n` : ''}\nLink zum Beitritt / Vorschau:\n${joinUrl}\n\nFreundliche Grüsse\n${currentUser?.displayName || currentUser?.email?.split('@')[0] || 'KreativDesk Team'}`
+                                  `Hallo,\n\n${host} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein!\n\n` +
+                                  `🚀 MEETING DETAILS:\n` +
+                                  `• Titel: ${selectedEvent.title}\n` +
+                                  `• Datum: ${selectedEvent.date} um ${selectedEvent.time} Uhr\n` +
+                                  `${selectedEvent.description ? `• Notizen: ${selectedEvent.description}\n` : ''}` +
+                                  `• Direkt-Link: ${joinUrl}\n\n` +
+                                  `✨ HINWEIS FÜR GÄSTE:\n` +
+                                  `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
+                                  `Freundliche Grüsse,\n` +
+                                  `Kreativ Desk OS\n` +
+                                  `https://www.kreativdesk.ch`
                                 );
                                 window.location.href = `mailto:${recipients}?subject=${subject}&body=${bodyText}`;
                                 addToast(`📩 E-Mail-Einladung an ${extEmails.join(', ')} wird geöffnet!`, 'info');
