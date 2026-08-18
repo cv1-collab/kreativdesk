@@ -13,7 +13,7 @@ import {
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
-  Copy, Zap, Check, Edit3, Wand2
+  Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -33,8 +33,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     project_team: 'Project Team', api_roadmap: 'Smart Calendar', defects_report: 'Defects & Tickets Report',
     click_for_image: 'Click to select image', pos: 'Pos', text: 'Description', no_media_found: 'No media found in this project.',
     add_as_slide: 'Add as Slide', deck_engine: 'Deck Engine', master_templates: 'Master Templates',
-    keynote: 'Keynote', architecture: 'Architecture', photography: 'Photography', scenography: 'Scenography',
-    swiss: 'Swiss Minimal', neo_brutalism: 'Neo-Brutalism', glassmorphism: 'Glassmorphism', cyberpunk: 'Cyberpunk', minimal_tech: 'Minimalist Tech', master_logo: 'Master Logo', change_logo: 'Change Logo', upload_logo: 'Upload Logo',
+    keynote: 'Keynote (Executive)', architecture: 'Architecture (Blueprint)', photography: 'Editorial Gallery', scenography: 'Stage Spotlight',
+    swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Warm)', master_logo: 'Master Logo', change_logo: 'Change Logo', upload_logo: 'Upload Logo',
     accent_color: 'Accent Color', footer_text: 'Footer Text', import_app_data: 'Project Reporting',
     load_budget: 'Import Budget Table', load_team: 'Import Project Team', generate_roadmap: 'Import Smart Calendar',
     import_cad: 'Import CAD Plans', import_bim: 'Import 3D BIM', import_renderings: 'Import Renderings',
@@ -62,8 +62,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     project_team: 'Das Projekt-Team', api_roadmap: 'Smart Calendar', defects_report: 'Mängel & Ticket Report',
     click_for_image: 'Klicken für Bildauswahl', pos: 'Pos', text: 'Beschreibung', no_media_found: 'Keine Medien in diesem Projekt gefunden.',
     add_as_slide: 'Als Folie hinzufügen', deck_engine: 'Deck Engine', master_templates: 'Master Templates',
-    keynote: 'Keynote', architecture: 'Architektur', photography: 'Fotografie', scenography: 'Szenografie',
-    swiss: 'Swiss Minimal', neo_brutalism: 'Neo-Brutalism', glassmorphism: 'Glassmorphism', cyberpunk: 'Cyberpunk', minimal_tech: 'Minimalist Tech', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
+    keynote: 'Keynote (Executive)', architecture: 'Architektur (Blueprint)', photography: 'Editorial Galerie', scenography: 'Stage Spotlight',
+    swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Holzbau)', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
     accent_color: 'Akzentfarbe', footer_text: 'Fusszeile', import_app_data: 'Projekt-Reporting',
     load_budget: 'Budget Tabelle', load_team: 'Projekt-Team', generate_roadmap: 'Smart Calendar',
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
@@ -229,7 +229,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPresenterMode, slides.length]);
 
-  // TOOLBAR ACTION HANDLERS (Layout & Font Size Fixes)
+  // TOOLBAR ACTION HANDLERS
   const handleLayoutChange = async (newLayout: Slide['layout']) => {
     if (!activeSlide) return;
     setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: newLayout } : s));
@@ -283,6 +283,125 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     } catch (e) {
       console.warn("Error duplicating slide:", e);
     }
+  };
+
+  // 1-KLICK MASTER DECK BUNDLE GENERATOR (Echte charakteristische Vorlagen)
+  const handleLoadMasterDeckBundle = async (bundleType: 'architecture' | 'luxury' | 'eco' | 'tech') => {
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const targetId = projectId || importProjectId || 'global';
+    
+    let bundleSlides: any[] = [];
+    let themeStyle: DeckSettings['themeStyle'] = 'swiss';
+
+    if (bundleType === 'architecture') {
+      themeStyle = 'architecture';
+      bundleSlides = [
+        { title: "Wohnüberbauung Alpenblick", content: "Architektur-Wettbewerb & Ausführungsplanung\n\nStandort: Chur, Schweiz\nBGF: 4'200 m² | Bauvolumen: 14'500 m³", layout: "title-only" },
+        { title: "Städtebau & Fassadenkonzept", content: "Das Entwurfskonzept basiert auf einer harmonischen Einbettung in die alpine Topografie. Die Fassade kombiniert heimisches Lerchenholz mit vertikalen Betonstrukturen.", layout: "split", imageUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80" },
+        { title: "Baukosten-Verteilung (BKP Share)", content: "", layout: "chart-donut", dataPayload: { totalAmount: 910000, chartSegments: [
+          { label: 'BKP 1 Vorbereitung & Honorare', value: 65000, color: '#3b82f6' },
+          { label: 'BKP 2 Gebäude & Rohbau', value: 520000, color: '#8b5cf6' },
+          { label: 'BKP 3 Haustechnik & Elektro', value: 185000, color: '#ec4899' },
+          { label: 'BKP 4 Innenausbau & Umgebung', value: 140000, color: '#10b981' }
+        ] } },
+        { title: "Termin- & Meilensteinplanung", content: "", layout: "smart-calendar", dataPayload: { milestones: [
+          { start: '2026-01-01', end: '2026-04-01', title: 'Phase 1: Baueingabe & Bewilligung', status: 'Abgeschlossen' },
+          { start: '2026-04-01', end: '2026-10-01', title: 'Phase 2: Aushub & Rohbauarbeiten', status: 'In Ausführung' },
+          { start: '2026-10-01', end: '2027-03-01', title: 'Phase 3: Innenausbau & Übergabe', status: 'Geplant' }
+        ] } },
+        { title: "Das Architektur- & Fachplanungsteam", content: "", layout: "team-grid", dataPayload: { members: [
+          { name: 'Dipl. Arch. ETH / SIA', role: 'Entwurf & Gesamtleitung', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
+          { name: 'Bauingenieur FH / SIA', role: 'Tragwerksplanung & Statik', photoURL: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' }
+        ] } }
+      ];
+    } else if (bundleType === 'luxury') {
+      themeStyle = 'glassmorphism';
+      bundleSlides = [
+        { title: "Residences Bellevue Zurich", content: "Exclusive Modern Living & Panoramic Views", layout: "title-only" },
+        { title: "Architectural Elegance", content: "Floor-to-ceiling glass facades, premium Italian interior finishes, integrated smart home automation and private spa.", layout: "split", imageUrl: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1200&q=80" },
+        { title: "Financial Investment Breakdown", content: "", layout: "chart-donut", dataPayload: { totalAmount: 4800000, chartSegments: [
+          { label: 'Land Acquisition', value: 1800000, color: '#3b82f6' },
+          { label: 'Construction & Interior', value: 2200000, color: '#8b5cf6' },
+          { label: 'Finishing & Amenities', value: 800000, color: '#ec4899' }
+        ] } },
+        { title: "Execution Schedule", content: "", layout: "smart-calendar", dataPayload: { milestones: [
+          { start: '2026-02-01', end: '2026-06-01', title: 'Foundation & Shell', status: 'In Progress' },
+          { start: '2026-06-01', end: '2026-12-01', title: 'Luxury Fitting & Interior', status: 'Planned' }
+        ] } },
+        { title: "Exclusive Development Team", content: "", layout: "team-grid", dataPayload: { members: [
+          { name: 'Lead Architect ETH', role: 'Concept Design', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
+          { name: 'Project Director', role: 'Real Estate Dev', photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' }
+        ] } }
+      ];
+    } else if (bundleType === 'eco') {
+      themeStyle = 'minimal-tech';
+      bundleSlides = [
+        { title: "Green Office & Eco Timber", content: "Nachhaltiger Holzsystembau mit Netto-Null CO₂ Bilanz", layout: "title-only" },
+        { title: "Ökologische Materialisierung", content: "Zertifiziertes Schweizer Fichtenholz, Lehmputzinnenwände und Photovoltaik-Fassadenelemente sorgen für ein optimales Raumklima.", layout: "split", imageUrl: "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80" },
+        { title: "Nachhaltigkeit & Baukosten Share", content: "", layout: "chart-donut", dataPayload: { totalAmount: 1450000, chartSegments: [
+          { label: 'Holzbau & Tragwerk', value: 650000, color: '#10b981' },
+          { label: 'Solar & Energie (PV)', value: 350000, color: '#f59e0b' },
+          { label: 'Öko-Ausbau & Dämmung', value: 450000, color: '#06b6d4' }
+        ] } },
+        { title: "Projektphasen", content: "", layout: "smart-calendar", dataPayload: { milestones: [
+          { start: '2026-03-01', end: '2026-07-01', title: 'Holzbau-Vorfertigung', status: 'Aktiv' },
+          { start: '2026-07-01', end: '2026-10-01', title: 'Montage Vor-Ort', status: 'Geplant' }
+        ] } }
+      ];
+    } else if (bundleType === 'tech') {
+      themeStyle = 'cyberpunk';
+      bundleSlides = [
+        { title: "BIM 5D Digital Twin Masterplan", content: "Smart Building & Integrated Construction Engineering", layout: "title-only" },
+        { title: "3D BIM Modellierung & IoT", content: "Echtzeit-Kollisionsprüfung und automatisierte Massenermittlung aus dem 3D-BIM-Modell.", layout: "split", imageUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1200&q=80" },
+        { title: "BIM Kostengliederung", content: "", layout: "chart-donut", dataPayload: { totalAmount: 3200000, chartSegments: [
+          { label: 'BIM Modellierung 3D', value: 400000, color: '#38bdf8' },
+          { label: 'Digitale Haustechnik', value: 1600000, color: '#a855f7' },
+          { label: 'Automatisiertes Reporting', value: 1200000, color: '#f43f5e' }
+        ] } },
+        { title: "Digital Twin Roadmap", content: "", layout: "smart-calendar", dataPayload: { milestones: [
+          { start: '2026-01-15', end: '2026-05-15', title: 'BIM Level 3 Modellierung', status: 'Abgeschlossen' },
+          { start: '2026-05-15', end: '2026-11-15', title: 'IoT Sensorik & Inbetriebnahme', status: 'Aktiv' }
+        ] } }
+      ];
+    }
+
+    try {
+      await supabase.from('slides').delete().eq('project_id', targetId);
+    } catch (e) {}
+
+    const newSlideObjects: Slide[] = bundleSlides.map((s, idx) => ({
+      id: `slide-bundle-${Date.now()}-${idx}`,
+      title: s.title,
+      content: s.content || '',
+      layout: s.layout || 'split',
+      imageUrl: s.imageUrl || '',
+      dataPayload: s.dataPayload || null,
+      order_index: idx,
+      ownerId: currentUser.uid,
+      companyId: safeCompanyId,
+      projectId: targetId
+    }));
+
+    try {
+      await supabase.from('slides').insert(newSlideObjects.map(s => ({
+        id: s.id,
+        title: s.title,
+        content: s.content,
+        layout: s.layout,
+        image_url: s.imageUrl,
+        data_payload: s.dataPayload,
+        order_index: s.order_index,
+        company_id: s.companyId,
+        project_id: s.projectId,
+        created_at: new Date().toISOString()
+      })));
+    } catch (e) {}
+
+    setSlides(newSlideObjects);
+    if (newSlideObjects.length > 0) setActiveSlideId(newSlideObjects[0].id);
+    updateDeckSettings({ themeStyle });
+    addToast(`Master-Deck "${bundleType.toUpperCase()}" geladen!`, 'success');
   };
 
   const handleGenerateAIDeck = async (customPrompt?: string) => {
@@ -871,7 +990,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     await Promise.all(newSlides.map((s, i) => supabase.from('slides').update({ order_index: i }).eq('id', s.id)));
   };
 
-  // NEW FEATURE 1: INTERAKTIVE KREISDIAGRAMME (DONUT CHARTS FOR BAUKOSTEN SHARE)
+  // INTERAKTIVE KREISDIAGRAMME (DONUT CHARTS FOR BAUKOSTEN SHARE)
   const handleGenerateChartSlide = async () => {
     const targetId = projectId || importProjectId || 'global';
     let chartSegments: any[] = [];
@@ -910,7 +1029,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     setMobileTab('slides');
   };
 
-  // NEW FEATURE 2: DIREKT-IMPORT AUS DEM WHITEBOARD
+  // DIREKT-IMPORT AUS DEM WHITEBOARD
   const handleImportWhiteboard = async () => {
     const targetId = projectId || importProjectId || 'global';
     if (!currentUser) return;
@@ -1164,15 +1283,24 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const getThemeClasses = () => {
     switch(deckSettings.themeStyle) {
-      case 'architecture': return 'font-mono bg-zinc-50 text-zinc-900 border-2 border-zinc-900 shadow-[8px_8px_0px_#18181b]';
-      case 'photography': return 'font-serif bg-[#0f0f12] text-zinc-100 border border-zinc-800 shadow-2xl';
-      case 'scenography': return 'font-sans bg-[#09090b] text-zinc-100 border-l-4 shadow-2xl';
-      case 'swiss': return 'font-sans bg-white text-black border-[6px] border-black tracking-tight shadow-none';
-      case 'neo-brutalism': return 'font-sans bg-white text-black border-[8px] border-black shadow-[16px_16px_0px_#000000]';
-      case 'glassmorphism': return 'font-sans bg-gradient-to-br from-white/60 to-white/30 backdrop-blur-3xl text-zinc-800 border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.1)] rounded-3xl';
-      case 'cyberpunk': return 'font-mono bg-[#050505] text-zinc-100 border-l-[6px] shadow-[0_0_40px_rgba(0,0,0,0.5)]';
-      case 'minimal-tech': return 'font-sans bg-[#fafafa] text-zinc-800 border border-zinc-200 shadow-sm rounded-2xl';
-      case 'keynote': default: return 'font-sans bg-white text-zinc-900 shadow-xl border border-zinc-200 rounded-xl';
+      case 'architecture': 
+        return 'font-mono bg-[#0f172a] text-slate-100 border-2 border-slate-700 shadow-2xl bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:24px_24px]';
+      case 'photography': 
+        return 'font-serif bg-[#0c0a09] text-stone-100 border border-stone-800 shadow-2xl';
+      case 'scenography': 
+        return 'font-sans bg-gradient-to-b from-zinc-950 via-zinc-900 to-black text-white border-l-4 shadow-2xl';
+      case 'swiss': 
+        return 'font-sans bg-white text-black border-[8px] border-black tracking-tight shadow-none bg-[linear-gradient(to_right,#f3f4f6_1px,transparent_1px),linear-gradient(to_bottom,#f3f4f6_1px,transparent_1px)] bg-[size:28px_28px]';
+      case 'neo-brutalism': 
+        return 'font-sans bg-[#fffbeb] text-black border-[5px] border-black shadow-[10px_10px_0px_#000000] rounded-none';
+      case 'glassmorphism': 
+        return 'font-sans bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 text-white border border-white/20 backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-3xl';
+      case 'cyberpunk': 
+        return 'font-mono bg-[#030712] text-sky-400 border-2 border-sky-500/40 shadow-[0_0_40px_rgba(56,189,248,0.25)] bg-[radial-gradient(#1e293b_1px,transparent_1px)] bg-[size:16px_16px]';
+      case 'minimal-tech': 
+        return 'font-sans bg-[#f5f2eb] text-[#2d3728] border border-[#d6cfc0] shadow-sm rounded-2xl';
+      case 'keynote': default: 
+        return 'font-sans bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 text-white border border-slate-800 shadow-2xl rounded-2xl';
     }
   };
 
@@ -1215,7 +1343,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const renderSlideContent = (slide: Slide) => {
-    const isDarkTheme = ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
+    const isDarkTheme = ['photography', 'scenography', 'cyberpunk', 'architecture', 'keynote', 'glassmorphism'].includes(deckSettings.themeStyle);
     const tc = isDarkTheme ? "text-white" : "text-black";
     
     const displayTitle = activeSlide?.id === slide.id ? localTitle || slide.title : slide.title;
@@ -1223,11 +1351,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
     return (
       <div className={cn("w-full h-full flex flex-col p-8 md:p-12 relative overflow-hidden", getThemeClasses())} style={deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk' ? { borderLeftColor: deckSettings.themeColor } : undefined}>
-        {deckSettings.themeStyle === 'scenography' && <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full blur-[120px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(30%, -30%)' }}></div>}
-        {deckSettings.themeStyle === 'neo-brutalism' && <div className="absolute top-0 right-0 w-48 h-48 border-b-[8px] border-l-[8px] border-black pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(10%, -10%)' }}></div>}
-        {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[1px] opacity-50 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
-        {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
-        
+        {/* THEME DECORATIONS */}
+        {deckSettings.themeStyle === 'scenography' && <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full blur-[140px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(30%, -30%)' }}></div>}
+        {deckSettings.themeStyle === 'neo-brutalism' && <div className="absolute top-0 right-0 w-36 h-36 border-b-[5px] border-l-[5px] border-black pointer-events-none flex items-center justify-center font-black text-xs uppercase" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(10%, -10%)' }}>SIA 102</div>}
+        {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[2px] opacity-70 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
+        {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[120px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
+        {deckSettings.themeStyle === 'architecture' && <div className="absolute top-3 right-4 font-mono text-[9px] text-slate-400 opacity-60 pointer-events-none flex items-center gap-2">[ + ] SCALE 1:100 | SIA ARCHITECTURE</div>}
+        {deckSettings.themeStyle === 'swiss' && <div className="absolute top-4 right-6 px-3 py-1 bg-red-600 text-white font-black text-[10px] tracking-widest uppercase pointer-events-none">SWISS GRAPHIC</div>}
+
         <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
           {!isPreviewMode && !isMobile ? (
             <input type="text" value={displayTitle} onChange={(e) => handleLocalUpdate('title', e.target.value)} className={cn("bg-transparent outline-none w-full font-bold", slide.layout === 'title-only' ? "text-4xl md:text-6xl text-center" : "text-2xl md:text-4xl", tc)} />
@@ -1237,7 +1368,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         </div>
         
         <div className="h-[75%] w-full flex items-start z-10 pt-4 overflow-hidden">
-          {/* FEATURE 1: INTERAKTIVER DONUT / KREISDIAGRAMM */}
+          {/* INTERAKTIVER DONUT / KREISDIAGRAMM */}
           {slide.layout === 'chart-donut' && slide.dataPayload?.chartSegments && (
              <div className="w-full h-full flex flex-col md:flex-row items-center justify-center gap-8 col-span-full p-4 overflow-hidden">
                 <div className="relative w-64 h-64 flex items-center justify-center shrink-0">
@@ -1672,7 +1803,30 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     </select>
                   </div>
                 )}
-                <div className="grid grid-cols-1 gap-3">
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest block">Ready-to-Use Master-Decks</label>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button type="button" onClick={() => handleLoadMasterDeckBundle('architecture')} className="w-full p-3 rounded-xl bg-slate-900 text-slate-100 border border-slate-700 font-bold text-xs flex justify-between items-center">
+                      <span>🏗️ Architektur Master-Deck</span>
+                      <span className="text-[10px] opacity-60">5 Folien</span>
+                    </button>
+                    <button type="button" onClick={() => handleLoadMasterDeckBundle('luxury')} className="w-full p-3 rounded-xl bg-indigo-950 text-indigo-200 border border-indigo-500/30 font-bold text-xs flex justify-between items-center">
+                      <span>💎 Luxury Real Estate Pitch</span>
+                      <span className="text-[10px] opacity-60">5 Folien</span>
+                    </button>
+                    <button type="button" onClick={() => handleLoadMasterDeckBundle('eco')} className="w-full p-3 rounded-xl bg-emerald-950 text-emerald-200 border border-emerald-500/30 font-bold text-xs flex justify-between items-center">
+                      <span>🌿 Eco Timber & Holzbau</span>
+                      <span className="text-[10px] opacity-60">4 Folien</span>
+                    </button>
+                    <button type="button" onClick={() => handleLoadMasterDeckBundle('tech')} className="w-full p-3 rounded-xl bg-sky-950 text-sky-200 border border-sky-500/30 font-bold text-xs flex justify-between items-center">
+                      <span>🚀 BIM & Digital Twin</span>
+                      <span className="text-[10px] opacity-60">4 Folien</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 pt-2 border-t border-border">
                   <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
                     <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
@@ -1713,8 +1867,33 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             <div className="h-16 flex items-center px-5 border-b border-border"><MonitorPlay className="mr-3 text-purple-400" size={18} /><h2 className="font-bold text-sm uppercase">{t('deck_engine')}</h2></div>
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
               
+              {/* 1-KLICK MASTER DECK BUNDLES */}
+              <div>
+                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
+                  <Sparkles size={14} className="text-amber-400"/> Ready-to-Use Master-Decks
+                </h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <button type="button" onClick={() => handleLoadMasterDeckBundle('architecture')} className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-left transition-all text-xs font-bold text-slate-100 flex items-center justify-between group shadow-sm">
+                    <span className="flex items-center gap-2">🏗️ Architektur Master-Deck</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 group-hover:bg-slate-700">5 Folien</span>
+                  </button>
+                  <button type="button" onClick={() => handleLoadMasterDeckBundle('luxury')} className="w-full p-2.5 rounded-xl bg-indigo-950/60 border border-indigo-500/30 hover:border-indigo-400 text-left transition-all text-xs font-bold text-indigo-200 flex items-center justify-between group shadow-sm">
+                    <span className="flex items-center gap-2">💎 Luxury Real Estate</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 group-hover:bg-indigo-800">5 Folien</span>
+                  </button>
+                  <button type="button" onClick={() => handleLoadMasterDeckBundle('eco')} className="w-full p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400 text-left transition-all text-xs font-bold text-emerald-200 flex items-center justify-between group shadow-sm">
+                    <span className="flex items-center gap-2">🌿 Eco Timber & Holzbau</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 group-hover:bg-emerald-800">4 Folien</span>
+                  </button>
+                  <button type="button" onClick={() => handleLoadMasterDeckBundle('tech')} className="w-full p-2.5 rounded-xl bg-sky-950/50 border border-sky-500/30 hover:border-sky-400 text-left transition-all text-xs font-bold text-sky-200 flex items-center justify-between group shadow-sm">
+                    <span className="flex items-center gap-2">🚀 BIM & Digital Twin</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 group-hover:bg-sky-800">4 Folien</span>
+                  </button>
+                </div>
+              </div>
+
               {/* MASTER TEMPLATES & ANIMATIONS */}
-              <div className="tour-deck-template">
+              <div className="tour-deck-template pt-4 border-t border-border">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
                 <div className="grid grid-cols-1 gap-1.5">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
