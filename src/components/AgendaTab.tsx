@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../lib/supabase';
 import {
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus,
-  ChevronLeft, ChevronRight, Video, Download, X,
+  ChevronLeft, ChevronRight, Video, Download, X, Mail,
   FileText, Link as LinkIcon, Save, Edit3, Users, Sparkles, Filter, AlertCircle, Calendar, Loader2
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -665,7 +665,32 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [targetYearCalendar, setTargetYearCalendar] = useState(new Date().getFullYear());
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [generatedMeetingId, setGeneratedMeetingId] = useState<string>(() => `meet-${Date.now()}`);
-  const [newEvent, setNewEvent] = useState({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [] as string[], description: '', videoProvider: 'kreativdesk', customLink: '' });
+  const [externalEmailInput, setExternalEmailInput] = useState('');
+  const [newEvent, setNewEvent] = useState({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [] as string[], externalEmails: [] as string[], description: '', videoProvider: 'kreativdesk', customLink: '' });
+
+  const handleAddExternalEmail = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = externalEmailInput.trim().toLowerCase();
+    if (!trimmed) return;
+    if (!trimmed.includes('@') || !trimmed.includes('.')) {
+      addToast('Bitte eine gültige E-Mail-Adresse eingeben.', 'error');
+      return;
+    }
+    const current = newEvent.externalEmails || [];
+    if (current.includes(trimmed)) {
+      addToast('Diese E-Mail-Adresse wurde bereits hinzugefügt.', 'info');
+      return;
+    }
+    setNewEvent({ ...newEvent, externalEmails: [...current, trimmed] });
+    setExternalEmailInput('');
+  };
+
+  const handleRemoveExternalEmail = (emailToRemove: string) => {
+    setNewEvent({
+      ...newEvent,
+      externalEmails: (newEvent.externalEmails || []).filter(e => e !== emailToRemove)
+    });
+  };
 
   const handleSaveCalendarEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -698,6 +723,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         }
       }
 
+      const combinedParticipants = Array.from(new Set([
+        ...(newEvent.participants || []),
+        ...(newEvent.externalEmails || [])
+      ]));
+
       // 2. Insert into calendar_events with schema cache resilience
       const eventToInsert: any = {
         title: newEvent.title,
@@ -705,7 +735,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         time: newEvent.time,
         type: newEvent.type,
         description: newEvent.description || '',
-        participants: newEvent.participants || [],
+        participants: combinedParticipants,
         created_at: new Date().toISOString(),
         meeting_link: meetingLink,
         company_id: safeCompanyId,
@@ -788,7 +818,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       });
 
       setIsEventModalOpen(false);
-      setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], description: '', videoProvider: 'kreativdesk', customLink: '' });
+      setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], externalEmails: [], description: '', videoProvider: 'kreativdesk', customLink: '' });
       addToast('Termin erfolgreich in der Agenda eingetragen!', 'success');
     } catch (err) {
       console.error(err);
@@ -1443,11 +1473,13 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                       />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                         <Users size={14} /> {t('invite_participants')}
                       </label>
-                      <div className="bg-background border border-border/50 rounded-xl p-4 max-h-36 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2">
+                      
+                      {/* CRM & TEAM MEMBER LIST */}
+                      <div className="bg-background border border-border/50 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 gap-2">
                         {allContacts.map((user: any) => (
                           <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-surface rounded-lg cursor-pointer transition-colors border border-transparent hover:border-border/50">
                             <input
@@ -1465,6 +1497,55 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                             </div>
                           </label>
                         ))}
+                      </div>
+
+                      {/* EXTERNAL EMAIL INPUT FOR NON-CRM / EXTERNAL GUESTS */}
+                      <div className="space-y-2 pt-2 border-t border-border/30">
+                        <label className="text-[11px] font-bold text-text-muted flex items-center gap-1.5">
+                          <Mail size={13} className="text-accent-ai" /> Externe E-Mail-Adressen (Bauherren, Partner ohne CRM-Eintrag)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="email"
+                            placeholder="bauherr@beispiel.ch oder partner@musterbau.com"
+                            value={externalEmailInput}
+                            onChange={(e) => setExternalEmailInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddExternalEmail();
+                              }
+                            }}
+                            className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none focus:border-accent-ai"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddExternalEmail()}
+                            className="px-3.5 py-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 border border-accent-ai/20 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                          >
+                            <Plus size={14} /> Hinzufügen
+                          </button>
+                        </div>
+
+                        {/* EMAIL TAGS CHIPS */}
+                        {newEvent.externalEmails && newEvent.externalEmails.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {newEvent.externalEmails.map((email: string) => (
+                              <span key={email} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-full text-xs font-bold animate-in fade-in">
+                                <Mail size={12} />
+                                {email}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveExternalEmail(email)}
+                                  className="hover:text-red-500 transition-colors p-0.5"
+                                  title="Entfernen"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="pt-4 flex justify-end gap-3 border-t border-border/50">
