@@ -75,7 +75,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; reference?: string; createdAt?: any; }
 
 export default function MeetChat() {
-  const { projectId: routeProjectId, id } = useParams<{ projectId?: string; id?: string }>();
+  const { projectId, id } = useParams<{ projectId?: string; id?: string }>();
+  const routeProjectId = projectId || id;
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
