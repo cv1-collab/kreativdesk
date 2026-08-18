@@ -13,7 +13,7 @@ import {
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
-  Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees
+  Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -100,6 +100,8 @@ interface Slide {
   layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut'; 
   fontSize?: number; 
   dataPayload?: any; 
+  notes?: string; 
+  stamp?: string; 
 }
 interface DeckSettings { 
   logoUrl: string; 
@@ -142,6 +144,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
+  const [showStampMenu, setShowStampMenu] = useState(false);
+  const [showNotesDrawer, setShowNotesDrawer] = useState(false);
   
   const [windowDimensions, setWindowDimensions] = useState({ 
     w: typeof window !== 'undefined' ? window.innerWidth : 1200, 
@@ -173,6 +177,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const [localTitle, setLocalTitle] = useState('');
   const [localContent, setLocalContent] = useState('');
+  const [localNotes, setLocalNotes] = useState('');
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
@@ -189,7 +194,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const [mobileTab, setMobileTab] = useState<'slides' | 'content' | 'design' | 'import'>('slides');
 
-  // AI DECK GENERATOR & PRESENTER MODE STATES
+  // AI DECK GENERATOR & PRESENTER MODE STATES (Keynote Moderator Features)
   const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
   const [aiPromptInput, setAiPromptInput] = useState('');
   const [aiSlideCount, setAiSlideCount] = useState<number>(5);
@@ -198,6 +203,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [isPresenterMode, setIsPresenterMode] = useState(false);
   const [presenterIndex, setPresenterIndex] = useState(0);
   const [presenterSeconds, setPresenterSeconds] = useState(0);
+  const [isLaserActive, setIsLaserActive] = useState(false);
+  const [laserPos, setLaserPos] = useState({ x: 500, y: 300 });
+  const [showPresenterNotes, setShowPresenterNotes] = useState(true);
 
   // Connected project modules check for live badges
   const targetProjId = projectId || importProjectId;
@@ -223,11 +231,19 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         setPresenterIndex(i => Math.max(0, i - 1));
       } else if (e.key === 'Escape') {
         setIsPresenterMode(false);
+      } else if (e.key === 'l' || e.key === 'L') {
+        setIsLaserActive(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPresenterMode, slides.length]);
+
+  const handleMouseMovePresenter = (e: React.MouseEvent) => {
+    if (isPresenterMode && isLaserActive) {
+      setLaserPos({ x: e.clientX, y: e.clientY });
+    }
+  };
 
   // TOOLBAR ACTION HANDLERS
   const handleLayoutChange = async (newLayout: Slide['layout']) => {
@@ -237,6 +253,19 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       await supabase.from('slides').update({ layout: newLayout }).eq('id', activeSlide.id);
     } catch (err) {
       console.warn("Layout update error:", err);
+    }
+  };
+
+  const handleSetStamp = async (stampName: string) => {
+    if (!activeSlide) return;
+    const nextStamp = activeSlide.stamp === stampName ? '' : stampName;
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, stamp: nextStamp } : s));
+    setShowStampMenu(false);
+    try {
+      await supabase.from('slides').update({ stamp: nextStamp }).eq('id', activeSlide.id);
+      addToast(nextStamp ? `Stempel "${nextStamp}" gesetzt` : 'Stempel entfernt', 'info');
+    } catch (err) {
+      console.warn("Stamp update error:", err);
     }
   };
 
@@ -276,6 +305,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         image_url: duplicated.imageUrl,
         font_size: duplicated.fontSize,
         data_payload: duplicated.dataPayload,
+        notes: duplicated.notes,
+        stamp: duplicated.stamp,
         order_index: duplicated.order_index,
         created_at: new Date().toISOString()
       });
@@ -464,23 +495,23 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (bundleType === 'architecture') {
       themeStyle = 'architecture';
       bundleSlides = [
-        { title: "Wohnüberbauung Alpenblick", content: "Architektur-Wettbewerb & Ausführungsplanung\n\nStandort: Chur, Schweiz\nBGF: 4'200 m² | Bauvolumen: 14'500 m³", layout: "title-only" },
-        { title: "Städtebau & Fassadenkonzept", content: "Das Entwurfskonzept basiert auf einer harmonischen Einbettung in die alpine Topografie. Die Fassade kombiniert heimisches Lerchenholz mit vertikalen Betonstrukturen.", layout: "split", imageUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80" },
+        { title: "Wohnüberbauung Alpenblick", content: "Architektur-Wettbewerb & Ausführungsplanung\n\nStandort: Chur, Schweiz\nBGF: 4'200 m² | Bauvolumen: 14'500 m³", layout: "title-only", notes: "Begrüssung des Gremiums, Vorstellung des Wettbewerbsareals und Einbettung im Ortsbild." },
+        { title: "Städtebau & Fassadenkonzept", content: "Das Entwurfskonzept basiert auf einer harmonischen Einbettung in die alpine Topografie. Die Fassade kombiniert heimisches Lerchenholz mit vertikalen Betonstrukturen.", layout: "split", imageUrl: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80", notes: "Betonen, dass das Lerchenholz aus regionalem Anbau Graubünden stammt." },
         { title: "Baukosten-Verteilung (BKP Share)", content: "", layout: "chart-donut", dataPayload: { totalAmount: 910000, chartSegments: [
           { label: 'BKP 1 Vorbereitung & Honorare', value: 65000, color: '#3b82f6' },
           { label: 'BKP 2 Gebäude & Rohbau', value: 520000, color: '#8b5cf6' },
           { label: 'BKP 3 Haustechnik & Elektro', value: 185000, color: '#ec4899' },
           { label: 'BKP 4 Innenausbau & Umgebung', value: 140000, color: '#10b981' }
-        ] } },
+        ] }, notes: "Puffer von 5% in BKP 2 Rohbau ist bereits einkalkuliert." },
         { title: "Termin- & Meilensteinplanung", content: "", layout: "smart-calendar", dataPayload: { milestones: [
           { start: '2026-01-01', end: '2026-04-01', title: 'Phase 1: Baueingabe & Bewilligung', status: 'Abgeschlossen' },
           { start: '2026-04-01', end: '2026-10-01', title: 'Phase 2: Aushub & Rohbauarbeiten', status: 'In Ausführung' },
           { start: '2026-10-01', end: '2027-03-01', title: 'Phase 3: Innenausbau & Übergabe', status: 'Geplant' }
-        ] } },
+        ] }, notes: "Baueingabe wurde fristgerecht ohne Einsprachen eingereicht." },
         { title: "Das Architektur- & Fachplanungsteam", content: "", layout: "team-grid", dataPayload: { members: [
           { name: 'Dipl. Arch. ETH / SIA', role: 'Entwurf & Gesamtleitung', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
           { name: 'Bauingenieur FH / SIA', role: 'Tragwerksplanung & Statik', photoURL: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' }
-        ] } }
+        ] }, notes: "Team hat bereits 3 gemeinsame Referenzprojekte in der Region realisiert." }
       ];
     } else if (bundleType === 'luxury') {
       themeStyle = 'glassmorphism';
@@ -544,6 +575,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       layout: s.layout || 'split',
       imageUrl: s.imageUrl || '',
       dataPayload: s.dataPayload || null,
+      notes: s.notes || '',
       order_index: idx,
       ownerId: currentUser.uid,
       companyId: safeCompanyId,
@@ -558,6 +590,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         layout: s.layout,
         image_url: s.imageUrl,
         data_payload: s.dataPayload,
+        notes: s.notes,
         order_index: s.order_index,
         company_id: s.companyId,
         project_id: s.projectId,
@@ -585,6 +618,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         "title": "Foliene Titel",
         "content": "Stichpunkte oder Fliesstext...",
         "layout": "title-only" | "split" | "image-focus" | "text-only" | "data-budget" | "smart-calendar" | "defect-grid" | "team-grid" | "chart-donut",
+        "notes": "Referenten-Notiz für den Vortragenden...",
         "dataPayload": optionales Objekt (z.B. { "budgetGroups": [...] } für budget, { "chartSegments": [ { "label": "BKP 1", "value": 65000, "color": "#3b82f6" } ] } für chart-donut, { "milestones": [...] } für calendar)
       }
 
@@ -609,6 +643,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           title: s.title || `Folie ${idx + 1}`,
           content: s.content || '',
           layout: s.layout || (idx === 0 ? 'title-only' : 'split'),
+          notes: s.notes || '',
           dataPayload: s.dataPayload || null,
           order_index: slides.length + idx,
           ownerId: currentUser?.uid || '',
@@ -622,6 +657,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           title: s.title,
           content: s.content,
           layout: s.layout,
+          notes: s.notes,
           data_payload: s.dataPayload,
           order_index: s.order_index,
           company_id: s.companyId,
@@ -709,6 +745,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (activeSlide) {
       setLocalTitle(activeSlide.title || '');
       setLocalContent(activeSlide.content || '');
+      setLocalNotes(activeSlide.notes || '');
     }
   }, [activeSlide?.id]); 
 
@@ -732,6 +769,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             id: d.id,
             title: d.title || '',
             content: d.content || '',
+            notes: d.notes || '',
+            stamp: d.stamp || '',
             imageUrl: d.image_url || d.imageUrl,
             dataPayload: d.data_payload || d.dataPayload,
             fontSize: d.font_size || d.fontSize,
@@ -748,10 +787,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (slidesArr.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
         try {
           const demoSlides = [
-            { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', order_index: 0 },
-            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", layout: 'split', order_index: 1 },
-            { title: "Das Projekt-Team", content: "", layout: 'team-grid', order_index: 2 },
-            { title: "Projekt-Budget", content: "", layout: 'data-budget', order_index: 3 },
+            { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', notes: "Einleitung und Übersicht für den Investor.", order_index: 0 },
+            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", layout: 'split', notes: "Auf Verzögerungen bei der Rohbaulieferung eingehen.", order_index: 1 },
+            { title: "Das Projekt-Team", content: "", layout: 'team-grid', notes: "Vorstellung des Hauptarchitekten und Bauleiters.", order_index: 2 },
+            { title: "Projekt-Budget", content: "", layout: 'data-budget', notes: "BKP 2 Bauleistungen heben.", order_index: 3 },
           ];
           
           const slidesToInsert = demoSlides.map((s, i) => ({
@@ -782,9 +821,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     fetchSlides();
   }, [currentUser, projectId, importProjectId]);
 
-  const handleLocalUpdate = (field: 'title' | 'content', value: string) => {
+  const handleLocalUpdate = (field: 'title' | 'content' | 'notes', value: string) => {
     if (field === 'title') setLocalTitle(value);
     if (field === 'content') setLocalContent(value);
+    if (field === 'notes') setLocalNotes(value);
 
     if (activeSlide) {
       setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, [field]: value } : s));
@@ -926,6 +966,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         docPdf.setFontSize(42); const tw = docPdf.getTextWidth(slide.title); docPdf.text(slide.title, (pw - tw)/2, ph/2); 
       } else { 
         docPdf.setFontSize(32); docPdf.text(slide.title, 15, 25); 
+      }
+
+      if (slide.stamp) {
+        docPdf.setFontSize(9); docPdf.setTextColor(220, 38, 38);
+        docPdf.text(`[ ${slide.stamp} ]`, pw - 50, 25);
       }
       
       docPdf.setFontSize(slide.fontSize || 18); docPdf.setTextColor(isDarkTheme ? 220 : 40);
@@ -1108,7 +1153,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const newSlide: Slide = {
       id: newId, title, content: t('type_text_here'), order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
-      layout, fontSize: 18, dataPayload, ...(imageUrl && { imageUrl })
+      layout, fontSize: 18, dataPayload, ...(imageUrl && { imageUrl }), notes: ''
     };
     try {
       const dbPayload: any = {
@@ -1529,6 +1574,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[120px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
         {deckSettings.themeStyle === 'architecture' && <div className="absolute top-3 right-4 font-mono text-[9px] text-slate-400 opacity-60 pointer-events-none flex items-center gap-2">[ + ] SCALE 1:100 | SIA ARCHITECTURE</div>}
         {deckSettings.themeStyle === 'swiss' && <div className="absolute top-4 right-6 px-3 py-1 bg-red-600 text-white font-black text-[10px] tracking-widest uppercase pointer-events-none">SWISS GRAPHIC</div>}
+
+        {/* KEYNOTE BADGES / STEMPEL */}
+        {slide.stamp && (
+          <div className="absolute top-4 right-16 px-4 py-1.5 rounded-lg border-2 font-black text-xs uppercase tracking-widest pointer-events-none shadow-xl rotate-[-3deg] z-30" style={{
+            borderColor: slide.stamp === 'VERTRAULICH' ? '#ef4444' : slide.stamp === 'GENEHMIGT' ? '#10b981' : slide.stamp === 'IN PRÜFUNG' ? '#f59e0b' : '#3b82f6',
+            color: slide.stamp === 'VERTRAULICH' ? '#ef4444' : slide.stamp === 'GENEHMIGT' ? '#10b981' : slide.stamp === 'IN PRÜFUNG' ? '#f59e0b' : '#3b82f6',
+            backgroundColor: 'rgba(0,0,0,0.4)'
+          }}>
+            [ {slide.stamp} ]
+          </div>
+        )}
 
         <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
           {!isPreviewMode && !isMobile ? (
@@ -2074,6 +2130,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       <textarea value={localContent} onChange={e => handleLocalUpdate('content', e.target.value)} className="w-full h-40 bg-surface border border-border rounded-xl px-4 py-4 text-sm text-text-primary resize-none custom-scrollbar outline-none focus:border-purple-500 transition-colors" />
                     </div>
                  )}
+
+                 {/* KEYNOTE REFERENTENNOTIZEN AUF MOBILE */}
+                 <div>
+                    <label className="text-xs font-bold text-amber-400 uppercase mb-2 flex items-center gap-1.5"><StickyNote size={14}/> Referenten-Notizen (Keynote Spickzettel)</label>
+                    <textarea value={localNotes} onChange={e => handleLocalUpdate('notes', e.target.value)} placeholder="Stichpunkte für deinen Vortrag eingeben..." className="w-full h-28 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-text-primary resize-none custom-scrollbar outline-none focus:border-amber-500" />
+                 </div>
                  
                  {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
                     <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} className="w-full py-4 bg-blue-500/20 text-blue-400 rounded-xl font-bold flex justify-center items-center gap-2 border border-blue-500/30 active:scale-95 transition-transform">
@@ -2328,6 +2390,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     </div>
                   </div>
                   <h4 className="text-xs font-bold text-text-primary truncate pr-5">{s.title}</h4>
+                  {s.stamp && <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest block truncate mt-1">[ {s.stamp} ]</span>}
                   <button type="button" onClick={(e) => handleDeleteSlide(e, s.id)} className="absolute right-2 bottom-2 p-1 text-text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={12}/></button>
                 </div>
               ))}
@@ -2377,6 +2440,30 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <button type="button" onClick={() => handleFontSizeChange(2)} className="p-1.5 text-text-muted hover:text-text-primary" title="Schrift vergrössern"><Plus size={14} /></button>
                   </div>
 
+                  {/* KEYNOTE STEMPEL / BADGE SELECTOR */}
+                  <div className="relative shrink-0">
+                    <button type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
+                      <Tag size={14} /> <span className="hidden xl:inline">{activeSlide.stamp || 'Stempel'}</span>
+                    </button>
+                    <AnimatePresence>
+                      {showStampMenu && (
+                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute top-10 left-0 w-44 bg-surface border border-border rounded-xl shadow-2xl z-50 py-1 overflow-hidden">
+                          {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
+                            <button key={st} type="button" onClick={() => handleSetStamp(st)} className={cn("w-full text-left px-3 py-1.5 text-xs font-bold flex items-center justify-between hover:bg-white/10", activeSlide.stamp === st ? "text-purple-400" : "text-text-primary")}>
+                              <span>{st}</span>
+                              {activeSlide.stamp === st && <Check size={12} />}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* KEYNOTE REFERENTENNOTIZEN TOGGLE */}
+                  <button type="button" onClick={() => setShowNotesDrawer(!showNotesDrawer)} className={cn("px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", activeSlide.notes ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : "bg-background border-border text-text-muted hover:text-text-primary")}>
+                    <StickyNote size={14} /> <span className="hidden xl:inline">Notizen</span>
+                  </button>
+
                   {/* QUICK SLIDE ACTION BUTTONS */}
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button type="button" onClick={handleDuplicateSlide} title="Folie duplizieren" className="p-1.5 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
@@ -2409,7 +2496,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             </div>
           </header>
 
-          <div className="flex-1 overflow-hidden p-12 flex justify-center items-center bg-background/50 relative">
+          <div className="flex-1 overflow-hidden p-8 flex flex-col justify-center items-center bg-background/50 relative">
             
             {isPreviewMode && (
               <>
@@ -2424,7 +2511,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                <button type="button" onClick={() => setCanvasScale(s => Math.min(2.0, s + 0.1))} className="p-2 hover:bg-white/10 rounded-full text-text-muted hover:text-text-primary transition-colors"><ZoomIn size={18}/></button>
             </div>
 
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full flex-1 flex items-center justify-center">
               {activeSlide ? (
                 <div className="flex items-center justify-center shrink-0" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
                   <AnimatePresence mode="wait">
@@ -2435,6 +2522,24 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 </div>
               ) : null}
             </div>
+
+            {/* KEYNOTE REFERENTENNOTIZEN DRAWER IM EDITOR */}
+            {!isPreviewMode && activeSlide && showNotesDrawer && (
+              <div className="w-full max-w-4xl bg-surface border border-border rounded-xl p-3 mt-4 shrink-0 shadow-xl flex gap-3 items-center">
+                <StickyNote className="text-amber-400 shrink-0" size={18} />
+                <div className="flex-1">
+                  <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1">Referenten-Notiz (Spickzettel für Vortrag)</div>
+                  <input
+                    type="text"
+                    value={localNotes}
+                    onChange={(e) => handleLocalUpdate('notes', e.target.value)}
+                    placeholder="Einen kurzen Stichpunkt für den Vortrag eingeben..."
+                    className="w-full bg-background border border-border/50 rounded-lg px-3 py-1.5 text-xs font-medium text-text-primary outline-none focus:border-purple-500"
+                  />
+                </div>
+                <button type="button" onClick={() => setShowNotesDrawer(false)} className="p-1 text-text-muted hover:text-text-primary"><X size={14}/></button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -2550,10 +2655,21 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         )}
       </AnimatePresence>
 
-      {/* FULLSCREEN PRESENTER MODE OVERLAY WITH ANIMATIONS */}
+      {/* APPLE KEYNOTE PRESENTER MODERATOR MODE OVERLAY */}
       {isPresenterMode && slides[presenterIndex] && (
-        <div className="fixed inset-0 z-[200000] bg-black text-white flex flex-col items-center justify-between p-6 select-none animate-in fade-in duration-200">
-          <div className="w-full flex items-center justify-between border-b border-white/10 pb-4">
+        <div 
+          onMouseMove={handleMouseMovePresenter}
+          className="fixed inset-0 z-[200000] bg-black text-white flex flex-col items-center justify-between p-6 select-none animate-in fade-in duration-200 cursor-default relative overflow-hidden"
+        >
+          {/* INTERAKTIVER LASERPOINTER */}
+          {isLaserActive && (
+            <div 
+              className="pointer-events-none fixed w-6 h-6 rounded-full bg-red-500/90 shadow-[0_0_20px_6px_rgba(239,68,68,0.9)] z-[250000] transform -translate-x-1/2 -translate-y-1/2 mix-blend-screen transition-transform duration-75"
+              style={{ left: laserPos.x, top: laserPos.y }}
+            />
+          )}
+
+          <div className="w-full flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
             <div className="flex items-center gap-3">
               <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-xs font-mono font-bold">
                 Folie {presenterIndex + 1} / {slides.length}
@@ -2562,28 +2678,74 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 <Clock size={14}/> {Math.floor(presenterSeconds / 60)}m {presenterSeconds % 60}s
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-white/40">Nutze ← / → Pfeiltasten</span>
+            
+            <div className="flex items-center gap-2">
+              <button 
+                type="button" 
+                onClick={() => setIsLaserActive(!isLaserActive)} 
+                className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border", isLaserActive ? "bg-red-500 text-white border-red-400 shadow-[0_0_15px_rgba(239,68,68,0.5)]" : "bg-white/10 border-white/20 text-white/70 hover:text-white")}
+              >
+                <Circle size={12} className={isLaserActive ? "fill-white" : ""} /> <span>Laserpointer (L)</span>
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setShowPresenterNotes(!showPresenterNotes)} 
+                className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border", showPresenterNotes ? "bg-amber-500/20 text-amber-300 border-amber-500/40" : "bg-white/10 border-white/20 text-white/70 hover:text-white")}
+              >
+                <StickyNote size={14} /> <span>Referenten-Notizen</span>
+              </button>
               <button onClick={() => setIsPresenterMode(false)} className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-bold transition-colors">
                 Beenden (Esc)
               </button>
             </div>
           </div>
 
-          <div className="flex-1 w-full flex items-center justify-center p-4 overflow-hidden">
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={slides[presenterIndex].id} 
-                {...getTransitionVariants()} 
-                style={{ width: 1000, height: 562, transform: 'scale(1.25)', transformOrigin: 'center' }} 
-                className="shadow-2xl rounded-xl overflow-hidden shrink-0 border border-white/20"
-              >
-                {renderSlideContent(slides[presenterIndex])}
-              </motion.div>
-            </AnimatePresence>
+          <div className="flex-1 w-full flex flex-col lg:flex-row items-center justify-center p-4 gap-6 overflow-hidden">
+            <div className="flex-1 h-full flex items-center justify-center">
+              <AnimatePresence mode="wait">
+                <motion.div 
+                  key={slides[presenterIndex].id} 
+                  {...getTransitionVariants()} 
+                  style={{ width: 1000, height: 562, transform: 'scale(1.2)', transformOrigin: 'center' }} 
+                  className="shadow-2xl rounded-xl overflow-hidden shrink-0 border border-white/20 relative"
+                >
+                  {renderSlideContent(slides[presenterIndex])}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* KEYNOTE REFERENTEN-HUD & VORSCHAU DER NÄCHSTEN FOLIE */}
+            {showPresenterNotes && (
+              <div className="w-80 h-full bg-zinc-900 border border-white/10 rounded-2xl p-5 flex flex-col justify-between shrink-0 shadow-2xl">
+                <div>
+                  <div className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <StickyNote size={14} /> Referentennotiz
+                  </div>
+                  <div className="text-sm font-medium text-white/90 bg-black/40 p-4 rounded-xl border border-white/10 min-h-[140px] leading-relaxed whitespace-pre-wrap">
+                    {slides[presenterIndex].notes || "Keine Notizen für diese Folie hinterlegt."}
+                  </div>
+                </div>
+
+                {/* VORSCHAU NÄCHSTE FOLIE */}
+                {presenterIndex < slides.length - 1 && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <div className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-2">Nächste Folie</div>
+                    <div className="p-3 bg-black/60 rounded-xl border border-white/10 flex items-center gap-3">
+                      <div className="w-16 h-10 bg-zinc-800 rounded flex items-center justify-center font-bold text-xs text-white/70 overflow-hidden shrink-0">
+                        {slides[presenterIndex + 1].imageUrl ? <img src={sanitizeUrl(slides[presenterIndex + 1].imageUrl)} className="w-full h-full object-cover"/> : `Folie ${presenterIndex + 2}`}
+                      </div>
+                      <div className="truncate flex-1">
+                        <div className="text-xs font-bold text-white truncate">{slides[presenterIndex + 1].title}</div>
+                        <div className="text-[10px] text-white/40 uppercase">{slides[presenterIndex + 1].layout}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div className="w-full flex items-center justify-between border-t border-white/10 pt-4">
+          <div className="w-full flex items-center justify-between border-t border-white/10 pt-4 shrink-0">
             <button onClick={() => setPresenterIndex(i => Math.max(0, i - 1))} disabled={presenterIndex === 0} className="px-5 py-2.5 bg-white/10 hover:bg-white/20 disabled:opacity-20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2">
               <ChevronLeft size={16}/> Vorherige Folie
             </button>
