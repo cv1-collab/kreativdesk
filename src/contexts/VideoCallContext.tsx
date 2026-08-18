@@ -399,6 +399,12 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const hangUp = () => {
+    if (callId) {
+      try {
+        Promise.resolve(supabase.from('video_calls').update({ ended_at: new Date().toISOString() }).eq('id', callId)).catch(() => {});
+      } catch (e) {}
+    }
+
     Object.values(pcsRef.current).forEach(pc => pc.close());
     pcsRef.current = {};
 

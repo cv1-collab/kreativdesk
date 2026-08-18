@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
-  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck, Download
+  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck, Download, History, Image
 } from 'lucide-react';
 import { downloadICSFile } from '../utils/icsGenerator';
 import { cn, sanitizeUrl } from '../utils';
@@ -73,7 +73,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; reference?: string; createdAt?: any; }
+interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; fileUrl?: string; reference?: string; createdAt?: any; }
+
+const isImageFile = (url?: string, text?: string): boolean => {
+  if (!url && !text) return false;
+  const target = (url || '') + (text || '');
+  return /\.(png|jpe?g|gif|webp|svg|bmp)(\?.*)?$/i.test(target) || (url?.startsWith('data:image/') ?? false);
+};
 
 export default function MeetChat() {
   const { projectId, id } = useParams<{ projectId?: string; id?: string }>();
@@ -180,7 +186,134 @@ export default function MeetChat() {
   const mainVideoRef = useRef<HTMLDivElement>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
+
+  const [showBgModal, setShowBgModal] = useState(false);
+  const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom' | 'screensaver'>(() => (localStorage.getItem('meetchat_bg_mode') as any) || 'none');
+  const [bgBlurAmount, setBgBlurAmount] = useState<string>(() => localStorage.getItem('meetchat_bg_blur') || '12px');
+  const [bgImageUrl, setBgImageUrl] = useState<string>(() => localStorage.getItem('meetchat_bg_image') || '');
+  const [customBgImage, setCustomBgImage] = useState<string>(() => localStorage.getItem('meetchat_custom_bg') || '');
+  const [screensaverBg, setScreensaverBg] = useState<string>(() => localStorage.getItem('ws_screensaver_bg') || '');
+
+  useEffect(() => {
+    const fetchScreensaverBg = async () => {
+      try {
+        const safeComp = currentUser?.companyId || currentUser?.uid;
+        if (safeComp) {
+          const { data } = await supabase.from('company_settings').select('screensaver_image').eq('company_id', safeComp).maybeSingle();
+          if (data?.screensaver_image) {
+            setScreensaverBg(data.screensaver_image);
+            localStorage.setItem('ws_screensaver_bg', data.screensaver_image);
+          }
+        }
+      } catch (e) {}
+    };
+    fetchScreensaverBg();
+  }, [currentUser]);
+
+  const handleSelectBgMode = (mode: 'none' | 'blur' | 'preset' | 'custom' | 'screensaver', url?: string, blur?: string) => {
+    setBgMode(mode);
+    localStorage.setItem('meetchat_bg_mode', mode);
+    if (blur) { setBgBlurAmount(blur); localStorage.setItem('meetchat_bg_blur', blur); }
+    if (url) { setBgImageUrl(url); localStorage.setItem('meetchat_bg_image', url); }
+  };
+
+  const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = (reader.result as string) || '';
+      setCustomBgImage(result);
+      localStorage.setItem('meetchat_custom_bg', result);
+      handleSelectBgMode('custom', result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [callHistory, setCallHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const openHistoryModal = async () => {
+    setIsHistoryModalOpen(true);
+    setIsLoadingHistory(true);
+    try {
+      let historyItems: any[] = [];
+      const targetProj = projectId || activeProjectId || 'global';
+      
+      try {
+        const { data: calls } = await supabase
+          .from('video_calls')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (calls) {
+          historyItems = calls.map(c => ({
+            id: c.id,
+            title: c.title || `Video Call (${c.id.substring(0, 12)})`,
+            callerName: c.caller_name || 'Host',
+            createdAt: c.created_at,
+            endedAt: c.ended_at,
+            meetingLink: `/project/${c.project_id || targetProj}/meet?join=${c.id}`,
+            projectId: c.project_id
+          }));
+        }
+      } catch (e) {
+        console.warn("video_calls history fetch info:", e);
+      }
+
+      try {
+        const { data: events } = await supabase
+          .from('calendar_events')
+          .select('*')
+          .eq('type', 'call')
+          .order('created_at', { ascending: false })
+          .limit(50);
+        if (events) {
+          events.forEach(e => {
+            const meetingId = e.meeting_link?.split('join=')[1] || e.id;
+            if (!historyItems.some(h => h.id === meetingId || h.id === e.id)) {
+              historyItems.push({
+                id: e.id,
+                title: e.title,
+                callerName: e.owner_id ? 'Organisator' : 'Host',
+                createdAt: e.created_at || (e.date ? `${e.date}T${e.time || '10:00'}:00` : new Date().toISOString()),
+                meetingLink: e.meeting_link || `/project/${e.project_id || targetProj}/meet?join=${e.id}`,
+                projectId: e.project_id,
+                description: e.description
+              });
+            }
+          });
+        }
+      } catch (e) {}
+
+      historyItems.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      setCallHistory(historyItems);
+    } catch (err) {
+      console.error("Failed to load call history", err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleDownloadICS = (call: { title: string; date?: string; time?: string; createdAt?: string; description?: string; meetingLink?: string; id?: string }) => {
+    const rawDate = call.date || (call.createdAt ? call.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]);
+    const rawTime = call.time || (call.createdAt && call.createdAt.includes('T') ? call.createdAt.split('T')[1].substring(0, 5) : '10:00');
+    const meetingUrl = `${window.location.origin}${call.meetingLink || `/guest-meet/${call.id || 'room'}`}`;
+
+    downloadICSFile([{
+      title: `📹 ${call.title || 'Live Video Call'}`,
+      description: `${call.description ? call.description + '\n\n' : ''}Direkt-Link zum Meeting: ${meetingUrl}`,
+      startDate: rawDate,
+      startTime: rawTime,
+      url: meetingUrl,
+      location: 'Kreativ Desk OS (Online Meeting)'
+    }], (call.title || 'Video_Call').replace(/[^a-zA-Z0-9_-]/g, '_'));
+
+    addToast(currentLang === 'de' ? '📅 iCal (.ics) Datei heruntergeladen!' : '📅 iCal (.ics) file downloaded!', 'success');
+  };
 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
@@ -189,74 +322,82 @@ export default function MeetChat() {
 
   useEffect(() => { isTranscribingRef.current = isTranscribing; }, [isTranscribing]);
 
-  const sendChatMessage = async (msgData: {
-    text: string;
-    sender?: string;
-    avatar?: string;
-    fileUrl?: string;
-    isAI?: boolean;
-    isTranscript?: boolean;
-    reference?: string;
-  }) => {
-    const senderName = msgData.sender || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
-    const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
-    const msgId = `msg-${Date.now()}`;
+    const sendChatMessage = async (msgData: {
+      text: string;
+      sender?: string;
+      avatar?: string;
+      fileUrl?: string;
+      isAI?: boolean;
+      isTranscript?: boolean;
+      reference?: string;
+    }) => {
+      const senderName = msgData.sender || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'User';
+      const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
+      const msgId = `msg-${Date.now()}`;
 
-    const msgObj = {
-      id: msgId,
-      sender: senderName,
-      avatar: (senderName || 'U').substring(0, 2).toUpperCase(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: msgData.text,
-      isAI: msgData.isAI,
-      fileUrl: msgData.fileUrl,
-      reference: msgData.reference,
-      createdAt: new Date().toISOString()
-    };
+      const msgObj = {
+        id: msgId,
+        sender: senderName,
+        avatar: (senderName || 'U').substring(0, 2).toUpperCase(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: msgData.text,
+        isAI: msgData.isAI,
+        fileUrl: msgData.fileUrl,
+        reference: msgData.reference,
+        createdAt: new Date().toISOString()
+      };
 
-    // Live Broadcast to connected peers in room
-    supabase.channel(`chat_messages_${currentMeetingCallId}`).send({
-      type: 'broadcast',
-      event: 'new_chat_msg',
-      payload: msgObj
-    }).catch(() => { });
+      // Optimistically update local messages for sender if not already present
+      setMessages(prev => {
+        if (prev.some(m => m.id === msgId)) return prev;
+        return [...prev, msgObj];
+      });
+      setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
-    const payloadPrimary: any = {
-      id: msgId,
-      call_id: currentMeetingCallId,
-      sender_id: currentUser?.uid || `user-${Date.now()}`,
-      sender_name: senderName,
-      message: msgData.text,
-      created_at: new Date().toISOString()
-    };
+      // Live Broadcast to connected peers in room
+      supabase.channel(`chat_messages_${currentMeetingCallId}`).send({
+        type: 'broadcast',
+        event: 'new_chat_msg',
+        payload: msgObj
+      }).catch(() => { });
 
-    if (msgData.fileUrl) payloadPrimary.file_url = msgData.fileUrl;
-    if (msgData.isAI) payloadPrimary.is_ai = true;
-    if (msgData.isTranscript) payloadPrimary.is_transcript = true;
-    if (msgData.reference) payloadPrimary.reference = msgData.reference;
+      const payloadPrimary: any = {
+        id: msgId,
+        call_id: currentMeetingCallId,
+        sender_id: currentUser?.uid || `user-${Date.now()}`,
+        sender_name: senderName,
+        message: msgData.text,
+        created_at: new Date().toISOString()
+      };
 
-    try {
-      const { error: insErr } = await supabase.from('chat_messages').insert(payloadPrimary);
-      if (insErr) {
-        console.warn("Supabase primary insert warning, running fallback:", insErr.message);
-        const payloadFallback: any = {
-          id: msgId + '-fb',
-          call_id: currentMeetingCallId,
-          sender_id: currentUser?.uid || `user-${Date.now()}`,
-          sender: senderName,
-          text: msgData.text,
-          created_at: new Date().toISOString()
-        };
-        try {
-          await supabase.from('chat_messages').insert(payloadFallback);
-        } catch (fbErr) {
-          console.error("Fallback err:", fbErr);
+      if (msgData.fileUrl) payloadPrimary.file_url = msgData.fileUrl;
+      if (msgData.isAI) payloadPrimary.is_ai = true;
+      if (msgData.isTranscript) payloadPrimary.is_transcript = true;
+      if (msgData.reference) payloadPrimary.reference = msgData.reference;
+
+      try {
+        const { error: insErr } = await supabase.from('chat_messages').insert(payloadPrimary);
+        if (insErr) {
+          console.warn("Supabase primary insert warning, running fallback:", insErr.message);
+          const payloadFallback: any = {
+            id: msgId + '-fb',
+            call_id: currentMeetingCallId,
+            sender_id: currentUser?.uid || `user-${Date.now()}`,
+            sender: senderName,
+            text: msgData.text,
+            created_at: new Date().toISOString()
+          };
+          if (msgData.fileUrl) payloadFallback.file_url = msgData.fileUrl;
+          try {
+            await supabase.from('chat_messages').insert(payloadFallback);
+          } catch (fbErr) {
+            console.error("Fallback err:", fbErr);
+          }
         }
+      } catch (err) {
+        console.error("Failed to send chat message:", err);
       }
-    } catch (err) {
-      console.error("Failed to send chat message:", err);
-    }
-  };
+    };
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -396,7 +537,7 @@ export default function MeetChat() {
             time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             text: d.message || d.text,
             isAI: d.is_ai,
-            fileUrl: d.file_url,
+            fileUrl: d.file_url || d.fileUrl,
             reference: d.reference,
             createdAt: d.created_at
           })));
@@ -461,7 +602,17 @@ export default function MeetChat() {
         if (payload && payload.id) {
           setMessages(prev => {
             if (prev.some(m => m.id === payload.id)) return prev;
-            return [...prev, payload];
+            return [...prev, {
+              id: payload.id,
+              sender: payload.sender || payload.sender_name || 'System',
+              avatar: payload.avatar || (payload.sender || 'U').substring(0, 2).toUpperCase(),
+              time: payload.time || new Date(payload.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              text: payload.text || payload.message,
+              isAI: payload.isAI || payload.is_ai,
+              fileUrl: payload.fileUrl || payload.file_url,
+              reference: payload.reference,
+              createdAt: payload.createdAt || payload.created_at
+            }];
           });
           setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         }
@@ -478,7 +629,7 @@ export default function MeetChat() {
               time: new Date(d.created_at || d.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               text: d.message || d.text,
               isAI: d.is_ai,
-              fileUrl: d.file_url,
+              fileUrl: d.file_url || d.fileUrl,
               reference: d.reference,
               createdAt: d.created_at
             }];
@@ -991,6 +1142,9 @@ export default function MeetChat() {
               <MessageSquare size={18} />
             </button>
             <div className="w-px h-6 bg-border mx-1"></div>
+            <button onClick={openHistoryModal} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 shadow-sm cursor-pointer" title="Videocall-Verlauf anzeigen">
+              <History size={16} className="text-accent-ai" /> {currentLang === 'de' ? 'Historie' : 'History'}
+            </button>
             <button onClick={openScheduleModal} className="tour-meet-schedule px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 shadow-sm">
               <Calendar size={16} /> {t('schedule_call')}
             </button>
@@ -1093,7 +1247,15 @@ export default function MeetChat() {
                     )}
                   </div>
 
-                  <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20">
+                  <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20 group relative">
+                    {(bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && (
+                      <div
+                        className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
+                        style={{
+                          backgroundImage: `url(${bgMode === 'custom' ? customBgImage : bgMode === 'screensaver' ? screensaverBg : bgImageUrl})`
+                        }}
+                      />
+                    )}
                     <video
                       ref={(el) => {
                         localVideoRef.current = el;
@@ -1105,13 +1267,37 @@ export default function MeetChat() {
                       autoPlay
                       playsInline
                       muted
-                      className={cn("w-full h-full object-cover", !isScreenSharing && "transform -scale-x-100")}
+                      className={cn(
+                        "w-full h-full object-cover relative z-10 transition-all duration-300",
+                        !isScreenSharing && "transform -scale-x-100",
+                        (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90"
+                      )}
+                      style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
                     />
+                    <button
+                      onClick={() => setShowBgModal(true)}
+                      className="absolute top-2 right-2 z-20 p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 cursor-pointer"
+                      title="Hintergrund wechseln"
+                    >
+                      <Image size={14} />
+                    </button>
                   </div>
 
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto">
                     <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Mikrofon">{isMicOn ? <Mic size={20} /> : <MicOff size={20} />}</button>
                     <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
+                    <button
+                      onClick={() => setShowBgModal(true)}
+                      className={cn(
+                        "p-3 md:p-4 rounded-xl transition-all border cursor-pointer",
+                        bgMode !== 'none'
+                          ? "bg-accent-ai text-white border-accent-ai shadow-lg shadow-accent-ai/20"
+                          : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700"
+                      )}
+                      title="Hintergrund & Weichzeichner anpassen"
+                    >
+                      <Image size={20} />
+                    </button>
                     <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
                     <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
                     <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
@@ -1171,9 +1357,18 @@ export default function MeetChat() {
                         <h4 className="font-bold text-text-primary text-xs">{call.title}</h4>
                         <p className="text-[10px] text-text-muted mt-0.5 font-medium">{new Date(call.date).toLocaleDateString()} • {call.time} Uhr</p>
                       </div>
-                      <button onClick={() => { joinCall(call.meetingLink.split('join=')[1] || null); }} className="px-3 py-1.5 bg-accent-success/10 text-accent-success hover:bg-accent-success/20 border border-accent-success/20 rounded-md text-xs font-bold transition-colors">
-                        {t('join_now')}
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleDownloadICS(call)}
+                          className="p-1.5 bg-surface hover:bg-white/10 border border-border/50 text-text-muted hover:text-text-primary rounded-md text-xs font-bold transition-colors cursor-pointer"
+                          title="📅 .ics Kalenderdatei herunterladen"
+                        >
+                          <Calendar size={13} />
+                        </button>
+                        <button onClick={() => { joinCall(call.meetingLink.split('join=')[1] || null); }} className="px-3 py-1.5 bg-accent-success/10 text-accent-success hover:bg-accent-success/20 border border-accent-success/20 rounded-md text-xs font-bold transition-colors">
+                          {t('join_now')}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1199,10 +1394,37 @@ export default function MeetChat() {
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2"><span className={cn("text-sm font-bold", msg.isAI ? "text-accent-ai" : "text-text-primary")}>{msg.sender}</span><span className="text-[10px] font-medium text-text-muted">{msg.time}</span></div>
                     <p className="text-sm text-text-muted mt-1 leading-relaxed whitespace-pre-wrap font-medium">{msg.text}</p>
-                    {!!sanitizeUrl((msg as any).fileUrl) && (
-                      <a href={sanitizeUrl((msg as any).fileUrl)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-2 text-accent-ai hover:underline text-sm font-bold bg-accent-ai/10 px-3 py-1.5 rounded-lg border border-accent-ai/20 shadow-sm transition-all hover:bg-accent-ai/20">
-                        <LinkIcon size={14} /> Datei ansehen / herunterladen
-                      </a>
+                    {!!sanitizeUrl(msg.fileUrl) && (
+                      <div className="mt-2 space-y-2">
+                        {isImageFile(msg.fileUrl, msg.text) ? (
+                          <a
+                            href={sanitizeUrl(msg.fileUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block max-w-xs group relative rounded-xl overflow-hidden border border-border/60 bg-black/20 shadow-sm transition-transform hover:scale-[1.02]"
+                          >
+                            <img
+                              src={sanitizeUrl(msg.fileUrl)}
+                              alt={msg.text || 'Angehängtes Bild'}
+                              className="w-full max-h-60 object-contain rounded-xl bg-surface/40"
+                              loading="lazy"
+                            />
+                            <div className="p-2 bg-surface/90 border-t border-border/50 text-[11px] font-bold text-accent-ai flex items-center justify-between gap-1.5">
+                              <span className="truncate">{msg.text?.replace(/^Dateianhang:\s*/, '') || 'Bild ansehen'}</span>
+                              <Download size={13} className="shrink-0" />
+                            </div>
+                          </a>
+                        ) : (
+                          <a
+                            href={sanitizeUrl(msg.fileUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-accent-ai hover:underline text-xs font-bold bg-accent-ai/10 px-3 py-2 rounded-xl border border-accent-ai/20 shadow-sm transition-all hover:bg-accent-ai/20"
+                          >
+                            <Paperclip size={14} /> {msg.text?.replace(/^Dateianhang:\s*/, '') || 'Datei ansehen / herunterladen'}
+                          </a>
+                        )}
+                      </div>
                     )}
                     {msg.reference && <div className="mt-3 inline-flex items-center gap-1.5 bg-background border border-border/50 rounded-md px-2 py-1 text-xs font-medium text-text-primary hover:bg-white/5 transition-colors cursor-pointer shadow-sm"><FileText size={12} className="text-accent-ai" /> {msg.reference}</div>}
                   </div>
@@ -1397,9 +1619,30 @@ export default function MeetChat() {
                   </div>
                 </div>
 
-                <div className="pt-4 flex justify-end gap-3 border-t border-border/50 mt-6">
-                  <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                  <button type="submit" className="px-8 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20">{t('schedule')}</button>
+                <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newCallEvent.title || !newCallEvent.date) {
+                        addToast(currentLang === 'de' ? 'Bitte zuerst Titel und Datum eingeben' : 'Please enter title and date first', 'error');
+                        return;
+                      }
+                      handleDownloadICS({
+                        title: newCallEvent.title,
+                        date: newCallEvent.date,
+                        time: newCallEvent.time,
+                        description: newCallEvent.description,
+                        meetingLink: `/project/${projectId || activeProjectId || 'global'}/meet?join=${generatedMeetingId}`
+                      });
+                    }}
+                    className="px-4 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Calendar size={14} /> 📅 .ics Datei
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-6 py-2.5 rounded-xl text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
+                    <button type="submit" className="px-8 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20">{t('schedule')}</button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -1474,6 +1717,259 @@ export default function MeetChat() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>,
+          document.body
+        )}
+        {isHistoryModalOpen && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <div className="bg-surface border border-border/50 rounded-3xl p-6 w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-accent-ai/10 text-accent-ai rounded-xl flex items-center justify-center">
+                    <History size={22} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-text-primary">
+                      {currentLang === 'de' ? 'Videocall Verlauf & Historie' : 'Video Call History'}
+                    </h2>
+                    <p className="text-xs text-text-muted">
+                      {currentLang === 'de' ? 'Übersicht aller getätigten und geplanten Video Calls' : 'Overview of all completed and scheduled video calls'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setIsHistoryModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-xl transition-colors cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1 py-2">
+                {isLoadingHistory ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-text-muted">
+                    <Loader2 size={32} className="animate-spin text-accent-ai mb-2" />
+                    <p className="text-xs font-bold">Historie wird geladen...</p>
+                  </div>
+                ) : callHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-text-muted text-center">
+                    <Clock size={36} className="mb-2 opacity-50" />
+                    <p className="text-sm font-bold">Noch keine Anruf-Historie vorhanden.</p>
+                    <p className="text-xs text-text-muted mt-1">Getätigte und geplante Calls werden hier automatisch aufgezeichnet.</p>
+                  </div>
+                ) : (
+                  callHistory.map((item, idx) => (
+                    <div key={item.id || idx} className="bg-background border border-border/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm hover:border-accent-ai/40 transition-colors">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-sm text-text-primary">{item.title}</h4>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent-ai/10 text-accent-ai border border-accent-ai/20">
+                            ID: {item.id}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-text-muted font-medium">
+                          <span>👤 {item.callerName}</span>
+                          <span>•</span>
+                          <span>📅 {new Date(item.createdAt).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            const fullUrl = `${window.location.origin}${item.meetingLink}`;
+                            navigator.clipboard.writeText(fullUrl);
+                            addToast(currentLang === 'de' ? 'Link kopiert!' : 'Link copied!', 'success');
+                          }}
+                          className="p-2 bg-surface hover:bg-white/10 border border-border/50 rounded-xl text-text-muted hover:text-text-primary transition-colors text-xs font-bold cursor-pointer"
+                          title="Link kopieren"
+                        >
+                          <Copy size={16} />
+                        </button>
+
+                        <button
+                          onClick={() => handleDownloadICS({
+                            title: item.title,
+                            createdAt: item.createdAt,
+                            meetingLink: item.meetingLink,
+                            id: item.id
+                          })}
+                          className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                          title="📅 .ics Kalenderdatei herunterladen"
+                        >
+                          <Calendar size={14} /> .ics
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIsHistoryModalOpen(false);
+                            const joinPart = item.meetingLink?.split('join=')[1];
+                            if (joinPart) joinCall(joinPart);
+                            else navigate(item.meetingLink);
+                          }}
+                          className="px-4 py-2 bg-accent-ai text-white rounded-xl text-xs font-bold hover:bg-accent-ai/90 transition-colors shadow-md flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <PhoneForwarded size={14} /> Beitreten
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="pt-4 border-t border-border/50 flex justify-end shrink-0 mt-2">
+                <button
+                  onClick={() => setIsHistoryModalOpen(false)}
+                  className="px-6 py-2 bg-surface hover:bg-white/5 border border-border/50 text-text-primary rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                >
+                  {currentLang === 'de' ? 'Schliessen' : 'Close'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+        {showBgModal && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[999999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-surface border border-border/50 rounded-3xl p-6 w-full max-w-xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+              <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-4 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-accent-ai/10 text-accent-ai rounded-xl flex items-center justify-center">
+                    <Image size={22} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold text-text-primary">
+                      {currentLang === 'de' ? 'Kamera-Hintergrund & Weichzeichner' : 'Camera Background & Blur'}
+                    </h2>
+                    <p className="text-xs text-text-muted">
+                      {currentLang === 'de' ? 'Wähle einen Vorlagen-Hintergrund, Weichzeichner oder lade ein eigenes Bild hoch' : 'Select a preset background, blur, or upload your own image'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setShowBgModal(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-xl transition-colors cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <input type="file" ref={bgFileInputRef} accept="image/*" className="hidden" onChange={handleCustomBgUpload} />
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-5 pr-1 py-2">
+
+                {/* MODES: NONE & BLUR */}
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Standard & Weichzeichner</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => handleSelectBgMode('none')}
+                      className={cn("p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer", bgMode === 'none' ? "bg-accent-ai/10 border-accent-ai text-accent-ai font-bold shadow-md" : "bg-background border-border/60 text-text-muted hover:text-text-primary hover:border-border")}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-lg">🚫</div>
+                      <span className="text-xs text-center font-bold">Kein Effekt</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSelectBgMode('blur', undefined, '8px')}
+                      className={cn("p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer", bgMode === 'blur' && bgBlurAmount === '8px' ? "bg-accent-ai/10 border-accent-ai text-accent-ai font-bold shadow-md" : "bg-background border-border/60 text-text-muted hover:text-text-primary hover:border-border")}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-lg backdrop-blur-sm border border-border/40">💧</div>
+                      <span className="text-xs text-center font-bold">Blur Leicht</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSelectBgMode('blur', undefined, '20px')}
+                      className={cn("p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer", bgMode === 'blur' && bgBlurAmount === '20px' ? "bg-accent-ai/10 border-accent-ai text-accent-ai font-bold shadow-md" : "bg-background border-border/60 text-text-muted hover:text-text-primary hover:border-border")}
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-lg backdrop-blur-md border border-border/40">🌫️</div>
+                      <span className="text-xs text-center font-bold">Blur Stark</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* CUSTOM UPLOAD & SCREENSAVER */}
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Eigenes Bild & Screensaver</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => bgFileInputRef.current?.click()}
+                      className={cn("p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer relative overflow-hidden", bgMode === 'custom' ? "bg-accent-ai/10 border-accent-ai text-accent-ai font-bold shadow-md" : "bg-background border-border/60 text-text-muted hover:text-text-primary hover:border-border")}
+                    >
+                      {customBgImage ? (
+                        <img src={customBgImage} className="w-12 h-12 rounded-xl object-cover border border-border shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-surface flex items-center justify-center text-lg shrink-0">📁</div>
+                      )}
+                      <div className="text-left overflow-hidden">
+                        <p className="text-xs font-bold text-text-primary truncate">Eigenes Bild hochladen</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">JPG, PNG (computer)</p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (!screensaverBg) {
+                          addToast(currentLang === 'de' ? 'Kein Screensaver-Bild in den Einstellungen hinterlegt' : 'No screensaver background set in settings', 'info');
+                          return;
+                        }
+                        handleSelectBgMode('screensaver', screensaverBg);
+                      }}
+                      className={cn("p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer relative overflow-hidden", bgMode === 'screensaver' ? "bg-accent-ai/10 border-accent-ai text-accent-ai font-bold shadow-md" : "bg-background border-border/60 text-text-muted hover:text-text-primary hover:border-border")}
+                    >
+                      {screensaverBg ? (
+                        <img src={screensaverBg} className="w-12 h-12 rounded-xl object-cover border border-border shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-surface flex items-center justify-center text-lg shrink-0">🖥️</div>
+                      )}
+                      <div className="text-left overflow-hidden">
+                        <p className="text-xs font-bold text-text-primary truncate">Screensaver Bild</p>
+                        <p className="text-[10px] text-text-muted mt-0.5">Firmen-Hintergrund</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* PRESET GALLERY */}
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Architektur & Studio Templates</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {[
+                      { id: 'alpine', name: 'Schweizer Alpen', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?auto=format&fit=crop&w=1600&q=80', icon: '🏔️' },
+                      { id: 'loft', name: 'Glas Loft', url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1600&q=80', icon: '🏛️' },
+                      { id: 'studio', name: 'Architektur Studio', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=1600&q=80', icon: '🏢' },
+                      { id: 'dark_luxury', name: 'Dark Luxury', url: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&w=1600&q=80', icon: '🌌' },
+                      { id: 'minimalist', name: 'Minimalist Atelier', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80', icon: '🎨' }
+                    ].map(preset => {
+                      const isSelected = bgMode === 'preset' && bgImageUrl === preset.url;
+                      return (
+                        <button
+                          key={preset.id}
+                          onClick={() => handleSelectBgMode('preset', preset.url)}
+                          className={cn(
+                            "group relative rounded-2xl overflow-hidden border transition-all cursor-pointer h-24 flex flex-col justify-end p-2.5",
+                            isSelected ? "border-accent-ai ring-2 ring-accent-ai/40 shadow-lg" : "border-border/60 hover:border-border"
+                          )}
+                        >
+                          <img src={preset.url} alt={preset.name} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                          <div className="relative z-10 flex items-center justify-between text-white">
+                            <span className="text-xs font-bold truncate flex items-center gap-1">
+                              <span>{preset.icon}</span> {preset.name}
+                            </span>
+                            {isSelected && <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="pt-4 border-t border-border/50 flex justify-end shrink-0 mt-2">
+                <button
+                  onClick={() => setShowBgModal(false)}
+                  className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-xs font-bold hover:bg-accent-ai/90 transition-colors shadow-md cursor-pointer"
+                >
+                  {currentLang === 'de' ? 'Übernehmen & Schliessen' : 'Apply & Close'}
+                </button>
+              </div>
             </div>
           </div>,
           document.body
