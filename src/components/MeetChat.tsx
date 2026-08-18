@@ -75,7 +75,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 interface ChatMessage { id: string; sender: string; avatar: string; time: string; text: string; isAI?: boolean; isTranscript?: boolean; reference?: string; createdAt?: any; }
 
 export default function MeetChat() {
-  const { projectId } = useParams();
+  const { projectId: routeProjectId, id } = useParams<{ projectId?: string; id?: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
@@ -101,7 +101,7 @@ export default function MeetChat() {
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
   const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
 
-  const currentProjectId = routeProjectId || activeProjectId || 'global';
+  const currentProjectId = routeProjectId || id || activeProjectId || 'global';
 
   const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
     try {

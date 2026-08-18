@@ -998,9 +998,20 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-500 transition-transform group-hover:scale-110 shadow-md">
                         <FolderOpen size={26} />
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-amber-500 flex items-center gap-1.5 shadow-sm">
-                        Ordner
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-amber-500 flex items-center gap-1.5 shadow-sm">
+                          Ordner
+                        </span>
+                        {canDelete && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(folderObj.id, true); }}
+                            className="p-1.5 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border/50 cursor-pointer"
+                            title="Ordner löschen"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-amber-500 transition-colors">
@@ -1061,6 +1072,41 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                   </div>
                 );
               })}
+
+              {/* Custom Root User Folders in List View */}
+              {customRootFolders.map(folderObj => (
+                <div
+                  key={folderObj.id}
+                  onClick={() => navigateToFolder(folderObj.id, folderObj.name)}
+                  className="py-3 px-4 flex items-center justify-between hover:bg-background/60 transition-colors rounded-2xl group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 shadow-sm">
+                      <FolderOpen size={18} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-text-primary group-hover:text-amber-500 transition-colors flex items-center gap-2">
+                        {folderObj.name}
+                        <span className="text-[10px] uppercase font-black px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-md">Benutzerordner</span>
+                      </div>
+                      <div className="text-xs text-text-muted font-medium">Benutzerdefinierter Ordner</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {canDelete && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(folderObj.id, true); }}
+                        className="p-2 text-text-muted hover:text-red-500 transition-colors bg-background rounded-lg border border-border cursor-pointer"
+                        title="Ordner löschen"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                    <ChevronRight size={18} className="text-text-muted group-hover:text-amber-500 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
