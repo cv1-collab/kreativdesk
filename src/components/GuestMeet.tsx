@@ -49,6 +49,27 @@ export default function GuestMeet() {
   const [meetingCompanyId, setMeetingCompanyId] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
+  const chatCacheKey = `guestmeet_history_${joinId}`;
+
+  useEffect(() => {
+    if (!joinId) return;
+    try {
+      const cached = localStorage.getItem(chatCacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+      }
+    } catch (e) {}
+  }, [joinId, chatCacheKey]);
+
+  useEffect(() => {
+    if (messages.length > 0 && joinId) {
+      try {
+        localStorage.setItem(chatCacheKey, JSON.stringify(messages));
+      } catch (e) {}
+    }
+  }, [messages, joinId, chatCacheKey]);
+
   const [newMessage, setNewMessage] = useState('');
   const [error, setError] = useState('');
   const [isScreenSharing, setIsScreenSharing] = useState(false);

@@ -130,6 +130,30 @@ export default function MeetChat() {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [meetingSummary, setMeetingSummary] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
+  const chatCacheKey = `meetchat_history_${currentMeetingCallId || currentProjectId}`;
+
+  // Restore cached chat messages from LocalStorage whenever room or project changes
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(chatCacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch (e) {}
+  }, [chatCacheKey]);
+
+  // Persist messages to LocalStorage whenever messages state updates
+  useEffect(() => {
+    if (messages.length > 0) {
+      try {
+        localStorage.setItem(chatCacheKey, JSON.stringify(messages));
+      } catch (e) {}
+    }
+  }, [messages, chatCacheKey]);
   const [upcomingCalls, setUpcomingCalls] = useState<any[]>([]);
   const [newMessage, setNewMessageRaw] = useState<string>(() => {
     try {
@@ -268,11 +292,10 @@ export default function MeetChat() {
         const { data: events } = await supabase
           .from('calendar_events')
           .select('*')
-          .eq('type', 'call')
           .order('created_at', { ascending: false })
           .limit(50);
         if (events) {
-          events.forEach(e => {
+          events.filter((e: any) => !e.type || e.type === 'call').forEach(e => {
             const meetingId = e.meeting_link?.split('join=')[1] || e.id;
             if (!historyItems.some(h => h.id === meetingId || h.id === e.id)) {
               historyItems.push({
@@ -517,18 +540,13 @@ export default function MeetChat() {
         let query = supabase.from('chat_messages').select('*');
         if (currentMeetingCallId) {
           query = query.eq('call_id', currentMeetingCallId);
-        } else {
-          const targetProj = projectId || activeProjectId;
-          if (targetProj && targetProj !== 'global' && targetProj !== 'internal' && targetProj.length > 20) {
-            query = query.eq('project_id', targetProj);
-          }
         }
         const { data, error } = await query.order('created_at', { ascending: true }).limit(100);
 
         if (!error && data) msgs = data;
 
         if (msgs && msgs.length > 0) {
-          setMessages(msgs.map(d => {
+          const formatted = msgs.map(d => {
             let rawText = d.message || d.text || '';
             let fileUrl = d.file_url || d.fileUrl || null;
             if (rawText && rawText.includes('[FILE:')) {
@@ -549,7 +567,15 @@ export default function MeetChat() {
               reference: d.reference,
               createdAt: d.created_at
             };
-          }));
+          });
+
+          setMessages(prev => {
+            const merged = [...prev];
+            formatted.forEach(f => {
+              if (!merged.some(m => m.id === f.id)) merged.push(f);
+            });
+            return merged;
+          });
         }
       } catch (chatErr) {
         console.warn("Chat fetch fallback handled:", chatErr);
@@ -564,9 +590,8 @@ export default function MeetChat() {
         try {
           const { data } = await supabase
             .from('calendar_events')
-            .select('*')
-            .eq('type', 'call');
-          if (data) events = data;
+            .select('*');
+          if (data) events = data.filter((e: any) => !e.type || e.type === 'call');
         } catch (evErr) {
           console.warn("Calendar events query fallback handled:", evErr);
         }
