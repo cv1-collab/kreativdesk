@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
-  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus
+  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { callGeminiAPI, callGeminiEmbedAPI } from '../utils/geminiClient';
@@ -149,8 +149,27 @@ export default function MeetChat() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [newCallEvent, setNewCallEvent] = useState({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] as string[] });
+  const [newCallEvent, setNewCallEvent] = useState({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] as string[], externalEmails: [] as string[] });
+  const [newCallExternalEmailInput, setNewCallExternalEmailInput] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
+
+  const handleAddCallExternalEmail = () => {
+    if (!newCallExternalEmailInput.trim()) return;
+    const email = newCallExternalEmailInput.trim().toLowerCase();
+    if (!email.includes('@')) {
+      addToast(currentLang === 'de' ? 'Bitte eine gültige E-Mail-Adresse eingeben' : 'Please enter a valid email address', 'error');
+      return;
+    }
+    if (newCallEvent.externalEmails.includes(email)) {
+      setNewCallExternalEmailInput('');
+      return;
+    }
+    setNewCallEvent(prev => ({
+      ...prev,
+      externalEmails: [...prev.externalEmails, email]
+    }));
+    setNewCallExternalEmailInput('');
+  };
 
   const [copied, setCopied] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -305,7 +324,8 @@ export default function MeetChat() {
 
   const openScheduleModal = () => {
     setGeneratedMeetingId(`meet-${Date.now()}`);
-    setNewCallEvent({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] });
+    setNewCallEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'call', description: '', participants: [], externalEmails: [] });
+    setNewCallExternalEmailInput('');
     setIsScheduleModalOpen(true);
   };
 
@@ -581,6 +601,11 @@ export default function MeetChat() {
       const eventId = `evt-${Date.now()}`;
       const targetProjectId = projectId || activeProjectId || 'internal';
       const meetingId = generatedMeetingId || `meet-${Date.now()}`;
+      const meetingLink = `/project/${targetProjectId}/meet?join=${meetingId}`;
+      const allParticipants = [
+        ...(newCallEvent.participants || []),
+        ...(newCallEvent.externalEmails || [])
+      ];
 
       // 1. Pre-register video call so external links work
       try {
@@ -596,7 +621,6 @@ export default function MeetChat() {
         console.warn("video_calls upsert fallback handled:", vcErr);
       }
 
-      const meetingLink = `/project/${targetProjectId}/meet?join=${meetingId}`;
       const newCallObj = {
         id: eventId,
         title: newCallEvent.title,
@@ -611,7 +635,8 @@ export default function MeetChat() {
         projectId: targetProjectId,
         project_id: targetProjectId,
         company_id: currentUser.companyId,
-        owner_id: currentUser.uid
+        owner_id: currentUser.uid,
+        participants: allParticipants
       };
 
       setUpcomingCalls(prev => [newCallObj, ...prev]);
@@ -648,7 +673,7 @@ export default function MeetChat() {
           owner_id: currentUser.uid,
           company_id: currentUser.companyId,
           project_id: targetProjectId,
-          participants: newCallEvent.participants || [],
+          participants: allParticipants,
           timestamp: new Date(`${newCallEvent.date}T${newCallEvent.time}`).getTime(),
           created_at: new Date().toISOString(),
           meeting_link: meetingLink
@@ -672,20 +697,80 @@ export default function MeetChat() {
         link: meetingLink
       });
 
+      // Trigger external email dispatch via server API & mailto link if external emails were entered
+      if (newCallEvent.externalEmails && newCallEvent.externalEmails.length > 0) {
+        const recipients = newCallEvent.externalEmails;
+        const fullMeetingUrl = `${window.location.origin}${meetingLink}`;
+
+        // 1. Call Vercel / API Serverless Email Endpoint
+        try {
+          await fetch('/api/send-invitation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: newCallEvent.title,
+              date: newCallEvent.date,
+              time: newCallEvent.time,
+              description: newCallEvent.description,
+              meetingLink: fullMeetingUrl,
+              recipients,
+              language: currentLang,
+              type: 'call',
+              senderName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio',
+              companyId: currentUser.companyId
+            })
+          });
+        } catch (apiErr) {
+          console.warn("API invitation dispatch handled:", apiErr);
+        }
+
+        // 2. Open prefilled mailto link for direct mail app dispatch (Bilingual DE/EN)
+        const host = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+        const isDe = currentLang === 'de';
+        const subject = encodeURIComponent(
+          isDe ? `📹 Einladung zum Live-Videocall | Kreativ Desk OS` : `📹 Invitation to Live Video Call | Kreativ Desk OS`
+        );
+        const bodyText = encodeURIComponent(
+          isDe
+            ? `Hallo,\n\n${host} lädt dich zu einem Live-Videocall auf Kreativ Desk OS ein!\n\n` +
+              `🚀 MEETING DETAILS:\n` +
+              `• Titel: ${newCallEvent.title}\n` +
+              `• Datum: ${newCallEvent.date} um ${newCallEvent.time} Uhr\n` +
+              `${newCallEvent.description ? `• Notizen: ${newCallEvent.description}\n` : ''}` +
+              `• Direkt-Link: ${fullMeetingUrl}\n\n` +
+              `✨ HINWEIS FÜR GÄSTE:\n` +
+              `Kein Login oder Software-Download erforderlich. Klicke einfach auf den Link oben, gib deinen Namen ein und tritt sofort bei.\n\n` +
+              `Freundliche Grüsse,\n` +
+              `Kreativ Desk OS\n` +
+              `https://www.kreativdesk.ch`
+            : `Hello,\n\n${host} invites you to a live video call on Kreativ Desk OS!\n\n` +
+              `🚀 MEETING DETAILS:\n` +
+              `• Title: ${newCallEvent.title}\n` +
+              `• Date: ${newCallEvent.date} at ${newCallEvent.time}\n` +
+              `${newCallEvent.description ? `• Notes: ${newCallEvent.description}\n` : ''}` +
+              `• Direct Link: ${fullMeetingUrl}\n\n` +
+              `✨ NOTE FOR GUESTS:\n` +
+              `No login or software download required. Simply click the link above, enter your name, and join immediately.\n\n` +
+              `Best regards,\n` +
+              `Kreativ Desk OS\n` +
+              `https://www.kreativdesk.ch`
+        );
+
+        const mailtoUrl = `mailto:${recipients.join(',')}?subject=${subject}&body=${bodyText}`;
+        setTimeout(() => {
+          window.location.href = mailtoUrl;
+        }, 400);
+
+        addToast(`📩 E-Mail-Einladung an ${recipients.join(', ')} gestartet!`, 'info');
+      }
+
       setIsScheduleModalOpen(false);
-      setNewCallEvent({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [] });
-
-      const sysMsgText = language === 'de' ? `Ein neuer Video-Call "${newCallEvent.title}" wurde für den ${newCallEvent.date} um ${newCallEvent.time} Uhr geplant.` : `A new video call "${newCallEvent.title}" has been scheduled for ${newCallEvent.date} at ${newCallEvent.time}.`;
-
-      await supabase.from('chat_messages').insert({
-        sender: 'System', avatar: 'SYS', sender_id: currentUser.uid,
-        company_id: currentUser.companyId,
-        project_id: projectId || activeProjectId || 'global', timestamp: Date.now(), text: sysMsgText, created_at: new Date().toISOString()
-      });
-      addToast('Call erfolgreich in Agenda & Chat eingetragen!', 'success');
+      setNewCallEvent({ title: '', date: '', time: '10:00', type: 'call', description: '', participants: [], externalEmails: [] });
+      setNewCallExternalEmailInput('');
+      addToast(currentLang === 'de' ? 'Video Call erfolgreich geplant!' : 'Video call scheduled successfully!', 'success');
     } catch (err) {
       console.error(err);
-      addToast('Call erfolgreich geplant!', 'success');
+      addToast(currentLang === 'de' ? 'Fehler beim Planen des Calls' : 'Error scheduling call', 'error');
     }
   };
 
@@ -1176,6 +1261,55 @@ export default function MeetChat() {
                   <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2">
                     <Users size={14} /> {t('invite_participants')}
                   </label>
+
+                  {/* CHIPS FOR SELECTED PARTICIPANTS (TEAM & EXTERNAL) */}
+                  <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-background border border-border/50 rounded-xl mb-2">
+                    {((newCallEvent.participants || []).length > 0 || (newCallEvent.externalEmails || []).length > 0) ? (
+                      <>
+                        {(newCallEvent.participants || []).map((pId) => {
+                          const member = currentProjectMembers.find((m: any) => m.id === pId);
+                          return (
+                            <div key={pId} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                              <UserCheck size={12} />
+                              <span>{member?.name || pId}</span>
+                              <button
+                                type="button"
+                                onClick={() => setNewCallEvent(prev => ({
+                                  ...prev,
+                                  participants: prev.participants.filter(id => id !== pId)
+                                }))}
+                                className="hover:text-red-500 ml-1 p-0.5"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          );
+                        })}
+                        {(newCallEvent.externalEmails || []).map((email) => (
+                          <div key={email} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                            <Mail size={12} />
+                            <span>{email}</span>
+                            <button
+                              type="button"
+                              onClick={() => setNewCallEvent(prev => ({
+                                ...prev,
+                                externalEmails: prev.externalEmails.filter(e => e !== email)
+                              }))}
+                              className="hover:text-red-500 ml-1 p-0.5"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    ) : (
+                      <span className="text-xs text-text-muted italic p-1">
+                        {currentLang === 'de' ? 'Noch keine Teilnehmer ausgewählt.' : 'No participants selected yet.'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* TEAM CHECKBOXES */}
                   <div className="bg-background border border-border/50 rounded-xl p-3 max-h-32 overflow-y-auto custom-scrollbar grid grid-cols-1 gap-2">
                     {currentProjectMembers.map((user: any) => (
                       <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-surface rounded-lg cursor-pointer transition-colors border border-transparent hover:border-border/50">
@@ -1204,6 +1338,35 @@ export default function MeetChat() {
                     {currentProjectMembers.length === 0 && (
                       <p className="text-xs text-text-muted p-2 col-span-full">Keine weiteren Teammitglieder im Projekt.</p>
                     )}
+                  </div>
+
+                  {/* EXTERNAL EMAIL INPUT FOR CALLS */}
+                  <div className="mt-3">
+                    <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider mb-1">
+                      {currentLang === 'de' ? 'Externe E-Mail-Adresse (Bauherren, Partner) hinzufügen:' : 'Add External Email Address (Clients, Partners):'}
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        placeholder="z.B. bauherr@beispiel.ch"
+                        value={newCallExternalEmailInput}
+                        onChange={(e) => setNewCallExternalEmailInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCallExternalEmail();
+                          }
+                        }}
+                        className="flex-1 bg-background border border-border/50 rounded-xl py-2 px-3 text-xs focus:outline-none focus:border-accent-ai text-text-primary font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCallExternalEmail}
+                        className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
+                      >
+                        + {currentLang === 'de' ? 'Hinzufügen' : 'Add'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

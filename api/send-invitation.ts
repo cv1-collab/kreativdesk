@@ -56,7 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `Kreativ Desk OS\n` +
         `https://www.kreativdesk.ch`;
 
-    const webhookUrl = process.env.WELCOME_WEBHOOK_URL || process.env.EMAIL_INVITE_WEBHOOK_URL;
+    // Strictly use dedicated email invite webhook (do NOT fallback to welcome signup webhook)
+    const webhookUrl = process.env.EMAIL_INVITE_WEBHOOK_URL || process.env.CALENDAR_INVITE_WEBHOOK_URL;
     let webhookSent = false;
 
     if (webhookUrl) {
