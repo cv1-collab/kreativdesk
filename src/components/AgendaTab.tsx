@@ -6,7 +6,7 @@ import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../lib/supabase';
 import {
   Clock, Play, Pause, Square, Trash2, CalendarDays, Plus,
-  ChevronLeft, ChevronRight, Video, Download, X, Mail,
+  ChevronLeft, ChevronRight, Video, Download, X, Mail, UserCheck,
   FileText, Link as LinkIcon, Save, Edit3, Users, Sparkles, Filter, AlertCircle, Calendar, Loader2
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -269,6 +269,24 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [realUsers, setRealUsers] = useState<any[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [editExternalEmailInput, setEditExternalEmailInput] = useState<string>('');
+
+  const handleAddEditExternalEmail = () => {
+    if (!editExternalEmailInput || !editExternalEmailInput.includes('@') || !selectedEvent) return;
+    const cleaned = editExternalEmailInput.trim().toLowerCase();
+    const currentList = selectedEvent.participants || [];
+    if (currentList.includes(cleaned)) {
+      addToast('E-Mail-Adresse bereits vorhanden', 'info');
+      setEditExternalEmailInput('');
+      return;
+    }
+    setSelectedEvent({
+      ...selectedEvent,
+      participants: Array.from(new Set([...currentList, cleaned]))
+    });
+    setEditExternalEmailInput('');
+    addToast(`Teilnehmer ${cleaned} hinzugefügt`, 'success');
+  };
 
   // PDF STUDIO STATES
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
@@ -992,6 +1010,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                   {event.type === 'call' && <Video size={10} className="shrink-0" />}
                   <span className="truncate">{event.title}</span>
                 </div>
+                {(event.participants || []).length > 0 && (
+                  <span className="text-[8px] font-black opacity-80 shrink-0 bg-white/10 px-1 rounded">
+                    👥 {(event.participants || []).length}
+                  </span>
+                )}
               </div>
             ))}
             {dayEvents.length > 3 && <div className="text-[8px] md:text-[10px] text-text-muted text-center font-bold">+{dayEvents.length - 3}</div>}
@@ -1340,6 +1363,148 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                     </div>
 
                     <textarea value={selectedEvent.description || ''} onChange={e => setSelectedEvent({ ...selectedEvent, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-medium text-text-primary h-24 resize-none custom-scrollbar" placeholder={t('activity_desc')} />
+
+                    {/* EINGELADENE TEILNEHMER SEKTION (CRM & TEAM + EXTERNE E-MAILS) */}
+                    <div className="space-y-3 pt-3 border-t border-border/50">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                          <Users size={14} className="text-accent-ai" /> Eingeladene Teilnehmer (CRM & Team + Externe)
+                        </label>
+                        <span className="text-[11px] font-bold text-accent-ai bg-accent-ai/10 px-2 py-0.5 rounded-full border border-accent-ai/20">
+                          {(selectedEvent.participants || []).length} {currentLang === 'de' ? 'Teilnehmer' : 'participants'}
+                        </span>
+                      </div>
+
+                      {/* 1. ÜBERSICHT BEREITS EINGELADENER TEILNEHMER (CHIPS & BADGES) */}
+                      <div className="p-3 bg-background border border-border/50 rounded-xl space-y-2">
+                        <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                          {currentLang === 'de' ? 'Bestehende Einladungen:' : 'Current Invites:'}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {(selectedEvent.participants || []).length > 0 ? (
+                            (selectedEvent.participants || []).map((pItem: string, idx: number) => {
+                              const userObj = safeCompanyUsers.find((u: any) => u.id === pItem || u.email === pItem);
+                              const isEmail = pItem.includes('@');
+                              const displayName = userObj ? (userObj.displayName || userObj.name || userObj.email) : pItem;
+
+                              return (
+                                <div key={idx} className={cn(
+                                  "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition-all",
+                                  isEmail 
+                                    ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                    : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                )}>
+                                  {isEmail ? <Mail size={12} /> : <UserCheck size={12} />}
+                                  <span>{displayName}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updatedParts = (selectedEvent.participants || []).filter((_: any, i: number) => i !== idx);
+                                      setSelectedEvent({ ...selectedEvent, participants: updatedParts });
+                                    }}
+                                    className="hover:text-red-500 ml-1 p-0.5 cursor-pointer"
+                                    title="Teilnehmer entfernen"
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <span className="text-xs text-text-muted italic">
+                              {currentLang === 'de' ? 'Noch keine Teilnehmer ausgewählt.' : 'No participants selected yet.'}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* QUICK BUTTON: E-Mail Einladung erneut versenden if external emails exist */}
+                        {(selectedEvent.participants || []).some((p: string) => p.includes('@')) && (
+                          <div className="pt-2 border-t border-border/30 flex justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const extEmails = (selectedEvent.participants || []).filter((p: string) => p.includes('@'));
+                                if (extEmails.length === 0) return;
+                                const link = selectedEvent.meetingLink || selectedEvent.meeting_link;
+                                const recipients = extEmails.join(',');
+                                const subject = encodeURIComponent(`[KreativDesk] Einladung zum Termin: ${selectedEvent.title}`);
+                                const joinUrl = link?.startsWith('/') ? `${window.location.origin}${link}` : (link || window.location.href);
+                                const bodyText = encodeURIComponent(
+                                  `Guten Tag,\n\nSie wurden zu folgendem Termin in KreativDesk OS eingeladen:\n\nTitel: ${selectedEvent.title}\nDatum: ${selectedEvent.date} um ${selectedEvent.time} Uhr\n${selectedEvent.description ? `Notizen: ${selectedEvent.description}\n` : ''}\nLink zum Beitritt / Vorschau:\n${joinUrl}\n\nFreundliche Grüsse\n${currentUser?.displayName || currentUser?.email?.split('@')[0] || 'KreativDesk Team'}`
+                                );
+                                window.location.href = `mailto:${recipients}?subject=${subject}&body=${bodyText}`;
+                                addToast(`📩 E-Mail-Einladung an ${extEmails.join(', ')} wird geöffnet!`, 'info');
+                              }}
+                              className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                            >
+                              <Mail size={12} /> E-Mail Einladung erneut versenden
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 2. TEAM & CRM MITGLIEDER AUSWAHL (HÄKCHEN) */}
+                      {safeCompanyUsers.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-xs font-bold text-text-muted uppercase tracking-wider">
+                            {currentLang === 'de' ? 'Team & CRM Kontakte einladen / abwählen:' : 'Select Team & CRM Contacts:'}
+                          </div>
+                          <div className="max-h-32 overflow-y-auto custom-scrollbar p-2 bg-background border border-border/50 rounded-xl space-y-1">
+                            {safeCompanyUsers.map((u: any) => {
+                              const isChecked = (selectedEvent.participants || []).includes(u.id);
+                              const nameStr = u.displayName || u.name || u.email;
+                              return (
+                                <label key={u.id} className="flex items-center gap-2.5 p-1.5 hover:bg-surface rounded-lg cursor-pointer text-xs font-medium text-text-primary transition-colors">
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={e => {
+                                      const currentList = selectedEvent.participants || [];
+                                      const nextList = e.target.checked
+                                        ? Array.from(new Set([...currentList, u.id]))
+                                        : currentList.filter((id: string) => id !== u.id);
+                                      setSelectedEvent({ ...selectedEvent, participants: nextList });
+                                    }}
+                                    className="w-4 h-4 rounded border-border/50 text-accent-ai focus:ring-accent-ai"
+                                  />
+                                  <span className="font-bold">{nameStr}</span>
+                                  <span className="text-[10px] text-text-muted">({u.role || 'CRM/Team'})</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. EXTERNE E-MAIL-ADRESSEN EINGABE */}
+                      <div className="space-y-1.5">
+                        <div className="text-xs font-bold text-text-muted uppercase tracking-wider">
+                          {currentLang === 'de' ? 'Externe E-Mail-Adresse (Bauherren, Partner) hinzufügen:' : 'Add external email address:'}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="email"
+                            placeholder="z.B. bauherr@beispiel.ch"
+                            value={editExternalEmailInput}
+                            onChange={e => setEditExternalEmailInput(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddEditExternalEmail();
+                              }
+                            }}
+                            className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-xs font-medium text-text-primary outline-none focus:border-accent-ai"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddEditExternalEmail}
+                            className="px-3 py-2 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 hover:bg-accent-ai/20 rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
+                          >
+                            + Hinzufügen
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
                     {(selectedEvent.type === 'call' || selectedEvent.meetingLink || selectedEvent.meeting_link) && (
                       <div className="space-y-2 pt-2 border-t border-border/50">
