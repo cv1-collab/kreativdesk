@@ -530,10 +530,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   ];
 
   const internalTeam = allContacts.filter(u => u.isAppUser || u.isExternal === false || u.role);
-  const externalContacts = allContacts.filter(u => u.isExternal === true);
+  const externalContacts = allContacts.filter(u => u.isExternal === true || u.type === 'client' || u.type === 'external' || u.category === 'external' || u.role === 'Partner' || u.role === 'External' || !u.isAppUser);
 
   const formatName = (u: any) => {
     if (!u) return t('unknown');
+    if (typeof u === 'string') return u;
     if (u.firstName || u.lastName) return `${u.firstName || ''} ${u.lastName || ''}`.trim();
     return u.displayName || u.name || u.email || t('unknown');
   };
@@ -541,6 +542,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const TIMER_STORAGE_KEY = 'kreativdesk_live_timer';
 
   const [timeEntryForm, setTimeEntryForm] = useState({ type: 'internal', userId: '', projectId: '', date: new Date().toISOString().split('T')[0], hours: 0, hourlyRate: 0, description: '', isBillable: true });
+  const [customExternalName, setCustomExternalName] = useState('');
+  const [isCustomExternal, setIsCustomExternal] = useState(false);
   const [timeTrackingMode, setTimeTrackingMode] = useState<'manual' | 'timer'>('manual');
   
   const [timerSeconds, setTimerSeconds] = useState<number>(() => {
@@ -624,6 +627,14 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
+    const isCustom = timeEntryForm.type === 'external' && (isCustomExternal || timeEntryForm.userId === 'custom_external');
+    if (isCustom && !customExternalName.trim()) {
+      addToast(currentLang === 'de' ? 'Bitte den Namen des externen Partners eingeben.' : 'Please enter external partner name.', 'error');
+      return;
+    }
+
+    const targetUserId = isCustom ? customExternalName.trim() : (timeEntryForm.userId || currentUser.uid);
+
     const finalHours = timeTrackingMode === 'timer' ? Number((timerSeconds / 3600).toFixed(2)) : timeEntryForm.hours;
     if (!timeEntryForm.projectId || finalHours <= 0) { addToast('Bitte Projekt und Stunden angeben.', 'error'); return; }
 
@@ -631,8 +642,10 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       const entryId = `time-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
       const newEntryObj = {
         id: entryId,
-        user_id: timeEntryForm.userId || currentUser.uid,
-        userId: timeEntryForm.userId || currentUser.uid,
+        user_id: targetUserId,
+        userId: targetUserId,
+        user_name: targetUserId,
+        userName: targetUserId,
         project_id: timeEntryForm.projectId,
         projectId: timeEntryForm.projectId,
         date: timeEntryForm.date || new Date().toISOString().split('T')[0],
@@ -1265,8 +1278,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                 )}
 
                 <div className="flex p-1 bg-background border border-border/50 rounded-lg mb-2">
-                  <button type="button" onClick={() => setTimeEntryForm({ ...timeEntryForm, type: 'internal', userId: '' })} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'internal' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
-                  <button type="button" onClick={() => setTimeEntryForm({ ...timeEntryForm, type: 'external', userId: '' })} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'external' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('external_partner')}</button>
+                  <button type="button" onClick={() => { setTimeEntryForm({ ...timeEntryForm, type: 'internal', userId: '' }); setIsCustomExternal(false); }} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'internal' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
+                  <button type="button" onClick={() => { setTimeEntryForm({ ...timeEntryForm, type: 'external', userId: '' }); }} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-colors", timeEntryForm.type === 'external' ? "bg-surface text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('external_partner')}</button>
                 </div>
 
                 {timeEntryForm.type === 'internal' ? (
@@ -1278,10 +1291,51 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <select required value={timeEntryForm.userId} onChange={e => { const user = allContacts.find((u: any) => u.id === e.target.value); setTimeEntryForm({ ...timeEntryForm, userId: e.target.value, hourlyRate: user?.hourlyRate || 0 }); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary">
-                      <option value="" className="bg-surface">{t('select_contact')}</option>
-                      {externalContacts.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface">{formatName(u)}</option>))}
+                    <select
+                      value={isCustomExternal ? 'custom_external' : timeEntryForm.userId}
+                      onChange={e => {
+                        if (e.target.value === 'custom_external') {
+                          setIsCustomExternal(true);
+                          setTimeEntryForm({ ...timeEntryForm, userId: 'custom_external' });
+                        } else {
+                          setIsCustomExternal(false);
+                          const user = allContacts.find((u: any) => u.id === e.target.value);
+                          setTimeEntryForm({ ...timeEntryForm, userId: e.target.value, hourlyRate: user?.hourlyRate || 0 });
+                        }
+                      }}
+                      className="w-full bg-background border border-border/50 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 font-bold text-text-primary"
+                    >
+                      <option value="" className="bg-surface">Externen Planer / Kontakt wählen...</option>
+                      {externalContacts.length > 0 && (
+                        <optgroup label="Erfasste Kontakte / CRM" className="bg-surface text-text-muted font-bold">
+                          {externalContacts.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface text-text-primary">{formatName(u)}</option>))}
+                        </optgroup>
+                      )}
+                      {safeCompanyUsers.length > 0 && (
+                        <optgroup label="Alle Firmenkontakte" className="bg-surface text-text-muted font-bold">
+                          {safeCompanyUsers.map((u: any) => (<option key={u.id} value={u.id} className="bg-surface text-text-primary">{formatName(u)}</option>))}
+                        </optgroup>
+                      )}
+                      <option value="custom_external" className="bg-surface font-bold text-accent-ai">
+                        ➕ {currentLang === 'de' ? 'Neuen externen Partner / Freelancer freitext eingeben...' : 'Enter new custom external partner name...'}
+                      </option>
                     </select>
+
+                    {(isCustomExternal || timeEntryForm.userId === 'custom_external' || externalContacts.length === 0) && (
+                      <div className="mt-2 animate-in fade-in zoom-in-95 duration-150">
+                        <input
+                          type="text"
+                          required
+                          placeholder={currentLang === 'de' ? 'Name des externen Partners (z.B. Muster AG, Freelancer Max)' : 'External partner name (e.g. Acme Ltd, Freelancer Max)'}
+                          value={customExternalName}
+                          onChange={e => {
+                            setCustomExternalName(e.target.value);
+                            setTimeEntryForm(prev => ({ ...prev, userId: e.target.value }));
+                          }}
+                          className="w-full bg-background border border-accent-ai/50 rounded-md px-3 py-2 text-sm focus:outline-none text-text-primary font-bold placeholder:font-normal"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1334,7 +1388,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
               <h3 className="font-semibold text-sm mb-4 text-text-muted uppercase tracking-widest">{t('recent_bookings')}</h3>
               <div className="space-y-3 overflow-y-auto custom-scrollbar flex-1 pr-2">
                 {localTimeEntries.slice(0, 10).map((entry: any) => {
-                  const user = allContacts.find((u: any) => u.id === entry.userId);
+                  const user = allContacts.find((u: any) => u.id === entry.userId || u.id === entry.user_id) || entry.userId || entry.user_id || entry.userName || entry.user_name;
                   const project = safeProjects.find((p: any) => p.id === entry.projectId);
                   const projectName = project?.name || internalProjectsMap[entry.projectId] || t('unknown');
                   return (
