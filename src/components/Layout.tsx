@@ -152,7 +152,8 @@ export default function Layout() {
   const projectHours = safeTimeEntries.filter((e: any) => e.projectId === project?.id).reduce((sum: number, e: any) => sum + e.hours, 0) || 0;
 
   const { hasPermission } = usePermissions();
-  const canSeeProjFinance = hasPermission('canViewFinance') || currentUser?.canViewFinance === true || currentUser?.role === 'owner' || currentUser?.role === 'Admin' || currentUser?.role === 'management';
+  const userRole = (currentUser?.role || '') as string;
+  const canSeeProjFinance = hasPermission('canViewFinance') || currentUser?.canViewFinance === true || userRole === 'owner' || userRole === 'Admin' || userRole === 'management' || userRole === 'super_admin';
 
   const menuGroups = [
     {
