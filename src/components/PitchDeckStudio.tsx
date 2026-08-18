@@ -2599,35 +2599,44 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                   {/* KREATIV DESK STEMPEL SELECTOR */}
                   <div className="relative shrink-0">
-                    <button type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
-                      <Tag size={14} /> <span className="hidden xl:inline">{activeSlide.stamp || 'Stempel'}</span>
+                    <button type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
+                      <Tag size={14} /> <span>{activeSlide.stamp || 'Stempel'}</span>
                     </button>
                     <AnimatePresence>
                       {showStampMenu && (
-                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="absolute top-10 left-0 w-44 bg-surface border border-border rounded-xl shadow-2xl z-50 py-1 overflow-hidden">
-                          {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
-                            <button key={st} type="button" onClick={() => handleSetStamp(st)} className={cn("w-full text-left px-3 py-1.5 text-xs font-bold flex items-center justify-between hover:bg-white/10", activeSlide.stamp === st ? "text-purple-400" : "text-text-primary")}>
-                              <span>{st}</span>
-                              {activeSlide.stamp === st && <Check size={12} />}
-                            </button>
-                          ))}
-                        </motion.div>
+                        <>
+                          <div className="fixed inset-0 z-[1000]" onClick={() => setShowStampMenu(false)} />
+                          <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="fixed top-16 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-48 py-1.5 overflow-hidden">
+                            <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">Stempel wählen</div>
+                            {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
+                              <button key={st} type="button" onClick={() => handleSetStamp(st)} className={cn("w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between hover:bg-white/10 transition-colors", activeSlide.stamp === st ? "text-purple-400 bg-purple-500/10" : "text-text-primary")}>
+                                <span>{st}</span>
+                                {activeSlide.stamp === st && <Check size={12} />}
+                              </button>
+                            ))}
+                            {activeSlide.stamp && (
+                              <button type="button" onClick={() => handleSetStamp('')} className="w-full text-left px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/10 border-t border-border mt-1">
+                                Stempel entfernen
+                              </button>
+                            )}
+                          </motion.div>
+                        </>
                       )}
                     </AnimatePresence>
                   </div>
 
                   {/* KREATIV DESK REFERENTENNOTIZEN TOGGLE */}
-                  <button type="button" onClick={() => setShowNotesDrawer(!showNotesDrawer)} className={cn("px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", activeSlide.notes ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : "bg-background border-border text-text-muted hover:text-text-primary")}>
+                  <button type="button" onClick={() => setShowNotesDrawer(!showNotesDrawer)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", activeSlide.notes ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : "bg-background border-border text-text-muted hover:text-text-primary")}>
                     <StickyNote size={14} /> <span className="hidden xl:inline">Notizen</span>
                   </button>
 
                   {/* QUICK SLIDE ACTION BUTTONS */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button type="button" onClick={handleDuplicateSlide} title="Folie duplizieren" className="p-1.5 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
+                    <button type="button" onClick={handleDuplicateSlide} title="Folie duplizieren" className="p-2 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
                       <Copy size={14} />
                     </button>
                     {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
-                      <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title="Bild wählen" className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
+                      <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title="Bild wählen" className="px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
                         <ImageIcon size={14} /> <span className="hidden xl:inline">Bild</span>
                       </button>
                     )}
@@ -2640,8 +2649,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               <button type="button" onClick={() => setIsAiGeneratorOpen(true)} className="px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0">
                 <Sparkles size={14}/> <span className="hidden xl:inline">KI Deck erstellen</span>
               </button>
-              <button type="button" onClick={() => { setPresenterIndex(slides.findIndex(s => s.id === activeSlideId) || 0); setIsPresenterMode(true); }} disabled={slides.length === 0} className="px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0">
-                <Play size={14}/> <span className="hidden xl:inline">Präsentationsmodus</span>
+              <button 
+                type="button" 
+                onClick={() => { 
+                  const activeIdx = slides.findIndex(s => s.id === activeSlideId); 
+                  setPresenterIndex(activeIdx >= 0 ? activeIdx : 0); 
+                  setIsPresenterMode(true); 
+                }} 
+                disabled={slides.length === 0} 
+                className="px-3.5 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
+              >
+                <Play size={14}/> <span>Präsentationsmodus</span>
               </button>
               <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-3.5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex shrink-0">
                  <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
