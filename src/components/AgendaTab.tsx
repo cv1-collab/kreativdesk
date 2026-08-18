@@ -19,6 +19,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import { sendNotification } from '../lib/notifications';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { checkUpcomingEventReminders } from '../utils/calendarReminderHelper';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -430,6 +431,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         const mergedEvents = Array.from(eventMap.values());
         setCalendarEvents(mergedEvents);
         localStorage.setItem(localCacheKey, JSON.stringify(mergedEvents));
+        checkUpcomingEventReminders(safeCompanyId);
 
         const timeCacheKey = `time_entries_cache_${safeCompanyId}`;
         const rawTimeCache = localStorage.getItem(timeCacheKey);
@@ -816,6 +818,23 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         type: newEvent.type === 'call' ? 'call' : 'meeting',
         link: meetingLink || '/agenda'
       });
+
+      // Trigger external email dispatch via mailto link if external emails were entered
+      if (newEvent.externalEmails && newEvent.externalEmails.length > 0) {
+        const recipients = newEvent.externalEmails.join(',');
+        const subject = encodeURIComponent(`[KreativDesk] Einladung zum Termin: ${newEvent.title}`);
+        const joinUrl = meetingLink?.startsWith('/') ? `${window.location.origin}${meetingLink}` : (meetingLink || window.location.href);
+        const bodyText = encodeURIComponent(
+          `Guten Tag,\n\nSie wurden zu folgendem Termin in KreativDesk OS eingeladen:\n\nTitel: ${newEvent.title}\nDatum: ${newEvent.date} um ${newEvent.time} Uhr\n${newEvent.description ? `Notizen: ${newEvent.description}\n` : ''}\nLink zum Beitritt / Vorschau:\n${joinUrl}\n\nFreundliche Grüsse\n${currentUser?.displayName || currentUser?.email?.split('@')[0] || 'KreativDesk Team'}`
+        );
+
+        const mailtoUrl = `mailto:${recipients}?subject=${subject}&body=${bodyText}`;
+        setTimeout(() => {
+          window.location.href = mailtoUrl;
+        }, 400);
+
+        addToast(`📩 E-Mail-Einladung an ${newEvent.externalEmails.join(', ')} wird geöffnet!`, 'info');
+      }
 
       setIsEventModalOpen(false);
       setNewEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'meeting', projectId: '', participants: [], externalEmails: [], description: '', videoProvider: 'kreativdesk', customLink: '' });

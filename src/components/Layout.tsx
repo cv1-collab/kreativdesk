@@ -23,6 +23,7 @@ import {
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
 import { fetchNotifications } from '../lib/notifications';
+import { checkUpcomingEventReminders } from '../utils/calendarReminderHelper';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -106,6 +107,13 @@ export default function Layout() {
     };
     fetchAnnouncement();
   }, []);
+
+  useEffect(() => {
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (safeCompanyId) {
+      checkUpcomingEventReminders(safeCompanyId);
+    }
+  }, [currentUser]);
 
   const handleExitPreviewMode = () => {
     sessionStorage.removeItem('admin_preview_company_id');
