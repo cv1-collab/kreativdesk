@@ -56,9 +56,9 @@ export default async function handler(req: any, res: any) {
         isInvite = true;
 
         await supabaseAdmin.from('invites').update({
-          status: 'accepted',
-          accepted_by: uid,
-          accepted_at: now
+          status: 'used',
+          used_by: uid,
+          used_at: now
         }).eq('id', inviteData.id);
       }
     }
@@ -90,7 +90,6 @@ export default async function handler(req: any, res: any) {
         max_seats: maxSeats,
         used_seats: 1,
         owner_id: uid,
-        trial_ends_at: trialEndDate.toISOString(),
         created_at: now
       });
     }

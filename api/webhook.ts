@@ -44,10 +44,8 @@ export default async function handler(req: any, res: any) {
       try {
         await supabaseAdmin.from('profiles').update({
           has_active_subscription: true,
-          subscription_id: session.subscription as string,
           stripe_customer_id: session.customer as string,
           plan: planName,
-          subscription_status: 'active',
           updated_at: new Date().toISOString()
         }).eq('id', uid);
 
@@ -66,8 +64,7 @@ export default async function handler(req: any, res: any) {
 
           await supabaseAdmin.from('companies').update({
             plan: planName,
-            max_seats: newMaxSeats,
-            updated_at: new Date().toISOString()
+            max_seats: newMaxSeats
           }).eq('id', profile.company_id);
         }
       } catch (error) {
@@ -92,7 +89,6 @@ export default async function handler(req: any, res: any) {
 
         await supabaseAdmin.from('profiles').update({
           has_active_subscription: false,
-          subscription_status: 'canceled',
           plan: 'Free Trial',
           updated_at: new Date().toISOString()
         }).eq('id', profile.id);
@@ -100,8 +96,7 @@ export default async function handler(req: any, res: any) {
         if (profile.company_id) {
           await supabaseAdmin.from('companies').update({
             plan: 'Free Trial',
-            max_seats: 1,
-            updated_at: new Date().toISOString()
+            max_seats: 1
           }).eq('id', profile.company_id);
         }
       }
@@ -134,7 +129,7 @@ export default async function handler(req: any, res: any) {
         maxSeats = PRICING_MATRIX[priceId].seats;
       }
 
-      const status = subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status;
+      const isSubActive = subscription.status === 'active' || subscription.status === 'trialing';
 
       const { data: profiles } = await supabaseAdmin
         .from('profiles')
@@ -145,8 +140,7 @@ export default async function handler(req: any, res: any) {
         const profile = profiles[0];
 
         await supabaseAdmin.from('profiles').update({
-          has_active_subscription: status === 'active',
-          subscription_status: status,
+          has_active_subscription: isSubActive,
           plan: planName,
           updated_at: new Date().toISOString()
         }).eq('id', profile.id);
@@ -154,8 +148,7 @@ export default async function handler(req: any, res: any) {
         if (profile.company_id) {
           await supabaseAdmin.from('companies').update({
             plan: planName,
-            max_seats: maxSeats,
-            updated_at: new Date().toISOString()
+            max_seats: maxSeats
           }).eq('id', profile.company_id);
         }
       }

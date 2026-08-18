@@ -63,11 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     await supabaseAdmin.from('projects').delete().eq('owner_id', uid);
-    await supabaseAdmin.from('projects').delete().eq('created_by', uid);
-    await supabaseAdmin.from('documents').delete().eq('created_by', uid);
-    await supabaseAdmin.from('defects').delete().eq('created_by', uid);
+    await supabaseAdmin.from('documents').delete().eq('owner_id', uid);
+    await supabaseAdmin.from('defects').delete().eq('owner_id', uid);
     await supabaseAdmin.from('time_entries').delete().eq('user_id', uid);
-    await supabaseAdmin.from('audit_logs').delete().eq('user_id', uid);
 
     // 3. SUPABASE: Delete profile and auth user
     await supabaseAdmin.from('profiles').delete().eq('id', uid);

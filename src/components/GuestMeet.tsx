@@ -291,7 +291,7 @@ export default function GuestMeet() {
     if (meetingCompanyId && guestEmail.trim()) {
       try {
         await supabase.from('leads').insert({
-          first_name: guestName,
+          name: guestName,
           email: guestEmail,
           status: 'New',
           source: 'Video Call Guest',

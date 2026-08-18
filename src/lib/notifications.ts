@@ -134,7 +134,7 @@ export const markNotificationAsRead = async (notifId: string, companyId: string)
       localStorage.setItem(cacheKey, JSON.stringify(updated));
     }
 
-    await supabase.from('notifications').update({ is_read: true }).eq('id', notifId);
+    await supabase.from('notifications').update({ read: true }).eq('id', notifId);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
     }
@@ -155,7 +155,7 @@ export const markAllNotificationsAsRead = async (companyId: string) => {
       localStorage.setItem(cacheKey, JSON.stringify(updated));
     }
 
-    await supabase.from('notifications').update({ is_read: true }).eq('company_id', companyId);
+    await supabase.from('notifications').update({ read: true }).eq('company_id', companyId);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
     }

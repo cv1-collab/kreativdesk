@@ -32,7 +32,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       plan: plan || 'Enterprise',
       max_seats: maxSeats || 5,
       used_seats: 1,
-      trial_ends_at: trialEndsAt,
       created_at: now
     }).select().single();
 
@@ -80,9 +79,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       if (project) {
         await supabaseAdmin.from('defects').insert([
-          { project_id: project.id, prompt: 'Rohbauabnahme & Betongefüge prüfen', title: 'Rohbauabnahme & Betongefüge prüfen', status: 'Erledigt', priority: 'High', severity: 'High', company_id: companyId, created_at: now },
-          { project_id: project.id, prompt: 'BIM 3D-Modell & HKLS-Trassen abgleichen', title: 'BIM 3D-Modell & HKLS-Trassen abgleichen', status: 'In Arbeit', priority: 'High', severity: 'High', company_id: companyId, created_at: now },
-          { project_id: project.id, prompt: 'Abnahme Brandschutzklappen OG1-OG3', title: 'Abnahme Brandschutzklappen OG1-OG3', status: 'Offen', priority: 'Medium', severity: 'Medium', company_id: companyId, created_at: now }
+          { project_id: project.id, prompt: 'Rohbauabnahme & Betongefüge prüfen', description: 'Rohbauabnahme & Betongefüge prüfen', status: 'Erledigt', severity: 'High', company_id: companyId, created_at: now },
+          { project_id: project.id, prompt: 'BIM 3D-Modell & HKLS-Trassen abgleichen', description: 'BIM 3D-Modell & HKLS-Trassen abgleichen', status: 'In Arbeit', severity: 'High', company_id: companyId, created_at: now },
+          { project_id: project.id, prompt: 'Abnahme Brandschutzklappen OG1-OG3', description: 'Abnahme Brandschutzklappen OG1-OG3', status: 'Offen', severity: 'Medium', company_id: companyId, created_at: now }
         ]);
       }
     }

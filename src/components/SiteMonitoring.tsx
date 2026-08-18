@@ -358,15 +358,8 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       localStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
       let { error } = await supabase.from('projects').update({
-        site_location: trimmedLoc
+        description: activeProject.description ? activeProject.description : trimmedLoc
       }).eq('id', activeProject.id);
-
-      if (error && (error.code === 'PGRST204' || error.message?.includes('site_location'))) {
-        const { error: fallbackErr } = await supabase.from('projects').update({
-          updated_at: new Date().toISOString()
-        }).eq('id', activeProject.id);
-        error = fallbackErr;
-      }
 
       if (typeof projectCtx?.fetchProjects === 'function') {
         projectCtx.fetchProjects();

@@ -59,9 +59,9 @@ export default async function handler(req: any, res: any) {
           isInvitedUser = true;
 
           await supabaseAdmin.from('invites').update({
-            status: 'accepted',
-            accepted_by: uid,
-            accepted_at: new Date().toISOString()
+            status: 'used',
+            used_by: uid,
+            used_at: new Date().toISOString()
           }).eq('id', inviteToken);
         }
       }
@@ -73,7 +73,7 @@ export default async function handler(req: any, res: any) {
       const newUserData = {
         id: uid,
         email: email,
-        display_name: email?.split('@')[0] || 'Teammitglied',
+        name: email?.split('@')[0] || 'Teammitglied',
         role: targetRole,
         company_id: targetCompanyId,
         has_active_subscription: true,
@@ -92,7 +92,6 @@ export default async function handler(req: any, res: any) {
           max_seats: 1,
           used_seats: 1,
           owner_id: uid,
-          trial_ends_at: trialEndDate.toISOString(),
           created_at: timestamp.toISOString()
         });
       }

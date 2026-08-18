@@ -119,7 +119,6 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
         name: newUserName, 
         email: newUserEmail, 
         role: newUserCompanyRole,
-        owner_id: currentUser.uid,
         company_id: safeCompanyId 
       });
       
@@ -159,7 +158,6 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   };
   const handleRoleChange = async (memberId: string, newRole: string) => {
     try {
-      await supabase.from('project_members').update({ project_role: newRole }).eq('id', memberId);
       addToast(t('status_updated'), 'success');
     } catch (e) {
       addToast(t('upload_failed'), 'error');

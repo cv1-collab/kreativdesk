@@ -1,34 +1,24 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+dotenv.config({ path: './.env' });
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
-const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+async function checkCols() {
+  const openApiRes = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` }
+  });
+  const spec = await openApiRes.json();
+  const targetTables = ['audio_notes', 'whiteboard_exports', 'notifications', 'invites', 'companies', 'profiles', 'project_members', 'defects', 'documents'];
 
-async function inspectColumns() {
-  console.log("=== INSPECTING COLUMNS OF chat_messages TABLE ===");
-  // Let's test columns one by one
-  const candidateColumns = [
-    'id', 'call_id', 'sender_id', 'sender_name', 'name', 'user_id', 
-    'message', 'text', 'content', 'created_at', 'timestamp', 
-    'project_id', 'company_id', 'is_ai', 'file_url'
-  ];
-
-  for (const col of candidateColumns) {
-    const obj = { id: `test-${Date.now()}` };
-    obj[col] = 'test';
-    const { error } = await supabaseAdmin.from('chat_messages').insert(obj);
-    if (error) {
-      if (error.message.includes('Could not find')) {
-        console.log(`❌ Column '${col}': DOES NOT EXIST`);
-      } else {
-        console.log(`✅ Column '${col}': EXISTS (or type error: ${error.message})`);
-      }
+  for (const t of targetTables) {
+    if (spec.definitions[t]) {
+      console.log(`Table '${t}': [${Object.keys(spec.definitions[t].properties).join(', ')}]`);
     } else {
-      console.log(`✅ Column '${col}': EXISTS & VALID!`);
+      console.log(`Table '${t}': NOT DEFINED IN PG SCHEMA`);
     }
   }
 }
 
-inspectColumns();
+checkCols();

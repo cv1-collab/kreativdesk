@@ -306,7 +306,6 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             .from('audio_notes')
             .select('*')
             .eq('company_id', safeCompanyId)
-            .eq('owner_id', currentUser.uid)
             .order('created_at', { ascending: false });
           if (!error && data) setAudioNotes(data);
         } catch (e) {}
