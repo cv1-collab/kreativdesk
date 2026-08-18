@@ -2,23 +2,27 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Pitch Deck Studio - E2E Tests', () => {
   test('verify Pitch Deck Studio tools (Stempel, Präsentationsmodus, Color Mode, Font Size)', async ({ page }) => {
-    // 1. Navigate directly to public pitch deck route
-    await page.goto('/deck');
-    await page.waitForLoadState('networkidle');
+    const targetUrl = process.env.PLAYWRIGHT_URL || 'http://localhost:5173/deck';
+    console.log(`Navigating to ${targetUrl}...`);
 
-    // Handle cookie banner if present
-    const cookieButton = page.locator('button:has-text("Alle akzeptieren"), button:has-text("Nur essenzielle")').first();
-    if (await cookieButton.isVisible()) {
-      await cookieButton.click();
-      await page.waitForTimeout(500);
-    }
+    await page.goto(targetUrl);
 
-    // If "Pitch Studio öffnen" button exists, click it
-    const openStudioButton = page.locator('button:has-text("Pitch Studio öffnen"), button:has-text("Studio")').first();
-    if (await openStudioButton.isVisible()) {
-      await openStudioButton.click();
-      await page.waitForTimeout(1000);
-    }
+    // Wait for the app to finish lazy-loading
+    const studioOpenButton = page.locator('button:has-text("Pitch Studio öffnen"), button:has-text("Studio")').first();
+    await studioOpenButton.waitFor({ state: 'visible', timeout: 25000 });
+
+    // Dismiss cookie banner explicitly if present
+    try {
+      const cookieBtn = page.locator('button:has-text("Alle akzeptieren"), button:has-text("Nur essenzielle")').first();
+      if (await cookieBtn.isVisible()) {
+        await cookieBtn.click();
+        await page.waitForTimeout(500);
+      }
+    } catch(e) {}
+
+    // Click "Pitch Studio öffnen" button in PitchDeck to open PitchDeckStudio
+    await studioOpenButton.click();
+    await page.waitForTimeout(1000);
 
     // 2. Test Stempel button
     const stempelButton = page.locator('button:has-text("Stempel")').first();

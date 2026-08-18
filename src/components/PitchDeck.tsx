@@ -76,53 +76,58 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
   useEffect(() => {
     const loadDemoSlides = () => {
-      const tpl = demoTemplates.construction;
-      const dynamicSlides: Slide[] = [
-        {
-          id: `demo-slide-1`, title: tpl.project?.name || 'Projekt', content: tpl.project?.description || '',
-          order_index: 0, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'image-focus', fontSize: 32, imageUrl: tpl.camera?.url || ''
-        },
-        {
-          id: `demo-slide-2`, title: tpl.pitchDeck?.slides?.[0]?.title || 'Die Vision', content: tpl.pitchDeck?.slides?.[0]?.content || '',
-          order_index: 1, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'split', fontSize: 18, imageUrl: tpl.camera?.url || ''
-        },
-        {
-          id: `demo-slide-3`, title: 'Projekt-Budget (Live-Status)', content: '',
-          order_index: 2, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'data-budget',
-          dataPayload: {
-            totalBudget: tpl.financeGroups ? tpl.financeGroups.reduce((acc: number, g: any) => acc + g.items.reduce((sum: number, i: any) => sum + ((i.qty || i.quantity || 0) * (i.unitPrice || 0)), 0), 0) : 0,
-            budgetGroups: tpl.financeGroups ? tpl.financeGroups.map((g:any) => ({
-              pos: g.pos, title: g.title, total: g.items.reduce((sum:number, item:any)=>sum+((item.qty || item.quantity || 0) * (item.unitPrice || 0)), 0),
-              items: g.items.map((i:any) => ({ pos: i.pos, title: i.title, total: (i.qty || i.quantity || 0) * (i.unitPrice || 0) }))
-            })) : []
+      try {
+        const tpl = demoTemplates?.construction || {};
+        const dynamicSlides: Slide[] = [
+          {
+            id: `demo-slide-1`, title: tpl.project?.name || 'Projekt', content: tpl.project?.description || '',
+            order_index: 0, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'image-focus', fontSize: 32, imageUrl: tpl.camera?.url || ''
+          },
+          {
+            id: `demo-slide-2`, title: tpl.pitchDeck?.slides?.[0]?.title || 'Die Vision', content: tpl.pitchDeck?.slides?.[0]?.content || '',
+            order_index: 1, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'split', fontSize: 18, imageUrl: tpl.camera?.url || ''
+          },
+          {
+            id: `demo-slide-3`, title: 'Projekt-Budget (Live-Status)', content: '',
+            order_index: 2, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'data-budget',
+            dataPayload: {
+              totalBudget: tpl.financeGroups ? tpl.financeGroups.reduce((acc: number, g: any) => acc + g.items.reduce((sum: number, i: any) => sum + ((i.qty || i.quantity || 0) * (i.unitPrice || 0)), 0), 0) : 0,
+              budgetGroups: tpl.financeGroups ? tpl.financeGroups.map((g:any) => ({
+                pos: g.pos, title: g.title, total: g.items.reduce((sum:number, item:any)=>sum+((item.qty || item.quantity || 0) * (item.unitPrice || 0)), 0),
+                items: g.items.map((i:any) => ({ pos: i.pos, title: i.title, total: (i.qty || i.quantity || 0) * (i.unitPrice || 0) }))
+              })) : []
+            }
+          },
+          {
+            id: `demo-slide-4`, title: 'Meilensteine & Terminplan', content: '',
+            order_index: 3, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'smart-calendar',
+            dataPayload: {
+               milestones: tpl.tasks ? tpl.tasks.map((t:any) => {
+                  const s = new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0];
+                  const e = new Date(Date.now() + (t.daysOffsetEnd||0) * 86400000).toISOString().split('T')[0];
+                  return { start: s, end: e, title: t.title, status: t.status };
+               }) : []
+            }
+          },
+          {
+            id: `demo-slide-5`, title: 'Aktuelle Mängel & Pendenzen', content: '',
+            order_index: 4, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'defect-grid',
+            dataPayload: { defects: tpl.defects || [] }
+          },
+          {
+            id: `demo-slide-6`, title: 'Das Projekt-Team', content: '',
+            order_index: 5, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'team-grid',
+            dataPayload: { members: tpl.members || [] }
           }
-        },
-        {
-          id: `demo-slide-4`, title: 'Meilensteine & Terminplan', content: '',
-          order_index: 3, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'smart-calendar',
-          dataPayload: {
-             milestones: tpl.tasks ? tpl.tasks.map((t:any) => {
-                const s = new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0];
-                const e = new Date(Date.now() + (t.daysOffsetEnd||0) * 86400000).toISOString().split('T')[0];
-                return { start: s, end: e, title: t.title, status: t.status };
-             }) : []
-          }
-        },
-        {
-          id: `demo-slide-5`, title: 'Aktuelle Mängel & Pendenzen', content: '',
-          order_index: 4, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'defect-grid',
-          dataPayload: { defects: tpl.defects || [] }
-        },
-        {
-          id: `demo-slide-6`, title: 'Das Projekt-Team', content: '',
-          order_index: 5, ownerId: 'demo', projectId: currentProjectId || 'demo-1', layout: 'team-grid',
-          dataPayload: { members: tpl.members || [] }
-        }
-      ];
+        ];
 
-      setSlides(dynamicSlides);
-      setActiveSlideId(dynamicSlides[0].id);
-      setIsLoading(false);
+        setSlides(dynamicSlides);
+        setActiveSlideId(dynamicSlides[0].id);
+      } catch(e) {
+        console.error("Error loading demo slides:", e);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     if (!currentProjectId || !currentUser || currentProjectId === 'demo-1') {
