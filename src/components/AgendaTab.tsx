@@ -345,6 +345,23 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     addToast(`${eventsToExport.length} Termine als iCal (.ics) exportiert!`, 'success');
   };
 
+  const handleExportSingleICal = (event: any) => {
+    if (!event) return;
+    const meetingUrl = event.meetingLink || event.meeting_link;
+    const fullUrl = meetingUrl ? (meetingUrl.startsWith('http') ? meetingUrl : `${window.location.origin}${meetingUrl}`) : undefined;
+    
+    downloadICSFile([{
+      title: event.title || 'Termin',
+      description: event.description || '',
+      startDate: event.date || new Date().toISOString().split('T')[0],
+      startTime: event.time || '10:00',
+      location: event.type === 'site-visit' ? 'Baustelle' : (fullUrl || ''),
+      url: fullUrl
+    }], `Termin_${(event.title || 'KreativDesk').replace(/[^a-zA-Z0-9_-]/g, '_')}_${event.date || ''}`);
+
+    addToast(currentLang === 'de' ? 'Termin als iCal (.ics) heruntergeladen!' : 'Event downloaded as iCal (.ics)!', 'success');
+  };
+
   const handleGenerateAIRapport = async () => {
     setIsGeneratingAIRapport(true);
     addToast('Erstelle KI-Baustellenrapport...', 'info');
@@ -1614,6 +1631,17 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                         )}
                       </div>
                     )}
+
+                    {/* SINGLE EVENT iCAL DOWNLOAD BUTTON */}
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleExportSingleICal(selectedEvent)}
+                        className="w-full py-2.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
+                      >
+                        <Download size={14} /> {currentLang === 'de' ? '📅 iCal Datei herunterladen (.ics für Outlook/Mac)' : '📅 Download iCal File (.ics for Outlook/Mac)'}
+                      </button>
+                    </div>
 
                     <div className="pt-4 flex justify-between gap-3 border-t border-border/50">
                       <button type="button" onClick={(e) => handleDeleteCalendarEvent(selectedEvent.id, e)} className="px-4 py-2.5 text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors flex items-center gap-2"><Trash2 size={16} /></button>
