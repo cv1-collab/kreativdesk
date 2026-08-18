@@ -837,21 +837,43 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         link: meetingLink || '/agenda'
       });
 
-      // Trigger external email dispatch via mailto link if external emails were entered
+      // Trigger external email dispatch via server API & mailto link if external emails were entered
       if (newEvent.externalEmails && newEvent.externalEmails.length > 0) {
-        const recipients = newEvent.externalEmails.join(',');
-        const subject = encodeURIComponent(`[KreativDesk] Einladung zum Termin: ${newEvent.title}`);
+        const recipients = newEvent.externalEmails;
         const joinUrl = meetingLink?.startsWith('/') ? `${window.location.origin}${meetingLink}` : (meetingLink || window.location.href);
+
+        // 1. Call Vercel / API Serverless Email Endpoint
+        try {
+          await fetch('/api/send-invitation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: newEvent.title,
+              date: newEvent.date,
+              time: newEvent.time,
+              description: newEvent.description,
+              meetingLink: joinUrl,
+              recipients,
+              senderName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'KreativDesk User',
+              companyId: safeCompanyId
+            })
+          });
+        } catch (apiErr) {
+          console.warn("API invitation dispatch handled:", apiErr);
+        }
+
+        // 2. Open prefilled mailto link for direct mail app dispatch
+        const subject = encodeURIComponent(`[KreativDesk] Einladung zum Termin: ${newEvent.title}`);
         const bodyText = encodeURIComponent(
           `Guten Tag,\n\nSie wurden zu folgendem Termin in KreativDesk OS eingeladen:\n\nTitel: ${newEvent.title}\nDatum: ${newEvent.date} um ${newEvent.time} Uhr\n${newEvent.description ? `Notizen: ${newEvent.description}\n` : ''}\nLink zum Beitritt / Vorschau:\n${joinUrl}\n\nFreundliche Grüsse\n${currentUser?.displayName || currentUser?.email?.split('@')[0] || 'KreativDesk Team'}`
         );
 
-        const mailtoUrl = `mailto:${recipients}?subject=${subject}&body=${bodyText}`;
+        const mailtoUrl = `mailto:${recipients.join(',')}?subject=${subject}&body=${bodyText}`;
         setTimeout(() => {
           window.location.href = mailtoUrl;
         }, 400);
 
-        addToast(`📩 E-Mail-Einladung an ${newEvent.externalEmails.join(', ')} wird geöffnet!`, 'info');
+        addToast(`📩 E-Mail-Einladung an ${recipients.join(', ')} gestartet!`, 'info');
       }
 
       setIsEventModalOpen(false);
