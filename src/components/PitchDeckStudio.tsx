@@ -12,7 +12,8 @@ import {
   ChevronUp, ChevronDown, Loader2, Settings, Eye, Users, DollarSign, 
   LayoutDashboard, Milestone, BookOpen, Palette, Map, Box, CheckSquare, Mail, Phone,
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
-  Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock
+  Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
+  Copy, Zap, Check, Edit3
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -87,8 +88,25 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-interface Slide { id: string; title: string; content: string; imageUrl?: string; order_index: number; ownerId: string; companyId?: string; projectId?: string; layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid'; fontSize?: number; dataPayload?: any; }
-interface DeckSettings { logoUrl: string; footerText: string; themeColor: string; themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech'; }
+interface Slide { 
+  id: string; 
+  title: string; 
+  content: string; 
+  imageUrl?: string; 
+  order_index: number; 
+  ownerId: string; 
+  companyId?: string; 
+  projectId?: string; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid'; 
+  fontSize?: number; 
+  dataPayload?: any; 
+}
+interface DeckSettings { 
+  logoUrl: string; 
+  footerText: string; 
+  themeColor: string; 
+  themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech'; 
+}
 
 export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () => void, projectId?: string }) {
   const { addToast } = useToast();
@@ -173,11 +191,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   // AI DECK GENERATOR & PRESENTER MODE STATES
   const [isAiGeneratorOpen, setIsAiGeneratorOpen] = useState(false);
   const [aiPromptInput, setAiPromptInput] = useState('');
+  const [aiSlideCount, setAiSlideCount] = useState<number>(5);
   const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
 
   const [isPresenterMode, setIsPresenterMode] = useState(false);
   const [presenterIndex, setPresenterIndex] = useState(0);
   const [presenterSeconds, setPresenterSeconds] = useState(0);
+
+  // Check connected project modules for live badges
+  const targetId = projectId || importProjectId;
+  const hasRealDefects = (defects || []).some((d: any) => d.projectId === targetId);
+  const hasRealTeam = (projectMembers || []).some((m: any) => m.projectId === targetId);
 
   useEffect(() => {
     let timer: any;
@@ -204,22 +228,86 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPresenterMode, slides.length]);
 
-  const handleGenerateAIDeck = async () => {
-    if (!aiPromptInput.trim()) return;
+  // TOOLBAR ACTION HANDLERS (Layout & Font Size Fixes)
+  const handleLayoutChange = async (newLayout: Slide['layout']) => {
+    if (!activeSlide) return;
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: newLayout } : s));
+    try {
+      await supabase.from('slides').update({ layout: newLayout }).eq('id', activeSlide.id);
+    } catch (err) {
+      console.warn("Layout update error:", err);
+    }
+  };
+
+  const handleFontSizeChange = async (delta: number) => {
+    if (!activeSlide) return;
+    const currentFs = activeSlide.fontSize || 18;
+    const newFs = Math.min(120, Math.max(10, currentFs + delta));
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, fontSize: newFs } : s));
+    try {
+      await supabase.from('slides').update({ font_size: newFs }).eq('id', activeSlide.id);
+    } catch (err) {
+      console.warn("Font size update error:", err);
+    }
+  };
+
+  const handleDuplicateSlide = async () => {
+    if (!activeSlide || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const targetProjId = projectId || importProjectId || 'global';
+    const newId = `slide-${Date.now()}`;
+    const duplicated: Slide = {
+      ...activeSlide,
+      id: newId,
+      title: `${activeSlide.title} (Kopie)`,
+      order_index: slides.length
+    };
+    setSlides(prev => [...prev, duplicated]);
+    setActiveSlideId(newId);
+    try {
+      await supabase.from('slides').insert({
+        id: newId,
+        project_id: targetProjId,
+        company_id: safeCompanyId,
+        title: duplicated.title,
+        content: duplicated.content,
+        layout: duplicated.layout,
+        image_url: duplicated.imageUrl,
+        font_size: duplicated.fontSize,
+        data_payload: duplicated.dataPayload,
+        order_index: duplicated.order_index,
+        created_at: new Date().toISOString()
+      });
+      addToast('Folie dupliziert!', 'success');
+    } catch (e) {
+      console.warn("Error duplicating slide:", e);
+    }
+  };
+
+  const handleGenerateAIDeck = async (customPrompt?: string) => {
+    const promptToUse = customPrompt || aiPromptInput;
+    if (!promptToUse.trim()) return;
     setIsGeneratingAIDeck(true);
     addToast('KI generiert Präsentation...', 'info');
 
     try {
-      const prompt = `Erstelle ein professionelles Pitch-Deck für folgendes Thema / Briefing: "${aiPromptInput}".
-      Gib das Ergebnis als ein valides JSON-Array von 5 Folien zurück. Jedes Objekt im Array hat genau folgende Struktur:
-      [
-        { "title": "Folie 1 Titel", "content": "Stichpunkte oder Beschreibung...", "layout": "title-only" },
-        { "title": "Folie 2 Titel", "content": "Stichpunkte...", "layout": "split" },
-        { "title": "Folie 3 Thema", "content": "Details...", "layout": "text-only" },
-        { "title": "Folie 4 Daten", "content": "Finanzen & Meilensteine", "layout": "data-budget" },
-        { "title": "Folie 5 Fazit", "content": "Zusammenfassung & Nächste Schritte", "layout": "split" }
-      ]
-      Antworte NUR mit dem reinen JSON-Code, ohne Markdown-Formatierung!`;
+      const prompt = `Erstelle ein professionelles Pitch-Deck für folgendes Thema / Briefing: "${promptToUse}".
+      Erstelle genau ${aiSlideCount} Folien.
+      Gib das Ergebnis als ein valides JSON-Array zurück. Jedes Objekt im Array hat genau folgende Struktur:
+      {
+        "title": "Foliene Titel",
+        "content": "Stichpunkte oder Fliesstext...",
+        "layout": "title-only" | "split" | "image-focus" | "text-only" | "data-budget" | "smart-calendar" | "defect-grid" | "team-grid",
+        "dataPayload": optionales Objekt (z.B. { "budgetGroups": [...] } für budget, { "milestones": [...] } für calendar, { "defects": [...] } für defects, { "members": [...] } für team)
+      }
+
+      Beispiel-Layouts & Payload Struktur wenn passend:
+      - data-budget: dataPayload = { "totalBudget": 450000, "budgetGroups": [ { "pos": "BKP 1", "title": "Honorare & Planung", "total": 80000 }, { "pos": "BKP 2", "title": "Ausführung & Rohbau", "total": 370000 } ] }
+      - smart-calendar: dataPayload = { "milestones": [ { "title": "Konzept & Entwurf", "start": "2026-01-01", "end": "2026-03-01", "status": "Abgeschlossen" }, { "title": "Bewilligung & Ausführung", "start": "2026-03-01", "end": "2026-09-01", "status": "Aktiv" } ] }
+      - defect-grid: dataPayload = { "defects": [ { "title": "Fensterrahmen EG West nachbessern", "location": "EG Wohnen", "status": "offen", "priority": "hoch" } ] }
+      - team-grid: dataPayload = { "members": [ { "name": "Dipl. Arch. ETH", "role": "Projektleitung", "email": "architektur@kreativdesk.ch" } ] }
+
+      Antworte AUSSCHLIESSLICH mit dem reinen JSON-Array, ohne Markdown oder Einleitung!`;
 
       const aiRes = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
       const rawText = typeof aiRes === 'string' ? aiRes : (aiRes?.text || aiRes?.candidates?.[0]?.content?.parts?.[0]?.text || '');
@@ -233,17 +321,18 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
       if (Array.isArray(generatedSlides) && generatedSlides.length > 0) {
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-        const targetId = projectId || importProjectId || 'global';
+        const targetProjId = projectId || importProjectId || 'global';
 
         const newSlideObjects: Slide[] = generatedSlides.map((s, idx) => ({
           id: `slide-ai-${Date.now()}-${idx}`,
           title: s.title || `Folie ${idx + 1}`,
           content: s.content || '',
-          layout: s.layout || 'split',
+          layout: s.layout || (idx === 0 ? 'title-only' : 'split'),
+          dataPayload: s.dataPayload || null,
           order_index: slides.length + idx,
           ownerId: currentUser?.uid || '',
           companyId: safeCompanyId,
-          projectId: targetId,
+          projectId: targetProjId,
           created_at: new Date().toISOString()
         }));
 
@@ -252,16 +341,18 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           title: s.title,
           content: s.content,
           layout: s.layout,
+          data_payload: s.dataPayload,
           order_index: s.order_index,
           company_id: s.companyId,
           project_id: s.projectId,
           created_at: (s as any).created_at
         })));
+
         setSlides(prev => [...prev, ...newSlideObjects]);
         if (newSlideObjects.length > 0) setActiveSlideId(newSlideObjects[0].id);
         setIsAiGeneratorOpen(false);
         setAiPromptInput('');
-        addToast(`${newSlideObjects.length} KI-Folien generiert!`, 'success');
+        addToast(`${newSlideObjects.length} KI-Folien erfolgreich generiert!`, 'success');
       }
     } catch (err) {
       console.error("AI Deck Generation Error:", err);
@@ -343,15 +434,15 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   useEffect(() => {
     if (!currentUser || !currentUser.companyId) return;
     
-    const targetId = projectId || importProjectId;
+    const targetProjId = projectId || importProjectId;
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     
     const fetchSlides = async () => {
       let slidesArr: any[] = [];
       try {
         let query = supabase.from('slides').select('*');
-        if (targetId && targetId !== 'global') {
-          query = query.eq('project_id', targetId);
+        if (targetProjId && targetProjId !== 'global') {
+          query = query.eq('project_id', targetProjId);
         }
         const { data: loadedSlides } = await query;
         if (loadedSlides) {
@@ -373,19 +464,19 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         console.warn("Pitch deck slides fetch fallback handled:", err);
       }
 
-      if (slidesArr.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
+      if (slidesArr.length === 0 && targetProjId && (targetProjId.startsWith('prj-demo-') || targetProjId.startsWith('demo-'))) {
         try {
           const demoSlides = [
-            { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", type: 'title', order_index: 0 },
-            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", type: 'text', order_index: 1 },
-            { title: "Das Projekt-Team", content: "", type: 'team', order_index: 2 },
-            { title: "Projekt-Budget", content: "", type: 'budget', order_index: 3 },
+            { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', order_index: 0 },
+            { title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", layout: 'split', order_index: 1 },
+            { title: "Das Projekt-Team", content: "", layout: 'team-grid', order_index: 2 },
+            { title: "Projekt-Budget", content: "", layout: 'data-budget', order_index: 3 },
           ];
           
           const slidesToInsert = demoSlides.map((s, i) => ({
-            id: `slide-demo-${targetId}-${i}`,
+            id: `slide-demo-${targetProjId}-${i}`,
             ...s,
-            project_id: targetId,
+            project_id: targetProjId,
             company_id: currentUser?.companyId || safeCompanyId,
             owner_id: currentUser?.uid,
             created_at: new Date().toISOString()
@@ -439,7 +530,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const targetId = projectId || importProjectId || 'global';
+    const targetProjId = projectId || importProjectId || 'global';
     setIsUploadingImage(true);
     try {
       const fileExt = file.name.split('.').pop();
@@ -453,7 +544,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       const newDoc = {
         name: file.name, url: downloadUrl, file_url: downloadUrl, size: `${Math.round(file.size / 1024)} KB`, type: file.type,
         owner_id: currentUser.uid, company_id: safeCompanyId,
-        project_id: targetId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
+        project_id: targetProjId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
       };
       const { data: created } = await supabase.from('documents').insert(newDoc).select().single();
       const docId = created ? created.id : `doc-${Date.now()}`;
@@ -653,12 +744,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSavingToCloud(true);
     try {
-      const targetId = projectId || importProjectId || 'global';
+      const targetProjId = projectId || importProjectId || 'global';
       const { data: existingFolder } = await supabase
         .from('documents')
         .select('id')
         .eq('company_id', safeCompanyId)
-        .eq('project_id', targetId)
+        .eq('project_id', targetProjId)
         .eq('is_folder', true)
         .eq('name', 'Pitch Decks')
         .single();
@@ -667,7 +758,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (existingFolder) { targetFolderId = existingFolder.id; } 
       else {
          const { data: newF } = await supabase.from('documents').insert({
-            name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', 
+            name: 'Pitch Decks', is_folder: true, project_id: targetProjId, folder_id: 'root', 
             owner_id: currentUser.uid, company_id: safeCompanyId, category: 'projects', created_at: new Date().toISOString()
          }).select().single();
          if (newF) targetFolderId = newF.id;
@@ -682,7 +773,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         type: 'application/pdf', 
         url: downloadUrl, 
         file_url: downloadUrl, 
-        project_id: targetId, 
+        project_id: targetProjId, 
         folder_id: targetFolderId, 
         category: 'projects', 
         is_folder: false, 
@@ -692,7 +783,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         uploaded_at: new Date().toISOString()
       });
 
-      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', targetId);
+      await notifyNewDocument(safeCompanyId, fileName, 'Pitch Deck', targetProjId);
 
       addToast(t('upload_success'), 'success'); 
       setIsPdfModalOpen(false);
@@ -707,17 +798,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const targetId = projectId || importProjectId || 'global';
+    const targetProjId = projectId || importProjectId || 'global';
     const newId = `slide-${Date.now()}`;
     const newSlide: Slide = {
       id: newId, title, content: t('type_text_here'), order_index: slides.length, 
-      ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
+      ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetProjId, 
       layout, fontSize: 18, dataPayload, ...(imageUrl && { imageUrl })
     };
     try {
       const dbPayload: any = {
         id: newId,
-        project_id: targetId,
+        project_id: targetProjId,
         company_id: safeCompanyId,
         title: title || 'Neue Folie',
         content: t('type_text_here'),
@@ -769,27 +860,18 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     await Promise.all(newSlides.map((s, i) => supabase.from('slides').update({ order_index: i }).eq('id', s.id)));
   };
 
+  // ENHANCED REPORTING SLIDE GENERATORS WITH RICH SWISS ARCHITECTURE & CONSTRUCTION TEMPLATE FALLBACKS
   const handleGenerateBudgetSlide = async () => {
-    const targetId = projectId || importProjectId;
-    if (!targetId) return addToast(t('select_project'), "info");
+    const targetProjId = projectId || importProjectId || 'global';
     
     try {
       let budgetGroups: any[] = []; 
       let totalBudget = 0;
       
-      if (targetId.startsWith('demo-')) {
-        const tpl = demoTemplates.construction;
-        if (tpl && tpl.financeGroups) {
-           budgetGroups = tpl.financeGroups.map((g: any) => {
-             const groupTotal = g.items.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
-             totalBudget += groupTotal;
-             return { pos: g.pos, title: g.title, total: groupTotal, items: g.items.map((i:any)=>({pos: i.pos, title: i.title, total: i.amount})).slice(0, 3) };
-           });
-        }
-      } else {
+      if (targetProjId && !targetProjId.startsWith('demo-')) {
         let finConfig: any = null;
         try {
-          const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetId}`).maybeSingle();
+          const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetProjId}`).maybeSingle();
           finConfig = res.data;
         } catch (e) {}
         const data = (finConfig as any)?.data || finConfig;
@@ -799,18 +881,47 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             budgetGroups = activeVersion.groups.map((g: any) => {
               const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || (item.qty * item.unitPrice) || 0), 0);
               totalBudget += groupTotal;
-              return { pos: g.pos, title: g.title, total: groupTotal, items: (g.items || []).slice(0, 3) };
+              return { pos: g.pos, title: g.title, total: groupTotal, items: (g.items || []).slice(0, 4) };
             });
           }
         }
       }
-      
+
+      // RICH SWISS BKP TEMPLATE FALLBACK IF NO REAL PROJECT BUDGET EXISTS
       if (budgetGroups.length === 0) {
         budgetGroups = [
-          { pos: '100', title: 'Vorbereitung', total: 25000, items: [{pos:'101', title:'Honorare', total:20000}, {pos:'102', title:'Spesen', total:5000}] },
-          { pos: '300', title: 'Ausführung', total: 120000, items: [{pos:'301', title:'Baumeister', total:100000}, {pos:'302', title:'Maler', total:20000}] }
+          { 
+            pos: 'BKP 1', title: 'Vorbereitungsarbeiten & Honorare', total: 65000, 
+            items: [
+              { pos: '101', title: 'Architektur- & Ingenieurhonorare', total: 45000 },
+              { pos: '102', title: 'Geometer & Bodengutachten', total: 12000 },
+              { pos: '103', title: 'Bewilligungen & Baueingabegebühren', total: 8000 }
+            ] 
+          },
+          { 
+            pos: 'BKP 2', title: 'Gebäude & Rohbauarbeiten', total: 520000, 
+            items: [
+              { pos: '201', title: 'Aushub & Fundamentarbeiten', total: 85000 },
+              { pos: '202', title: 'Baumeisterarbeiten & Betonbau', total: 310000 },
+              { pos: '203', title: 'Holzbau & Dachkonstruktion', total: 125000 }
+            ] 
+          },
+          { 
+            pos: 'BKP 3', title: 'Haustechnik & Elektroanlagen', total: 185000, 
+            items: [
+              { pos: '301', title: 'Elektroinstallationen & Smart Home', total: 65000 },
+              { pos: '302', title: 'Heizung, Lüftung & Sanitär (HLS)', total: 120000 }
+            ] 
+          },
+          { 
+            pos: 'BKP 4', title: 'Innenausbau & Umgebungsarbeiten', total: 140000, 
+            items: [
+              { pos: '401', title: 'Gipser, Maler & Bodenbeläge', total: 90000 },
+              { pos: '402', title: 'Garten- & Umgebungsgestaltung', total: 50000 }
+            ] 
+          }
         ];
-        totalBudget = 145000;
+        totalBudget = 910000;
       }
       await handleAddSlide('data-budget', t('budget_plan'), { budgetGroups, totalBudget });
       addToast(t('budget_imported'), "success");
@@ -819,27 +930,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleGenerateTimelineSlide = async () => {
-    const targetId = projectId || importProjectId;
-    if (!targetId) return addToast(t('select_project'), "info");
+    const targetProjId = projectId || importProjectId || 'global';
     
     try {
       let milestones: any[] = [];
-      if (targetId.startsWith('demo-')) {
-        const tpl = demoTemplates.construction;
-        if (tpl && tpl.tasks) {
-           milestones = tpl.tasks.map((t:any) => {
-              const s = new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0];
-              const e = new Date(Date.now() + (t.daysOffsetEnd||0) * 86400000).toISOString().split('T')[0];
-              return { id: t.id || Math.random().toString(), start: s, end: e, title: t.title, progress: t.progress || 0, status: t.status };
-           });
-        }
-      } else {
+      if (targetProjId && !targetProjId.startsWith('demo-')) {
         try {
-          const localCache = localStorage.getItem(`schedule_cache_${targetId}`);
+          const localCache = localStorage.getItem(`schedule_cache_${targetProjId}`);
           let tasks: any[] = localCache ? (JSON.parse(localCache).ganttTasks || []) : [];
           if (tasks.length === 0) {
-            const { data } = await supabase.from('system_config').select('*').eq('id', `schedule_${targetId}`).maybeSingle();
-            tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || demoTemplates.construction.tasks || [];
+            const { data } = await supabase.from('system_config').select('*').eq('id', `schedule_${targetProjId}`).maybeSingle();
+            tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || [];
           }
           if (tasks.length > 0) {
             const sortedTasks = [...tasks].sort((a:any, b:any) => new Date(a.start || Date.now()).getTime() - new Date(b.start || Date.now()).getTime());
@@ -849,25 +950,20 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               end: t.end ? new Date(t.end).toISOString().split('T')[0] : new Date(Date.now() + 30*86400000).toISOString().split('T')[0],
               title: t.title, 
               progress: t.progress || 0, 
-              status: t.status
+              status: t.status || 'Aktiv'
             }));
           }
-        } catch (e) {
-          const tasks = demoTemplates.construction.tasks || [];
-          milestones = tasks.map((t: any) => ({
-            id: t.id,
-            start: new Date(Date.now() + (t.daysOffsetStart||0) * 86400000).toISOString().split('T')[0],
-            end: new Date(Date.now() + (t.daysOffsetEnd||0) * 86400000).toISOString().split('T')[0],
-            title: t.title, progress: t.progress || 0, status: t.status
-          }));
-        }
+        } catch (e) {}
       }
       
+      // RICH GANTT TIMELINE TEMPLATE FALLBACK
       if (milestones.length === 0) {
         const today = new Date();
         milestones = [
-          { start: new Date(today.getTime() - 10*24*60*60*1000).toISOString().split('T')[0], end: new Date(today.getTime() + 20*24*60*60*1000).toISOString().split('T')[0], title: 'Konzeptphase', progress: 60, status: 'Aktiv' },
-          { start: new Date(today.getTime() + 21*24*60*60*1000).toISOString().split('T')[0], end: new Date(today.getTime() + 60*24*60*60*1000).toISOString().split('T')[0], title: 'Detailplanung', progress: 0, status: 'Geplant' }
+          { start: new Date(today.getTime() - 30*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 15*86400000).toISOString().split('T')[0], title: 'Phase 1: Vorprojekt & Bewilligung', progress: 100, status: 'Abgeschlossen' },
+          { start: new Date(today.getTime() + 10*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 75*86400000).toISOString().split('T')[0], title: 'Phase 2: Aushub & Rohbauarbeiten', progress: 45, status: 'In Ausführung' },
+          { start: new Date(today.getTime() + 70*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 130*86400000).toISOString().split('T')[0], title: 'Phase 3: Haustechnik & Innenausbau', progress: 0, status: 'Geplant' },
+          { start: new Date(today.getTime() + 125*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 160*86400000).toISOString().split('T')[0], title: 'Phase 4: Abnahme & Schlüsselübergabe', progress: 0, status: 'Geplant' }
         ];
       }
       await handleAddSlide('smart-calendar', t('api_roadmap'), { milestones });
@@ -877,15 +973,21 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleImportDefects = async () => {
-    const targetId = projectId || importProjectId;
-    if (!targetId) return addToast(t('select_project'), "info");
+    const targetProjId = projectId || importProjectId || 'global';
     
-    let projectDefects = [];
-    if (targetId.startsWith('demo-')) {
-        const tpl = demoTemplates.construction;
-        if (tpl && tpl.defects) { projectDefects = tpl.defects.slice(0,4); }
-    } else {
-        projectDefects = (defects || []).filter((d:any) => d.projectId === targetId && d.status !== 'erledigt').slice(0, 4);
+    let projectDefects: any[] = [];
+    if (targetProjId && !targetProjId.startsWith('demo-')) {
+      projectDefects = (defects || []).filter((d:any) => d.projectId === targetProjId && d.status !== 'erledigt').slice(0, 4);
+    }
+    
+    // RICH DEFECT TICKETS TEMPLATE FALLBACK IF NO REAL TICKETS EXIST
+    if (projectDefects.length === 0) {
+      projectDefects = [
+        { id: 'def-1', title: 'Kratzer an Fensterrahmen EG West', location: 'Erdgeschoss Wohnzimmer', status: 'offen', priority: 'hoch', imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80' },
+        { id: 'def-2', title: 'Silikonfuge Sanitär 1.OG nachbessern', location: 'Obergeschoss Badezimmer', status: 'in Bearbeitung', priority: 'mittel', imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=400&q=80' },
+        { id: 'def-3', title: 'Abdeckung Lichtschalter Korridor fehlt', location: 'Untergeschoss Korridor', status: 'offen', priority: 'niedrig', imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=400&q=80' },
+        { id: 'def-4', title: 'Sockelleiste Eingangsbereich prüfen', location: 'Foyer / Eingang', status: 'in Bearbeitung', priority: 'mittel', imageUrl: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=400&q=80' }
+      ];
     }
     
     await handleAddSlide('defect-grid', t('defects_report'), { defects: projectDefects });
@@ -893,57 +995,49 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     setMobileTab('slides');
   };
 
-const handleGenerateTeamSlide = async () => {
-    const targetId = projectId || importProjectId;
-    if (!targetId) return addToast(t('select_project'), "info");
+  const handleGenerateTeamSlide = async () => {
+    const targetProjId = projectId || importProjectId || 'global';
     
-    let teamMembers = [];
+    let teamMembers: any[] = [];
     
-    // 1. Prüfen, ob es das Demo-Projekt ist
-    if (targetId.startsWith('demo-')) {
-        const tpl = demoTemplates.construction;
-        if (tpl && tpl.members) { 
-          // Avatare für die Demo erzwingen
-          teamMembers = tpl.members.map((m: any) => ({
-             ...m,
-             photoURL: m.photoURL || m.avatar || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80'
-          }));
-        }
-    } else {
-        // 2. Echte Projekt-Datenbank abfragen
-        teamMembers = (projectMembers || []).filter((m: any) => m.projectId === targetId).map((m: any) => {
-          const user = (companyUsers || []).find((u: any) => u.id === m.userId);
-          // Holt das Bild, egal ob es unter photoURL oder avatar gespeichert wurde
-          const avatar = user?.photoURL || user?.avatar || m.avatar || m.photoURL || '';
-          return { 
-            name: m.userName || m.name || user?.name || user?.email || 'Teammitglied', 
-            role: m.projectRole || m.role || 'Projekt-Team', 
-            photoURL: avatar, 
-            email: m.userEmail || user?.email || '', 
-            phone: user?.phone || m.phone || '' 
-          };
-        }).filter(Boolean);
+    if (targetProjId && !targetProjId.startsWith('demo-')) {
+      teamMembers = (projectMembers || []).filter((m: any) => m.projectId === targetProjId).map((m: any) => {
+        const user = (companyUsers || []).find((u: any) => u.id === m.userId);
+        const avatar = user?.photoURL || user?.avatar || m.avatar || m.photoURL || '';
+        return { 
+          name: m.userName || m.name || user?.name || user?.email || 'Teammitglied', 
+          role: m.projectRole || m.role || 'Projekt-Team', 
+          photoURL: avatar, 
+          email: m.userEmail || user?.email || '', 
+          phone: user?.phone || m.phone || '' 
+        };
+      }).filter(Boolean);
     }
-      
-    // 3. Wenn absolut niemand im Projekt ist, keinen "Max Muster" mehr zeigen!
-    const fallbackData = teamMembers.length > 0 ? teamMembers : [
-        { name: 'Bitte Team hinzufügen', role: 'Noch niemand zugewiesen', email: '', phone: '', photoURL: '' }
-    ];
+
+    // RICH TEAM TEMPLATE FALLBACK IF NO REAL MEMBERS ASSIGNED
+    if (teamMembers.length === 0) {
+      teamMembers = [
+        { name: 'Dipl. Arch. ETH / SIA', role: 'Hauptarchitektur & Entwurf', email: 'architektur@kreativdesk.ch', phone: '+41 44 123 45 67', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
+        { name: 'Bauingenieur FH / SIA', role: 'Tragwerksplanung & Statik', email: 'statik@kreativdesk.ch', phone: '+41 44 123 45 68', photoURL: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' },
+        { name: 'Gesamtbauleitung', role: 'Kosten & Ausführung', email: 'bauleitung@kreativdesk.ch', phone: '+41 44 123 45 69', photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' },
+        { name: 'Fachplaner HLSK', role: 'Haustechnik & Energie', email: 'energie@kreativdesk.ch', phone: '+41 44 123 45 70', photoURL: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80' }
+      ];
+    }
     
-    await handleAddSlide('team-grid', t('project_team'), { members: fallbackData });
+    await handleAddSlide('team-grid', t('project_team'), { members: teamMembers });
     addToast(t('team_imported'), "success");
     setMobileTab('slides');
   };
 
   const openMediaPicker = async (mediaType: 'cad' | 'render' | 'whiteboard' | 'bim', title: string, action: 'slide'|'team' = 'slide', meta: any = null) => {
-    const targetId = projectId || importProjectId || 'global';
+    const targetProjId = projectId || importProjectId || 'global';
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     setMediaPickerType({ folderId: mediaType, title, action, meta });
     setIsMediaLoading(true);
     try {
-      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId).eq('project_id', targetId);
+      const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompanyId).eq('project_id', targetProjId);
       const filteredDocs = (docs || []).filter((d:any) => (d.url || d.file_url) && (d.type?.includes('image') || d.name?.match(/\.(jpg|jpeg|png|webp)$/i)));
       setAvailableMedia(filteredDocs.map((d: any) => ({...d, url: d.url || d.file_url})));
     } catch(e) { addToast(t('error_load'), "error"); }
@@ -963,6 +1057,7 @@ const handleGenerateTeamSlide = async () => {
               data_payload: { ...currentSlide.dataPayload, members: newMembers },
               dataPayload: { ...currentSlide.dataPayload, members: newMembers } 
            }).eq('id', slideId);
+           setSlides(prev => prev.map(s => s.id === slideId ? { ...s, dataPayload: { ...s.dataPayload, members: newMembers } } : s));
            addToast('Bild aktualisiert!', 'success');
          }
        }
@@ -1115,6 +1210,22 @@ const handleGenerateTeamSlide = async () => {
                <div style={{ fontSize: `${slide.fontSize || 18}px` }} className={cn("w-full h-full whitespace-pre-wrap overflow-y-auto custom-scrollbar", isDarkTheme ? "text-zinc-300" : "text-zinc-700")}>{displayContent}</div>
              )
           )}
+
+          {slide.layout === 'title-only' && (
+            <div className="w-full h-full flex flex-col items-center justify-center text-center p-6">
+              {!isPreviewMode && !isMobile ? (
+                <textarea 
+                  value={displayContent} 
+                  onChange={(e) => handleLocalUpdate('content', e.target.value)} 
+                  style={{ fontSize: `${slide.fontSize || 20}px` }} 
+                  placeholder="Untertitel oder Kernaussage hier eingeben..."
+                  className={cn("w-full bg-transparent outline-none resize-none text-center opacity-80", isDarkTheme ? "text-zinc-300" : "text-zinc-700")} 
+                />
+              ) : (
+                <p style={{ fontSize: `${slide.fontSize || 20}px` }} className={cn("opacity-80 max-w-2xl", isDarkTheme ? "text-zinc-300" : "text-zinc-700")}>{displayContent}</p>
+              )}
+            </div>
+          )}
           
           {slide.layout === 'split' && (
             <div className="flex flex-row w-full h-full gap-4 md:gap-10">
@@ -1132,7 +1243,7 @@ const handleGenerateTeamSlide = async () => {
                 {!!sanitizeUrl(slide.imageUrl) ? (
                    <>
                      <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
-                     {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
+                     {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
                    </>
                 ) : (
                    !isPreviewMode && <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-400"><ImageIcon size={24} className="mb-2" /><span className="text-xs font-bold uppercase tracking-widest text-center">{t('choose_image')}</span></div>
@@ -1150,7 +1261,7 @@ const handleGenerateTeamSlide = async () => {
               {!!sanitizeUrl(slide.imageUrl) ? (
                 <>
                   <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
-                  {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
+                  {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
                 </>
               ) : (
                 !isPreviewMode && <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-400"><ImageIcon size={32} className="mb-2" /><span className="text-sm font-bold uppercase tracking-widest">{t('choose_image')}</span></div>
@@ -1161,7 +1272,7 @@ const handleGenerateTeamSlide = async () => {
           {slide.layout === 'defect-grid' && slide.dataPayload?.defects && (
              <div className="w-full h-full grid grid-cols-2 gap-6 col-span-full pointer-events-none">
                 {slide.dataPayload.defects.map((d:any, i:number) => (
-                  <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
+                  <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border shadow-sm", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
                     <div className="h-40 bg-zinc-200 relative overflow-hidden shrink-0">
                       {!!sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-500"><ImageIcon size={32}/></div>}
                       <div className={cn("absolute top-3 right-3 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest text-white shadow-lg", d.status === 'offen' ? 'bg-red-500' : 'bg-amber-500')}>{d.status}</div>
@@ -1173,18 +1284,18 @@ const handleGenerateTeamSlide = async () => {
           )}
 
           {slide.layout === 'team-grid' && slide.dataPayload?.members && (
-             <div className="w-full h-full grid grid-cols-3 lg:grid-cols-4 gap-8 content-start col-span-full overflow-y-auto custom-scrollbar">
+             <div className="w-full h-full grid grid-cols-2 md:grid-cols-4 gap-6 content-start col-span-full overflow-y-auto custom-scrollbar">
                 {slide.dataPayload.members.map((m:any, i:number) => (
-                  <div key={i} className={cn("p-6 flex flex-col items-center text-center border rounded-3xl", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
-                    <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("w-28 h-28 lg:w-32 lg:h-32 rounded-full mb-6 bg-zinc-800 overflow-hidden shrink-0 border-4 relative group", !isPreviewMode && "cursor-pointer")} style={{ borderColor: deckSettings.themeColor }}>
-                      {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-8 text-zinc-500" size={40}/>}
-                      {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"><Camera size={20} /></div>}
+                  <div key={i} className={cn("p-5 flex flex-col items-center text-center border rounded-2xl shadow-sm", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
+                    <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("w-24 h-24 rounded-full mb-4 bg-zinc-800 overflow-hidden shrink-0 border-4 relative group", !isPreviewMode && "cursor-pointer")} style={{ borderColor: deckSettings.themeColor }}>
+                      {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-6 text-zinc-500" size={32}/>}
+                      {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"><Camera size={18} /></div>}
                     </div>
-                    <div className={cn("font-bold text-xl truncate w-full", tc)}>{m.name}</div>
-                    <div className="text-sm font-bold mb-4 truncate w-full" style={{ color: deckSettings.themeColor }}>{m.role || 'Team'}</div>
-                    <div className={cn("w-full space-y-2 border-t pt-4 mt-auto", isDarkTheme ? "border-white/10" : "border-black/10")}>
-                      {m.email && <div className="text-xs opacity-70 truncate w-full flex items-center justify-center gap-2"><Mail size={12}/> {m.email}</div>}
-                      {m.phone && <div className="text-xs opacity-70 truncate w-full flex items-center justify-center gap-2"><Phone size={12}/> {m.phone}</div>}
+                    <div className={cn("font-bold text-base truncate w-full", tc)}>{m.name}</div>
+                    <div className="text-xs font-bold mb-3 truncate w-full" style={{ color: deckSettings.themeColor }}>{m.role || 'Team'}</div>
+                    <div className={cn("w-full space-y-1 border-t pt-3 mt-auto", isDarkTheme ? "border-white/10" : "border-black/10")}>
+                      {m.email && <div className="text-[10px] opacity-70 truncate w-full flex items-center justify-center gap-1.5"><Mail size={10}/> {m.email}</div>}
+                      {m.phone && <div className="text-[10px] opacity-70 truncate w-full flex items-center justify-center gap-1.5"><Phone size={10}/> {m.phone}</div>}
                     </div>
                   </div>
                 ))}
@@ -1357,10 +1468,26 @@ const handleGenerateTeamSlide = async () => {
                   </div>
                 )}
                 <div className="grid grid-cols-1 gap-3">
-                  <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-3 font-bold"><DollarSign size={18}/>{t('load_budget')}</button>
-                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center gap-3 font-bold"><CalendarDays size={18}/>{t('generate_roadmap')}</button>
-                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-4 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-3 font-bold"><Users size={18}/>{t('load_team')}</button>
-                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-4 rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30 flex items-center gap-3 font-bold"><Box size={18}/>{t('import_renderings')}</button>
+                  <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                  </button>
+                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><CalendarDays size={18}/>{t('generate_roadmap')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-mono">Vorlage</span>
+                  </button>
+                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-4 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><Users size={18}/>{t('load_team')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 rounded font-mono">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
+                  </button>
+                  <button type="button" onClick={handleImportDefects} className="w-full p-4 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><AlertTriangle size={18}/>{t('import_defects')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-red-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                  </button>
+                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-4 rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><Box size={18}/>{t('import_renderings')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-pink-500/20 rounded font-mono">Medien</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -1378,9 +1505,12 @@ const handleGenerateTeamSlide = async () => {
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
               <div className="tour-deck-template">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 gap-1.5">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
-                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-400":"bg-background border-border")}>{thm.n}</button>
+                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold flex items-center justify-between", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-400 shadow-sm":"bg-background border-border hover:bg-white/5")}>
+                      <span>{thm.n}</span>
+                      {deckSettings.themeStyle===thm.id && <Check size={12} className="text-purple-400" />}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1393,21 +1523,36 @@ const handleGenerateTeamSlide = async () => {
                   </select>
                 )}
                 <div className="space-y-2">
-                  <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center gap-3 hover:bg-emerald-500/20 transition-all text-xs font-bold"><DollarSign size={16}/>{t('load_budget')}</button>
-                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-500 flex items-center gap-3 hover:bg-orange-500/20 transition-all text-xs font-bold"><CalendarDays size={16}/>{t('generate_roadmap')}</button>
-                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-2.5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center gap-3 hover:bg-blue-500/20 transition-all text-xs font-bold"><Users size={16}/>{t('load_team')}</button>
-                  <button type="button" onClick={handleImportDefects} className="w-full p-2.5 rounded-lg bg-red-500/10 text-red-500 flex items-center gap-3 hover:bg-red-500/20 transition-all text-xs font-bold"><AlertTriangle size={16}/>{t('import_defects')}</button>
+                  <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-bold border border-emerald-500/20">
+                    <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300">BKP Plan</span>
+                  </button>
+                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-between hover:bg-orange-500/20 transition-all text-xs font-bold border border-orange-500/20">
+                    <span className="flex items-center gap-2.5"><CalendarDays size={15}/>{t('generate_roadmap')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-orange-500/20 text-orange-300">Gantt</span>
+                  </button>
+                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-2.5 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-between hover:bg-blue-500/20 transition-all text-xs font-bold border border-blue-500/20">
+                    <span className="flex items-center gap-2.5"><Users size={15}/>{t('load_team')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-blue-500/20 text-blue-300">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
+                  </button>
+                  <button type="button" onClick={handleImportDefects} className="w-full p-2.5 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-between hover:bg-red-500/20 transition-all text-xs font-bold border border-red-500/20">
+                    <span className="flex items-center gap-2.5"><AlertTriangle size={15}/>{t('import_defects')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                  </button>
                   <div className="w-full h-px bg-border/50 my-1"></div>
-                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-pink-500/10 text-pink-500 flex items-center gap-3 hover:bg-pink-500/20 transition-all text-xs font-bold"><Box size={16}/>{t('import_renderings')}</button>
+                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-between hover:bg-pink-500/20 transition-all text-xs font-bold border border-pink-500/20">
+                    <span className="flex items-center gap-2.5"><Box size={15}/>{t('import_renderings')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-pink-500/20 text-pink-300">Medien</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* DESKTOP RIGHT SIDEBAR */}
+        {/* DESKTOP RIGHT SIDEBAR (Slide List & In-line Quick Editor) */}
         {!isPreviewMode && (
-          <div className="w-56 bg-background border-r border-border flex-col shrink-0 z-10 flex">
+          <div className="w-60 bg-background border-r border-border flex-col shrink-0 z-10 flex">
             <div className="h-16 px-4 border-b border-border flex justify-between items-center relative">
               <h3 className="text-[10px] font-bold uppercase opacity-50">{t('slides_count')} ({slides.length})</h3>
               <div className="flex items-center gap-1">
@@ -1416,7 +1561,7 @@ const handleGenerateTeamSlide = async () => {
               </div>
               <AnimatePresence>
                 {showAddMenu && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-44 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-48 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
                     <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">{t('standard_layouts')}</div>
                     <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Columns size={14}/> {t('text_and_image')}</button>
@@ -1428,7 +1573,7 @@ const handleGenerateTeamSlide = async () => {
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
               {slides.map((s,i)=>(
-                <div key={s.id} onClick={()=>setActiveSlideId(s.id)} className={cn("p-3 rounded-lg cursor-pointer border group relative transition-colors", activeSlideId===s.id?"bg-purple-500/10 border-purple-500":"bg-surface border-border hover:bg-white/5")}>
+                <div key={s.id} onClick={()=>setActiveSlideId(s.id)} className={cn("p-3 rounded-lg cursor-pointer border group relative transition-colors", activeSlideId===s.id?"bg-purple-500/10 border-purple-500 shadow-sm":"bg-surface border-border hover:bg-white/5")}>
                   <div className="flex justify-between mb-1.5">
                     <span className="text-[9px] font-bold text-text-muted">{t('slide')} {i + 1}</span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100">
@@ -1453,24 +1598,46 @@ const handleGenerateTeamSlide = async () => {
               </button>
               
               {!isPreviewMode && activeSlide && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <div className="h-6 w-px bg-border mx-1"></div>
+                  
+                  {/* LAYOUT SELECTOR BUTTONS WITH DIRECT STATE SYNC */}
                   <div className="flex flex-row bg-background border border-border rounded-lg p-0.5">
-                    {[{ id: 'title-only', icon: Type }, { id: 'split', icon: Columns }, { id: 'image-focus', icon: ImageIcon }, { id: 'text-only', icon: Layout }].map((l) => (
-                      <button type="button" key={l.id} onClick={() => supabase.from('slides').update({ layout: l.id }).eq('id', activeSlide.id)} className={cn("p-1.5 rounded-md transition-all", activeSlide.layout === l.id ? "bg-surface border border-border text-text-primary shadow-sm" : "text-text-muted hover:text-text-primary")}><l.icon size={14} /></button>
+                    {[
+                      { id: 'title-only', icon: Type, title: 'Titel-Folie' },
+                      { id: 'split', icon: Columns, title: 'Text & Bild' },
+                      { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
+                      { id: 'text-only', icon: Layout, title: 'Nur Text' }
+                    ].map((l) => (
+                      <button 
+                        type="button" 
+                        key={l.id} 
+                        title={l.title}
+                        onClick={() => handleLayoutChange(l.id as Slide['layout'])} 
+                        className={cn("p-1.5 rounded-md transition-all cursor-pointer", activeSlide.layout === l.id ? "bg-purple-500/20 border border-purple-500/40 text-purple-400 shadow-sm" : "text-text-muted hover:text-text-primary")}
+                      >
+                        <l.icon size={14} />
+                      </button>
                     ))}
                   </div>
                   
+                  {/* FONT SIZE CONTROLS WITH DIRECT STATE SYNC */}
                   <div className="flex flex-row items-center bg-background border border-border rounded-lg p-0.5">
-                    <button type="button" onClick={() => {
-                      const newFs = Math.max(10, (activeSlide.fontSize || 18) - 2);
-                      setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, fontSize: newFs } : s));
-                    }} className="p-1.5 text-text-muted hover:text-text-primary"><Minus size={14} /></button>
+                    <button type="button" onClick={() => handleFontSizeChange(-2)} className="p-1.5 text-text-muted hover:text-text-primary" title="Schrift verkleinern"><Minus size={14} /></button>
                     <span className="text-xs font-bold w-6 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
-                    <button type="button" onClick={() => {
-                      const newFs = Math.min(120, (activeSlide.fontSize || 18) + 2);
-                      setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, fontSize: newFs } : s));
-                    }} className="p-1.5 text-text-muted hover:text-text-primary"><Plus size={14} /></button>
+                    <button type="button" onClick={() => handleFontSizeChange(2)} className="p-1.5 text-text-muted hover:text-text-primary" title="Schrift vergrössern"><Plus size={14} /></button>
+                  </div>
+
+                  {/* QUICK SLIDE ACTION BUTTONS */}
+                  <div className="flex items-center gap-1.5">
+                    <button type="button" onClick={handleDuplicateSlide} title="Folie duplizieren" className="p-1.5 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
+                      <Copy size={14} />
+                    </button>
+                    {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
+                      <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title="Bild wählen" className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
+                        <ImageIcon size={14} /> <span>Bild</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1620,7 +1787,7 @@ const handleGenerateTeamSlide = async () => {
                 {pdfPreviewUrl ? (
                    <iframe src={pdfPreviewUrl} className="flex-1 w-full h-full border-none bg-white"></iframe>
                 ) : (
-                  <div className="flex-1 w-full flex flex-col items-center justify-center text-white/30 text-sm font-bold gap-4">
+                   <div className="flex-1 w-full flex flex-col items-center justify-center text-white/30 text-sm font-bold gap-4">
                     {isGeneratingPdf ? <Loader2 size={48} className="animate-spin text-accent-ai opacity-50" /> : <PenTool size={48} className="opacity-20" />}
                     {isGeneratingPdf ? t('generating_pdf') : 'Klicke auf "Vorschau aktualisieren"'}
                   </div>
@@ -1671,7 +1838,7 @@ const handleGenerateTeamSlide = async () => {
         </div>
       )}
 
-      {/* AI DECK GENERATOR MODAL */}
+      {/* ENHANCED AI DECK GENERATOR MODAL */}
       {isAiGeneratorOpen && (
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl p-6 space-y-5">
@@ -1681,9 +1848,32 @@ const handleGenerateTeamSlide = async () => {
             </div>
 
             <p className="text-xs text-text-muted">
-              Gib ein Thema, ein Projekt-Briefing oder Key-Facts ein. Gemini AI baut automatisch eine fertige Präsentation mit passenden Layouts.
+              Gib ein Thema oder Projekt-Briefing ein. Gemini AI baut automatisch ein komplette Präsentation inklusive passender Layouts, Finanzen & Terminplänen.
             </p>
 
+            {/* PRESET CHIPS */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">Schnell-Vorlagen / Prompts</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "🏗️ Architektur-Wettbewerb & Baukosten Pitch",
+                  "📊 Bauprojekt Status, Meilensteine & Mängel",
+                  "💰 Investor & Finanzierungs-Präsentation",
+                  "🎨 Design, Materialität & Nachhaltigkeit"
+                ].map((preset, idx) => (
+                  <button 
+                    key={idx} 
+                    type="button" 
+                    onClick={() => setAiPromptInput(preset)}
+                    className="px-3 py-1.5 bg-background hover:bg-white/10 border border-border rounded-lg text-xs font-medium text-text-primary transition-colors text-left"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* PROMPT TEXTAREA */}
             <textarea
               rows={4}
               value={aiPromptInput}
@@ -1692,9 +1882,26 @@ const handleGenerateTeamSlide = async () => {
               className="w-full bg-background border border-border/50 rounded-xl p-4 text-xs font-medium text-text-primary outline-none focus:border-purple-500 resize-none"
             />
 
+            {/* SLIDE COUNT SELECTOR */}
+            <div className="flex items-center justify-between bg-background border border-border/50 rounded-xl p-3">
+              <span className="text-xs font-bold text-text-muted">Anzahl Folien:</span>
+              <div className="flex gap-2">
+                {[3, 5, 8, 10].map(count => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setAiSlideCount(count)}
+                    className={cn("px-3 py-1 rounded-md text-xs font-bold transition-all", aiSlideCount === count ? "bg-purple-600 text-white" : "bg-surface border border-border text-text-muted hover:text-text-primary")}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
               <button type="button" onClick={() => setIsAiGeneratorOpen(false)} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">Abbrechen</button>
-              <button type="button" onClick={handleGenerateAIDeck} disabled={isGeneratingAIDeck || !aiPromptInput.trim()} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
+              <button type="button" onClick={() => handleGenerateAIDeck()} disabled={isGeneratingAIDeck || !aiPromptInput.trim()} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
                 {isGeneratingAIDeck ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                 <span>Deck generieren</span>
               </button>
