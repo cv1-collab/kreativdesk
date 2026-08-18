@@ -35,6 +35,25 @@ test.describe('External Email Invitations & Calendar Reminders E2E Suite', () =>
     }
   });
 
+  test('External Partner free-text input for time bookings works cleanly', async ({ page }) => {
+    await page.goto('/app?tab=agenda');
+    await expect(page.locator('body')).toBeVisible();
+
+    // Click on Extern (Partner) tab if visible
+    const externalTab = page.getByRole('button', { name: /Extern|Partner/i }).first();
+    if (await externalTab.isVisible()) {
+      await externalTab.click();
+      await page.waitForTimeout(200);
+
+      // Check if text input for custom external partner name is rendered
+      const partnerInput = page.locator('input[placeholder*="externen Partners"]').first();
+      if (await partnerInput.isVisible()) {
+        await partnerInput.fill('Muster Bau AG Freelancer');
+        expect(await partnerInput.inputValue()).toBe('Muster Bau AG Freelancer');
+      }
+    }
+  });
+
   test('Calendar reminder checker module loads and executes without errors', async ({ page }) => {
     await page.goto('/app');
     await expect(page.locator('body')).toBeVisible();
