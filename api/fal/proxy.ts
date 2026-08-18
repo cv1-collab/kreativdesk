@@ -27,11 +27,14 @@ export default async function handler(req: any, res: any) {
     return res.status(400).json({ error: 'Missing x-fal-target-url header' });
   }
 
-  // Mitigate SSRF: Only allow connections to official fal.ai domains
-  if (!targetUrl.startsWith('https://queue.fal.run/') && 
-      !targetUrl.startsWith('https://fal.run/') && 
-      !targetUrl.startsWith('https://rest.alpha.fal.run/')) {
-    return res.status(403).json({ error: 'Forbidden target URL' });
+  try {
+    const parsedUrl = new URL(targetUrl);
+    const host = parsedUrl.hostname.toLowerCase();
+    if (!host.endsWith('fal.run') && !host.endsWith('fal.ai') && !host.endsWith('fal.media')) {
+      return res.status(403).json({ error: 'Forbidden target URL' });
+    }
+  } catch (urlErr) {
+    return res.status(400).json({ error: 'Invalid target URL format' });
   }
 
   try {
