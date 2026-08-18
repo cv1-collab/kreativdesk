@@ -1591,14 +1591,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           initial: { opacity: 0, x: 80 },
           animate: { opacity: 1, x: 0 },
           exit: { opacity: 0, x: -80 },
-          transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }
+          transition: { duration: 0.35 }
         };
       case 'zoom':
         return {
           initial: { opacity: 0, scale: 0.88 },
           animate: { opacity: 1, scale: 1 },
           exit: { opacity: 0, scale: 1.08 },
-          transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1.0] }
+          transition: { duration: 0.35 }
         };
       case 'fade':
       default:
