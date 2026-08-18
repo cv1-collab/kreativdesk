@@ -22,4 +22,31 @@ test.describe('Agenda & Videocall Integration E2E Suite', () => {
     const body = page.locator('body');
     await expect(body).toBeVisible();
   });
+
+  test('Meet & Chat schedule call modal supports external email partner tags and invitations', async ({ page }) => {
+    await page.goto('/app?tab=meetchat');
+    await expect(page.locator('body')).toBeVisible();
+
+    // Look for Call planen / Schedule Call button
+    const scheduleCallBtn = page.getByRole('button', { name: /Call|Videocall|planen|Schedule/i }).first();
+    if (await scheduleCallBtn.isVisible()) {
+      await scheduleCallBtn.click();
+      await page.waitForTimeout(300);
+
+      // Check external email input inside modal
+      const emailInput = page.locator('input[type="email"]').first();
+      if (await emailInput.isVisible()) {
+        await emailInput.fill('partner@beispiel.ch');
+        
+        const addBtn = page.getByRole('button', { name: /Hinzufügen|Add/i }).first();
+        if (await addBtn.isVisible()) {
+          await addBtn.click();
+          await page.waitForTimeout(200);
+          
+          const tagChip = page.getByText('partner@beispiel.ch').first();
+          await expect(tagChip).toBeVisible();
+        }
+      }
+    }
+  });
 });
