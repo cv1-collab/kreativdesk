@@ -12,6 +12,8 @@ import { useTour } from '../contexts/TourContext';
 import { hasFeature } from '../utils/planFeatures';
 import { Lock } from 'lucide-react';
 
+import { usePermissions } from '../hooks/usePermissions';
+
 import {
   LayoutDashboard, Calendar, DollarSign, Box, Map,
   Video, PenTool, Presentation, Camera,
@@ -149,11 +151,14 @@ export default function Layout() {
   const project = safeProjects.find((p: any) => p.id === projectId);
   const projectHours = safeTimeEntries.filter((e: any) => e.projectId === project?.id).reduce((sum: number, e: any) => sum + e.hours, 0) || 0;
 
+  const { hasPermission } = usePermissions();
+  const canSeeProjFinance = hasPermission('canViewFinance') || currentUser?.canViewFinance === true || currentUser?.role === 'owner' || currentUser?.role === 'Admin' || currentUser?.role === 'management';
+
   const menuGroups = [
     {
       title: t('steuerung'), items: [
         { id: '', icon: LayoutDashboard, label: t('project_overview'), className: 'tour-proj-dashboard' },
-        ...(currentUser?.role === 'owner' || currentUser?.canViewFinance ? [{ id: 'finance', icon: DollarSign, label: t('finance_budget'), className: 'tour-proj-finance' }] : []),
+        ...(canSeeProjFinance ? [{ id: 'finance', icon: DollarSign, label: t('finance_budget'), className: 'tour-proj-finance' }] : []),
         { id: 'calendar', icon: Calendar, label: t('smart_calendar'), className: 'tour-proj-calendar' }
       ]
     },
