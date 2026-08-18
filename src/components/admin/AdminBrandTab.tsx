@@ -123,6 +123,11 @@ export default function AdminBrandTab() {
     setIsSubmitting(true);
     try {
       await saveSystemConfigJSON('global_master', config);
+      await supabase.from('system_config').upsert({
+        id: 'global_master',
+        data: config,
+        updated_at: new Date().toISOString()
+      });
       addToast(t('branding_saved'), 'success');
     } catch (e) {
       console.error("Save config error:", e);
