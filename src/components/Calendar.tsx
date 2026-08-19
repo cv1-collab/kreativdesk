@@ -358,8 +358,11 @@ export default function Calendar() {
   const [editingMarker, setEditingMarker] = useState<SmartMarker | null>(null);
   const [editingShape, setEditingShape] = useState<Shape | null>(null);
 
+  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date>(new Date());
+
   const UI_HEADER_H = 44;
-  const UI_ROW_H = 48;
+  const UI_ROW_H = 54;
   const UI_PAD_TOP = 4;
   const UI_PAD_BOT = 40;
   const visibleTasks = ganttTasks.filter(t => t.title && t.title.trim() !== '');
@@ -772,6 +775,257 @@ export default function Calendar() {
   const handleMainPointerUp = (e: React.PointerEvent) => {
     isPanning.current = false;
     try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch(err){ console.error('Failed to release pointer capture', err); }
+  };
+
+  const renderMonthGrid = () => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Mon = 0
+
+    const prevMonthTotalDays = new Date(year, month, 0).getDate();
+    const cells: { date: Date; isCurrentMonth: boolean }[] = [];
+
+    for (let i = startOffset - 1; i >= 0; i--) {
+      cells.push({ date: new Date(year, month - 1, prevMonthTotalDays - i), isCurrentMonth: false });
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      cells.push({ date: new Date(year, month, day), isCurrentMonth: true });
+    }
+
+    const totalGridCells = Math.ceil(cells.length / 7) * 7;
+    const remaining = totalGridCells - cells.length;
+    for (let day = 1; day <= remaining; day++) {
+      cells.push({ date: new Date(year, month + 1, day), isCurrentMonth: false });
+    }
+
+    const selectedDateStr = selectedCalendarDate.toISOString().split('T')[0];
+    const selectedDayTasks = ganttTasks.filter(t => {
+      return selectedDateStr >= t.start && selectedDateStr <= t.end;
+    });
+    const selectedDayMarkers = smartMarkers.filter(m => m.date === selectedDateStr);
+
+    return (
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 bg-background space-y-6">
+        {/* Month Header Navigation */}
+        <div className="bg-surface border border-border/50 rounded-2xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <CalendarIcon className="text-accent-ai shrink-0" size={24} />
+            <div>
+              <h2 className="text-lg sm:text-2xl font-black text-text-primary capitalize leading-none">
+                {currentMonthDate.toLocaleString(language === 'en' ? 'en-US' : 'de-CH', { month: 'long', year: 'numeric' })}
+              </h2>
+              <p className="text-xs text-text-muted font-bold mt-1">
+                Monatsübersicht & Agenda
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setCurrentMonthDate(new Date(year, month - 1, 1))}
+              className="p-2 rounded-xl bg-background border border-border/50 hover:bg-white/5 text-text-primary transition-colors cursor-pointer"
+              title="Vorheriger Monat"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button 
+              onClick={() => {
+                const today = new Date();
+                setCurrentMonthDate(today);
+                setSelectedCalendarDate(today);
+              }}
+              className="px-3 py-1.5 rounded-xl bg-accent-ai/10 border border-accent-ai/30 text-accent-ai font-bold text-xs hover:bg-accent-ai/20 transition-colors cursor-pointer"
+            >
+              Heute
+            </button>
+            <button 
+              onClick={() => setCurrentMonthDate(new Date(year, month + 1, 1))}
+              className="p-2 rounded-xl bg-background border border-border/50 hover:bg-white/5 text-text-primary transition-colors cursor-pointer"
+              title="Nächster Monat"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* 7-Day Month Grid (iOS Apple Calendar Style) */}
+        <div className="bg-surface border border-border/50 rounded-2xl p-2 sm:p-4 shadow-lg overflow-hidden">
+          {/* Weekday Headers */}
+          <div className="grid grid-cols-7 gap-1 mb-2 text-center border-b border-border/50 pb-2">
+            {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((dayName, idx) => (
+              <div key={dayName} className={cn("text-xs font-black uppercase tracking-wider py-1", idx >= 5 ? "text-accent-ai/70" : "text-text-muted")}>
+                {dayName}
+              </div>
+            ))}
+          </div>
+
+          {/* Days Cells Grid */}
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {cells.map(({ date, isCurrentMonth }, idx) => {
+              const dateStr = date.toISOString().split('T')[0];
+              const isToday = date.toDateString() === new Date().toDateString();
+              const isSelected = date.toDateString() === selectedCalendarDate.toDateString();
+
+              const dayTasks = ganttTasks.filter(t => dateStr >= t.start && dateStr <= t.end);
+              const dayMarkers = smartMarkers.filter(m => m.date === dateStr);
+              const totalEvents = dayTasks.length + dayMarkers.length;
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setSelectedCalendarDate(date);
+                    if (!isCurrentMonth) {
+                      setCurrentMonthDate(new Date(date.getFullYear(), date.getMonth(), 1));
+                    }
+                  }}
+                  className={cn(
+                    "min-h-[64px] sm:min-h-[84px] md:min-h-[100px] p-1.5 sm:p-2.5 rounded-xl border flex flex-col justify-between text-left transition-all relative group cursor-pointer",
+                    !isCurrentMonth ? "bg-background/30 border-transparent text-text-muted/40" : "bg-background border-border/30 hover:border-accent-ai/50 text-text-primary",
+                    isSelected && "ring-2 ring-accent-ai bg-accent-ai/5 border-accent-ai shadow-md",
+                    isToday && !isSelected && "border-accent-ai/40"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className={cn(
+                      "text-xs sm:text-sm font-black w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all",
+                      isToday ? "bg-accent-ai text-white shadow-md shadow-accent-ai/30" : isSelected ? "bg-text-primary text-background" : "text-text-primary"
+                    )}>
+                      {date.getDate()}
+                    </span>
+
+                    {totalEvents > 0 && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-accent-ai/10 text-accent-ai border border-accent-ai/20">
+                        {totalEvents}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Event Chips / Status Dots inside Cell */}
+                  <div className="w-full space-y-1 mt-1 overflow-hidden">
+                    {dayTasks.slice(0, 2).map((task) => (
+                      <div
+                        key={task.id}
+                        className="hidden sm:flex items-center gap-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold truncate text-white shadow-xs"
+                        style={{ backgroundColor: task.color.startsWith('#') ? task.color : '#3b82f6' }}
+                      >
+                        <span className="truncate">{task.title}</span>
+                      </div>
+                    ))}
+
+                    {/* Mobile Dots */}
+                    {totalEvents > 0 && (
+                      <div className="flex sm:hidden items-center gap-1 justify-center mt-1">
+                        {dayTasks.slice(0, 3).map((t, tIdx) => (
+                          <div
+                            key={tIdx}
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ backgroundColor: t.color.startsWith('#') ? t.color : '#3b82f6' }}
+                          />
+                        ))}
+                        {dayMarkers.slice(0, 2).map((m, mIdx) => (
+                          <div
+                            key={mIdx}
+                            className="w-1.5 h-1.5 rounded-full shrink-0 border border-white"
+                            style={{ backgroundColor: m.color }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Day Agenda Stream (iOS Apple Calendar Detail View) */}
+        <div className="bg-surface border border-border/50 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between border-b border-border/50 pb-4 gap-3">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-text-muted">Tages-Agenda</span>
+              <h3 className="text-lg sm:text-xl font-black text-text-primary flex items-center gap-2 mt-0.5">
+                <CalendarIcon className="text-accent-ai" size={20} />
+                {selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </h3>
+            </div>
+
+            {!isDemoMode && (
+              <button
+                onClick={handleAddPhase}
+                className="px-4 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all cursor-pointer"
+              >
+                <Plus size={16} /> <span>{t('add_phase')}</span>
+              </button>
+            )}
+          </div>
+
+          {/* Selected Day Tasks & Milestones List */}
+          {selectedDayTasks.length === 0 && selectedDayMarkers.length === 0 ? (
+            <div className="text-center py-8 px-4 border-2 border-dashed border-border/50 rounded-xl bg-background/30 text-text-muted">
+              <CheckCircle2 size={36} className="mx-auto mb-2 text-emerald-500/50" />
+              <p className="font-bold text-text-primary text-sm">Keine Termine an diesem Tag</p>
+              <p className="text-xs text-text-muted mt-1">Klicke oben auf "{t('add_phase')}", um ein Ereignis einzutragen.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {selectedDayTasks.map(task => {
+                const brdColor = task.color.startsWith('#') ? task.color : '#3b82f6';
+                return (
+                  <div key={task.id} className="bg-background border border-border/50 rounded-xl p-4 shadow-sm relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: brdColor }}></div>
+
+                    <div className="pl-3">
+                      <h4 className="font-bold text-text-primary text-base">{task.title}</h4>
+                      <div className="text-xs text-text-muted mt-1 flex items-center gap-2 font-bold uppercase tracking-wider">
+                        <span>{new Date(task.start).toLocaleDateString('de-CH')}</span>
+                        <span>bis</span>
+                        <span>{new Date(task.end).toLocaleDateString('de-CH')}</span>
+                      </div>
+                    </div>
+
+                    <div className="pl-3 sm:pl-0 flex items-center gap-3">
+                      <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-lg bg-surface border border-border/50 text-text-primary">
+                        {t(task.status)}
+                      </span>
+                      {!isDemoMode && (
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setEditingTask(task)} className="p-2 text-text-muted hover:text-accent-ai bg-surface rounded-lg border border-border/50 shadow-sm cursor-pointer">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => deleteTask(task.id)} className="p-2 text-text-muted hover:text-red-500 bg-surface rounded-lg border border-border/50 shadow-sm cursor-pointer">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {selectedDayMarkers.map(marker => (
+                <div key={marker.id} className="bg-background border border-orange-500/30 rounded-xl p-4 shadow-sm flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Milestone className="text-orange-500" size={20} />
+                    <div>
+                      <h4 className="font-bold text-text-primary text-sm">{marker.label}</h4>
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Meilenstein</span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                    {new Date(marker.date).toLocaleDateString('de-CH')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1410,102 +1664,17 @@ export default function Calendar() {
                   </div>
                 </div>
 
-                {/* MOBILE: VERTIKALE AGENDA LISTE */}
-                <div className="md:hidden flex-1 overflow-y-auto p-4 space-y-4 bg-background custom-scrollbar">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-lg text-text-primary">{t('project_phases')}</h3>
-                    {!isDemoMode && <button onClick={handleAddPhase} className="tour-calendar-add p-2 bg-accent-ai/10 text-accent-ai rounded-lg font-bold text-xs flex items-center gap-1 shadow-sm">
-                      <Plus size={14}/> {t('add_phase')}
-                    </button>}
-                  </div>
-                  
-                  {ganttTasks.length === 0 ? (
-                    <div className="text-center p-8 border-2 border-dashed border-border/50 rounded-xl text-text-muted font-bold">
-                      {t('no_active_phases')}
-                    </div>
-                  ) : (
-                    [...visibleTasks].filter(t => t.title?.trim()).sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()).map(task => {
-                      const brdColor = task.color.startsWith('#') ? task.color : '#3b82f6';
-                      return (
-                        <div key={task.id} className="bg-surface border border-border/50 rounded-xl p-4 shadow-sm relative overflow-hidden group">
-                          {/* Farbbalken links */}
-                          <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: brdColor }}></div>
-                          
-                          <div className="pl-3 flex justify-between items-start mb-3">
-                            <div className="pr-8">
-                              <h4 className="font-bold text-text-primary">{task.title}</h4>
-                              <div className="text-[10px] text-text-muted mt-1 flex items-center gap-2 font-bold uppercase tracking-widest">
-                                <span>{new Date(task.start).toLocaleDateString('de-CH')}</span>
-                                <span>-</span>
-                                <span>{new Date(task.end).toLocaleDateString('de-CH')}</span>
-                              </div>
-                            </div>
-                            <div className="flex gap-2 absolute right-3 top-3">
-                               {!isDemoMode && <button onClick={() => setEditingTask(task)} className="p-2 text-text-muted hover:text-accent-ai bg-background rounded-lg border border-border/50 shadow-sm"><Edit2 size={14}/></button>}
-                               {!isDemoMode && <button onClick={() => deleteTask(task.id)} className="p-2 text-text-muted hover:text-red-500 bg-background rounded-lg border border-border/50 shadow-sm"><Trash2 size={14}/></button>}
-                            </div>
-                          </div>
-                          
-                          <div className="pl-3 flex items-center justify-between border-t border-border/50 pt-3 mt-1">
-                             <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded bg-background border border-border/50 text-text-primary">
-                               {t(task.status)}
-                             </span>
-                             {task.barText && <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest border border-border/50 bg-background px-2 py-1 rounded">{task.barText}</span>}
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
+                {/* MOBILE RESPONSIVE & MONTH VIEW (iOS Apple Calendar Style) */}
+                <div className="md:hidden flex-1 flex flex-col min-h-0 overflow-hidden">
+                  {renderMonthGrid()}
                 </div>
               </>
             )}
 
-            {/* MONTH VIEW */}
+            {/* MONTH VIEW (DESKTOP & TABLET) */}
             {viewMode === 'month' && (
-              <div className="flex-1 p-4 sm:p-8 overflow-y-auto custom-scrollbar bg-background">
-                <div className="flex items-center justify-between mb-6 border-b border-border/50 pb-4">
-                  <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-3"><LayoutTemplate className="text-accent-ai"/> {t('month_focus')}: {new Date().toLocaleString(language === 'en' ? 'en-US' : 'de-CH', { month: 'long' })}</h3>
-                  <span className="hidden sm:inline text-sm font-bold text-text-muted bg-surface px-3 py-1 rounded-md border border-border/50">{t('active_sprints')}</span>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                   {ganttTasks.filter(t => {
-                     const startMonth = new Date(t.start).getMonth();
-                     const endMonth = new Date(t.end).getMonth();
-                     const currMonth = new Date().getMonth();
-                     return currMonth >= startMonth && currMonth <= endMonth;
-                   }).map(task => {
-                     const daysLeft = getDaysRemaining(task.end);
-                     const isUrgent = daysLeft > 0 && daysLeft <= 14;
-                     const isOverdue = daysLeft < 0;
-
-                     return (
-                       <div key={task.id} className={cn("p-4 sm:p-6 border rounded-xl bg-surface shadow-sm flex flex-col group transition-all hover:shadow-md", task.status === 'critical' ? 'border-orange-500/50 bg-orange-500/5' : 'border-border/50')}>
-                         <div className="flex justify-between items-start mb-4">
-                           <div>
-                             <h4 className="font-bold text-base sm:text-lg text-text-primary">{task.title}</h4>
-                             <div className="flex flex-wrap items-center gap-3 mt-2">
-                               <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase", task.color.startsWith('bg-') ? task.color.replace('bg-', 'text-') : 'text-white', task.color.startsWith('bg-') ? task.color.replace('bg-', 'bg-').replace('500', '500/10') : 'bg-gray-500/20')} style={{ color: task.color.startsWith('#') ? task.color : undefined }}>{t(task.status)}</span>
-                               {isOverdue ? (
-                                 <span className="text-[10px] font-bold text-red-500 flex items-center gap-1"><AlertCircle size={12}/> {t('overdue')}</span>
-                               ) : daysLeft === 0 ? (
-                                 <span className="text-[10px] font-bold text-orange-500 flex items-center gap-1"><AlertCircle size={12}/> {t('ends_today')}</span>
-                               ) : daysLeft > 0 ? (
-                                 <span className={cn("text-[10px] font-bold flex items-center gap-1", isUrgent ? "text-orange-400" : "text-text-muted")}><Clock size={12}/> {t('days_left')} {daysLeft}</span>
-                               ) : (
-                                 <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-1"><CheckCircle2 size={12}/> {t('completed')}</span>
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                         <div className="flex justify-between text-xs font-medium pt-3 border-t border-border/30">
-                           <span className="text-text-muted">{t('start_date')}: {new Date(task.start).toLocaleDateString('de-CH')}</span>
-                           <span className="text-text-primary font-bold">{t('end_date')}: {new Date(task.end).toLocaleDateString('de-CH')}</span>
-                         </div>
-                       </div>
-                     );
-                   })}
-                </div>
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {renderMonthGrid()}
               </div>
             )}
 
@@ -1558,7 +1727,7 @@ export default function Calendar() {
                          <p className="font-medium">{t('perfect_day')}</p>
                        </div>
                      )}
-                  </div>
+                   </div>
                 </div>
               </div>
             )}
