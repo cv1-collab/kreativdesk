@@ -57,16 +57,18 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     design: 'Design', export_pdf_title: 'PDF Studio', company_logo: 'Company Logo', logo_loaded: 'Logo loaded.',
     color: 'Accent Color', format: 'Format', scale_preview: 'Scale Preview', saving_cloud: 'Saving to Cloud...', generating_pdf: 'Generating PDF...',
     loading: 'Loading Studio...', no_slides: 'No slides found', empty_deck: 'This Pitch Deck is empty or does not exist.',
-    content: 'Content', title_size: 'Title Size', text_size: 'Text Size', light_mode: 'Light', dark_mode: 'Dark'
+    content: 'Content', title_size: 'Title Size', text_size: 'Text Size', light_mode: 'Light', dark_mode: 'Dark',
+    ready_to_use_master_decks: 'Ready-to-Use Master-Decks', master_templates_header: 'Master Templates',
+    slide_animation_header: 'Slide Animation', project_reporting_header: 'Project Reporting'
   },
   de: {
     new_slide: 'Neue Folie', type_text_here: 'Inhalt hier einfügen...', budget_plan: 'Projekt-Budget',
     project_team: 'Das Projekt-Team', api_roadmap: 'Smart Calendar', defects_report: 'Mängel & Ticket Report',
     click_for_image: 'Klicken für Bildauswahl', pos: 'Pos', text: 'Beschreibung', no_media_found: 'Keine Medien in diesem Projekt gefunden.',
-    add_as_slide: 'Als Folie hinzufügen', deck_engine: 'Deck Engine', master_templates: 'Master Templates',
+    add_as_slide: 'Als Folie hinzufügen', deck_engine: 'Deck Engine', master_templates: 'Master-Vorlagen',
     keynote: 'Executive (Kreativ Desk)', architecture: 'Architektur (Blueprint)', photography: 'Editorial Galerie', scenography: 'Stage Spotlight',
     swiss: 'Swiss Minimal (SIA)', neo_brutalism: 'Neo-Brutalism (Bold)', glassmorphism: 'Glassmorphism (Luxury)', cyberpunk: 'BIM Cyberpunk', minimal_tech: 'Eco Timber (Holzbau)', master_logo: 'Master Logo', change_logo: 'Logo ändern', upload_logo: 'Logo hochladen',
-    accent_color: 'Akzentfarbe', footer_text: 'Fusszeile', import_app_data: 'Projekt-Reporting',
+    accent_color: 'Akzentfarbe', footer_text: 'Fusszeile', import_app_data: 'Projekt-Berichterstattung',
     load_budget: 'Budget Tabelle', load_team: 'Projekt-Team', generate_roadmap: 'Smart Calendar',
     import_cad: 'CAD & Pläne', import_bim: '3D BIM Modelle', import_renderings: '3D Renderings',
     import_defects: 'Mängel & Tickets', import_whiteboard: 'Whiteboard Skizzen', slides_count: 'Folien',
@@ -86,7 +88,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     design: 'Design', export_pdf_title: 'PDF Studio', company_logo: 'Firmenlogo', logo_loaded: 'Logo geladen.',
     color: 'Akzentfarbe', format: 'Format', scale_preview: 'Zoom Vorschau', saving_cloud: 'Speichert...', generating_pdf: 'Wird erstellt...',
     loading: 'Lade Studio...', no_slides: 'Keine Folien vorhanden', empty_deck: 'Dieses Pitch Deck ist leer.',
-    content: 'Inhalt', title_size: 'Titel-Grösse', text_size: 'Text-Grösse', light_mode: 'Hell', dark_mode: 'Dunkel'
+    content: 'Inhalt', title_size: 'Titel-Grösse', text_size: 'Text-Grösse', light_mode: 'Hell', dark_mode: 'Dunkel',
+    ready_to_use_master_decks: 'Fertige Master-Decks', master_templates_header: 'Master-Vorlagen',
+    slide_animation_header: 'Folien-Animation', project_reporting_header: 'Projekt-Berichterstattung'
   }
 };
 
@@ -985,8 +989,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const docPdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [297, 167] });
     const pw = docPdf.internal.pageSize.getWidth();
     const ph = docPdf.internal.pageSize.getHeight();
-    const isDark = (deckSettings.colorMode || 'dark') === 'dark';
-    const isDarkTheme = isDark || ['photography', 'scenography', 'cyberpunk'].includes(deckSettings.themeStyle);
+    const isDarkTheme = (deckSettings.colorMode || 'light') === 'dark';
     
     const addSafeImage = async (url: string, x: number, y: number, w: number, h: number, preserveRatio: boolean = false) => {
        try {
@@ -1293,13 +1296,52 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     } catch (error) { addToast(t('error_delete'), 'error'); }
   };
 
+  const [draggedSlideId, setDraggedSlideId] = useState<string | null>(null);
+
   const handleMoveSlide = async (id: string, direction: 'up' | 'down') => {
     const index = slides.findIndex(s => s.id === id);
-    if ((direction === 'up' && index === 0) || (direction === 'down' && index === slides.length - 1)) return;
+    if (index === -1 || (direction === 'up' && index === 0) || (direction === 'down' && index === slides.length - 1)) return;
     const newSlides = [...slides];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     [newSlides[index], newSlides[targetIndex]] = [newSlides[targetIndex], newSlides[index]];
-    await Promise.all(newSlides.map((s, i) => supabase.from('slides').update({ order_index: i }).eq('id', s.id)));
+    const reordered = newSlides.map((s, i) => ({ ...s, order_index: i }));
+    setSlides(reordered);
+    try {
+      await Promise.all(reordered.map(s => supabase.from('slides').update({ order_index: s.order_index }).eq('id', s.id)));
+    } catch (err) {
+      console.warn("Reorder error:", err);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedSlideId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropTargetId: string) => {
+    e.preventDefault();
+    if (!draggedSlideId || draggedSlideId === dropTargetId) return;
+
+    const dragIndex = slides.findIndex(s => s.id === draggedSlideId);
+    const targetIndex = slides.findIndex(s => s.id === dropTargetId);
+    if (dragIndex === -1 || targetIndex === -1) return;
+
+    const newSlides = [...slides];
+    const [draggedItem] = newSlides.splice(dragIndex, 1);
+    newSlides.splice(targetIndex, 0, draggedItem);
+    const reordered = newSlides.map((s, i) => ({ ...s, order_index: i }));
+    setSlides(reordered);
+    setDraggedSlideId(null);
+
+    try {
+      await Promise.all(reordered.map(s => supabase.from('slides').update({ order_index: s.order_index }).eq('id', s.id)));
+      addToast("Folien-Reihenfolge aktualisiert", "info");
+    } catch (err) {}
   };
 
   // INTERAKTIVE KREISDIAGRAMME
@@ -2115,29 +2157,29 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                        {/* SUB-DESCRIPTION */}
                        <div className="pl-11 mt-1">
-                         {!isPreviewMode ? (
-                           <input 
-                             type="text" 
-                             value={item.desc || ''} 
-                             onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
-                             className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
-                             placeholder="Kurze Beschreibung / Unterpunkte..."
-                           />
-                         ) : (
-                           <p className="text-xs opacity-60 truncate">{item.desc}</p>
-                         )}
-                       </div>
-                     </div>
-                   ));
+                          {!isPreviewMode ? (
+                            <input 
+                              type="text" 
+                              value={item.desc || ''} 
+                              onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
+                              className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
+                              placeholder="Kurze Beschreibung / Unterpunkte..."
+                            />
+                          ) : (
+                            <p className="text-xs opacity-60 truncate">{item.desc}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))
                  })()}
                </div>
 
                {!isPreviewMode && (
-                 <div className="flex items-center gap-3 mt-3 shrink-0 flex-wrap">
-                   <button type="button" onClick={() => handleSyncAgendaFromSlides(slide.id)} className="py-2 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30">
-                     <RefreshCw size={14} /> <span>⚡ Inhaltsverzeichnis aus Folien synchronisieren</span>
+                 <div className="flex items-center gap-3 mt-4 shrink-0 flex-wrap p-2 bg-purple-950/20 border border-purple-500/30 rounded-2xl backdrop-blur-md">
+                   <button type="button" onClick={() => handleSyncAgendaFromSlides(slide.id)} className="py-3 px-5 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-sm font-extrabold flex items-center justify-center gap-2.5 transition-all shadow-xl shadow-purple-600/40 border border-purple-400/40 hover:scale-[1.01] active:scale-[0.99] cursor-pointer">
+                     <RefreshCw size={18} className="animate-spin-slow" /> <span>⚡ Inhaltsverzeichnis aus Folien synchronisieren</span>
                    </button>
-                   <button type="button" onClick={() => handleAddAgendaItem(slide.id)} className="py-2 px-4 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-indigo-500/30">
+                   <button type="button" onClick={() => handleAddAgendaItem(slide.id)} className="py-3 px-4 bg-white/10 hover:bg-white/20 text-text-primary rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-white/10 cursor-pointer">
                      <Plus size={14} /> <span>Manuelles Kapitel hinzufügen</span>
                    </button>
                  </div>
@@ -2268,11 +2310,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
           {/* DAS PROJEKT-TEAM */}
           {slide.layout === 'team-grid' && slide.dataPayload?.members && (
-             <div className="w-full h-full flex flex-col col-span-full">
-                <div className="w-full flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 content-start overflow-y-auto custom-scrollbar">
+             <div className="w-full h-full flex flex-col col-span-full justify-between">
+                <div className={cn("w-full flex-1 grid gap-3 content-center overflow-hidden p-1", slide.dataPayload.members.length > 4 ? "grid-cols-3 lg:grid-cols-6" : "grid-cols-2 md:grid-cols-4")}>
                   {slide.dataPayload.members.map((m: any, i: number) => (
-                    <div key={i} className={cn("p-4 flex flex-col items-center text-center border rounded-2xl shadow-sm relative group transition-all", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
-                      <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("w-20 h-20 rounded-full mb-3 bg-zinc-800 overflow-hidden shrink-0 border-4 relative group/avatar cursor-pointer shadow-md")} style={{ borderColor: deckSettings.themeColor }}>
+                    <div key={i} className={cn("p-3 flex flex-col items-center text-center border rounded-2xl shadow-sm relative group transition-all h-full justify-between", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
+                      <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("rounded-full mb-2 bg-zinc-800 overflow-hidden shrink-0 border-2 relative group/avatar cursor-pointer shadow-md", slide.dataPayload.members.length > 4 ? "w-14 h-14" : "w-16 h-16")} style={{ borderColor: deckSettings.themeColor }}>
                         {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-5 text-zinc-500" size={28}/>}
                         {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity text-white"><Camera size={16} /><span className="text-[9px] font-bold">Foto</span></div>}
                       </div>
@@ -2755,7 +2797,15 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
               {slides.map((s,i)=>(
-                <div key={s.id} onClick={()=>setActiveSlideId(s.id)} className={cn("p-3 rounded-lg cursor-pointer border group relative transition-colors", activeSlideId===s.id?"bg-purple-500/10 border-purple-500 shadow-sm":"bg-surface border-border hover:bg-white/5")}>
+                <div 
+                  key={s.id} 
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, s.id)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, s.id)}
+                  onClick={()=>setActiveSlideId(s.id)} 
+                  className={cn("p-3 rounded-lg cursor-grab active:cursor-grabbing border group relative transition-all", activeSlideId===s.id?"bg-purple-500/10 border-purple-500 shadow-sm":"bg-surface border-border hover:bg-white/5", draggedSlideId === s.id && "opacity-30 border-dashed border-purple-400")}
+                >
                   <div className="flex justify-between mb-1.5">
                     <span className="text-[9px] font-bold text-text-muted">{t('slide')} {i + 1}</span>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100">
