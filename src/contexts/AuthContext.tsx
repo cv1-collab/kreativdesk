@@ -125,19 +125,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserRole(appUser.role || 'owner');
         setCurrentUser(appUser);
 
-        // --- CONCURRENT SESSION LOCK ENFORCEMENT ---
-        let mySessionId = localStorage.getItem(`kreativ_session_id_${user.id}`);
+        // --- SMART CONCURRENT SESSION LOCK (ALLOWS 1 LAPTOP + 1 SMARTPHONE/IPAD SIMULTANEOUSLY) ---
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
+
+        let mySessionId = localStorage.getItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`);
         if (!mySessionId) {
-          mySessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-          localStorage.setItem(`kreativ_session_id_${user.id}`, mySessionId);
-          await supabase.from('profiles').update({ active_session_id: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
+          mySessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          localStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, mySessionId);
+          await supabase.from('profiles').update({ [deviceTypeKey]: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
         } else {
-          // Verify current active session ID
-          if (profile.active_session_id && profile.active_session_id !== mySessionId) {
-            // Updated session on another device -> override & claim active session for this login
-            mySessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-            localStorage.setItem(`kreativ_session_id_${user.id}`, mySessionId);
-            await supabase.from('profiles').update({ active_session_id: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
+          const currentRemoteSession = profile[deviceTypeKey];
+          if (currentRemoteSession && currentRemoteSession !== mySessionId) {
+            mySessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, mySessionId);
+            await supabase.from('profiles').update({ [deviceTypeKey]: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
           }
         }
       } else {
@@ -280,24 +282,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // REALTIME CONCURRENT SESSION LOCK LISTENER (AUTOMATIC LOGOUT ON PARALLEL DEVICE LOGIN)
+  // REALTIME CONCURRENT SESSION LOCK LISTENER (ALLOWS 1 LAPTOP + 1 SMARTPHONE/IPAD SIMULTANEOUSLY)
   useEffect(() => {
     if (!currentUser?.id) return;
 
-    const mySessionId = localStorage.getItem(`kreativ_session_id_${currentUser.id}`);
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const deviceTypeKey = isMobileDevice ? 'active_mobile_session_id' : 'active_desktop_session_id';
+    const deviceTypeName = isMobileDevice ? 'Mobilgerät (Smartphone/iPad)' : 'Computer (Laptop/Desktop)';
+
+    const mySessionId = localStorage.getItem(`kreativ_session_id_${deviceTypeKey}_${currentUser.id}`);
     if (!mySessionId) return;
 
     const channel = supabase
-      .channel(`session_lock_${currentUser.id}`)
+      .channel(`session_lock_${currentUser.id}_${deviceTypeKey}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'profiles',
         filter: `id=eq.${currentUser.id}`
       }, (payload: any) => {
-        const remoteSessionId = payload.new?.active_session_id;
+        const remoteSessionId = payload.new?.[deviceTypeKey];
         if (remoteSessionId && remoteSessionId !== mySessionId) {
-          alert('⚠️ Sitzung Beendet: Dein Kreativ Desk Konto wurde auf einem anderen Computer angemeldet. Zur Verhinderung von unbefugtem Konto-Sharing wurde diese Sitzung beendet.');
+          alert(`⚠️ Sitzung Beendet: Dein Konto wurde auf einem zweiten ${deviceTypeName} angemeldet. Du kannst dich gleichzeitig auf 1 Laptop und 1 Smartphone/iPad anmelden, jedoch nicht auf zwei ${deviceTypeName}en gleichzeitig.`);
           logout();
         }
       })
@@ -321,7 +327,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     if (currentUser?.id) {
-      localStorage.removeItem(`kreativ_session_id_${currentUser.id}`);
+      localStorage.removeItem(`kreativ_session_id_active_desktop_session_id_${currentUser.id}`);
+      localStorage.removeItem(`kreativ_session_id_active_mobile_session_id_${currentUser.id}`);
     }
     await supabase.auth.signOut();
     setCurrentUser(null);
