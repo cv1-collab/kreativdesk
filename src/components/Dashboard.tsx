@@ -214,7 +214,8 @@ export default function Dashboard() {
         if (hasValidGroups) {
           setVersions(configData.versions);
         } else {
-          const initGroups = (demoTemplates.construction?.financeGroups && demoTemplates.construction.financeGroups.length > 0)
+          const isDemo = isDemoMode || activeProject.id?.startsWith('demo-') || activeProject.id === 'demo-1' || activeProject.id === 'global';
+          const initGroups = (isDemo && demoTemplates.construction?.financeGroups)
             ? demoTemplates.construction.financeGroups
             : [];
           const initVersion = {

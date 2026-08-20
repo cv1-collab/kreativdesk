@@ -1518,6 +1518,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     setMobileTab('slides');
   };
 
+  const handleGenerateAgendaSlide = async () => {
+    const agendaContent = `01. PROJEKT-ÜBERSICHT & ZIELE\nStatusbericht, Baubeschrieb und wesentliche Meilensteine\n\n02. BAUKOSTEN & BUDGET-KONTROLLE\nBKP Aufschlüsselung, Kennzahlen & Kostenentwicklung\n\n03. TERMINPLAN & BAUPHASEN\nSmart Calendar, Bauetappen & Abnahmetermine\n\n04. MÄNGEL & QUALITÄTSSICHERUNG\nAktuelle Pendenzen, Freigaben & Begehungsprotokolle`;
+    await handleAddSlide('text-only', 'Inhaltsverzeichnis & Agenda', { content: agendaContent });
+    addToast("Inhaltsverzeichnis-Folie hinzugefügt!", "success");
+    setMobileTab('slides');
+  };
+
   const openMediaPicker = async (mediaType: 'cad' | 'render' | 'whiteboard' | 'bim', title: string, action: 'slide'|'team' = 'slide', meta: any = null) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -2090,7 +2097,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                <span>{deckSettings.footerText}</span>
              )}
           </span>
-          {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />}
+          <div className="flex items-center gap-3">
+            {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />}
+            <span className="text-[8px] lg:text-[10px] uppercase font-mono font-bold tracking-widest opacity-60" style={{ color: deckSettings.themeColor }}>
+              {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -2445,6 +2457,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   </select>
                 )}
                 <div className="space-y-2">
+                  <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-bold border border-indigo-500/20">
+                    <span className="flex items-center gap-2.5"><BookOpen size={15}/> Inhaltsverzeichnis & Agenda</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-indigo-500/20 text-indigo-300">Vorlage</span>
+                  </button>
                   <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-bold border border-emerald-500/20">
                     <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300">BKP Plan</span>

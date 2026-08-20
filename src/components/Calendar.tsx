@@ -464,7 +464,8 @@ export default function Calendar() {
           let initTasks: GanttTask[] = [];
           let initMarkers: SmartMarker[] = [];
           
-          if (demoTemplates.construction) {
+          const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
+          if (isDemo && demoTemplates.construction) {
             initTasks = demoTemplates.construction.tasks.map((t: any) => {
               const start = new Date(today); start.setDate(start.getDate() + (t.daysOffsetStart || 0) - 20);
               const end = new Date(today); end.setDate(end.getDate() + (t.daysOffsetEnd || 30) - 20);

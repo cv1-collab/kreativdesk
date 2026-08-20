@@ -551,8 +551,8 @@ export default function Finance() {
         if (configData.projectHeader) setProjectHeader(configData.projectHeader);
         if (configData.includeOptions !== undefined) setIncludeOptions(configData.includeOptions);
       } else {
-        // FALLBACK: Use construction template groups so new / un-configured projects are not blank!
-        const initGroups = (demoTemplates.construction?.financeGroups && demoTemplates.construction.financeGroups.length > 0)
+        const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
+        const initGroups = (isDemo && demoTemplates.construction?.financeGroups)
           ? demoTemplates.construction.financeGroups
           : [];
         const initVersion: BudgetVersion = {

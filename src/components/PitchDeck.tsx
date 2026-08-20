@@ -397,8 +397,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         <div className="h-[10%] flex flex-row items-end justify-between border-t border-black/10 pb-2 z-10 shrink-0 mt-4">
           <span className="text-[10px] uppercase font-bold tracking-widest opacity-40" style={{ color: deckSettings.themeColor }}>{deckSettings.footerText}</span>
           <div className="flex items-center gap-4">
-            <span className="text-[10px] uppercase font-bold tracking-widest opacity-40 text-black">KREATIV DESK</span>
             {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-6 object-contain opacity-80 pointer-events-none" />}
+            <span className="text-[10px] font-mono font-bold tracking-widest opacity-60" style={{ color: deckSettings.themeColor }}>
+              {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
+            </span>
           </div>
         </div>
       </div>
@@ -527,7 +529,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   type="text" 
                   readOnly 
                   value={window.location.href} 
-                  className="bg-transparent text-xs font-mono text-text-primary outline-none flex-1 truncate"
+                  className="bg-transparent text-xs font-sans font-medium text-text-primary outline-none flex-1 truncate"
                 />
                 <button 
                   onClick={() => {
