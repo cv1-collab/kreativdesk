@@ -13,6 +13,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import { useProject } from '../contexts/ProjectContext';
 import { supabase } from '../lib/supabase';
+import { sendNotification } from '../lib/notifications';
 
 // === PROVIDER PRESETS FÜR SCHNELLE EINBINDUNG ===
 interface ProviderPreset {

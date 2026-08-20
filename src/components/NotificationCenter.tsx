@@ -117,12 +117,17 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
       case 'call':
         return <Video size={16} className="text-blue-500 shrink-0" />;
       case 'finance':
-        return <DollarSign size={16} className="text-amber-500 shrink-0" />;
       case 'quote':
-        return <FileText size={16} className="text-purple-500 shrink-0" />;
+        return <DollarSign size={16} className="text-amber-500 shrink-0" />;
       case 'document':
       case 'plan':
-        return <Folder size={16} className="text-indigo-500 shrink-0" />;
+        return <FileText size={16} className="text-indigo-500 shrink-0" />;
+      case 'camera':
+        return <Camera size={16} className="text-cyan-500 shrink-0" />;
+      case 'bim':
+        return <Box size={16} className="text-purple-500 shrink-0" />;
+      case 'defect':
+        return <AlertTriangle size={16} className="text-red-500 shrink-0" />;
       default:
         return <Info size={16} className="text-blue-400 shrink-0" />;
     }

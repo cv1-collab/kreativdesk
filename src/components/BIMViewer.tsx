@@ -28,6 +28,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext'; 
 import { useProject } from '../contexts/ProjectContext'; 
+import { sendNotification } from '../lib/notifications'; 
 import { jsPDF } from 'jspdf';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
