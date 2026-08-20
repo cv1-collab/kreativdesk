@@ -478,6 +478,9 @@ export default function Layout() {
                 onClick={() => {
                   setShowNotifications(true);
                   setHasUnread(false);
+                  setUnreadNotifCount(0);
+                  setHasNewDocBadge(false);
+                  localStorage.removeItem('has_new_document');
                 }}
                 className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
               >
