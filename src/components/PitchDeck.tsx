@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2, Copy, ExternalLink, X, Check } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,6 +56,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const [isLoading, setIsLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showStudio, setShowStudio] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [windowDimensions, setWindowDimensions] = useState({ 
@@ -465,12 +467,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           </div>
           <div className="flex items-center gap-3">
              <button onClick={() => {
-               if (navigator.share) {
-                 navigator.share({ title: 'Pitch Deck', url: window.location.href }).catch(() => {});
-               } else {
-                 navigator.clipboard.writeText(window.location.href);
-                 addToast("Link kopiert!", "success");
-               }
+               setIsShareModalOpen(true);
+               navigator.clipboard.writeText(window.location.href);
+               addToast("Link in Zwischenablage kopiert!", "success");
              }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
@@ -507,6 +506,63 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         ) : <Loader2 className="animate-spin text-white/30" size={48} />}
       </div>
       {showStudio && <PitchDeckStudio onClose={() => setShowStudio(false)} projectId={currentProjectId} />}
+
+      {/* SHARE MODAL OVERLAY */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
+            <div className="flex justify-between items-center border-b border-border/50 pb-3">
+              <h3 className="font-bold text-base flex items-center gap-2 text-text-primary"><Share2 className="text-purple-400" size={18}/> Präsentation Teilen</h3>
+              <button onClick={() => setIsShareModalOpen(false)} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={16}/></button>
+            </div>
+            
+            <p className="text-xs text-text-muted">
+              Nutze diesen direkten Link, um die Präsentation für dein Team oder Kunden freizugeben.
+            </p>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest block">Präsentations-URL</label>
+              <div className="flex items-center gap-2 bg-background border border-border rounded-xl p-2.5">
+                <input 
+                  type="text" 
+                  readOnly 
+                  value={window.location.href} 
+                  className="bg-transparent text-xs font-mono text-text-primary outline-none flex-1 truncate"
+                />
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    setCopiedLink(true);
+                    addToast("Link kopiert!", "success");
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
+                >
+                  {copiedLink ? <Check size={14}/> : <Copy size={14}/>}
+                  <span>{copiedLink ? 'Kopiert' : 'Kopieren'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <a 
+                href={window.location.href} 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-xs font-bold text-purple-400 hover:underline flex items-center gap-1.5"
+              >
+                <ExternalLink size={14}/> In neuem Tab öffnen
+              </a>
+              <button 
+                onClick={() => setIsShareModalOpen(false)} 
+                className="px-4 py-2 bg-background border border-border text-text-muted hover:text-text-primary rounded-xl text-xs font-bold"
+              >
+                Schliessen
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

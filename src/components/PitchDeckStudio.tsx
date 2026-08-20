@@ -2990,4 +2990,6 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     </div>
     </PremiumFeature>
   );
+
+  return typeof document !== 'undefined' ? createPortal(studioContent, document.body) : studioContent;
 }
