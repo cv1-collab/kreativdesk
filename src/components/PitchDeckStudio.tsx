@@ -109,12 +109,13 @@ interface Slide {
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
   notes?: string; 
   stamp?: string; 
+  agendaItems?: Array<{ num: string; title: string; desc: string; page: string }>;
 }
 
 interface DeckSettings { 
@@ -2403,7 +2404,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     ); 
   }
 
-  return (
+  const studioContent = (
     <PremiumFeature>
       <div className={cn("fixed inset-0 z-[100000] bg-background text-text-primary flex flex-col lg:flex-row overflow-hidden h-[100dvh]")}>
       

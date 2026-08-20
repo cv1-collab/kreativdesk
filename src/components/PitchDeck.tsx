@@ -20,9 +20,13 @@ interface Slide {
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
   fontSize?: number; 
+  titleFontSize?: number;
   dataPayload?: any; 
+  notes?: string; 
+  stamp?: string; 
+  agendaItems?: Array<{ num: string; title: string; desc: string; page: string }>;
 }
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -42,7 +46,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
   const { currentUser } = useAuth();
   const { language, t: globalT } = useLanguage();
-  const { projects, activeProjectId } = useProject() as any;
+  const { projects, activeProjectId, isDemoMode = false } = useProject() as any;
   const navigate = useNavigate();
   const { addToast } = useToast();
   
