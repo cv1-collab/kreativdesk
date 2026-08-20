@@ -443,8 +443,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
              }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
-             <button onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
-               <Settings size={14} /> <span className="hidden sm:inline">{t('open_studio')}</span>
+             <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+               <Settings size={14} /> <span>{t('open_studio')}</span>
              </button>
              <button onClick={toggleFullscreen} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex items-center gap-2">
                <Play size={14} className="fill-current" /> <span className="hidden sm:inline">{t('presentation_mode')}</span>

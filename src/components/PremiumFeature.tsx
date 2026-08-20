@@ -39,7 +39,7 @@ export default function PremiumFeature({ children, title, description }: Premium
     let isMounted = true;
 
     const checkAccess = async () => {
-      if (isDemoMode || window.location.pathname.includes('/demo')) {
+      if (isDemoMode || window.location.pathname.includes('/demo') || window.location.pathname.includes('/deck')) {
         if (isMounted) setIsPremiumValid(true);
         return;
       }

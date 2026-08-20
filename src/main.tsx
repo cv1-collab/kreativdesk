@@ -20,15 +20,20 @@ if (typeof window !== 'undefined') {
            s.includes('text/html');
   };
 
+  const attemptReload = () => {
+    const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
+    const now = Date.now();
+    if (now - lastReload > 30000) {
+      sessionStorage.setItem('chunk_reload_timestamp', String(now));
+      window.location.reload();
+    }
+  };
+
   window.addEventListener('error', (event) => {
     const msg = event.message || event.error?.message || '';
     if (isChunkOrMimeError(msg)) {
       console.warn('[Chunk/MIME Error] Veraltetes Modul nach Deployment erkannt. Lade Seite neu...');
-      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
-      if (!reloaded) {
-        sessionStorage.setItem('chunk_reload_attempted', 'true');
-        window.location.reload();
-      }
+      attemptReload();
     }
   });
 
@@ -36,11 +41,7 @@ if (typeof window !== 'undefined') {
     const reason = event.reason?.message || String(event.reason || '');
     if (isChunkOrMimeError(reason)) {
       console.warn('[Chunk/MIME Rejection] Veralteter Chunk nach Deployment. Lade Seite neu...');
-      const reloaded = sessionStorage.getItem('chunk_reload_attempted');
-      if (!reloaded) {
-        sessionStorage.setItem('chunk_reload_attempted', 'true');
-        window.location.reload();
-      }
+      attemptReload();
     }
   });
 }

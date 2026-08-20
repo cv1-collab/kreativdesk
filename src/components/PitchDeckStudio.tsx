@@ -134,10 +134,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [slides, setSlidesRaw] = useState<Slide[]>(() => {
     try {
       const cached = localStorage.getItem(cacheKey);
-      return cached ? JSON.parse(cached) : [];
-    } catch (e) {
-      return [];
-    }
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [
+      { id: `slide-demo-${targetId}-0`, title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', notes: "Einleitung und Übersicht für den Investor.", order_index: 0, ownerId: currentUser?.uid || 'demo' },
+      { id: `slide-demo-${targetId}-1`, title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", layout: 'split', notes: "Auf Verzögerungen bei der Rohbaulieferung eingehen.", order_index: 1, ownerId: currentUser?.uid || 'demo' },
+      { id: `slide-demo-${targetId}-2`, title: "Das Projekt-Team", content: "", layout: 'team-grid', notes: "Vorstellung des Hauptarchitekten und Bauleiters.", order_index: 2, ownerId: currentUser?.uid || 'demo' },
+      { id: `slide-demo-${targetId}-3`, title: "Projekt-Budget", content: "", layout: 'data-budget', notes: "BKP 2 Bauleistungen heben.", order_index: 3, ownerId: currentUser?.uid || 'demo' },
+    ];
   });
 
   const setSlides = (value: React.SetStateAction<Slide[]>) => {
@@ -169,7 +176,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     });
   };
 
-  const [isLoading, setIsLoading] = useState(slides.length === 0);
+  const [isLoading, setIsLoading] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showStampMenu, setShowStampMenu] = useState(false);
@@ -746,7 +753,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const activeProject = projects.find((p: any) => p.id === targetId);
-  const activeSlide = slides.find(s => s.id === activeSlideId) || null;
+  const activeSlide = slides.find(s => s.id === activeSlideId) || slides[0] || null;
 
   useEffect(() => {
     if (activeProject?.deckSettings) {
@@ -811,41 +818,42 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   }, [activeSlide?.id]); 
 
   useEffect(() => {
-    if (!currentUser) return;
-    
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     
     const fetchSlides = async () => {
       let slidesArr: any[] = [];
+      const fallbackTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 300);
+
       try {
-        let query = supabase.from('slides').select('*');
-        if (targetId && targetId !== 'global') {
-          query = query.eq('project_id', targetId);
-        }
-        const { data: loadedSlides } = await query;
-        if (loadedSlides && loadedSlides.length > 0) {
-          slidesArr = loadedSlides.map((d: any) => ({
-            ...d,
-            id: d.id,
-            title: d.title || '',
-            content: d.content || '',
-            notes: d.notes || '',
-            stamp: d.stamp || '',
-            imageUrl: d.image_url || d.imageUrl,
-            dataPayload: d.data_payload || d.dataPayload,
-            fontSize: d.font_size || d.fontSize || 18,
-            titleFontSize: d.title_font_size || d.titleFontSize || 36,
-            layout: d.layout || 'split',
-            order_index: d.order_index || 0,
-            ownerId: d.owner_id || d.ownerId || currentUser?.uid,
-            projectId: d.project_id || d.projectId
-          }));
+        if (targetId && targetId !== 'global' && currentUser?.uid) {
+          let query = supabase.from('slides').select('*').eq('project_id', targetId);
+          const { data: loadedSlides } = await query;
+          if (loadedSlides && loadedSlides.length > 0) {
+            slidesArr = loadedSlides.map((d: any) => ({
+              ...d,
+              id: d.id,
+              title: d.title || '',
+              content: d.content || '',
+              notes: d.notes || '',
+              stamp: d.stamp || '',
+              imageUrl: d.image_url || d.imageUrl,
+              dataPayload: d.data_payload || d.dataPayload,
+              fontSize: d.font_size || d.fontSize || 18,
+              titleFontSize: d.title_font_size || d.titleFontSize || 36,
+              layout: d.layout || 'split',
+              order_index: d.order_index || 0,
+              ownerId: d.owner_id || d.ownerId || currentUser?.uid,
+              projectId: d.project_id || d.projectId
+            }));
+          }
         }
       } catch (err) {
         console.warn("Pitch deck slides fetch fallback handled:", err);
       }
 
-      if (slidesArr.length === 0 && targetId && (targetId.startsWith('prj-demo-') || targetId.startsWith('demo-'))) {
+      if (slidesArr.length === 0) {
         try {
           const demoSlides = [
             { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', notes: "Einleitung und Übersicht für den Investor.", order_index: 0 },
@@ -879,6 +887,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         });
       }
       
+      clearTimeout(fallbackTimer);
       setIsLoading(false);
     };
 
@@ -2599,7 +2608,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                   {/* KREATIV DESK STEMPEL SELECTOR */}
                   <div className="relative shrink-0">
-                    <button type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
+                    <button id="btn-pitch-stamp" type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
                       <Tag size={14} /> <span>{activeSlide.stamp || 'Stempel'}</span>
                     </button>
                     <AnimatePresence>

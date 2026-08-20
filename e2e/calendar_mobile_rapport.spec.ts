@@ -15,7 +15,7 @@ test.describe('Calendar & Mobile Rapport Features', () => {
   test('Mobile Upload - Baurapport Form & Weather Selector', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
 
-    await page.goto('http://localhost:5173/mobile-upload/beleg/test-session-999');
+    await page.goto('/mobile-upload/beleg/test-session-999');
     await page.waitForLoadState('domcontentloaded');
     await dismissCookies(page);
 
@@ -41,7 +41,7 @@ test.describe('Calendar & Mobile Rapport Features', () => {
   test('Mobile Upload - Visitenkarten & Beleg Camera Scan Tab', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
 
-    await page.goto('http://localhost:5173/mobile-upload/vcard/test-session-888');
+    await page.goto('/mobile-upload/vcard/test-session-888');
     await page.waitForLoadState('domcontentloaded');
     await dismissCookies(page);
 

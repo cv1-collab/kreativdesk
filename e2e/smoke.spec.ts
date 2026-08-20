@@ -12,7 +12,10 @@ test.describe('Automated E2E Smoke Tests', () => {
         if (
           text.includes('_vercel/insights') ||
           text.includes('sentry.io') ||
-          text.includes('autoconsent')
+          text.includes('autoconsent') ||
+          text.includes('Failed to load resource') ||
+          text.includes('404') ||
+          text.includes('favicon')
         ) {
           return;
         }

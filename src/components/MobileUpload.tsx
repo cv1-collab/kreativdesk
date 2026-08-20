@@ -11,6 +11,51 @@ import { useToast } from '../contexts/ToastContext';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { callGeminiAPI } from '../utils/geminiClient';
 
+const compressImageFile = (file: File, maxDimension = 1920, quality = 0.85): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      }
+    };
+    img.onerror = () => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    };
+    img.src = url;
+  });
+};
+
 export default function MobileUpload() {
   const { addToast } = useToast();
   const { type, sessionId } = useParams<{ type?: string; sessionId: string }>();
@@ -44,9 +89,8 @@ export default function MobileUpload() {
     if (!file || !sessionId) return;
 
     if (file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPreviewUrl(reader.result as string);
-      reader.readAsDataURL(file);
+      const compressedDataUrl = await compressImageFile(file, 1920, 0.85);
+      setPreviewUrl(compressedDataUrl);
     }
 
     setIsUploading(true);
@@ -59,22 +103,15 @@ export default function MobileUpload() {
       if (isVcard && file.type.startsWith('image/')) {
         setUploadProgress(40);
         try {
-          const reader = new FileReader();
-          const base64Data = await new Promise<string>((resolve, reject) => {
-            reader.onloadend = () => {
-              const res = reader.result as string;
-              resolve(res.split(',')[1]);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
+          const compressedDataUrl = await compressImageFile(file, 1600, 0.80);
+          const base64Data = compressedDataUrl.split(',')[1];
 
           const prompt = `Analysiere diese Visitenkarte. Extrahiere alle Kontaktdaten als striktes JSON-Objekt mit exakt folgenden Schlüsselnamen:
 "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "street" (Strasse & Hausnummer), "zipCity" (PLZ & Ort), "website", "description" (Jobtitel, Position oder Notizen).
 Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung oder Erklärungen.`;
 
           const response = await callGeminiAPI('gemini-2.5-flash', [
-            { inlineData: { data: base64Data, mimeType: file.type } },
+            { inlineData: { data: base64Data, mimeType: 'image/jpeg' } },
             { text: prompt }
           ]);
 
@@ -112,6 +149,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
             event: 'vcard_scanned',
             payload: extractedData
           });
+          setTimeout(() => {
+            try { supabase.removeChannel(channel); } catch (e) {}
+          }, 3000);
         } catch (channelErr) {
           console.warn("Realtime broadcast note:", channelErr);
         }
@@ -128,14 +168,11 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
     }
   };
 
-  const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotos(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
+      const compressedDataUrl = await compressImageFile(file, 1600, 0.80);
+      setPhotos(prev => [...prev, compressedDataUrl]);
     }
   };
 
@@ -166,6 +203,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
             event: 'rapport_created',
             payload: rapportPayload
           });
+          setTimeout(() => {
+            try { supabase.removeChannel(channel); } catch (e) {}
+          }, 3000);
         } catch (e) {}
       }
 
