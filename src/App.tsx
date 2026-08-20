@@ -85,8 +85,15 @@ const PlanEditorViewer = lazyWithRetry(() => import('./components/PlanEditorView
 const MobileUpload = lazyWithRetry(() => import('./components/MobileUpload'));
 const GuestMeet = lazyWithRetry(() => import('./components/GuestMeet'));
 const GlobalSuspenseFallback = () => (
-  <div className="h-screen w-screen flex items-center justify-center bg-background">
-    <Loader2 className="w-10 h-10 text-accent-ai animate-spin" />
+  <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#09090b] text-white relative overflow-hidden">
+    <div className="absolute w-[400px] h-[400px] bg-blue-600/15 blur-[120px] rounded-full pointer-events-none animate-pulse"></div>
+    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 p-0.5 shadow-2xl shadow-blue-500/20 mb-6 flex items-center justify-center animate-pulse">
+      <div className="w-full h-full bg-[#09090b] rounded-[14px] flex items-center justify-center">
+        <Loader2 className="w-7 h-7 text-blue-400 animate-spin" />
+      </div>
+    </div>
+    <div className="text-sm font-black tracking-wider uppercase text-zinc-300">Kreativ Desk OS</div>
+    <div className="text-xs text-zinc-500 font-medium mt-1">Workspace wird geladen...</div>
   </div>
 );
 
