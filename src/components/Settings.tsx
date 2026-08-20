@@ -335,7 +335,7 @@ export default function Settings() {
               
               <div className="flex flex-col items-center gap-4 shrink-0">
                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-background border-2 border-border overflow-hidden relative group">
-                  {!!sanitizeUrl(currentUser?.photoURL) ? (
+                  {sanitizeUrl(currentUser?.photoURL) ? (
                     <img src={sanitizeUrl(currentUser.photoURL)} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-accent-ai/10 text-accent-ai text-3xl md:text-4xl font-bold">

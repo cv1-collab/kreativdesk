@@ -68,7 +68,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
 
-      let { data: projs } = await supabase
+      const { data: projs } = await supabase
         .from('projects')
         .select('*')
         .or(`company_id.eq.${safeCompanyId},owner_id.eq.${currentUser.uid}`)

@@ -909,7 +909,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   <div className="flex items-center gap-3 overflow-hidden">
                     {isSelectionMode && <div className={cn("w-5 h-5 rounded flex items-center justify-center border shrink-0 transition-colors bg-surface", isChecked ? "bg-accent-ai border-accent-ai text-white" : "border-border")}>{isChecked && <CheckSquare size={12} />}</div>}
                     <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center font-bold overflow-hidden shrink-0 border border-border/50 shadow-sm text-base", isTeam ? "bg-purple-500/10 text-purple-500" : "bg-blue-500/10 text-blue-500")}>
-                      {!!sanitizeUrl(contact.photoURL) ? <img src={sanitizeUrl(contact.photoURL)} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
+                      {sanitizeUrl(contact.photoURL) ? <img src={sanitizeUrl(contact.photoURL)} className="w-full h-full object-cover" /> : formatName(contact).charAt(0).toUpperCase()}
                     </div>
                     <div className="overflow-hidden">
                       <div className={cn("font-bold text-sm truncate", (isSelected && !isSelectionMode) ? "text-accent-ai" : "text-text-primary")}>{formatName(contact)}</div>
@@ -970,7 +970,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
 
               <div className="flex items-center gap-8 pt-2">
                 <div className="w-28 h-28 rounded-[2rem] bg-background border border-border flex items-center justify-center text-4xl font-bold text-text-muted shadow-sm overflow-hidden">
-                  {!!sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
+                  {sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-4xl font-bold text-text-primary tracking-tight">{formatName(selectedContact)}</h2>
@@ -1042,7 +1042,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
               <div className="flex items-center justify-between border-b border-border/50 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-background border border-border flex items-center justify-center font-bold text-lg overflow-hidden text-accent-ai shrink-0">
-                    {!!sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
+                    {sanitizeUrl(selectedContact.photoURL) ? <img src={sanitizeUrl(selectedContact.photoURL)} className="w-full h-full object-cover" /> : formatName(selectedContact).charAt(0).toUpperCase()}
                   </div>
                   <div className="overflow-hidden">
                     <h3 className="font-bold text-base text-text-primary truncate">{formatName(selectedContact)}</h3>
@@ -1156,7 +1156,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   <div className="lg:col-span-1 space-y-6">
                     <div className="bg-surface border border-border/50 rounded-xl p-6 flex flex-col items-center text-center shadow-sm">
                       <div onClick={() => avatarInputRef.current?.click()} className="relative w-24 h-24 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer group overflow-hidden mb-4 hover:border-accent-ai transition-colors">
-                        {!!sanitizeUrl(avatarPreview) ? <img src={sanitizeUrl(avatarPreview)} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={32} className="text-text-muted group-hover:text-accent-ai transition-colors" />}
+                        {sanitizeUrl(avatarPreview) ? <img src={sanitizeUrl(avatarPreview)} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={32} className="text-text-muted group-hover:text-accent-ai transition-colors" />}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={20} className="text-white"/></div>
                       </div>
                       <input type="file" accept="image/*" ref={avatarInputRef} onChange={handleAvatarSelect} className="hidden" />

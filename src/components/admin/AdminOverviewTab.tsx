@@ -72,7 +72,7 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
         if (txs && txs.length > 0) {
           setTransactions(txs);
           let sRev = 0;
-          let mRev = 0;
+          const mRev = 0;
           const monthlyRev: Record<string, number> = {};
 
           txs.forEach(tx => {

@@ -606,7 +606,7 @@ export default function LeadsTab() {
         .eq('project_id', 'global')
         .eq('name', '04_SALES')
         .single();
-      let targetFolderId = existingFolder ? existingFolder.id : 'root';
+      const targetFolderId = existingFolder ? existingFolder.id : 'root';
       
       await supabase.from('documents').insert({
         name: `Leads_Report_${new Date().toISOString().split('T')[0]}.pdf`, url: downloadUrl, project_id: 'global', folder_id: targetFolderId, 

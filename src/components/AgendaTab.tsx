@@ -798,7 +798,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       };
 
       let createdEvent: any = null;
-      let { data, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
+      const { data, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
 
       if (error) {
         // Retry with minimal columns if table has custom constraint

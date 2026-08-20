@@ -358,7 +358,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       setCustomLocation(trimmedLoc);
       localStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
-      let { error } = await supabase.from('projects').update({
+      const { error } = await supabase.from('projects').update({
         description: activeProject.description ? activeProject.description : trimmedLoc
       }).eq('id', activeProject.id);
 

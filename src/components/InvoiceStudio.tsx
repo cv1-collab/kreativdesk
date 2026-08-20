@@ -199,7 +199,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         
         let targetFolderId = 'root';
         let targetCategory = 'projects';
-        let targetProjectId: string | null = activeProjectId;
+        const targetProjectId: string | null = activeProjectId;
 
         if (targetProjectId === 'global') {
             targetCategory = 'company';

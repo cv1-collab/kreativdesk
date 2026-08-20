@@ -41,7 +41,7 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
 
     const resText = await response.text();
     let resData: any;
-    try { resData = JSON.parse(resText); } catch (e) {}
+    try { resData = JSON.parse(resText); } catch (e) { console.warn("Could not parse proxy response JSON:", e); }
 
     if (response.ok && resData && (resData.text || resData.candidates)) {
       return resData;

@@ -870,7 +870,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
       try {
         if (targetId && targetId !== 'global' && currentUser?.uid) {
-          let query = supabase.from('slides').select('*').eq('project_id', targetId);
+          const query = supabase.from('slides').select('*').eq('project_id', targetId);
           const { data: loadedSlides } = await query;
           if (loadedSlides && loadedSlides.length > 0) {
             slidesArr = loadedSlides.map((d: any) => ({
@@ -2233,7 +2233,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       !isPreviewMode && "border-2 border-dashed cursor-pointer",
                       isDarkTheme ? (!isPreviewMode ? "bg-black/20 border-white/10 hover:bg-black/40" : "") : (!isPreviewMode ? "bg-black/5 border-black/10 hover:bg-black/10" : "")
                    )}>
-                {!!sanitizeUrl(slide.imageUrl) ? (
+                {sanitizeUrl(slide.imageUrl) ? (
                    <>
                      <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
                      {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
@@ -2251,7 +2251,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     !isPreviewMode && "border-2 border-dashed cursor-pointer",
                     isDarkTheme ? (!isPreviewMode ? "bg-black/20 border-white/10 hover:bg-black/40" : "") : (!isPreviewMode ? "bg-black/5 border-black/10 hover:bg-black/10" : "")
                  )}>
-              {!!sanitizeUrl(slide.imageUrl) ? (
+              {sanitizeUrl(slide.imageUrl) ? (
                 <>
                   <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
                   {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
@@ -2269,7 +2269,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   {slide.dataPayload.defects.map((d: any, i: number) => (
                     <div key={i} className={cn("flex flex-col rounded-xl overflow-hidden border shadow-sm relative group", isDarkTheme ? "border-zinc-800 bg-zinc-900/50" : "border-zinc-200 bg-white")}>
                       <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'slide')} className="h-32 bg-zinc-800 relative overflow-hidden shrink-0 cursor-pointer">
-                        {!!sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-zinc-500"><ImageIcon size={28}/></div>}
+                        {sanitizeUrl(d.imageUrl) ? <img src={sanitizeUrl(d.imageUrl)} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center text-zinc-500"><ImageIcon size={28}/></div>}
                         {!isPreviewMode ? (
                           <select value={d.status} onChange={(e) => handleUpdateDefect(slide.id, i, 'status', e.target.value)} className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest bg-black/60 text-white border border-white/20 outline-none cursor-pointer">
                             <option value="offen">offen</option>
@@ -2324,7 +2324,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   {slide.dataPayload.members.map((m: any, i: number) => (
                     <div key={i} className={cn("p-3 flex flex-col items-center text-center border rounded-2xl shadow-sm relative group transition-all h-full justify-between", isDarkTheme ? "border-white/10 bg-white/5" : "border-black/10 bg-black/5")}>
                       <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'team', { slideId: slide.id, memberIdx: i })} className={cn("rounded-full mb-2 bg-zinc-800 overflow-hidden shrink-0 border-2 relative group/avatar cursor-pointer shadow-md", slide.dataPayload.members.length > 4 ? "w-14 h-14" : "w-16 h-16")} style={{ borderColor: deckSettings.themeColor }}>
-                        {!!sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-5 text-zinc-500" size={28}/>}
+                        {sanitizeUrl(m.photoURL) ? <img src={sanitizeUrl(m.photoURL)} className="w-full h-full object-cover pointer-events-none"/> : <Users className="m-auto mt-5 text-zinc-500" size={28}/>}
                         {!isPreviewMode && <div className="absolute inset-0 bg-black/60 flex flex-col gap-1 items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity text-white"><Camera size={16} /><span className="text-[9px] font-bold">Foto</span></div>}
                       </div>
                       

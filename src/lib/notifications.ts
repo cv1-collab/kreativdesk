@@ -63,7 +63,9 @@ export const sendNotification = async ({
         is_read: false,
         created_at: notifObj.created_at
       });
-    } catch(e) {}
+    } catch (e) {
+      console.warn("Notifications table insert failed, stored in localStorage:", e);
+    }
 
     try {
       await supabase.from('audit_logs').insert({
@@ -71,9 +73,11 @@ export const sendNotification = async ({
         action: 'NOTIFICATION',
         details: JSON.stringify(notifObj)
       });
-    } catch(e) {}
+    } catch (e) {
+      console.warn("Audit logs table insert failed:", e);
+    }
   } catch (err) {
-    // Silent fallback catch
+    console.warn("sendNotification fallback:", err);
   }
 };
 
