@@ -322,14 +322,22 @@ export default function LeadsTab() {
       })
       .subscribe();
 
+    let pollFailed = false;
     const interval = setInterval(async () => {
+      if (pollFailed || !vcardSessionId) return;
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('temp_receipts')
           .select('*')
           .eq('session_id', vcardSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
+
+        if (error) {
+          // If table doesn't exist (PGRST205/404), disable polling to prevent console log spam
+          pollFailed = true;
+          return;
+        }
 
         if (data && data.length > 0) {
           const rec = data[0];
@@ -348,10 +356,12 @@ export default function LeadsTab() {
             });
             setLeadTab('scanner');
             addToast('Visitenkarte vom Smartphone empfangen & per KI ausgelesen!', 'success');
-            await supabase.from('temp_receipts').delete().eq('id', rec.id);
+            try { await supabase.from('temp_receipts').delete().eq('id', rec.id); } catch (e) {}
           }
         }
-      } catch (err) {}
+      } catch (err) {
+        pollFailed = true;
+      }
     }, 3000);
 
     return () => {

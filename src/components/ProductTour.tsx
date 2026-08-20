@@ -75,6 +75,8 @@ export default function ProductTour() {
       </div>
     );
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     const createStep = (
       target: string, 
       stepNum: number, 
@@ -85,15 +87,18 @@ export default function ProductTour() {
       proTip?: string,
       placement: any = 'right', 
       disableBeacon = false
-    ): Step => ({
-      target, 
-      content: buildStepContent(stepNum, total, title, content, IconComponent, proTip),
-      placement, 
-      disableBeacon,
-      disableScrolling: true,
-      disableScrollParentFix: true,
-      floaterProps: { disableAnimation: true }
-    } as any);
+    ): Step => {
+      const effectivePlacement = isMobile && placement !== 'center' ? 'auto' : placement;
+      return {
+        target, 
+        content: buildStepContent(stepNum, total, title, content, IconComponent, proTip),
+        placement: effectivePlacement, 
+        disableBeacon,
+        disableScrolling: isMobile ? false : true,
+        disableScrollParentFix: true,
+        floaterProps: { disableAnimation: true }
+      } as any;
+    };
 
     let newSteps: Step[] = [];
 
@@ -144,7 +149,10 @@ export default function ProductTour() {
     const validSteps = newSteps.filter(step => {
       if (typeof step.target === 'string') {
         if (step.target === 'body') return true;
-        return !!document.querySelector(step.target);
+        const el = document.querySelector(step.target) as HTMLElement;
+        if (!el) return false;
+        const rect = el.getBoundingClientRect();
+        return el.offsetParent !== null || (rect.width > 0 && rect.height > 0);
       }
       return true;
     });

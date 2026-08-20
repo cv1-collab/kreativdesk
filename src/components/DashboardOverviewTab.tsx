@@ -99,7 +99,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
          <div className="absolute top-0 right-0 w-64 h-64 bg-accent-ai/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
          <div className="relative z-10">
             <h2 className="text-3xl font-black text-text-primary tracking-tight mb-2">
-              {t('good_morning')}, <span className="capitalize">{currentUser?.email?.split('@')[0]}</span>!
+              {t('good_morning')}, <span className="capitalize">{currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0]}</span>!
             </h2>
             <p className="text-text-muted font-medium text-lg">{t('daily_briefing')}</p>
          </div>

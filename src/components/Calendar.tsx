@@ -1415,8 +1415,8 @@ export default function Calendar() {
 
             {viewMode === 'gantt' && (
               <>
-                {/* DESKTOP: GANTT CHART GRAFIK */}
-                <div className="hidden md:block flex-1 overflow-auto custom-scrollbar p-6 bg-background relative shrink-0">
+                {/* GANTT CHART GRAFIK (Masterplan mit Phasen & Terminblöcken) */}
+                <div className="flex-1 overflow-auto custom-scrollbar p-2 sm:p-6 bg-background relative shrink-0">
                   <div 
                     id="pdf-calendar-export" 
                     className="relative flex flex-col transition-colors min-h-full h-full p-2 sm:p-0"
@@ -1658,19 +1658,14 @@ export default function Calendar() {
                           })}
                         </div>
                       </div>
-                    </div>
-                    <div className="mt-8 pt-4 border-t-2 shrink-0 min-w-[800px] border-border/50">
+                       <div className="mt-8 pt-4 border-t-2 shrink-0 min-w-[800px] border-border/50">
                        <input disabled={isDemoMode} value={customFooter} onChange={e => setCustomFooter(e.target.value)} className="w-full text-center text-xs font-medium bg-transparent outline-none transition-colors py-1 rounded text-text-muted hover:bg-white/5 focus:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed" placeholder="Individuelle Fusszeile eingeben..." />
                     </div>
                   </div>
                 </div>
-
-                {/* MOBILE RESPONSIVE & MONTH VIEW (iOS Apple Calendar Style) */}
-                <div className="md:hidden flex-1 flex flex-col min-h-0 overflow-hidden">
-                  {renderMonthGrid()}
-                </div>
-              </>
-            )}
+              </div>
+            </>
+          )}
 
             {/* MONTH VIEW (DESKTOP & TABLET) */}
             {viewMode === 'month' && (

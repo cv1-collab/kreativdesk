@@ -592,15 +592,15 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   return (
     <div className="flex flex-col w-full h-full bg-background text-text-primary rounded-xl overflow-hidden border border-border relative">
       {!isFullscreen && (
-        <header className="h-16 border-b border-border flex items-center justify-between px-6 shrink-0 bg-surface">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-ai/10 text-accent-ai"><Presentation size={16} /></div>
+        <header className="min-h-16 py-2 border-b border-border flex flex-wrap items-center justify-between px-3 sm:px-6 shrink-0 bg-surface gap-2">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-ai/10 text-accent-ai shrink-0"><Presentation size={16} /></div>
             <div>
-              <h2 className="font-bold text-sm text-text-primary">Pitch Deck</h2>
-              <p className="text-[10px] text-text-muted uppercase tracking-widest font-bold">Presentation Viewer</p>
+              <h2 className="font-bold text-xs sm:text-sm text-text-primary">Pitch Deck</h2>
+              <p className="text-[9px] sm:text-[10px] text-text-muted uppercase tracking-widest font-bold">Presentation Viewer</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
              <button onClick={async () => {
                setIsShareModalOpen(true);
                try {
@@ -611,21 +611,21 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                  console.warn("Clipboard access limited:", e);
                }
                addToast("Link in Zwischenablage kopiert!", "success");
-             }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+             }} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
              <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
-                className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
                 title="Präsentation als Apple Keynote, Microsoft PowerPoint oder PDF herunterladen"
               >
                 <span>📥 Export</span>
               </button>
-             <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
-               <Settings size={14} /> <span>{t('open_studio')}</span>
+             <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
+               <Settings size={14} /> <span className="hidden xs:inline">{t('open_studio')}</span>
              </button>
-             <button onClick={toggleFullscreen} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex items-center gap-2">
+             <button onClick={toggleFullscreen} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-accent-ai text-white rounded-lg text-xs font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex items-center gap-1.5">
                <Play size={14} className="fill-current" /> <span className="hidden sm:inline">{t('presentation_mode')}</span>
              </button>
           </div>
