@@ -10,6 +10,23 @@ export const STORAGE_LIMITS = {
   'Free Trial': 5 * 1024 * 1024 * 1024
 };
 
+export const parseSizeToBytes = (sizeStr: string | number): number => {
+  if (typeof sizeStr === 'number') return sizeStr;
+  if (!sizeStr) return 0;
+  const str = String(sizeStr).trim().toUpperCase();
+  const match = str.match(/^([\d.]+)\s*(BYTES|B|KB|MB|GB|TB)?$/);
+  if (!match) return parseFloat(str) || 0;
+  const val = parseFloat(match[1]);
+  const unit = match[2] || 'B';
+  switch (unit) {
+    case 'KB': return val * 1024;
+    case 'MB': return val * 1024 * 1024;
+    case 'GB': return val * 1024 * 1024 * 1024;
+    case 'TB': return val * 1024 * 1024 * 1024 * 1024;
+    default: return val;
+  }
+};
+
 export const checkStorageLimit = async (companyId: string, fileSize: number): Promise<boolean> => {
   try {
     const { data: comp } = await supabase
@@ -26,7 +43,7 @@ export const checkStorageLimit = async (companyId: string, fileSize: number): Pr
       .select('size')
       .eq('company_id', companyId);
 
-    const currentUsed = (docs || []).reduce((acc, d) => acc + (Number(d.size) || 0), 0);
+    const currentUsed = (docs || []).reduce((acc, d) => acc + parseSizeToBytes(d.size), 0);
     return (currentUsed + fileSize) <= limit;
   } catch (error) {
     console.error("Fehler beim Prüfen des Storage-Limits:", error);

@@ -31,6 +31,8 @@ export function generateSwissQRPayload(data: SwissQRBillData): string {
   const amountStr = data.amount > 0 ? data.amount.toFixed(2) : '';
   const currency = data.currency || 'CHF';
 
+  const refType = data.reference && data.reference.length >= 26 ? 'QRR' : 'NON';
+
   const lines = [
     'SPC',                                       // Header
     '0200',                                      // Version
@@ -53,7 +55,7 @@ export function generateSwissQRPayload(data: SwissQRBillData): string {
     data.debtor?.postalCode || '',               // Debtor ZIP
     data.debtor?.city || '',                     // Debtor City
     data.debtor?.country || 'CH',                // Debtor Country
-    'NON',                                       // Reference Type (NON = Without Reference, QRR = QR Reference)
+    refType,                                     // Reference Type (NON = Without Reference, QRR = QR Reference)
     data.reference || '',                        // Reference Number
     data.unstructuredMessage || 'Rechnung Kreativ Desk', // Unstructured Message
     'EPD'                                        // Trailer
