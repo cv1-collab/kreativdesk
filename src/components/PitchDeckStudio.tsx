@@ -2669,7 +2669,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               {/* 1-KLICK MASTER DECK BUNDLES */}
               <div>
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Sparkles size={14} className="text-amber-400"/> Ready-to-Use Master-Decks
+                  <Sparkles size={14} className="text-amber-400"/> {t('ready_to_use_master_decks')}
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
                   <button type="button" onClick={() => handleLoadMasterDeckBundle('architecture')} className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-left transition-all text-xs font-bold text-slate-100 flex items-center justify-between group shadow-sm">
@@ -2704,7 +2704,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 </div>
 
                 <div className="pt-4 border-t border-border mt-4">
-                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2"><Wand2 size={14}/> Folien-Animation</h3>
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2"><Wand2 size={14}/> {t('slide_animation_header')}</h3>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
                       { id: 'fade', label: 'Fade' },
