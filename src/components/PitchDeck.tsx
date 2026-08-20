@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2, Copy, ExternalLink, X, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2, Copy, ExternalLink, X, Check, Download, ArrowRight } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,6 +62,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showStudio, setShowStudio] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -191,13 +192,23 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     }
 
     const fetchSlides = async () => {
+      // 0ms Cache Fallback from Studio Persistence
       try {
-        const safeCompanyId = currentUser.companyId || currentUser.uid;
+        const cached = localStorage.getItem(`pitch_deck_slides_${currentProjectId}`) || localStorage.getItem(`pitch_deck_slides_global`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSlides(parsed);
+            setActiveSlideId(parsed[0].id);
+          }
+        }
+      } catch(e) {}
+
+      try {
         const { data } = await supabase
           .from('slides')
           .select('*')
           .eq('project_id', currentProjectId)
-          .eq('company_id', safeCompanyId)
           .order('order_index', { ascending: true });
 
         if (data && data.length > 0) {
@@ -210,34 +221,26 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             fontSize: d.font_size || d.fontSize,
             layout: d.layout || 'split',
             order_index: d.order_index || 0,
-            ownerId: d.owner_id || d.ownerId || currentUser.uid,
+            ownerId: d.owner_id || d.ownerId || currentUser?.uid,
             projectId: d.project_id || d.projectId
           }));
           setSlides(loadedSlides);
           if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
-        } else {
+        } else if (slides.length === 0) {
           const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
           if (isDemo) {
             loadDemoSlides();
-          } else {
-            setSlides([]);
           }
         }
       } catch (e) {
-        console.error(e);
-        const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
-        if (isDemo) {
-          loadDemoSlides();
-        } else {
-          setSlides([]);
-        }
+        console.error("Fetch slides error:", e);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchSlides();
-  }, [currentUser, currentProjectId]);
+  }, [currentUser, currentProjectId, showStudio]);
 
   useEffect(() => {
     const cleanup = addFullscreenChangeListener(() => {
@@ -612,19 +615,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
              <button 
-                onClick={async () => {
-                  try {
-                    addToast('PPTX / Keynote wird generiert...', 'info');
-                    await exportDeckToPptx(slides, deckSettings, `Präsentation.pptx`);
-                    addToast('PowerPoint & Keynote Präsentation erfolgreich heruntergeladen!', 'success');
-                  } catch(e) {
-                    console.error(e);
-                    addToast('Fehler beim PPTX Export', 'error');
-                  }
-                }}
+                onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
                 className="px-3.5 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                title="Präsentation als PowerPoint (.pptx) oder Apple Keynote herunterladen"
+                title="Präsentation als PowerPoint (.pptx), Apple Keynote oder PDF herunterladen"
               >
                 <span>🍏 Keynote / PPTX</span>
               </button>
@@ -746,6 +740,83 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 onClick={() => setIsShareModalOpen(false)} 
                 className="px-4 py-2 bg-background border border-border text-text-muted hover:text-text-primary rounded-xl text-xs font-bold"
               >
+                Schliessen
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* EXPORT FORMAT SELECTION MODAL */}
+      {isFormatModalOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-6">
+            <div className="flex justify-between items-center border-b border-border/50 pb-4">
+              <div>
+                <h3 className="font-extrabold text-lg flex items-center gap-2.5 text-text-primary">
+                  <Download className="text-blue-500" size={22}/> Präsentation Exportieren
+                </h3>
+                <p className="text-xs text-text-muted mt-0.5">Wähle das gewünschte Dateiformat für Mac, Windows oder Druck:</p>
+              </div>
+              <button onClick={() => setIsFormatModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 bg-background border border-border rounded-xl cursor-pointer"><X size={18}/></button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {/* OPTION 1: APPLE KEYNOTE */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsFormatModalOpen(false);
+                  addToast('Apple Keynote Präsentation wird generiert...', 'info');
+                  await exportDeckToPptx(slides, {}, `Präsentation-Keynote.pptx`);
+                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                }}
+                className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                    🍏
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      Apple Keynote (.pptx / .key)
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 uppercase tracking-widest">Mac & iPad</span>
+                    </h4>
+                    <p className="text-xs text-text-muted mt-0.5">Optimiert für Apple macOS Keynote mit 100% Widescreen 16:9 Treue</p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-text-muted group-hover:text-blue-400 group-hover:translate-x-1 transition-all"/>
+              </button>
+
+              {/* OPTION 2: MICROSOFT POWERPOINT */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsFormatModalOpen(false);
+                  addToast('PowerPoint Präsentation wird generiert...', 'info');
+                  await exportDeckToPptx(slides, {}, `Präsentation-PowerPoint.pptx`);
+                  addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                }}
+                className="group p-5 bg-background border border-border/80 hover:border-amber-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                    📊
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      Microsoft PowerPoint (.pptx)
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-400 uppercase tracking-widest">Office & PC</span>
+                    </h4>
+                    <p className="text-xs text-text-muted mt-0.5">Standard PowerPoint Format für Windows, Office 365 & Teams</p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-text-muted group-hover:text-amber-400 group-hover:translate-x-1 transition-all"/>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-border/50">
+              <button type="button" onClick={() => setIsFormatModalOpen(false)} className="px-5 py-2.5 bg-surface hover:bg-background border border-border rounded-xl text-xs font-bold text-text-muted hover:text-text-primary transition-all">
                 Schliessen
               </button>
             </div>

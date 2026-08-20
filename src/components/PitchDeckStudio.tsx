@@ -15,7 +15,7 @@ import {
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
-  Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight
+  Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -247,6 +247,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [aiPromptInput, setAiPromptInput] = useState('');
   const [aiSlideCount, setAiSlideCount] = useState<number>(5);
   const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
+  const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
 
   const [isPresenterMode, setIsPresenterMode] = useState(false);
   const [presenterIndex, setPresenterIndex] = useState(0);
@@ -2960,19 +2961,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               </button>
               <button 
                 type="button" 
-                onClick={async () => {
-                  try {
-                    addToast('PPTX / Keynote wird generiert...', 'info');
-                    await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-Präsentation.pptx`);
-                    addToast('PowerPoint & Keynote Präsentation erfolgreich heruntergeladen!', 'success');
-                  } catch (e) {
-                    console.error("PPTX Export Error:", e);
-                    addToast('Fehler beim PPTX / Keynote Export', 'error');
-                  }
-                }} 
+                onClick={() => setIsFormatModalOpen(true)} 
                 disabled={slides.length === 0} 
                 className="px-3.5 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
-                title="Präsentation als PowerPoint (.pptx) oder Apple Keynote herunterladen"
+                title="Wähle das Dateiformat (Apple Keynote, Microsoft PowerPoint oder PDF)"
               >
                 <FileText size={14}/> <span>🍏 Keynote / PPTX</span>
               </button>
@@ -3309,6 +3301,107 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               <button type="button" onClick={() => handleGenerateAIDeck()} disabled={isGeneratingAIDeck || !aiPromptInput.trim()} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg disabled:opacity-50 transition-all flex items-center gap-2">
                 {isGeneratingAIDeck ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                 <span>Deck generieren</span>
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* EXPORT FORMAT SELECTION MODAL */}
+      {isFormatModalOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-6">
+            <div className="flex justify-between items-center border-b border-border/50 pb-4">
+              <div>
+                <h3 className="font-extrabold text-lg flex items-center gap-2.5 text-text-primary">
+                  <Download className="text-blue-500" size={22}/> Präsentation Exportieren
+                </h3>
+                <p className="text-xs text-text-muted mt-0.5">Wähle das gewünschte Dateiformat für Mac, Windows oder Druck:</p>
+              </div>
+              <button onClick={() => setIsFormatModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 bg-background border border-border rounded-xl cursor-pointer"><X size={18}/></button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {/* OPTION 1: APPLE KEYNOTE */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsFormatModalOpen(false);
+                  addToast('Apple Keynote Präsentation wird generiert...', 'info');
+                  await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-Keynote.pptx`);
+                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                }}
+                className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                    🍏
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      Apple Keynote (.pptx / .key)
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 uppercase tracking-widest">Mac & iPad</span>
+                    </h4>
+                    <p className="text-xs text-text-muted mt-0.5">Optimiert für Apple macOS Keynote mit 100% Widescreen 16:9 Treue</p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-text-muted group-hover:text-blue-400 group-hover:translate-x-1 transition-all"/>
+              </button>
+
+              {/* OPTION 2: MICROSOFT POWERPOINT */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsFormatModalOpen(false);
+                  addToast('PowerPoint Präsentation wird generiert...', 'info');
+                  await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-PowerPoint.pptx`);
+                  addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                }}
+                className="group p-5 bg-background border border-border/80 hover:border-amber-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                    📊
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      Microsoft PowerPoint (.pptx)
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-400 uppercase tracking-widest">Office & PC</span>
+                    </h4>
+                    <p className="text-xs text-text-muted mt-0.5">Standard PowerPoint Format für Windows, Office 365 & Teams</p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-text-muted group-hover:text-amber-400 group-hover:translate-x-1 transition-all"/>
+              </button>
+
+              {/* OPTION 3: NATIVE PDF */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFormatModalOpen(false);
+                  openPdfStudio();
+                }}
+                className="group p-5 bg-background border border-border/80 hover:border-purple-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                    📄
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      PDF Dokument (.pdf)
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-400 uppercase tracking-widest">Vektor Druck</span>
+                    </h4>
+                    <p className="text-xs text-text-muted mt-0.5">Universelles Vektor-PDF für Kundenversand, E-Mail & SIA-Druck</p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-text-muted group-hover:text-purple-400 group-hover:translate-x-1 transition-all"/>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-border/50">
+              <button type="button" onClick={() => setIsFormatModalOpen(false)} className="px-5 py-2.5 bg-surface hover:bg-background border border-border rounded-xl text-xs font-bold text-text-muted hover:text-text-primary transition-all">
+                Schliessen
               </button>
             </div>
           </motion.div>
