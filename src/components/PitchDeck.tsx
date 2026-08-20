@@ -545,9 +545,15 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <button onClick={() => {
+             <button onClick={async () => {
                setIsShareModalOpen(true);
-               navigator.clipboard.writeText(window.location.href);
+               try {
+                 if (navigator?.clipboard?.writeText) {
+                   await navigator.clipboard.writeText(window.location.href);
+                 }
+               } catch(e) {
+                 console.warn("Clipboard access limited:", e);
+               }
                addToast("Link in Zwischenablage kopiert!", "success");
              }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
@@ -618,8 +624,14 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   className="bg-transparent text-xs font-sans font-medium text-text-primary outline-none flex-1 truncate"
                 />
                 <button 
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
+                  onClick={async () => {
+                    try {
+                      if (navigator?.clipboard?.writeText) {
+                        await navigator.clipboard.writeText(window.location.href);
+                      }
+                    } catch(e) {
+                      console.warn("Clipboard access denied/unfocused:", e);
+                    }
                     setCopiedLink(true);
                     addToast("Link kopiert!", "success");
                     setTimeout(() => setCopiedLink(false), 2000);

@@ -40,7 +40,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
       if (!pageHasAlreadyBeenReloaded) {
         sessionStorage.setItem('page_has_reloaded_for_chunk', 'true');
         window.location.reload();
-        return new Promise<{ default: T }>(() => {});
+        return new Promise<{ default: T }>(() => { });
       }
       throw error;
     }

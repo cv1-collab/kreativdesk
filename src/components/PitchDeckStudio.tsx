@@ -133,7 +133,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
   const { currentUser } = useAuth();
-  const { projects = [], projectMembers = [], companyUsers = [], defects = [] } = useProject() as any;
+  const { projects = [], projectMembers = [], companyUsers = [], defects = [], isDemoMode = false } = useProject() as any;
 
   const [importProjectId, setImportProjectId] = useState<string>(projectId || '');
   
