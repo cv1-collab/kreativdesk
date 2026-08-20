@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useToast } from '../contexts/ToastContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -739,7 +740,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (cached) return JSON.parse(cached);
     } catch (e) {}
     return {
-      logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'swiss', colorMode: 'dark', transitionEffect: 'fade'
+      logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', colorMode: 'dark', transitionEffect: 'slide'
     };
   });
 
@@ -765,6 +766,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const updateDeckSettings = async (newSettings: Partial<DeckSettings>) => {
     const updated = { ...deckSettings, ...newSettings };
     setDeckSettings(updated);
+    try {
+      localStorage.setItem(`pitch_deckSettings_${targetId || 'global'}`, JSON.stringify(updated));
+      localStorage.setItem('pitch_deckSettings_global', JSON.stringify(updated));
+    } catch (e) {}
     if (activeProject?.id && activeProject.id !== 'global' && !activeProject.id.startsWith('demo-')) {
        const payloadStr = JSON.stringify(updated);
        try {
@@ -2809,11 +2814,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         )}
       </AnimatePresence>
 
-      {/* KREATIV DESK PRESENTER MODERATOR MODE OVERLAY */}
-      {isPresenterMode && slides[presenterIndex] && (
+      {/* KREATIV DESK PRESENTER MODERATOR MODE OVERLAY (FULLSCREEN PORTAL) */}
+      {isPresenterMode && slides[presenterIndex] && typeof document !== 'undefined' && createPortal(
         <div 
           onMouseMove={handleMouseMovePresenter}
-          className="fixed inset-0 z-[200000] bg-black text-white flex flex-col items-center justify-between p-6 select-none animate-in fade-in duration-200 cursor-default relative overflow-hidden"
+          className="fixed inset-0 z-[200000] bg-black text-white flex flex-col items-center justify-between p-6 select-none animate-in fade-in duration-200 cursor-default overflow-hidden"
         >
           {/* INTERAKTIVER LASERPOINTER */}
           {isLaserActive && (
@@ -2860,7 +2865,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 <motion.div 
                   key={slides[presenterIndex].id} 
                   {...getTransitionVariants()} 
-                  style={{ width: 1000, height: 562, transform: 'scale(1.2)', transformOrigin: 'center' }} 
+                  style={{ width: 1000, height: 562, transform: 'scale(1.15)', transformOrigin: 'center' }} 
                   className="shadow-2xl rounded-xl overflow-hidden shrink-0 border border-white/20 relative"
                 >
                   {renderSlideContent(slides[presenterIndex])}
@@ -2910,7 +2915,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               Nächste Folie <ChevronRight size={16}/>
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ENHANCED AI DECK GENERATOR MODAL */}

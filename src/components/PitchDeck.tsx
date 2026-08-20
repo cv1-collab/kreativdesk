@@ -206,8 +206,12 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   }, [activeSlideId, slides, isFullscreen, goNextSlide, goPrevSlide]);
 
   const activeProject = projects.find((p: any) => p.id === currentProjectId);
-  const deckSettings = activeProject?.deckSettings || {
-    logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'swiss'
+  const cachedSettingsStr = typeof window !== 'undefined' ? (localStorage.getItem(`pitch_deckSettings_${currentProjectId || 'global'}`) || localStorage.getItem('pitch_deckSettings_global')) : null;
+  const cachedSettings = cachedSettingsStr ? (() => { try { return JSON.parse(cachedSettingsStr); } catch (e) { return null; } })() : null;
+  const deckSettings = {
+    logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', transitionEffect: 'slide',
+    ...(activeProject?.deckSettings || {}),
+    ...(cachedSettings || {})
   };
 
   const getThemeClasses = () => {
