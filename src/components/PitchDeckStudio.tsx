@@ -284,9 +284,32 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   // TOOLBAR ACTION HANDLERS
   const handleLayoutChange = async (newLayout: Slide['layout']) => {
     if (!activeSlide) return;
-    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: newLayout } : s));
+    
+    let updatedPayload = activeSlide.dataPayload || {};
+    if (newLayout === 'chart-donut' && (!updatedPayload.chartSegments || updatedPayload.chartSegments.length === 0)) {
+      updatedPayload = {
+        ...updatedPayload,
+        chartSegments: [
+          { label: 'BKP 211 Rohbauarbeiten', value: 4200000, color: '#3b82f6' },
+          { label: 'BKP 221 Haustechnik (HLSK)', value: 2800000, color: '#8b5cf6' },
+          { label: 'BKP 271 Innenausbau', value: 1900000, color: '#10b981' },
+          { label: 'BKP 291 Honorare & Umgebungsarbeiten', value: 1250000, color: '#f59e0b' }
+        ]
+      };
+    }
+
+    const defaultAgendaItems = (newLayout === 'table-of-contents' && (!activeSlide.agendaItems || activeSlide.agendaItems.length === 0))
+      ? [
+          { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
+          { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
+          { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
+          { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
+        ]
+      : activeSlide.agendaItems;
+
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: newLayout, dataPayload: updatedPayload, agendaItems: defaultAgendaItems } : s));
     try {
-      await supabase.from('slides').update({ layout: newLayout }).eq('id', activeSlide.id);
+      await supabase.from('slides').update({ layout: newLayout, data_payload: updatedPayload, agenda_items: defaultAgendaItems }).eq('id', activeSlide.id);
     } catch (err) {
       console.warn("Layout update error:", err);
     }
@@ -859,7 +882,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         console.warn("Pitch deck slides fetch fallback handled:", err);
       }
 
-      if (slidesArr.length === 0) {
+      const isDemoProject = isDemoMode || targetId?.startsWith('demo-') || targetId === 'demo-1' || targetId === 'global';
+      if (slidesArr.length === 0 && isDemoProject) {
         try {
           const demoSlides = [
             { title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', notes: "Einleitung und Übersicht für den Investor.", order_index: 0 },
@@ -1519,10 +1543,52 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   };
 
   const handleGenerateAgendaSlide = async () => {
-    const agendaContent = `01. PROJEKT-ÜBERSICHT & ZIELE\nStatusbericht, Baubeschrieb und wesentliche Meilensteine\n\n02. BAUKOSTEN & BUDGET-KONTROLLE\nBKP Aufschlüsselung, Kennzahlen & Kostenentwicklung\n\n03. TERMINPLAN & BAUPHASEN\nSmart Calendar, Bauetappen & Abnahmetermine\n\n04. MÄNGEL & QUALITÄTSSICHERUNG\nAktuelle Pendenzen, Freigaben & Begehungsprotokolle`;
-    await handleAddSlide('text-only', 'Inhaltsverzeichnis & Agenda', { content: agendaContent });
+    const agendaItems = [
+      { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
+      { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
+      { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
+      { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
+    ];
+    await handleAddSlide('table-of-contents', 'Inhaltsverzeichnis & Agenda', { agendaItems });
     addToast("Inhaltsverzeichnis-Folie hinzugefügt!", "success");
     setMobileTab('slides');
+  };
+
+  const handleUpdateAgendaItem = async (slideId: string, idx: number, field: string, val: string) => {
+    const currentSlide = slides.find(s => s.id === slideId);
+    if (!currentSlide) return;
+    const currentItems = Array.isArray(currentSlide.agendaItems) ? [...currentSlide.agendaItems] : [];
+    if (!currentItems[idx]) currentItems[idx] = { num: `0${idx + 1}`, title: '', desc: '', page: `S. 0${idx + 2}` };
+    currentItems[idx] = { ...currentItems[idx], [field]: val };
+
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: currentItems } : s));
+    try {
+      await supabase.from('slides').update({ agenda_items: currentItems }).eq('id', slideId);
+    } catch (e) {}
+  };
+
+  const handleAddAgendaItem = async (slideId: string) => {
+    const currentSlide = slides.find(s => s.id === slideId);
+    if (!currentSlide) return;
+    const currentItems = Array.isArray(currentSlide.agendaItems) ? [...currentSlide.agendaItems] : [];
+    const nextIdx = currentItems.length + 1;
+    currentItems.push({ num: nextIdx < 10 ? `0${nextIdx}` : `${nextIdx}`, title: 'Neuer Themenpunkt', desc: 'Kurze Beschreibung des Themas', page: `S. ${nextIdx + 2}` });
+
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: currentItems } : s));
+    try {
+      await supabase.from('slides').update({ agenda_items: currentItems }).eq('id', slideId);
+    } catch (e) {}
+  };
+
+  const handleDeleteAgendaItem = async (slideId: string, idx: number) => {
+    const currentSlide = slides.find(s => s.id === slideId);
+    if (!currentSlide) return;
+    const currentItems = (currentSlide.agendaItems || []).filter((_: any, i: number) => i !== idx);
+
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: currentItems } : s));
+    try {
+      await supabase.from('slides').update({ agenda_items: currentItems }).eq('id', slideId);
+    } catch (e) {}
   };
 
   const openMediaPicker = async (mediaType: 'cad' | 'render' | 'whiteboard' | 'bim', title: string, action: 'slide'|'team' = 'slide', meta: any = null) => {
@@ -1895,7 +1961,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                             <div style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-32 text-right font-medium">{(item.total || 0).toLocaleString('de-CH')}</div>
                           )}
                        </div>
-                     ))}
+                      ))}
                      {!isPreviewMode && (
                         <button type="button" onClick={() => handleAddBudgetItem(slide.id, i)} className="mt-1 text-[10px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1">
                           <Plus size={10} /> <span>Unterposition hinzufügen</span>
@@ -1908,6 +1974,82 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   <div className="text-xs uppercase tracking-widest font-black opacity-60">{t('total_budget')}</div>
                   <div className="text-2xl font-bold">CHF {(slide.dataPayload.totalBudget || slide.dataPayload.budgetGroups.reduce((acc:number, grp:any)=>acc+(grp.total||0), 0)).toLocaleString('de-CH')}</div>
                </div>
+             </div>
+          )}
+
+          {/* INHALTSVERZEICHNIS / AGENDA LAYOUT */}
+          {slide.layout === 'table-of-contents' && (
+             <div className="w-full h-full flex flex-col justify-between col-span-full overflow-hidden p-2">
+               <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                 {((slide.agendaItems && slide.agendaItems.length > 0) ? slide.agendaItems : [
+                   { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
+                   { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
+                   { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
+                   { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
+                 ]).map((item: any, idx: number) => (
+                   <div key={idx} className={cn("p-4 rounded-xl border flex flex-col justify-center relative group transition-all", isDarkTheme ? "bg-white/5 border-white/10 hover:border-purple-500/30" : "bg-black/5 border-black/10 hover:border-purple-500/30")}>
+                     <div className="flex items-center justify-between w-full gap-4">
+                       <div className="flex items-center gap-3 flex-1 min-w-0">
+                         <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
+                           {item.num || `0${idx + 1}`}
+                         </span>
+                         {!isPreviewMode ? (
+                           <input 
+                             type="text" 
+                             value={item.title} 
+                             onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'title', e.target.value)} 
+                             style={{ fontSize: `${Math.max(14, contentFs)}px` }} 
+                             className={cn("font-bold bg-transparent outline-none flex-1 border-b border-transparent focus:border-purple-500 truncate", tc)} 
+                             placeholder="Kapitel Titel..."
+                           />
+                         ) : (
+                           <span style={{ fontSize: `${Math.max(14, contentFs)}px` }} className={cn("font-bold truncate", tc)}>{item.title}</span>
+                         )}
+                       </div>
+
+                       {/* DOTTED LEADER LINE */}
+                       <div className="flex-1 border-b-2 border-dotted opacity-30 mx-2 hidden sm:block" style={{ borderColor: deckSettings.themeColor }}></div>
+
+                       <div className="flex items-center gap-2 shrink-0">
+                         {!isPreviewMode ? (
+                           <input 
+                             type="text" 
+                             value={item.page || `S. 0${idx + 2}`} 
+                             onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'page', e.target.value)} 
+                             className={cn("font-mono font-bold text-xs bg-transparent outline-none w-16 text-right border-b border-transparent focus:border-purple-500", tc)} 
+                           />
+                         ) : (
+                           <span className={cn("font-mono font-bold text-xs opacity-70", tc)}>{item.page || `S. 0${idx + 2}`}</span>
+                         )}
+                         {!isPreviewMode && (
+                           <button type="button" onClick={() => handleDeleteAgendaItem(slide.id, idx)} className="p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={13}/></button>
+                         )}
+                       </div>
+                     </div>
+
+                     {/* SUB-DESCRIPTION */}
+                     <div className="pl-11 mt-1">
+                       {!isPreviewMode ? (
+                         <input 
+                           type="text" 
+                           value={item.desc || ''} 
+                           onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
+                           className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
+                           placeholder="Kurze Beschreibung / Unterpunkte..."
+                         />
+                       ) : (
+                         <p className="text-xs opacity-60 truncate">{item.desc}</p>
+                       )}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+
+               {!isPreviewMode && (
+                 <button type="button" onClick={() => handleAddAgendaItem(slide.id)} className="mt-3 py-2 px-4 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-indigo-500/30 w-fit shrink-0">
+                   <Plus size={14} /> <span>Kapitel / Agenda-Punkt hinzufügen</span>
+                 </button>
+               )}
              </div>
           )}
 
@@ -2509,11 +2651,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 {showAddMenu && (
                   <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-48 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
                     <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">{t('standard_layouts')}</div>
-                    <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Type size={14}/> {t('title_slide')}</button>
-                    <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Columns size={14}/> {t('text_and_image')}</button>
-                    <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
-                    <button type="button" onClick={() => handleAddSlide('text-only', t('text_block'))} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><Layout size={14}/> {t('text_block')}</button>
-                    <button type="button" onClick={handleGenerateChartSlide} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex gap-2"><PieChart size={14}/> Baukosten Donut</button>
+                    <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
+                    <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
+                    <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
+                    <button type="button" onClick={() => { handleAddSlide('text-only', t('text_block')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Layout size={14}/> {t('text_block')}</button>
+                    <button type="button" onClick={() => { handleGenerateAgendaSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><BookOpen size={14}/> Inhaltsverzeichnis & Agenda</button>
+                    <button type="button" onClick={() => { handleGenerateChartSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><PieChart size={14}/> Baukosten Donut</button>
                   </motion.div>
                 )}
               </AnimatePresence>
