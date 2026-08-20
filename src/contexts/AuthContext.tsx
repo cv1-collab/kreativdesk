@@ -124,6 +124,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUserRole(appUser.role || 'owner');
         setCurrentUser(appUser);
+
+        // --- CONCURRENT SESSION LOCK ENFORCEMENT ---
+        let mySessionId = localStorage.getItem(`kreativ_session_id_${user.id}`);
+        if (!mySessionId) {
+          mySessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          localStorage.setItem(`kreativ_session_id_${user.id}`, mySessionId);
+          await supabase.from('profiles').update({ active_session_id: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
+        } else {
+          // Verify current active session ID
+          if (profile.active_session_id && profile.active_session_id !== mySessionId) {
+            // Updated session on another device -> override & claim active session for this login
+            mySessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem(`kreativ_session_id_${user.id}`, mySessionId);
+            await supabase.from('profiles').update({ active_session_id: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
+          }
+        }
       } else {
         const urlParams = new URLSearchParams(window.location.search);
         const inviteToken = urlParams.get('invite');
@@ -264,6 +280,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // REALTIME CONCURRENT SESSION LOCK LISTENER (AUTOMATIC LOGOUT ON PARALLEL DEVICE LOGIN)
+  useEffect(() => {
+    if (!currentUser?.id) return;
+
+    const mySessionId = localStorage.getItem(`kreativ_session_id_${currentUser.id}`);
+    if (!mySessionId) return;
+
+    const channel = supabase
+      .channel(`session_lock_${currentUser.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${currentUser.id}`
+      }, (payload: any) => {
+        const remoteSessionId = payload.new?.active_session_id;
+        if (remoteSessionId && remoteSessionId !== mySessionId) {
+          alert('⚠️ Sitzung Beendet: Dein Kreativ Desk Konto wurde auf einem anderen Computer angemeldet. Zur Verhinderung von unbefugtem Konto-Sharing wurde diese Sitzung beendet.');
+          logout();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser?.id]);
+
   const updateCurrentUser = (updates: Partial<AppUser>) => {
     setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
   };
@@ -276,6 +320,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    if (currentUser?.id) {
+      localStorage.removeItem(`kreativ_session_id_${currentUser.id}`);
+    }
     await supabase.auth.signOut();
     setCurrentUser(null);
     setUserRole(null);
