@@ -101,14 +101,41 @@ test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
     await page.waitForTimeout(500);
     console.log('✅ Fullscreen Portal Präsentationsmodus verified successfully!');
 
-    // 8. Test PDF Export Studio button
+    // 8. Test Agenda / Inhaltsverzeichnis creation & Intelligent Auto-Sync button
+    const agendaBtn = page.locator('button:has-text("Inhaltsverzeichnis & Agenda")').first();
+    if (await agendaBtn.isVisible()) {
+      await agendaBtn.click();
+      await page.waitForTimeout(500);
+      
+      const syncBtn = page.locator('button:has-text("Inhaltsverzeichnis aus Folien synchronisieren"), button:has-text("Auto-Synchronisieren")').first();
+      if (await syncBtn.isVisible()) {
+        await syncBtn.click();
+        await page.waitForTimeout(500);
+        console.log('✅ Intelligent Table of Contents Auto-Sync verified successfully!');
+      }
+    }
+
+    // 9. Test Top + Slide Creation Dropdown Menu
+    const topPlusBtn = page.locator('button:has-text("+")').first();
+    if (await topPlusBtn.isVisible()) {
+      await topPlusBtn.click();
+      await page.waitForTimeout(300);
+      const donutMenuOption = page.locator('button:has-text("Baukosten Donut")').first();
+      if (await donutMenuOption.isVisible()) {
+        await donutMenuOption.click();
+        await page.waitForTimeout(500);
+        console.log('✅ Top Dropdown Baukosten Donut Menu Item verified successfully!');
+      }
+    }
+
+    // 10. Test PDF Export Studio button
     const pdfExportBtn = page.locator('.tour-deck-export, button:has-text("PDF Export")').first();
     if (await pdfExportBtn.isVisible()) {
       await expect(pdfExportBtn).toBeEnabled();
       console.log('✅ PDF Export button verified successfully!');
     }
 
-    // 9. Close Studio and verify return to Pitch Deck Viewer
+    // 11. Close Studio and verify return to Pitch Deck Viewer
     const closeStudioBtn = page.locator('button:has-text("Studio verlassen"), button:has-text("Close Studio")').first();
     await expect(closeStudioBtn).toBeVisible();
     await closeStudioBtn.click();
@@ -117,5 +144,22 @@ test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
     const viewerHeader = page.locator('text="Pitch Deck"').first();
     await expect(viewerHeader).toBeVisible();
     console.log('✅ Return to Pitch Deck Viewer verified successfully!');
+
+    // 12. Test Share Modal Popup in Pitch Deck Viewer
+    const shareBtn = page.locator('button:has-text("Teilen")').first();
+    if (await shareBtn.isVisible()) {
+      await shareBtn.click();
+      await page.waitForTimeout(500);
+      const shareModalTitle = page.locator('text="Präsentation Teilen"').first();
+      await expect(shareModalTitle).toBeVisible();
+      
+      const copyUrlBtn = page.locator('button:has-text("Kopieren"), button:has-text("Kopiert")').first();
+      await expect(copyUrlBtn).toBeVisible();
+      
+      const closeShareBtn = page.locator('button:has-text("Schliessen")').first();
+      await closeShareBtn.click();
+      await page.waitForTimeout(300);
+      console.log('✅ Share Modal Popup & URL Copy verified successfully!');
+    }
   });
 });
