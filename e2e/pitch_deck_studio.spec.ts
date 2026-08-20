@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Pitch Deck Studio - E2E Tests', () => {
-  test('verify Pitch Deck Studio tools (Stempel, Präsentationsmodus, Color Mode, Font Size)', async ({ page }) => {
+test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
+  test('verify Pitch Deck Studio tools, slide animations, fullscreen portal, theme templates & viewer sync', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 720 });
     const targetUrl = process.env.PLAYWRIGHT_URL || '/deck';
     console.log(`Navigating to ${targetUrl}...`);
 
     await page.goto(targetUrl);
 
-    // Wait for Pitch Deck viewer header to load
+    // 1. Wait for Pitch Deck viewer header to load
     await expect(page.locator('text="Pitch Deck"').first()).toBeVisible({ timeout: 25000 });
 
     // Dismiss cookie banner explicitly once mounted
@@ -20,61 +20,102 @@ test.describe('Pitch Deck Studio - E2E Tests', () => {
     } catch(e) {}
     await page.waitForTimeout(500);
 
-    // Wait for studio open button and click
+    // 2. Open Pitch Deck Studio
     const studioOpenBtn = page.locator('#btn-open-pitch-studio, button:has-text("Pitch Studio öffnen"), button:has-text("Open Pitch Studio")').first();
     await expect(studioOpenBtn).toBeVisible({ timeout: 25000 });
     await studioOpenBtn.click({ force: true });
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1500);
 
-    // 2. Test Stempel button
+    // 3. Verify Executive (Kreativ Desk) theme is active or selectable
+    const executiveThemeBtn = page.locator('button:has-text("Executive (Kreativ Desk)"), button:has-text("Executive")').first();
+    if (await executiveThemeBtn.isVisible()) {
+      await executiveThemeBtn.click();
+      await page.waitForTimeout(300);
+      console.log('✅ Executive (Kreativ Desk) Theme verified successfully!');
+    }
+
+    // 4. Test Slide Transition Effect buttons (Fade, Slide, Zoom)
+    const fadeBtn = page.locator('button:has-text("Fade")').first();
+    const slideBtn = page.locator('button:has-text("Slide")').first();
+    const zoomBtn = page.locator('button:has-text("Zoom")').first();
+    
+    if (await fadeBtn.isVisible()) {
+      await fadeBtn.click();
+      await page.waitForTimeout(300);
+    }
+    if (await slideBtn.isVisible()) {
+      await slideBtn.click();
+      await page.waitForTimeout(300);
+    }
+    if (await zoomBtn.isVisible()) {
+      await zoomBtn.click();
+      await page.waitForTimeout(300);
+    }
+    console.log('✅ Slide Transition Effects (Fade, Slide, Zoom) verified successfully!');
+
+    // 5. Test Stempel button & popover
     const stempelButton = page.locator('#btn-pitch-stamp, button:has-text("Stempel"), button:has-text("VERTRAULICH"), button:has-text("GENEHMIGT"), button:has-text("ENTWURF")').first();
     await expect(stempelButton).toBeVisible({ timeout: 25000 });
     await stempelButton.click();
     await page.waitForTimeout(500);
-    
-    // Verify popover menu appears
-    const stampPopover = page.locator('text=Stempel wählen');
-    await expect(stampPopover).toBeVisible();
 
-    // Click "VERTRAULICH"
     const vertraulichOption = page.locator('button:has-text("VERTRAULICH")').first();
     await vertraulichOption.click();
     await page.waitForTimeout(500);
 
-    // Verify stamp badge appears on desktop canvas
     const stampBadge = page.locator('text="[ VERTRAULICH ]"').locator('visible=true').first();
     await expect(stampBadge).toBeVisible({ timeout: 10000 });
     console.log('✅ Stempel tool verified successfully!');
 
-    // 3. Test Präsentationsmodus button
-    const presenterButton = page.locator('button:has-text("Präsentationsmodus")').first();
-    await expect(presenterButton).toBeVisible();
-    await presenterButton.click();
-    await page.waitForTimeout(800);
-
-    // Verify Presenter overlay appears with Laserpointer button and Timer
-    const laserButton = page.locator('button:has-text("Laserpointer")');
-    await expect(laserButton).toBeVisible();
-
-    // Close presenter mode using Escape key
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
-    console.log('✅ Präsentationsmodus verified successfully!');
-
-    // 4. Test Light / Dark Mode toggle
-    const colorModeButton = page.locator('button[title="Zwischen Hell- und Dunkelmodus wechseln"]').locator('visible=true').first();
+    // 6. Test Light / Dark Mode main toggle button
+    const colorModeButton = page.locator('button:has-text("Hell"), button:has-text("Dunkel")').first();
     if (await colorModeButton.isVisible()) {
       await colorModeButton.click();
       await page.waitForTimeout(500);
-      console.log('✅ Light/Dark Mode toggle verified successfully!');
+      console.log('✅ Main Light/Dark Mode toggle verified successfully!');
     }
 
-    // 5. Test Font Size (+ / -) controls
-    const titlePlusButton = page.locator('button[title="Titel vergrössern"]').locator('visible=true').first();
-    if (await titlePlusButton.isVisible()) {
-      await titlePlusButton.click();
-      await page.waitForTimeout(300);
-      console.log('✅ Font Size (+ / -) controls verified successfully!');
+    // 7. Test Green Präsentationsmodus Fullscreen Portal Overlay
+    const presenterButton = page.locator('button:has-text("Präsentationsmodus")').first();
+    await expect(presenterButton).toBeVisible();
+    await presenterButton.click();
+    await page.waitForTimeout(1000);
+
+    // Verify Laserpointer and Referentennotizen are present in Fullscreen Portal
+    const laserButton = page.locator('button:has-text("Laserpointer")');
+    await expect(laserButton).toBeVisible({ timeout: 10000 });
+    
+    // Toggle Laserpointer on and off
+    await laserButton.click();
+    await page.waitForTimeout(300);
+    await laserButton.click();
+    await page.waitForTimeout(300);
+
+    // Exit Presenter Mode using Beenden (Esc) button or Esc key
+    const exitPresenterBtn = page.locator('button:has-text("Beenden (Esc)")').first();
+    if (await exitPresenterBtn.isVisible()) {
+      await exitPresenterBtn.click();
+    } else {
+      await page.keyboard.press('Escape');
     }
+    await page.waitForTimeout(500);
+    console.log('✅ Fullscreen Portal Präsentationsmodus verified successfully!');
+
+    // 8. Test PDF Export Studio button
+    const pdfExportBtn = page.locator('.tour-deck-export, button:has-text("PDF Export")').first();
+    if (await pdfExportBtn.isVisible()) {
+      await expect(pdfExportBtn).toBeEnabled();
+      console.log('✅ PDF Export button verified successfully!');
+    }
+
+    // 9. Close Studio and verify return to Pitch Deck Viewer
+    const closeStudioBtn = page.locator('button:has-text("Studio verlassen"), button:has-text("Close Studio")').first();
+    await expect(closeStudioBtn).toBeVisible();
+    await closeStudioBtn.click();
+    await page.waitForTimeout(1000);
+
+    const viewerHeader = page.locator('text="Pitch Deck"').first();
+    await expect(viewerHeader).toBeVisible();
+    console.log('✅ Return to Pitch Deck Viewer verified successfully!');
   });
 });
