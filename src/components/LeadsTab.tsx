@@ -685,7 +685,7 @@ export default function LeadsTab() {
           </div>
           
           {leadTab === 'leads' && (
-            <button onClick={() => setIsPdfStudioOpen(true)} className="hidden lg:flex px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-background transition-colors items-center gap-2 whitespace-nowrap shadow-sm">
+            <button onClick={() => setIsPdfStudioOpen(true)} className="flex px-3 sm:px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-xs sm:text-sm font-bold hover:bg-background transition-colors items-center gap-1.5 sm:gap-2 whitespace-nowrap shadow-sm">
               <Download size={14}/> PDF
             </button>
           )}

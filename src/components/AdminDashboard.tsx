@@ -201,9 +201,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative z-30">
-            <button onClick={startTour} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer" title="Tour starten"><HelpCircle size={18} /></button>
-            <button onClick={toggleLanguage} className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-background border border-border/50 rounded-md text-xs font-bold text-text-primary hover:bg-white/5 transition-colors uppercase cursor-pointer"><Globe size={14} className="text-red-500" /> {language}</button>
-            <button onClick={toggleTheme} className="hidden sm:flex p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer">{theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}</button>
+            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer" title="Tour starten"><HelpCircle size={16} /></button>
+            <button onClick={toggleLanguage} className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-background border border-border/50 rounded-md text-xs font-bold text-text-primary hover:bg-white/5 transition-colors uppercase cursor-pointer"><Globe size={14} className="text-red-500" /> <span className="hidden sm:inline">{language}</span></button>
+            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
             <button onClick={() => setShowNotifications(true)} className="p-2 text-text-muted hover:text-text-primary rounded-full transition-colors relative cursor-pointer bg-background border border-border/50 shadow-sm">
               <Bell size={18} />
               {(newLeadsCount > 0 || unreadNotifsCount > 0) && (

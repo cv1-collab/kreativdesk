@@ -1588,7 +1588,7 @@ export default function Finance() {
               <Plus size={15} /> <span className="hidden sm:inline">BKP CSV Import</span>
             </button>
             {activeTab !== 'overview' && (
-              <button onClick={() => setIsPdfStudioOpen(true)} className="hidden lg:flex px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-2 h-[42px] cursor-pointer shrink-0">
+              <button onClick={() => setIsPdfStudioOpen(true)} className="flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0">
                 <FileText size={16} /> <span>PDF Studio</span>
               </button>
             )}
