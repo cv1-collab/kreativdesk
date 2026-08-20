@@ -11,6 +11,7 @@ import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFulls
 import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio from './PitchDeckStudio';
 import { demoTemplates } from '../utils/demoTemplates';
+import { exportDeckToPptx } from '../utils/pptxExportHelper';
 
 interface Slide { 
   id: string; 
@@ -64,6 +65,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const [copiedLink, setCopiedLink] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; name: string; slideIndex: number }>>({});
+  const channelRef = useRef<any>(null);
+
   const [windowDimensions, setWindowDimensions] = useState({ 
     w: typeof window !== 'undefined' ? window.innerWidth : 1200, 
     h: typeof window !== 'undefined' ? window.innerHeight : 800 
@@ -79,6 +83,51 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const availableWidth = isFullscreen ? windowDimensions.w : (windowDimensions.w - (isMobile ? 32 : 320));
   const availableHeight = isFullscreen ? windowDimensions.h : (windowDimensions.h - (isMobile ? 180 : 260));
   const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675) * 0.95;
+
+  useEffect(() => {
+    if (!currentProjectId) return;
+    const safeChannelName = `presenter_laser_${currentProjectId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    const channel = supabase.channel(safeChannelName, {
+      config: { broadcast: { self: false } }
+    });
+
+    channel
+      .on('broadcast', { event: 'laser_move' }, (payload) => {
+        if (payload?.payload?.id && payload?.payload?.id !== currentUser?.uid) {
+          const data = payload.payload;
+          setRemoteCursors(prev => ({
+            ...prev,
+            [data.id]: { x: data.x, y: data.y, name: data.name || 'Präsentator', slideIndex: data.slideIndex }
+          }));
+        }
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentProjectId, currentUser?.uid]);
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!containerRef.current || !channelRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'laser_move',
+      payload: {
+        id: currentUser?.uid || 'guest',
+        name: currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Präsentator',
+        x,
+        y,
+        slideIndex: slides.findIndex(s => s.id === activeSlideId)
+      }
+    });
+  };
 
   useEffect(() => {
     const loadDemoSlides = () => {
@@ -562,6 +611,23 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
              }} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
+             <button 
+                onClick={async () => {
+                  try {
+                    addToast('PPTX / Keynote wird generiert...', 'info');
+                    await exportDeckToPptx(slides, deckSettings, `Präsentation.pptx`);
+                    addToast('PowerPoint & Keynote Präsentation erfolgreich heruntergeladen!', 'success');
+                  } catch(e) {
+                    console.error(e);
+                    addToast('Fehler beim PPTX Export', 'error');
+                  }
+                }}
+                disabled={slides.length === 0}
+                className="px-3.5 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Präsentation als PowerPoint (.pptx) oder Apple Keynote herunterladen"
+              >
+                <span>🍏 Keynote / PPTX</span>
+              </button>
              <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Settings size={14} /> <span>{t('open_studio')}</span>
              </button>
@@ -572,7 +638,26 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         </header>
       )}
 
-      <div ref={containerRef} className={cn("flex-1 relative flex items-center justify-center overflow-hidden", isFullscreen ? "fixed inset-0 z-[9999] bg-black rounded-none border-none" : "bg-zinc-950")}>
+      <div ref={containerRef} onPointerMove={handlePointerMove} className={cn("flex-1 relative flex items-center justify-center overflow-hidden cursor-crosshair", isFullscreen ? "fixed inset-0 z-[9999] bg-black rounded-none border-none" : "bg-zinc-950")}>
+        
+        {/* MULTIPLAYER REALTIME LASER POINTERS */}
+        {Object.entries(remoteCursors).map(([id, cursor]) => (
+          <div
+            key={id}
+            className="absolute z-[200] pointer-events-none transition-all duration-75 ease-out"
+            style={{ left: `${cursor.x}%`, top: `${cursor.y}%` }}
+          >
+            <div className="relative flex items-center gap-1.5 -translate-x-1/2 -translate-y-1/2">
+              <div className="w-5 h-5 rounded-full bg-red-500 shadow-[0_0_20px_#ef4444] animate-pulse border-2 border-white flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-white rounded-full" />
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-red-600/90 text-white shadow-xl backdrop-blur-md border border-white/20 whitespace-nowrap tracking-wide">
+                🔴 {cursor.name}
+              </span>
+            </div>
+          </div>
+        ))}
+
         <div className="absolute inset-y-0 left-0 w-1/4 z-20 cursor-pointer flex items-center justify-start pl-4 md:pl-8 group" onClick={goPrevSlide}>
            <button disabled={!hasPrevSlide} className="p-3 md:p-4 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 disabled:opacity-0 transition-opacity hover:bg-black/80 backdrop-blur-md"><ChevronLeft size={32}/></button>
         </div>

@@ -17,6 +17,7 @@ import {
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
+import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { cn, sanitizeUrl } from '../utils';
@@ -2956,6 +2957,24 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               </button>
               <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-3.5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex shrink-0">
                  <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
+              </button>
+              <button 
+                type="button" 
+                onClick={async () => {
+                  try {
+                    addToast('PPTX / Keynote wird generiert...', 'info');
+                    await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-Präsentation.pptx`);
+                    addToast('PowerPoint & Keynote Präsentation erfolgreich heruntergeladen!', 'success');
+                  } catch (e) {
+                    console.error("PPTX Export Error:", e);
+                    addToast('Fehler beim PPTX / Keynote Export', 'error');
+                  }
+                }} 
+                disabled={slides.length === 0} 
+                className="px-3.5 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
+                title="Präsentation als PowerPoint (.pptx) oder Apple Keynote herunterladen"
+              >
+                <FileText size={14}/> <span>🍏 Keynote / PPTX</span>
               </button>
               <div className="h-6 w-px bg-border hidden sm:block"></div>
               <button type="button" onClick={onClose} className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-red-500/20 shrink-0">
