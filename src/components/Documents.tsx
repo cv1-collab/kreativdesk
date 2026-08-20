@@ -35,13 +35,36 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     grid_view: 'Grid View',
     list_view: 'List View',
     open_folder: 'Open Folder',
+    open_folder_arrow: 'Open Folder →',
     open_project_docs: 'Open Project Files',
     loose_files: 'Unassigned / Root Documents',
     search_placeholder: 'Search documents & folders...',
     zip_download: 'Download as .ZIP Archive',
     select_all: 'Select All',
     deselect_all: 'Deselect All',
-    files_selected: 'files selected'
+    files_selected: 'files selected',
+    main_categories_company: 'Main Company Document Categories',
+    topic_folders: 'Topic Folders',
+    file_single: 'File',
+    file_plural: 'Files',
+
+    // Preset Folder Labels & Descriptions
+    preset_01_FINANZEN_label: 'Finance & Accounting',
+    preset_01_FINANZEN_desc: 'Invoices, Quotes, Balance Sheets & Receipts',
+    preset_02_RECHTLICHES_label: 'Legal & Contracts',
+    preset_02_RECHTLICHES_desc: 'Terms, Contracts, SIA Standards & Compliance',
+    preset_03_HR_MITARBEITER_label: 'HR & Employees',
+    preset_03_HR_MITARBEITER_desc: 'Personnel Files, Contracts & Payroll',
+    preset_04_SALES_label: 'Sales & Acquisition',
+    preset_04_SALES_desc: 'Proposals, Leads & Presentations',
+    preset_05_MARKETING_label: 'Marketing & PR',
+    preset_05_MARKETING_desc: 'Branding, Logos, Media & Publications',
+    preset_06_OPERATIONS_label: 'Operations & QM',
+    preset_06_OPERATIONS_desc: 'Operating Workflows, Processes & Templates',
+    preset_07_ASSETS_label: 'Media & Assets',
+    preset_07_ASSETS_desc: 'Images, Renderings, Graphics & Logos',
+    preset_08_PLÄNE_label: 'CAD & 3D Plans',
+    preset_08_PLÄNE_desc: 'CAD Drawings, BIM Models & Structural Reports'
   },
   de: { 
     document_hub: 'Dokumenten Hub', 
@@ -59,13 +82,36 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     grid_view: 'Kacheln',
     list_view: 'Liste',
     open_folder: 'Ordner öffnen',
+    open_folder_arrow: 'Ordner öffnen →',
     open_project_docs: 'Projektunterlagen öffnen',
     loose_files: 'Kürzlich erstellte / Nicht zugeordnete Dokumente',
     search_placeholder: 'Dokumente & Ordner suchen...',
     zip_download: 'Als .ZIP-Archiv herunterladen',
     select_all: 'Alle auswählen',
     deselect_all: 'Auswahl aufheben',
-    files_selected: 'Dateien ausgewählt'
+    files_selected: 'Dateien ausgewählt',
+    main_categories_company: 'Hauptkategorien Firmenunterlagen',
+    topic_folders: 'Themen-Ordner',
+    file_single: 'Datei',
+    file_plural: 'Dateien',
+
+    // Preset Folder Labels & Descriptions
+    preset_01_FINANZEN_label: 'Finanzen & Buchhaltung',
+    preset_01_FINANZEN_desc: 'Rechnungen, Offerten, Bilanzen, Belege & Spesen',
+    preset_02_RECHTLICHES_label: 'Rechtliches & Verträge',
+    preset_02_RECHTLICHES_desc: 'AGBs, Verträge, SIA-Standards & Compliance',
+    preset_03_HR_MITARBEITER_label: 'HR & Mitarbeiter',
+    preset_03_HR_MITARBEITER_desc: 'Personalakten, Arbeitsverträge & Lohnnachweise',
+    preset_04_SALES_label: 'Sales & Akquise',
+    preset_04_SALES_desc: 'Kundenangebote, Akquise & Präsentationen',
+    preset_05_MARKETING_label: 'Marketing & PR',
+    preset_05_MARKETING_desc: 'Branding, Logos, Medien & Publikationen',
+    preset_06_OPERATIONS_label: 'Operations & QM',
+    preset_06_OPERATIONS_desc: 'Betriebsabläufe, Prozesse, QM & Vorlagen',
+    preset_07_ASSETS_label: 'Medien & Assets',
+    preset_07_ASSETS_desc: 'Bilder, Renderings, Grafiken & Logos',
+    preset_08_PLÄNE_label: 'CAD & 3D Pläne',
+    preset_08_PLÄNE_desc: 'CAD-Zeichnungen, BIM-Modelle & Statikberichte'
   }
 };
 
@@ -931,9 +977,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
           <div className="flex justify-between items-center">
             <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Building2 size={16} className="text-blue-500" />
-              Hauptkategorien Firmenunterlagen
+              {t('main_categories_company')}
             </h4>
-            <span className="text-xs text-text-muted font-medium">{presetKeys.length + customRootFolders.length} Themen-Ordner</span>
+            <span className="text-xs text-text-muted font-medium">{presetKeys.length + customRootFolders.length} {t('topic_folders')}</span>
           </div>
 
           {viewMode === 'grid' ? (
@@ -945,6 +991,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
                 const fileCount = getCompanyFolderCount(folderKey);
 
+                const presetLabel = t(`preset_${folderKey}_label`) || preset.label;
+                const presetDesc = t(`preset_${folderKey}_desc`) || preset.desc;
+
                 return (
                   <div
                     key={folderKey}
@@ -952,7 +1001,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       if (folderObj) {
                         navigateToFolder(folderObj.id, folderObj.name);
                       } else {
-                        addToast(`Ordner ${preset.label} wird geladen...`, 'info');
+                        addToast(`Ordner ${presetLabel} wird geladen...`, 'info');
                         fetchDocuments();
                       }
                     }}
@@ -968,16 +1017,16 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                         </div>
                         <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-text-muted flex items-center gap-1.5 shadow-sm">
                           <FolderOpen size={12} className={preset.text} />
-                          {fileCount} Datei{fileCount === 1 ? '' : 'en'}
+                          {fileCount} {fileCount === 1 ? t('file_single') : t('file_plural')}
                         </span>
                       </div>
 
                       <div>
                         <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-blue-500 transition-colors">
-                          {preset.label}
+                          {presetLabel}
                         </h5>
                         <p className="text-text-muted text-xs font-medium leading-relaxed mt-1">
-                          {preset.desc}
+                          {presetDesc}
                         </p>
                       </div>
                     </div>

@@ -59,7 +59,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     loading: 'Loading Studio...', no_slides: 'No slides found', empty_deck: 'This Pitch Deck is empty or does not exist.',
     content: 'Content', title_size: 'Title Size', text_size: 'Text Size', light_mode: 'Light', dark_mode: 'Dark',
     ready_to_use_master_decks: 'Ready-to-Use Master-Decks', master_templates_header: 'Master Templates',
-    slide_animation_header: 'Slide Animation', project_reporting_header: 'Project Reporting'
+    slide_animation_header: 'Slide Animation', project_reporting_header: 'Project Reporting',
+    title_label: 'Title:', text_label: 'Text:', stamp_label: 'Stamp', select_stamp: 'Select Stamp',
+    remove_stamp: 'Remove Stamp', notes_label: 'Notes', duplicate_slide: 'Duplicate Slide',
+    image_label: 'Image', ai_create_deck: 'Create AI Deck', presenter_mode: 'Presenter Mode'
   },
   de: {
     new_slide: 'Neue Folie', type_text_here: 'Inhalt hier einfügen...', budget_plan: 'Projekt-Budget',
@@ -90,7 +93,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     loading: 'Lade Studio...', no_slides: 'Keine Folien vorhanden', empty_deck: 'Dieses Pitch Deck ist leer.',
     content: 'Inhalt', title_size: 'Titel-Grösse', text_size: 'Text-Grösse', light_mode: 'Hell', dark_mode: 'Dunkel',
     ready_to_use_master_decks: 'Fertige Master-Decks', master_templates_header: 'Master-Vorlagen',
-    slide_animation_header: 'Folien-Animation', project_reporting_header: 'Projekt-Berichterstattung'
+    slide_animation_header: 'Folien-Animation', project_reporting_header: 'Projekt-Berichterstattung',
+    title_label: 'Titel:', text_label: 'Text:', stamp_label: 'Stempel', select_stamp: 'Stempel wählen',
+    remove_stamp: 'Stempel entfernen', notes_label: 'Notizen', duplicate_slide: 'Folie duplizieren',
+    image_label: 'Bild', ai_create_deck: 'KI Deck erstellen', presenter_mode: 'Präsentationsmodus'
   }
 };
 
@@ -2869,14 +2875,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   
                   {/* INDIVIDUELLE SCHRIFTGRÖSSEN: TITEL VS TEXT */}
                   <div className="flex flex-row items-center gap-1.5 bg-background border border-border rounded-lg p-1 shrink-0">
-                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden xl:inline">Titel:</span>
+                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden xl:inline">{t('title_label')}</span>
                     <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-1 text-text-muted hover:text-text-primary" title="Titel verkleinern"><Minus size={12} /></button>
                     <span className="text-xs font-bold font-mono w-5 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
                     <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-1 text-text-muted hover:text-text-primary" title="Titel vergrössern"><Plus size={12} /></button>
 
                     <div className="h-4 w-px bg-border mx-0.5"></div>
 
-                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden xl:inline">Text:</span>
+                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden xl:inline">{t('text_label')}</span>
                     <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-1 text-text-muted hover:text-text-primary" title="Text verkleinern"><Minus size={12} /></button>
                     <span className="text-xs font-bold font-mono w-5 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
                     <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-1 text-text-muted hover:text-text-primary" title="Text vergrössern"><Plus size={12} /></button>
@@ -2885,14 +2891,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   {/* KREATIV DESK STEMPEL SELECTOR */}
                   <div className="relative shrink-0">
                     <button id="btn-pitch-stamp" type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
-                      <Tag size={14} /> <span>{activeSlide.stamp || 'Stempel'}</span>
+                      <Tag size={14} /> <span>{activeSlide.stamp || t('stamp_label')}</span>
                     </button>
                     <AnimatePresence>
                       {showStampMenu && (
                         <>
                           <div className="fixed inset-0 z-[1000]" onClick={() => setShowStampMenu(false)} />
                           <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="fixed top-16 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-48 py-1.5 overflow-hidden">
-                            <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">Stempel wählen</div>
+                            <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">{t('select_stamp')}</div>
                             {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
                               <button key={st} type="button" onClick={() => handleSetStamp(st)} className={cn("w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between hover:bg-white/10 transition-colors", activeSlide.stamp === st ? "text-purple-400 bg-purple-500/10" : "text-text-primary")}>
                                 <span>{st}</span>
@@ -2901,7 +2907,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                             ))}
                             {activeSlide.stamp && (
                               <button type="button" onClick={() => handleSetStamp('')} className="w-full text-left px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/10 border-t border-border mt-1">
-                                Stempel entfernen
+                                {t('remove_stamp')}
                               </button>
                             )}
                           </motion.div>
@@ -2912,17 +2918,17 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                   {/* KREATIV DESK REFERENTENNOTIZEN TOGGLE */}
                   <button type="button" onClick={() => setShowNotesDrawer(!showNotesDrawer)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", activeSlide.notes ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : "bg-background border-border text-text-muted hover:text-text-primary")}>
-                    <StickyNote size={14} /> <span className="hidden xl:inline">Notizen</span>
+                    <StickyNote size={14} /> <span className="hidden xl:inline">{t('notes_label')}</span>
                   </button>
 
                   {/* QUICK SLIDE ACTION BUTTONS */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button type="button" onClick={handleDuplicateSlide} title="Folie duplizieren" className="p-2 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
+                    <button type="button" onClick={handleDuplicateSlide} title={t('duplicate_slide')} className="p-2 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
                       <Copy size={14} />
                     </button>
                     {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
-                      <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title="Bild wählen" className="px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
-                        <ImageIcon size={14} /> <span className="hidden xl:inline">Bild</span>
+                      <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title={t('choose_image')} className="px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
+                        <ImageIcon size={14} /> <span className="hidden xl:inline">{t('image_label')}</span>
                       </button>
                     )}
                   </div>
@@ -2932,7 +2938,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
             <div className="flex items-center gap-2 lg:gap-3 shrink-0 ml-auto">
               <button type="button" onClick={() => setIsAiGeneratorOpen(true)} className="px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0">
-                <Sparkles size={14}/> <span className="hidden xl:inline">KI Deck erstellen</span>
+                <Sparkles size={14}/> <span className="hidden xl:inline">{t('ai_create_deck')}</span>
               </button>
               <button 
                 type="button" 
@@ -2945,7 +2951,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 disabled={slides.length === 0} 
                 className="px-3.5 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30"
               >
-                <Play size={14} className="fill-current"/> <span>Präsentationsmodus</span>
+                <Play size={14} className="fill-current"/> <span>{t('presenter_mode')}</span>
               </button>
               <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-3.5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex shrink-0">
                  <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
