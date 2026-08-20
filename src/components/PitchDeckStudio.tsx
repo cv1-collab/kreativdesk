@@ -2956,17 +2956,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               >
                 <Play size={14} className="fill-current"/> <span>{t('presenter_mode')}</span>
               </button>
-              <button type="button" onClick={openPdfStudio} disabled={slides.length === 0} className="tour-deck-export px-3.5 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:bg-accent-ai/90 transition-all flex shrink-0">
-                 <DownloadCloud size={14}/> <span>{t('export_pdf_native')}</span>
-              </button>
               <button 
                 type="button" 
                 onClick={() => setIsFormatModalOpen(true)} 
                 disabled={slides.length === 0} 
-                className="px-3.5 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
+                className="tour-deck-export px-3.5 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-lg text-xs font-extrabold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:brightness-110 transition-all flex shrink-0 cursor-pointer"
                 title="Wähle das Dateiformat (Apple Keynote, Microsoft PowerPoint oder PDF)"
               >
-                <FileText size={14}/> <span>🍏 Keynote / PPTX</span>
+                <DownloadCloud size={15}/> <span>Exportieren (Keynote / PPTX / PDF)</span>
               </button>
               <div className="h-6 w-px bg-border hidden sm:block"></div>
               <button type="button" onClick={onClose} className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-red-500/20 shrink-0">
@@ -3328,8 +3325,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 onClick={async () => {
                   setIsFormatModalOpen(false);
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
-                  await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-Keynote.pptx`);
-                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                  await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-Keynote.key`);
+                  addToast('Keynote Datei (.key) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >

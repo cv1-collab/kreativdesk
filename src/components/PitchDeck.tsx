@@ -617,10 +617,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
              <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
-                className="px-3.5 py-2 bg-blue-600/20 border border-blue-500/40 text-blue-400 hover:bg-blue-600/30 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                title="Präsentation als PowerPoint (.pptx), Apple Keynote oder PDF herunterladen"
+                className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
+                title="Präsentation als Apple Keynote, Microsoft PowerPoint oder PDF herunterladen"
               >
-                <span>🍏 Keynote / PPTX</span>
+                <span>📥 Export</span>
               </button>
              <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-4 py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                <Settings size={14} /> <span>{t('open_studio')}</span>
@@ -768,8 +768,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 onClick={async () => {
                   setIsFormatModalOpen(false);
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
-                  await exportDeckToPptx(slides, {}, `Präsentation-Keynote.pptx`);
-                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                  await exportDeckToPptx(slides, {}, `Präsentation-Keynote.key`);
+                  addToast('Keynote Datei (.key) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
