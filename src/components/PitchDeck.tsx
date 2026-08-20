@@ -357,37 +357,65 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
            {slide.layout === 'table-of-contents' && (
               <div className="w-full h-full flex flex-col justify-between col-span-full overflow-hidden p-2">
                 <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                  {((slide.agendaItems && slide.agendaItems.length > 0) ? slide.agendaItems : [
-                    { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
-                    { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
-                    { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
-                    { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
-                  ]).map((item: any, idx: number) => (
-                    <div key={idx} className="p-4 rounded-xl border border-black/10 bg-black/5 flex flex-col justify-center relative">
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-600 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
-                            {item.num || `0${idx + 1}`}
-                          </span>
-                          <span style={{ fontSize: `${Math.max(14, slide.fontSize || 18)}px` }} className="font-bold truncate text-slate-900">{item.title}</span>
+                  {(() => {
+                    let itemsToRender = slide.agendaItems || [];
+                    if (itemsToRender.length === 0) {
+                      itemsToRender = slides
+                        .map((s, idx) => {
+                          const pageNum = idx + 1;
+                          const formattedPage = pageNum < 10 ? `S. 0${pageNum}` : `S. ${pageNum}`;
+                          const formattedNum = pageNum < 10 ? `0${pageNum}` : `${pageNum}`;
+                          let autoDesc = s.content ? s.content.slice(0, 65).replace(/\n/g, ' ') : '';
+                          if (!autoDesc) {
+                            if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
+                            else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
+                            else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+                            else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
+                            else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
+                            else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
+                            else autoDesc = 'Projekt-Details & Dokumentation';
+                          }
+                          return { num: formattedNum, title: s.title || `Folie ${pageNum}`, desc: autoDesc, page: formattedPage, isAgenda: s.layout === 'table-of-contents' };
+                        })
+                        .filter(item => !item.isAgenda);
+                    }
+
+                    if (itemsToRender.length === 0) {
+                      itemsToRender = [
+                        { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
+                        { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
+                        { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
+                        { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
+                      ];
+                    }
+
+                    return itemsToRender.map((item: any, idx: number) => (
+                      <div key={idx} className="p-4 rounded-xl border border-black/10 bg-black/5 flex flex-col justify-center relative">
+                        <div className="flex items-center justify-between w-full gap-4">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-600 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
+                              {item.num || `0${idx + 1}`}
+                            </span>
+                            <span style={{ fontSize: `${Math.max(14, slide.fontSize || 18)}px` }} className="font-bold truncate text-slate-900">{item.title}</span>
+                          </div>
+
+                          {/* DOTTED LEADER LINE */}
+                          <div className="flex-1 border-b-2 border-dotted border-slate-400 opacity-40 mx-2 hidden sm:block"></div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-bold text-xs opacity-70 text-slate-900">{item.page || `S. 0${idx + 2}`}</span>
+                          </div>
                         </div>
 
-                        {/* DOTTED LEADER LINE */}
-                        <div className="flex-1 border-b-2 border-dotted border-slate-400 opacity-40 mx-2 hidden sm:block"></div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className="font-mono font-bold text-xs opacity-70 text-slate-900">{item.page || `S. 0${idx + 2}`}</span>
-                        </div>
+                        {/* SUB-DESCRIPTION */}
+                        {item.desc && (
+                          <div className="pl-11 mt-1">
+                            <p className="text-xs opacity-60 truncate text-slate-700">{item.desc}</p>
+                          </div>
+                        )}
                       </div>
-
-                      {/* SUB-DESCRIPTION */}
-                      {item.desc && (
-                        <div className="pl-11 mt-1">
-                          <p className="text-xs opacity-60 truncate text-slate-700">{item.desc}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
               </div>
            )}

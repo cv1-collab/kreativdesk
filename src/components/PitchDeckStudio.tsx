@@ -1542,8 +1542,67 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     setMobileTab('slides');
   };
 
+  const handleSyncAgendaFromSlides = async (slideId: string) => {
+    const currentSlide = slides.find(s => s.id === slideId);
+    if (!currentSlide) return;
+
+    const autoItems = slides
+      .map((s, idx) => {
+        const pageNum = idx + 1;
+        const formattedPage = pageNum < 10 ? `S. 0${pageNum}` : `S. ${pageNum}`;
+        const formattedNum = pageNum < 10 ? `0${pageNum}` : `${pageNum}`;
+
+        let autoDesc = s.content ? s.content.slice(0, 65).replace(/\n/g, ' ') : '';
+        if (!autoDesc) {
+          if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
+          else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
+          else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+          else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
+          else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
+          else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
+          else autoDesc = 'Projekt-Details & Dokumentation';
+        }
+
+        return {
+          num: formattedNum,
+          title: s.title || `Folie ${pageNum}`,
+          desc: autoDesc,
+          page: formattedPage,
+          isAgenda: s.layout === 'table-of-contents'
+        };
+      })
+      .filter(item => !item.isAgenda);
+
+    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: autoItems } : s));
+    try {
+      await supabase.from('slides').update({ agenda_items: autoItems }).eq('id', slideId);
+      addToast(`Inhaltsverzeichnis aus ${autoItems.length} Folien synchronisiert!`, "success");
+    } catch (e) {
+      console.warn("Agenda sync error:", e);
+    }
+  };
+
   const handleGenerateAgendaSlide = async () => {
-    const agendaItems = [
+    const autoItems = slides
+      .map((s, idx) => {
+        const pageNum = idx + 1;
+        const formattedPage = pageNum < 10 ? `S. 0${pageNum}` : `S. ${pageNum}`;
+        const formattedNum = pageNum < 10 ? `0${pageNum}` : `${pageNum}`;
+        let autoDesc = s.content ? s.content.slice(0, 65).replace(/\n/g, ' ') : '';
+        if (!autoDesc) {
+          if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
+          else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
+          else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+          else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
+          else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
+          else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
+          else autoDesc = 'Projekt-Details & Dokumentation';
+        }
+        return { num: formattedNum, title: s.title || `Folie ${pageNum}`, desc: autoDesc, page: formattedPage, isAgenda: s.layout === 'table-of-contents' };
+      })
+      .filter(item => !item.isAgenda);
+
+    const agendaItems = autoItems.length > 0 ? autoItems : [
       { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
       { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
       { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
@@ -1981,74 +2040,107 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           {slide.layout === 'table-of-contents' && (
              <div className="w-full h-full flex flex-col justify-between col-span-full overflow-hidden p-2">
                <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                 {((slide.agendaItems && slide.agendaItems.length > 0) ? slide.agendaItems : [
-                   { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
-                   { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
-                   { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
-                   { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
-                 ]).map((item: any, idx: number) => (
-                   <div key={idx} className={cn("p-4 rounded-xl border flex flex-col justify-center relative group transition-all", isDarkTheme ? "bg-white/5 border-white/10 hover:border-purple-500/30" : "bg-black/5 border-black/10 hover:border-purple-500/30")}>
-                     <div className="flex items-center justify-between w-full gap-4">
-                       <div className="flex items-center gap-3 flex-1 min-w-0">
-                         <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
-                           {item.num || `0${idx + 1}`}
-                         </span>
+                 {(() => {
+                   let itemsToRender = slide.agendaItems || [];
+                   if (itemsToRender.length === 0) {
+                     itemsToRender = slides
+                       .map((s, idx) => {
+                         const pageNum = idx + 1;
+                         const formattedPage = pageNum < 10 ? `S. 0${pageNum}` : `S. ${pageNum}`;
+                         const formattedNum = pageNum < 10 ? `0${pageNum}` : `${pageNum}`;
+                         let autoDesc = s.content ? s.content.slice(0, 65).replace(/\n/g, ' ') : '';
+                         if (!autoDesc) {
+                           if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
+                           else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
+                           else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+                           else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
+                           else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
+                           else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
+                           else autoDesc = 'Projekt-Details & Dokumentation';
+                         }
+                         return { num: formattedNum, title: s.title || `Folie ${pageNum}`, desc: autoDesc, page: formattedPage, isAgenda: s.layout === 'table-of-contents' };
+                       })
+                       .filter(item => !item.isAgenda);
+                   }
+
+                   if (itemsToRender.length === 0) {
+                     itemsToRender = [
+                       { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
+                       { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
+                       { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
+                       { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
+                     ];
+                   }
+
+                   return itemsToRender.map((item: any, idx: number) => (
+                     <div key={idx} className={cn("p-4 rounded-xl border flex flex-col justify-center relative group transition-all", isDarkTheme ? "bg-white/5 border-white/10 hover:border-purple-500/30" : "bg-black/5 border-black/10 hover:border-purple-500/30")}>
+                       <div className="flex items-center justify-between w-full gap-4">
+                         <div className="flex items-center gap-3 flex-1 min-w-0">
+                           <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
+                             {item.num || `0${idx + 1}`}
+                           </span>
+                           {!isPreviewMode ? (
+                             <input 
+                               type="text" 
+                               value={item.title} 
+                               onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'title', e.target.value)} 
+                               style={{ fontSize: `${Math.max(14, contentFs)}px` }} 
+                               className={cn("font-bold bg-transparent outline-none flex-1 border-b border-transparent focus:border-purple-500 truncate", tc)} 
+                               placeholder="Kapitel Titel..."
+                             />
+                           ) : (
+                             <span style={{ fontSize: `${Math.max(14, contentFs)}px` }} className={cn("font-bold truncate", tc)}>{item.title}</span>
+                           )}
+                         </div>
+
+                         {/* DOTTED LEADER LINE */}
+                         <div className="flex-1 border-b-2 border-dotted opacity-30 mx-2 hidden sm:block" style={{ borderColor: deckSettings.themeColor }}></div>
+
+                         <div className="flex items-center gap-2 shrink-0">
+                           {!isPreviewMode ? (
+                             <input 
+                               type="text" 
+                               value={item.page || `S. 0${idx + 2}`} 
+                               onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'page', e.target.value)} 
+                               className={cn("font-mono font-bold text-xs bg-transparent outline-none w-16 text-right border-b border-transparent focus:border-purple-500", tc)} 
+                             />
+                           ) : (
+                             <span className={cn("font-mono font-bold text-xs opacity-70", tc)}>{item.page || `S. 0${idx + 2}`}</span>
+                           )}
+                           {!isPreviewMode && (
+                             <button type="button" onClick={() => handleDeleteAgendaItem(slide.id, idx)} className="p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={13}/></button>
+                           )}
+                         </div>
+                       </div>
+
+                       {/* SUB-DESCRIPTION */}
+                       <div className="pl-11 mt-1">
                          {!isPreviewMode ? (
                            <input 
                              type="text" 
-                             value={item.title} 
-                             onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'title', e.target.value)} 
-                             style={{ fontSize: `${Math.max(14, contentFs)}px` }} 
-                             className={cn("font-bold bg-transparent outline-none flex-1 border-b border-transparent focus:border-purple-500 truncate", tc)} 
-                             placeholder="Kapitel Titel..."
+                             value={item.desc || ''} 
+                             onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
+                             className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
+                             placeholder="Kurze Beschreibung / Unterpunkte..."
                            />
                          ) : (
-                           <span style={{ fontSize: `${Math.max(14, contentFs)}px` }} className={cn("font-bold truncate", tc)}>{item.title}</span>
-                         )}
-                       </div>
-
-                       {/* DOTTED LEADER LINE */}
-                       <div className="flex-1 border-b-2 border-dotted opacity-30 mx-2 hidden sm:block" style={{ borderColor: deckSettings.themeColor }}></div>
-
-                       <div className="flex items-center gap-2 shrink-0">
-                         {!isPreviewMode ? (
-                           <input 
-                             type="text" 
-                             value={item.page || `S. 0${idx + 2}`} 
-                             onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'page', e.target.value)} 
-                             className={cn("font-mono font-bold text-xs bg-transparent outline-none w-16 text-right border-b border-transparent focus:border-purple-500", tc)} 
-                           />
-                         ) : (
-                           <span className={cn("font-mono font-bold text-xs opacity-70", tc)}>{item.page || `S. 0${idx + 2}`}</span>
-                         )}
-                         {!isPreviewMode && (
-                           <button type="button" onClick={() => handleDeleteAgendaItem(slide.id, idx)} className="p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={13}/></button>
+                           <p className="text-xs opacity-60 truncate">{item.desc}</p>
                          )}
                        </div>
                      </div>
-
-                     {/* SUB-DESCRIPTION */}
-                     <div className="pl-11 mt-1">
-                       {!isPreviewMode ? (
-                         <input 
-                           type="text" 
-                           value={item.desc || ''} 
-                           onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
-                           className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
-                           placeholder="Kurze Beschreibung / Unterpunkte..."
-                         />
-                       ) : (
-                         <p className="text-xs opacity-60 truncate">{item.desc}</p>
-                       )}
-                     </div>
-                   </div>
-                 ))}
+                   ));
+                 })()}
                </div>
 
                {!isPreviewMode && (
-                 <button type="button" onClick={() => handleAddAgendaItem(slide.id)} className="mt-3 py-2 px-4 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-indigo-500/30 w-fit shrink-0">
-                   <Plus size={14} /> <span>Kapitel / Agenda-Punkt hinzufügen</span>
-                 </button>
+                 <div className="flex items-center gap-3 mt-3 shrink-0 flex-wrap">
+                   <button type="button" onClick={() => handleSyncAgendaFromSlides(slide.id)} className="py-2 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30">
+                     <RefreshCw size={14} /> <span>⚡ Inhaltsverzeichnis aus Folien synchronisieren</span>
+                   </button>
+                   <button type="button" onClick={() => handleAddAgendaItem(slide.id)} className="py-2 px-4 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors border border-indigo-500/30">
+                     <Plus size={14} /> <span>Manuelles Kapitel hinzufügen</span>
+                   </button>
+                 </div>
                )}
              </div>
           )}
