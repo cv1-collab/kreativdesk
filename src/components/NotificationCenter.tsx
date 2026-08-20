@@ -1,7 +1,7 @@
 import { checkIsSuperAdmin } from '../config/admins';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Bell, CheckCircle2, Megaphone, Calendar, DollarSign, FileText, Folder, Video, Info } from 'lucide-react';
+import { X, Bell, CheckCircle2, Megaphone, Calendar, DollarSign, FileText, Folder, Video, Info, Camera, Box, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAI } from '../contexts/AIContext';
 import { useAuth } from '../contexts/AuthContext';

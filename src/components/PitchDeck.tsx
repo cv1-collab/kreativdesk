@@ -122,7 +122,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
       event: 'laser_move',
       payload: {
         id: currentUser?.uid || 'guest',
-        name: currentUser?.user_metadata?.full_name || currentUser?.email?.split('@')[0] || 'Präsentator',
+        name: currentUser?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Präsentator',
         x,
         y,
         slideIndex: slides.findIndex(s => s.id === activeSlideId)
