@@ -206,6 +206,9 @@ export default function App() {
                                   <Route path="documents" element={<Documents />} />
                                   <Route path="site" element={<SiteMonitoring />} />
                                 </Route>
+
+                                {/* Catch-all Fallback Route for Unknown URLs */}
+                                <Route path="*" element={<LandingPage />} />
                               </Routes>
                             </ErrorBoundary>
                           </Suspense>
