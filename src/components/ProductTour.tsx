@@ -146,13 +146,30 @@ export default function ProductTour() {
       ];
     }
 
-    const validSteps = newSteps.filter(step => {
-      if (typeof step.target === 'string') {
-        if (step.target === 'body') return true;
-        const el = document.querySelector(step.target) as HTMLElement;
-        if (!el) return false;
+    const getVisibleTargetElement = (selector: string): HTMLElement | string => {
+      if (selector === 'body') return 'body';
+      const elements = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+      for (const el of elements) {
         const rect = el.getBoundingClientRect();
-        return el.offsetParent !== null || (rect.width > 0 && rect.height > 0);
+        const isVisible = el.offsetParent !== null || (rect.width > 0 && rect.height > 0);
+        if (isVisible) return el;
+      }
+      return selector;
+    };
+
+    const validSteps = newSteps.map(step => {
+      if (typeof step.target === 'string') {
+        const visibleEl = getVisibleTargetElement(step.target);
+        return { ...step, target: visibleEl };
+      }
+      return step;
+    }).filter(step => {
+      if (typeof step.target === 'string') {
+        return step.target === 'body';
+      }
+      if (step.target instanceof HTMLElement) {
+        const rect = step.target.getBoundingClientRect();
+        return step.target.offsetParent !== null || (rect.width > 0 && rect.height > 0);
       }
       return true;
     });

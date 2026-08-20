@@ -264,6 +264,7 @@ export default function DocumentStudioModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<'form' | 'preview'>('form');
 
   // Recipient details
   const [recipientName, setRecipientName] = useState('Erika & Hans Muster');
@@ -560,11 +561,39 @@ ${footerText}
         </div>
       </header>
 
+      {/* Mobile View Switcher */}
+      <div className="md:hidden flex items-center justify-center p-2 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shrink-0 gap-2">
+        <button
+          type="button"
+          onClick={() => setMobileTab('form')}
+          className={cn(
+            "flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
+            mobileTab === 'form'
+              ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md"
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+          )}
+        >
+          ✏️ Formular & Absender
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('preview')}
+          className={cn(
+            "flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
+            mobileTab === 'preview'
+              ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md"
+              : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+          )}
+        >
+          📄 DIN-A4 Vorschau
+        </button>
+      </div>
+
       {/* Main Studio Canvas Area */}
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden bg-slate-100 dark:bg-slate-950 print:bg-white print:overflow-visible">
         
         {/* Left Sidebar Control Panel */}
-        <aside className="w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 md:p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200 print:hidden">
+        <aside className={cn("w-full md:w-80 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 md:p-5 flex-col gap-5 overflow-y-auto custom-scrollbar shrink-0 text-slate-900 dark:text-slate-200 print:hidden", mobileTab === 'form' ? 'flex' : 'hidden md:flex')}>
           
           {/* Target Scope Selection */}
           <div className="space-y-2">
@@ -774,7 +803,7 @@ ${footerText}
         </aside>
 
         {/* Right Canvas (A4 Page Multi-page Container) */}
-        <main className="flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50 p-2 sm:p-4 md:p-10 flex justify-center custom-scrollbar print:p-0 print:bg-white print:overflow-visible">
+        <main className={cn("flex-1 overflow-y-auto bg-slate-100/50 dark:bg-slate-950/50 p-2 sm:p-4 md:p-10 justify-center custom-scrollbar print:p-0 print:bg-white print:overflow-visible", mobileTab === 'preview' ? 'flex' : 'hidden md:flex')}>
           <div 
             className="w-full max-w-[210mm] min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-4 sm:p-8 md:p-[20mm] border border-slate-200 flex flex-col justify-between relative print:shadow-none print:border-none print:p-0 print:w-full print:max-w-none"
           >
