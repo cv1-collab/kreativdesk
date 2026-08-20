@@ -421,6 +421,33 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     ); 
   }
 
+  const getTransitionVariants = (effect: string = 'slide') => {
+    switch (effect) {
+      case 'slide':
+        return {
+          initial: { opacity: 0, x: 80 },
+          animate: { opacity: 1, x: 0 },
+          exit: { opacity: 0, x: -80 },
+          transition: { duration: 0.35 }
+        };
+      case 'zoom':
+        return {
+          initial: { opacity: 0, scale: 0.88 },
+          animate: { opacity: 1, scale: 1 },
+          exit: { opacity: 0, scale: 1.08 },
+          transition: { duration: 0.35 }
+        };
+      case 'fade':
+      default:
+        return {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 },
+          transition: { duration: 0.3 }
+        };
+    }
+  };
+
   return (
     <div className="flex flex-col w-full h-full bg-background text-text-primary rounded-xl overflow-hidden border border-border relative">
       {!isFullscreen && (
@@ -467,9 +494,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         )}
         {activeSlide ? (
           <div className="flex items-center justify-center shrink-0 transition-transform duration-500 ease-out" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
-            <div style={{ width: 1200, height: 675 }} className="shadow-[0_0_50px_rgba(0,0,0,0.5)] shrink-0 bg-white">
-               {renderSlideContent(activeSlide)}
-            </div>
+            <AnimatePresence mode="wait">
+              <motion.div key={activeSlide.id} {...getTransitionVariants(deckSettings.transitionEffect || 'slide')} style={{ width: 1200, height: 675 }} className="shadow-[0_0_50px_rgba(0,0,0,0.5)] shrink-0 bg-white rounded-xl overflow-hidden">
+                 {renderSlideContent(activeSlide)}
+              </motion.div>
+            </AnimatePresence>
           </div>
         ) : <Loader2 className="animate-spin text-white/30" size={48} />}
       </div>
