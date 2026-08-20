@@ -444,8 +444,15 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       return;
     }
     if (!file || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    
+    // 100 MB File Size Guard
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      addToast('Datei überschreitet das maximale Upload-Limit von 100 MB. Bitte Datei komprimieren.', 'error');
+      return;
+    }
 
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsUploading(true);
     try {
       const fileUrl = await uploadFileWithFallback(file, file.name, safeCompanyId, 'documents');
