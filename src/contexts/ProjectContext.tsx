@@ -6,6 +6,7 @@ import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
 import { ensureDefaultCompanyFolders } from '../services/seedService';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { sendNotification } from '../lib/notifications';
 
 export interface Project { 
   id: string; 
@@ -336,6 +337,16 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
       } catch (e) {}
 
+      try {
+        await sendNotification({
+          companyId: safeCompanyId,
+          title: 'Neues Projekt erstellt 🚀',
+          message: `Das Projekt "${createdProj.name}" wurde erfolgreich angelegt.`,
+          type: 'info',
+          link: `/project/${createdProj.id}/overview`
+        });
+      } catch (e) {}
+
       await refreshAllData();
       return createdProj;
     }
@@ -344,8 +355,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   };
 
   const removeProject = async (id: string) => {
+    const targetProj = projects.find(p => p.id === id);
+    const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
     try {
-      const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
       await offboardProject(id, safeCompanyId);
     } catch (err) {
       console.error("Fehler beim Löschen des Projekts:", err);
@@ -354,16 +366,42 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if (activeProjectId === id) {
       setActiveProjectId(null);
     }
+
+    if (safeCompanyId) {
+      try {
+        await sendNotification({
+          companyId: safeCompanyId,
+          title: 'Projekt gelöscht 🗑️',
+          message: `Das Projekt "${targetProj?.name || 'Unbekannt'}" wurde gelöscht.`,
+          type: 'info'
+        });
+      } catch (e) {}
+    }
+
     await fetchProjects();
   };
 
   const updateProjectStatus = async (id: string, status: string) => {
+    const targetProj = projects.find(p => p.id === id);
+    const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
     setProjects(prev => prev.map(p => p.id === id ? { ...p, status: status as any } : p));
     try {
       await supabase.from('projects').update({ status }).eq('id', id);
     } catch (err) {
       console.error("Fehler beim Aktualisieren des Projektstatus:", err);
     }
+
+    if (safeCompanyId) {
+      try {
+        await sendNotification({
+          companyId: safeCompanyId,
+          title: 'Projekt-Status aktualisiert',
+          message: `Der Status von "${targetProj?.name || 'Projekt'}" ist neu: ${status}.`,
+          type: 'info'
+        });
+      } catch (e) {}
+    }
+
     await fetchProjects();
   };
 

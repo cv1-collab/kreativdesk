@@ -39,25 +39,39 @@ export const sendNotification = async ({
   };
 
   try {
+    // 1. Update localStorage cache
     const cacheKey = `notifs_cache_${companyId}`;
     const rawCache = localStorage.getItem(cacheKey);
     const existingCache: AppNotification[] = rawCache ? JSON.parse(rawCache) : [];
     const updatedCache = [notifObj, ...existingCache].slice(0, 50);
     localStorage.setItem(cacheKey, JSON.stringify(updatedCache));
 
-    const { error } = await supabase.from('audit_logs').insert({
-      company_id: companyId,
-      action: 'NOTIFICATION',
-      details: JSON.stringify(notifObj)
-    });
-
-    if (error) {
-      try {
-        const existingConfig = await fetchSystemConfigJSON<{ notifications?: AppNotification[] }>(`notifications_${companyId}`, companyId);
-        const existingNotifs = existingConfig?.notifications || [];
-        await saveSystemConfigJSON(`notifications_${companyId}`, { notifications: [notifObj, ...existingNotifs].slice(0, 50), companyId }, companyId);
-      } catch (e) {}
+    // 2. Dispatch Live Event for instant UI update across tabs/components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('notif_updated', { detail: { companyId } }));
     }
+
+    // 3. Persist to Supabase notifications table & audit logs
+    try {
+      await supabase.from('notifications').insert({
+        id: notifObj.id,
+        company_id: companyId,
+        title: notifObj.title,
+        message: notifObj.message,
+        type: notifObj.type,
+        link: notifObj.link,
+        is_read: false,
+        created_at: notifObj.created_at
+      });
+    } catch(e) {}
+
+    try {
+      await supabase.from('audit_logs').insert({
+        company_id: companyId,
+        action: 'NOTIFICATION',
+        details: JSON.stringify(notifObj)
+      });
+    } catch(e) {}
   } catch (err) {
     // Silent fallback catch
   }

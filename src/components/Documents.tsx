@@ -17,6 +17,7 @@ import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
 import DocumentStudioModal from './DocumentStudioModal';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
+import { sendNotification } from '../lib/notifications';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { 
@@ -539,6 +540,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       addToast('Aktion in der Demo blockiert', 'info');
       return;
     }
+    const targetDoc = documents.find(d => d.id === id);
     if (!window.confirm(t('confirm_delete'))) return;
     try {
       const safeCompanyId = currentUser?.companyId || currentUser?.uid;
@@ -551,6 +553,18 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         if (safeCompanyId) subDelQuery = subDelQuery.eq('company_id', safeCompanyId);
         await subDelQuery;
       }
+
+      if (safeCompanyId) {
+        try {
+          await sendNotification({
+            companyId: safeCompanyId,
+            title: isFolder ? 'Ordner gelöscht 🗑️' : 'Datei gelöscht 🗑️',
+            message: `${isFolder ? 'Der Ordner' : 'Die Datei'} "${targetDoc?.name || 'Dokument'}" wurde gelöscht.`,
+            type: 'document'
+          });
+        } catch (e) {}
+      }
+
       addToast("Gelöscht", "info");
       fetchDocuments();
     } catch (err) {

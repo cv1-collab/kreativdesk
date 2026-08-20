@@ -62,12 +62,16 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
     if (!safeCompanyId) return;
     loadNotifications();
 
+    const handleNotifUpdate = () => loadNotifications();
+    window.addEventListener('notif_updated', handleNotifUpdate);
+
     const channel = supabase
       .channel('notif-center-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `company_id=eq.${safeCompanyId}` }, loadNotifications)
       .subscribe();
 
     return () => {
+      window.removeEventListener('notif_updated', handleNotifUpdate);
       if (channel) {
         supabase.removeChannel(channel).catch(() => {});
       }

@@ -18,6 +18,7 @@ import { offlineSyncManager } from '../utils/offlineSyncManager';
 import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
+import { sendNotification } from '../lib/notifications';
 
 // NATIVE PDF IMPORTS
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -460,6 +461,14 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           projectId: currentProjectId
         };
         setDefects(prev => [...prev, newDefectItem as Defect]);
+        try {
+          await sendNotification({
+            companyId: currentUser.companyId,
+            title: 'Neuer Mangel erfasst ⚠️',
+            message: `Mangel "${newDefectItem.title}" wurde im System erfasst.`,
+            type: 'info'
+          });
+        } catch (e) {}
       }
       setIsModalOpen(false); 
       setCurrentDefect(DEFAULT_DEFECT); 
@@ -476,6 +485,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const handleDeleteDefect = async (id: string) => {
     if (!window.confirm(t('delete_confirm'))) return;
 
+    const targetDefect = defects.find(d => d.id === id);
     setDefects(prev => prev.filter(d => d.id !== id));
 
     if (currentProjectId === 'demo-1') {
@@ -485,6 +495,17 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
 
     try { 
       await supabase.from('defects').delete().eq('id', id); 
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      if (safeCompanyId) {
+        try {
+          await sendNotification({
+            companyId: safeCompanyId,
+            title: 'Mangel gelöscht 🗑️',
+            message: `Mangel "${targetDefect?.title || 'Ticket'}" wurde gelöscht.`,
+            type: 'info'
+          });
+        } catch(e) {}
+      }
       addToast(t('delete') + ' ' + t('completed'), 'success'); 
     } catch (error) { 
       addToast('Fehler beim Löschen', 'error'); 
