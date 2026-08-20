@@ -239,8 +239,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [presenterIndex, setPresenterIndex] = useState(0);
   const [presenterSeconds, setPresenterSeconds] = useState(0);
   const [isLaserActive, setIsLaserActive] = useState(false);
-  const [laserPos, setLaserPos] = useState({ x: 500, y: 300 });
+  const [laserPos, setLaserPos] = useState({ x: -100, y: -100 });
   const [showPresenterNotes, setShowPresenterNotes] = useState(true);
+  const [animKey, setAnimKey] = useState(0);
 
   // Connected project modules check for live badges
   const hasRealDefects = (defects || []).some((d: any) => d.projectId === targetId);
@@ -2135,7 +2136,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           {activeSlide ? (
             <div className="flex items-center justify-center shrink-0" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
               <AnimatePresence mode="wait">
-                <motion.div key={activeSlide.id} {...getTransitionVariants()} style={{ width: 1000, height: 562 }} className="shrink-0 shadow-2xl">
+                <motion.div key={`${activeSlide.id}-${animKey}-${deckSettings.transitionEffect || 'fade'}`} {...getTransitionVariants()} style={{ width: 1000, height: 562 }} className="shrink-0 shadow-2xl">
                    {renderSlideContent(activeSlide)}
                 </motion.div>
               </AnimatePresence>
@@ -2275,8 +2276,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       <button
                         key={fx.id}
                         type="button"
-                        onClick={() => updateDeckSettings({ transitionEffect: fx.id as any })}
-                        className={cn("flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/20 border-purple-500 text-purple-400" : "bg-surface border-border text-text-primary")}
+                        onClick={() => { updateDeckSettings({ transitionEffect: fx.id as any }); setAnimKey(prev => prev + 1); }}
+                        className={cn("flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/20 border-purple-500 text-purple-400" : "bg-surface border-border text-text-primary")}
                       >
                         {fx.label}
                       </button>
@@ -2451,8 +2452,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       <button
                         key={fx.id}
                         type="button"
-                        onClick={() => updateDeckSettings({ transitionEffect: fx.id as any })}
-                        className={cn("py-1.5 px-2 rounded-md border text-center transition-all text-[11px] font-bold", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/10 border-purple-500 text-purple-400 shadow-sm" : "bg-background border-border text-text-muted hover:text-text-primary")}
+                        onClick={() => { updateDeckSettings({ transitionEffect: fx.id as any }); setAnimKey(prev => prev + 1); }}
+                        className={cn("py-1.5 px-2 rounded-md border text-center transition-all text-[11px] font-bold cursor-pointer", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/10 border-purple-500 text-purple-400 shadow-sm" : "bg-background border-border text-text-muted hover:text-text-primary")}
                       >
                         {fx.label}
                       </button>
@@ -2699,7 +2700,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               {activeSlide ? (
                 <div className="flex items-center justify-center shrink-0" style={{ transform: `scale(${canvasScale})`, transformOrigin: 'center' }}>
                   <AnimatePresence mode="wait">
-                    <motion.div key={activeSlide.id} {...getTransitionVariants()} style={{ width: 1000, height: 562 }} className="shadow-2xl shrink-0 transition-transform duration-300">
+                    <motion.div key={`${activeSlide.id}-${animKey}-${deckSettings.transitionEffect || 'fade'}`} {...getTransitionVariants()} style={{ width: 1000, height: 562 }} className="shadow-2xl shrink-0 transition-transform duration-300">
                       {renderSlideContent(activeSlide)}
                     </motion.div>
                   </AnimatePresence>
@@ -2773,61 +2774,61 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       <AnimatePresence>
         {isPdfModalOpen && (
           <div className="fixed inset-0 z-[120000] flex items-center justify-center p-0 lg:p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-zinc-900 border border-white/10 lg:rounded-2xl shadow-2xl w-full max-w-6xl h-[100dvh] lg:h-[90vh] flex flex-col lg:flex-row overflow-hidden">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className={cn("border lg:rounded-2xl shadow-2xl w-full max-w-6xl h-[100dvh] lg:h-[90vh] flex flex-col lg:flex-row overflow-hidden", deckSettings.colorMode === 'light' ? "bg-white border-slate-200 text-slate-900" : "bg-zinc-900 border-white/10 text-white")}>
               
-              <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/30 flex flex-col shrink-0 h-[45dvh] lg:h-full z-20">
-                <div className="p-4 lg:p-6 pb-4 border-b border-white/10 flex flex-row items-center justify-between sticky top-0 bg-black/90 z-10 shrink-0">
-                  <h3 className="font-semibold text-lg text-white flex items-center gap-2"><PenTool size={18} className="text-accent-ai" /> {t('export_pdf_title')}</h3>
-                  <button type="button" onClick={() => setIsPdfModalOpen(false)} className="p-2 text-white/50 hover:text-white bg-white/5 rounded-lg border border-white/10"><X size={20}/></button>
+              <div className={cn("w-full lg:w-80 border-b lg:border-b-0 lg:border-r flex flex-col shrink-0 h-[45dvh] lg:h-full z-20", deckSettings.colorMode === 'light' ? "border-slate-200 bg-slate-50" : "border-white/10 bg-black/30")}>
+                <div className={cn("p-4 lg:p-6 pb-4 border-b flex flex-row items-center justify-between sticky top-0 z-10 shrink-0", deckSettings.colorMode === 'light' ? "border-slate-200 bg-white" : "border-white/10 bg-black/90")}>
+                  <h3 className={cn("font-semibold text-lg flex items-center gap-2", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")}><PenTool size={18} className="text-accent-ai" /> {t('export_pdf_title')}</h3>
+                  <button type="button" onClick={() => setIsPdfModalOpen(false)} className={cn("p-2 rounded-lg border transition-colors", deckSettings.colorMode === 'light' ? "text-slate-500 hover:text-slate-900 bg-slate-100 border-slate-200" : "text-white/50 hover:text-white bg-white/5 border-white/10")}><X size={20}/></button>
                 </div>
                 
-                <div className="p-4 lg:p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar bg-black/50">
-                  <button type="button" onClick={refreshPdfPreview} disabled={isGeneratingPdf} className="w-full py-3 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-lg text-sm font-bold hover:bg-accent-ai/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                <div className={cn("p-4 lg:p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar", deckSettings.colorMode === 'light' ? "bg-slate-50/50" : "bg-black/50")}>
+                  <button type="button" onClick={refreshPdfPreview} disabled={isGeneratingPdf} className="w-full py-3 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-lg text-sm font-bold hover:bg-accent-ai/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
                     {isGeneratingPdf ? <Loader2 size={16} className="animate-spin shrink-0" /> : <RefreshCw size={16} className="shrink-0" />} 
                     <span>Vorschau aktualisieren</span>
                   </button>
 
                   <div className="space-y-3 pt-2">
-                    <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('company_logo')}</label>
-                    <div className="border-2 border-dashed border-white/10 rounded-lg p-4 flex flex-col items-center justify-center text-center hover:bg-white/5 transition-colors cursor-pointer relative bg-white/5">
+                    <label className={cn("text-xs font-bold uppercase tracking-widest", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('company_logo')}</label>
+                    <div className={cn("border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center text-center transition-colors cursor-pointer relative", deckSettings.colorMode === 'light' ? "border-slate-300 hover:bg-slate-100 bg-white" : "border-white/10 hover:bg-white/5 bg-white/5")}>
                       <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
-                      {deckSettings.logoUrl ? <div className="text-xs text-emerald-400 font-bold">{t('logo_loaded')}</div> : <><ImageIcon size={24} className="text-white/30 mb-2" /><span className="text-xs text-white/50 font-medium">{t('upload_logo')}</span></>}
+                      {deckSettings.logoUrl ? <div className="text-xs text-emerald-500 font-bold">{t('logo_loaded')}</div> : <><ImageIcon size={24} className={cn("mb-2", deckSettings.colorMode === 'light' ? "text-slate-400" : "text-white/30")} /><span className={cn("text-xs font-medium", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('upload_logo')}</span></>}
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('color')}</label>
-                    <div className="flex flex-row items-center gap-3 bg-black border border-white/10 rounded-xl p-2 shadow-inner">
+                    <label className={cn("text-xs font-bold uppercase tracking-widest", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('color')}</label>
+                    <div className={cn("flex flex-row items-center gap-3 border rounded-xl p-2 shadow-inner", deckSettings.colorMode === 'light' ? "bg-white border-slate-200" : "bg-black border-white/10")}>
                        <input type="color" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
-                       <input type="text" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className="flex-1 bg-transparent text-sm font-mono font-bold text-white outline-none uppercase" />
+                       <input type="text" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className={cn("flex-1 bg-transparent text-sm font-mono font-bold outline-none uppercase", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")} />
                      </div>
                   </div>
                   
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('format')}</label>
+                    <label className={cn("text-xs font-bold uppercase tracking-widest", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('format')}</label>
                     <div className="grid grid-cols-1 gap-2">
                       <button type="button" className="py-2 px-3 text-sm font-bold rounded-md border transition-colors bg-accent-ai/10 border-accent-ai text-accent-ai">16:9 Presentation</button>
                     </div>
                   </div>
                 </div>
                 
-                <div className="p-4 border-t border-white/10 bg-black/90 flex flex-col gap-3 shrink-0">
-                  <button type="button" onClick={handleSaveToCloud} disabled={isSavingToCloud || isGeneratingPdf || !pdfPreviewUrl} className="w-full py-3 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-lg text-sm font-bold hover:bg-indigo-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm">
+                <div className={cn("p-4 border-t flex flex-col gap-3 shrink-0", deckSettings.colorMode === 'light' ? "border-slate-200 bg-white" : "border-white/10 bg-black/90")}>
+                  <button type="button" onClick={handleSaveToCloud} disabled={isSavingToCloud || isGeneratingPdf || !pdfPreviewUrl} className="w-full py-3 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 rounded-lg text-sm font-bold hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm cursor-pointer">
                     {isSavingToCloud ? <Loader2 size={18} className="animate-spin shrink-0" /> : <Cloud size={18} className="shrink-0" />} 
                     <span className="truncate">{isSavingToCloud ? t('saving_cloud') : t('save_cloud')}</span>
                   </button>
-                  <button type="button" onClick={handleDownloadDesktop} disabled={isGeneratingPdf || !pdfPreviewUrl} className="w-full py-3 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-500 transition-colors flex items-center justify-center gap-2 shadow-lg disabled:opacity-50">
+                  <button type="button" onClick={handleDownloadDesktop} disabled={isGeneratingPdf || !pdfPreviewUrl} className="w-full py-3 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-500 transition-colors flex items-center justify-center gap-2 shadow-lg disabled:opacity-50 cursor-pointer">
                     <Download size={18} className="shrink-0" /> 
                     <span className="truncate">{t('download_desktop')}</span>
                   </button>
                 </div>
               </div>
               
-              <div className="flex-1 bg-zinc-950 w-full relative flex flex-col h-[55dvh] lg:h-full">
+              <div className={cn("flex-1 w-full relative flex flex-col h-[55dvh] lg:h-full", deckSettings.colorMode === 'light' ? "bg-slate-100" : "bg-zinc-950")}>
                 {pdfPreviewUrl ? (
                    <iframe src={pdfPreviewUrl} className="flex-1 w-full h-full border-none bg-white"></iframe>
                 ) : (
-                   <div className="flex-1 w-full flex flex-col items-center justify-center text-white/30 text-sm font-bold gap-4">
+                   <div className={cn("flex-1 w-full flex flex-col items-center justify-center text-sm font-bold gap-4", deckSettings.colorMode === 'light' ? "text-slate-400" : "text-white/30")}>
                     {isGeneratingPdf ? <Loader2 size={48} className="animate-spin text-accent-ai opacity-50" /> : <PenTool size={48} className="opacity-20" />}
                     {isGeneratingPdf ? t('generating_pdf') : 'Klicke auf "Vorschau aktualisieren"'}
                   </div>

@@ -41,6 +41,7 @@ export const printElementToPdf = async (element: HTMLElement, title: string = 'D
               * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
               .no-print { display: none !important; }
               ::-webkit-scrollbar { display: none !important; }
+              div, section, p, article { overflow: visible !important; max-height: none !important; }
             </style>
           </head>
           <body>${element.outerHTML}</body>

@@ -1446,12 +1446,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           <AnimatePresence>
             {selectedEvent && (
               <motion.div key="edit-event-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative">
-                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
+                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden relative">
+                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0">
                     <h3 className="font-bold flex items-center gap-2 text-text-primary"><Edit3 size={18} className="text-accent-ai" /> {t('details')}</h3>
                     <button onClick={() => setSelectedEvent(null)} className="text-text-muted hover:text-text-primary p-2"><X size={20} /></button>
                   </div>
-                  <form onSubmit={handleUpdateCalendarEvent} className="p-6 space-y-4">
+                  <form onSubmit={handleUpdateCalendarEvent} className="p-6 space-y-4 overflow-y-auto max-h-[calc(85vh-70px)] custom-scrollbar">
                     <input type="text" value={selectedEvent.title} onChange={e => setSelectedEvent({ ...selectedEvent, title: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-black text-text-primary outline-none focus:border-accent-ai" placeholder={t('meeting_title')} />
 
                     <select required value={selectedEvent.projectId} onChange={e => setSelectedEvent({ ...selectedEvent, projectId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-accent-ai">
@@ -1720,12 +1720,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           <AnimatePresence>
             {isEventModalOpen && !selectedEvent && (
               <motion.div key="new-event-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
-                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative">
-                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
+                <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden relative">
+                  <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50 shrink-0">
                     <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><CalendarDays size={18} className="text-accent-ai" /> {t('schedule_appointment')}</h3>
                     <button onClick={() => setIsEventModalOpen(false)} className="text-text-muted hover:text-text-primary p-2"><X size={20} /></button>
                   </div>
-                  <form onSubmit={handleSaveCalendarEvent} className="p-6 space-y-6">
+                  <form onSubmit={handleSaveCalendarEvent} className="p-6 space-y-6 overflow-y-auto max-h-[calc(85vh-70px)] custom-scrollbar">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('meeting_title')}</label>
