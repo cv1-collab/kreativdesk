@@ -42,6 +42,13 @@ export default function AIConcierge() {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
+  const publicRoutes = ['/', '/login', '/signup', '/reset-password', '/pricing', '/privacy', '/terms', '/imprint'];
+  const isPublicRoute = publicRoutes.includes(location.pathname) || location.pathname.startsWith('/lead-form') || location.pathname.startsWith('/guest-meet');
+
+  if (!currentUser || isPublicRoute) {
+    return null;
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);

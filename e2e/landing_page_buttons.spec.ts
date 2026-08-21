@@ -188,9 +188,9 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
     await searchInput.fill('');
     await page.waitForTimeout(200);
 
-    // 3. 4 Topic Cards
+    // 3. 3 Topic Cards
     const topicCards = helpSection.locator('.grid > div');
-    expect(await topicCards.count()).toBe(4);
+    expect(await topicCards.count()).toBe(3);
 
     // 4. Quick Prompt pills
     const pill = helpSection.locator('button:has-text("Folgekosten"), button:has-text("renewal")').first();

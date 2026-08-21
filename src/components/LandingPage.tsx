@@ -507,14 +507,6 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       cta: t('help_t3_cta'),
       icon: <Shield className="w-6 h-6 text-blue-500" />,
       action: () => scrollTo('infrastructure')
-    },
-    {
-      id: 'support',
-      title: t('help_t4_title'),
-      desc: t('help_t4_desc'),
-      cta: t('help_t4_cta'),
-      icon: <MessageSquare className="w-6 h-6 text-blue-500" />,
-      action: () => navigate('/lead-form')
     }
   ];
 
@@ -1316,8 +1308,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               )}
             </AnimatePresence>
 
-            {/* 4 Standard Themenkarten */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* 3 Standard Themenkarten */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {filteredHelpTopics.map((topic) => (
                 <div key={topic.id} className="p-6 bg-background border border-border hover:border-blue-500/40 rounded-3xl transition-all flex flex-col justify-between group shadow-sm">
                   <div>
