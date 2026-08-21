@@ -88,10 +88,13 @@ export default function MeetChat() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
-  const { activeProjectId, setActiveProject, projectMembers, companyUsers } = useProject();
+  const { activeProjectId, setActiveProject, projectMembers, companyUsers, isDemoMode } = useProject() as any;
 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
+  const currentProjectId = routeProjectId || id || activeProjectId || 'global';
+  const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
 
   const {
     localStream, remoteStreams, screenStream, isMicOn, isCamOn, isScreenSharing,
@@ -108,8 +111,6 @@ export default function MeetChat() {
   });
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
   const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
-
-  const currentProjectId = routeProjectId || id || activeProjectId || 'global';
 
   const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
     try {
@@ -244,6 +245,11 @@ export default function MeetChat() {
   };
 
   const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDemo) {
+      addToast('Hintergrund-Upload ist in der Demo deaktiviert.', 'info');
+      if (e?.target) e.target.value = '';
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -262,6 +268,18 @@ export default function MeetChat() {
 
   const openHistoryModal = async () => {
     setIsHistoryModalOpen(true);
+    if (isDemo) {
+      setCallHistory([
+        {
+          id: 'demo-hist-1',
+          title: 'Projektstart & Architektur-Briefing',
+          started_at: new Date(Date.now() - 86400000).toISOString(),
+          duration: '32 min',
+          meetingLink: '/project/demo-1/meet'
+        }
+      ]);
+      return;
+    }
     setIsLoadingHistory(true);
     try {
       let historyItems: any[] = [];
@@ -377,6 +395,30 @@ export default function MeetChat() {
       });
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
 
+      // DEMO MODUS: Keine Supabase Websockets / DB Mutations
+      if (isDemo) {
+        if (!msgData.isAI && !msgData.isTranscript) {
+          setIsAITyping(true);
+          setTimeout(() => {
+            setIsAITyping(false);
+            const aiReply = {
+              id: `msg-ai-${Date.now()}`,
+              sender: 'KI Concierge',
+              avatar: 'AI',
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              text: currentLang === 'de'
+                ? 'KI Concierge (Demo): Deine Nachricht wurde empfangen! In der Vollversion synchronisieren alle Chatnachrichten in Echtzeit mit deinem Projektteam.'
+                : 'AI Concierge (Demo): Message received! In the full version, all messages synchronize in real time with your project team.',
+              isAI: true,
+              createdAt: new Date().toISOString()
+            };
+            setMessages(prev => [...prev, aiReply]);
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+          }, 800);
+        }
+        return;
+      }
+
       // Live Broadcast to connected peers in room
       supabase.channel(`chat_messages_${currentMeetingCallId}`).send({
         type: 'broadcast',
@@ -486,6 +528,10 @@ export default function MeetChat() {
   };
 
   const openScheduleModal = () => {
+    if (isDemo) {
+      addToast('Call-Planung ist in der Demo deaktiviert.', 'info');
+      return;
+    }
     setGeneratedMeetingId(`meet-${Date.now()}`);
     setNewCallEvent({ title: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'call', description: '', participants: [], externalEmails: [] });
     setNewCallExternalEmailInput('');
@@ -531,6 +577,47 @@ export default function MeetChat() {
   }, [activeProjectId, setActiveProject, callStatus, joinCall, startCall]);
 
   useEffect(() => {
+    // DEMO-MODUS: Offline Initial-State, keine Supabase WebSocket Kanäle
+    if (isDemo) {
+      setMessages([
+        {
+          id: 'demo-msg-1',
+          sender: 'Sarah Meier',
+          avatar: 'SM',
+          time: '10:14',
+          text: 'Guten Morgen Team! Die Statik-Prüfung für das 2. OG wurde soeben freigegeben.',
+          createdAt: new Date(Date.now() - 3600000).toISOString()
+        },
+        {
+          id: 'demo-msg-2',
+          sender: 'Michael Chen',
+          avatar: 'MC',
+          time: '10:18',
+          text: 'Perfekt, der Baumeister startet morgen früh mit der Armierung.',
+          createdAt: new Date(Date.now() - 3000000).toISOString()
+        },
+        {
+          id: 'demo-msg-3',
+          sender: 'KI Concierge',
+          avatar: 'AI',
+          time: '10:19',
+          text: 'Automatischer Reminder: Wöchentliche Bauherren-Besprechung um 14:00 Uhr.',
+          isAI: true,
+          createdAt: new Date(Date.now() - 2500000).toISOString()
+        }
+      ]);
+      setUpcomingCalls([
+        {
+          id: 'demo-call-1',
+          title: 'Wöchentliche Koordination & Planung',
+          date: new Date().toISOString().split('T')[0],
+          time: '14:00',
+          meetingLink: '/project/demo-1/meet'
+        }
+      ]);
+      return;
+    }
+
     const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
 
@@ -701,6 +788,12 @@ export default function MeetChat() {
   }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId, activeCallRoomId]);
 
   const handleFileAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDemo) {
+      addToast('Datei-Uploads im Chat sind in der Demo-Version deaktiviert.', 'info');
+      if (e?.target) e.target.value = '';
+      return;
+    }
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -789,6 +882,11 @@ export default function MeetChat() {
 
   const handleScheduleCall = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      addToast('Call-Planung ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
+      setIsScheduleModalOpen(false);
+      return;
+    }
     if (!newCallEvent.title || !newCallEvent.date || !currentUser || !currentUser.companyId) return;
     try {
       const eventId = `evt-${Date.now()}`;
@@ -1225,7 +1323,14 @@ export default function MeetChat() {
                   )}
 
                   <div className="flex justify-center items-center gap-3 w-full mb-5">
-                    <button onClick={async () => { await ensureCallRegistered(activeCallRoomId); await startCall(selectedUserIds, activeCallRoomId); }} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                    <button onClick={async () => {
+                      if (isDemo) {
+                        addToast('Live-Video-Calls sind in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
+                        return;
+                      }
+                      await ensureCallRegistered(activeCallRoomId); 
+                      await startCall(selectedUserIds, activeCallRoomId); 
+                    }} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
                       <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
                   </div>
@@ -1266,7 +1371,13 @@ export default function MeetChat() {
 
                   <div className="w-full flex gap-2">
                     <input type="text" value={joinCallId} onChange={e => setJoinCallId(e.target.value)} placeholder="Meeting-ID..." className="flex-1 bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
-                    <button onClick={() => joinCall()} disabled={!joinCallId.trim()} className="px-5 py-2.5 bg-surface border border-border rounded-xl font-bold text-text-primary hover:bg-white/5 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"><PhoneForwarded size={16} /> Join</button>
+                    <button onClick={() => {
+                      if (isDemo) {
+                        addToast('Live-Video-Calls sind in der Demo deaktiviert.', 'info');
+                        return;
+                      }
+                      joinCall();
+                    }} disabled={!joinCallId.trim()} className="px-5 py-2.5 bg-surface border border-border rounded-xl font-bold text-text-primary hover:bg-white/5 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"><PhoneForwarded size={16} /> Join</button>
                   </div>
                 </div>
               ) : (
@@ -1405,13 +1516,25 @@ export default function MeetChat() {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
-                          onClick={() => handleDownloadICS(call)}
+                          onClick={() => {
+                            if (isDemo) {
+                              addToast('Kalender-Export ist in der Demo deaktiviert.', 'info');
+                              return;
+                            }
+                            handleDownloadICS(call);
+                          }}
                           className="p-1.5 bg-surface hover:bg-white/10 border border-border/50 text-text-muted hover:text-text-primary rounded-md text-xs font-bold transition-colors cursor-pointer"
                           title="📅 .ics Kalenderdatei herunterladen"
                         >
                           <Calendar size={13} />
                         </button>
-                        <button onClick={() => { joinCall(call.meetingLink.split('join=')[1] || null); }} className="px-3 py-1.5 bg-accent-success/10 text-accent-success hover:bg-accent-success/20 border border-accent-success/20 rounded-md text-xs font-bold transition-colors">
+                        <button onClick={() => {
+                          if (isDemo) {
+                            addToast('Live-Video-Calls sind in der Demo deaktiviert.', 'info');
+                            return;
+                          }
+                          joinCall(call.meetingLink.split('join=')[1] || null); 
+                        }} className="px-3 py-1.5 bg-accent-success/10 text-accent-success hover:bg-accent-success/20 border border-accent-success/20 rounded-md text-xs font-bold transition-colors">
                           {t('join_now')}
                         </button>
                       </div>
@@ -1486,9 +1609,15 @@ export default function MeetChat() {
             </div>
 
             <div className="p-4 border-t border-border/50 bg-surface/80 shrink-0">
-              <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileAttachment} />
+              <input type="file" className="hidden" ref={fileInputRef} onChange={handleFileAttachment} disabled={isDemo} />
               <form onSubmit={handleSendMessage} className="tour-meet-chat relative flex items-center">
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="tour-meet-files absolute left-3 text-text-muted hover:text-text-primary transition-colors disabled:opacity-50" disabled={isUploadingFile}>
+                <button type="button" onClick={() => {
+                  if (isDemo) {
+                    addToast('Datei-Uploads im Chat sind in der Demo deaktiviert.', 'info');
+                    return;
+                  }
+                  fileInputRef.current?.click();
+                }} className="tour-meet-files absolute left-3 text-text-muted hover:text-text-primary transition-colors disabled:opacity-50" disabled={isUploadingFile}>
                   {isUploadingFile ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
                 </button>
                 <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder={t('type_message')} className="w-full bg-background border border-border/50 rounded-xl py-3 pl-10 pr-12 text-sm font-medium text-text-primary focus:outline-none focus:border-accent-ai transition-all placeholder:text-text-muted" disabled={isUploadingFile} />

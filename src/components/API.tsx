@@ -5,12 +5,15 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { useProject } from '../contexts/ProjectContext';
 import { webhookNotifier, WebhookEndpoint, WebhookEventType, WebhookTestResult } from '../utils/webhookNotifier';
 
 export default function API() {
   const { language } = useLanguage();
   const { addToast } = useToast();
   const { currentUser } = useAuth();
+  const { isDemoMode } = useProject() as any;
+  const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const isDe = language === 'de';
 
   const [keys, setKeys] = useState<{ id: string; name: string; key: string; created: string; lastUsed: string }[]>([]);
@@ -34,6 +37,18 @@ export default function API() {
   ]);
 
   const fetchKeys = async () => {
+    if (isDemo) {
+      setKeys([
+        {
+          id: 'demo-key-1',
+          name: 'Bexio / Abacus Sync',
+          key: 'kd_live_89f72b1c4e92a10d93f7',
+          created: new Date(Date.now() - 604800000).toLocaleDateString(isDe ? 'de-CH' : 'en-US'),
+          lastUsed: isDe ? 'Vor 2 Stunden' : '2 hours ago'
+        }
+      ]);
+      return;
+    }
     if (!currentUser?.companyId) return;
     try {
       const { data } = await supabase
@@ -57,6 +72,20 @@ export default function API() {
   };
 
   const loadWebhooks = () => {
+    if (isDemo) {
+      setEndpoints([
+        {
+          id: 'demo-wh-1',
+          name: 'Zapier Webhook (Projekt-Sync)',
+          url: 'https://hooks.zapier.com/hooks/catch/demo123',
+          events: ['defect.created', 'document.uploaded'],
+          active: true,
+          createdAt: new Date(Date.now() - 1209600000).toISOString()
+        }
+      ]);
+      setSecretKey('whsec_demo_9847291048123abcdef');
+      return;
+    }
     const companyId = currentUser?.companyId;
     const epList = webhookNotifier.getWebhooks(companyId);
     setEndpoints(epList);
@@ -67,7 +96,7 @@ export default function API() {
   useEffect(() => {
     fetchKeys();
     loadWebhooks();
-  }, [currentUser?.companyId, isDe]);
+  }, [currentUser?.companyId, isDe, isDemo]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
@@ -77,6 +106,10 @@ export default function API() {
   };
 
   const handleCreateKey = async () => {
+    if (isDemo) {
+      addToast(isDe ? 'API-Key Erstellung ist in der Demo deaktiviert.' : 'API Key creation is disabled in demo.', 'info');
+      return;
+    }
     if (!currentUser?.companyId) return;
     try {
       const newKey = `kd_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
@@ -94,6 +127,10 @@ export default function API() {
   };
 
   const handleDeleteKey = async (id: string) => {
+    if (isDemo) {
+      addToast(isDe ? 'Demo API-Keys können nicht gelöscht werden.' : 'Demo API keys cannot be deleted.', 'info');
+      return;
+    }
     try {
       await supabase.from('api_keys').delete().eq('id', id);
       addToast(isDe ? 'API Key gelöscht.' : 'API Key deleted.', 'info');
@@ -104,12 +141,20 @@ export default function API() {
   };
 
   const handleRegenerateSecret = () => {
+    if (isDemo) {
+      addToast(isDe ? 'In der Demo-Vorschau geschützt.' : 'Protected in demo.', 'info');
+      return;
+    }
     const newSec = webhookNotifier.regenerateSecretKey(currentUser?.companyId);
     setSecretKey(newSec);
     addToast(isDe ? 'Neuer Webhook Secret Key generiert!' : 'New Webhook Secret Key generated!', 'success');
   };
 
   const handleToggleEndpoint = (id: string) => {
+    if (isDemo) {
+      addToast(isDe ? 'In der Demo-Vorschau geschützt.' : 'Protected in demo.', 'info');
+      return;
+    }
     const updated = endpoints.map(ep => ep.id === id ? { ...ep, active: !ep.active } : ep);
     setEndpoints(updated);
     webhookNotifier.saveWebhooks(updated, currentUser?.companyId);
@@ -117,6 +162,10 @@ export default function API() {
   };
 
   const handleDeleteEndpoint = (id: string) => {
+    if (isDemo) {
+      addToast(isDe ? 'Demo-Webhooks können nicht gelöscht werden.' : 'Demo webhooks cannot be deleted.', 'info');
+      return;
+    }
     const updated = endpoints.filter(ep => ep.id !== id);
     setEndpoints(updated);
     webhookNotifier.saveWebhooks(updated, currentUser?.companyId);

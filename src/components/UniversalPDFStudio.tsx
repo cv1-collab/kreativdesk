@@ -1,8 +1,9 @@
-/* eslint-disable react-refresh/only-export-components */
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { cn } from '../utils';
+import { useProject } from '../contexts/ProjectContext';
+import { useToast } from '../contexts/ToastContext';
 
 // 🚀 NATIVE PDF ENGINE (Kein html2canvas, kein jspdf mehr!)
 import { PDFViewer, pdf } from '@react-pdf/renderer';
@@ -40,6 +41,8 @@ export default function UniversalPDFStudio({
   defaultOrientation = 'portrait', sidebarControls, children, 
   defaultAccentColor = '#3b82f6', defaultLogo, defaultFooterText
 }: UniversalPDFStudioProps) {
+  const { isDemoMode } = (useProject?.() || {}) as any;
+  const { addToast } = useToast();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -67,6 +70,11 @@ export default function UniversalPDFStudio({
   if (!isOpen || !isMounted) return null;
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDemoMode) {
+      addToast('Logo-Upload ist in der Demo-Vorschau geschützt.', 'info');
+      if (e?.target) e.target.value = '';
+      return;
+    }
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -82,6 +90,10 @@ export default function UniversalPDFStudio({
 
   // Generiert das Blob direkt aus dem React-PDF Dokument für Download/Upload
   const generatePDF = async (toCloud: boolean) => {
+    if (isDemoMode) {
+      addToast('PDF-Export und Download sind in der Live-Demo gesperrt.', 'info');
+      return;
+    }
     if (toCloud) { setIsUploading(true); } else { setIsGenerating(true); }
 
     try {

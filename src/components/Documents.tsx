@@ -226,12 +226,14 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
-  const canUpload = !isDemoMode && hasPermission('canUploadFiles');
-  const canDelete = !isDemoMode && hasPermission('canDeleteFiles');
+  
+  const defaultProjId = propProjectId || routeProjectId || null;
+  const isDemo = isDemoMode || defaultProjId === 'demo-1' || defaultProjId?.startsWith('demo-') || activeProjectId === 'demo-1';
+  const canUpload = !isDemo && hasPermission('canUploadFiles');
+  const canDelete = !isDemo && hasPermission('canDeleteFiles');
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const defaultProjId = propProjectId || routeProjectId || null;
   const docsStorageKey = `docs_state_${defaultProjId || 'global'}`;
 
   const [activeTab, setActiveTabRaw] = useState<'company' | 'projects'>(() => {
@@ -367,7 +369,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   useEffect(() => {
     fetchDocuments();
 
-    if (!currentUser) return;
+    if (isDemo || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const channel = supabase
       .channel('documents-realtime-sync')
@@ -381,7 +383,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [currentUser, activeProjectId, projects?.length]);
+  }, [currentUser, activeProjectId, projects?.length, isDemo]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;
@@ -404,8 +406,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   const handleCreateFolder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemoMode) {
-      addToast('Aktion in der Demo blockiert', 'info');
+    if (isDemo) {
+      addToast('Ordnererstellung ist in der Demo-Vorschau geschützt.', 'info');
+      setIsCreatingFolder(false);
       return;
     }
     if (!newFolderName.trim() || !currentUser) return;
@@ -438,11 +441,12 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (isDemoMode) {
-      addToast('Aktion in der Demo blockiert', 'info');
+    if (isDemo) {
+      addToast('Datei-Upload ist in der Demo-Vorschau deaktiviert.', 'info');
+      if (e?.target) e.target.value = '';
       return;
     }
+    const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     
     // 100 MB File Size Guard
@@ -488,6 +492,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   };
 
   const handleDownloadFile = (item: any) => {
+    if (isDemo) {
+      addToast('Download ist in der Demo-Vorschau geschützt. Erstelle einen kostenlosen Account!', 'info');
+      return;
+    }
+
     const fileUrl = item.url || item.file_url;
     if (!fileUrl) {
       addToast('Keine Datei-URL vorhanden', 'error');
@@ -543,8 +552,8 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   };
 
   const handleDelete = async (id: string, isFolder: boolean) => {
-    if (isDemoMode) {
-      addToast('Aktion in der Demo blockiert', 'info');
+    if (isDemo) {
+      addToast('Demo-Dokumente können nicht gelöscht werden.', 'info');
       return;
     }
     const targetDoc = documents.find(d => d.id === id);

@@ -37,7 +37,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 // 🔥 FIX: Prop ID bevorzugen (für die Demo-App)
 export default function ProjectTeam({ projectId: propProjectId }: { projectId?: string }) {
   const { projectId } = useParams();
-  const { companyUsers = [], projectMembers = [], activeProjectId, addProjectMember, removeProjectMember } = useProject() as any;
+  const { companyUsers = [], projectMembers = [], activeProjectId, addProjectMember, removeProjectMember, isDemoMode } = useProject() as any;
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
@@ -52,7 +52,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   ];
 
   const currentProjectId = propProjectId || projectId || activeProjectId;
-  const isDemo = currentProjectId === 'demo-1';
+  const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
   const dbMembers = (projectMembers || []).filter((m: any) => m.projectId === currentProjectId);
   const currentMembers = dbMembers.length > 0 ? dbMembers : (isDemo ? DEFAULT_DEMO_USERS : []);
   const allCompanyUsers = companyUsers.length > 0 ? companyUsers : (isDemo ? DEFAULT_DEMO_USERS : []);
@@ -83,6 +83,11 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   };
 
   const handleAddExistingUser = async () => {
+    if (isDemo) {
+      addToast('Mitgliederverwaltung ist in der Demo deaktiviert.', 'info');
+      setIsAddMemberModalOpen(false);
+      return;
+    }
     if (!selectedUserId || !currentProjectId || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     if (!checkSeatLimit()) return;
@@ -107,6 +112,11 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   };
 
   const handleAddNewUser = async () => {
+    if (isDemo) {
+      addToast('Mitgliederverwaltung ist in der Demo deaktiviert.', 'info');
+      setIsAddMemberModalOpen(false);
+      return;
+    }
     if (!newUserName || !newUserEmail || !currentProjectId || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     if (!checkSeatLimit()) return;
@@ -148,6 +158,10 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   };
 
   const handleRemoveMember = async (userId: string) => {
+    if (isDemo) {
+      addToast('Demo-Mitglieder können nicht entfernt werden.', 'info');
+      return;
+    }
     if (!window.confirm(t('delete_confirm'))) return;
     try { 
       await removeProjectMember(currentProjectId, userId); 
@@ -157,6 +171,10 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     }
   };
   const handleRoleChange = async (memberId: string, newRole: string) => {
+    if (isDemo) {
+      addToast('Rollenänderung ist in der Demo deaktiviert.', 'info');
+      return;
+    }
     try {
       addToast(t('status_updated'), 'success');
     } catch (e) {

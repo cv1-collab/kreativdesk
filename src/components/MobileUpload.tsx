@@ -60,6 +60,7 @@ export default function MobileUpload() {
   const { addToast } = useToast();
   const { type, sessionId } = useParams<{ type?: string; sessionId: string }>();
   const isVcard = type === 'vcard';
+  const isDemoSession = sessionId?.startsWith('demo') || sessionId === 'demo' || sessionId === 'demo-session';
 
   const [activeTab, setActiveTab] = useState<'upload' | 'rapport'>('upload');
 
@@ -87,6 +88,18 @@ export default function MobileUpload() {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !sessionId) return;
+
+    if (isDemoSession) {
+      setIsUploading(true);
+      setUploadProgress(50);
+      setTimeout(() => {
+        setUploadProgress(100);
+        setIsUploading(false);
+        setIsSuccess(true);
+        addToast(isVcard ? 'Visitenkarten-Scan simuliert!' : 'Beleg-Upload simuliert!', 'success');
+      }, 600);
+      return;
+    }
 
     if (file.type.startsWith('image/')) {
       const compressedDataUrl = await compressImageFile(file, 1920, 0.85);
@@ -177,6 +190,15 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
   };
 
   const handleSubmitRapport = async () => {
+    if (isDemoSession) {
+      setIsSubmittingRapport(true);
+      setTimeout(() => {
+        setIsSubmittingRapport(false);
+        setRapportSuccess(true);
+        addToast('Baurapport-Übermittlung simuliert!', 'success');
+      }, 500);
+      return;
+    }
     setIsSubmittingRapport(true);
     try {
       const rapportPayload = {

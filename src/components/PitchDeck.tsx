@@ -55,6 +55,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const currentProjectId = propProjectId || routeProjectId || activeProjectId;
+  const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
   
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null);
@@ -86,7 +87,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675) * 0.95;
 
   useEffect(() => {
-    if (!currentProjectId) return;
+    if (isDemo || !currentProjectId) return;
     const safeChannelName = `presenter_laser_${currentProjectId.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
     const channel = supabase.channel(safeChannelName, {
       config: { broadcast: { self: false } }
@@ -109,7 +110,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentProjectId, currentUser?.uid]);
+  }, [currentProjectId, currentUser?.uid, isDemo]);
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current || !channelRef.current) return;
@@ -675,8 +676,13 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           <div className="flex flex-col items-center justify-center p-8 text-center bg-surface/50 border border-border/50 rounded-2xl max-w-md z-30">
             <Presentation size={48} className="text-purple-400 mb-4 opacity-80"/>
             <h3 className="text-lg font-bold text-white mb-2">Keine Folien vorhanden</h3>
-            <p className="text-xs text-text-muted mb-6">Erstelle deine ersten Folien im Studio, um deine Präsentation anzuzeigen.</p>
-            <button onClick={() => setShowStudio(true)} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
+            <button onClick={() => {
+              if (isDemo) {
+                addToast('Pitch Deck Studio ist in der Demo-Vorschau geschützt.', 'info');
+                return;
+              }
+              setShowStudio(true);
+            }} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-purple-600/30 flex items-center gap-2">
               <Settings size={15}/> Studio öffnen & Folie erstellen
             </button>
           </div>
@@ -767,6 +773,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 type="button"
                 onClick={async () => {
                   setIsFormatModalOpen(false);
+                  if (isDemo) {
+                    addToast('Export ist in der Demo blockiert. Erstelle einen kostenlosen Account!', 'info');
+                    return;
+                  }
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
                   await exportDeckToPptx(slides, {}, `Präsentation-Keynote.key`);
                   addToast('Keynote Datei (.key) erfolgreich heruntergeladen!', 'success');
@@ -793,6 +803,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                 type="button"
                 onClick={async () => {
                   setIsFormatModalOpen(false);
+                  if (isDemo) {
+                    addToast('Export ist in der Demo blockiert. Erstelle einen kostenlosen Account!', 'info');
+                    return;
+                  }
                   addToast('PowerPoint Präsentation wird generiert...', 'info');
                   await exportDeckToPptx(slides, {}, `Präsentation-PowerPoint.pptx`);
                   addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');

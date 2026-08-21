@@ -27,7 +27,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-export default function DemoLayout({ isDemoMode = false }: { isDemoMode?: boolean }) {
+export default function DemoLayout({ isDemoMode = true }: { isDemoMode?: boolean }) {
   const [activeTab, setActiveTab] = useState('overview');
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
@@ -72,35 +72,80 @@ export default function DemoLayout({ isDemoMode = false }: { isDemoMode?: boolea
 
   const mobileNavItems = menuGroups.flatMap(group => group.items);
 
-  // === DAS MAGISCHE SCHUTZSCHILD ===
+  const showDemoBlockedToast = () => {
+    addToast(
+      currentLang === 'de' 
+        ? "Aktion in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!" 
+        : "Action blocked in demo. Create a free account to use this feature!",
+      "info"
+    );
+  };
+
+  // === DAS MAGISCHE SCHUTZSCHILD FÜR DIE DEMO ===
   const handleGlobalClickCapture = (e: React.MouseEvent) => {
     if (!isDemoMode) return;
 
     const target = e.target as HTMLElement;
-    const actionable = target.closest('button, a, input[type="submit"]');
+    
+    // 1. File Inputs oder Labels mit File-Inputs sofort blockieren, damit kein OS-Dateidialog geöffnet wird
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'file') {
+      e.stopPropagation();
+      e.preventDefault();
+      showDemoBlockedToast();
+      return;
+    }
+
+    const fileLabel = target.closest('label:has(input[type="file"]), label:has(input[type="file"][type]), label[for]');
+    if (fileLabel && fileLabel.querySelector('input[type="file"]')) {
+      e.stopPropagation();
+      e.preventDefault();
+      showDemoBlockedToast();
+      return;
+    }
+
+    const actionable = target.closest('button, a, input[type="submit"], input[type="file"], [role="button"]');
 
     if (actionable) {
-      const text = actionable.textContent?.toLowerCase() || '';
+      const text = (actionable.textContent || actionable.getAttribute('title') || actionable.getAttribute('aria-label') || '').toLowerCase();
       const isSubmit = (actionable as HTMLButtonElement).type === 'submit';
+      const isFileInput = (actionable as HTMLInputElement).type === 'file' || !!actionable.querySelector('input[type="file"]');
 
-      // Die "Rote Liste": Wenn ein Button diese Wörter enthält, blockieren wir ihn!
+      // Die "Rote Liste": Wenn ein Button diese Wörter enthält, blockieren wir ihn in der Demo!
       const forbiddenWords = [
         'speichern', 'save', 'pdf', 'ki ', 'ai ', 'generier', 'generate', 
         'beitreten', 'join', 'buch', 'book', 'senden', 'send', 'erstell', 'create', 
-        'export', 'download', 'lösch', 'delete', 'hochladen', 'upload', 'cloud'
+        'export', 'download', 'lösch', 'delete', 'hochladen', 'upload', 'cloud',
+        'anrufen', 'call', 'rundruf', 'planen', 'schedule', 'diktier', 'record',
+        'import', 'neu', 'new', 'einladen', 'invite', 'hinzufügen', 'add', 'scan',
+        'trueScale', 'kalibrier', 'rendern', 'render'
       ];
 
-      if (isSubmit || forbiddenWords.some(word => text.includes(word))) {
+      if (isSubmit || isFileInput || forbiddenWords.some(word => text.includes(word.toLowerCase()))) {
+        // Tab-Navigation nicht blockieren!
+        const isNavTab = actionable.closest('nav') || actionable.closest('.md\\:hidden');
+        if (isNavTab) return;
+
         e.stopPropagation();
         e.preventDefault();
-        
-        addToast(
-          currentLang === 'de' 
-            ? "Aktion in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!" 
-            : "Action blocked in demo. Create a free account to use this feature!",
-          "info"
-        );
+        showDemoBlockedToast();
       }
+    }
+  };
+
+  const handleGlobalDragOverCapture = (e: React.DragEvent) => {
+    if (!isDemoMode) return;
+    if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
+  const handleGlobalDropCapture = (e: React.DragEvent) => {
+    if (!isDemoMode) return;
+    if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.stopPropagation();
+      showDemoBlockedToast();
     }
   };
 
@@ -171,6 +216,8 @@ export default function DemoLayout({ isDemoMode = false }: { isDemoMode?: boolea
         {/* HIER HÄNGT DAS SCHUTZSCHILD! */}
         <main 
           onClickCapture={handleGlobalClickCapture} 
+          onDragOverCapture={handleGlobalDragOverCapture}
+          onDropCapture={handleGlobalDropCapture}
           className="flex-1 overflow-y-auto overflow-x-hidden relative custom-scrollbar bg-background z-10 pb-16 md:pb-0"
         >
           {/* Deine ECHTE DemoApp - ohne eine einzige Zeile Code ändern zu müssen! */}

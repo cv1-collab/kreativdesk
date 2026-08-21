@@ -180,12 +180,13 @@ const DefectsPDFDocument = ({ settings, defects, projectHeader, t }: any) => (
 export default function Defects({ projectId: propProjectId }: { projectId?: string }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-  const { projects, activeProjectId } = useProject() as any;
+  const { projects, activeProjectId, isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
 
   // 🔥 FIX: Prop ID bevorzugen (für die Demo-App)
   const currentProjectId = propProjectId || routeProjectId || activeProjectId;
+  const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
   
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key);
   const activeProject = projects?.find((p: any) => p.id === currentProjectId);
@@ -220,6 +221,15 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const [isListening, setIsListening] = useState(false);
 
   const startVoiceDictation = () => {
+    if (isDemo) {
+      setCurrentDefect(prev => ({
+        ...prev,
+        description: (prev.description ? prev.description + ' ' : '') + (language === 'de' ? 'Sprachaufnahme (Demo): Rissbreite ca. 0.8mm, Prüfung mit Baumeister erforderlich.' : 'Voice note (Demo): Crack width approx 0.8mm, inspection required.')
+      }));
+      addToast('Demo-Sprachaufnahme eingefügt!', 'success');
+      return;
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       addToast('Spracherkennung wird von diesem Browser nicht unterstützt.', 'info');
@@ -266,8 +276,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   useEffect(() => {
     if (!currentProjectId) return;
 
-    // DEMO-MODUS: Nur für echtes Demo-Projekt demo-1
-    const isDemo = currentProjectId === 'demo-1';
+    // DEMO-MODUS: Offline Zero-Latency Mock Data, Keine Supabase WebSockets
     if (isDemo) {
       setDefects(DEMO_DEFECTS);
       return;
@@ -483,15 +492,15 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   };
 
   const handleDeleteDefect = async (id: string) => {
+    if (isDemo || currentProjectId === 'demo-1') {
+      addToast('Demo-Mängel können nicht gelöscht werden.', 'info');
+      return;
+    }
+
     if (!window.confirm(t('delete_confirm'))) return;
 
     const targetDefect = defects.find(d => d.id === id);
     setDefects(prev => prev.filter(d => d.id !== id));
-
-    if (currentProjectId === 'demo-1') {
-        addToast(t('delete') + ' ' + t('completed'), 'success');
-        return;
-    }
 
     try { 
       await supabase.from('defects').delete().eq('id', id); 
@@ -513,6 +522,18 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   };
 
   const generateAIInsights = async () => {
+    if (isDemo) {
+      setIsAnalyzing(true);
+      setTimeout(() => {
+        setAiInsights(language === 'de' 
+          ? "KI Mustererkennung (Demo): 1 kritischer Mangel (Riss im Sichtbeton) erfordert Überprüfung durch Baumeister. Gewerke Gipser & Fensterbauer im Zeitplan."
+          : "AI Pattern Recognition (Demo): 1 critical issue (concrete crack) requires inspection by master builder. Drywall & window trades on schedule.");
+        setIsAnalyzing(false);
+        addToast(t('analysis_completed'), "success");
+      }, 500);
+      return;
+    }
+
     if (defects.length === 0) return addToast(t('no_data_for_analysis'), "info");
     setIsAnalyzing(true);
     try {
@@ -554,6 +575,12 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   };
 
   const handleLocalImageUploadWithAI = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDemo) {
+      addToast('Foto-Upload ist in der Demo-Version deaktiviert.', 'info');
+      if (e?.target) e.target.value = '';
+      return;
+    }
+
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     
@@ -587,6 +614,12 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
+    if (isDemo) {
+      addToast('PDF-Export ist in der Demo blockiert. Erstelle einen kostenlosen Account!', 'info');
+      setIsPdfStudioOpen(false);
+      return;
+    }
+
     if (!currentUser || !currentUser.companyId) return;
     try {
       const fileName = `Maengelliste_${activeProject?.name || 'Projekt'}_${Date.now()}.pdf`;
@@ -846,21 +879,59 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                       ) : (
                         <div className="flex flex-col gap-3">
                           <div className="grid grid-cols-2 gap-3">
-                            <label className="flex flex-col items-center justify-center border border-border bg-background hover:bg-white/5 rounded-xl p-4 cursor-pointer transition-colors shadow-sm relative overflow-hidden">
+                            <label 
+                              onClick={(e) => {
+                                if (isDemo) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  addToast('Foto-Upload ist in der Demo-Version deaktiviert.', 'info');
+                                }
+                              }}
+                              className={cn(
+                                "flex flex-col items-center justify-center border border-border bg-background rounded-xl p-4 shadow-sm relative overflow-hidden transition-colors",
+                                isDemo ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:bg-white/5"
+                              )}
+                            >
                               {isAnalyzingImage && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-accent-ai animate-spin mb-2" /><span className="text-[10px] font-bold text-accent-ai uppercase tracking-widest text-center">KI scannt<br/>Bild...</span></div>}
                               <Camera size={24} className="text-blue-500 mb-2" />
                               <span className="text-xs font-bold text-text-primary text-center">{language === 'de' ? 'Foto aufnehmen' : 'Take Photo'}</span>
-                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleLocalImageUploadWithAI} />
+                              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleLocalImageUploadWithAI} disabled={isDemo} />
                             </label>
-                            <label className="flex flex-col items-center justify-center border border-border bg-background hover:bg-white/5 rounded-xl p-4 cursor-pointer transition-colors shadow-sm relative overflow-hidden">
+                            <label 
+                              onClick={(e) => {
+                                if (isDemo) {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  addToast('Foto-Upload ist in der Demo-Version deaktiviert.', 'info');
+                                }
+                              }}
+                              className={cn(
+                                "flex flex-col items-center justify-center border border-border bg-background rounded-xl p-4 shadow-sm relative overflow-hidden transition-colors",
+                                isDemo ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:bg-white/5"
+                              )}
+                            >
                               {isAnalyzingImage && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-accent-ai animate-spin mb-2" /><span className="text-[10px] font-bold text-accent-ai uppercase tracking-widest text-center">KI scannt<br/>Bild...</span></div>}
                               <ImageIcon size={24} className="text-emerald-500 mb-2" />
                               <span className="text-xs font-bold text-text-primary text-center">{language === 'de' ? 'Aus Galerie' : 'From Gallery'}</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={handleLocalImageUploadWithAI} />
+                              <input type="file" accept="image/*" className="hidden" onChange={handleLocalImageUploadWithAI} disabled={isDemo} />
                             </label>
                           </div>
-                          <div className="hidden md:flex justify-center mt-2"><button type="button" onClick={() => setShowQrScanner(true)} className="text-xs font-bold text-text-muted hover:text-accent-ai transition-colors flex items-center gap-1"><Smartphone size={14}/> Via Smartphone hochladen (QR Code)</button></div>
-                          {showQrScanner && (
+                          <div className="hidden md:flex justify-center mt-2">
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                if (isDemo) {
+                                  addToast('Smartphone-Upload ist in der Demo-Vorschau geschützt.', 'info');
+                                  return;
+                                }
+                                setShowQrScanner(true);
+                              }} 
+                              className="text-xs font-bold text-text-muted hover:text-accent-ai transition-colors flex items-center gap-1"
+                            >
+                              <Smartphone size={14}/> Via Smartphone hochladen (QR Code)
+                            </button>
+                          </div>
+                          {showQrScanner && !isDemo && (
                             <div className="bg-background border border-border rounded-xl p-6 flex flex-col items-center text-center animate-in fade-in mt-2"><div className="bg-white p-4 rounded-xl shadow-lg mb-4"><QRCode value={mobileUploadUrl} size={150} /></div><p className="text-xs text-text-muted max-w-xs mb-4">{t('mobile_upload_desc')}</p><button type="button" onClick={() => setShowQrScanner(false)} className="px-6 py-2 text-sm font-bold text-text-muted border border-border rounded-lg">{t('cancel')}</button></div>
                           )}
                         </div>

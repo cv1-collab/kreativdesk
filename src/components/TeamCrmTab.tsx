@@ -94,7 +94,8 @@ const safeStr = (str: any, maxLen: number) => {
 
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
-  const { fetchCompanyUsers } = useProject();
+  const { fetchCompanyUsers, isDemoMode } = useProject() as any;
+  const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
   
@@ -196,7 +197,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
-    if (!vcardSessionId) return;
+    if (isDemo || !vcardSessionId) return;
 
     const channel = supabase.channel(`vcard_upload_${vcardSessionId}`)
       .on('broadcast', { event: 'vcard_scanned' }, ({ payload }) => {
@@ -219,7 +220,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
     let pollFailed = false;
     const interval = setInterval(async () => {
-      if (pollFailed || !vcardSessionId) return;
+      if (isDemo || pollFailed || !vcardSessionId) return;
       try {
         const { data, error } = await supabase
           .from('temp_receipts')
@@ -250,19 +251,22 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
               description: parsed.description || 'Gefunden per Smartphone-Visitenkartenscan'
             });
             setIsScannerModalOpen(true);
+            pollFailed = true;
             try { await supabase.from('temp_receipts').delete().eq('id', rec.id); } catch (e) {}
           }
         }
       } catch (err) {
         pollFailed = true;
       }
-    }, 3000);
+    }, 4000);
 
     return () => {
-      supabase.removeChannel(channel);
       clearInterval(interval);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
     };
-  }, [vcardSessionId]);
+  }, [vcardSessionId, isDemo]);
 
   const isSuperAdmin = checkIsSuperAdmin(currentUser?.email);
 

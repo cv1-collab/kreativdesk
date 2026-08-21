@@ -19,7 +19,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     crm_docs: 'CRM & Kontakte', crm_docs_desc: 'Verwalte Ansprechpartner und Stakeholder für dein Unternehmen.',
     contacts: 'Kontakte', add_contact: 'Kontakt hinzufügen', search_contacts: 'Kontakte durchsuchen...',
     name: 'Name', role: 'Rolle', company: 'Firma', email: 'E-Mail', phone: 'Telefon', actions: 'Aktionen',
-    no_contacts: 'Keine Kontakte vorhanden.', cancel: 'Abbrechen', save: 'Speichern'
+    no_contacts: 'Keine Kontakte vorhanden.', cancel: 'Abbrechen', save: 'Speichern', contact_added: 'Kontakt gespeichert!'
   }
 };
 
@@ -27,7 +27,8 @@ interface Contact { id: string; name: string; role: string; company: string; ema
 
 export default function CRM() {
   const { currentUser } = useAuth();
-  const { fetchCompanyUsers } = useProject();
+  const { fetchCompanyUsers, isDemoMode } = useProject() as any;
+  const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
@@ -38,7 +39,18 @@ export default function CRM() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', role: '', company: '', email: '', phone: '' });
 
+  const DEMO_CRM_CONTACTS: Contact[] = [
+    { id: 'c1', name: 'Sarah Meier', role: 'Architektin SIA', company: 'Atelier Meier & Partner AG', email: 's.meier@atelier-meier.ch', phone: '+41 44 210 33 44' },
+    { id: 'c2', name: 'Michael Chen', role: 'Bauingenieur ETH', company: 'Chen Statik GmbH', email: 'm.chen@chen-statik.ch', phone: '+41 44 880 12 34' },
+    { id: 'c3', name: 'Elena Rossi', role: 'Bauleiterin', company: 'Rossi Bauleitungen AG', email: 'elena@rossi-bau.ch', phone: '+41 79 555 43 21' },
+    { id: 'c4', name: 'Thomas Widmer', role: 'Elektro-Ingenieur', company: 'Widmer Elektro AG', email: 't.widmer@widmer-elektro.ch', phone: '+41 52 300 77 88' }
+  ];
+
   const fetchContacts = async () => {
+    if (isDemo) {
+      setContacts(DEMO_CRM_CONTACTS);
+      return;
+    }
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
@@ -71,10 +83,15 @@ export default function CRM() {
 
   useEffect(() => {
     fetchContacts();
-  }, [currentUser]);
+  }, [currentUser, isDemo]);
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      addToast('Kontakterstellung ist in der Demo deaktiviert.', 'info');
+      setIsModalOpen(false);
+      return;
+    }
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const nameParts = newContact.name.trim().split(' ');

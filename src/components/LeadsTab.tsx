@@ -257,6 +257,8 @@ export default function LeadsTab() {
   const { currentUser } = useAuth();
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
+  const { isDemoMode } = useProject() as any;
+  const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -301,7 +303,7 @@ export default function LeadsTab() {
   }, []);
 
   useEffect(() => {
-    if (!vcardSessionId) return;
+    if (isDemo || !vcardSessionId) return;
 
     const channel = supabase.channel(`vcard_upload_${vcardSessionId}`)
       .on('broadcast', { event: 'vcard_scanned' }, ({ payload }) => {
@@ -324,7 +326,7 @@ export default function LeadsTab() {
 
     let pollFailed = false;
     const interval = setInterval(async () => {
-      if (pollFailed || !vcardSessionId) return;
+      if (isDemo || pollFailed || !vcardSessionId) return;
       try {
         const { data, error } = await supabase
           .from('temp_receipts')
@@ -334,7 +336,6 @@ export default function LeadsTab() {
           .limit(1);
 
         if (error) {
-          // If table doesn't exist (PGRST205/404), disable polling to prevent console log spam
           pollFailed = true;
           return;
         }
@@ -350,25 +351,28 @@ export default function LeadsTab() {
               company: parsed.company || '',
               email: parsed.email || '',
               phone: parsed.phone || '',
-              street: parsed.street || '',
+              street: '',
               zipCity: parsed.zipCity || '',
               description: parsed.description || ''
             });
             setLeadTab('scanner');
             addToast('Visitenkarte vom Smartphone empfangen & per KI ausgelesen!', 'success');
+            pollFailed = true;
             try { await supabase.from('temp_receipts').delete().eq('id', rec.id); } catch (e) {}
           }
         }
       } catch (err) {
         pollFailed = true;
       }
-    }, 3000);
+    }, 4000);
 
     return () => {
-      supabase.removeChannel(channel);
       clearInterval(interval);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
     };
-  }, [vcardSessionId]);
+  }, [vcardSessionId, addToast, isDemo]);
 
   const fetchLeads = async () => {
     if (!currentUser || !currentUser.uid) return;

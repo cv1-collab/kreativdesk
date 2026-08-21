@@ -685,7 +685,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    if (currentProjectId === 'demo-1') {
+    if (isDemoMode || currentProjectId === 'demo-1') {
       addToast('Upload von neuen Plänen ist in der Demo-Version deaktiviert.', 'info');
       event.target.value = '';
       return;
@@ -735,7 +735,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleOverlayUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    if (currentProjectId === 'demo-1') {
+    if (isDemoMode || currentProjectId === 'demo-1') {
       addToast('Upload von Bildern ist in der Demo-Version deaktiviert.', 'info');
       event.target.value = '';
       return;
@@ -1274,20 +1274,51 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         )}
 
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => { setIsCalibratingMode(true); setCalibrationModalOpen(true); }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <button onClick={() => { 
+            if (isDemoMode || currentProjectId === 'demo-1') {
+              addToast('TrueScale™ Kalibrierung ist in der Demo-Vorschau aktiv (1:50 Standard).', 'info');
+              return;
+            }
+            setIsCalibratingMode(true); 
+            setCalibrationModalOpen(true); 
+          }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
             <Ruler size={14}/> <span className="hidden sm:inline">TrueScale™</span> Kalibrieren
           </button>
-          <button onClick={handleSaveSnapshotToPitchDeck} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+          <button onClick={() => {
+            if (isDemoMode || currentProjectId === 'demo-1') {
+              addToast('Snapshot an Pitch Deck ist in der Demo deaktiviert.', 'info');
+              return;
+            }
+            handleSaveSnapshotToPitchDeck();
+          }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
             <ImageIcon size={14}/> Pitch Deck
           </button>
-          <label className="cursor-pointer flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-xl text-xs font-bold shadow-sm hover:bg-white/5 transition-colors whitespace-nowrap">
+          <label 
+            onClick={(e) => {
+              if (isDemoMode || currentProjectId === 'demo-1') {
+                e.preventDefault();
+                e.stopPropagation();
+                addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
+              }
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-xl text-xs font-bold shadow-sm transition-colors whitespace-nowrap",
+              (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:bg-white/5"
+            )}
+          >
             {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">{t('upload_plan')}</span><span className="sm:hidden">Hochladen</span>
-            <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading} className="hidden" />
+            <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
           </label>
-          <button onClick={handleOpenPdfStudio} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
+          <button onClick={() => {
+            if (isDemoMode || currentProjectId === 'demo-1') {
+              addToast('PDF Export ist in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!', 'info');
+              return;
+            }
+            handleOpenPdfStudio();
+          }} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
             {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span className="hidden sm:inline">PDF Export</span><span className="sm:hidden">PDF</span>
           </button>
-          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan'} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500 shadow-lg flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
+          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500 shadow-lg flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
             {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} {t('save')}
           </button>
           <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center">
@@ -1304,8 +1335,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
              <button 
                key={tool} 
                onClick={() => {
-                 if (tool === 'image') imageInputRef.current?.click();
-                 else setActiveTool(tool as ToolType);
+                 if (tool === 'image') {
+                   if (isDemoMode || currentProjectId === 'demo-1') {
+                     addToast('Upload von Bildern ist in der Demo deaktiviert.', 'info');
+                     return;
+                   }
+                   imageInputRef.current?.click();
+                 } else {
+                   setActiveTool(tool as ToolType);
+                 }
                }} 
                className={cn("p-2 sm:p-2.5 rounded-xl transition-all relative", activeTool === tool ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-105 sm:scale-110" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}
                title={tool.charAt(0).toUpperCase() + tool.slice(1)}
@@ -1314,7 +1352,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                {tool === 'image' && (
                   <>
                     {isUploadingOverlay ? <Loader2 size={16} className="animate-spin text-indigo-400 sm:w-[18px] sm:h-[18px]"/> : <ImagePlus size={16} className="sm:w-[18px] sm:h-[18px]" />}
-                    <input type="file" ref={imageInputRef} accept="image/*,application/pdf" onChange={handleOverlayUpload} disabled={isUploadingOverlay} className="hidden" />
+                    <input type="file" ref={imageInputRef} accept="image/*,application/pdf" onChange={handleOverlayUpload} disabled={isUploadingOverlay || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
                   </>
                )}
                {tool === 'polygon' && <Hexagon size={16} className="sm:w-[18px] sm:h-[18px]"/>}

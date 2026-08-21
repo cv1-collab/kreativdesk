@@ -127,8 +127,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
-  const { projects, activeProjectId } = useProject() as any;
+  const { projects, activeProjectId, isDemoMode } = useProject() as any;
   const projectId = propProjectId || routeProjectId || activeProjectId;
+  const isDemo = isDemoMode || projectId === 'demo-1' || projectId?.startsWith('demo-');
   const activeProject = projects?.find((p: any) => p.id === projectId);
   
   const t = (key: string) => localTranslations[language as 'en'|'de'][key] || globalT(key);
@@ -351,6 +352,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   // +++ FIX 1.7: Cloud Storage Upload anstatt Base64 +++
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isDemo) {
+      addToast('Bild-Upload ist in der Demo-Vorschau geschützt.', 'info');
+      if (e?.target) e.target.value = '';
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file || !currentUser || !currentUser.companyId) return;
 
@@ -849,6 +855,10 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   const recordedMimeTypeRef = useRef<string>('audio/webm');
 
   const startRecording = async () => {
+    if (isDemo) {
+      addToast('Audio-Aufnahmen sind in der Demo deaktiviert.', 'info');
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       

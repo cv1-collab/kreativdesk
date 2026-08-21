@@ -887,7 +887,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <Loader2 className="animate-spin text-blue-500" size={32} />
                   </div>
                 }>
-                  <DemoLayout />
+                  <DemoLayout isDemoMode={true} />
                 </Suspense>
               </div>
             </div>

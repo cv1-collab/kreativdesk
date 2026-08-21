@@ -105,7 +105,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   // INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {
-    if (!safeCompanyId || !currentUser?.uid) return;
+    if (!safeCompanyId || !currentUser?.uid || currentUser?.uid === 'demo-user-id') return;
 
     const channel = supabase
       .channel(`company-calls-${safeCompanyId}`)
@@ -133,13 +133,17 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [safeCompanyId, currentUser?.uid]);
 
   const setupMediaSources = async () => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      addToast("Kamera oder Mikrofon wird auf diesem Gerät nicht unterstützt.", "info");
+      return null;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
       return stream;
-    } catch (error) {
-      console.error("Media Error:", error);
-      addToast("Kamera oder Mikrofon blockiert.", "error");
+    } catch (error: any) {
+      console.warn("Media access not allowed or unavailable:", error?.message || error);
+      addToast("Kamera oder Mikrofon Zugriff nicht gestattet.", "info");
       return null;
     }
   };
