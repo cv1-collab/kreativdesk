@@ -94,4 +94,23 @@ test.describe('Landing Page Interactive Elements & Buttons E2E Suite', () => {
       await page.waitForTimeout(200);
     }
   });
+
+  test('Help Center search bar filters topics smoothly', async ({ page }) => {
+    const helpSection = page.locator('#help-center');
+    if (await helpSection.isVisible()) {
+      await helpSection.scrollIntoViewIfNeeded();
+      const searchInput = helpSection.locator('input[type="text"]');
+      await expect(searchInput).toBeVisible();
+
+      // Type BIM in search
+      await searchInput.fill('BIM');
+      await page.waitForTimeout(200);
+      await expect(helpSection.getByText(/BIM & 3D-Viewer|BIM & 3D Viewer/i).first()).toBeVisible();
+
+      // Clear search
+      await searchInput.fill('');
+      await page.waitForTimeout(200);
+    }
+  });
 });
+

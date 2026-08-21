@@ -25,8 +25,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_proj_unlimited: 'Unlimited Projects',
     f_2d_defects: '2D CAD Viewer & Defects',
     f_3d: '3D BIM Viewer (IFC)',
-    f_ai: 'AI Concierge & Pitch Deck',
-    f_mobile: 'Mobile Defect App (Live Sync)',
+    f_ai: 'AI Concierge & Pitch-Deck',
+    f_mobile: 'Mobile Defect App (Live-Sync)',
     f_budget: 'Project Budgets & Tracking',
     f_invoice: 'PDF Quotes & Invoicing',
     f_api: 'API & Webhooks (Zapier/Make)',
@@ -35,20 +35,27 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_storage_50: '50 GB Cloud Storage',
     f_storage_250: '250 GB Cloud Storage',
     all_pro_features: 'All features from Pro plan',
-    b2b_title: 'Project Control Systems',
-    b2b_subtitle: 'Infrastructure for studios and companies that need to steer complex productions scalably.',
-    sys1_title: 'Kreativ Desk Studio',
-    sys1_desc: 'Focus: Control for a single large-scale project. (Includes 5 Team Seats)',
+    f_controlling: 'Central Company Dashboard (Controlling)',
+    f_rbac: 'Role-Based Access Control (RBAC)',
+    f_staff: 'Staff Management & Data Sovereignty',
+    f_tenant: 'Tenant-Isolated Server Infrastructure',
+    b2b_title: 'Project Control Systems (Kreativ-Desk OS)',
+    b2b_subtitle: 'Infrastructure for studios, agencies, and enterprises managing complex productions at scale.',
+    sys1_title: 'Studio OS',
+    sys1_desc: 'Focus: Establishing a central data architecture, tenant-isolated environment, and executive master dashboard.',
     sys1_price: 'from CHF 15,000',
-    sys1_renewal: 'Setup incl. 1st yr. From yr 2: CHF 7,500 / yr.',
-    sys2_title: 'Kreativ Desk Agency',
-    sys2_desc: 'Focus: Multiple parallel productions. (Includes 15 Team Seats)',
+    sys1_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: CHF 7,500/YR',
+    sys1_seats: 'Incl. 5 Governance Seats (+ CHF 780/yr per extra seat)',
+    sys2_title: 'Agency OS',
+    sys2_desc: 'Focus: Full resource controlling (target vs. actual), dedicated team workspaces, and automated on-/offboarding for maximum data security.',
     sys2_price: 'CHF 25,000',
-    sys2_renewal: 'Setup incl. 1st yr. From yr 2: CHF 19,500 / yr.',
-    sys3_title: 'Kreativ Desk Enterprise',
-    sys3_desc: 'Focus: Deep integration and strategic guidance. (Includes 30 Team Seats)',
-    sys3_price: 'from CHF 40,000',
-    sys3_renewal: 'Setup incl. 1st yr. From yr 2: from CHF 35,000.',
+    sys2_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: CHF 19,500/YR',
+    sys2_seats: 'Incl. 10 Governance Seats (+ CHF 780/yr per extra seat)',
+    sys3_title: 'Enterprise OS',
+    sys3_desc: 'Focus: Custom API pipelines, Single Sign-On (SSO), strategic onboarding, and unlimited system resources.',
+    sys3_price: 'from CHF 50,000',
+    sys3_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: FROM CHF 35,000/YR',
+    sys3_seats: 'Incl. 20 Governance Seats (+ CHF 780/yr per extra seat)',
     sys_vat: 'excl. VAT',
     b2b_cta: 'Request Setup'
   },
@@ -82,20 +89,27 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_storage_50: '50 GB Cloud Speicher',
     f_storage_250: '250 GB Cloud Speicher',
     all_pro_features: 'Alles aus dem Pro-Plan',
-    b2b_title: 'Project Control Systems',
-    b2b_subtitle: 'Infrastruktur für Studios und Unternehmen, die komplexe Produktionen skalierbar steuern müssen.',
-    sys1_title: 'Kreativ Desk Studio',
-    sys1_desc: 'Fokus: Kontrolle für ein einzelnes Großprojekt. (inklusive 5 Team-Lizenzen)',
+    f_controlling: 'Zentrales Firmen-Dashboard (Controlling)',
+    f_rbac: 'Rollenbasierte Zugriffsrechte (RBAC)',
+    f_staff: 'Mitarbeiter-Verwaltung & Datenhoheit',
+    f_tenant: 'Mandantenisolierte Serverstruktur',
+    b2b_title: 'Projekt-Steuerungssysteme (Kreativ-Desk OS)',
+    b2b_subtitle: 'Infrastruktur für Studios, Agenturen und Unternehmen, die komplexe Produktionen skalierbar steuern müssen.',
+    sys1_title: 'Studio OS',
+    sys1_desc: 'Fokus: Etablierung einer zentralen Datenstruktur, mandantenisolierte Umgebung und Master-Dashboard für die Geschäftsleitung.',
     sys1_price: 'ab CHF 15’000',
-    sys1_renewal: 'Setup inkl. 1. Jahr. Ab Jahr 2: CHF 7’500 / Jahr.',
-    sys2_title: 'Kreativ Desk Agency',
-    sys2_desc: 'Fokus: Mehrere parallele Produktionen. (inklusive 15 Team-Lizenzen)',
+    sys1_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: CHF 7’500/JAHR',
+    sys1_seats: 'Inkl. 5 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    sys2_title: 'Agency OS',
+    sys2_desc: 'Fokus: Volles Ressourcen-Controlling (Soll vs. Ist), dedizierte Team-Workspaces und automatisches On-/Offboarding für maximale Datensicherheit.',
     sys2_price: 'CHF 25’000',
-    sys2_renewal: 'Setup inkl. 1. Jahr. Ab Jahr 2: CHF 19’500 / Jahr.',
-    sys3_title: 'Kreativ Desk Enterprise',
-    sys3_desc: 'Fokus: Tiefe Integration und strategische Begleitung. (inklusive 30 Team-Lizenzen)',
-    sys3_price: 'ab CHF 40’000',
-    sys3_renewal: 'Setup inkl. 1. Jahr. Ab Jahr 2: ab CHF 35’000 / Jahr.',
+    sys2_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: CHF 19’500/JAHR',
+    sys2_seats: 'Inkl. 10 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    sys3_title: 'Enterprise OS',
+    sys3_desc: 'Fokus: Custom API-Pipelines, Single Sign-On (SSO), strategisches Onboarding und unlimitierte Systemressourcen.',
+    sys3_price: 'ab CHF 50’000',
+    sys3_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: AB CHF 35’000/JAHR',
+    sys3_seats: 'Inkl. 20 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
     sys_vat: 'exkl. MwSt.',
     b2b_cta: 'Setup anfragen'
   }
@@ -112,11 +126,15 @@ export default function PricingPage() {
   const plans = [
     {
       name: t('plan_starter'),
-      price: billingCycle === 'yearly' ? 30 : 39,
+      price: billingCycle === 'yearly' ? 35 : 39,
       icon: <Building2 className="w-6 h-6 text-zinc-400" />,
       description: t('desc_starter'),
       features: [t('f_proj_3'), t('f_2d_defects'), t('f_budget'), t('f_storage_5')],
-      notIncluded: [t('f_3d'), t('f_ai'), t('f_mobile'), t('f_invoice'), t('f_api')]
+      notIncluded: [
+        t('f_3d'), t('f_ai'), t('f_mobile'), t('f_invoice'), t('f_api'),
+        t('f_controlling'), t('f_rbac'), t('f_staff'), t('f_tenant')
+      ],
+      popular: false
     },
     {
       name: t('plan_pro'),
@@ -124,16 +142,22 @@ export default function PricingPage() {
       icon: <Zap className="w-6 h-6 text-blue-500" />,
       description: t('desc_pro'),
       features: [t('f_proj_unlimited'), t('f_3d'), t('f_ai'), t('f_mobile'), t('f_budget'), t('f_storage_50')],
-      notIncluded: [t('f_invoice'), t('f_api'), t('f_brand')],
+      notIncluded: [
+        t('f_invoice'), t('f_api'), t('f_brand'),
+        t('f_controlling'), t('f_rbac'), t('f_staff'), t('f_tenant')
+      ],
       popular: true
     },
     {
       name: t('plan_expert'),
-      price: billingCycle === 'yearly' ? 149 : 189, 
-      icon: <Shield className="w-6 h-6 text-emerald-500" />,
+      price: billingCycle === 'yearly' ? 159 : 189, 
+      icon: <Layers className="w-6 h-6 text-emerald-500" />,
       description: t('desc_expert'),
       features: [t('f_proj_unlimited'), t('all_pro_features'), t('f_invoice'), t('f_api'), t('f_brand'), t('f_storage_250')],
-      notIncluded: []
+      notIncluded: [
+        t('f_controlling'), t('f_rbac'), t('f_staff'), t('f_tenant')
+      ],
+      popular: false
     }
   ];
 
@@ -183,12 +207,12 @@ export default function PricingPage() {
                   <span className="text-zinc-500">/mo</span>
                 </div>
               </div>
-              <div className="space-y-4 mb-10 flex-1">
+              <div className="space-y-3 mb-10 flex-1">
                 {plan.features.map((f, j) => (
-                  <div className="flex items-start gap-3 text-sm" key={`feat-${j}`}><Check className="w-5 h-5 text-blue-500 shrink-0" /> <span>{f}</span></div>
+                  <div className="flex items-start gap-3 text-sm" key={`feat-${j}`}><Check className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /> <span>{f}</span></div>
                 ))}
                 {plan.notIncluded.map((f, j) => (
-                  <div className="flex items-start gap-3 text-sm opacity-40" key={`not-${j}`}><X className="w-5 h-5 shrink-0" /> <span className="line-through">{f}</span></div>
+                  <div className="flex items-start gap-3 text-xs opacity-40" key={`not-${j}`}><X className="w-4 h-4 shrink-0 mt-0.5" /> <span className="line-through">{f}</span></div>
                 ))}
               </div>
               <button onClick={() => navigate('/signup')} className={cn(
@@ -216,14 +240,15 @@ export default function PricingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
               {/* Studio */}
-              <div className="p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
+              <div className="p-8 sm:p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
                   <Briefcase className="w-10 h-10 text-zinc-500 mb-8 group-hover:text-blue-500 transition-colors" />
                   <h3 className="text-2xl md:text-3xl font-black mb-3">{t('sys1_title')}</h3>
-                  <div className="flex items-baseline gap-2 mb-4">
+                  <div className="flex items-baseline gap-2 mb-3">
                       <div className="text-xl md:text-2xl font-black leading-tight">{t('sys1_price')}</div>
                       <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
                   </div>
-                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-8 p-1.5 bg-zinc-900 rounded border border-zinc-800 self-start">{t('sys1_renewal')}</div>
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 p-1.5 bg-zinc-900 rounded border border-zinc-800 self-start">{t('sys1_renewal')}</div>
+                  <div className="text-xs font-semibold text-blue-400 mb-8">{t('sys1_seats')}</div>
                   <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1">{t('sys1_desc')}</p>
                   <button onClick={() => navigate('/lead-form')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
                     {t('b2b_cta')} <ArrowRight size={18} />
@@ -231,15 +256,16 @@ export default function PricingPage() {
               </div>
 
               {/* Agency */}
-              <div className="p-10 bg-zinc-900 border border-blue-500/50 shadow-2xl md:scale-105 rounded-[2.5rem] relative flex flex-col group z-10">
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">Execution Booster</div>
+              <div className="p-8 sm:p-10 bg-zinc-900 border border-blue-500/50 shadow-2xl md:scale-105 rounded-[2.5rem] relative flex flex-col group z-10">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">{t('sys2_title') === 'Agency OS' ? 'EXECUTION BOOSTER' : 'Execution Booster'}</div>
                   <Zap className="w-10 h-10 text-blue-500 mb-8" />
                   <h3 className="text-2xl md:text-3xl font-black mb-3">{t('sys2_title')}</h3>
-                  <div className="flex items-baseline gap-2 mb-4">
+                  <div className="flex items-baseline gap-2 mb-3">
                       <div className="text-xl md:text-2xl font-black leading-tight">{t('sys2_price')}</div>
                       <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
                   </div>
-                  <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-8 p-1.5 bg-blue-500/10 rounded border border-blue-500/20 self-start">{t('sys2_renewal')}</div>
+                  <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-3 p-1.5 bg-blue-500/10 rounded border border-blue-500/20 self-start">{t('sys2_renewal')}</div>
+                  <div className="text-xs font-semibold text-blue-400 mb-8">{t('sys2_seats')}</div>
                   <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1">{t('sys2_desc')}</p>
                   <button onClick={() => navigate('/lead-form')} className="block w-full py-4 bg-blue-600 text-white text-center rounded-2xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
                     {t('b2b_cta')} <ArrowRight size={18} />
@@ -247,14 +273,15 @@ export default function PricingPage() {
               </div>
 
               {/* Enterprise */}
-              <div className="p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
+              <div className="p-8 sm:p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
                   <Shield className="w-10 h-10 text-emerald-500 mb-8 group-hover:text-blue-500 transition-colors" />
                   <h3 className="text-2xl md:text-3xl font-black mb-3">{t('sys3_title')}</h3>
-                  <div className="flex items-baseline gap-2 mb-4">
+                  <div className="flex items-baseline gap-2 mb-3">
                       <div className="text-xl md:text-2xl font-black leading-tight">{t('sys3_price')}</div>
                       <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
                   </div>
-                  <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-8 p-1.5 bg-emerald-500/10 rounded border border-emerald-500/20 self-start">{t('sys3_renewal')}</div>
+                  <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 p-1.5 bg-emerald-500/10 rounded border border-emerald-500/20 self-start">{t('sys3_renewal')}</div>
+                  <div className="text-xs font-semibold text-emerald-400 mb-8">{t('sys3_seats')}</div>
                   <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1">{t('sys3_desc')}</p>
                   <button onClick={() => navigate('/lead-form')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
                     {t('b2b_cta')} <ArrowRight size={18} />
