@@ -38,7 +38,7 @@ test.describe('Landing Page Interactive Elements & Buttons E2E Suite', () => {
   });
 
   test('Language and Theme toggle buttons work smoothly', async ({ page }) => {
-    const langBtn = page.locator('header button:has-text("EN"), header button:has-text("DE")').first();
+    const langBtn = page.getByRole('button', { name: /^(DE|EN)$/ }).first();
     if (await langBtn.isVisible()) {
       const initialText = await langBtn.textContent();
       await langBtn.click();
@@ -112,5 +112,28 @@ test.describe('Landing Page Interactive Elements & Buttons E2E Suite', () => {
       await page.waitForTimeout(200);
     }
   });
+
+  test('AI Concierge quick question buttons and floating widget work smoothly', async ({ page }) => {
+    const helpSection = page.locator('#help-center');
+    if (await helpSection.isVisible()) {
+      await helpSection.scrollIntoViewIfNeeded();
+
+      // Check quick prompt pills
+      const pill = helpSection.locator('button:has-text("Folgekosten"), button:has-text("renewal")').first();
+      if (await pill.isVisible()) {
+        await pill.click();
+        await page.waitForTimeout(300);
+        const searchInput = helpSection.locator('input[type="text"]');
+        const val = await searchInput.inputValue();
+        expect(val.length).toBeGreaterThan(0);
+      }
+    }
+
+    // Floating AI Concierge button exists
+    const floatingBtn = page.locator('[data-testid="floating-ai-concierge"]');
+    await expect(floatingBtn).toBeVisible();
+  });
 });
+
+
 
