@@ -36,8 +36,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     chaos_b3: 'Email, WhatsApp & Slack Ping-Pong',
     chaos_b3_tag: 'Fragmented',
     ssot_title: 'Kreativ-Desk: Single Source of Truth',
-    ssot_desc: 'All budgets, blueprints, defects, and schedules unified in one central Swiss project operating system. 100% audit-proof.',
+    ssot_desc: 'End data silos and software fragmentation once and for all: Kreativ-Desk OS unifies your entire project lifecycle into a single, audit-proof Swiss operating system. From native 3D BIM models and live target-actual budgets to on-site defect tracking and invoicing, all teams access the exact same authoritative data in real-time.',
     ssot_badge: 'Tenant-Isolated & Encrypted',
+    ssot_p1: '100% Swiss Data Sovereignty & Audit Trail',
+    ssot_p1_tag: 'Tenant-Isolated',
+    ssot_p2: 'Real-Time Sync: Job Site to Executive Board',
+    ssot_p2_tag: 'Zero Friction',
+    ssot_p3: 'Authoritative State for BIM, Budgets & Defects',
+    ssot_p3_tag: 'Zero Version Clashes',
 
     demo_title: 'Experience the real system.', demo_subtitle: 'No dummy graphics. No fake interfaces. Click through the actual Kreativ-Desk dashboard right here.',
     demo_subtitle_mobile: 'Swipe through the interactive highlights of our core features.',
@@ -192,8 +198,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     chaos_b3: 'E-Mail, WhatsApp & Slack Ping-Pong',
     chaos_b3_tag: 'Fragmentiert',
     ssot_title: 'Kreativ-Desk: Single Source of Truth',
-    ssot_desc: 'Alle Budgets, Pläne, Mängel und Termine laufen zentral in einer mandantenisolierten Umgebung zusammen. 100% revisionssicher.',
+    ssot_desc: 'Schluss mit Datensilos und Software-Fragmentierung: Kreativ-Desk OS vereint deine gesamte Projekt-Wertschöpfungskette in einer zentralen, revisionssicheren Schweizer Plattform. Von 3D-BIM-Modellen und Live-Soll-Ist-Budgets über Mängelprotokolle bis zur Abrechnung greifen alle Teams in Echtzeit auf denselben verbindlichen Datenstand zu.',
     ssot_badge: 'Mandantenisoliert & Verschlüsselt',
+    ssot_p1: '100% Schweizer Datenhoheit & Revisionssicherheit',
+    ssot_p1_tag: 'Mandantenisoliert',
+    ssot_p2: 'Echtzeit-Sync: Von Baustelle bis Chef-Etage',
+    ssot_p2_tag: 'Null Medienbrüche',
+    ssot_p3: 'Verbindlicher Datenstand für Pläne, Budgets & Mängel',
+    ssot_p3_tag: 'Kein Versionschaos',
 
     demo_title: 'Erlebe das echte System.', demo_subtitle: 'Keine Dummy-Grafiken. Keine Fake-Oberflächen. Klicke dich direkt hier durch das reale Kreativ-Desk Dashboard.',
     demo_subtitle_mobile: 'Wische durch die interaktiven Highlights unserer Kernfunktionen.',
@@ -753,9 +765,36 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <h3 className="text-2xl sm:text-3xl font-black text-text-primary mb-4 tracking-tight">
                     {t('ssot_title')}
                   </h3>
-                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
+                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">
                     {t('ssot_desc')}
                   </p>
+
+                  {/* 3 High-Impact USP Badges */}
+                  <div className="space-y-3 mb-8">
+                    <div className="flex items-center justify-between p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs font-semibold text-text-primary shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <Shield className="text-blue-400 shrink-0" size={16} />
+                        <span>{t('ssot_p1')}</span>
+                      </div>
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold shrink-0">{t('ssot_p1_tag')}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs font-semibold text-text-primary shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <Zap className="text-amber-400 shrink-0" size={16} />
+                        <span>{t('ssot_p2')}</span>
+                      </div>
+                      <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold shrink-0">{t('ssot_p2_tag')}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs font-semibold text-text-primary shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <Layers className="text-emerald-400 shrink-0" size={16} />
+                        <span>{t('ssot_p3')}</span>
+                      </div>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold shrink-0">{t('ssot_p3_tag')}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="p-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl flex items-center gap-5">

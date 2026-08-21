@@ -3,11 +3,13 @@ import { Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
+const DEFAULT_SCREENSAVER_BG = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop";
+
 export default function Screensaver() {
   const { currentUser } = useAuth();
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [bgImg, setBgImg] = useState(() => localStorage.getItem('ws_screensaver_bg') || '');
+  const [bgImg, setBgImg] = useState(() => localStorage.getItem('ws_screensaver_bg') || DEFAULT_SCREENSAVER_BG);
   const [timeoutMinutes, setTimeoutMinutes] = useState(5);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function Screensaver() {
         const isCompActive = compData && compData.screensaver_active !== null && compData.screensaver_active !== undefined;
         let image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || localStorage.getItem('ws_screensaver_bg') || '';
         if (image && (image.includes('1618221118493') || image.includes('1600607686527'))) {
-          image = defaultBg;
+          image = DEFAULT_SCREENSAVER_BG;
         }
         const timeout = (isCompActive && compData.screensaver_timeout) || sysConf.screensaverTimeout || 5;
 
@@ -100,8 +102,6 @@ export default function Screensaver() {
 
   if (!isActive) return null;
 
-  const defaultBg = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop";
-
   return (
     <div 
       onClick={() => setIsActive(false)}
@@ -111,7 +111,7 @@ export default function Screensaver() {
       <div
         className="absolute inset-0 bg-cover bg-center opacity-95 select-none pointer-events-none transition-transform duration-1000 scale-105"
         style={{
-          backgroundImage: `url(${bgImg || defaultBg})`,
+          backgroundImage: `url(${bgImg || DEFAULT_SCREENSAVER_BG})`,
         }}
       />
       {/* Friendly Light & Glass Overlay */}

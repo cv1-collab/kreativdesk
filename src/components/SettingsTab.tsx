@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal, Check
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn, sanitizeUrl } from '../utils';
