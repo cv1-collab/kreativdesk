@@ -22,7 +22,7 @@ test.describe('Registration & Onboarding End-to-End Suite', () => {
     await expect(submitButton).toBeVisible();
   });
 
-  test('Verify Login page renders email, password, and Google login option', async ({ page }) => {
+  test('Verify Login page renders email, password, and login submit button', async ({ page }) => {
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
 

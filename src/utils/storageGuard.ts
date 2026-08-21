@@ -47,7 +47,7 @@ export const checkStorageLimit = async (companyId: string, fileSize: number): Pr
     return (currentUsed + fileSize) <= limit;
   } catch (error) {
     console.error("Fehler beim Prüfen des Storage-Limits:", error);
-    return true; 
+    return true;
   }
 };
 
