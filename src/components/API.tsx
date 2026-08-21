@@ -209,7 +209,7 @@ export default function API() {
               <div key={k.id} className="p-4 bg-background border border-border/50 rounded-2xl flex items-center justify-between gap-4">
                 <div>
                   <div className="font-bold text-sm text-text-primary">{k.name}</div>
-                  <div className="font-mono text-xs text-text-muted mt-1">{k.key.substring(0, 16)}...</div>
+                  <div className="text-xs text-text-muted mt-1 font-medium tracking-wide">{k.key.substring(0, 16)}...</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => handleCopy(k.id, k.key)} className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-text-primary transition-colors">
@@ -246,30 +246,36 @@ export default function API() {
         </div>
 
         {/* SECRET KEY DISPLAY CARD */}
-        <div className="p-4 bg-background/80 border border-border/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-              <ShieldCheck size={14} className="text-emerald-500" /> Webhook Signing Secret Key (HMAC-SHA256)
+        {endpoints.length > 0 ? (
+          <div className="p-4 bg-background/80 border border-border/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-emerald-500" /> Webhook Signing Secret Key (HMAC-SHA256)
+              </div>
+              <div className="text-xs text-text-primary font-bold tracking-wider">{secretKey}</div>
             </div>
-            <div className="font-mono text-xs text-text-primary font-bold">{secretKey}</div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => handleCopy('wh_sec', secretKey)}
+                className="px-3 py-1.5 bg-surface hover:bg-border/40 text-text-primary rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-border/50"
+              >
+                {copiedId === 'wh_sec' ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                {isDe ? 'Kopieren' : 'Copy'}
+              </button>
+              <button 
+                onClick={handleRegenerateSecret}
+                title={isDe ? 'Secret neu generieren' : 'Regenerate secret'}
+                className="p-1.5 text-text-muted hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => handleCopy('wh_sec', secretKey)}
-              className="px-3 py-1.5 bg-surface hover:bg-border/40 text-text-primary rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-border/50"
-            >
-              {copiedId === 'wh_sec' ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
-              {isDe ? 'Kopieren' : 'Copy'}
-            </button>
-            <button 
-              onClick={handleRegenerateSecret}
-              title={isDe ? 'Secret neu generieren' : 'Regenerate secret'}
-              className="p-1.5 text-text-muted hover:text-text-primary hover:bg-surface rounded-lg transition-colors"
-            >
-              <RefreshCw size={14} />
-            </button>
+        ) : (
+          <div className="p-4 bg-background/40 border border-dashed border-border/60 rounded-2xl text-xs text-text-muted flex items-center justify-between">
+            <span>{isDe ? 'Sobald ein Webhook angelegt ist, wird dein individueller HMAC Signing Key hier sicher bereitgestellt.' : 'Your HMAC Signing Secret Key will be safely generated here once a webhook is added.'}</span>
           </div>
-        </div>
+        )}
 
         {/* ENDPOINTS LIST */}
         <div className="space-y-3">
@@ -285,7 +291,7 @@ export default function API() {
                     <span className={cn("w-2 h-2 rounded-full", ep.active ? "bg-emerald-500 shadow-sm shadow-emerald-500/50" : "bg-text-muted/40")} />
                     <span className="font-bold text-sm text-text-primary truncate">{ep.name}</span>
                   </div>
-                  <div className="font-mono text-xs text-text-muted truncate">{ep.url}</div>
+                  <div className="text-xs text-text-muted truncate font-medium">{ep.url}</div>
                   
                   {/* EVENTS BADGES */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
@@ -353,7 +359,7 @@ export default function API() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-mono">
+          <div className="flex items-center gap-3 text-xs font-medium">
             <span className={cn("px-2 py-0.5 rounded-md font-bold text-white", testResult.result.success ? "bg-emerald-600" : "bg-red-600")}>
               HTTP {testResult.result.status || 'ERR'}
             </span>
@@ -361,7 +367,7 @@ export default function API() {
             <span className="text-text-muted">Status: {testResult.result.statusText}</span>
           </div>
 
-          <div className="bg-background border border-border/50 rounded-xl p-3 text-xs font-mono text-text-primary max-h-40 overflow-y-auto whitespace-pre-wrap">
+          <div className="bg-background border border-border/50 rounded-xl p-3 text-xs font-medium text-text-primary max-h-40 overflow-y-auto whitespace-pre-wrap">
             {testResult.result.responseBody || '(Keine Antwortdaten)'}
           </div>
         </div>
