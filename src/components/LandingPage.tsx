@@ -123,7 +123,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
     // FAQ (11 questions)
     faq_title: 'Frequently Asked Questions', faq_subtitle: 'Everything you need to know about Kreativ-Desk.',
-    faq_1_q: 'How secure is my data?', faq_1_a: 'We use enterprise-grade encryption. Your data is stored on secure European servers and strictly isolated per tenant.',
+    faq_1_q: 'How secure is my data?', faq_1_a: 'We use enterprise-grade encryption. Your data is stored on secure Swiss servers and strictly isolated per tenant.',
     faq_2_q: 'Does the AI train on my project data?', faq_2_a: 'No. Our AI models process your receipts, plans, and documents in a strictly isolated environment. Your data is never used to train global models.',
     faq_3_q: 'How does the 3D BIM Viewer work?', faq_3_a: 'Upload your IFC or CAD model and navigate fluidly through the 3D architecture directly in your browser. Perform visual checks with your team without needing external software.',
     faq_4_q: 'Can I manage quotes and invoices directly in the system?', faq_4_a: 'Yes. The Expert plan includes the full Finance Studio. You can generate professional quotes and PDF invoices, track your income, and monitor your project budget in real-time.',
@@ -275,7 +275,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
     // FAQ (11 questions)
     faq_title: 'Häufig gestellte Fragen (FAQ)', faq_subtitle: 'Alles, was du über Kreativ-Desk wissen musst.',
-    faq_1_q: 'Wie sicher sind meine Daten?', faq_1_a: 'Wir nutzen Enterprise-Grade Verschlüsselung. Deine Daten liegen auf sicheren europäischen Servern und sind strikt mandantenisoliert.',
+    faq_1_q: 'Wie sicher sind meine Daten?', faq_1_a: 'Wir nutzen Enterprise-Grade Verschlüsselung. Deine Daten liegen auf sicheren Schweizer Servern und sind strikt mandantenisoliert.',
     faq_2_q: 'Trainiert die KI mit meinen Projektdaten?', faq_2_a: 'Nein. Unsere KI-Modelle verarbeiten deine Belege, Pläne und Dokumente strikt isoliert. Deine Daten werden niemals genutzt, um globale Modelle zu trainieren.',
     faq_3_q: 'Wie funktioniert der 3D BIM Viewer?', faq_3_a: 'Lade dein IFC- oder CAD-Modell hoch und navigiere flüssig im Browser durch die 3D-Architektur. Du kannst visuelle Prüfungen direkt im Team durchführen, ohne externe Software installieren zu müssen.',
     faq_4_q: 'Kann ich Offerten und Rechnungen direkt im System verwalten?', faq_4_a: 'Ja. Ab dem Expert-Plan erhältst du das volle Finanz-Studio. Erstelle mit wenigen Klicks professionelle Offerten und Rechnungen als PDF, behalte deine Einnahmen im Blick und verfolge dein Projektbudget in Echtzeit.',
@@ -442,7 +442,7 @@ Offizielle Fakten & Wirtschaftliche Logik von Kreativ-Desk:
   * Enterprise OS: ab CHF 50'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: ab CHF 35'000 / Jahr Flatrate | Inkl. 20 Governance-Lizenzen.
 - Zusatzlizenzen: Jede zusätzliche Governance-Lizenz kostet exakt CHF 780 / Jahr (CHF 65 / Monat). (Beispiel: 7 Lizenzen im Studio OS = CHF 15'000 + 2 × CHF 780 = CHF 16'560 im 1. Jahr; ab Jahr 2 CHF 7'500 + CHF 1'560 = CHF 9'060/Jahr).
 - Alle Preise sind exkl. MwSt. (netto).
-- Architektur & Sicherheit: 100% mandantenisoliert, Schweizer Entwicklerteam, Revisionssicherheit, RBAC-Rollenmanagement (Owner, GL, Projektleiter, Mitarbeiter), DSGVO & Schweizer Datenschutz (DSG). Kundendaten werden niemals für KI-Training verwendet.
+- Architektur & Sicherheit: 100% mandantenisoliert, sichere Schweizer Server (Datenhaltung & Infrastruktur in der Schweiz), Schweizer Entwicklerteam, Revisionssicherheit, RBAC-Rollenmanagement (Owner, GL, Projektleiter, Mitarbeiter), DSGVO & Schweizer Datenschutz (DSG). Kundendaten werden niemals für KI-Training verwendet.
 - Technische Features: Nativer 3D IFC Viewer direkt im Browser (kein Plugin), automatische KI-Kollisionsprüfung, Live-Sync Baustellen-App, QR-Rechnungen, Whiteboard & Pitch Deck Studio.
 
 Frage des Interessenten: "${query}"
