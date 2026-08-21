@@ -46,7 +46,7 @@ export default function AdminBrandTab() {
     masterLogo: '', accentColor: '#ef4444',
     companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
     screensaverActive: false,
-    screensaverImage: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop',
+    screensaverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop',
     screensaverTimeout: 5,
     announcementActive: false,
     announcementText: '',
@@ -432,9 +432,9 @@ export default function AdminBrandTab() {
               <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Wallpaper Presets (Empfohlen)</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { name: 'Moderne Architektur', url: 'https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Abstract Gradient Wave', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop' },
                   { name: 'Swiss Alp Panorama', url: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?q=80&w=2000&auto=format&fit=crop' },
-                  { name: 'Minimal Interior Studio', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000&auto=format&fit=crop' },
+                  { name: 'Moderne Architektur', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000&auto=format&fit=crop' },
                   { name: 'Dark Cyberpunk Glass', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop' }
                 ].map(w => (
                   <div

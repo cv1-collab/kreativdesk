@@ -48,7 +48,10 @@ export default function Screensaver() {
         }
 
         const isCompActive = compData && compData.screensaver_active !== null && compData.screensaver_active !== undefined;
-        const image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || localStorage.getItem('ws_screensaver_bg') || '';
+        let image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || localStorage.getItem('ws_screensaver_bg') || '';
+        if (image && (image.includes('1618221118493') || image.includes('1600607686527'))) {
+          image = defaultBg;
+        }
         const timeout = (isCompActive && compData.screensaver_timeout) || sysConf.screensaverTimeout || 5;
 
         setTimeoutMinutes(timeout);

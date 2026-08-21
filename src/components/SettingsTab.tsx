@@ -1101,10 +1101,17 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   const [active, setActive] = useState(false);
   const [timeout, setTimeoutVal] = useState(5);
   // Default Bild für Kreativ Desk (Architektur/Design)
-  const defaultImage = 'https://images.unsplash.com/photo-1618221118493-9cfa1a1c00da?q=80&w=2000&auto=format&fit=crop';
+  const defaultImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop';
   const [image, setImage] = useState(defaultImage);
   const [isUploading, setIsUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const screensaverPresets = [
+    { name: 'Abstract Gradient Wave', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop' },
+    { name: 'Swiss Alp Panorama', url: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?q=80&w=2000&auto=format&fit=crop' },
+    { name: 'Moderne Architektur', url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000&auto=format&fit=crop' },
+    { name: 'Dark Cyberpunk Glass', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2000&auto=format&fit=crop' }
+  ];
 
   useEffect(() => {
     if (!currentUser?.companyId) return;
@@ -1113,7 +1120,13 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       if (d) {
         setActive(d.screensaver_active ?? false);
         setTimeoutVal(d.screensaver_timeout ?? 5);
-        setImage(d.screensaver_image || defaultImage);
+        // If it was the legacy bedroom image, upgrade to colorful abstract gradient
+        const savedImg = d.screensaver_image;
+        if (savedImg && !savedImg.includes('1618221118493') && !savedImg.includes('1600607686527')) {
+          setImage(savedImg);
+        } else {
+          setImage(defaultImage);
+        }
       }
     };
     fetchSettings();
@@ -1128,7 +1141,9 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
         screensaver_timeout: Number(timeout),
         screensaver_image: image
       });
-      addToast('Screensaver saved!', 'success');
+      localStorage.setItem('ws_screensaver_bg', image);
+      window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
+      addToast(currentLang === 'de' ? 'Screensaver-Einstellungen gespeichert!' : 'Screensaver settings saved!', 'success');
     } catch (err) { addToast('Save failed', 'error'); } 
   };
 
@@ -1143,8 +1158,10 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const url = pubData.publicUrl;
       setImage(url);
+      localStorage.setItem('ws_screensaver_bg', url);
+      window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
       await supabase.from('company_settings').upsert({ company_id: currentUser.companyId, screensaver_image: url });
-      addToast('Background image uploaded!', 'success');
+      addToast(currentLang === 'de' ? 'Hintergrundbild erfolgreich hochgeladen!' : 'Background image uploaded!', 'success');
     } catch (err) { addToast('Upload failed', 'error'); } 
     finally { setIsUploading(false); }
   };
@@ -1169,21 +1186,51 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
         <div className="w-full sm:w-1/3 space-y-2">
           <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Clock size={14}/> {t('timeout_minutes')}</label>
           <input type="number" min="1" max="60" value={timeout} onChange={e => setTimeoutVal(Number(e.target.value))} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-bold shadow-inner" />
+          <p className="text-[11px] text-text-muted">Inaktivitätszeit bis der Screensaver aktiviert wird.</p>
         </div>
 
-        <div className="w-full sm:w-2/3 space-y-2">
-          <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><ImageIcon size={14}/> {t('background_image')}</label>
-          <div className="flex items-center gap-4 bg-background/30 p-3 rounded-xl border border-border/30">
-            <div className="w-16 h-16 bg-background border border-border rounded-lg overflow-hidden shrink-0 relative">
-              <img src={image} alt="Screensaver" className="w-full h-full object-cover" />
-              {isUploading && <div className="absolute inset-0 bg-background/80 flex items-center justify-center"><Loader2 size={16} className="animate-spin text-accent-ai" /></div>}
-            </div>
-            <div className="space-y-2 w-full">
-              <input type="file" ref={fileRef} onChange={handleUpload} accept="image/*" className="hidden" />
-              <button type="button" onClick={() => fileRef.current?.click()} disabled={isUploading} className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors shadow-sm">
-                {t('change_image')}
-              </button>
-            </div>
+        <div className="w-full sm:w-2/3 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1">
+              <ImageIcon size={14}/> {t('background_image')} (Templates & Presets)
+            </label>
+            <input type="file" ref={fileRef} onChange={handleUpload} accept="image/*" className="hidden" />
+            <button 
+              type="button" 
+              onClick={() => fileRef.current?.click()} 
+              disabled={isUploading} 
+              className="px-3 py-1.5 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-all shadow-sm flex items-center gap-1.5"
+            >
+              {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} className="text-blue-500" />}
+              <span>{currentLang === 'de' ? 'Eigenes Bild hochladen' : 'Upload Custom Image'}</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {screensaverPresets.map((preset) => (
+              <div
+                key={preset.url}
+                onClick={() => {
+                  setImage(preset.url);
+                  localStorage.setItem('ws_screensaver_bg', preset.url);
+                  window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
+                }}
+                className={cn(
+                  "group relative h-20 rounded-xl overflow-hidden border cursor-pointer transition-all hover:scale-[1.02] shadow-sm",
+                  image === preset.url ? "border-blue-500 ring-2 ring-blue-500/40" : "border-border/60 hover:border-white/40"
+                )}
+              >
+                <img src={preset.url} alt={preset.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2">
+                  <span className="text-[10px] font-bold text-white truncate">{preset.name}</span>
+                </div>
+                {image === preset.url && (
+                  <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-white shadow-md">
+                    <Check size={10} strokeWidth={3} />
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
