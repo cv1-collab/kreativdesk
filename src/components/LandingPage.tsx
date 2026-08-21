@@ -1060,12 +1060,29 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
                 {/* Billing Toggle */}
                 <div className="flex items-center justify-center gap-4">
-                  <span className={cn("text-sm font-bold transition-colors", !isYearly ? "text-text-primary" : "text-text-muted")}>{t('saas_monthly')}</span>
-                  <button onClick={() => setIsYearly(!isYearly)} className="w-14 h-7 bg-surface border border-border rounded-full p-1 relative transition-colors">
+                  <button 
+                    type="button"
+                    onClick={() => setIsYearly(false)} 
+                    className={cn("text-sm font-bold transition-colors cursor-pointer", !isYearly ? "text-text-primary" : "text-text-muted hover:text-text-primary")}
+                  >
+                    {t('saas_monthly')}
+                  </button>
+                  <button 
+                    type="button"
+                    aria-label="Billing Cycle Toggle"
+                    onClick={() => setIsYearly(!isYearly)} 
+                    className="w-14 h-7 bg-surface border border-border rounded-full p-1 relative transition-colors"
+                  >
                     <div className={cn("w-5 h-5 bg-blue-600 rounded-full transition-transform duration-300", isYearly ? "translate-x-7" : "translate-x-0")} />
                   </button>
                   <div className="flex items-center gap-2">
-                    <span className={cn("text-sm font-bold transition-colors", isYearly ? "text-text-primary" : "text-text-muted")}>{t('saas_yearly')}</span>
+                    <button 
+                      type="button"
+                      onClick={() => setIsYearly(true)} 
+                      className={cn("text-sm font-bold transition-colors cursor-pointer", isYearly ? "text-text-primary" : "text-text-muted hover:text-text-primary")}
+                    >
+                      {t('saas_yearly')}
+                    </button>
                     <span className="bg-blue-500/10 text-blue-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/20">{t('saas_save_20')}</span>
                   </div>
                 </div>
