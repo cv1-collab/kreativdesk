@@ -28,26 +28,28 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
   const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
   const contents = normalizeContents(rawContents);
 
-  // 1. Try server proxy API endpoint /api/generate
-  try {
-    const response = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ model: safeModel, contents, config })
-    });
+  // 1. Try server proxy API endpoint /api/generate only if authenticated session exists
+  if (token) {
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ model: safeModel, contents, config })
+      });
 
-    const resText = await response.text();
-    let resData: any;
-    try { resData = JSON.parse(resText); } catch (e) { console.warn("Could not parse proxy response JSON:", e); }
+      const resText = await response.text();
+      let resData: any;
+      try { resData = JSON.parse(resText); } catch (e) { console.warn("Could not parse proxy response JSON:", e); }
 
-    if (response.ok && resData && (resData.text || resData.candidates)) {
-      return resData;
+      if (response.ok && resData && (resData.text || resData.candidates)) {
+        return resData;
+      }
+    } catch (proxyErr) {
+      console.warn("Server proxy generation failed, falling back to direct client API:", proxyErr);
     }
-  } catch (proxyErr) {
-    console.warn("Server proxy generation failed, falling back to direct client API:", proxyErr);
   }
 
   // 2. Client-side direct fallback if server proxy failed or was not configured
