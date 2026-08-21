@@ -745,7 +745,6 @@ export default function LandingPage() {
                 <li><Link to="/privacy" className="hover:text-blue-500 transition-colors">{t('footer_privacy')}</Link></li>
                 <li><Link to="/terms" className="hover:text-blue-500 transition-colors">{t('footer_tos')}</Link></li>
                 <li><Link to="/imprint" className="hover:text-blue-500 transition-colors">{t('footer_imprint')}</Link></li>
-                <li><Link to="/admin" className="hover:text-red-500 transition-colors mt-2 block">{t('footer_admin')}</Link></li>
               </ul>
             </div>
           </div>
