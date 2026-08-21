@@ -80,7 +80,7 @@ export default function API() {
           url: 'https://hooks.zapier.com/hooks/catch/demo123',
           events: ['defect.created', 'document.uploaded'],
           active: true,
-          createdAt: new Date(Date.now() - 1209600000).toISOString()
+          created_at: new Date(Date.now() - 1209600000).toISOString()
         }
       ]);
       setSecretKey('whsec_demo_9847291048123abcdef');
