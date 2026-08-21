@@ -57,7 +57,7 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
     // Status Quo vs SSoT
     await expect(page.getByText(/Status Quo: Chaos/i).first()).toBeVisible();
     await expect(page.getByText(/Single Source of Truth/i).first()).toBeVisible();
-    await expect(page.getByText('Budget_v4_final.xlsx').first()).toBeVisible();
+    await expect(page.getByText(/Excel|Dropbox|Sheets/i).first()).toBeVisible();
   });
 
   test('3. OS Infrastructure 4 Executive Pillars render cleanly', async ({ page }) => {

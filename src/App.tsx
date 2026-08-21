@@ -77,7 +77,7 @@ const PricingPage = lazyWithRetry(() => import('./components/PricingPage'));
 const DemoApp = lazyWithRetry(() => import('./components/DemoApp'));
 const PrivacyPolicy = lazyWithRetry(() => import('./components/PrivacyPolicy'));
 const Imprint = lazyWithRetry(() => import('./components/Imprint'));
-const TermsOfService = lazyWithRetry(() => import('./components/LegalPage'));
+const TermsOfService = lazyWithRetry(() => import('./components/TermsOfService'));
 const Settings = lazyWithRetry(() => import('./components/Settings'));
 const PublicLeadForm = lazyWithRetry(() => import('./components/PublicLeadForm'));
 const SuccessPage = lazyWithRetry(() => import('./components/SuccessPage'));

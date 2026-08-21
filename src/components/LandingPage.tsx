@@ -26,13 +26,17 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cta_primary: 'Get Started', cta_secondary: 'Request Setup',
     
     // Status Quo vs Single Source of Truth
-    chaos_title: 'Status Quo: Chaos & Liability Risk',
-    chaos_desc: 'Who is liable when construction follows plan version V3 instead of V4? Fragmented data burns margin.',
-    chaos_b1: 'Budget_v4_final.xlsx',
-    chaos_b2: 'Upload failed',
-    chaos_b3: '"Plan changed!"',
+    chaos_badge: 'Tool Chaos',
+    chaos_title: 'Status Quo: Chaos & Tool Sprawl',
+    chaos_desc: 'Dozens of accounts, disconnected software vendors, and scattered spreadsheets. Lost files, duplicate work, and version confusion drain team productivity.',
+    chaos_b1: 'Excel, Sheets & Dropboxes',
+    chaos_b1_tag: 'Version Chaos',
+    chaos_b2: '10+ Logins & Separate Vendors',
+    chaos_b2_tag: 'No Overview',
+    chaos_b3: 'Email, WhatsApp & Slack Ping-Pong',
+    chaos_b3_tag: 'Fragmented',
     ssot_title: 'Kreativ-Desk: Single Source of Truth',
-    ssot_desc: 'All budgets, blueprints, and defects converge centrally in a tenant-isolated environment. 100% audit-proof.',
+    ssot_desc: 'All budgets, blueprints, defects, and schedules unified in one central Swiss project operating system. 100% audit-proof.',
     ssot_badge: 'Tenant-Isolated & Encrypted',
 
     demo_title: 'Experience the real system.', demo_subtitle: 'No dummy graphics. No fake interfaces. Click through the actual Kreativ-Desk dashboard right here.',
@@ -178,13 +182,17 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cta_primary: 'Jetzt starten', cta_secondary: 'Setup anfragen',
 
     // Status Quo vs Single Source of Truth
-    chaos_title: 'Status Quo: Chaos & Haftungsrisiko',
-    chaos_desc: 'Wer haftet, wenn auf der Baustelle nach Plan-Version V3 statt V4 gebaut wird? Fragmentierte Daten kosten Margen.',
-    chaos_b1: 'Budget_v4_final.xlsx',
-    chaos_b2: 'Upload failed',
-    chaos_b3: '"Plan geändert!"',
+    chaos_badge: 'Tool-Chaos',
+    chaos_title: 'Status Quo: Chaos & Tool-Wildwuchs',
+    chaos_desc: 'Unzählige Accounts, verschiedene Software-Anbieter und verstreute Dateien. Datenverlust, Doppelspurigkeiten und Versionschaos kosten Zeit und Nerven.',
+    chaos_b1: 'Excel, Sheets & Dropbox-Chaos',
+    chaos_b1_tag: 'Versions-Chaos',
+    chaos_b2: '10+ Accounts & diverse Anbieter',
+    chaos_b2_tag: 'Keine Übersicht',
+    chaos_b3: 'E-Mail, WhatsApp & Slack Ping-Pong',
+    chaos_b3_tag: 'Fragmentiert',
     ssot_title: 'Kreativ-Desk: Single Source of Truth',
-    ssot_desc: 'Alle Budgets, Pläne und Mängel laufen zentral in einer mandantenisolierten Umgebung zusammen. 100% revisionssicher.',
+    ssot_desc: 'Alle Budgets, Pläne, Mängel und Termine laufen zentral in einer mandantenisolierten Umgebung zusammen. 100% revisionssicher.',
     ssot_badge: 'Mandantenisoliert & Verschlüsselt',
 
     demo_title: 'Erlebe das echte System.', demo_subtitle: 'Keine Dummy-Grafiken. Keine Fake-Oberflächen. Klicke dich direkt hier durch das reale Kreativ-Desk Dashboard.',
@@ -693,12 +701,12 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
               
-              {/* Links: Chaos / Haftungsrisiko */}
+              {/* Links: Chaos / Tool-Wildwuchs */}
               <div className="p-8 sm:p-10 bg-gradient-to-br from-red-950/20 via-surface to-background border border-red-500/30 rounded-[2.5rem] shadow-xl flex flex-col justify-between relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-wider mb-6">
-                    <AlertTriangle size={14} /> Risiko
+                    <AlertTriangle size={14} /> {t('chaos_badge')}
                   </div>
                   <h3 className="text-2xl sm:text-3xl font-black text-red-500 mb-4 tracking-tight">
                     {t('chaos_title')}
@@ -714,15 +722,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <FileSpreadsheet className="text-red-400" size={16} />
                       <span>{t('chaos_b1')}</span>
                     </div>
-                    <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded font-bold">Ungeprüft</span>
+                    <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded font-bold">{t('chaos_b1_tag')}</span>
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
                     <div className="flex items-center gap-2">
-                      <ShieldAlert className="text-amber-400" size={16} />
+                      <Lock className="text-amber-400" size={16} />
                       <span>{t('chaos_b2')}</span>
                     </div>
-                    <span className="text-[10px] bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded font-bold">Timeout</span>
+                    <span className="text-[10px] bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded font-bold">{t('chaos_b2_tag')}</span>
                   </div>
 
                   <div className="flex items-center justify-between p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
@@ -730,7 +738,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <MessageSquare className="text-purple-400" size={16} />
                       <span>{t('chaos_b3')}</span>
                     </div>
-                    <span className="text-[10px] bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded font-bold">WhatsApp/Slack</span>
+                    <span className="text-[10px] bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded font-bold">{t('chaos_b3_tag')}</span>
                   </div>
                 </div>
               </div>
