@@ -55,7 +55,9 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
     await expect(heroCta2).toBeVisible();
 
     // Status Quo vs SSoT
-    await expect(page.getByText(/Status Quo: Chaos/i).first()).toBeVisible();
+    const statusQuoHeading = page.getByText(/Status Quo: Chaos/i).first();
+    await statusQuoHeading.scrollIntoViewIfNeeded();
+    await expect(statusQuoHeading).toBeVisible();
     await expect(page.getByText(/Single Source of Truth/i).first()).toBeVisible();
     await expect(page.getByText(/Excel|Dropbox|Sheets/i).first()).toBeVisible();
   });
