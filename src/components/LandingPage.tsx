@@ -687,23 +687,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </motion.div>
             </div>
             
-            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1] bg-gradient-to-b from-text-primary to-text-muted bg-clip-text text-transparent">
+            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1] text-slate-900 dark:text-white">
               {t('hero_title1')}<br/>{t('hero_title2')}
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-text-muted mb-4 max-w-3xl mx-auto leading-relaxed">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-4 max-w-3xl mx-auto leading-relaxed">
               {t('hero_subtitle')}
             </motion.p>
             
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-sm font-medium text-orange-500/80 mb-12 max-w-2xl mx-auto border border-orange-500/20 bg-orange-500/5 px-4 py-3 rounded-xl">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-sm font-semibold text-amber-700 dark:text-orange-400 mb-12 max-w-2xl mx-auto border border-amber-500/30 dark:border-orange-500/20 bg-amber-500/10 dark:bg-orange-500/5 px-4 py-3 rounded-xl">
               {t('hero_beta_disclaimer')}
             </motion.p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button onClick={() => scrollTo('live-demo')} className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all">
+              <button onClick={() => scrollTo('live-demo')} className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
                 {t('cta_primary')} <ArrowRight size={20} />
               </button>
-              <button onClick={() => scrollTo('systems')} className="w-full sm:w-auto px-8 py-4 bg-surface border border-border text-text-primary rounded-2xl font-bold text-lg hover:bg-white/5 transition-all">
+              <button onClick={() => scrollTo('systems')} className="w-full sm:w-auto px-8 py-4 bg-surface border border-border text-text-primary rounded-2xl font-bold text-lg hover:bg-white/5 transition-all cursor-pointer">
                 {t('cta_secondary')}
               </button>
             </div>
@@ -725,34 +725,35 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <h3 className="text-2xl sm:text-3xl font-black text-red-500 mb-4 tracking-tight">
                     {t('chaos_title')}
                   </h3>
-                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-8">
+                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">
                     {t('chaos_desc')}
                   </p>
-                </div>
 
-                <div className="space-y-3 bg-background/60 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-red-500/20">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileSpreadsheet className="text-red-400 shrink-0" size={16} />
-                      <span className="truncate">{t('chaos_b1')}</span>
+                  {/* 3 Pain-Points Badges */}
+                  <div className="space-y-3 mb-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileSpreadsheet className="text-red-400 shrink-0" size={16} />
+                        <span className="truncate">{t('chaos_b1')}</span>
+                      </div>
+                      <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b1_tag')}</span>
                     </div>
-                    <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b1_tag')}</span>
-                  </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Lock className="text-amber-400 shrink-0" size={16} />
-                      <span className="truncate">{t('chaos_b2')}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Server className="text-orange-400 shrink-0" size={16} />
+                        <span className="truncate">{t('chaos_b2')}</span>
+                      </div>
+                      <span className="text-[10px] bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b2_tag')}</span>
                     </div>
-                    <span className="text-[10px] bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b2_tag')}</span>
-                  </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MessageSquare className="text-purple-400 shrink-0" size={16} />
-                      <span className="truncate">{t('chaos_b3')}</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MessageSquare className="text-purple-400 shrink-0" size={16} />
+                        <span className="truncate">{t('chaos_b3')}</span>
+                      </div>
+                      <span className="text-[10px] bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b3_tag')}</span>
                     </div>
-                    <span className="text-[10px] bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b3_tag')}</span>
                   </div>
                 </div>
               </div>
@@ -869,11 +870,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           </div>
         </section>
 
-        {/* LIVE DEMO (DESKTOP & MOBILE) */}
-        <section id="live-demo" className="py-20 px-6 relative z-10">
+        {/* LIVE DEMO (MACBOOK PRO & IPHONE SHOWCASE) */}
+        <section id="live-demo" className="py-20 px-4 sm:px-6 relative z-10">
           <div className="max-w-7xl mx-auto">
             
-            {/* Desktop Full App Preview */}
+            {/* Desktop MacBook Pro Presentation Frame */}
             <div className="hidden lg:block">
               <div className="text-center mb-12">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
@@ -883,18 +884,51 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <p className="text-text-muted text-lg max-w-2xl mx-auto">{t('demo_subtitle')}</p>
               </div>
 
-              <div className="h-[750px] w-full rounded-[2.5rem] border border-border overflow-hidden shadow-2xl bg-surface relative">
-                <Suspense fallback={
-                  <div className="h-full w-full flex items-center justify-center bg-background">
-                    <Loader2 className="animate-spin text-blue-500" size={32} />
+              {/* MacBook Pro Casing */}
+              <div className="relative max-w-6xl mx-auto">
+                {/* Glow behind screen */}
+                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none -z-10" />
+
+                {/* Display Bezel */}
+                <div className="relative bg-[#0c0d10] rounded-t-[28px] border-[3px] border-b-0 border-[#2a2c33] shadow-[0_-20px_50px_-15px_rgba(0,0,0,0.5)] pt-3.5 px-3.5">
+                  {/* Notch / Camera */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-32 bg-[#0c0d10] rounded-b-lg flex items-center justify-center gap-2 border-b border-x border-[#2a2c33] z-30">
+                    <div className="w-2 h-2 rounded-full bg-zinc-900 ring-1 ring-zinc-700/80 flex items-center justify-center">
+                      <div className="w-0.5 h-0.5 rounded-full bg-emerald-400/80" />
+                    </div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-zinc-900 ring-1 ring-zinc-800" />
                   </div>
-                }>
-                  <DemoLayout isDemoMode={true} />
-                </Suspense>
+
+                  {/* Inner Screen Display */}
+                  <div className="h-[720px] w-full rounded-t-[16px] overflow-hidden bg-background relative border border-border/30 shadow-inner">
+                    <Suspense fallback={
+                      <div className="h-full w-full flex items-center justify-center bg-background">
+                        <Loader2 className="animate-spin text-blue-500" size={32} />
+                      </div>
+                    }>
+                      <DemoLayout isDemoMode={true} />
+                    </Suspense>
+                  </div>
+                </div>
+
+                {/* MacBook Aluminum Base Chassis */}
+                <div className="relative z-20">
+                  {/* Hinge Line */}
+                  <div className="h-2.5 bg-gradient-to-r from-zinc-800 via-zinc-700 to-zinc-800 border-t border-zinc-700/60" />
+                  
+                  {/* Bottom Keyboard Deck Lip */}
+                  <div className="w-[104%] -ml-[2%] h-4 sm:h-5 bg-gradient-to-b from-zinc-300 via-zinc-400 to-zinc-500 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 rounded-b-[18px] sm:rounded-b-[24px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.45)] border-t border-white/25 relative flex items-start justify-center">
+                    {/* Opening Thumb Notch */}
+                    <div className="w-28 sm:w-36 h-2 bg-zinc-900/40 dark:bg-black/50 rounded-b-md" />
+                  </div>
+                  
+                  {/* Table Reflection Shadow */}
+                  <div className="w-[92%] mx-auto h-4 bg-black/20 dark:bg-black/40 blur-md rounded-full mt-1" />
+                </div>
               </div>
             </div>
 
-            {/* Mobile Touch Cards Carousel */}
+            {/* Mobile iPhone Showcase */}
             <div className="lg:hidden">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-3">
@@ -904,104 +938,115 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <p className="text-text-muted text-sm">{t('demo_subtitle_mobile')}</p>
               </div>
 
-              <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory custom-scrollbar -mx-6 px-6">
-                
-                {/* Card 1: Budget Slider */}
-                <div className="snap-center shrink-0 w-[280px] sm:w-[320px] p-6 bg-surface border border-border rounded-3xl shadow-lg flex flex-col justify-between">
-                  <div>
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-4">
-                      <Calculator size={20} />
-                    </div>
-                    <h3 className="font-bold text-lg mb-1">{t('card1_title')}</h3>
-                    <p className="text-xs text-text-muted mb-6">{t('card1_desc')}</p>
-                    <div className="space-y-2 bg-background p-4 rounded-xl border border-border">
-                      <div className="flex justify-between text-xs font-semibold">
-                        <span>{t('card1_label')}</span>
-                        <span className="text-blue-500">{budgetSlider}%</span>
-                      </div>
-                      <input type="range" min="10" max="100" value={budgetSlider} onChange={(e) => setBudgetSlider(Number(e.target.value))} className="w-full accent-blue-500" />
-                    </div>
+              {/* iPhone Frame Container */}
+              <div className="relative max-w-sm mx-auto bg-[#0c0d10] rounded-[44px] p-3.5 border-4 border-[#2a2c33] shadow-[0_25px_60px_rgba(0,0,0,0.35)] ring-1 ring-white/10">
+                {/* Dynamic Island */}
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-30 flex items-center justify-between px-3 border border-zinc-800/80 shadow-md">
+                  <div className="w-2.5 h-2.5 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center">
+                    <div className="w-1 h-1 rounded-full bg-blue-900" />
                   </div>
-                  <div className="mt-6 pt-4 border-t border-border flex justify-between items-center text-xs font-bold">
-                    <span className="text-text-muted">{t('card1_total')}</span>
-                    <span className="text-lg font-black text-blue-500">CHF {(budgetSlider * 4500).toLocaleString('de-CH')}</span>
-                  </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500/80 animate-pulse" />
                 </div>
 
-                {/* Card 2: 3D AI Audit */}
-                <div className="snap-center shrink-0 w-[280px] sm:w-[320px] p-6 bg-surface border border-border rounded-3xl shadow-lg flex flex-col justify-between">
-                  <div>
-                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-4">
-                      <Box size={20} />
-                    </div>
-                    <h3 className="font-bold text-lg mb-1">{t('card2_title')}</h3>
-                    <p className="text-xs text-text-muted mb-6">{t('card2_desc')}</p>
+                {/* iPhone Inner Screen */}
+                <div className="rounded-[32px] overflow-hidden bg-background border border-border/40 pt-9 pb-4 px-2">
+                  <div className="flex flex-col gap-4">
                     
-                    <button onClick={runAIAudit} disabled={auditState === 'scanning'} className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2">
-                      {auditState === 'scanning' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                      {auditState === 'scanning' ? t('card2_scanning') : t('card2_btn_scan')}
-                    </button>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-border">
-                    {auditState === 'done' ? (
-                      <div className="text-xs text-emerald-500 font-bold flex items-center gap-1.5">
-                        <CheckCircle2 size={16} /> {t('card2_safe')}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-text-muted font-medium">Bereit für Kollisionsprüfung</div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card 3: Defect Check */}
-                <div className="snap-center shrink-0 w-[280px] sm:w-[320px] p-6 bg-surface border border-border rounded-3xl shadow-lg flex flex-col justify-between">
-                  <div>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4">
-                      <CheckCircle2 size={20} />
-                    </div>
-                    <h3 className="font-bold text-lg mb-1">{t('card3_title')}</h3>
-                    <p className="text-xs text-text-muted mb-4">{t('card3_desc')}</p>
-
-                    <div className="space-y-2">
-                      {defects.map(d => (
-                        <div key={d.id} onClick={() => toggleDefect(d.id)} className="flex items-center gap-2 p-2.5 bg-background border border-border rounded-xl text-xs cursor-pointer">
-                          <div className={cn("w-4 h-4 rounded flex items-center justify-center border", d.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-border")}>
-                            {d.done && <Check size={12} />}
-                          </div>
-                          <span className={cn(d.done && "line-through text-text-muted")}>{t(d.text)}</span>
+                    {/* Card 1: Budget Slider */}
+                    <div className="p-5 bg-surface border border-border rounded-2xl shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-3">
+                          <Calculator size={18} />
                         </div>
-                      ))}
+                        <h3 className="font-bold text-base mb-1">{t('card1_title')}</h3>
+                        <p className="text-xs text-text-muted mb-4">{t('card1_desc')}</p>
+                        <div className="space-y-2 bg-background p-3.5 rounded-xl border border-border">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span>{t('card1_label')}</span>
+                            <span className="text-blue-500">{budgetSlider}%</span>
+                          </div>
+                          <input type="range" min="10" max="100" value={budgetSlider} onChange={(e) => setBudgetSlider(Number(e.target.value))} className="w-full accent-blue-500" />
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-xs font-bold">
+                        <span className="text-text-muted">{t('card1_total')}</span>
+                        <span className="text-base font-black text-blue-500">CHF {(budgetSlider * 4500).toLocaleString('de-CH')}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-border text-[10px] text-text-muted font-semibold text-center">
-                    Offline-ready & Sync
+
+                    {/* Card 2: 3D AI Audit */}
+                    <div className="p-5 bg-surface border border-border rounded-2xl shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-3">
+                          <Box size={18} />
+                        </div>
+                        <h3 className="font-bold text-base mb-1">{t('card2_title')}</h3>
+                        <p className="text-xs text-text-muted mb-4">{t('card2_desc')}</p>
+                        
+                        <button onClick={runAIAudit} disabled={auditState === 'scanning'} className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
+                          {auditState === 'scanning' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                          {auditState === 'scanning' ? t('card2_scanning') : t('card2_btn_scan')}
+                        </button>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-border">
+                        {auditState === 'done' ? (
+                          <div className="text-xs text-emerald-500 font-bold flex items-center gap-1.5">
+                            <CheckCircle2 size={16} /> {t('card2_safe')}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-text-muted font-medium">Bereit für Kollisionsprüfung</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card 3: Defect Check */}
+                    <div className="p-5 bg-surface border border-border rounded-2xl shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-3">
+                          <CheckCircle2 size={18} />
+                        </div>
+                        <h3 className="font-bold text-base mb-1">{t('card3_title')}</h3>
+                        <p className="text-xs text-text-muted mb-3">{t('card3_desc')}</p>
+
+                        <div className="space-y-1.5">
+                          {defects.map(d => (
+                            <div key={d.id} onClick={() => toggleDefect(d.id)} className="flex items-center gap-2 p-2 bg-background border border-border rounded-xl text-xs cursor-pointer">
+                              <div className={cn("w-4 h-4 rounded flex items-center justify-center border", d.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-border")}>
+                                {d.done && <Check size={12} />}
+                              </div>
+                              <span className={cn(d.done && "line-through text-text-muted")}>{t(d.text)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Pitch Deck Generator */}
+                    <div className="p-5 bg-surface border border-border rounded-2xl shadow-sm flex flex-col justify-between">
+                      <div>
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3">
+                          <Presentation size={18} />
+                        </div>
+                        <h3 className="font-bold text-base mb-1">{t('card4_title')}</h3>
+                        <p className="text-xs text-text-muted mb-4">{t('card4_desc')}</p>
+
+                        <button onClick={runPitchDeck} disabled={pitchProgress > 0 && pitchProgress < 100} className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer">
+                          {pitchProgress > 0 && pitchProgress < 100 ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                          {pitchProgress === 100 ? t('card4_done') : (pitchProgress > 0 ? `${pitchProgress}%` : t('card4_btn'))}
+                        </button>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
-                {/* Card 4: Pitch Deck Generator */}
-                <div className="snap-center shrink-0 w-[280px] sm:w-[320px] p-6 bg-surface border border-border rounded-3xl shadow-lg flex flex-col justify-between">
-                  <div>
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-4">
-                      <Presentation size={20} />
-                    </div>
-                    <h3 className="font-bold text-lg mb-1">{t('card4_title')}</h3>
-                    <p className="text-xs text-text-muted mb-6">{t('card4_desc')}</p>
-
-                    <button onClick={runPitchDeck} disabled={pitchProgress > 0 && pitchProgress < 100} className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2">
-                      {pitchProgress > 0 && pitchProgress < 100 ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                      {pitchProgress === 100 ? t('card4_done') : (pitchProgress > 0 ? `${pitchProgress}%` : t('card4_btn'))}
-                    </button>
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-border text-xs text-text-muted font-medium text-center">
-                    {pitchProgress === 100 ? 'PDF Download bereit' : '1-Klick Export'}
-                  </div>
-                </div>
-
+                {/* iPhone Home Bar Indicator */}
+                <div className="w-32 h-1 bg-zinc-400/40 dark:bg-white/40 rounded-full mx-auto mt-3" />
               </div>
 
-              <div className="mt-8 text-center bg-blue-500/5 border border-blue-500/20 p-5 rounded-2xl">
+              <div className="mt-8 text-center bg-blue-500/5 border border-blue-500/20 p-5 rounded-2xl max-w-sm mx-auto">
                 <p className="text-xs text-text-muted mb-3">{t('mobile_demo_cta')}</p>
-                <button onClick={() => navigate('/signup')} className="w-full py-3 bg-blue-600 text-white font-bold text-sm rounded-xl">
+                <button onClick={() => navigate('/signup')} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
                   {t('cta_primary')}
                 </button>
               </div>
@@ -1396,12 +1441,12 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           const input = document.querySelector('#help-center input') as HTMLInputElement;
           if (input) input.focus();
         }}
-        className="fixed bottom-6 right-6 z-40 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full shadow-2xl flex items-center gap-2.5 font-bold text-xs sm:text-sm border border-blue-400/40 transition-all hover:scale-105 active:scale-95 group backdrop-blur-md"
+        className="fixed bottom-6 right-6 z-40 px-4 py-2.5 sm:px-5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl shadow-blue-600/30 flex items-center gap-2.5 font-bold text-xs sm:text-sm border border-blue-400/30 transition-all hover:scale-105 active:scale-95 group backdrop-blur-md cursor-pointer"
         title="Kreativ-Desk KI-Concierge fragen"
       >
-        <Sparkles size={16} className="text-yellow-300 animate-pulse" />
+        <Sparkles size={16} className="text-yellow-300 animate-pulse shrink-0" />
         <span>KI-Concierge</span>
-        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
       </button>
 
       {/* FOOTER */}

@@ -182,29 +182,35 @@ Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elekt
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-            <CheckCircle2 size={20} className="text-emerald-500" />
-            {t('daily_goals')}
+    <div className="bg-surface border border-border rounded-xl p-5 shadow-sm h-full flex flex-col">
+      <div className="flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between gap-2 mb-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold text-base text-text-primary flex items-center gap-2">
+            <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+            <span className="truncate">{t('daily_goals')}</span>
           </h3>
-          <p className="text-xs text-text-muted mt-0.5 font-medium">
-            🎯 {completedCount} von {totalCount} Zielen erreicht ({progressPercent}%)
+          <p className="text-xs text-text-muted mt-0.5 font-medium truncate">
+            🎯 {completedCount} von {totalCount} Zielen ({progressPercent}%)
           </p>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
           <button 
             onClick={handleGenerateAiGoals} 
             disabled={isGeneratingAi}
-            className="p-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors disabled:opacity-50"
+            className="px-2.5 py-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors disabled:opacity-50 whitespace-nowrap shrink-0 cursor-pointer"
             title="KI-Tagesziele vorschlagen"
           >
-            <Sparkles size={16} /> {isGeneratingAi ? '...' : 'KI-Ziele'}
+            <Sparkles size={14} className="shrink-0" /> 
+            <span>{isGeneratingAi ? '...' : 'KI-Ziele'}</span>
           </button>
-          <button onClick={() => setIsAdding(!isAdding)} className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl font-bold text-xs flex items-center gap-1 transition-colors">
-            <Plus size={16} /> {t('add_goal')}
+          <button 
+            onClick={() => setIsAdding(!isAdding)} 
+            className="px-2.5 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg font-bold text-xs flex items-center gap-1 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            title={t('add_goal')}
+          >
+            <Plus size={14} className="shrink-0" /> 
+            <span>{t('add_goal')}</span>
           </button>
         </div>
       </div>
