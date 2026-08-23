@@ -29,6 +29,22 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
     this.setState({ errorInfo });
+
+    // Automatischer Reload bei veralteten Deployment-Chunks
+    const msg = String(error?.message || '').toLowerCase();
+    if (
+      msg.includes('error loading dynamically imported module') ||
+      msg.includes('failed to fetch dynamically imported module') ||
+      msg.includes('importing a module script failed') ||
+      msg.includes('is not a valid javascript mime type')
+    ) {
+      const lastReload = Number(sessionStorage.getItem('chunk_reload_timestamp') || '0');
+      const now = Date.now();
+      if (now - lastReload > 10000) {
+        sessionStorage.setItem('chunk_reload_timestamp', String(now));
+        window.location.reload();
+      }
+    }
   }
 
   private handleReset = () => {

@@ -44,6 +44,12 @@ if (typeof window !== 'undefined') {
       attemptReload();
     }
   });
+
+  window.addEventListener('vite:preloadError', (event) => {
+    event.preventDefault();
+    console.warn('[Vite Preload Error] Neuer Build verfügbar, aktualisiere Seite...');
+    attemptReload();
+  });
 }
 
 // Initialisiert den PWA Service Worker mit automatischer Cache-Aktualisierung
