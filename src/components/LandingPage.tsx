@@ -578,15 +578,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       
       {/* HEADER */}
       <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-4",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-4 sm:px-6 py-3 sm:py-4",
         scrolled ? "bg-surface/80 backdrop-blur-md border-b border-border shadow-sm" : "bg-transparent"
       )}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-lg shadow-blue-500/20">
+          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white text-base sm:text-lg shadow-lg shadow-blue-500/20 shrink-0">
               K
             </div>
-            <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent">
+            <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
               Kreativ Desk
             </span>
           </div>
@@ -600,16 +600,16 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             <button onClick={() => scrollTo('help-center')} className="hover:text-blue-500 transition-colors">{t('nav_help')}</button>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             <button 
               onClick={handleLanguageToggle} 
-              className="px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors"
+              className="px-2 sm:px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors"
             >
               {currentLang.toUpperCase()}
             </button>
             <button 
               onClick={toggleTheme} 
-              className="p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface transition-colors"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
@@ -629,15 +629,16 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             </button>
             <button 
               onClick={() => navigate('/signup')} 
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95"
+              className="hidden sm:inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap"
             >
               {t('nav_start')}
             </button>
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)} 
-              className="md:hidden p-2 text-text-muted hover:text-text-primary"
+              className="md:hidden p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-lg border border-border sm:border-transparent hover:bg-surface transition-colors"
+              aria-label="Menü öffnen"
             >
-              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
@@ -647,21 +648,22 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div 
-            initial={{ opacity: 0, y: -20 }} 
+            initial={{ opacity: 0, y: -10 }} 
             animate={{ opacity: 1, y: 0 }} 
-            exit={{ opacity: 0, y: -20 }} 
-            className="fixed inset-x-0 top-[72px] bg-surface/95 backdrop-blur-xl border-b border-border p-6 z-40 md:hidden shadow-2xl"
+            exit={{ opacity: 0, y: -10 }} 
+            transition={{ duration: 0.2 }}
+            className="fixed inset-x-0 top-[56px] sm:top-[68px] bg-surface/98 backdrop-blur-xl border-b border-border p-5 sm:p-6 z-40 md:hidden shadow-2xl max-h-[calc(100dvh-56px)] overflow-y-auto"
           >
-             <div className="flex flex-col gap-4 text-base font-semibold">
-                <button onClick={() => scrollTo('infrastructure')} className="text-left py-2 hover:text-blue-500">Infrastruktur</button>
-                <button onClick={() => scrollTo('systems')} className="text-left py-2 hover:text-blue-500">{t('nav_systems')}</button>
-                <button onClick={() => scrollTo('pricing')} className="text-left py-2 hover:text-blue-500">{t('nav_selfservice')}</button>
-                <button onClick={() => scrollTo('roi')} className="text-left py-2 hover:text-blue-500">{t('nav_roi')}</button>
-                <button onClick={() => scrollTo('faq')} className="text-left py-2 hover:text-blue-500">{t('nav_faq')}</button>
-                <button onClick={() => scrollTo('help-center')} className="text-left py-2 hover:text-blue-500">{t('nav_help')}</button>
-                <hr className="border-border my-2" />
-                <button onClick={() => navigate('/login')} className="py-3 bg-surface border border-border text-center rounded-xl font-bold">{t('nav_login')}</button>
-                <button onClick={() => navigate('/signup')} className="py-3 bg-blue-600 text-white text-center rounded-xl font-bold mt-1">{t('nav_start')}</button>
+             <div className="flex flex-col gap-3 text-base font-semibold">
+                <button onClick={() => scrollTo('infrastructure')} className="text-left py-2 hover:text-blue-500 transition-colors">Infrastruktur</button>
+                <button onClick={() => scrollTo('systems')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_systems')}</button>
+                <button onClick={() => scrollTo('pricing')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_selfservice')}</button>
+                <button onClick={() => scrollTo('roi')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_roi')}</button>
+                <button onClick={() => scrollTo('faq')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_faq')}</button>
+                <button onClick={() => scrollTo('help-center')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_help')}</button>
+                <hr className="border-border my-1" />
+                <button onClick={() => { setIsMenuOpen(false); navigate('/login'); }} className="py-2.5 bg-surface border border-border text-center rounded-xl font-bold hover:bg-white/5 transition-colors">{t('nav_login')}</button>
+                <button onClick={() => { setIsMenuOpen(false); navigate('/signup'); }} className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all">{t('nav_start')}</button>
              </div>
           </motion.div>
         )}
