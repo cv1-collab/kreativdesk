@@ -889,18 +889,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 {/* Glow behind screen */}
                 <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none -z-10" />
 
-                {/* Display Bezel */}
-                <div className="relative bg-[#0c0d10] rounded-t-[28px] border-[3px] border-b-0 border-[#2a2c33] shadow-[0_-20px_50px_-15px_rgba(0,0,0,0.5)] pt-3.5 px-3.5">
-                  {/* Notch / Camera */}
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-4 w-32 bg-[#0c0d10] rounded-b-lg flex items-center justify-center gap-2 border-b border-x border-[#2a2c33] z-30">
-                    <div className="w-2 h-2 rounded-full bg-zinc-900 ring-1 ring-zinc-700/80 flex items-center justify-center">
-                      <div className="w-0.5 h-0.5 rounded-full bg-emerald-400/80" />
+                {/* Display Lid Frame (CNC Aluminum & Dark Bezel) */}
+                <div className="relative bg-[#090a0d] rounded-t-[30px] border-[4px] border-b-0 border-[#23242c] ring-1 ring-white/20 dark:ring-white/10 shadow-[0_-25px_60px_-15px_rgba(0,0,0,0.6)] pt-3.5 px-3.5 sm:pt-4 sm:px-4">
+                  
+                  {/* Apple Notch & FaceTime HD Camera */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 h-5 w-36 bg-[#090a0d] rounded-b-xl flex items-center justify-center gap-2.5 border-b border-x border-white/5 z-30 shadow-md">
+                    {/* Camera Lens */}
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#050608] ring-1 ring-zinc-700/80 flex items-center justify-center shadow-inner">
+                      <div className="w-1 h-1 rounded-full bg-blue-500/80 shadow-[0_0_4px_rgba(59,130,246,0.8)]" />
                     </div>
+                    {/* Green Camera Indicator LED */}
+                    <div className="w-1 h-1 rounded-full bg-emerald-400/90 shadow-[0_0_3px_rgba(52,211,153,0.9)] animate-pulse" />
+                    {/* Ambient Light Sensor */}
                     <div className="w-1.5 h-1.5 rounded-full bg-zinc-900 ring-1 ring-zinc-800" />
                   </div>
 
-                  {/* Inner Screen Display */}
-                  <div className="h-[720px] w-full rounded-t-[16px] overflow-hidden bg-background relative border border-border/30 shadow-inner">
+                  {/* Inner Screen Display (Liquid Retina XDR) */}
+                  <div className="h-[730px] w-full rounded-t-[18px] overflow-hidden bg-background relative border border-border/30 shadow-inner group">
                     <Suspense fallback={
                       <div className="h-full w-full flex items-center justify-center bg-background">
                         <Loader2 className="animate-spin text-blue-500" size={32} />
@@ -908,22 +913,38 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     }>
                       <DemoLayout isDemoMode={true} />
                     </Suspense>
+
+                    {/* Subtle Anti-Reflective Glass Sheen (Subtle Diagonal Gloss) */}
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/[0.03] z-20" />
                   </div>
                 </div>
 
-                {/* MacBook Aluminum Base Chassis */}
+                {/* MacBook Hinge Assembly & Base Chassis */}
                 <div className="relative z-20">
-                  {/* Hinge Line */}
-                  <div className="h-2.5 bg-gradient-to-r from-zinc-800 via-zinc-700 to-zinc-800 border-t border-zinc-700/60" />
-                  
-                  {/* Bottom Keyboard Deck Lip */}
-                  <div className="w-[104%] -ml-[2%] h-4 sm:h-5 bg-gradient-to-b from-zinc-300 via-zinc-400 to-zinc-500 dark:from-zinc-700 dark:via-zinc-800 dark:to-zinc-900 rounded-b-[18px] sm:rounded-b-[24px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.45)] border-t border-white/25 relative flex items-start justify-center">
-                    {/* Opening Thumb Notch */}
-                    <div className="w-28 sm:w-36 h-2 bg-zinc-900/40 dark:bg-black/50 rounded-b-md" />
+                  {/* Cylindrical Pivot Hinge with Engraved Model Name */}
+                  <div className="h-3.5 bg-gradient-to-b from-[#0a0b0e] via-[#1a1b22] to-[#0e0f13] border-t border-white/10 border-b border-black flex items-center justify-center">
+                    <span className="text-[9px] font-semibold tracking-[0.28em] text-zinc-500 uppercase select-none opacity-80 scale-90">
+                      MacBook Pro
+                    </span>
                   </div>
                   
-                  {/* Table Reflection Shadow */}
-                  <div className="w-[92%] mx-auto h-4 bg-black/20 dark:bg-black/40 blur-md rounded-full mt-1" />
+                  {/* Anodized Aluminum Keyboard Deck / Lower Chassis */}
+                  <div className="w-[104%] -ml-[2%] h-5 sm:h-5.5 bg-gradient-to-b from-[#3a3c48] via-[#282933] to-[#15161c] dark:from-[#2c2d38] dark:via-[#1e1f28] dark:to-[#101116] rounded-b-[20px] sm:rounded-b-[26px] shadow-[0_30px_70px_-15px_rgba(0,0,0,0.65)] border-t border-white/35 relative flex items-start justify-center overflow-hidden">
+                    {/* Precision CNC Machined Thumb Recess */}
+                    <div className="w-32 sm:w-44 h-2.5 sm:h-3 bg-[#08090c] rounded-b-xl border-t border-black/90 shadow-inner flex items-center justify-center">
+                      <div className="w-20 sm:w-28 h-0.5 bg-zinc-800/60 rounded-full" />
+                    </div>
+                  </div>
+
+                  {/* Rubber Feet under the left & right corners */}
+                  <div className="w-[96%] -ml-[-2%] flex justify-between px-6 -mt-1 pointer-events-none">
+                    <div className="w-10 h-1 bg-black/80 rounded-full shadow" />
+                    <div className="w-10 h-1 bg-black/80 rounded-full shadow" />
+                  </div>
+                  
+                  {/* Realistic Multi-Layer Desk Shadows */}
+                  <div className="w-[94%] mx-auto h-2 bg-black/50 blur-sm rounded-full -mt-0.5" />
+                  <div className="w-[88%] mx-auto h-5 bg-black/25 dark:bg-black/50 blur-xl rounded-full" />
                 </div>
               </div>
             </div>
