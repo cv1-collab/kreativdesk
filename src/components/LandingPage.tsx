@@ -47,7 +47,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ssot_p3_tag: 'Zero Version Clashes',
 
     demo_title: 'Experience the real system.', demo_subtitle: 'No dummy graphics. No fake interfaces. Click through the actual Kreativ-Desk dashboard right here.',
-    demo_subtitle_mobile: 'Swipe through the interactive highlights of our core features.',
+    demo_subtitle_mobile: 'No dummy graphics. Navigate and test the actual Kreativ-Desk OS directly on mobile.',
     mobile_demo_cta: 'Are you on a desktop? Experience the entire operating system live!',
     mobile_tab_budget: 'Budget',
     mobile_tab_bim: '3D BIM',
@@ -221,7 +221,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ssot_p3_tag: 'Kein Versionschaos',
 
     demo_title: 'Erlebe das echte System.', demo_subtitle: 'Keine Dummy-Grafiken. Keine Fake-Oberflächen. Klicke dich direkt hier durch das reale Kreativ-Desk Dashboard.',
-    demo_subtitle_mobile: 'Wische durch die interaktiven Highlights unserer Kernfunktionen.',
+    demo_subtitle_mobile: 'Keine Dummy-Grafiken. Navigiere und teste das echte Kreativ-Desk OS direkt auf dem Smartphone.',
     mobile_demo_cta: 'Bist du am Desktop? Erlebe das gesamte Betriebssystem live!',
     mobile_tab_budget: 'Budget',
     mobile_tab_bim: '3D BIM',
@@ -436,29 +436,6 @@ export default function LandingPage() {
   const [auditState, setAuditState] = useState<'idle'|'scanning'|'done'>('idle');
   const [defects, setDefects] = useState([{id:1, text: 'card3_t1', done: false}, {id:2, text: 'card3_t2', done: true}, {id:3, text: 'card3_t3', done: false}]);
   const [pitchProgress, setPitchProgress] = useState(0);
-
-  // Mobile Carousel Slide & Swipe Gestures
-  const [mobileSlide, setMobileSlide] = useState(0);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
-  const minSwipeDistance = 40;
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    if (distance > minSwipeDistance) {
-      setMobileSlide(prev => (prev < 3 ? prev + 1 : 0));
-    } else if (distance < -minSwipeDistance) {
-      setMobileSlide(prev => (prev > 0 ? prev - 1 : 3));
-    }
-  };
 
   const annualSavings = (projectsCount * hoursLost * 52 * hourlyRate) * 0.7;
 
@@ -1008,46 +985,39 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </div>
 
               {/* iPhone 16 Pro Device Frame Container */}
-              <div className="relative max-w-[340px] xs:max-w-[360px] mx-auto select-none">
+              <div className="relative max-w-[360px] xs:max-w-[385px] mx-auto select-none">
                 
                 {/* Subtle Ambient Glow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-80 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -z-10" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -z-10" />
 
                 {/* Outer Titanium Chassis */}
-                <div className="relative bg-[#16171d] dark:bg-[#0b0c10] rounded-[48px] sm:rounded-[52px] p-[10px] sm:p-[11px] border-[3.5px] border-[#363842] dark:border-[#1f2129] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_35px_rgba(59,130,246,0.12)] ring-1 ring-white/20 dark:ring-white/10">
+                <div className="relative bg-[#16171d] dark:bg-[#0b0c10] rounded-[48px] sm:rounded-[52px] p-[10px] sm:p-[11px] border-[3.5px] border-[#363842] dark:border-[#1f2129] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6),0_0_35px_rgba(59,130,246,0.15)] ring-1 ring-white/20 dark:ring-white/10">
                   
-                  {/* Left Hardware Buttons (Action Button & Volume Keys) */}
+                  {/* Left Hardware Buttons */}
                   <div className="absolute -left-[6px] top-24 w-[3.5px] h-7 bg-[#484a58] dark:bg-[#282a35] rounded-l-sm shadow-sm" />
                   <div className="absolute -left-[6px] top-36 w-[3.5px] h-12 bg-[#484a58] dark:bg-[#282a35] rounded-l-sm shadow-sm" />
                   <div className="absolute -left-[6px] top-52 w-[3.5px] h-12 bg-[#484a58] dark:bg-[#282a35] rounded-l-sm shadow-sm" />
 
-                  {/* Right Hardware Button (Power Key) */}
+                  {/* Right Hardware Button */}
                   <div className="absolute -right-[6px] top-32 w-[3.5px] h-16 bg-[#484a58] dark:bg-[#282a35] rounded-r-sm shadow-sm" />
 
                   {/* Inner Screen Display (Fixed Proportions) */}
-                  <div 
-                    onTouchStart={handleTouchStart}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                    className="relative w-full h-[580px] xs:h-[610px] rounded-[38px] sm:rounded-[42px] overflow-hidden bg-background border border-border/40 flex flex-col justify-between shadow-inner"
-                  >
+                  <div className="relative w-full h-[620px] xs:h-[660px] rounded-[38px] sm:rounded-[42px] overflow-hidden bg-background border border-border/40 flex flex-col justify-between shadow-inner">
                     
                     {/* iOS Status Bar & Dynamic Island */}
-                    <div className="pt-2.5 px-6 pb-1 flex items-center justify-between z-30 shrink-0 bg-background/80 backdrop-blur-md border-b border-border/20">
-                      {/* Left: Clock */}
+                    <div className="pt-2 px-6 pb-1 flex items-center justify-between z-30 shrink-0 bg-background/80 backdrop-blur-md border-b border-border/20">
+                      {/* Clock */}
                       <span className="text-[11px] font-bold text-text-primary tracking-tight font-mono">09:41</span>
 
-                      {/* Center: Dynamic Island */}
+                      {/* Dynamic Island */}
                       <div className="w-24 xs:w-26 h-5.5 bg-black rounded-full flex items-center justify-between px-2.5 border border-zinc-800/80 shadow-md">
-                        {/* Camera Lens */}
                         <div className="w-2.5 h-2.5 rounded-full bg-[#050608] ring-1 ring-zinc-700/80 flex items-center justify-center shadow-inner">
                           <div className="w-1 h-1 rounded-full bg-blue-900 shadow-[0_0_2px_rgba(59,130,246,0.8)]" />
                         </div>
-                        {/* Status Green LED */}
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                       </div>
 
-                      {/* Right: Icons (Signal, WiFi, Battery) */}
+                      {/* Signal, WiFi, Battery */}
                       <div className="flex items-center gap-1.5 text-text-primary">
                         <div className="flex items-end gap-[1px] h-2.5">
                           <div className="w-[2px] h-1 bg-current rounded-xs" />
@@ -1062,436 +1032,32 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       </div>
                     </div>
 
-                    {/* App Internal Segmented Tabs Header */}
-                    <div className="px-3 pt-2 pb-1.5 bg-surface/60 border-b border-border/40 shrink-0">
-                      <div className="flex items-center justify-between gap-1 bg-background/80 p-1 rounded-xl border border-border/60">
-                        {[
-                          { id: 0, label: t('mobile_tab_budget'), icon: Calculator },
-                          { id: 1, label: t('mobile_tab_bim'), icon: Box },
-                          { id: 2, label: t('mobile_tab_defects'), icon: CheckCircle2 },
-                          { id: 3, label: t('mobile_tab_pitch'), icon: Presentation }
-                        ].map(tab => (
-                          <button
-                            key={tab.id}
-                            onClick={() => setMobileSlide(tab.id)}
-                            className={cn(
-                              "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer",
-                              mobileSlide === tab.id
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "text-text-muted hover:text-text-primary hover:bg-surface"
-                            )}
-                          >
-                            <tab.icon size={11} />
-                            <span className="truncate">{tab.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Carousel Slides Container */}
-                    <div className="flex-1 overflow-hidden p-3.5 flex flex-col justify-center relative">
-                      <AnimatePresence mode="wait">
-                        
-                        {/* SLIDE 0: SMARTES BUDGETING */}
-                        {mobileSlide === 0 && (
-                          <motion.div
-                            key="slide-budget"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
-                            className="h-full flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                    <Calculator size={14} />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-bold text-xs leading-tight">{t('card1_title')}</h3>
-                                    <p className="text-[10px] text-text-muted">{t('card1_desc')}</p>
-                                  </div>
-                                </div>
-                                <span className="text-[9px] font-bold px-2 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-full">
-                                  {t('mobile_tolerance_ok')}
-                                </span>
-                              </div>
-
-                              {/* Big KPI Box */}
-                              <div className="p-3 bg-surface border border-border rounded-xl shadow-xs mb-3 text-center">
-                                <span className="text-[10px] font-medium text-text-muted block">{t('card1_total')}</span>
-                                <div className="text-xl font-black text-blue-500 tracking-tight my-0.5">
-                                  CHF {(budgetSlider * 4500).toLocaleString('de-CH')}
-                                </div>
-                                <div className="flex items-center justify-center gap-1.5 text-[9px] text-emerald-500 font-bold">
-                                  <Check size={10} /> 100% SIA 102/112 Soll-Ist
-                                </div>
-                              </div>
-
-                              {/* Interactive Slider */}
-                              <div className="space-y-1.5 bg-surface/50 p-2.5 rounded-xl border border-border/70 mb-3">
-                                <div className="flex justify-between text-[11px] font-bold">
-                                  <span className="text-text-primary">{t('card1_label')}</span>
-                                  <span className="text-blue-500 bg-blue-500/10 px-1.5 py-0.2 rounded font-mono">{budgetSlider}%</span>
-                                </div>
-                                <input 
-                                  type="range" 
-                                  min="10" 
-                                  max="100" 
-                                  value={budgetSlider} 
-                                  onChange={(e) => setBudgetSlider(Number(e.target.value))} 
-                                  className="w-full accent-blue-500 h-1.5 cursor-pointer" 
-                                />
-                              </div>
-
-                              {/* Mini BKP Breakdown */}
-                              <div className="space-y-1.5 text-[10px]">
-                                <div className="flex items-center justify-between text-text-muted">
-                                  <span>{t('mobile_bkp_raw')} (45%)</span>
-                                  <span className="font-semibold text-text-primary">CHF {((budgetSlider * 4500) * 0.45).toLocaleString('de-CH', { maximumFractionDigits: 0 })}</span>
-                                </div>
-                                <div className="w-full h-1 bg-surface rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-500 rounded-full" style={{ width: '45%' }} />
-                                </div>
-
-                                <div className="flex items-center justify-between text-text-muted pt-0.5">
-                                  <span>{t('mobile_bkp_finish')} (35%)</span>
-                                  <span className="font-semibold text-text-primary">CHF {((budgetSlider * 4500) * 0.35).toLocaleString('de-CH', { maximumFractionDigits: 0 })}</span>
-                                </div>
-                                <div className="w-full h-1 bg-surface rounded-full overflow-hidden">
-                                  <div className="h-full bg-indigo-500 rounded-full" style={{ width: '35%' }} />
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px] text-text-muted">
-                              <span>Revisionssicher synchronisiert</span>
-                              <span className="text-blue-500 font-bold">Live DB</span>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {/* SLIDE 1: 3D BIM & KI-AUDIT */}
-                        {mobileSlide === 1 && (
-                          <motion.div
-                            key="slide-bim"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
-                            className="h-full flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center">
-                                    <Box size={14} />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-bold text-xs leading-tight">{t('card2_title')}</h3>
-                                    <p className="text-[10px] text-text-muted">{t('card2_desc')}</p>
-                                  </div>
-                                </div>
-                                <span className="text-[9px] font-bold px-2 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-full">
-                                  IFC 4.3
-                                </span>
-                              </div>
-
-                              {/* 3D Wireframe Simulation Box */}
-                              <div className="relative h-28 bg-[#090a0f] border border-purple-500/30 rounded-xl overflow-hidden mb-2.5 flex items-center justify-center p-2 group shadow-inner">
-                                {/* Grid lines background */}
-                                <div className="absolute inset-0 opacity-20 bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] bg-[size:12px_12px]" />
-                                
-                                {/* Simulated Isometric Building Mesh */}
-                                <div className="relative z-10 flex flex-col items-center">
-                                  <div className="w-14 h-11 border-2 border-purple-400/60 rounded-md bg-purple-500/10 transform rotate-[-8deg] flex items-center justify-center shadow-lg shadow-purple-500/20">
-                                    <Layers size={18} className="text-purple-400 animate-pulse" />
-                                  </div>
-                                  <span className="text-[8px] font-mono text-purple-300 mt-1 font-bold">BIM_MODEL_Q3.IFC</span>
-                                </div>
-
-                                {/* Laser Scan Beam Animation */}
-                                {auditState === 'scanning' && (
-                                  <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent shadow-[0_0_12px_#a855f7] animate-[bounce_1.5s_infinite] z-20" />
-                                )}
-
-                                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 bg-black/70 rounded text-[8px] font-mono text-purple-400 border border-purple-500/30">
-                                  {auditState === 'scanning' ? 'AUDIT RUNNING' : (auditState === 'done' ? 'AUDIT PASSED' : 'READY')}
-                                </div>
-                              </div>
-
-                              {/* Action Button */}
-                              <button 
-                                onClick={runAIAudit} 
-                                disabled={auditState === 'scanning'} 
-                                className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer mb-2 active:scale-98"
-                              >
-                                {auditState === 'scanning' ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                                {auditState === 'scanning' ? t('card2_scanning') : t('card2_btn_scan')}
-                              </button>
-
-                              {/* Audit Output Result Details */}
-                              <div className="space-y-1 bg-surface/50 p-2 rounded-xl border border-border/70 text-[10px]">
-                                {auditState === 'done' ? (
-                                  <>
-                                    <div className="text-emerald-500 font-bold flex items-center gap-1">
-                                      <CheckCircle2 size={12} /> {t('card2_safe')}
-                                    </div>
-                                    <div className="text-text-muted flex items-center gap-1 text-[9px]">
-                                      <Check size={10} className="text-emerald-500" /> Brandschutz T30 & Fluchtwege verifiziert
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="text-text-muted flex items-center gap-1 text-[9px]">
-                                    <Sparkles size={10} className="text-purple-400" /> Erkennt Geometrie- & Leitungs-Kollisionen
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px] text-text-muted">
-                              <span>Native WebGL/WebGPU Engine</span>
-                              <span className="text-purple-400 font-bold">Zero Plugins</span>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {/* SLIDE 2: BAUSTELLEN-APP */}
-                        {mobileSlide === 2 && (
-                          <motion.div
-                            key="slide-defects"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
-                            className="h-full flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                                    <CheckCircle2 size={14} />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-bold text-xs leading-tight">{t('card3_title')}</h3>
-                                    <p className="text-[10px] text-text-muted">{t('card3_desc')}</p>
-                                  </div>
-                                </div>
-                                <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-full flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                  {t('mobile_sync_active')}
-                                </span>
-                              </div>
-
-                              {/* Interactive Defect List */}
-                              <div className="space-y-1.5 mb-2.5">
-                                {defects.map(d => (
-                                  <div 
-                                    key={d.id} 
-                                    onClick={() => toggleDefect(d.id)} 
-                                    className={cn(
-                                      "flex items-center justify-between p-2 rounded-xl text-[11px] cursor-pointer transition-all border",
-                                      d.done 
-                                        ? "bg-emerald-500/5 border-emerald-500/30 text-text-muted" 
-                                        : "bg-surface border-border hover:border-text-muted text-text-primary shadow-xs"
-                                    )}
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <div className={cn(
-                                        "w-4 h-4 rounded-md flex items-center justify-center border transition-all shrink-0", 
-                                        d.done ? "bg-emerald-500 border-emerald-500 text-white" : "border-border bg-background"
-                                      )}>
-                                        {d.done && <Check size={11} />}
-                                      </div>
-                                      <span className={cn("truncate font-medium", d.done && "line-through opacity-70")}>
-                                        {t(d.text)}
-                                      </span>
-                                    </div>
-                                    <span className="text-[9px] text-text-muted px-1.5 py-0.5 bg-background rounded font-mono shrink-0 ml-1">
-                                      {d.id === 1 ? 'Foto' : (d.id === 2 ? 'Plan' : 'Text')}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-
-                              {/* Defect Summary Card */}
-                              <div className="p-2 bg-surface/60 border border-border/70 rounded-xl text-center">
-                                <div className="text-[10px] text-text-muted mb-1">
-                                  <strong className="text-emerald-500">{defects.filter(d => d.done).length}</strong> von <strong>{defects.length}</strong> {t('mobile_defects_done')}
-                                </div>
-                                <div className="w-full h-1.5 bg-background rounded-full overflow-hidden">
-                                  <div 
-                                    className="h-full bg-emerald-500 transition-all duration-300"
-                                    style={{ width: `${(defects.filter(d => d.done).length / defects.length) * 100}%` }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px] text-text-muted">
-                              <span>PWA mit IndexedDB Offline-Speicher</span>
-                              <span className="text-emerald-500 font-bold">100% Offline</span>
-                            </div>
-                          </motion.div>
-                        )}
-
-                        {/* SLIDE 3: AUTO PITCH-DECK */}
-                        {mobileSlide === 3 && (
-                          <motion.div
-                            key="slide-pitch"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
-                            className="h-full flex flex-col justify-between"
-                          >
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center">
-                                    <Presentation size={14} />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-bold text-xs leading-tight">{t('card4_title')}</h3>
-                                    <p className="text-[10px] text-text-muted">{t('card4_desc')}</p>
-                                  </div>
-                                </div>
-                                <span className="text-[9px] font-bold px-2 py-0.5 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full">
-                                  PPTX / PDF
-                                </span>
-                              </div>
-
-                              {/* Pitch Deck Preview Container */}
-                              <div className="bg-surface border border-border/80 rounded-xl p-2 mb-2.5 shadow-xs">
-                                <div className="flex items-center justify-between text-[10px] font-bold mb-1.5">
-                                  <span className="truncate">Bauherren_Report_Q3.pdf</span>
-                                  <span className="text-amber-500 shrink-0 ml-1">12 Slides</span>
-                                </div>
-
-                                <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-                                  {[
-                                    { title: 'Status', color: 'bg-blue-500/20 text-blue-400' },
-                                    { title: 'Kosten', color: 'bg-emerald-500/20 text-emerald-400' },
-                                    { title: 'Meilensteine', color: 'bg-purple-500/20 text-purple-400' }
-                                  ].map((slide, idx) => (
-                                    <div key={idx} className={cn("h-11 rounded-lg border border-border flex flex-col items-center justify-center p-1 text-center", slide.color)}>
-                                      <span className="text-[7px] font-mono text-text-muted">Slide 0{idx+1}</span>
-                                      <span className="text-[8.5px] font-bold truncate w-full">{slide.title}</span>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                {pitchProgress > 0 && pitchProgress < 100 && (
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between text-[9px] text-text-muted">
-                                      <span>{t('card4_generating')}</span>
-                                      <span className="font-bold text-amber-500">{pitchProgress}%</span>
-                                    </div>
-                                    <div className="w-full h-1.5 bg-background rounded-full overflow-hidden">
-                                      <div className="h-full bg-amber-500 transition-all duration-200" style={{ width: `${pitchProgress}%` }} />
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Generate Button */}
-                              <button 
-                                onClick={runPitchDeck} 
-                                disabled={pitchProgress > 0 && pitchProgress < 100} 
-                                className="w-full py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-bold text-xs shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
-                              >
-                                {pitchProgress > 0 && pitchProgress < 100 ? (
-                                  <Loader2 size={13} className="animate-spin" />
-                                ) : (
-                                  <Play size={13} />
-                                )}
-                                {pitchProgress === 100 ? t('card4_done') : (pitchProgress > 0 ? `${pitchProgress}%` : t('card4_btn'))}
-                              </button>
-                            </div>
-
-                            <div className="pt-2 border-t border-border/40 flex items-center justify-between text-[9px] text-text-muted">
-                              <span>Vollautomatische CI/CD Folien</span>
-                              <span className="text-amber-500 font-bold">1-Klick Export</span>
-                            </div>
-                          </motion.div>
-                        )}
-
-                      </AnimatePresence>
-                    </div>
-
-                    {/* iOS Tab Navigation Bar at Bottom of Phone */}
-                    <div className="px-4 py-1.5 bg-surface/90 backdrop-blur-md border-t border-border/40 flex items-center justify-around shrink-0 z-30">
-                      {[
-                        { id: 0, label: 'Budget', icon: Calculator },
-                        { id: 1, label: '3D BIM', icon: Box },
-                        { id: 2, label: 'Mängel', icon: CheckCircle2 },
-                        { id: 3, label: 'Pitch', icon: Presentation }
-                      ].map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => setMobileSlide(item.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-0.5 py-1 px-2 rounded-lg transition-colors cursor-pointer",
-                            mobileSlide === item.id ? "text-blue-500 font-bold" : "text-text-muted hover:text-text-primary"
-                          )}
-                        >
-                          <item.icon size={13} />
-                          <span className="text-[8px] leading-none">{item.label}</span>
-                        </button>
-                      ))}
+                    {/* The ACTUAL Full DemoLayout OS rendered live inside the iPhone! */}
+                    <div className="flex-1 overflow-hidden relative">
+                      <Suspense fallback={
+                        <div className="h-full w-full flex items-center justify-center bg-background">
+                          <Loader2 className="animate-spin text-blue-500" size={24} />
+                        </div>
+                      }>
+                        <DemoLayout isDemoMode={true} isMobileMockup={true} />
+                      </Suspense>
                     </div>
 
                     {/* iPhone Home Indicator Bar */}
-                    <div className="pt-1 pb-1.5 bg-background flex justify-center shrink-0 z-30">
+                    <div className="pt-1 pb-1.5 bg-background flex justify-center shrink-0 z-30 border-t border-border/20">
                       <div className="w-28 h-1 bg-zinc-400/40 dark:bg-white/40 rounded-full" />
                     </div>
 
                   </div>
                 </div>
 
-                {/* External Carousel Controls & Indicator Dots Below Device */}
-                <div className="mt-5 flex items-center justify-between px-2">
-                  <button
-                    onClick={() => setMobileSlide(prev => (prev > 0 ? prev - 1 : 3))}
-                    className="p-2 rounded-xl bg-surface border border-border text-text-muted hover:text-text-primary hover:bg-white/5 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    <ChevronLeft size={16} /> {t('mobile_prev')}
-                  </button>
-
-                  <div className="flex items-center gap-1.5">
-                    {[0, 1, 2, 3].map(idx => (
-                      <button
-                        key={idx}
-                        onClick={() => setMobileSlide(idx)}
-                        className={cn(
-                          "h-2 rounded-full transition-all duration-300 cursor-pointer",
-                          mobileSlide === idx ? "w-6 bg-blue-500" : "w-2 bg-border hover:bg-text-muted"
-                        )}
-                        aria-label={`Slide ${idx + 1}`}
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setMobileSlide(prev => (prev < 3 ? prev + 1 : 0))}
-                    className="p-2 rounded-xl bg-surface border border-border text-text-muted hover:text-text-primary hover:bg-white/5 transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                  >
-                    {t('mobile_next')} <ChevronRight size={16} />
+                {/* Call to Action Box under iPhone */}
+                <div className="mt-6 text-center bg-blue-500/5 border border-blue-500/20 p-4 rounded-2xl max-w-sm mx-auto">
+                  <p className="text-xs text-text-muted mb-2">{t('mobile_demo_cta')}</p>
+                  <button onClick={() => navigate('/signup')} className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
+                    {t('cta_primary')}
                   </button>
                 </div>
-
-                <div className="text-center mt-2 text-[11px] text-text-muted flex items-center justify-center gap-1">
-                  <span>{t('mobile_swipe_hint')}</span>
-                </div>
-              </div>
-
-              {/* Call to Action Box under iPhone */}
-              <div className="mt-8 text-center bg-blue-500/5 border border-blue-500/20 p-5 rounded-2xl max-w-sm mx-auto">
-                <p className="text-xs text-text-muted mb-3">{t('mobile_demo_cta')}</p>
-                <button onClick={() => navigate('/signup')} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer">
-                  {t('cta_primary')}
-                </button>
               </div>
             </div>
 
