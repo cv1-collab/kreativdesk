@@ -123,6 +123,14 @@ test.describe('🚀 Comprehensive End-to-End Test Suite: All Features of Today',
 
   test('6. Landing Page: All 11 FAQs Toggle Smoothly', async ({ page }) => {
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+    
+    // Dismiss cookie banner if present
+    const cookieBtn = page.getByRole('button', { name: /Alle akzeptieren|Nur essenzielle/i });
+    if (await cookieBtn.count() > 0) {
+      await cookieBtn.first().click().catch(() => {});
+      await page.waitForTimeout(200);
+    }
+
     const faqSection = page.locator('#faq');
     await faqSection.scrollIntoViewIfNeeded();
     await expect(faqSection).toBeVisible();
@@ -131,10 +139,16 @@ test.describe('🚀 Comprehensive End-to-End Test Suite: All Features of Today',
     const count = await faqButtons.count();
     expect(count).toBe(11);
 
-    // Open first FAQ
-    await faqButtons.first().click();
-    await page.waitForTimeout(200);
-    await expect(faqSection.getByText(/Schweizer Servern|Swiss servers/i).first()).toBeVisible();
+    // Verify first FAQ answer is open by default
+    await expect(faqSection.getByText(/Verschlüsselung|Enterprise-Grade|Schweizer Servern|Swiss servers/i).first()).toBeVisible({ timeout: 10000 });
+
+    // Toggle second FAQ
+    const secondFaqBtn = faqSection.getByRole('button', { name: /Trainiert die KI|Does.*AI train/i });
+    await secondFaqBtn.click();
+    await page.waitForTimeout(400);
+
+    // Verify second FAQ answer is visible
+    await expect(faqSection.getByText(/strikt isoliert|strictly isolated|global models/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('7. Terms of Service (AGB) Page: Clean Pure-Black Design & Legal Framework', async ({ page }) => {

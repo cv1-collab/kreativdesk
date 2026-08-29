@@ -40,9 +40,9 @@ test.describe('Guided Product Tour & Pitch Deck Export Modal E2E Suite', () => {
         await page.waitForTimeout(500);
 
         // Verify Format Modal options
-        const keynoteOption = page.locator('text=Apple Keynote (.pptx / .key), text=Apple Keynote');
-        const pptxOption = page.locator('text=Microsoft PowerPoint (.pptx), text=Microsoft PowerPoint');
-        const pdfOption = page.locator('text=PDF Dokument (.pdf), text=PDF Dokument');
+        const keynoteOption = page.getByText(/Apple Keynote/i);
+        const pptxOption = page.getByText(/Microsoft PowerPoint/i);
+        const pdfOption = page.getByText(/PDF Dokument/i);
 
         await expect(keynoteOption.first()).toBeVisible();
         await expect(pptxOption.first()).toBeVisible();
