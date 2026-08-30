@@ -50,31 +50,31 @@ const SuccessPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-[#fafafa] flex flex-col items-center justify-center p-6 text-center transition-colors duration-200">
       <div className="max-w-md w-full">
         <div className="w-20 h-20 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
-          <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+          <CheckCircle2 className="w-10 h-10 text-emerald-600 dark:text-emerald-500" />
         </div>
         
-        <h1 className="text-3xl font-bold text-[#fafafa] mb-2">
+        <h1 className="text-3xl font-extrabold text-slate-900 dark:text-[#fafafa] mb-2">
           {t('welcome_club').replace('{plan}', plan)}
         </h1>
-        <p className="text-[#a1a1aa] mb-8 font-medium">
+        <p className="text-slate-500 dark:text-[#a1a1aa] mb-8 font-medium">
           {t('hey_visionary').replace('{name}', currentUser?.displayName || 'Visionary')}
         </p>
 
         <div className="space-y-4">
           <button
             onClick={() => navigate('/app')}
-            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+            className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 cursor-pointer active:scale-[0.99]"
           >
             {t('go_to_dashboard')} <LayoutDashboard className="w-5 h-5" />
           </button>
           
-          <div className="p-4 bg-[#18181b] rounded-xl border border-[#27272a] flex items-start gap-3 text-left">
-            <Rocket className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-[#a1a1aa] leading-relaxed font-medium">
-              <strong className="text-[#fafafa]">{t('tip_title')}</strong> {t('tip_content')}
+          <div className="p-4 bg-white dark:bg-[#18181b] rounded-2xl border border-slate-200/90 dark:border-[#27272a] shadow-md flex items-start gap-3 text-left">
+            <Rocket className="w-5 h-5 text-blue-600 dark:text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-600 dark:text-[#a1a1aa] leading-relaxed font-medium">
+              <strong className="text-slate-900 dark:text-[#fafafa]">{t('tip_title')}</strong> {t('tip_content')}
             </p>
           </div>
         </div>

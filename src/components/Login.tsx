@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Command, Loader2, X, ArrowLeft } from 'lucide-react';
+import { useTheme } from '../contexts/ThemeContext';
+import { Command, Loader2, X, ArrowLeft, Sun, Moon } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -20,7 +21,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     login_error: 'Failed to log in. Please check your credentials.', google_error: 'Failed to log in with Google.',
     reset_error: 'Failed to send reset email.', sync_waiting: 'Account created but waiting for data sync...',
     boot_1: 'Initializing AI Core...', boot_2: 'Syncing CAD & Finance Modules...',
-    boot_3: 'Establishing Secure Connection...', boot_4: 'Loading Workspace...'
+    boot_3: 'Establishing Secure Connection...', boot_4: 'Loading Workspace...',
+    back_to_website: 'Back to Website'
   },
   de: {
     welcome_back: 'Willkommen zurück', access_workspace: 'Greife auf deinen Kreativ-Desk Workspace zu',
@@ -35,12 +37,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     login_error: 'Fehler bei der Anmeldung. Bitte Zugangsdaten prüfen.', google_error: 'Fehler bei der Google-Anmeldung.',
     reset_error: 'Fehler beim Senden der E-Mail.', sync_waiting: 'Account erstellt, warte auf Datensynchronisation...',
     boot_1: 'KI-Kern initialisieren...', boot_2: 'CAD & Finanzmodule synchronisieren...',
-    boot_3: 'Sichere Verbindung herstellen...', boot_4: 'Workspace laden...'
+    boot_3: 'Sichere Verbindung herstellen...', boot_4: 'Workspace laden...',
+    back_to_website: 'Zurück zur Website'
   }
 };
 
 export default function Login() {
-  const { language, t: globalT } = useLanguage();
+  const { language, setLanguage, t: globalT } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -114,7 +118,9 @@ export default function Login() {
     }, 300);
   };
 
-
+  const handleLanguageToggle = () => {
+    setLanguage(currentLang === 'de' ? 'en' : 'de');
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -167,38 +173,61 @@ export default function Login() {
     }
   }
 
-
-
   return (
     <div 
-      className="min-h-screen bg-[#09090b] flex flex-col justify-center py-12 sm:px-6 lg:px-8 selection:bg-blue-500/30 relative bg-cover bg-center"
+      className="min-h-screen bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-[#fafafa] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 selection:bg-blue-500/30 relative bg-cover bg-center transition-colors duration-200"
       style={customBg ? { backgroundImage: `url(${customBg})` } : {}}
     >
-      {customBg && <div className="absolute inset-0 bg-black/65 backdrop-blur-[3px] z-0" />}
+      {customBg && <div className="absolute inset-0 bg-white/80 dark:bg-black/65 backdrop-blur-[3px] z-0" />}
       
-      <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 text-[#a1a1aa] hover:text-[#fafafa] transition-colors text-sm font-medium group">
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back to Website
-      </Link>
+      {/* Top Header Navigation */}
+      <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20">
+        <Link 
+          to="/" 
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-[#a1a1aa] dark:hover:text-[#fafafa] transition-colors text-sm font-semibold group bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#27272a] shadow-sm"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> 
+          <span>{t('back_to_website')}</span>
+        </Link>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex items-center gap-2">
+          <button 
+            type="button"
+            onClick={handleLanguageToggle} 
+            className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-[#27272a] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md text-xs font-bold text-slate-700 dark:text-[#fafafa] hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer"
+          >
+            {currentLang.toUpperCase()}
+          </button>
+          <button 
+            type="button"
+            onClick={toggleTheme} 
+            title={theme === 'dark' ? 'Hellmodus aktivieren' : 'Dunkelmodus aktivieren'}
+            className="p-1.5 sm:p-2 rounded-xl border border-slate-200 dark:border-[#27272a] bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md text-slate-700 dark:text-[#a1a1aa] hover:text-slate-900 dark:hover:text-[#fafafa] hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors shadow-sm cursor-pointer"
+          >
+            {theme === 'dark' ? <Sun size={16} className="text-amber-400" /> : <Moon size={16} className="text-slate-700" />}
+          </button>
+        </div>
+      </div>
+
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 mt-6 sm:mt-0">
         <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/25">
             <Command size={24} />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-[#fafafa]">{t('welcome_back')}</h2>
-        <p className="mt-2 text-center text-sm text-[#a1a1aa]">{t('access_workspace')}</p>
+        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-slate-900 dark:text-[#fafafa]">{t('welcome_back')}</h2>
+        <p className="mt-2 text-center text-sm text-slate-500 dark:text-[#a1a1aa]">{t('access_workspace')}</p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-[400px]">
-        <div className="bg-[#18181b] py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-[#27272a] relative overflow-hidden">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-[420px] relative z-10">
+        <div className="bg-white dark:bg-[#18181b] py-8 px-6 sm:px-10 shadow-xl dark:shadow-2xl sm:rounded-3xl border border-slate-200/90 dark:border-[#27272a] relative overflow-hidden transition-colors duration-200">
           
           {bootStep >= 0 && (
-            <div className="absolute inset-0 z-50 bg-[#09090b] flex flex-col items-center justify-center p-8">
-              <Loader2 className="w-8 h-8 text-blue-500 animate-spin mb-6" />
+            <div className="absolute inset-0 z-50 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md flex flex-col items-center justify-center p-8">
+              <Loader2 className="w-8 h-8 text-blue-600 dark:text-blue-500 animate-spin mb-6" />
               <div className="space-y-3 w-full max-w-[250px]">
                 {BOOT_SEQUENCE.map((text, idx) => (
-                  <div key={idx} className={`text-xs font-mono transition-all duration-500 ${idx <= bootStep ? 'text-blue-400 opacity-100 translate-y-0' : 'text-[#27272a] opacity-0 translate-y-2'}`}>
+                  <div key={idx} className={`text-xs font-mono transition-all duration-500 ${idx <= bootStep ? 'text-blue-600 dark:text-blue-400 opacity-100 translate-y-0 font-bold' : 'text-slate-300 dark:text-[#27272a] opacity-0 translate-y-2'}`}>
                     &gt; {text}
                   </div>
                 ))}
@@ -208,75 +237,79 @@ export default function Login() {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl flex items-center gap-2">
-                <X size={16} /> {error}
+              <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm p-3.5 rounded-xl flex items-center gap-2 font-medium">
+                <X size={16} className="shrink-0" /> <span>{error}</span>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-[#fafafa] mb-1.5">{t('email')}</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa] mb-1.5">{t('email')}</label>
               <input 
                 type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-[#fafafa] placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all"
                 placeholder={t('email_placeholder')}
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-[#fafafa]">{t('password')}</label>
-                <button type="button" onClick={() => setIsResetModalOpen(true)} className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa]">{t('password')}</label>
+                <button type="button" onClick={() => setIsResetModalOpen(true)} className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer">
                   {t('forgot_password')}
                 </button>
               </div>
               <input 
                 type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#09090b] border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-[#fafafa] placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all"
                 placeholder={t('password_placeholder')}
               />
             </div>
 
-            <button disabled={loading} type="submit" className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-500/20 text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all">
+            <button 
+              disabled={loading} 
+              type="submit" 
+              className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-lg shadow-blue-500/25 text-sm font-bold text-white bg-blue-600 hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-all cursor-pointer active:scale-[0.99]"
+            >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('sign_in')}
             </button>
           </form>
         </div>
 
-        <p className="mt-6 text-center text-sm text-[#a1a1aa]">
-          {t('no_account')} <Link to="/signup" className="font-medium text-blue-400 hover:text-blue-300 transition-colors">{t('sign_up')}</Link>
+        <p className="mt-6 text-center text-sm text-slate-500 dark:text-[#a1a1aa] font-medium">
+          {t('no_account')} <Link to="/signup" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_up')}</Link>
         </p>
       </div>
 
       {isResetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#18181b] border border-[#27272a] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-4 border-b border-[#27272a] flex items-center justify-between">
-              <h3 className="font-bold text-lg text-[#fafafa]">{t('reset_title')}</h3>
-              <button onClick={() => setIsResetModalOpen(false)} className="text-[#a1a1aa] hover:text-[#fafafa] transition-colors"><X size={20} /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-[#27272a] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-200 dark:border-[#27272a] flex items-center justify-between">
+              <h3 className="font-bold text-lg text-slate-900 dark:text-[#fafafa]">{t('reset_title')}</h3>
+              <button onClick={() => setIsResetModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:text-[#a1a1aa] dark:hover:text-[#fafafa] transition-colors cursor-pointer"><X size={20} /></button>
             </div>
             
             <form onSubmit={handlePasswordReset} className="p-6 space-y-4">
-              <p className="text-sm text-[#a1a1aa]">{t('reset_desc')}</p>
+              <p className="text-sm text-slate-600 dark:text-[#a1a1aa] leading-relaxed">{t('reset_desc')}</p>
 
-              {resetError && <div className="bg-red-500/10 text-red-400 p-3 rounded-lg text-sm border border-red-500/20">{resetError}</div>}
-              {resetMessage && <div className="bg-emerald-500/10 text-emerald-400 p-3 rounded-lg text-sm border border-emerald-500/20">{resetMessage}</div>}
+              {resetError && <div className="bg-red-500/10 text-red-600 dark:text-red-400 p-3 rounded-xl text-sm border border-red-500/20 font-medium">{resetError}</div>}
+              {resetMessage && <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-3 rounded-xl text-sm border border-emerald-500/20 font-medium">{resetMessage}</div>}
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[#a1a1aa] uppercase tracking-widest">{t('email')}</label>
+                <label className="text-xs font-bold text-slate-500 dark:text-[#a1a1aa] uppercase tracking-wider">{t('email')}</label>
                 <input 
                   type="email"
                   required
                   value={resetEmail}
                   onChange={e => setResetEmail(e.target.value)}
                   placeholder={t('email_placeholder')}
-                  className="w-full bg-[#09090b] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-[#fafafa] placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                  className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
-                <p className="text-xs text-[#52525b]">{t('reset_hint')}</p>
+                <p className="text-xs text-slate-400 dark:text-[#52525b]">{t('reset_hint')}</p>
               </div>
 
               <div className="pt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsResetModalOpen(false)} className="px-4 py-2 text-sm font-medium text-[#a1a1aa] hover:text-[#fafafa] transition-colors">{t('cancel')}</button>
-                <button type="submit" disabled={resetLoading || !resetEmail} className="px-4 py-2 bg-[#fafafa] text-[#09090b] rounded-xl text-sm font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <button type="button" onClick={() => setIsResetModalOpen(false)} className="px-4 py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 dark:text-[#a1a1aa] dark:hover:text-[#fafafa] transition-colors cursor-pointer">{t('cancel')}</button>
+                <button type="submit" disabled={resetLoading || !resetEmail} className="px-5 py-2.5 bg-slate-900 text-white dark:bg-[#fafafa] dark:text-[#09090b] rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-md">
                   {resetLoading ? t('sending') : t('send_link')}
                 </button>
               </div>

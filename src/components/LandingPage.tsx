@@ -741,99 +741,99 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
               
               {/* Links: Chaos / Tool-Wildwuchs */}
-              <div className="p-6 sm:p-8 md:p-10 bg-gradient-to-br from-red-950/20 via-surface to-background border border-red-500/30 rounded-3xl sm:rounded-[2.5rem] shadow-xl flex flex-col justify-between relative overflow-hidden group">
+              <div className="p-6 sm:p-8 md:p-10 bg-gradient-to-br from-red-500/5 via-surface to-background dark:from-red-950/20 dark:via-surface dark:to-background border border-red-500/30 rounded-3xl sm:rounded-[2.5rem] shadow-xl flex flex-col justify-between relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-red-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-wider mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold uppercase tracking-wider mb-6">
                     <AlertTriangle size={14} /> {t('chaos_badge')}
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-black text-red-500 mb-4 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-red-600 dark:text-red-500 mb-4 tracking-tight">
                     {t('chaos_title')}
                   </h3>
-                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">
+                  <p className="text-slate-600 dark:text-text-muted text-sm sm:text-base leading-relaxed mb-6 font-medium">
                     {t('chaos_desc')}
                   </p>
 
                   {/* 3 Pain-Points Badges */}
                   <div className="space-y-3 mb-8">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <FileSpreadsheet className="text-red-400 shrink-0" size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 bg-red-50/80 dark:bg-surface border border-red-200 dark:border-red-500/30 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 dark:text-text-primary shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileSpreadsheet className="text-red-600 dark:text-red-400 shrink-0" size={18} />
                         <span className="truncate">{t('chaos_b1')}</span>
                       </div>
-                      <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b1_tag')}</span>
+                      <span className="text-[11px] bg-red-100 dark:bg-red-500/20 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('chaos_b1_tag')}</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Server className="text-orange-400 shrink-0" size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 bg-orange-50/80 dark:bg-surface border border-orange-200 dark:border-red-500/30 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 dark:text-text-primary shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Server className="text-orange-600 dark:text-orange-400 shrink-0" size={18} />
                         <span className="truncate">{t('chaos_b2')}</span>
                       </div>
-                      <span className="text-[10px] bg-orange-500/15 text-orange-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b2_tag')}</span>
+                      <span className="text-[11px] bg-orange-100 dark:bg-orange-500/20 text-orange-900 dark:text-orange-300 border border-orange-200 dark:border-orange-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('chaos_b2_tag')}</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-surface border border-red-500/20 rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <MessageSquare className="text-purple-400 shrink-0" size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 bg-purple-50/80 dark:bg-surface border border-purple-200 dark:border-red-500/30 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 dark:text-text-primary shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <MessageSquare className="text-purple-600 dark:text-purple-400 shrink-0" size={18} />
                         <span className="truncate">{t('chaos_b3')}</span>
                       </div>
-                      <span className="text-[10px] bg-purple-500/15 text-purple-400 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('chaos_b3_tag')}</span>
+                      <span className="text-[11px] bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('chaos_b3_tag')}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Rechts: Single Source of Truth */}
-              <div className="p-6 sm:p-8 md:p-10 bg-gradient-to-br from-blue-950/20 via-surface to-background border border-blue-500/40 rounded-3xl sm:rounded-[2.5rem] shadow-2xl flex flex-col justify-between relative overflow-hidden group">
+              <div className="p-6 sm:p-8 md:p-10 bg-gradient-to-br from-blue-500/5 via-surface to-background dark:from-blue-950/20 dark:via-surface dark:to-background border border-blue-500/40 rounded-3xl sm:rounded-[2.5rem] shadow-2xl flex flex-col justify-between relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider mb-6">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider mb-6">
                     <Database size={14} /> Revisionssicher
                   </div>
                   <h3 className="text-2xl sm:text-3xl font-black text-text-primary mb-4 tracking-tight">
                     {t('ssot_title')}
                   </h3>
-                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">
+                  <p className="text-slate-600 dark:text-text-muted text-sm sm:text-base leading-relaxed mb-6 font-medium">
                     {t('ssot_desc')}
                   </p>
 
                   {/* 3 High-Impact USP Badges */}
                   <div className="space-y-3 mb-8">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs font-semibold text-text-primary shadow-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Shield className="text-blue-400 shrink-0" size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 bg-blue-50/90 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/25 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 dark:text-white shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Shield className="text-blue-600 dark:text-blue-400 shrink-0" size={18} />
                         <span className="truncate">{t('ssot_p1')}</span>
                       </div>
-                      <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('ssot_p1_tag')}</span>
+                      <span className="text-[11px] bg-blue-100 dark:bg-blue-500/25 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('ssot_p1_tag')}</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs font-semibold text-text-primary shadow-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Zap className="text-amber-400 shrink-0" size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 bg-amber-50/90 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 dark:text-white shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Zap className="text-amber-600 dark:text-amber-400 shrink-0" size={18} />
                         <span className="truncate">{t('ssot_p2')}</span>
                       </div>
-                      <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('ssot_p2_tag')}</span>
+                      <span className="text-[11px] bg-amber-100 dark:bg-amber-500/25 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('ssot_p2_tag')}</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl text-xs font-semibold text-text-primary shadow-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Layers className="text-emerald-400 shrink-0" size={16} />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3.5 sm:p-4 bg-emerald-50/90 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/25 rounded-2xl text-xs sm:text-sm font-bold text-slate-900 dark:text-white shadow-sm">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Layers className="text-emerald-600 dark:text-emerald-400 shrink-0" size={18} />
                         <span className="truncate">{t('ssot_p3')}</span>
                       </div>
-                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold shrink-0 self-start sm:self-auto">{t('ssot_p3_tag')}</span>
+                      <span className="text-[11px] bg-emerald-100 dark:bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('ssot_p3_tag')}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-4 sm:p-6 bg-blue-500/10 border border-blue-500/30 rounded-2xl flex items-center gap-4 sm:gap-5">
-                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/30 animate-pulse">
+                <div className="p-4 sm:p-6 bg-blue-50/90 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-2xl flex items-center gap-4 sm:gap-5">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/30">
                     <Database size={24} className="sm:w-7 sm:h-7" />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-black text-sm sm:text-base text-text-primary mb-0.5 truncate">
+                    <div className="font-black text-sm sm:text-base text-slate-900 dark:text-text-primary mb-0.5 truncate">
                       100% Single Source of Truth
                     </div>
-                    <div className="text-xs text-blue-400 font-semibold truncate">
+                    <div className="text-xs text-blue-700 dark:text-blue-400 font-bold truncate">
                       {t('ssot_badge')}
                     </div>
                   </div>
