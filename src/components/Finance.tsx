@@ -10,7 +10,7 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
-  Image as ImageIcon, Maximize, Lock, Unlock, Layers
+  Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -458,6 +458,8 @@ export default function Finance() {
   const [incomingData, setIncomingData] = useState({ type: 'internal', vendor: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', description: '', amount: '', skontoRate: 0, date: new Date().toISOString().split('T')[0], budgetPosId: '', status: 'Offen' });
   const [restKostenPrognose, setRestKostenPrognose] = useState<Record<string, number>>({});
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [showCsvMenu, setShowCsvMenu] = useState(false);
+  const csvMenuRef = useRef<HTMLDivElement>(null);
   const [csvImportText, setCsvImportText] = useState('');
   const [timeData, setTimeData] = useState({ type: 'internal', userId: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', hours: 0, hourlyRate: 0, description: '', date: new Date().toISOString().split('T')[0] });
   const mobileCameraRef = useRef<HTMLInputElement>(null);
@@ -465,6 +467,17 @@ export default function Finance() {
 
   const [opCostSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
   const mobileUploadUrl = `${window.location.origin}/mobile-upload/extern/${opCostSessionId}`;
+
+  // Close CSV dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (csvMenuRef.current && !csvMenuRef.current.contains(e.target as Node)) {
+        setShowCsvMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
@@ -1640,27 +1653,90 @@ export default function Finance() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-            <div className="grid grid-cols-4 sm:flex gap-2 w-full sm:w-auto shrink-0">
-              <button onClick={() => setShowTimeModal(true)} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm"><Clock size={16} /> <span className="hidden sm:inline ml-2">{t('book_hours')}</span></button>
-              <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm"><FileSignature size={16} /> <span className="hidden sm:inline ml-2">{t('quote')}</span></button>
-              <button onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-sm"><Receipt size={16} /> <span className="hidden sm:inline ml-2">{t('book_receipt')}</span></button>
-              <button onClick={() => setShowInvoiceModal(true)} className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center p-2.5 sm:px-4 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm"><Send size={16} /> <span className="hidden sm:inline ml-2">{t('invoice')}</span></button>
-            </div>
-            <div className="hidden lg:block w-px h-6 bg-border/50 mx-1"></div>
-            <button onClick={exportLedgerCSV} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="Hauptbuch als CSV herunterladen">
-              <Download size={15} /> <span className="hidden sm:inline">Hauptbuch CSV</span>
-            </button>
-            <button onClick={exportBudgetCSV} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="BKP Budget als CSV herunterladen">
-              <Download size={15} /> <span className="hidden sm:inline">BKP Budget CSV</span>
-            </button>
-            <button onClick={() => setShowCsvImportModal(true)} className="flex-1 sm:flex-none flex items-center justify-center px-3 py-2 bg-surface border border-accent-ai/40 text-accent-ai rounded-lg text-xs font-bold hover:bg-accent-ai/10 transition-colors shadow-sm gap-1.5 h-[42px] shrink-0" title="BKP Positionen aus CSV importieren">
-              <Plus size={15} /> <span className="hidden sm:inline">BKP CSV Import</span>
-            </button>
-            {activeTab !== 'overview' && (
-              <button onClick={() => setIsPdfStudioOpen(true)} className="flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0">
-                <FileText size={16} /> <span>PDF Studio</span>
+            {/* Primary Action Buttons */}
+            <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto shrink-0">
+              <button 
+                onClick={() => setShowTimeModal(true)} 
+                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+              >
+                <Clock size={16} className="text-orange-400 shrink-0" /> <span>{t('book_hours')}</span>
               </button>
-            )}
+              <button 
+                onClick={() => setShowQuoteModal(true)} 
+                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+              >
+                <FileSignature size={16} className="text-accent-ai shrink-0" /> <span>{t('quote')}</span>
+              </button>
+              <button 
+                onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }} 
+                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+              >
+                <Receipt size={16} className="text-red-400 shrink-0" /> <span>{t('book_receipt')}</span>
+              </button>
+              <button 
+                onClick={() => setShowInvoiceModal(true)} 
+                className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs sm:text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+              >
+                <Send size={16} className="shrink-0" /> <span>{t('invoice')}</span>
+              </button>
+              <button 
+                onClick={() => setIsPdfStudioOpen(true)} 
+                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+              >
+                <FileText size={16} className="text-accent-ai shrink-0" /> <span>PDF Studio</span>
+              </button>
+            </div>
+
+            <div className="hidden lg:block w-px h-6 bg-border/50 mx-1"></div>
+
+            {/* CSV & Export / Import Dropdown */}
+            <div className="relative" ref={csvMenuRef}>
+              <button 
+                onClick={() => setShowCsvMenu(prev => !prev)} 
+                className="flex items-center justify-center px-3 sm:px-3.5 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-all shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+                title="CSV Export- & Import-Aktionen"
+              >
+                <Download size={15} className="text-accent-ai shrink-0" />
+                <span>CSV & Export</span>
+                <ChevronDown size={14} className={cn("text-text-muted transition-transform duration-200", showCsvMenu ? "rotate-180" : "")} />
+              </button>
+
+              {showCsvMenu && (
+                <div className="absolute right-0 mt-1.5 w-64 bg-surface/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2">
+                  <button
+                    onClick={() => { exportBudgetCSV(); setShowCsvMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
+                  >
+                    <Download size={15} className="text-accent-ai shrink-0" />
+                    <div>
+                      <div>BKP Budget CSV</div>
+                      <div className="text-[10px] text-text-muted font-normal">Budgetplan als CSV exportieren</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => { exportLedgerCSV(); setShowCsvMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors text-left cursor-pointer"
+                  >
+                    <Download size={15} className="text-accent-ai shrink-0" />
+                    <div>
+                      <div>Hauptbuch CSV</div>
+                      <div className="text-[10px] text-text-muted font-normal">Alle Buchungen als CSV exportieren</div>
+                    </div>
+                  </button>
+                  <div className="border-t border-border/40 my-1" />
+                  <button
+                    onClick={() => { setShowCsvImportModal(true); setShowCsvMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-accent-ai hover:bg-accent-ai/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Plus size={15} className="shrink-0" />
+                    <div>
+                      <div>BKP CSV Import</div>
+                      <div className="text-[10px] text-text-muted font-normal">Positionen aus CSV-Datei importieren</div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
