@@ -10,7 +10,7 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
-  Image as ImageIcon, Maximize
+  Image as ImageIcon, Maximize, Lock, Unlock, Layers
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -540,12 +540,9 @@ export default function Finance() {
       } catch (e) {}
 
       const configData = finConfig || cachedData;
-      const hasValidGroups = Array.isArray(configData?.versions) &&
-        configData.versions.length > 0 &&
-        Array.isArray(configData.versions[0]?.groups) &&
-        configData.versions[0].groups.length > 0;
+      const hasValidVersions = Array.isArray(configData?.versions) && configData.versions.length > 0;
 
-      if (hasValidGroups) {
+      if (hasValidVersions) {
         setVersions(configData.versions);
         if (configData.activeVersionId) setActiveVersionId(configData.activeVersionId);
         if (configData.projectHeader) setProjectHeader(configData.projectHeader);
@@ -554,12 +551,12 @@ export default function Finance() {
         const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
         const initGroups = (isDemo && demoTemplates.construction?.financeGroups)
           ? demoTemplates.construction.financeGroups
-          : [];
+          : [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }];
         const initVersion: BudgetVersion = {
-          id: `v-approved-${currentProjectId}`,
+          id: `v-${isDemo ? 'approved' : 'draft'}-${currentProjectId}`,
           name: 'Originalbudget',
           vatRate: 8.1,
-          status: 'approved',
+          status: isDemo ? 'approved' : 'draft',
           groups: initGroups
         };
         const initialFinanceData = {
@@ -978,7 +975,18 @@ export default function Finance() {
 
   const handleCreateNewVersion = () => {
     const newId = `v${Date.now()}`;
-    setVersions([...versions, { id: newId, name: t('new_variant'), vatRate: 8.1, status: 'draft', groups: [{ id: `g${Date.now()}`, pos: '100', title: t('new_phase'), items: [] }] }]);
+    setVersions([...versions, {
+      id: newId,
+      name: t('new_variant'),
+      vatRate: 8.1,
+      status: 'draft',
+      groups: [{
+        id: `g${Date.now()}`,
+        pos: '100',
+        title: t('new_phase'),
+        items: [{ id: `i${Date.now()}`, pos: '101', description: '', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }]
+      }]
+    }]);
     setActiveVersionId(newId);
     addToast(t('new_variant_created'), 'success');
   };
@@ -1004,6 +1012,15 @@ export default function Finance() {
       return addToast('Du hast keine Berechtigung, Budgets freizugeben.', 'error');
     }
     const isCurrentlyApproved = activeVersion.status === 'approved';
+    const totalItems = (activeVersion.groups || []).reduce((acc, g) => acc + (g.items?.length || 0), 0);
+    
+    // If approved and empty, immediately unlock without prompt
+    if (isCurrentlyApproved && totalItems === 0) {
+      setVersions(prev => prev.map(v => v.id === activeVersionId ? { ...v, status: 'draft' } : v));
+      addToast('Budget zur Bearbeitung entsperrt (Entwurf)', 'success');
+      return;
+    }
+
     const msg = isCurrentlyApproved ? t('revoke_confirm') : t('approve_confirm');
     if (window.confirm(msg)) {
       setVersions(prev => prev.map(v => v.id === activeVersionId ? { ...v, status: isCurrentlyApproved ? 'draft' : 'approved' } : v));
@@ -1277,76 +1294,128 @@ export default function Finance() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
-                    {budgetGroups.map(group => {
-                      const groupPlanTotal = calculateGroupTotal(group);
-                      return (
-                        <React.Fragment key={group.id}>
-                          <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
-                            <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
-                            <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
-                              <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} />
-                            </td>
-                            <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
-                              {formatCHF(groupPlanTotal)}
-                              {!isReadOnly && activeVersion.status !== 'approved' && (
-                                <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print">
-                                  <Trash2 size={16} />
+                    {budgetGroups.length === 0 ? (
+                      <tr>
+                        <td colSpan={includeOptions ? 7 : 6} className="px-6 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                            <div className="w-12 h-12 rounded-2xl bg-accent-ai/10 text-accent-ai flex items-center justify-center">
+                              <Calculator size={24} />
+                            </div>
+                            <h4 className="font-bold text-base text-text-primary">Noch keine Phasen im Budgetplan</h4>
+                            <p className="text-xs text-text-muted">
+                              {activeVersion.status === 'approved'
+                                ? "Dieses Budget ist als 'Freigegeben' markiert (schreibgeschützt). Entsperren Sie das Budget, um Phasen und Positionen anzulegen."
+                                : "Erstellen Sie die erste Phase für dieses Projekt."}
+                            </p>
+                            {!isReadOnly && (
+                              activeVersion.status === 'approved' ? (
+                                <button
+                                  onClick={() => {
+                                    setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                                      ...v,
+                                      status: 'draft',
+                                      groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                                    } : v));
+                                    addToast('Budget entsperrt und Phase 1 erstellt', 'success');
+                                  }}
+                                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Unlock size={14} /> Budget entsperren & Phase erstellen
                                 </button>
-                              )}
-                            </td>
-                          </tr>
-                          {group.items.map(item => (
-                            <tr key={item.id} className="hover:bg-white/5 transition-colors group/row">
-                              <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
-                              <td className="px-4 py-2">
-                                <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                              ) : (
+                                <button
+                                  onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                                    ...v,
+                                    groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                                  } : v))}
+                                  className="px-4 py-2 bg-accent-ai hover:bg-accent-ai/90 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Plus size={14} /> Erste Phase erstellen
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      budgetGroups.map(group => {
+                        const groupPlanTotal = calculateGroupTotal(group);
+                        return (
+                          <React.Fragment key={group.id}>
+                            <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
+                              <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
+                              <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
+                                <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} />
                               </td>
-                              <td className="px-4 py-2 text-right">
-                                <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
-                              </td>
-                              <td className="px-4 py-2 relative">
-                                <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="bg-transparent text-text-primary outline-none w-full appearance-none cursor-pointer font-medium" disabled={activeVersion.status === 'approved'}>
-                                  <option className="bg-surface">Std.</option>
-                                  <option className="bg-surface">Stk.</option>
-                                  <option className="bg-surface">Pauschal</option>
-                                  <option className="bg-surface">m2</option>
-                                  <option className="bg-surface font-bold text-accent-ai">Option</option>
-                                </select>
-                              </td>
-                              <td className="px-4 py-2 text-right">
-                                <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
-                              </td>
-                              {includeOptions && (
-                                <td className="px-4 py-2 text-right bg-accent-ai/5">
-                                  <span className={item.option > 0 ? "text-accent-ai font-bold" : "text-text-muted font-medium"}>{item.option > 0 ? formatCHF(item.option) : '-'}</span>
-                                </td>
-                              )}
-                              <td className="px-4 py-2 text-right font-bold relative text-text-primary">
-                                <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
+                              <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
+                                {formatCHF(groupPlanTotal)}
                                 {!isReadOnly && activeVersion.status !== 'approved' && (
-                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print">
-                                    <X size={14} />
+                                  <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print cursor-pointer">
+                                    <Trash2 size={16} />
                                   </button>
                                 )}
                               </td>
                             </tr>
-                          ))}
-                          {!isReadOnly && activeVersion.status !== 'approved' && (
-                            <tr className="no-print">
-                              <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 bg-background/30">
-                                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline">
-                                  <Plus size={14} /> {t('add_position')}
-                                </button>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      )
-                    })}
-                    {!isReadOnly && activeVersion.status !== 'approved' && (
+                            {group.items.length === 0 && (
+                              <tr>
+                                <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 text-xs text-text-muted italic bg-background/20">
+                                  Noch keine Positionen in dieser Phase. {!isReadOnly && activeVersion.status !== 'approved' && "Klicken Sie unten auf '+ Position hinzufügen'."}
+                                </td>
+                              </tr>
+                            )}
+                            {group.items.map(item => (
+                              <tr key={item.id} className="hover:bg-white/5 transition-colors group/row">
+                                <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
+                                <td className="px-4 py-2">
+                                  <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                                </td>
+                                <td className="px-4 py-2 text-right">
+                                  <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
+                                </td>
+                                <td className="px-4 py-2 relative">
+                                  <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="bg-transparent text-text-primary outline-none w-full appearance-none cursor-pointer font-medium" disabled={activeVersion.status === 'approved'}>
+                                    <option className="bg-surface">Std.</option>
+                                    <option className="bg-surface">Stk.</option>
+                                    <option className="bg-surface">Pauschal</option>
+                                    <option className="bg-surface">m2</option>
+                                    <option className="bg-surface font-bold text-accent-ai">Option</option>
+                                  </select>
+                                </td>
+                                <td className="px-4 py-2 text-right">
+                                  <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
+                                </td>
+                                {includeOptions && (
+                                  <td className="px-4 py-2 text-right bg-accent-ai/5">
+                                    <span className={item.option > 0 ? "text-accent-ai font-bold" : "text-text-muted font-medium"}>{item.option > 0 ? formatCHF(item.option) : '-'}</span>
+                                  </td>
+                                )}
+                                <td className="px-4 py-2 text-right font-bold relative text-text-primary">
+                                  <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
+                                  {!isReadOnly && activeVersion.status !== 'approved' && (
+                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print cursor-pointer">
+                                      <X size={14} />
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                            {!isReadOnly && activeVersion.status !== 'approved' && (
+                              <tr className="no-print">
+                                <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 bg-background/30">
+                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline cursor-pointer">
+                                    <Plus size={14} /> {t('add_position')}
+                                  </button>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        )
+                      })
+                    )}
+                    {!isReadOnly && activeVersion.status !== 'approved' && budgetGroups.length > 0 && (
                       <tr className="no-print">
                         <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
-                          <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors">
+                          <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors cursor-pointer">
                             <Plus size={18} /> {t('new_phase')}
                           </button>
                         </td>
@@ -1626,8 +1695,27 @@ export default function Finance() {
                 </select>
                 <div className="w-px h-4 bg-border mx-1"></div>
                 {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
-                  <button onClick={handleToggleApproveVersion} className={cn("p-1 px-2 rounded text-xs font-bold transition-colors border mr-1 whitespace-nowrap", activeVersion.status === 'approved' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "hover:bg-white/5 text-text-muted border-border/50")} title={t('approve_revoke')}>
-                    {activeVersion.status === 'approved' ? t('approved') : t('approve')}
+                  <button
+                    onClick={handleToggleApproveVersion}
+                    className={cn(
+                      "p-1 px-2.5 rounded-md text-xs font-bold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm",
+                      activeVersion.status === 'approved'
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                    )}
+                    title={activeVersion.status === 'approved' ? 'Freigabe aufheben (Gesperrt – Klicken zum Bearbeiten)' : 'Budget freigeben (Entwurf – Klicken zum Sperren)'}
+                  >
+                    {activeVersion.status === 'approved' ? (
+                      <>
+                        <Lock size={12} className="text-emerald-400 shrink-0" />
+                        <span>{t('approved')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Unlock size={12} className="text-amber-400 shrink-0" />
+                        <span>{t('draft')}</span>
+                      </>
+                    )}
                   </button>
                 )}
                 <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0" title={t('new_variant')}><Plus size={16} /></button>
@@ -1640,6 +1728,29 @@ export default function Finance() {
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 sm:px-0 pb-24 lg:pb-0 relative z-10 space-y-4">
+        {/* BUDGET LOCKED STATUS BANNER */}
+        {activeTab === 'budget' && activeVersion.status === 'approved' && (
+          <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-2xl p-3.5 px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-in fade-in">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl shrink-0">
+                <Lock size={18} />
+              </div>
+              <div>
+                <div className="font-bold text-xs text-emerald-400">Budgetplan ist freigegeben (Schreibgeschützt)</div>
+                <div className="text-[11px] text-text-muted mt-0.5">Positionen und Preise sind gesperrt, um Abweichungen in der Zahlungskontrolle zu vermeiden.</div>
+              </div>
+            </div>
+            {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
+              <button
+                onClick={handleToggleApproveVersion}
+                className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
+              >
+                <Unlock size={13} /> Freigabe widerrufen (Bearbeiten)
+              </button>
+            )}
+          </div>
+        )}
+
         {/* OVER-BUDGET ALERT BANNER */}
         {overBudgetPositions.length > 0 && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in shadow-sm">
@@ -1766,65 +1877,111 @@ export default function Finance() {
             </div>
 
             {/* Budget Groups Kacheln */}
-            {budgetGroups.map(group => (
-              <div key={group.id} className="space-y-4">
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 shadow-sm relative">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-bold text-blue-500 text-sm">{group.pos}</span>
-                    <span className="font-bold text-blue-500 text-sm">{formatCHF(calculateGroupTotal(group))}</span>
-                  </div>
-                  <input className="bg-transparent text-blue-400 font-bold text-lg outline-none w-full pr-8" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} placeholder="Titel der Phase" />
-                  {!isReadOnly && activeVersion.status !== 'approved' && (
-                    <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-4 bottom-4 text-red-500 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20"><Trash2 size={16} /></button>
-                  )}
+            {budgetGroups.length === 0 ? (
+              <div className="bg-surface border border-border/50 rounded-2xl p-6 text-center space-y-3 shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-accent-ai/10 text-accent-ai flex items-center justify-center mx-auto">
+                  <Calculator size={24} />
                 </div>
-
-                <div className="space-y-3 pl-3 border-l-2 border-border/30">
-                  {group.items.map(item => (
-                    <div key={item.id} className="bg-surface border border-border/50 rounded-xl p-4 shadow-sm relative space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-text-muted bg-background px-2 py-1 rounded border border-border/50">{item.pos}</span>
-                        {!isReadOnly && activeVersion.status !== 'approved' && (
-                          <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="text-text-muted hover:text-red-500 p-1 bg-background rounded-md"><X size={14} /></button>
-                        )}
-                      </div>
-                      <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-accent-ai/50" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('qty')}</label>
-                          <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit')}</label>
-                          <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none cursor-pointer" disabled={activeVersion.status === 'approved'}>
-                            <option value="Std.">Std.</option><option value="Stk.">Stk.</option><option value="Pauschal">Pauschal</option><option value="m2">m2</option><option value="Option" className="font-bold text-accent-ai">Option</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3 items-end border-b border-border/30 pb-3">
-                        <div>
-                          <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit_price')}</label>
-                          <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-text-muted font-bold uppercase block mb-1">Total (CHF)</span>
-                          <span className={cn("text-lg font-bold", item.option > 0 ? "text-accent-ai" : "text-text-primary")}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {!isReadOnly && activeVersion.status !== 'approved' && (
-                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="w-full py-2.5 bg-background border border-dashed border-accent-ai/30 text-accent-ai rounded-xl text-xs font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2">
-                      <Plus size={14} /> {t('add_position')}
+                <h4 className="font-bold text-base text-text-primary">Noch keine Phasen</h4>
+                <p className="text-xs text-text-muted">
+                  {activeVersion.status === 'approved'
+                    ? "Dieses Budget ist als 'Freigegeben' markiert. Entsperren Sie es, um Phasen anzulegen."
+                    : "Erstellen Sie die erste Phase für dieses Projekt."}
+                </p>
+                {!isReadOnly && (
+                  activeVersion.status === 'approved' ? (
+                    <button
+                      onClick={() => {
+                        setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                          ...v,
+                          status: 'draft',
+                          groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                        } : v));
+                        addToast('Budget entsperrt und Phase 1 erstellt', 'success');
+                      }}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto w-full"
+                    >
+                      <Unlock size={14} /> Budget entsperren & Phase erstellen
                     </button>
-                  )}
-                </div>
+                  ) : (
+                    <button
+                      onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                        ...v,
+                        groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                      } : v))}
+                      className="px-4 py-2 bg-accent-ai hover:bg-accent-ai/90 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto w-full"
+                    >
+                      <Plus size={14} /> Erste Phase erstellen
+                    </button>
+                  )
+                )}
               </div>
-            ))}
+            ) : (
+              budgetGroups.map(group => (
+                <div key={group.id} className="space-y-4">
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 shadow-sm relative">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-bold text-blue-500 text-sm">{group.pos}</span>
+                      <span className="font-bold text-blue-500 text-sm">{formatCHF(calculateGroupTotal(group))}</span>
+                    </div>
+                    <input className="bg-transparent text-blue-400 font-bold text-lg outline-none w-full pr-8" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} placeholder="Titel der Phase" />
+                    {!isReadOnly && activeVersion.status !== 'approved' && (
+                      <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-4 bottom-4 text-red-500 p-2 bg-red-500/10 rounded-lg hover:bg-red-500/20"><Trash2 size={16} /></button>
+                    )}
+                  </div>
 
-            {!isReadOnly && activeVersion.status !== 'approved' && (
+                  <div className="space-y-3 pl-3 border-l-2 border-border/30">
+                    {group.items.length === 0 && (
+                      <div className="p-3 bg-background/50 border border-dashed border-border/50 rounded-xl text-xs text-text-muted italic text-center">
+                        Noch keine Positionen in dieser Phase.
+                      </div>
+                    )}
+                    {group.items.map(item => (
+                      <div key={item.id} className="bg-surface border border-border/50 rounded-xl p-4 shadow-sm relative space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-text-muted bg-background px-2 py-1 rounded border border-border/50">{item.pos}</span>
+                          {!isReadOnly && activeVersion.status !== 'approved' && (
+                            <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="text-text-muted hover:text-red-500 p-1 bg-background rounded-md"><X size={14} /></button>
+                          )}
+                        </div>
+                        <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-accent-ai/50" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('qty')}</label>
+                            <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit')}</label>
+                            <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none cursor-pointer" disabled={activeVersion.status === 'approved'}>
+                              <option value="Std.">Std.</option><option value="Stk.">Stk.</option><option value="Pauschal">Pauschal</option><option value="m2">m2</option><option value="Option" className="font-bold text-accent-ai">Option</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 items-end border-b border-border/30 pb-3">
+                          <div>
+                            <label className="text-[10px] text-text-muted font-bold uppercase block mb-1">{t('unit_price')}</label>
+                            <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-text-muted font-bold uppercase block mb-1">Total (CHF)</span>
+                            <span className={cn("text-lg font-bold", item.option > 0 ? "text-accent-ai" : "text-text-primary")}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {!isReadOnly && activeVersion.status !== 'approved' && (
+                      <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="w-full py-2.5 bg-background border border-dashed border-accent-ai/30 text-accent-ai rounded-xl text-xs font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2">
+                        <Plus size={14} /> {t('add_position')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+
+            {!isReadOnly && activeVersion.status !== 'approved' && budgetGroups.length > 0 && (
               <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-4 bg-surface border border-dashed border-accent-ai/50 text-accent-ai rounded-xl font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2 shadow-sm">
                 <Plus size={18} /> {t('new_phase')}
               </button>
@@ -1898,76 +2055,128 @@ export default function Finance() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
-                      {budgetGroups.map(group => {
-                        const groupPlanTotal = calculateGroupTotal(group);
-                        return (
-                          <React.Fragment key={group.id}>
-                            <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
-                              <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
-                              <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
-                                <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} />
-                              </td>
-                              <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
-                                {formatCHF(groupPlanTotal)}
-                                {!isReadOnly && activeVersion.status !== 'approved' && (
-                                  <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print">
-                                    <Trash2 size={16} />
+                      {budgetGroups.length === 0 ? (
+                        <tr>
+                          <td colSpan={includeOptions ? 7 : 6} className="px-6 py-16 text-center">
+                            <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-3">
+                              <div className="w-14 h-14 rounded-2xl bg-accent-ai/10 text-accent-ai flex items-center justify-center shadow-inner">
+                                <Calculator size={28} />
+                              </div>
+                              <h4 className="font-bold text-base text-text-primary">Noch keine Phasen im Budgetplan</h4>
+                              <p className="text-xs text-text-muted leading-relaxed">
+                                {activeVersion.status === 'approved'
+                                  ? "Dieser Budgetplan ist aktuell als 'Freigegeben' markiert (schreibgeschützt). Entsperren Sie das Budget, um Phasen und Positionen anzulegen."
+                                  : "Beginnen Sie mit der Erstellung von Phasen (z.B. Vorbereitung, Konzept, Ausführung) und Positionen."}
+                              </p>
+                              {!isReadOnly && (
+                                activeVersion.status === 'approved' ? (
+                                  <button
+                                    onClick={() => {
+                                      setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                                        ...v,
+                                        status: 'draft',
+                                        groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                                      } : v));
+                                      addToast('Budget entsperrt und Phase 1 erstellt', 'success');
+                                    }}
+                                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Unlock size={14} /> Budget entsperren & Phase erstellen
                                   </button>
-                                )}
-                              </td>
-                            </tr>
-                            {group.items.map(item => (
-                              <tr key={item.id} className="hover:bg-white/5 transition-colors group/row">
-                                <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
-                                <td className="px-4 py-2">
-                                  <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                                ) : (
+                                  <button
+                                    onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                                      ...v,
+                                      groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                                    } : v))}
+                                    className="px-4 py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Plus size={14} /> Erste Phase erstellen
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        budgetGroups.map(group => {
+                          const groupPlanTotal = calculateGroupTotal(group);
+                          return (
+                            <React.Fragment key={group.id}>
+                              <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
+                                <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
+                                <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
+                                  <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} placeholder="Titel der Phase" />
                                 </td>
-                                <td className="px-4 py-2 text-right">
-                                  <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
-                                </td>
-                                <td className="px-4 py-2 relative">
-                                  <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="bg-transparent text-text-primary outline-none w-full appearance-none cursor-pointer font-medium" disabled={activeVersion.status === 'approved'}>
-                                    <option className="bg-surface">Std.</option>
-                                    <option className="bg-surface">Stk.</option>
-                                    <option className="bg-surface">Pauschal</option>
-                                    <option className="bg-surface">m2</option>
-                                    <option className="bg-surface font-bold text-accent-ai">Option</option>
-                                  </select>
-                                </td>
-                                <td className="px-4 py-2 text-right">
-                                  <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
-                                </td>
-                                {includeOptions && (
-                                  <td className="px-4 py-2 text-right bg-accent-ai/5">
-                                    <span className={item.option > 0 ? "text-accent-ai font-bold" : "text-text-muted font-medium"}>{item.option > 0 ? formatCHF(item.option) : '-'}</span>
-                                  </td>
-                                )}
-                                <td className="px-4 py-2 text-right font-bold relative text-text-primary">
-                                  <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
+                                <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
+                                  {formatCHF(groupPlanTotal)}
                                   {!isReadOnly && activeVersion.status !== 'approved' && (
-                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print">
-                                      <X size={14} />
+                                    <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print cursor-pointer">
+                                      <Trash2 size={16} />
                                     </button>
                                   )}
                                 </td>
                               </tr>
-                            ))}
-                            {!isReadOnly && activeVersion.status !== 'approved' && (
-                              <tr className="no-print">
-                                <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 bg-background/30">
-                                  <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Stk.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="text-xs font-bold flex items-center gap-1 text-accent-ai hover:underline">
-                                    <Plus size={14} /> {t('add_position')}
-                                  </button>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        )
-                      })}
-                      {!isReadOnly && activeVersion.status !== 'approved' && (
+                              {group.items.length === 0 && (
+                                <tr>
+                                  <td colSpan={includeOptions ? 7 : 6} className="px-4 py-3 text-xs text-text-muted italic bg-background/20">
+                                    Noch keine Positionen in dieser Phase. {!isReadOnly && activeVersion.status !== 'approved' && "Klicken Sie unten auf '+ Position hinzufügen'."}
+                                  </td>
+                                </tr>
+                              )}
+                              {group.items.map(item => (
+                                <tr key={item.id} className="hover:bg-white/5 transition-colors group/row">
+                                  <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
+                                  <td className="px-4 py-2">
+                                    <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                                  </td>
+                                  <td className="px-4 py-2 text-right">
+                                    <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
+                                  </td>
+                                  <td className="px-4 py-2 relative">
+                                    <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="bg-transparent text-text-primary outline-none w-full appearance-none cursor-pointer font-medium" disabled={activeVersion.status === 'approved'}>
+                                      <option className="bg-surface">Std.</option>
+                                      <option className="bg-surface">Stk.</option>
+                                      <option className="bg-surface">Pauschal</option>
+                                      <option className="bg-surface">m2</option>
+                                      <option className="bg-surface font-bold text-accent-ai">Option</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-2 text-right">
+                                    <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
+                                  </td>
+                                  {includeOptions && (
+                                    <td className="px-4 py-2 text-right bg-accent-ai/5">
+                                      <span className={item.option > 0 ? "text-accent-ai font-bold" : "text-text-muted font-medium"}>{item.option > 0 ? formatCHF(item.option) : '-'}</span>
+                                    </td>
+                                  )}
+                                  <td className="px-4 py-2 text-right font-bold relative text-text-primary">
+                                    <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
+                                    {!isReadOnly && activeVersion.status !== 'approved' && (
+                                      <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print cursor-pointer">
+                                        <X size={14} />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                              {!isReadOnly && activeVersion.status !== 'approved' && (
+                                <tr className="no-print">
+                                  <td colSpan={includeOptions ? 7 : 6} className="px-4 py-2.5 bg-background/30">
+                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: [...g.items, { id: `i${Date.now()}`, pos: `${g.pos.substring(0, 1)}0${g.items.length + 1}`, description: '', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] } : g) } : v))} className="text-xs font-bold flex items-center gap-1.5 text-accent-ai hover:underline cursor-pointer">
+                                      <Plus size={14} /> {t('add_position')}
+                                    </button>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          )
+                        })
+                      )}
+                      {!isReadOnly && activeVersion.status !== 'approved' && budgetGroups.length > 0 && (
                         <tr className="no-print">
                           <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
-                            <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors">
+                            <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors cursor-pointer">
                               <Plus size={18} /> {t('new_phase')}
                             </button>
                           </td>

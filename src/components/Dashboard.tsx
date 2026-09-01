@@ -206,23 +206,20 @@ export default function Dashboard() {
         } catch (e) {}
 
         const configData = finConfig || cachedData;
-        const hasValidGroups = Array.isArray(configData?.versions) &&
-          configData.versions.length > 0 &&
-          Array.isArray(configData.versions[0]?.groups) &&
-          configData.versions[0].groups.length > 0;
+        const hasValidVersions = Array.isArray(configData?.versions) && configData.versions.length > 0;
 
-        if (hasValidGroups) {
+        if (hasValidVersions) {
           setVersions(configData.versions);
         } else {
           const isDemo = isDemoMode || activeProject.id?.startsWith('demo-') || activeProject.id === 'demo-1' || activeProject.id === 'global';
           const initGroups = (isDemo && demoTemplates.construction?.financeGroups)
             ? demoTemplates.construction.financeGroups
-            : [];
+            : [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }];
           const initVersion = {
-            id: `v-approved-${activeProject.id}`,
+            id: `v-${isDemo ? 'approved' : 'draft'}-${activeProject.id}`,
             name: 'Originalbudget',
             vatRate: 8.1,
-            status: 'approved',
+            status: isDemo ? 'approved' : 'draft',
             groups: initGroups
           };
           setVersions([initVersion]);
