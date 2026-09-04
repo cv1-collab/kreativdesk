@@ -59,7 +59,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     no_description: 'No description', active: 'Active', archived: 'Archived', created_at: 'Created at',
     finance: 'Finance', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Proposals & Links',
     delete_project: 'Delete Project', active_projects: 'Active Projects',
-    archive: 'Archive', archive_project: 'Archive Project', unarchive_project: 'Restore Project'
+    archive: 'Archive', archive_project: 'Archive Project', unarchive_project: 'Restore Project',
+    install_app: 'Install App', start_tour: 'Start Tour', admin: 'Admin'
   },
   de: {
     folder_finance: '01_FINANZEN', folder_legal: '02_RECHTLICHES', folder_hr: '03_HR_MITARBEITER', folder_sales: '04_SALES',
@@ -75,7 +76,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     active: 'Aktiv', archived: 'Archiviert', created_at: 'Erstellt am',
     finance: 'Finanzen', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Offerten & Links',
     delete_project: 'Projekt löschen', active_projects: 'Aktive Projekte',
-    archive: 'Archiv', archive_project: 'Projekt archivieren', unarchive_project: 'Wiederherstellen'
+    archive: 'Archiv', archive_project: 'Projekt archivieren', unarchive_project: 'Wiederherstellen',
+    install_app: 'App installieren', start_tour: 'Tour starten', admin: 'Admin'
   }
 };
 
@@ -741,16 +743,16 @@ export default function CompanyDashboard() {
              </h2>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm">
-              📱 <span className="hidden sm:inline">App installieren</span>
+            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
+              📱 <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
-            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm" title="Tour starten"><HelpCircle size={18} /></button>
-            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
-            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
-            <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); setUnreadNotifications(0); localStorage.removeItem('has_new_document'); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm"><Bell size={18} />{(unreadNotifications > 0 || localStorage.getItem('has_new_document') === 'true') && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
+            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}><HelpCircle size={18} /></button>
+            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
+            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
+            <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); setUnreadNotifications(0); localStorage.removeItem('has_new_document'); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"><Bell size={18} />{(unreadNotifications > 0 || localStorage.getItem('has_new_document') === 'true') && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
             {isSuperAdmin && (
-              <button onClick={() => navigate('/admin')} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors">
-                <Shield size={16} /> <span className="hidden sm:inline text-xs font-bold">Admin</span>
+              <button onClick={() => navigate('/admin')} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">
+                <Shield size={16} /> <span className="hidden sm:inline text-xs font-bold">{t('admin')}</span>
               </button>
             )}
             <button onClick={handleLogout} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors">

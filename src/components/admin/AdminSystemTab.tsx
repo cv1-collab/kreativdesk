@@ -11,13 +11,23 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cloud_storage: 'Cloud Storage', total_capacity: 'Total Capacity', database_status: 'Database Health',
     operational: 'Operational', live_system_logs: 'Live System Logs', export_logs: 'Export Logs',
     no_logs: 'No system logs available.', loading_logs: 'Loading logs...',
-    demo_env: 'Demo Environment', demo_desc: 'Populates your workspace with realistic sample projects.'
+    demo_env: 'Demo Environment', demo_desc: 'Populates your workspace with realistic sample projects.',
+    maintenance_mode: 'Maintenance Mode',
+    maintenance_enabled: 'Enabled for regular users',
+    maintenance_disabled: 'Disabled',
+    activate: 'Enable',
+    deactivate: 'Disable'
   },
   de: {
     cloud_storage: 'Cloud Speicher', total_capacity: 'Gesamt-Kapazität', database_status: 'Datenbank Status',
     operational: 'Betriebsbereit', live_system_logs: 'Echtzeit System-Logs', export_logs: 'Logs exportieren',
     no_logs: 'Keine System-Logs vorhanden.', loading_logs: 'Logs werden geladen...',
-    demo_env: 'Muster-Projekte', demo_desc: 'Lädt realistische Musterprojekte direkt in deinen Workspace.'
+    demo_env: 'Muster-Projekte', demo_desc: 'Lädt realistische Musterprojekte direkt in deinen Workspace.',
+    maintenance_mode: 'Wartungsmodus',
+    maintenance_enabled: 'Aktiviert für reguläre Nutzer',
+    maintenance_disabled: 'Deaktiviert',
+    activate: 'Aktivieren',
+    deactivate: 'Deaktivieren'
   }
 };
 
@@ -93,8 +103,8 @@ export default function AdminSystemTab() {
               <Wrench size={24} />
             </div>
             <div>
-              <div className="font-bold text-text-primary text-sm">Wartungsmodus</div>
-              <div className="text-xs text-text-muted">{isMaintenance ? 'Aktiviert für reguläre Nutzer' : 'Deaktiviert'}</div>
+              <div className="font-bold text-text-primary text-sm">{t('maintenance_mode')}</div>
+              <div className="text-xs text-text-muted">{isMaintenance ? t('maintenance_enabled') : t('maintenance_disabled')}</div>
             </div>
           </div>
           <button 
@@ -102,7 +112,7 @@ export default function AdminSystemTab() {
             disabled={isUpdatingMaintenance}
             className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all", isMaintenance ? "bg-amber-500 text-white" : "bg-background border border-border text-text-primary")}
           >
-            {isUpdatingMaintenance ? <Loader2 size={14} className="animate-spin" /> : isMaintenance ? 'Deaktivieren' : 'Aktivieren'}
+            {isUpdatingMaintenance ? <Loader2 size={14} className="animate-spin" /> : isMaintenance ? t('deactivate') : t('activate')}
           </button>
         </div>
       </div>

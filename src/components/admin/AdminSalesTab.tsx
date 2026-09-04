@@ -12,14 +12,16 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     filter_all: 'All', filter_paid: 'Paid', filter_pending: 'Pending', filter_failed: 'Failed', filter_refunded: 'Refunded',
     filter_canceled: 'Canceled', filter_active: 'Active', transaction_id: 'ID', user_plan: 'User & Plan', amount: 'Amount',
     status: 'Status', unknown: 'Unknown', no_payments_found: 'No transactions found.', open_stripe: 'Open Stripe Dashboard',
-    details: 'Transaction Details', cancel: 'Cancel', save_changes: 'Save Changes', status_updated: 'Status successfully updated.'
+    details: 'Transaction Details', cancel: 'Cancel', save_changes: 'Save Changes', status_updated: 'Status successfully updated.',
+    delete_dummy_payments: 'Delete Dummy Payments'
   },
   de: {
     stripe_billing: 'Abos & Abrechnung', manage_payments_desc: 'Verwalte alle Zahlungen und aktive Abonnements.',
     filter_all: 'Alle', filter_paid: 'Bezahlt', filter_pending: 'Ausstehend', filter_failed: 'Fehler', filter_refunded: 'Erstattet',
     filter_canceled: 'Gekündigt', filter_active: 'Aktiv', transaction_id: 'ID', user_plan: 'Nutzer & Abo', amount: 'Betrag',
     status: 'Status', unknown: 'Unbekannt', no_payments_found: 'Keine Transaktionen gefunden.', open_stripe: 'Stripe Dashboard öffnen',
-    details: 'Transaktionsdetails', cancel: 'Abbrechen', save_changes: 'Änderungen speichern', status_updated: 'Status erfolgreich aktualisiert.'
+    details: 'Transaktionsdetails', cancel: 'Abbrechen', save_changes: 'Änderungen speichern', status_updated: 'Status erfolgreich aktualisiert.',
+    delete_dummy_payments: 'Dummy-Zahlungen löschen'
   }
 };
 
@@ -142,7 +144,7 @@ export default function AdminSalesTab() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={handleCleanupDummies} disabled={isSubmitting} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
-            Dummy-Zahlungen löschen
+            {t('delete_dummy_payments')}
           </button>
           <button onClick={() => window.open('https://dashboard.stripe.com', '_blank')} className="px-4 py-2 bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 rounded-xl text-sm font-bold hover:bg-[#635BFF]/20 transition-all flex items-center justify-center gap-2 shadow-sm">
             <ExternalLink size={16}/> {t('open_stripe')}

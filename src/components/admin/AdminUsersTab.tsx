@@ -13,14 +13,30 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     actions: 'Actions', active: 'Active', unnamed: 'Unnamed', delete_user_confirm: 'Are you sure you want to delete this user?',
     no_users_found: 'No users found.', edit_user: 'Edit User Details', save_changes: 'Save Changes', cancel: 'Cancel',
     user_saved: 'User successfully updated.', role: 'Role', plan: 'Subscription Plan', max_seats: 'Purchased Licenses (maxSeats)',
-    full_name: 'Full Name', email_address: 'Email Address'
+    full_name: 'Full Name', email_address: 'Email Address',
+    delete_test_users: 'Delete Test Users',
+    preprovision_vip_customer: '🚀 Pre-provision Customer (VIP Concierge)',
+    preview_workspace_tooltip: 'Test workspace from customer view',
+    preview: 'Preview',
+    edit: 'Edit',
+    cleanup_confirm: 'Do you want to delete all demo and test users?',
+    cleanup_success: 'Test users successfully deleted!',
+    cleanup_error: 'Error cleaning up test users'
   },
   de: {
     search_users: 'Benutzer suchen...', name_email: 'Name & E-Mail', role_plan: 'Rolle & Plan', status: 'Status',
     actions: 'Aktionen', active: 'Aktiv', unnamed: 'Unbenannt', delete_user_confirm: 'Möchtest du diesen Nutzer wirklich löschen?',
     no_users_found: 'Keine Benutzer gefunden.', edit_user: 'Benutzer bearbeiten', save_changes: 'Änderungen speichern', cancel: 'Abbrechen',
     user_saved: 'Benutzer erfolgreich aktualisiert.', role: 'Rolle', plan: 'Abo / Plan', max_seats: 'Gekaufte Lizenzen (maxSeats)',
-    full_name: 'Name', email_address: 'E-Mail Adresse'
+    full_name: 'Name', email_address: 'E-Mail Adresse',
+    delete_test_users: 'Test-Nutzer löschen',
+    preprovision_vip_customer: '🚀 Kunde vorab einrichten (VIP Concierge)',
+    preview_workspace_tooltip: 'Workspace aus Kundensicht testen',
+    preview: 'Vorschau',
+    edit: 'Bearbeiten',
+    cleanup_confirm: 'Möchtest du alle Demo- und Test-Nutzer löschen?',
+    cleanup_success: 'Test-Nutzer erfolgreich gelöscht!',
+    cleanup_error: 'Fehler beim Bereinigen'
   }
 };
 
@@ -260,13 +276,13 @@ export default function AdminUsersTab() {
             onClick={handleCleanupTestUsers}
             className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-sm text-center"
           >
-            Test-Nutzer löschen
+            {t('delete_test_users')}
           </button>
           <button
             onClick={() => setIsPreprovisionOpen(true)}
             className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
           >
-            <Shield size={16} /> 🚀 Kunde vorab einrichten (VIP Concierge)
+            <Shield size={16} /> {t('preprovision_vip_customer')}
           </button>
         </div>
       </div>
@@ -325,15 +341,15 @@ export default function AdminUsersTab() {
                         <button 
                           onClick={() => handleImpersonateWorkspace(user)}
                           className="px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
-                          title="Workspace aus Kundensicht testen"
+                          title={t('preview_workspace_tooltip')}
                         >
-                          <Eye size={14} /> Vorschau
+                          <Eye size={14} /> {t('preview')}
                         </button>
                         <button 
                           onClick={() => handleEditClick(user)}
                           className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-bold transition-colors"
                         >
-                          Bearbeiten
+                          {t('edit')}
                         </button>
                         <button 
                           onClick={() => handleDeleteUser(user)}

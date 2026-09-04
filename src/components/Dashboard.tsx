@@ -43,7 +43,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     insight_defects: 'Defect Management', insight_defects_desc: '3 critical defects open. Plumber needs to be notified.',
     team: 'Team', tasks: 'Tasks', defects: 'Defects', hours: 'Hours', documents: 'Documents', open: 'open',
     budget_utilization: 'Budget Utilization', spent: 'Spent', external_costs: 'External Costs', internal_hours: 'Internal Hours',
-    remaining: 'Remaining', no_budget_present: 'No budget available'
+    remaining: 'Remaining', no_budget_present: 'No budget available',
+    create_report: 'Create Report'
   },
   de: {
     project_overview: 'Projektübersicht', generate_ai_briefing: 'AI Briefing generieren', ai_generating: 'Projektdaten werden analysiert...',
@@ -54,7 +55,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     insight_defects: 'Mängelmanagement', insight_defects_desc: '3 kritische Mängel offen. Sanitär muss benachrichtigt werden.',
     team: 'Team', tasks: 'Aufgaben', defects: 'Mängel', hours: 'Stunden', documents: 'Dokumente', open: 'offen',
     budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', external_costs: 'Externe Kosten', internal_hours: 'Interne Stunden',
-    remaining: 'Verbleibend', no_budget_present: 'Kein Budget vorhanden'
+    remaining: 'Verbleibend', no_budget_present: 'Kein Budget vorhanden',
+    create_report: 'Report erstellen'
   }
 };
 
@@ -319,7 +321,7 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <button onClick={() => setIsPdfStudioOpen(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-surface border border-border rounded-xl sm:rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-all w-full sm:w-auto">
-            <FileText size={16} className="text-accent-ai"/> Report erstellen
+            <FileText size={16} className="text-accent-ai"/> {t('create_report')}
           </button>
           <button onClick={generateAIInsights} disabled={isGeneratingInsights} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-accent-ai/10 text-accent-ai rounded-xl sm:rounded-lg text-sm font-bold shadow-sm border border-accent-ai/20 hover:bg-accent-ai/20 transition-all disabled:opacity-50 w-full sm:w-auto">
             {isGeneratingInsights ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}

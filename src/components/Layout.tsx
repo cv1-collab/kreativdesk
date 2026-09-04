@@ -32,7 +32,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cad_plans: 'CAD Plans', ausfuehrung_kollaboration: 'Execution & Collaboration', defects: 'Defects & Tickets',
     bau_kamera: 'Site Camera', whiteboard: 'Whiteboard', meet_chat: 'Meet & Chat', datenraum: 'Data Room',
     bau_akte: 'Document Hub', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Team Access', booked: 'Booked',
-    status: 'Status', active: 'Active', logout: 'Logout'
+    status: 'Status', active: 'Active', logout: 'Logout',
+    install_app: 'Install App', start_tour: 'Start Tour', back_to_workspace: 'Back to Workspace',
+    offline_banner: 'Offline mode active – Data is saved locally on site and synced when connected.'
   },
   de: {
     steuerung: 'Steuerung', project_overview: 'Projektübersicht', finance_budget: 'Finanzen & Budget',
@@ -40,7 +42,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cad_plans: 'CAD Pläne', ausfuehrung_kollaboration: 'Ausführung & Kollaboration', defects: 'Mängel & Tickets',
     bau_kamera: 'Bau-Kamera', whiteboard: 'Whiteboard', meet_chat: 'Meet & Chat', datenraum: 'Datenraum',
     bau_akte: 'Bauakte', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Projekt-Zugriffe', booked: 'Gebucht',
-    status: 'Status', active: 'Aktiv', logout: 'Abmelden'
+    status: 'Status', active: 'Aktiv', logout: 'Abmelden',
+    install_app: 'App installieren', start_tour: 'Tour starten', back_to_workspace: 'Zurück zum Workspace',
+    offline_banner: 'Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.'
   }
 };
 
@@ -281,7 +285,7 @@ export default function Layout() {
 
       <aside className="w-64 border-r border-border bg-surface flex-col hidden md:flex shrink-0 z-20 tour-project-sidebar">
         <div className="h-14 md:h-16 flex items-center px-4 border-b border-border/50 gap-3 shrink-0 bg-surface/30">
-          <button onClick={() => navigate('/app')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-text-primary shrink-0" title="Zurück zum Workspace">
+          <button onClick={() => navigate('/app')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-text-primary shrink-0 cursor-pointer" title={t('back_to_workspace')}>
             <ArrowLeft size={18} />
           </button>
           <div className="truncate flex-1">
@@ -450,24 +454,24 @@ export default function Layout() {
         {isOffline && (
           <div className="bg-amber-500/90 backdrop-blur-md text-black px-4 py-1.5 text-xs font-bold flex items-center justify-center gap-2 z-[70]">
             <span className="w-2 h-2 rounded-full bg-black animate-ping"></span>
-            📶 Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.
+            📶 {t('offline_banner')}
           </div>
         )}
 
         <header className="h-14 md:h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 shrink-0 z-[60] sticky top-0 shadow-sm">
           <div className="flex items-center gap-2 md:gap-3">
-            <button onClick={() => navigate('/app')} className="p-1.5 md:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm md:hidden">
+            <button onClick={() => navigate('/app')} className="p-1.5 md:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm md:hidden cursor-pointer">
               <ArrowLeft size={18} />
             </button>
             <span className="font-bold text-sm md:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">
-            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm">
-              📱 <span className="hidden sm:inline">App installieren</span>
+            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
+              📱 <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
 
-            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm" title="Tour starten">
+            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}>
               <HelpCircle size={18} />
             </button>
 
