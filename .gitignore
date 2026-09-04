@@ -1,9 +1,17 @@
 .vercel
 node_modules
 .env
+.env*.local
+.env.local
 dist
 .DS_Store
 playwright-report
 test-results
 scratch/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.pem
+
 

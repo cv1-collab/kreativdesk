@@ -1,6 +1,8 @@
+require('dotenv').config();
 async function run() {
   try {
-    const url = "https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash-exp:generateContent?key=AIzaSyBpPeVQvv2KXi7sIALaz_sNdWFMIgCEy4M";
+    const key = process.env.GEMINI_API_KEY || '';
+    const url = `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash-exp:generateContent?key=${key}`;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

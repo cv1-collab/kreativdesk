@@ -55,6 +55,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const currentProjectId = propProjectId || routeProjectId || activeProjectId;
+  const currentProject = projects?.find((p: any) => p.id === currentProjectId);
   const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
   
   const [slides, setSlides] = useState<Slide[]>([]);
@@ -786,7 +787,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                     return;
                   }
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
-                  const cleanName = (project?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                  const cleanName = (currentProject?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
                   await exportDeckToPptx(slides, {}, `${cleanName}-Keynote.pptx`);
                   addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}
@@ -817,7 +818,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                     return;
                   }
                   addToast('PowerPoint Präsentation wird generiert...', 'info');
-                  const cleanName = (project?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                  const cleanName = (currentProject?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
                   await exportDeckToPptx(slides, {}, `${cleanName}-PowerPoint.pptx`);
                   addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}

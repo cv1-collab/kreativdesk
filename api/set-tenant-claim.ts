@@ -29,8 +29,33 @@ export default async function handler(req: any, res: any) {
       'carlo@vesciodesign.ch'
     ];
 
-    if (user.id !== uid && !SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '')) {
-      return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
+    const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
+
+    if (!isSuperAdmin) {
+      if (user.id !== uid) {
+        return res.status(403).json({ error: 'Forbidden: You can only set your own tenant claims' });
+      }
+
+      // Verify that the user owns or is invited to the target company
+      const { data: targetCompany } = await supabaseAdmin
+        .from('companies')
+        .select('id, owner_id')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (!targetCompany || targetCompany.owner_id !== user.id) {
+        // Also check if user was invited to this company
+        const { data: invite } = await supabaseAdmin
+          .from('invites')
+          .select('id')
+          .eq('company_id', companyId)
+          .eq('email', user.email?.toLowerCase())
+          .maybeSingle();
+
+        if (!invite) {
+          return res.status(403).json({ error: 'Forbidden: You do not have access to this company' });
+        }
+      }
     }
 
     await supabaseAdmin

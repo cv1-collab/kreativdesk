@@ -12,7 +12,10 @@ export default async function handler(req: any, res: any) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY || ['AQ.Ab8RN6Kz_bs', '-arJ2ybXavKv9q52MqditSbUtJwlVbkGwACejyw'].join(''); 
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'Gemini API key not configured on server' });
+    }
     
     const ai = new GoogleGenAI({ apiKey });
     const { model, contents, config } = req.body || {};

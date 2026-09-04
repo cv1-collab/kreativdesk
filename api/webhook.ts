@@ -59,8 +59,8 @@ export default async function handler(req: any, res: any) {
           let newMaxSeats = 1;
           const planLower = planName.toLowerCase();
           if (planLower.includes('studio')) newMaxSeats = 5;
-          else if (planLower.includes('agency')) newMaxSeats = 15;
-          else if (planLower.includes('enterprise')) newMaxSeats = 30;
+          else if (planLower.includes('agency')) newMaxSeats = 10;
+          else if (planLower.includes('enterprise')) newMaxSeats = 20;
 
           await supabaseAdmin.from('companies').update({
             plan: planName,
