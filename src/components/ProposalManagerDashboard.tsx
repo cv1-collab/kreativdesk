@@ -274,7 +274,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                   <div className="mt-4 p-3 rounded-2xl bg-background border border-border flex items-center justify-between">
                     <div>
                       <div className="text-[10px] uppercase font-bold text-text-muted">Investitionssumme</div>
-                      <div className="text-base font-bold font-mono text-text-primary mt-0.5">
+                      <div className="text-base font-extrabold text-text-primary mt-0.5 tabular-nums">
                         {proposal.currency} {(proposal.acceptedBy?.finalPrice || proposal.basePrice || 0).toLocaleString('de-CH')}
                       </div>
                     </div>

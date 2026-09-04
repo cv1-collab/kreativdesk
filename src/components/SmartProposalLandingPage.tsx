@@ -1237,7 +1237,7 @@ export default function SmartProposalLandingPage() {
                 {currentSlideIndex + 1}
               </span>
               <div>
-                <div className="text-[10px] uppercase font-mono tracking-wider text-blue-400 font-bold">
+                <div className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">
                   {proposal.title} • Folie {currentSlideIndex + 1} von {slides.length}
                 </div>
                 <h2 className="text-lg font-black text-white">{activeDeckSlide.title}</h2>
@@ -1245,7 +1245,7 @@ export default function SmartProposalLandingPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="hidden md:inline text-[11px] text-zinc-400 bg-black/40 px-3 py-1 rounded-lg border border-white/10 font-mono">
+              <span className="hidden md:inline text-[11px] text-zinc-400 bg-black/40 px-3 py-1 rounded-lg border border-white/10">
                 ⌨️ [←] [→] [Space] zum Blättern
               </span>
               <button
@@ -1335,9 +1335,9 @@ export default function SmartProposalLandingPage() {
                         </div>
                         {(activeDeckSlide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
                           <div key={bIdx} className="grid grid-cols-12 text-xs py-3 px-3 border-b border-white/5 last:border-0 items-center">
-                            <div className="col-span-2 font-bold text-cyan-400 font-mono">{grp.pos}</div>
+                            <div className="col-span-2 font-bold text-cyan-400 tabular-nums">{grp.pos}</div>
                             <div className="col-span-7 text-zinc-200 font-medium">{grp.title}</div>
-                            <div className="col-span-3 text-right font-bold text-white font-mono">{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
+                            <div className="col-span-3 text-right font-bold text-white tabular-nums">{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
                           </div>
                         ))}
                       </div>
@@ -1475,7 +1475,7 @@ export default function SmartProposalLandingPage() {
                               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color || '#3b82f6' }} />
                               <div className="truncate">
                                 <div className="text-xs font-bold text-white truncate">{seg.label}</div>
-                                <div className="text-[10px] text-zinc-400 font-mono">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                                <div className="text-[10px] text-zinc-400 tabular-nums">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
                               </div>
                             </div>
                           </div>
@@ -1559,7 +1559,7 @@ export default function SmartProposalLandingPage() {
                     : "bg-zinc-900/60 border-white/10 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
                 )}
               >
-                <div className="flex items-center justify-between text-[10px] font-mono">
+                <div className="flex items-center justify-between text-[10px]">
                   <span className="font-bold">Folie {idx + 1}</span>
                   <span className="uppercase text-[9px] opacity-70">{s.layout}</span>
                 </div>
@@ -1666,7 +1666,7 @@ export default function SmartProposalLandingPage() {
               <div key={ms.id || mIdx} className="p-5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md space-y-2 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Tranche 0{mIdx + 1}</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black text-xs font-mono">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black text-xs tabular-nums">
                     {ms.percentage}%
                   </span>
                 </div>

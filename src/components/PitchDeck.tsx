@@ -621,18 +621,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
              <button 
-                onClick={() => setShowStudio(true)}
-                disabled={slides.length === 0}
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
-                title="Präsentation als PDF öffnen und exportieren"
-              >
-                <FileText size={14} /> <span>PDF Export</span>
-              </button>
-             <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
                 className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
-                title="Präsentation als Apple Keynote, Microsoft PowerPoint oder PDF herunterladen"
+                title="Präsentation als PDF, Apple Keynote oder Microsoft PowerPoint exportieren"
               >
                 <Download size={14} /> <span>Exportieren</span>
               </button>
@@ -858,10 +850,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                      PDF Dokument (.pdf)
+                      PDF Dokument & Studio (.pdf)
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-400 uppercase tracking-widest">Vektor Druck</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Universelles Vektor-PDF für Kundenversand, E-Mail & Druck</p>
+                    <p className="text-xs text-text-muted mt-0.5">Universelles Vektor-PDF mit Live-Vorschau, Firmenlogo & Druck im Studio</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-purple-400 group-hover:translate-x-1 transition-all"/>

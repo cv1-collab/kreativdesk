@@ -332,6 +332,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [pdfPreviewKey, setPdfPreviewKey] = useState<number>(0);
   
   const [mediaPickerType, setMediaPickerType] = useState<{folderId: string, title: string, action?: 'slide' | 'team', meta?: any} | null>(null);
   const [availableMedia, setAvailableMedia] = useState<any[]>([]);
@@ -1183,20 +1184,30 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     
     const addSafeImage = async (url: string, x: number, y: number, w: number, h: number, preserveRatio: boolean = false) => {
        try {
-         const response = await fetch(url, { mode: 'cors', cache: 'no-cache' });
-         const blob = await response.blob();
-         const reader = new FileReader();
-         const dataUrl = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-         });
+         let dataUrl = url;
+         if (!url.startsWith('data:image/')) {
+           const response = await fetch(url, { mode: 'cors' });
+           const blob = await response.blob();
+           const reader = new FileReader();
+           dataUrl = await new Promise<string>((resolve) => {
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(blob);
+           });
+         }
+
+         const isPng = dataUrl.includes('image/png') || url.toLowerCase().includes('.png');
+         const imgFormat = isPng ? 'PNG' : 'JPEG';
 
          if (preserveRatio) {
             const img = new window.Image();
             img.src = dataUrl;
-            await new Promise(resolve => { img.onload = resolve; });
+            await new Promise((resolve) => {
+               img.onload = () => resolve(true);
+               img.onerror = () => resolve(false);
+               setTimeout(() => resolve(false), 2500);
+            });
             
-            const imgRatio = img.width / img.height;
+            const imgRatio = (img.width && img.height) ? (img.width / img.height) : 1;
             const boxRatio = w / h;
             let drawW = w;
             let drawH = h;
@@ -1210,13 +1221,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 drawW = h * imgRatio;
                 drawX = x + (w - drawW);
             }
-            docPdf.addImage(dataUrl, 'JPEG', drawX, drawY, drawW, drawH, '', 'FAST');
+            docPdf.addImage(dataUrl, imgFormat, drawX, drawY, drawW, drawH, '', 'FAST');
          } else {
-            docPdf.addImage(dataUrl, 'JPEG', x, y, w, h, '', 'FAST');
+            docPdf.addImage(dataUrl, imgFormat, x, y, w, h, '', 'FAST');
          }
        } catch(e) {
           try {
-            docPdf.addImage(url, 'JPEG', x, y, w, h, '', 'FAST');
+            const isPng = url.toLowerCase().includes('.png');
+            docPdf.addImage(url, isPng ? 'PNG' : 'JPEG', x, y, w, h, '', 'FAST');
           } catch(err) {
             docPdf.setFillColor(isDarkTheme ? '#282828' : '#f5f5f5');
             docPdf.rect(x, y, w, h, 'F');
@@ -1354,8 +1366,16 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       try {
         const blob = await generatePdfBlob();
         setPdfBlob(blob);
-        setPdfPreviewUrl(URL.createObjectURL(blob));
+        setPdfPreviewUrl(prev => {
+          if (prev) {
+            try { URL.revokeObjectURL(prev); } catch (_) {}
+          }
+          return URL.createObjectURL(blob);
+        });
+        setPdfPreviewKey(k => k + 1);
+        addToast('PDF-Vorschau aktualisiert', 'success');
       } catch (e) {
+        console.error('PDF generation error:', e);
         addToast(t('error_pdf'), 'error');
       } finally {
         setIsGeneratingPdf(false);
@@ -3220,33 +3240,28 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   setProposalClientName(activeProject?.name ? `Kunde für ${activeProject.name}` : 'Kunde');
                   setIsLandingPageModalOpen(true);
                 }}
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer"
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
                 title="Interaktive Kunden-Landingpage & Offerte erstellen"
               >
                 <Globe size={14}/> <span>Kunden-Link / Offerte</span>
               </button>
-              {/* DIREKTER PDF EXPORT BUTTON */}
-              <button 
-                type="button" 
-                onClick={openPdfStudio} 
-                disabled={slides.length === 0} 
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
-                title="Präsentation als PDF öffnen und herunterladen"
-              >
-                <FileText size={14}/> <span>PDF Export</span>
-              </button>
-              {/* EXPORTIEREN BUTTON */}
+              {/* EXPORTIEREN BUTTON (INTEGRIERT: KEYNOTE, POWERPOINT & PDF STUDIO) */}
               <button 
                 type="button" 
                 onClick={() => setIsFormatModalOpen(true)} 
                 disabled={slides.length === 0} 
                 className="tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
-                title="Präsentation als Apple Keynote, Microsoft PowerPoint oder PDF exportieren"
+                title="Präsentation exportieren (PDF, Apple Keynote, Microsoft PowerPoint)"
               >
                 <DownloadCloud size={14}/> <span>Exportieren</span>
               </button>
               <div className="h-6 w-px bg-border hidden sm:block"></div>
-              <button type="button" onClick={onClose} className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-zinc-800/80 hover:bg-zinc-700/80 text-text-muted hover:text-text-primary rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-border shrink-0" title="Studio schliessen">
+              <button 
+                type="button" 
+                onClick={onClose} 
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all border border-red-500/40 shadow-sm shrink-0 cursor-pointer" 
+                title="Studio schliessen"
+              >
                 <LogOut size={14} /> <span className="hidden lg:inline">{t('close_studio')}</span>
               </button>
             </div>
@@ -3397,7 +3412,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               
               <div className={cn("flex-1 w-full relative flex flex-col h-[55dvh] lg:h-full", deckSettings.colorMode === 'light' ? "bg-slate-100" : "bg-zinc-950")}>
                 {pdfPreviewUrl ? (
-                   <iframe src={pdfPreviewUrl} className="flex-1 w-full h-full border-none bg-white"></iframe>
+                   <iframe 
+                     key={pdfPreviewKey} 
+                     src={pdfPreviewUrl} 
+                     className="flex-1 w-full h-full border-none bg-white" 
+                     title="PDF Vorschau"
+                   />
                 ) : (
                    <div className={cn("flex-1 w-full flex flex-col items-center justify-center text-sm font-bold gap-4", deckSettings.colorMode === 'light' ? "text-slate-400" : "text-white/30")}>
                     {isGeneratingPdf ? <Loader2 size={48} className="animate-spin text-accent-ai opacity-50" /> : <PenTool size={48} className="opacity-20" />}
@@ -3668,10 +3688,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                      PDF Dokument (.pdf)
+                      PDF Dokument & Studio (.pdf)
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-400 uppercase tracking-widest">Vektor Druck</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Universelles Vektor-PDF für Kundenversand, E-Mail & SIA-Druck</p>
+                    <p className="text-xs text-text-muted mt-0.5">Universelles Vektor-PDF mit Live-Vorschau, Firmenlogo & SIA-Druck</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-purple-400 group-hover:translate-x-1 transition-all"/>
@@ -3960,7 +3980,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                             min={0}
                             value={proposalBasePrice}
                             onChange={e => setProposalBasePrice(Number(e.target.value))}
-                            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-r-xl text-xs font-bold font-mono text-text-primary outline-none focus:border-blue-500"
+                            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-r-xl text-xs font-bold text-text-primary tabular-nums outline-none focus:border-blue-500"
                           />
                         </div>
                       </div>
@@ -3995,7 +4015,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                               {opt.description && <div className="text-[10px] text-text-muted">{opt.description}</div>}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-blue-400 font-bold">+{proposalCurrency} {opt.price.toLocaleString('de-CH')}</span>
+                              <span className="text-blue-500 dark:text-blue-400 font-bold tabular-nums">+{proposalCurrency} {opt.price.toLocaleString('de-CH')}</span>
                               <button type="button" onClick={() => setProposalOptions(prev => prev.filter((_, i) => i !== oIdx))} className="text-text-muted hover:text-red-500 cursor-pointer"><Trash2 size={13} /></button>
                             </div>
                           </div>
@@ -4014,7 +4034,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                             placeholder="Preis"
                             value={newOptionPrice || ''}
                             onChange={e => setNewOptionPrice(Number(e.target.value))}
-                            className="w-24 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-mono text-right outline-none text-text-primary"
+                            className="w-24 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-right tabular-nums outline-none text-text-primary"
                           />
                           <button 
                             type="button" 
@@ -4046,8 +4066,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                               <div className="text-[10px] text-text-muted">{ms.description}</div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold font-mono">{ms.percentage}%</span>
-                              <span className="font-mono text-text-primary font-bold">{proposalCurrency} {Math.round((proposalBasePrice * ms.percentage) / 100).toLocaleString('de-CH')}</span>
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold tabular-nums">{ms.percentage}%</span>
+                              <span className="text-text-primary font-bold tabular-nums">{proposalCurrency} {Math.round((proposalBasePrice * ms.percentage) / 100).toLocaleString('de-CH')}</span>
                             </div>
                           </div>
                         ))}
