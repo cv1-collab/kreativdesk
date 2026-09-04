@@ -34,9 +34,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
-import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
-import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import PremiumFeature from './PremiumFeature';
+
+const UniversalPDFStudio = React.lazy(() => import('./UniversalPDFStudio'));
+const WhiteboardPDFDocument = React.lazy(() => import('./WhiteboardPDFDocument'));
 
 interface LayerData { id: string; name: string; visible: boolean; items: any[]; }
 
@@ -78,54 +79,7 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const pdfStyles = StyleSheet.create({
-  page: { backgroundColor: '#ffffff', fontFamily: 'Helvetica' },
-  safeArea: { flex: 1, margin: 30, marginBottom: 50, display: 'flex', flexDirection: 'column' },
-  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, paddingBottom: 10, marginBottom: 15 },
-  headerLeft: { flex: 1 },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#000000', textTransform: 'uppercase', marginBottom: 8 },
-  metaGrid: { flexDirection: 'row' },
-  metaBlock: { flexDirection: 'column', marginRight: 20 },
-  metaLabel: { fontSize: 7, color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' },
-  metaValue: { fontSize: 10, color: '#000000', fontWeight: 'bold' },
-  logo: { width: 100, height: 40, objectFit: 'contain' },
-  content: { flex: 1, width: '100%', backgroundColor: '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  snapshot: { width: '98%', height: '98%', objectFit: 'contain' },
-  noImageText: { color: '#9ca3af', fontStyle: 'italic', alignSelf: 'center', marginTop: 20 },
-  footer: { position: 'absolute', bottom: 20, left: 30, right: 30, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 5 },
-  footerText: { fontSize: 7, color: '#9ca3af' },
-});
 
-const WhiteboardPDFDocument = ({ settings, pdfRenderImage, projectHeader }: any) => {
-  const projectName = projectHeader?.project || 'Projekt';
-  const projectDate = projectHeader?.date ? new Date(projectHeader.date).toLocaleDateString('de-CH') : new Date().toLocaleDateString('de-CH');
-
-  return (
-    <Document>
-      <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
-        <View style={pdfStyles.safeArea}>
-          <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor }]} fixed>
-            <View style={pdfStyles.headerLeft}>
-              <Text style={[pdfStyles.title, { color: settings.accentColor }]}>Whiteboard Skizze</Text>
-              <View style={pdfStyles.metaGrid}>
-                <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{projectName}</Text></View>
-                <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{projectDate}</Text></View>
-              </View>
-            </View>
-            {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
-          </View>
-          <View style={[pdfStyles.content, { borderColor: settings.accentColor }]}>
-            {pdfRenderImage ? <PDFImage src={pdfRenderImage} style={pdfStyles.snapshot} /> : <Text style={pdfStyles.noImageText}>Keine Skizze vorhanden.</Text>}
-          </View>
-        </View>
-        <View style={pdfStyles.footer} fixed>
-          <Text style={pdfStyles.footerText}>{settings.footerText}</Text>
-          <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
-        </View>
-      </Page>
-    </Document>
-  );
-};
 
 export default function Whiteboard({ projectId: propProjectId }: { projectId?: string }) {
   const { id: routeProjectId } = useParams<{ id: string }>();
@@ -304,9 +258,51 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const canvasBgColor = '#ffffff';
 
-  const addItemToActiveLayer = (item: any) => { setLayers(prev => prev.map(layer => { if (layer.id === activeLayerId) return { ...layer, items: [...layer.items, item] }; return layer; })); };
-  const updateLastItemInActiveLayer = (updateFn: (item: any) => any) => { setLayers(prev => prev.map(layer => { if (layer.id === activeLayerId && layer.items.length > 0) { const newItems = [...layer.items]; newItems[newItems.length - 1] = updateFn(newItems[newItems.length - 1]); return { ...layer, items: newItems }; } return layer; })); };
-  const updateItemById = (itemId: string, updateFn: (item: any) => any) => { setLayers(prev => prev.map(layer => { const itemIndex = layer.items.findIndex(i => i.id === itemId); if (itemIndex > -1) { const newItems = [...layer.items]; newItems[itemIndex] = updateFn(newItems[itemIndex]); return { ...layer, items: newItems }; } return layer; })); };
+  const addItemToActiveLayer = (item: any, explicitLayerId?: string) => { 
+    setLayers(prev => {
+      const targetId = explicitLayerId || activeLayerId;
+      const exists = prev.some(l => l.id === targetId);
+      const effectiveId = exists ? targetId : (prev[0]?.id || 'layer-1');
+      if (prev.length === 0) {
+        return [{ id: 'layer-1', name: 'Basis-Ebene', visible: true, items: [item] }];
+      }
+      return prev.map(layer => { 
+        if (layer.id === effectiveId) {
+          return { ...layer, visible: true, items: [...(layer.items || []), item] }; 
+        }
+        return layer; 
+      }); 
+    });
+  };
+
+  const updateLastItemInActiveLayer = (updateFn: (item: any) => any, explicitLayerId?: string) => { 
+    setLayers(prev => {
+      const targetId = explicitLayerId || activeLayerId;
+      const exists = prev.some(l => l.id === targetId);
+      const effectiveId = exists ? targetId : (prev[0]?.id || 'layer-1');
+      return prev.map(layer => { 
+        if (layer.id === effectiveId && layer.items && layer.items.length > 0) { 
+          const newItems = [...layer.items]; 
+          newItems[newItems.length - 1] = updateFn(newItems[newItems.length - 1]); 
+          return { ...layer, items: newItems }; 
+        } 
+        return layer; 
+      }); 
+    });
+  };
+
+  const updateItemById = (itemId: string, updateFn: (item: any) => any) => { 
+    setLayers(prev => prev.map(layer => { 
+      const items = layer.items || [];
+      const itemIndex = items.findIndex(i => i.id === itemId); 
+      if (itemIndex > -1) { 
+        const newItems = [...items]; 
+        newItems[itemIndex] = updateFn(newItems[itemIndex]); 
+        return { ...layer, items: newItems }; 
+      } 
+      return layer; 
+    })); 
+  };
 
   useEffect(() => { wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor }; }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor]);
 
@@ -363,7 +359,15 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     return () => { window.removeEventListener('resize', checkSize); observer.disconnect(); clearTimeout(timeout); };
   }, [mobileTab]);
 
-  useEffect(() => { if (bgImage && imageNodeRef.current) imageNodeRef.current.cache(); }, [bgImage, imageFilters]);
+  useEffect(() => { 
+    if (bgImage && imageNodeRef.current) {
+      try {
+        imageNodeRef.current.cache(); 
+      } catch (err) {
+        console.warn("Could not cache KonvaImage:", err);
+      }
+    }
+  }, [bgImage, imageFilters]);
 
   const [textPrompt, setTextPrompt] = useState<{ isOpen: boolean, x: number, y: number, value: string } | null>(null);
 
@@ -457,7 +461,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     setStageScale(newScale); setStagePos({ x: center.x - relatedTo.x * newScale, y: center.y - relatedTo.y * newScale });
   };
 
-  const getEnsureActiveLayer = (): LayerData | null => {
+  const getEnsureActiveLayer = (): LayerData => {
     let active = layers.find(l => l.id === activeLayerId);
     if (!active || !active.visible) {
       const fallback = layers.find(l => l.visible) || layers[0];
@@ -468,12 +472,18 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         setActiveLayerId(fallback.id);
         return { ...fallback, visible: true };
       }
+      // If layers array is completely empty, create and return default layer
+      const defaultLayer: LayerData = { id: 'layer-1', name: 'Basis-Ebene', visible: true, items: [] };
+      setLayers([defaultLayer]);
+      setActiveLayerId('layer-1');
+      return defaultLayer;
     }
-    return active || null;
+    return active;
   };
 
   const handleMouseDown = (e: any) => {
-    const isBackgroundClick = e.target === e.target.getStage() || e.target.name() === 'background-rect';
+    const targetName = typeof e.target?.name === 'function' ? e.target.name() : (typeof e.target?.name === 'string' ? e.target.name : '');
+    const isBackgroundClick = e.target === stageRef.current || targetName === 'background-rect';
     if (isBackgroundClick && tool === 'select') {
       setSelectedShapeId(null);
     }
@@ -482,14 +492,19 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     const activeLayer = getEnsureActiveLayer();
     if (!activeLayer) return;
 
-    const stage = stageRef.current || e.target.getStage();
+    const stage = stageRef.current || (typeof e.target?.getStage === 'function' ? e.target.getStage() : null);
     if (!stage) return;
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
+    const stageX = typeof stage.x === 'function' ? stage.x() : stagePos.x;
+    const stageY = typeof stage.y === 'function' ? stage.y() : stagePos.y;
+    const scaleX = typeof stage.scaleX === 'function' ? stage.scaleX() : stageScale;
+    const scaleY = typeof stage.scaleY === 'function' ? stage.scaleY() : stageScale;
+
     const pos = { 
-      x: (pointer.x - stage.x()) / stage.scaleX(), 
-      y: (pointer.y - stage.y()) / stage.scaleY() 
+      x: (pointer.x - stageX) / (scaleX || 1), 
+      y: (pointer.y - stageY) / (scaleY || 1) 
     };
 
     if (tool === 'polygon') {
@@ -521,7 +536,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         x: 0, 
         y: 0, 
         color: tool === 'eraser' ? canvasBgColor : activeColor 
-      });
+      }, activeLayer.id);
     } else if (tool === 'rect') {
       addItemToActiveLayer({ 
         type: 'rect', 
@@ -531,7 +546,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         height: 0, 
         id, 
         color: activeColor 
-      });
+      }, activeLayer.id);
     } else if (tool === 'circle') {
       addItemToActiveLayer({ 
         type: 'circle', 
@@ -540,7 +555,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         radius: 0, 
         id, 
         color: activeColor 
-      });
+      }, activeLayer.id);
     } else if (tool === 'text') { 
       setTextPrompt({ isOpen: true, x: pos.x, y: pos.y, value: '' }); 
       isDrawing.current = false;
@@ -550,14 +565,19 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const handleMouseMove = (e: any) => {
     if (tool === 'select' || tool === 'pan') return;
-    const stage = stageRef.current || e.target.getStage();
+    const stage = stageRef.current || (typeof e.target?.getStage === 'function' ? e.target.getStage() : null);
     if (!stage) return;
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
+    const stageX = typeof stage.x === 'function' ? stage.x() : stagePos.x;
+    const stageY = typeof stage.y === 'function' ? stage.y() : stagePos.y;
+    const scaleX = typeof stage.scaleX === 'function' ? stage.scaleX() : stageScale;
+    const scaleY = typeof stage.scaleY === 'function' ? stage.scaleY() : stageScale;
+
     const point = { 
-      x: (pointer.x - stage.x()) / stage.scaleX(), 
-      y: (pointer.y - stage.y()) / stage.scaleY() 
+      x: (pointer.x - stageX) / (scaleX || 1), 
+      y: (pointer.y - stageY) / (scaleY || 1) 
     };
 
     if (tool === 'polygon' && currentPolygon.length > 0) {
@@ -676,7 +696,6 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const handleAddStickyNote = (fillColor: string, strokeColor: string) => {
     const currentLayer = getEnsureActiveLayer();
-    if (!currentLayer) return;
 
     const centerX = stageSize.width > 0 
       ? (stageSize.width / 2 - stagePos.x) / stageScale - 70 
@@ -698,7 +717,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       strokeWidth: 2,
       cornerRadius: 8,
       text: 'Notiz...'
-    });
+    }, currentLayer.id);
     setSelectedShapeId(newId);
     setTool('select');
     addToast('Notiz hinzugefügt', 'success');
@@ -1468,7 +1487,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   {layers.map(layer => (
                     layer.visible && (
                       <KonvaLayer key={layer.id}>
-                        {layer.items.map((item, i) => {
+                        {(layer.items || []).map((item, i) => {
                           const isSelected = selectedShapeId === item.id && tool === 'select';
                           if (item.type === 'line') {
                             return (
@@ -1761,18 +1780,24 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
         </div>
       </motion.div>
 
-      <UniversalPDFStudio 
-        isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} 
-        title="Whiteboard Export" fileName={`Whiteboard_${Date.now()}`}
-        onSaveCloud={handleSavePdfToCloud} defaultOrientation="landscape"
-      >
-        {(settings) => (
-          <WhiteboardPDFDocument 
-            settings={settings} pdfRenderImage={pdfRenderImage}
-            projectHeader={{ project: activeProject?.name || 'Projekt', date: new Date().toISOString() }}
-          />
-        )}
-      </UniversalPDFStudio>
+      {isPdfStudioOpen && (
+        <React.Suspense fallback={null}>
+          <UniversalPDFStudio 
+            isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} 
+            title="Whiteboard Export" fileName={`Whiteboard_${Date.now()}`}
+            onSaveCloud={handleSavePdfToCloud} defaultOrientation="landscape"
+          >
+            {(settings: any) => (
+              <React.Suspense fallback={null}>
+                <WhiteboardPDFDocument 
+                  settings={settings} pdfRenderImage={pdfRenderImage}
+                  projectHeader={{ project: activeProject?.name || 'Projekt', date: new Date().toISOString() }}
+                />
+              </React.Suspense>
+            )}
+          </UniversalPDFStudio>
+        </React.Suspense>
+      )}
 
       {typeof document !== 'undefined' && createPortal(
         <>
