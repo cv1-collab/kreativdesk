@@ -87,11 +87,11 @@ const STORAGE_KEY = 'kreativdesk_smart_proposals_v1';
 export async function getCompanyProposals(companyId: string): Promise<SmartProposal[]> {
   try {
     if (supabase) {
-      const { data, error } = await supabase
-        .from('smart_proposals')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('created_at', { ascending: false });
+      let query = supabase.from('smart_proposals').select('*');
+      if (companyId && companyId !== 'default-company') {
+        query = query.or(`company_id.eq.${companyId},owner_id.eq.${companyId}`);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (!error && data && data.length > 0) {
         return data.map(mapDbToProposal);
@@ -101,12 +101,12 @@ export async function getCompanyProposals(companyId: string): Promise<SmartPropo
     console.warn('Supabase fetch proposals error, fallback to local storage', e);
   }
 
-  // LocalStorage Fallback (Filter strictly by companyId)
+  // LocalStorage Fallback (Filter by companyId or ownerId)
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const all: SmartProposal[] = JSON.parse(raw);
-      return all.filter(p => p.companyId === companyId || !p.companyId);
+      return all.filter(p => p.companyId === companyId || p.ownerId === companyId || !companyId || p.companyId === 'default-company');
     }
   } catch (e) {
     console.error('Error reading local proposals', e);

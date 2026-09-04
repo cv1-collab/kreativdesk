@@ -20,7 +20,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'accepted' | 'expired'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const companyId = currentUser?.companyId || 'default-company';
+  const companyId = currentUser?.companyId || currentUser?.uid || 'default-company';
 
   const loadProposals = React.useCallback(async () => {
     setIsLoading(true);
