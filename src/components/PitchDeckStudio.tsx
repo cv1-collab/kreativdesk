@@ -2939,9 +2939,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               )}
             </div>
 
-            <div className="flex items-center gap-2 lg:gap-3 shrink-0 ml-auto">
-              <button type="button" onClick={() => setIsAiGeneratorOpen(true)} className="px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0">
-                <Sparkles size={14}/> <span className="hidden xl:inline">{t('ai_create_deck')}</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
+              <button 
+                type="button" 
+                onClick={() => setIsAiGeneratorOpen(true)} 
+                className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm transition-all flex shrink-0"
+                title="KI Pitch Deck automatisch generieren"
+              >
+                <Sparkles size={14}/> <span className="hidden lg:inline">{t('ai_create_deck')}</span><span className="lg:hidden">KI</span>
               </button>
               <button 
                 type="button" 
@@ -2952,22 +2957,34 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   setIsPresenterMode(true); 
                 }} 
                 disabled={slides.length === 0} 
-                className="px-3.5 py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30"
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30"
+                title="Vollbild-Präsentationsmodus starten"
               >
-                <Play size={14} className="fill-current"/> <span>{t('presenter_mode')}</span>
+                <Play size={14} className="fill-current"/> <span className="hidden sm:inline">{t('presenter_mode')}</span>
               </button>
+              {/* DIREKTER PDF EXPORT BUTTON */}
+              <button 
+                type="button" 
+                onClick={openPdfStudio} 
+                disabled={slides.length === 0} 
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
+                title="Präsentation als PDF öffnen und herunterladen"
+              >
+                <FileText size={14}/> <span>PDF Export</span>
+              </button>
+              {/* EXPORTIEREN BUTTON */}
               <button 
                 type="button" 
                 onClick={() => setIsFormatModalOpen(true)} 
                 disabled={slides.length === 0} 
-                className="tour-deck-export px-3.5 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-lg text-xs font-extrabold gap-1.5 items-center shadow-lg disabled:opacity-50 hover:brightness-110 transition-all flex shrink-0 cursor-pointer"
-                title="Wähle das Dateiformat (Apple Keynote, Microsoft PowerPoint oder PDF)"
+                className="tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
+                title="Präsentation als Apple Keynote, Microsoft PowerPoint oder PDF exportieren"
               >
-                <DownloadCloud size={15}/> <span>Exportieren (Keynote / PPTX / PDF)</span>
+                <DownloadCloud size={14}/> <span>Exportieren</span>
               </button>
               <div className="h-6 w-px bg-border hidden sm:block"></div>
-              <button type="button" onClick={onClose} className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-red-500/20 shrink-0">
-                <LogOut size={15} /> <span className="hidden xl:inline">{t('close_studio')}</span>
+              <button type="button" onClick={onClose} className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-zinc-800/80 hover:bg-zinc-700/80 text-text-muted hover:text-text-primary rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-border shrink-0" title="Studio schliessen">
+                <LogOut size={14} /> <span className="hidden lg:inline">{t('close_studio')}</span>
               </button>
             </div>
           </header>
@@ -3325,8 +3342,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 onClick={async () => {
                   setIsFormatModalOpen(false);
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
-                  await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-Keynote.key`);
-                  addToast('Keynote Datei (.key) erfolgreich heruntergeladen!', 'success');
+                  const cleanName = (activeProject?.name || 'PitchDeck').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                  await exportDeckToPptx(slides, deckSettings, `${cleanName}-Keynote.pptx`);
+                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
@@ -3336,10 +3354,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                      Apple Keynote (.pptx / .key)
+                      Apple Keynote (.pptx)
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 uppercase tracking-widest">Mac & iPad</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Optimiert für Apple macOS Keynote mit 100% Widescreen 16:9 Treue</p>
+                    <p className="text-xs text-text-muted mt-0.5">Nativ für Apple macOS Keynote & iOS im 16:9 Breitbild-Format (ohne Formatverlust)</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-blue-400 group-hover:translate-x-1 transition-all"/>
@@ -3351,7 +3369,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 onClick={async () => {
                   setIsFormatModalOpen(false);
                   addToast('PowerPoint Präsentation wird generiert...', 'info');
-                  await exportDeckToPptx(slides, deckSettings, `${activeProject?.name || 'PitchDeck'}-PowerPoint.pptx`);
+                  const cleanName = (activeProject?.name || 'PitchDeck').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                  await exportDeckToPptx(slides, deckSettings, `${cleanName}-PowerPoint.pptx`);
                   addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-amber-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"

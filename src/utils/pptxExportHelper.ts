@@ -26,6 +26,12 @@ export async function exportDeckToPptx(
   settings: PptxDeckSettings = {},
   fileName: string = 'KreativDesk-Presentation.pptx'
 ) {
+  // Prevent duplicate extensions such as .key.pptx
+  let cleanFileName = (fileName || 'KreativDesk-Presentation').trim();
+  cleanFileName = cleanFileName.replace(/\.key(\.pptx)?$/i, '');
+  cleanFileName = cleanFileName.replace(/\.pptx$/i, '');
+  cleanFileName = `${cleanFileName}.pptx`;
+
   const pptx = new pptxgen();
   
   // Set 16:9 Widescreen Layout
@@ -203,5 +209,5 @@ export async function exportDeckToPptx(
   }
 
   // Generate and trigger download
-  await pptx.writeFile({ fileName });
+  await pptx.writeFile({ fileName: cleanFileName });
 }

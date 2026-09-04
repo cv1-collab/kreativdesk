@@ -692,7 +692,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     const file = event.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    const safeCompId = currentUser?.companyId || currentUser?.uid;
+    if (!file || !safeCompId) return;
 
     const isPdf = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
@@ -713,22 +714,27 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          finalFileName = finalFileToUpload.name;
       }
 
-      const isAllowed = await checkStorageLimit(currentUser.companyId, finalFileToUpload.size);
+      const isAllowed = await checkStorageLimit(safeCompId, finalFileToUpload.size);
       if (!isAllowed) {
         addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
         setIsUploading(false);
         return;
       }
 
-      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, currentUser?.companyId || 'global', 'cad_plans');
+      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, safeCompId, 'cad_plans');
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
       reader.readAsDataURL(finalFileToUpload);
 
-      const newPlan = { project_id: currentProjectId, company_id: currentUser?.companyId, plan_name: finalFileName, plan_image: url, paper_format: 'A3', paper_orientation: 'landscape', plan_scale: 50, elements: [], layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }], active_layer_id: 'default' };
+      const newPlan = { project_id: currentProjectId, company_id: safeCompId, plan_name: finalFileName, plan_image: url, paper_format: 'A3', paper_orientation: 'landscape', plan_scale: 50, elements: [], layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }], active_layer_id: 'default' };
       const { data: createdPlan } = await supabase.from('cad_plans').insert(newPlan).select().single();
-      if (createdPlan) loadPlanDataToEditor({ id: createdPlan.id, ...newPlan });
+      if (createdPlan) {
+        const mapped = { id: createdPlan.id, ...newPlan };
+        setProjectPlans(prev => [mapped, ...prev]);
+        loadPlanDataToEditor(mapped);
+        addToast("CAD-Plan erfolgreich hochgeladen und geladen!", "success");
+      }
     } catch (e) {
       addToast(t('upload_failed'), "error");
     } finally { setIsUploading(false); event.target.value = ''; }
@@ -742,7 +748,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     }
 
     const file = event.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    const safeCompId = currentUser?.companyId || currentUser?.uid;
+    if (!file || !safeCompId) return;
 
     const isPdf = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
@@ -1248,11 +1255,28 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
       <header className="min-h-14 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-row items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-3 overflow-x-auto custom-scrollbar">
-        <div className="flex items-center gap-3 shrink-0">
-          <select value={activePlanId || ''} onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} className="bg-transparent font-bold text-xs sm:text-sm outline-none cursor-pointer max-w-[140px] sm:max-w-[200px] truncate">
-            {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
-          </select>
-          {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded" title={t('delete_plan')}><Trash2 size={16}/></button>}
+        <div className="flex items-center gap-2 shrink-0">
+          {projectPlans.length > 0 ? (
+            <div className="flex items-center gap-2 bg-background border border-border px-3 py-1.5 rounded-xl shadow-sm">
+              <Layers size={14} className="text-text-muted shrink-0" />
+              <select 
+                value={activePlanId || ''} 
+                onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} 
+                className="bg-transparent font-bold text-xs sm:text-sm outline-none cursor-pointer max-w-[140px] sm:max-w-[200px] truncate text-text-primary"
+              >
+                {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
+              </select>
+              {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
+                <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded" title={t('delete_plan')}>
+                  <Trash2 size={14}/>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-sm">
+              <Layers size={14} className="text-text-muted" /> <span>Kein Plan geladen</span>
+            </div>
+          )}
         </div>
 
         {planImage && (
@@ -1301,12 +1325,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
               }
             }}
+            title="CAD-Plan oder PDF-Bauplan in den Projekt-Workspace hochladen"
             className={cn(
-              "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface border border-border rounded-xl text-xs font-bold shadow-sm transition-colors whitespace-nowrap",
-              (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer hover:bg-white/5"
+              "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/30 rounded-xl text-xs font-bold shadow-md transition-all whitespace-nowrap",
+              (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
             )}
           >
-            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">{t('upload_plan')}</span><span className="sm:hidden">Hochladen</span>
+            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">Plan hochladen</span><span className="sm:hidden">Hochladen</span>
             <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
           </label>
           <button onClick={() => {
@@ -1315,10 +1340,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               return;
             }
             handleOpenPdfStudio();
-          }} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
+          }} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? "Plan als hochauflösendes PDF exportieren" : "Erst Plan hochladen zum Exportieren"}>
             {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span className="hidden sm:inline">PDF Export</span><span className="sm:hidden">PDF</span>
           </button>
-          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-500 shadow-lg flex items-center gap-1.5 disabled:opacity-50 whitespace-nowrap">
+          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-surface hover:bg-white/5 border border-border text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title="Zeichnungen und Ebenen speichern">
             {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} {t('save')}
           </button>
           <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center">
@@ -1519,7 +1544,56 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           onPointerCancel={handleMainPointerUp}
           onWheel={handleWheel}
         >
-          {planImage && (
+          {!planImage ? (
+            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300">
+              <div className="max-w-md w-full bg-surface/90 backdrop-blur-xl border border-border/80 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5">
+                <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/10">
+                  <UploadCloud size={32} />
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold text-text-primary">Noch kein CAD-Plan hinterlegt</h3>
+                  <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
+                    Lade einen 2D-Bauplan (PDF oder Bild) hoch, um mit der TrueScale™ Vermessung, Mängelerfassung und Vektorbeschriftung zu starten.
+                  </p>
+                </div>
+
+                <div className="w-full space-y-3 pt-2">
+                  <label className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 transition-all cursor-pointer">
+                    {isUploading ? <Loader2 size={16} className="animate-spin"/> : <UploadCloud size={16}/>}
+                    <span>{isUploading ? 'Plan wird verarbeitet...' : 'Plan jetzt hochladen (PDF / Bild)'}</span>
+                    <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading} className="hidden" />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const samplePlan = {
+                        id: `sample-plan-${Date.now()}`,
+                        project_id: currentProjectId,
+                        plan_name: 'Muster-Grundriss (Architektur 1:50)',
+                        plan_image: dummySvgPlan,
+                        paper_format: 'A3',
+                        paper_orientation: 'landscape',
+                        plan_scale: 50,
+                        elements: [
+                          { id: 'el1', type: 'defect', x: 0.25, y: 0.70, title: 'Beispiel-Mangel', description: 'Riss im Sichtbeton vor Abnahme', status: 'open', priority: 'High', layerId: 'default' }
+                        ],
+                        layers: [{ id: 'default', name: 'Architektur', visible: true, locked: false, opacity: 1 }],
+                        active_layer_id: 'default'
+                      };
+                      setProjectPlans(prev => [samplePlan as any, ...prev]);
+                      loadPlanDataToEditor(samplePlan);
+                      addToast('Muster-Grundriss erfolgreich geladen!', 'success');
+                    }}
+                    className="w-full py-2.5 px-4 bg-background border border-border hover:bg-white/5 text-text-muted hover:text-text-primary rounded-xl font-semibold text-xs transition-colors"
+                  >
+                    📐 Muster-Grundriss (1:50) laden
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`, transformOrigin: 'center center', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div className="relative overflow-hidden bg-white shadow-2xl" style={{ width: `${internalW}px`, height: `${internalH}px` }}>
                 

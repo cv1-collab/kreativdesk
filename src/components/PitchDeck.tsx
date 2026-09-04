@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2, Copy, ExternalLink, X, Check, Download, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, Play, Presentation, Settings, Mail, Share2, Copy, ExternalLink, X, Check, Download, ArrowRight, FileText } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -616,12 +616,20 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
              </button>
              <button 
+                onClick={() => setShowStudio(true)}
+                disabled={slides.length === 0}
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                title="Präsentation als PDF öffnen und exportieren"
+              >
+                <FileText size={14} /> <span>PDF Export</span>
+              </button>
+             <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
                 title="Präsentation als Apple Keynote, Microsoft PowerPoint oder PDF herunterladen"
               >
-                <span>📥 Export</span>
+                <Download size={14} /> <span>Exportieren</span>
               </button>
              <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
                <Settings size={14} /> <span className="hidden xs:inline">{t('open_studio')}</span>
@@ -778,8 +786,9 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                     return;
                   }
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
-                  await exportDeckToPptx(slides, {}, `Präsentation-Keynote.key`);
-                  addToast('Keynote Datei (.key) erfolgreich heruntergeladen!', 'success');
+                  const cleanName = (project?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                  await exportDeckToPptx(slides, {}, `${cleanName}-Keynote.pptx`);
+                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
@@ -789,10 +798,10 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                      Apple Keynote (.pptx / .key)
+                      Apple Keynote (.pptx)
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 uppercase tracking-widest">Mac & iPad</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Optimiert für Apple macOS Keynote mit 100% Widescreen 16:9 Treue</p>
+                    <p className="text-xs text-text-muted mt-0.5">Nativ kompatibel mit Apple macOS Keynote & iPad im 16:9 Format</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-blue-400 group-hover:translate-x-1 transition-all"/>
@@ -808,7 +817,8 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                     return;
                   }
                   addToast('PowerPoint Präsentation wird generiert...', 'info');
-                  await exportDeckToPptx(slides, {}, `Präsentation-PowerPoint.pptx`);
+                  const cleanName = (project?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
+                  await exportDeckToPptx(slides, {}, `${cleanName}-PowerPoint.pptx`);
                   addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-amber-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
@@ -826,6 +836,30 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-amber-400 group-hover:translate-x-1 transition-all"/>
+              </button>
+
+              {/* OPTION 3: NATIVE PDF */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFormatModalOpen(false);
+                  setShowStudio(true);
+                }}
+                className="group p-5 bg-background border border-border/80 hover:border-purple-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                    📄
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
+                      PDF Dokument (.pdf)
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-400 uppercase tracking-widest">Vektor Druck</span>
+                    </h4>
+                    <p className="text-xs text-text-muted mt-0.5">Universelles Vektor-PDF für Kundenversand, E-Mail & Druck</p>
+                  </div>
+                </div>
+                <ArrowRight size={18} className="text-text-muted group-hover:text-purple-400 group-hover:translate-x-1 transition-all"/>
               </button>
             </div>
 

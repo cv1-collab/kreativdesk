@@ -244,9 +244,19 @@ export default function SettingsTab() {
       
       // 1. Fetch Company row
       const { data: comp } = await supabase.from('companies').select('*').eq('id', compId).maybeSingle();
-      if (comp) {
-        setAgencyName(comp.name || '');
-        setCompanyPlan(comp.plan || 'Free Trial');
+      let foundComp = comp;
+      if (!foundComp && currentUser.uid) {
+        const { data: ownerComp } = await supabase.from('companies').select('*').eq('owner_id', currentUser.uid).maybeSingle();
+        foundComp = ownerComp;
+      }
+      if (foundComp) {
+        setAgencyName(foundComp.name || '');
+        setCompanyPlan(foundComp.plan || 'Free Trial');
+        if (foundComp.max_seats) {
+          setMaxSeats(Number(foundComp.max_seats));
+        } else if (foundComp.maxSeats) {
+          setMaxSeats(Number(foundComp.maxSeats));
+        }
       }
 
       // 2. Fetch Company Profile Settings document from Supabase
@@ -1001,7 +1011,7 @@ export default function SettingsTab() {
                   <span className="text-sm font-bold text-text-primary">{usedSeats} / {maxSeats}</span>
                 </div>
                 <div className="w-full bg-surface rounded-full h-2 overflow-hidden border border-border/50">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${(usedSeats / maxSeats) * 100}%` }}></div>
+                  <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, Math.max(4, (usedSeats / Math.max(1, maxSeats)) * 100))}%` }}></div>
                 </div>
               </div>
 

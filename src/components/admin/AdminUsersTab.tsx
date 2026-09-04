@@ -160,8 +160,18 @@ export default function AdminUsersTab() {
     }
   };
 
-  const handleEditClick = (user: any) => {
-    setEditingUser({ ...user, maxSeats: user.maxSeats || 1 });
+  const handleEditClick = async (user: any) => {
+    let seats = user.maxSeats || user.max_seats;
+    if (!seats && (user.company_id || user.id)) {
+      const compId = user.company_id || user.id;
+      const { data: comp } = await supabase.from('companies').select('max_seats').eq('id', compId).maybeSingle();
+      if (comp?.max_seats) seats = comp.max_seats;
+      else {
+        const { data: ownerComp } = await supabase.from('companies').select('max_seats').eq('owner_id', user.id).maybeSingle();
+        if (ownerComp?.max_seats) seats = ownerComp.max_seats;
+      }
+    }
+    setEditingUser({ ...user, maxSeats: seats || 1 });
     setIsModalOpen(true);
   };
 
@@ -180,13 +190,23 @@ export default function AdminUsersTab() {
         })
         .eq('id', editingUser.id);
 
+      const seatsToSave = parseInt(editingUser.maxSeats) || 1;
       if (editingUser.company_id) {
          await supabase
            .from('companies')
            .update({
-             max_seats: parseInt(editingUser.maxSeats) || 1
+             max_seats: seatsToSave,
+             plan: editingUser.plan || 'Enterprise'
            })
            .eq('id', editingUser.company_id);
+      } else {
+         await supabase
+           .from('companies')
+           .update({
+             max_seats: seatsToSave,
+             plan: editingUser.plan || 'Enterprise'
+           })
+           .or(`owner_id.eq.${editingUser.id},id.eq.${editingUser.id}`);
       }
 
       addToast(t('user_saved'), 'success');
@@ -376,7 +396,7 @@ export default function AdminUsersTab() {
                   <option value="Expert">Expert (CHF 189 / Mon)</option>
                   <option value="Studio">Kreativ Desk Studio (ab CHF 15'000)</option>
                   <option value="Agency">Kreativ Desk Agency (CHF 25'000)</option>
-                  <option value="Enterprise">Kreativ Desk Enterprise (ab CHF 40'000)</option>
+                  <option value="Enterprise">Kreativ Desk Enterprise (ab CHF 50'000.-)</option>
                 </select>
               </div>
 
@@ -533,7 +553,7 @@ export default function AdminUsersTab() {
                       onChange={e => setPlan(e.target.value)}
                       className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white focus:outline-none focus:border-blue-500"
                     >
-                      <option value="Enterprise">Enterprise (Full OS)</option>
+                      <option value="Enterprise">Enterprise (Full OS - ab CHF 50'000.-)</option>
                       <option value="Pro">Pro (3D BIM & Mängel)</option>
                       <option value="Expert">Expert (Finanzen & API)</option>
                       <option value="Studio">Studio (CHF 15'000+)</option>
