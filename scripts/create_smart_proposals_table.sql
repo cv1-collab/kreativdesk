@@ -94,3 +94,7 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN NULL;
 END $$;
+
+-- Rollen-Berechtigungen (Grants) vergeben
+GRANT ALL ON TABLE public.smart_proposals TO postgres, service_role, authenticated;
+GRANT SELECT, UPDATE ON TABLE public.smart_proposals TO anon;
