@@ -16,16 +16,17 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { cn, sanitizeUrl } from '../utils';
+import { cn, sanitizeUrl, copyToClipboard } from '../utils';
 import { demoTemplates } from '../utils/demoTemplates';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
+import { saveSmartProposal, SmartProposal, ProposalConfigOption } from '../services/proposalService';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -347,6 +348,46 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [aiSlideCount, setAiSlideCount] = useState<number>(5);
   const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
+
+  // SMART PROPOSAL & LANDINGPAGE STATES
+  const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(false);
+  const [proposalModalTab, setProposalModalTab] = useState<'basic' | 'finance' | 'legal'>('basic');
+  const [proposalClientName, setProposalClientName] = useState('');
+  const [proposalClientCompany, setProposalClientCompany] = useState('');
+  const [proposalClientEmail, setProposalClientEmail] = useState('');
+  const [proposalClientPhone, setProposalClientPhone] = useState('');
+  const [proposalIntroText, setProposalIntroText] = useState('Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.');
+  const [proposalHeroVideoUrl, setProposalHeroVideoUrl] = useState('');
+  const [proposalBasePrice, setProposalBasePrice] = useState<number>(45000);
+  const [proposalCurrency, setProposalCurrency] = useState('CHF');
+  const [proposalExpiryDays, setProposalExpiryDays] = useState(30); // 30 Tage Standard gemäss Kundenwunsch
+  const [proposalPinCode, setProposalPinCode] = useState('');
+  const [proposalOptions, setProposalOptions] = useState<ProposalConfigOption[]>([
+    { id: 'opt-1', title: '3D-Echtzeit BIM-Visualisierung & VR Begehung', description: 'Interaktiver 3D-Rundgang für Bauherren & Kunden', price: 3500, selectedByDefault: true },
+    { id: 'opt-2', title: 'Drohnen-Baufortschritts-Dokumentation (4K)', description: 'Regelmässige 4K Drohnenflüge & Fotogrammetrie', price: 2800, selectedByDefault: false },
+    { id: 'opt-3', title: 'Premium SIA-Termingarantie & 24/7 Hotline', description: 'Prioritäre Bauleiterbegleitung & Express-Termine', price: 4900, selectedByDefault: false }
+  ]);
+  const [newOptionTitle, setNewOptionTitle] = useState('');
+  const [newOptionPrice, setNewOptionPrice] = useState<number>(0);
+
+  // VERTRÄGE, AGB & SIA ZAHLUNGSPLAN STATES
+  const [proposalLegalDocs, setProposalLegalDocs] = useState<any[]>([
+    { id: 'doc-agb', name: 'Allgemeine Geschäftsbedingungen (AGB)', type: 'agb', url: '', isRequired: true, uploadedAt: new Date().toISOString() },
+    { id: 'doc-werk', name: 'Werkvertrag & SIA 118 Konditionen', type: 'werkvertrag', url: '', isRequired: true, uploadedAt: new Date().toISOString() },
+    { id: 'doc-koop', name: 'Kooperationsvertrag & Subplaner-Vereinbarung', type: 'kooperation', url: '', isRequired: false, uploadedAt: new Date().toISOString() }
+  ]);
+  const [isUploadingLegalDoc, setIsUploadingLegalDoc] = useState(false);
+  const [proposalPaymentMilestones, setProposalPaymentMilestones] = useState<any[]>([
+    { id: 'ms-1', phase: 'Phase 1: Vorprojekt & Machbarkeitsanalyse', percentage: 20, description: 'Grundlagenanalyse, Vorkonzept & Kostenschätzung (SIA 102)' },
+    { id: 'ms-2', phase: 'Phase 2: Bauprojekt & Baueingabe', percentage: 30, description: 'Bewilligungsfähige Projektpläne & Baueingabe bei Behörden' },
+    { id: 'ms-3', phase: 'Phase 3: Ausführungsplanung & Ausschreibung', percentage: 25, description: 'Detailpläne, Devisierung & Vergabe an Handwerker' },
+    { id: 'ms-4', phase: 'Phase 4: Realisierung & Bauleitung', percentage: 20, description: 'Örtliche Bauleitung, Qualitäts- & Kostenkontrolle' },
+    { id: 'ms-5', phase: 'Phase 5: Abschluss & Garantieabnahme', percentage: 5, description: 'Schlussabrechnung, Mängelbehebung & Übergabe' }
+  ]);
+
+  const [publishedShareUrl, setPublishedShareUrl] = useState<string | null>(null);
+  const [isPublishingProposal, setIsPublishingProposal] = useState(false);
+  const [copiedProposalLink, setCopiedProposalLink] = useState(false);
 
   const [isPresenterMode, setIsPresenterMode] = useState(false);
   const [presenterIndex, setPresenterIndex] = useState(0);
@@ -1078,7 +1119,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }
   };
 
-  const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'slide', slideId?: string) => {
+  const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'slide' | 'hero', slideId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
@@ -1099,6 +1140,12 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         downloadUrl = URL.createObjectURL(file);
       }
 
+      if (target === 'hero') {
+        setProposalHeroVideoUrl(downloadUrl);
+        addToast('Hero-Video für Offerte hinterlegt!', 'success');
+        return;
+      }
+
       const targetSlideId = slideId || activeSlideId;
       if (targetSlideId) {
         setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, videoUrl: downloadUrl } : s));
@@ -1112,6 +1159,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     } catch (err) {
       console.error('Video upload failed:', err);
       const fallbackUrl = URL.createObjectURL(file);
+      if (target === 'hero') {
+        setProposalHeroVideoUrl(fallbackUrl);
+        addToast('Hero-Video lokal geladen', 'info');
+        return;
+      }
       const targetSlideId = slideId || activeSlideId;
       if (targetSlideId) {
         setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, videoUrl: fallbackUrl } : s));
@@ -3161,6 +3213,18 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               >
                 <Play size={14} className="fill-current"/> <span className="hidden sm:inline">{t('presenter_mode')}</span>
               </button>
+              {/* KUNDEN-LANDINGPAGE & OFFERTE BUTTON */}
+              <button 
+                type="button" 
+                onClick={() => {
+                  setProposalClientName(activeProject?.name ? `Kunde für ${activeProject.name}` : 'Kunde');
+                  setIsLandingPageModalOpen(true);
+                }}
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer"
+                title="Interaktive Kunden-Landingpage & Offerte erstellen"
+              >
+                <Globe size={14}/> <span>Kunden-Link / Offerte</span>
+              </button>
               {/* DIREKTER PDF EXPORT BUTTON */}
               <button 
                 type="button" 
@@ -3619,6 +3683,468 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 Schliessen
               </button>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* SMART PROPOSAL & LANDINGPAGE PUBLISH MODAL */}
+      {isLandingPageModalOpen && (
+        <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto custom-scrollbar">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-3xl w-full max-w-2xl shadow-2xl p-6 sm:p-8 space-y-6 my-8">
+            <div className="flex justify-between items-center border-b border-border/50 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                  <Globe size={22} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-lg text-text-primary flex items-center gap-2">
+                    Smart Pitch & Offerten Landingpage
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">Erstelle einen interaktiven Cloud-Link mit Video, Kosten & 30-Tage Gültigkeit</p>
+                </div>
+              </div>
+              <button onClick={() => { setIsLandingPageModalOpen(false); setPublishedShareUrl(null); }} className="text-text-muted hover:text-text-primary p-2 bg-background border border-border rounded-xl cursor-pointer"><X size={18}/></button>
+            </div>
+
+            {publishedShareUrl ? (
+              <div className="space-y-6 text-center py-4">
+                <div className="w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/20">
+                  <CheckCircle2 size={36} />
+                </div>
+                <div>
+                  <h4 className="text-xl font-bold text-text-primary">Kunden-Landingpage ist Live!</h4>
+                  <p className="text-xs text-text-muted mt-1 max-w-md mx-auto">
+                    Die interaktive Präsentation für <strong>{proposalClientName || 'Ihren Kunden'}</strong> wurde in der Cloud veröffentlicht.
+                  </p>
+                </div>
+
+                <div className="bg-background border border-border rounded-2xl p-4 flex items-center justify-between gap-3 text-left">
+                  <div className="truncate font-mono text-xs text-blue-400 font-bold select-all">
+                    {publishedShareUrl}
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      await copyToClipboard(publishedShareUrl);
+                      setCopiedProposalLink(true);
+                      addToast('Kunden-Link in Zwischenablage kopiert!', 'success');
+                      setTimeout(() => setCopiedProposalLink(false), 2000);
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    {copiedProposalLink ? <Check size={14} /> : <Copy size={14} />}
+                    <span>{copiedProposalLink ? 'Kopiert' : 'Kopieren'}</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <a 
+                    href={`https://wa.me/?text=${encodeURIComponent(`Guten Tag ${proposalClientName},\nanbei finden Sie Ihre persönliche Projekt-Präsentation & Offerte mit allen Videos und Kosten:\n${publishedShareUrl}`)}`}
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="p-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <MessageSquare size={16} /> Per WhatsApp senden
+                  </a>
+                  <a 
+                    href={`mailto:${proposalClientEmail}?subject=${encodeURIComponent(`Präsentation & Offerte: ${activeProject?.name || 'Projekt'}`)}&body=${encodeURIComponent(`Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie den Link zu Ihrer interaktiven Projekt-Landingpage:\n${publishedShareUrl}\n\nFreundliche Grüsse`)}`}
+                    className="p-3 bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Mail size={16} /> Per E-Mail versenden
+                  </a>
+                </div>
+
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-border/50">
+                  <a 
+                    href={publishedShareUrl} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="w-full sm:w-auto px-4 py-2.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/40 text-purple-600 dark:text-purple-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all"
+                  >
+                    <Eye size={15} /> <span>Als Kunde ansehen (Live-Vorschau)</span> <ArrowRight size={13} />
+                  </a>
+                  <button 
+                    onClick={() => { setIsLandingPageModalOpen(false); setPublishedShareUrl(null); }} 
+                    className="w-full sm:w-auto px-6 py-2.5 bg-surface border border-border rounded-xl text-xs font-bold text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+                  >
+                    Schliessen / Fertig
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setIsPublishingProposal(true);
+
+                const proposalData = await saveSmartProposal({
+                  projectId: targetId,
+                  companyId: currentUser?.companyId || 'company-default',
+                  ownerId: currentUser?.uid || 'user',
+                  title: activeProject?.name || 'Projekt-Präsentation',
+                  clientName: proposalClientName.trim() || 'Sehr geehrte Damen und Herren',
+                  clientCompany: proposalClientCompany.trim(),
+                  clientEmail: proposalClientEmail.trim(),
+                  clientPhone: proposalClientPhone.trim(),
+                  introText: proposalIntroText.trim(),
+                  heroVideoUrl: proposalHeroVideoUrl.trim(),
+                  basePrice: Number(proposalBasePrice) || 0,
+                  currency: proposalCurrency,
+                  options: proposalOptions,
+                  legalDocuments: proposalLegalDocs,
+                  paymentMilestones: proposalPaymentMilestones,
+                  themeStyle: deckSettings.themeStyle,
+                  themeColor: deckSettings.themeColor,
+                  slides: slides,
+                  status: 'active',
+                  expiresAt: new Date(Date.now() + proposalExpiryDays * 24 * 60 * 60 * 1000).toISOString(),
+                  pinCode: proposalPinCode.trim()
+                });
+
+                const publicUrl = `${window.location.origin}/p/${proposalData.shareToken}`;
+                setPublishedShareUrl(publicUrl);
+                setIsPublishingProposal(false);
+                addToast('Kunden-Landingpage erfolgreich erstellt!', 'success');
+              }} className="space-y-5">
+
+                {/* MODAL NAVIGATION TABS */}
+                <div className="flex bg-background border border-border rounded-xl p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setProposalModalTab('basic')}
+                    className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", proposalModalTab === 'basic' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <Users size={14} /> <span>1. Basis & Kunde</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProposalModalTab('finance')}
+                    className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", proposalModalTab === 'finance' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <DollarSign size={14} /> <span>2. Finanzen & SIA-Zahlungsplan</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProposalModalTab('legal')}
+                    className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", proposalModalTab === 'legal' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <FileText size={14} /> <span>3. AGB & Verträge anhängen</span>
+                  </button>
+                </div>
+                
+                {/* TAB 1: KUNDE & PROJEKT */}
+                {proposalModalTab === 'basic' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Kunden-Name / Ansprechpartner *</label>
+                        <input 
+                          type="text" 
+                          required 
+                          placeholder="z. B. Herr Dr. Thomas Keller"
+                          value={proposalClientName}
+                          onChange={e => setProposalClientName(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Kunden-Firma / Organisation</label>
+                        <input 
+                          type="text" 
+                          placeholder="z. B. Keller Holding AG"
+                          value={proposalClientCompany}
+                          onChange={e => setProposalClientCompany(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">E-Mail für Rückfragen</label>
+                        <input 
+                          type="email" 
+                          placeholder="z. B. keller@firma.ch"
+                          value={proposalClientEmail}
+                          onChange={e => setProposalClientEmail(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Telefonnummer für WhatsApp / Rückruf</label>
+                        <input 
+                          type="text" 
+                          placeholder="z. B. +41 79 123 45 67"
+                          value={proposalClientPhone}
+                          onChange={e => setProposalClientPhone(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-text-muted uppercase">Hero Video (MP4 / Showreel)</label>
+                        <label className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer">
+                          {isUploadingVideo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                          <span>{isUploadingVideo ? 'Lädt hoch...' : 'Datei hochladen'}</span>
+                          <input 
+                            type="file" 
+                            accept="video/mp4,video/webm,video/quicktime" 
+                            className="hidden" 
+                            onChange={(e) => handleDirectVideoUpload(e, 'hero')} 
+                          />
+                        </label>
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="https://.../video.mp4 oder Datei hochladen"
+                        value={proposalHeroVideoUrl}
+                        onChange={e => setProposalHeroVideoUrl(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Gültigkeitsdauer der Offerte</label>
+                        <select 
+                          value={proposalExpiryDays}
+                          onChange={e => setProposalExpiryDays(Number(e.target.value))}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-blue-500 cursor-pointer"
+                        >
+                          <option value={14}>14 Tage</option>
+                          <option value={30}>30 Tage (Standard)</option>
+                          <option value={60}>60 Tage</option>
+                          <option value={90}>90 Tage</option>
+                          <option value={180}>180 Tage (6 Monate)</option>
+                          <option value={365}>365 Tage (1 Jahr)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">PIN-Code Schutz (Optional)</label>
+                        <input 
+                          type="text" 
+                          placeholder="z. B. 8005 (Leerlassen = Öffentlich)"
+                          value={proposalPinCode}
+                          onChange={e => setProposalPinCode(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Persönliche Einleitung für den Kunden</label>
+                      <textarea 
+                        rows={3}
+                        value={proposalIntroText}
+                        onChange={e => setProposalIntroText(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500 resize-none leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: FINANZEN & SIA-ZAHLUNGSPLAN */}
+                {proposalModalTab === 'finance' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Basis-Angebotssumme *</label>
+                        <div className="flex">
+                          <span className="inline-flex items-center px-3 bg-surface border border-r-0 border-border rounded-l-xl text-xs font-bold text-text-muted">
+                            {proposalCurrency}
+                          </span>
+                          <input 
+                            type="number" 
+                            required 
+                            min={0}
+                            value={proposalBasePrice}
+                            onChange={e => setProposalBasePrice(Number(e.target.value))}
+                            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-r-xl text-xs font-bold font-mono text-text-primary outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Währung</label>
+                        <select 
+                          value={proposalCurrency}
+                          onChange={e => setProposalCurrency(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-blue-500 cursor-pointer"
+                        >
+                          <option value="CHF">CHF (Schweizer Franken)</option>
+                          <option value="EUR">EUR (Euro)</option>
+                          <option value="USD">USD (US Dollar)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* ZUSATZOPTIONEN & INTERAKTIVER PREIS-KONFIGURATOR */}
+                    <div className="p-4 rounded-2xl bg-background border border-border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-text-primary uppercase flex items-center gap-1.5">
+                          <CheckSquare size={14} className="text-blue-400" /> Konfigurierbare Zusatzoptionen
+                        </span>
+                        <span className="text-[10px] text-text-muted font-medium">Kunde kann diese an/abwählen</span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {proposalOptions.map((opt, oIdx) => (
+                          <div key={opt.id || oIdx} className="flex items-center justify-between bg-surface p-2.5 rounded-xl border border-border text-xs gap-3">
+                            <div>
+                              <div className="font-medium text-text-primary">{opt.title}</div>
+                              {opt.description && <div className="text-[10px] text-text-muted">{opt.description}</div>}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-blue-400 font-bold">+{proposalCurrency} {opt.price.toLocaleString('de-CH')}</span>
+                              <button type="button" onClick={() => setProposalOptions(prev => prev.filter((_, i) => i !== oIdx))} className="text-text-muted hover:text-red-500 cursor-pointer"><Trash2 size={13} /></button>
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="flex gap-2 pt-1">
+                          <input 
+                            type="text" 
+                            placeholder="Neues Paket (z.B. 4K Drohnenflug)"
+                            value={newOptionTitle}
+                            onChange={e => setNewOptionTitle(e.target.value)}
+                            className="flex-1 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs outline-none text-text-primary"
+                          />
+                          <input 
+                            type="number" 
+                            placeholder="Preis"
+                            value={newOptionPrice || ''}
+                            onChange={e => setNewOptionPrice(Number(e.target.value))}
+                            className="w-24 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-mono text-right outline-none text-text-primary"
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              if (newOptionTitle.trim()) {
+                                setProposalOptions(prev => [...prev, { id: `opt-${Date.now()}`, title: newOptionTitle.trim(), price: newOptionPrice, selectedByDefault: false }]);
+                                setNewOptionTitle('');
+                                setNewOptionPrice(0);
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold cursor-pointer"
+                          >
+                            + Hinzufügen
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SIA-ZAHLUNGSPLAN MEILENSTEINE */}
+                    <div className="p-4 rounded-2xl bg-background border border-border space-y-3">
+                      <span className="text-xs font-bold text-text-primary uppercase flex items-center gap-1.5">
+                        <Milestone size={14} className="text-emerald-400" /> SIA 102/118 Zahlungsplan & Meilensteine
+                      </span>
+                      <div className="space-y-2">
+                        {proposalPaymentMilestones.map((ms, msIdx) => (
+                          <div key={ms.id || msIdx} className="flex items-center justify-between bg-surface p-2.5 rounded-xl border border-border text-xs gap-3">
+                            <div className="flex-1">
+                              <div className="font-bold text-text-primary">{ms.phase}</div>
+                              <div className="text-[10px] text-text-muted">{ms.description}</div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold font-mono">{ms.percentage}%</span>
+                              <span className="font-mono text-text-primary font-bold">{proposalCurrency} {Math.round((proposalBasePrice * ms.percentage) / 100).toLocaleString('de-CH')}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: AGB & VERTRÄGE */}
+                {proposalModalTab === 'legal' && (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-background border border-border space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-xs font-bold text-text-primary uppercase flex items-center gap-1.5">
+                            <ShieldCheck size={14} className="text-purple-400" /> Vertragsdokumente & AGBs hochladen
+                          </h4>
+                          <p className="text-[11px] text-text-muted mt-0.5">
+                            Laden Sie Ihre AGB, Werkverträge (SIA 118) oder NDAs als PDF hoch. Der Kunde kann diese auf der Landingpage einsehen und verbindlich akzeptieren.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-2">
+                        {proposalLegalDocs.map((doc, dIdx) => (
+                          <div key={doc.id || dIdx} className="p-3 bg-surface rounded-xl border border-border flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-xs">
+                                📄
+                              </div>
+                              <div>
+                                <div className="font-bold text-xs text-text-primary">{doc.name}</div>
+                                <div className="text-[10px] text-text-muted flex items-center gap-2">
+                                  <span>{doc.url ? '✅ Hochgeladen' : '⚠️ Noch keine PDF hinterlegt'}</span>
+                                  {doc.size && <span>• {doc.size}</span>}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <label className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors border border-blue-500/20">
+                                {isUploadingLegalDoc ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                                <span>PDF hochladen</span>
+                                <input 
+                                  type="file" 
+                                  accept=".pdf,.doc,.docx" 
+                                  className="hidden" 
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setIsUploadingLegalDoc(true);
+                                    try {
+                                      const safeCompanyId = currentUser?.companyId || 'company-default';
+                                      const filePath = `legal_docs/${safeCompanyId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+                                      let uploadedUrl = '';
+                                      if (supabase) {
+                                        const { data, error } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+                                        if (!error && data) {
+                                          const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(data.path);
+                                          uploadedUrl = publicUrlData.publicUrl;
+                                        }
+                                      }
+                                      if (!uploadedUrl) uploadedUrl = URL.createObjectURL(file);
+
+                                      setProposalLegalDocs(prev => prev.map((d, i) => i === dIdx ? { ...d, name: file.name, url: uploadedUrl, size: `${Math.round(file.size / 1024)} KB` } : d));
+                                      addToast(`Dokument "${file.name}" hochgeladen!`, 'success');
+                                    } catch (err) {
+                                      addToast('Fehler beim Upload', 'error');
+                                    } finally {
+                                      setIsUploadingLegalDoc(false);
+                                    }
+                                  }} 
+                                />
+                              </label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                  <button type="button" onClick={() => setIsLandingPageModalOpen(false)} className="px-5 py-2.5 text-xs font-bold text-text-muted hover:text-text-primary cursor-pointer">
+                    Abbrechen
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isPublishingProposal}
+                    className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isPublishingProposal ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
+                    <span>Smart Landingpage Veröffentlichen</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </motion.div>
         </div>
       )}

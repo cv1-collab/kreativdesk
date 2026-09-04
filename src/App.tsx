@@ -84,6 +84,8 @@ const SuccessPage = lazyWithRetry(() => import('./components/SuccessPage'));
 const PlanEditorViewer = lazyWithRetry(() => import('./components/PlanEditorViewer'));
 const MobileUpload = lazyWithRetry(() => import('./components/MobileUpload'));
 const GuestMeet = lazyWithRetry(() => import('./components/GuestMeet'));
+const SmartProposalLandingPage = lazyWithRetry(() => import('./components/SmartProposalLandingPage'));
+const ProposalManagerDashboard = lazyWithRetry(() => import('./components/ProposalManagerDashboard'));
 const GlobalSuspenseFallback = () => (
   <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#09090b] text-white relative overflow-hidden">
     <div className="absolute w-[400px] h-[400px] bg-blue-600/15 blur-[120px] rounded-full pointer-events-none animate-pulse"></div>
@@ -160,6 +162,12 @@ export default function App() {
                                 <Route path="/lead-form/:companyId" element={<PublicLeadForm />} />
                                 <Route path="/lead-form" element={<PublicLeadForm />} />
 
+                                {/* Smart Offerten & Pitch-Landingpages (Öffentlich für Kunden) */}
+                                <Route path="/p/:shareToken" element={<SmartProposalLandingPage />} />
+                                <Route path="/proposal/:shareToken" element={<SmartProposalLandingPage />} />
+                                <Route path="/offerte" element={<SmartProposalLandingPage />} />
+                                <Route path="/interactv/offerte" element={<SmartProposalLandingPage />} />
+
                                 <Route path="/mobile-upload/:type/:sessionId" element={<MobileUpload />} />
                                 <Route path="/deck" element={<PitchDeck />} />
 
@@ -188,6 +196,7 @@ export default function App() {
                                 <Route path="/leads" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
                                 <Route path="/crm" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
                                 <Route path="/audit" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
+                                <Route path="/proposals" element={<PrivateRoute><EmailVerificationGuard><TrialGuard><CompanyDashboard /></TrialGuard></EmailVerificationGuard></PrivateRoute>} />
 
                                 {/* +++ PROJEKT BEREICH (KOMPLETT GESCHÜTZT) +++ */}
                                 <Route path="/project/:projectId" element={

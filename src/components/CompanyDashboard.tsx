@@ -28,6 +28,7 @@ import SettingsTab from './SettingsTab';
 import AuditLogsTab from './AuditLogsTab';
 import WelcomeOnboarding from './WelcomeOnboarding';
 import MeetChat from './MeetChat';
+import ProposalManagerDashboard from './ProposalManagerDashboard';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Plus, Users, Settings, MoreVertical, LogOut, Briefcase, 
@@ -56,7 +57,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     loading_project: 'Loading project...', cancel: 'Cancel', create_project: 'Create Project', 
     new_project: 'New Project', project_name: 'Project Name', description: 'Description', folder: 'Folder', 
     no_description: 'No description', active: 'Active', archived: 'Archived', created_at: 'Created at',
-    finance: 'Finance', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads',
+    finance: 'Finance', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Proposals & Links',
     delete_project: 'Delete Project', active_projects: 'Active Projects',
     archive: 'Archive', archive_project: 'Archive Project', unarchive_project: 'Restore Project'
   },
@@ -72,7 +73,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     create_project: 'Projekt anlegen', new_project: 'Neues Projekt', project_name: 'Projektname', 
     description: 'Beschreibung', folder: 'Ordner', no_description: 'Keine Beschreibung vorhanden.', 
     active: 'Aktiv', archived: 'Archiviert', created_at: 'Erstellt am',
-    finance: 'Finanzen', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads',
+    finance: 'Finanzen', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Offerten & Links',
     delete_project: 'Projekt löschen', active_projects: 'Aktive Projekte',
     archive: 'Archiv', archive_project: 'Projekt archivieren', unarchive_project: 'Wiederherstellen'
   }
@@ -98,10 +99,10 @@ export default function CompanyDashboard() {
   
   const { startTour } = useTour();
 
-  const [activeTab, setActiveTabRaw] = useState<'dashboard' | 'projects' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit' | 'meet'>(() => {
+  const [activeTab, setActiveTabRaw] = useState<'dashboard' | 'projects' | 'proposals' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit' | 'meet'>(() => {
     try {
       const saved = localStorage.getItem('company_activeTab');
-      if (saved && ['dashboard', 'projects', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(saved)) {
+      if (saved && ['dashboard', 'projects', 'proposals', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(saved)) {
         return saved as any;
       }
     } catch (e) {}
@@ -119,7 +120,7 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     const rawPath = window.location.pathname.replace(/^\//, '').toLowerCase();
-    const validTabs = ['dashboard', 'projects', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'];
+    const validTabs = ['dashboard', 'projects', 'proposals', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'];
     if (validTabs.includes(rawPath)) {
       setActiveTab(rawPath as any);
     } else {
@@ -637,6 +638,7 @@ export default function CompanyDashboard() {
     { title: t('central'), items: [
       { id: 'dashboard', icon: LayoutDashboard, label: t('dashboard'), className: 'tour-dashboard' },
       { id: 'projects', icon: Building2, label: t('projects'), count: safeProjects.length, className: 'tour-projects' },
+      { id: 'proposals', icon: Globe, label: t('proposals'), className: 'tour-proposals' },
       { id: 'finance', icon: DollarSign, label: t('finance_budget'), hide: !canSeeFinances, className: 'tour-finance' }
     ]},
     { title: 'Workspace', items: [
@@ -881,7 +883,12 @@ export default function CompanyDashboard() {
                  </div>
                )}
                
-               {activeTab === 'team' && <div className="h-full w-full"><TeamCrmTab userRole={userRole} companyUsers={safeCompanyUsers} /></div>}
+               {activeTab === 'proposals' && (
+                  <div className="h-full w-full overflow-y-auto custom-scrollbar">
+                    <ProposalManagerDashboard />
+                  </div>
+                )}
+                {activeTab === 'team' && <div className="h-full w-full"><TeamCrmTab userRole={userRole} companyUsers={safeCompanyUsers} /></div>}
                {activeTab === 'finance' && canSeeFinances && <div className="h-full w-full"><FinanceTab addToast={addToast} setShowExpenseModal={setShowExpenseModal} setShowInvoiceModal={setShowInvoiceModal} setShowQuoteModal={setShowQuoteModal} /></div>}
                {activeTab === 'documents' && <div className="h-full w-full"><DocumentsTab /></div>}
                {activeTab === 'agenda' && <div className="h-full w-full"><AgendaTab /></div>}

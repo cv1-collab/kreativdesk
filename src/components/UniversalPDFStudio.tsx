@@ -15,6 +15,8 @@ export interface PDFSettings {
   accentColor: string;
   footerText: string;
   watermark?: 'NONE' | 'VERTRAULICH' | 'ENTWURF' | 'FREIGEGEBEN';
+  language?: 'de' | 'fr' | 'en';
+  currency?: string;
 }
 
 interface UniversalPDFStudioProps {
