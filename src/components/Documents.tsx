@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -11,11 +12,13 @@ import {
   Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, 
   Search, ArrowUpDown, LayoutGrid, List, DollarSign, Landmark, Users, TrendingUp, 
   Megaphone, Settings, Shield, Eye, ArrowRight, CheckCircle2, Clock, Image as ImageIcon, Box,
-  Archive, CheckSquare, Square
+  Archive, CheckSquare, Square, ExternalLink
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../services/seedService';
 import DocumentStudioModal from './DocumentStudioModal';
+import ProposalManagerDashboard from './ProposalManagerDashboard';
+import PitchDeckStudio from './PitchDeckStudio';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { sendNotification } from '../lib/notifications';
 
@@ -25,6 +28,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cloud_storage_desc: 'Manage company & project documents securely in Cloud Storage',
     company_docs: 'Company Documents',
     project_docs: 'Project Documents',
+    proposals_tab: 'Proposals & Landing Pages',
+    proposals_desc: 'Interactive client proposals with 3D models, video & digital signature',
+    open_proposals_fullscreen: 'Open Fullscreen',
+    create_proposal_btn: 'Create New Proposal',
     new_folder: 'New Folder',
     upload: 'Upload File',
     confirm_delete: 'Are you sure you want to delete this item?',
@@ -72,6 +79,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cloud_storage_desc: 'Verwalte firmen- und projektbezogene Unterlagen sicher im Cloud Storage',
     company_docs: 'Firmenunterlagen',
     project_docs: 'Projektunterlagen',
+    proposals_tab: 'Kunden-Offerten & Landingpages',
+    proposals_desc: 'Interaktive Kunden-Offerten mit 3D-Modellen, Video & digitaler E-Signatur',
+    open_proposals_fullscreen: 'Im Vollbild öffnen',
+    create_proposal_btn: 'Neue Offerte erstellen',
     new_folder: 'Neuer Ordner',
     upload: 'Datei hochladen',
     confirm_delete: 'Möchtest du dieses Element wirklich löschen?',
@@ -236,21 +247,37 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   const docsStorageKey = `docs_state_${defaultProjId || 'global'}`;
 
-  const [activeTab, setActiveTabRaw] = useState<'company' | 'projects'>(() => {
+  const [activeTab, setActiveTabRaw] = useState<'company' | 'projects' | 'proposals'>(() => {
     if (defaultProjId) return 'projects';
     try {
       const saved = localStorage.getItem(`${docsStorageKey}_tab`);
-      if (saved && (saved === 'company' || saved === 'projects')) return saved;
+      if (saved && (saved === 'company' || saved === 'projects' || saved === 'proposals')) return saved;
     } catch (e) {}
     return 'company';
   });
 
-  const setActiveTab = (tab: 'company' | 'projects') => {
+  const setActiveTab = (tab: 'company' | 'projects' | 'proposals') => {
     setActiveTabRaw(tab);
     try {
       localStorage.setItem(`${docsStorageKey}_tab`, tab);
     } catch (e) {}
   };
+
+  const [showPitchModal, setShowPitchModal] = useState(false);
+
+  useEffect(() => {
+    const handleTabNav = (e: any) => {
+      if (e.detail === 'proposals') {
+        setActiveTab('proposals');
+      } else if (e.detail === 'company') {
+        setActiveTab('company');
+      } else if (e.detail === 'projects') {
+        setActiveTab('projects');
+      }
+    };
+    window.addEventListener('navigate-to-tab', handleTabNav);
+    return () => window.removeEventListener('navigate-to-tab', handleTabNav);
+  }, []);
 
   const [viewMode, setViewModeRaw] = useState<'grid' | 'list'>(() => {
     try {
@@ -803,31 +830,53 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
             {t('seed_demo_btn')}
           </button>
 
-          {canUpload && (
+          {activeTab !== 'proposals' ? (
+            canUpload && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsCreatingFolder(true)}
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <FolderPlus size={16} />
+                  {t('new_folder')}
+                </button>
+
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                <button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  disabled={isUploading}
+                  className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                  {t('upload')}
+                </button>
+              </div>
+            )
+          ) : (
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
-                onClick={() => setIsCreatingFolder(true)}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                onClick={() => setShowPitchModal(true)}
+                className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
               >
-                <FolderPlus size={16} />
-                {t('new_folder')}
+                <Plus size={16} />
+                <span>{t('create_proposal_btn')}</span>
               </button>
-
-              <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-              <button 
-                onClick={() => fileInputRef.current?.click()} 
-                disabled={isUploading}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50"
+              <a
+                href="/proposals"
+                target="_blank"
+                rel="noreferrer"
+                className="px-3.5 py-2.5 bg-surface hover:bg-background border border-border text-text-muted hover:text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
+                title={t('open_proposals_fullscreen')}
               >
-                {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                {t('upload')}
-              </button>
+                <ExternalLink size={15} />
+                <span className="hidden sm:inline">{t('open_proposals_fullscreen')}</span>
+              </a>
             </div>
           )}
         </div>
       </div>
 
-      {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen & Layout Switcher */}
+      {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen vs. Kunden-Offerten & Layout Switcher */}
       <div className="flex flex-row justify-between items-center gap-2 border-b border-border/70 pb-1 overflow-x-auto custom-scrollbar">
         <div className="flex border-b border-transparent gap-1.5 shrink-0">
           <button
@@ -841,7 +890,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
             className={cn(
               "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
               activeTab === 'company'
-                ? "border-blue-500 text-blue-500 bg-blue-500/10 shadow-sm font-extrabold"
+                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 shadow-sm font-extrabold"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
@@ -860,98 +909,119 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
             className={cn(
               "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
               activeTab === 'projects'
-                ? "border-emerald-500 text-emerald-500 bg-emerald-500/10 shadow-sm font-extrabold"
+                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shadow-sm font-extrabold"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
             <Briefcase size={16} />
             {t('project_docs')}
           </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('proposals');
+              setCurrentFolderId('root');
+              setSelectedDocIds([]);
+            }}
+            className={cn(
+              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
+              activeTab === 'proposals'
+                ? "border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-500/10 shadow-sm font-extrabold"
+                : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
+            )}
+          >
+            <Sparkles size={16} className={activeTab === 'proposals' ? "text-purple-500 animate-pulse" : "text-purple-400"} />
+            {t('proposals_tab')}
+          </button>
         </div>
 
         {/* View Mode Toggle: Grid Kacheln vs Liste */}
-        <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl shadow-sm shrink-0">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={cn(
-              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-              viewMode === 'grid' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
-            )}
-            title={t('grid_view')}
-          >
-            <LayoutGrid size={16} />
-            <span className="hidden sm:inline">{t('grid_view')}</span>
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={cn(
-              "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-              viewMode === 'list' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
-            )}
-            title={t('list_view')}
-          >
-            <List size={16} />
-            <span className="hidden sm:inline">{t('list_view')}</span>
-          </button>
-        </div>
+        {activeTab !== 'proposals' && (
+          <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl shadow-sm shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={cn(
+                "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                viewMode === 'grid' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
+              )}
+              title={t('grid_view')}
+            >
+              <LayoutGrid size={16} />
+              <span className="hidden sm:inline">{t('grid_view')}</span>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                viewMode === 'list' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
+              )}
+              title={t('list_view')}
+            >
+              <List size={16} />
+              <span className="hidden sm:inline">{t('list_view')}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Breadcrumb Navigation & Search/Sort Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface/50 border border-border px-4 py-3 rounded-2xl">
-        <div className="flex items-center gap-2 text-xs font-bold text-text-muted flex-wrap">
-          <span className="text-text-primary">{activeTab === 'company' ? t('company_docs') : t('project_docs')}</span>
-          {selectedProjectId && (
-            <>
-              <ChevronRight size={14} className="text-text-muted" />
-              <span className="text-emerald-500 font-bold">
-                {projects.find((p: any) => p.id === selectedProjectId)?.name || 'Projekt'}
-              </span>
-            </>
-          )}
-          {folderPath.map((item, idx) => (
-            <React.Fragment key={item.id}>
-              <ChevronRight size={14} className="text-text-muted" />
-              <button
-                onClick={() => navigateBreadcrumb(idx)}
-                className={cn("hover:underline cursor-pointer", idx === folderPath.length - 1 ? "text-blue-500 font-extrabold" : "text-text-muted")}
-              >
-                {item.name === 'Root' ? t('root') : item.name}
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* Search & Sort Dropdown */}
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="relative flex-1 sm:w-48">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-            <input
-              type="text"
-              placeholder={t('search_placeholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-background border border-border/70 rounded-xl pl-9 pr-7 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none shadow-sm"
-            />
-            {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs">✕</button>
+      {activeTab !== 'proposals' && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface/50 border border-border px-4 py-3 rounded-2xl">
+          <div className="flex items-center gap-2 text-xs font-bold text-text-muted flex-wrap">
+            <span className="text-text-primary">{activeTab === 'company' ? t('company_docs') : t('project_docs')}</span>
+            {selectedProjectId && (
+              <>
+                <ChevronRight size={14} className="text-text-muted" />
+                <span className="text-emerald-500 font-bold">
+                  {projects.find((p: any) => p.id === selectedProjectId)?.name || 'Projekt'}
+                </span>
+              </>
             )}
+            {folderPath.map((item, idx) => (
+              <React.Fragment key={item.id}>
+                <ChevronRight size={14} className="text-text-muted" />
+                <button
+                  onClick={() => navigateBreadcrumb(idx)}
+                  className={cn("hover:underline cursor-pointer", idx === folderPath.length - 1 ? "text-blue-500 font-extrabold" : "text-text-muted")}
+                >
+                  {item.name === 'Root' ? t('root') : item.name}
+                </button>
+              </React.Fragment>
+            ))}
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <ArrowUpDown size={14} className="text-text-muted" />
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value as any)}
-              className="bg-background border border-border/70 rounded-xl px-3 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none cursor-pointer shadow-sm"
-            >
-              <option value="newest">📅 Neueste zuerst</option>
-              <option value="oldest">📅 Älteste zuerst</option>
-              <option value="name_asc">🔤 Name (A – Z)</option>
-              <option value="name_desc">🔤 Name (Z – A)</option>
-            </select>
+          {/* Search & Sort Dropdown */}
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <div className="relative flex-1 sm:w-48">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+              <input
+                type="text"
+                placeholder={t('search_placeholder')}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-background border border-border/70 rounded-xl pl-9 pr-7 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none shadow-sm"
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs">✕</button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <ArrowUpDown size={14} className="text-text-muted" />
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value as any)}
+                className="bg-background border border-border/70 rounded-xl px-3 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none cursor-pointer shadow-sm"
+              >
+                <option value="newest">📅 Neueste zuerst</option>
+                <option value="oldest">📅 Älteste zuerst</option>
+                <option value="name_asc">🔤 Name (A – Z)</option>
+                <option value="name_desc">🔤 Name (Z – A)</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Create Folder Form Modal */}
       {isCreatingFolder && (
@@ -1005,9 +1075,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {activeTab === 'company' && currentFolderId === 'root' && !searchTerm && (
         <div className="space-y-6">
           {/* SMART PROPOSALS QUICK ACCESS HUB */}
-          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-900/30 via-surface to-purple-900/20 border border-blue-500/30 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-50/90 via-white to-purple-50/70 dark:from-blue-950/40 dark:via-surface dark:to-purple-950/30 border border-blue-200/90 dark:border-blue-500/30 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/30 shadow-inner">
+              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-500/30 shadow-inner">
                 <Sparkles size={24} />
               </div>
               <div>
@@ -1015,10 +1085,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                   <h4 className="font-extrabold text-sm sm:text-base text-text-primary">
                     Digitale Kunden-Offerten & Landingpages (Smart Proposals)
                   </h4>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/20">
                     30 Tage Cloud-Aktiv
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-300 dark:border-blue-500/20">
                     🔒 Mandantensicher
                   </span>
                 </div>
@@ -1030,9 +1100,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'proposals' }));
+                setActiveTab('proposals');
               }}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-2 cursor-pointer transition-all shrink-0"
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer transition-all shrink-0 active:scale-95"
             >
               <Eye size={15} /> Zu den Offerten & Landingpages →
             </button>
@@ -1326,19 +1396,19 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* ========================================================= */}
       {/* 3. LOOSE FILES & SUBFOLDER DRILL-DOWN VIEW */}
       {/* ========================================================= */}
-      {(currentFolderId !== 'root' || selectedProjectId || searchTerm || sortedFiles.length > 0) && (
+      {activeTab !== 'proposals' && (currentFolderId !== 'root' || selectedProjectId || searchTerm || sortedFiles.length > 0) && (
         <div className="space-y-4">
           {/* SMART PROPOSALS BANNER INSIDE FINANCE OR SALES FOLDER */}
           {activeTab === 'company' && (folderPath[folderPath.length - 1]?.name === '01_FINANZEN' || folderPath[folderPath.length - 1]?.name === '04_SALES') && (
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-surface to-blue-950/30 border border-emerald-500/30 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2 animate-in fade-in duration-200">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/90 via-white to-blue-50/70 dark:from-emerald-950/40 dark:via-surface dark:to-blue-950/30 border border-emerald-200/90 dark:border-emerald-500/30 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2 animate-in fade-in duration-200">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-500/20">
                   <Sparkles size={18} />
                 </div>
                 <div>
                   <div className="text-xs font-black text-text-primary flex items-center gap-1.5">
                     Live-Kundenofferten & Landingpages (30-Tage aktiv)
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">Cloud</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30 font-bold">Cloud</span>
                   </div>
                   <div className="text-[11px] text-text-muted">
                     Rechtssichere SIA-102/118 Angebote mit digitaler Signatur & Schweizer QR-Rechnung.
@@ -1346,8 +1416,8 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 </div>
               </div>
               <button
-                onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'proposals' }))}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer shrink-0"
+                onClick={() => setActiveTab('proposals')}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
               >
                 <Eye size={13} /> Offerten anzeigen →
               </button>
@@ -1614,6 +1684,27 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
             )}
           </div>
         </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* 4. DIGITALE KUNDEN-OFFERTEN & LANDINGPAGES (SMART PROPOSALS) */}
+      {/* ========================================================= */}
+      {activeTab === 'proposals' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <ProposalManagerDashboard 
+            embedded={true} 
+            onCreateNew={() => setShowPitchModal(true)} 
+          />
+        </div>
+      )}
+
+      {/* Pitch Deck Studio Modal zum Erstellen neuer Kunden-Offerten & Landingpages */}
+      {showPitchModal && typeof document !== 'undefined' && createPortal(
+        <PitchDeckStudio 
+          onClose={() => setShowPitchModal(false)} 
+          projectId={selectedProjectId || defaultProjId || undefined} 
+        />,
+        document.body
       )}
 
       {/* KI Brief- & Dokumenten-Studio Modal */}

@@ -112,7 +112,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?: () => void }) {
+export default function ProposalManagerDashboard({ onCreateNew, embedded }: { onCreateNew?: () => void; embedded?: boolean }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language } = useLanguage();
@@ -143,13 +143,16 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
   const handleCopyLink = async (proposal: SmartProposal) => {
     audioFeedback.playTouchClick();
     const url = `${window.location.origin}/p/${proposal.shareToken}`;
-    await copyToClipboard(url);
-    setCopiedId(proposal.id);
-    addToast(t('toast_copied'), 'success');
-    setTimeout(() => setCopiedId(null), 2500);
+    const ok = await copyToClipboard(url);
+    if (ok) {
+      setCopiedId(proposal.id);
+      addToast(t('toast_copied'), 'success');
+      setTimeout(() => setCopiedId(null), 2500);
+    }
   };
 
   const handleExtend = async (proposalId: string) => {
+    audioFeedback.playTouchClick();
     const updated = await extendProposalExpiry(proposalId, 30);
     if (updated) {
       addToast(t('toast_extended'), 'success');
@@ -158,25 +161,26 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
   };
 
   const handleDelete = async (proposalId: string) => {
-    if (window.confirm(t('confirm_delete'))) {
-      await deleteProposal(proposalId);
+    if (!window.confirm(t('confirm_delete'))) return;
+    audioFeedback.playTrashSwipe();
+    const ok = await deleteProposal(proposalId);
+    if (ok) {
       addToast(t('toast_deleted'), 'info');
-      loadProposals();
+      setProposals(prev => prev.filter(p => p.id !== proposalId));
     }
   };
 
   const filteredProposals = proposals.filter(p => {
-    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = 
+      (p.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.clientCompany || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-    const isExp = new Date(p.expiresAt).getTime() < Date.now();
-    let currentStatus = p.status;
-    if (isExp && currentStatus !== 'accepted') currentStatus = 'expired';
+    const isExpired = new Date(p.expiresAt).getTime() < Date.now();
+    const currentStatus = p.status === 'accepted' ? 'accepted' : isExpired ? 'expired' : 'active';
 
-    if (statusFilter === 'all') return matchesSearch;
-    if (statusFilter === 'expired') return matchesSearch && currentStatus === 'expired';
     if (statusFilter === 'accepted') return matchesSearch && currentStatus === 'accepted';
+    if (statusFilter === 'expired') return matchesSearch && currentStatus === 'expired';
     if (statusFilter === 'active') return matchesSearch && currentStatus === 'active';
     return matchesSearch;
   });
@@ -187,8 +191,17 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
   const expiredCount = proposals.filter(p => (new Date(p.expiresAt).getTime() < Date.now() || p.status === 'expired') && p.status !== 'accepted').length;
   const totalVolume = proposals.filter(p => p.status === 'accepted').reduce((sum, p) => sum + (p.acceptedBy?.finalPrice || p.basePrice || 0), 0);
 
+  const handleTriggerCreate = () => {
+    if (onCreateNew) {
+      onCreateNew();
+    } else {
+      window.dispatchEvent(new CustomEvent('open-pitch-modal'));
+      window.location.hash = '#pitchdeck';
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-8 space-y-8 bg-background min-h-full">
+    <div className={cn("transition-colors", embedded ? "space-y-6 bg-transparent" : "p-4 sm:p-8 space-y-8 bg-background min-h-full")}>
       {/* HEADER & STATS */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -200,7 +213,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
             {t('dashboard_subtitle')}
           </p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
               <ShieldCheck size={12} /> {t('vault_badge')}
             </span>
             <span className="text-[11px] text-text-muted">
@@ -209,14 +222,12 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
           </div>
         </div>
 
-        {onCreateNew && (
-          <button
-            onClick={onCreateNew}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer"
-          >
-            <Plus size={16} /> {t('btn_create_new')}
-          </button>
-        )}
+        <button
+          onClick={handleTriggerCreate}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
+        >
+          <Plus size={16} /> {t('btn_create_new')}
+        </button>
       </div>
 
       {/* KPI METRICS */}
@@ -317,16 +328,14 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
           <p className="text-xs text-text-muted max-w-sm mx-auto">
             {t('empty_desc')}
           </p>
-          {onCreateNew && (
-            <div className="pt-2">
-              <button
-                onClick={onCreateNew}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer"
-              >
-                <Plus size={14} /> {t('empty_btn')}
-              </button>
-            </div>
-          )}
+          <div className="pt-2">
+            <button
+              onClick={handleTriggerCreate}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Plus size={14} /> {t('empty_btn')}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -340,22 +349,22 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                 key={proposal.id}
                 className={cn(
                   "p-6 rounded-3xl border transition-all duration-200 bg-surface flex flex-col justify-between space-y-5 relative shadow-sm hover:shadow-md",
-                  isAccepted ? "border-emerald-500/40 bg-emerald-500/5" : isExpired ? "border-border opacity-75" : "border-border hover:border-accent-ai/40"
+                  isAccepted ? "border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-500/5" : isExpired ? "border-border opacity-75" : "border-border hover:border-accent-ai/40"
                 )}
               >
                 <div>
                   {/* Top Status & Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     {isAccepted ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1">
                         <Check size={11} /> {t('status_accepted')}
                       </span>
                     ) : isExpired ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-50 text-red-800 dark:bg-red-500/20 dark:text-red-400 border border-red-200 dark:border-red-500/30 flex items-center gap-1">
                         {t('status_expired')}
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
                         <Clock size={11} /> {t('status_days_left').replace('{days}', String(daysLeft))}
                       </span>
                     )}
@@ -382,7 +391,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                       </div>
                     </div>
                     {proposal.heroVideoUrl && (
-                      <span className="px-2 py-1 bg-blue-500/10 text-blue-400 text-[10px] font-bold rounded-lg flex items-center gap-1">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-transparent text-[10px] font-bold rounded-lg flex items-center gap-1">
                         <Play size={10} className="fill-current" /> {t('badge_video')}
                       </span>
                     )}
@@ -397,7 +406,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                         audioFeedback.playTouchClick();
                         setPreviewProposal(proposal);
                       }}
-                      className="px-3 py-2 rounded-xl bg-blue-600/15 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white dark:bg-blue-600/15 dark:hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white border border-blue-200 dark:border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                       title={t('btn_preview')}
                     >
                       <Eye size={14} /> {t('btn_preview')}
@@ -459,7 +468,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                     <h3 className="font-black text-sm sm:text-base text-text-primary truncate">
                       {t('preview_title')} {previewProposal.title}
                     </h3>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
                       <ShieldCheck size={11} /> {t('preview_tenant_badge')}
                     </span>
                   </div>
