@@ -685,7 +685,7 @@ export default function CompanyDashboard() {
             if (visibleItems.length === 0) return null;
             return (
               <div key={i} className="space-y-1">
-                <div className="px-3 mb-1 text-[10px] font-bold text-text-muted uppercase tracking-widest">{group.title}</div>
+                <div className="px-3 mb-1.5 text-[11px] font-bold text-text-muted uppercase tracking-wider">{group.title}</div>
                 {visibleItems.map(item => (
                   <button 
                     key={item.id} 
@@ -697,10 +697,10 @@ export default function CompanyDashboard() {
                         localStorage.removeItem('has_new_document');
                       }
                     }} 
-                    className={cn("w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}
+                    className={cn("w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}
                   >
                     <div className="flex items-center gap-3">
-                      <item.icon size={16} className="shrink-0" />
+                      <item.icon size={18} className="shrink-0" />
                       <span className="truncate">{item.label}</span>
                     </div>
                     {item.id === 'documents' && hasNewDocBadge && (
@@ -721,10 +721,10 @@ export default function CompanyDashboard() {
           {(() => {
             const userDisplayName = currentUser?.name || currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'User');
             return (
-              <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-start gap-3 px-3 py-2 bg-background border border-border rounded-xl transition-all text-xs font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
-                <div className="w-7 h-7 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
+              <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-start gap-3 px-3 py-2.5 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
+                <div className="w-8 h-8 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
                 <div className="text-left overflow-hidden">
-                  <div className="truncate text-xs font-bold text-text-primary">{userDisplayName}</div>
+                  <div className="truncate text-sm font-bold text-text-primary">{userDisplayName}</div>
                   <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{userRole}</div>
                 </div>
               </button>
