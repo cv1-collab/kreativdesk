@@ -15,7 +15,8 @@ import {
   AlertTriangle, PenTool, PieChart, CalendarDays, TrendingUp, RefreshCw, LogOut, Cuboid, Camera, Cloud,
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
-  Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight
+  Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
+  Video as VideoIcon
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -106,11 +107,12 @@ interface Slide {
   title: string; 
   content: string; 
   imageUrl?: string; 
+  videoUrl?: string;
   order_index: number; 
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
@@ -127,6 +129,102 @@ interface DeckSettings {
   colorMode: 'dark' | 'light';
   transitionEffect?: 'fade' | 'slide' | 'zoom';
 }
+
+// Helper to safely serialize a Slide for the remote Supabase schema
+// (Valid Supabase columns: id, project_id, company_id, title, subtitle, content, layout, image_url, order_index, created_at)
+export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any }) => {
+  const dbRecord: Record<string, any> = {};
+  if (slide.id !== undefined) dbRecord.id = slide.id;
+  if (slide.title !== undefined) dbRecord.title = slide.title;
+  if (slide.subtitle !== undefined) dbRecord.subtitle = slide.subtitle;
+  if (slide.layout !== undefined) dbRecord.layout = slide.layout;
+  if (slide.imageUrl !== undefined || slide.image_url !== undefined) {
+    dbRecord.image_url = slide.imageUrl !== undefined ? slide.imageUrl : slide.image_url;
+  }
+  if (slide.order_index !== undefined) dbRecord.order_index = slide.order_index;
+  if (slide.companyId !== undefined || slide.company_id !== undefined) {
+    dbRecord.company_id = slide.companyId !== undefined ? slide.companyId : slide.company_id;
+  }
+  if (slide.projectId !== undefined || slide.project_id !== undefined) {
+    dbRecord.project_id = slide.projectId !== undefined ? slide.projectId : slide.project_id;
+  }
+  dbRecord.created_at = slide.created_at || new Date().toISOString();
+
+  // Pack rich/extended attributes into content JSON envelope
+  const hasExtra = slide.dataPayload !== undefined ||
+    slide.notes !== undefined ||
+    slide.fontSize !== undefined ||
+    slide.titleFontSize !== undefined ||
+    slide.stamp !== undefined ||
+    slide.agendaItems !== undefined ||
+    slide.agenda_items !== undefined ||
+    slide.videoUrl !== undefined;
+
+  if (hasExtra) {
+    dbRecord.content = JSON.stringify({
+      text: slide.content || '',
+      dataPayload: slide.dataPayload,
+      notes: slide.notes,
+      fontSize: slide.fontSize,
+      titleFontSize: slide.titleFontSize,
+      stamp: slide.stamp,
+      agendaItems: slide.agendaItems || slide.agenda_items,
+      videoUrl: slide.videoUrl
+    });
+  } else if (slide.content !== undefined) {
+    dbRecord.content = slide.content;
+  }
+
+  return dbRecord;
+};
+
+// Helper to deserialize a Supabase record back into a full Slide object
+export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide => {
+  let contentText = d.content || '';
+  let dataPayload = d.data_payload || d.dataPayload || null;
+  let notes = d.notes || '';
+  let fontSize = d.font_size || d.fontSize || 18;
+  let titleFontSize = d.title_font_size || d.titleFontSize || 36;
+  let stamp = d.stamp || '';
+  let agendaItems = d.agenda_items || d.agendaItems || null;
+  let videoUrl = d.video_url || d.videoUrl;
+
+  if (typeof d.content === 'string' && d.content.trim().startsWith('{')) {
+    try {
+      const envelope = JSON.parse(d.content);
+      if (envelope && typeof envelope === 'object') {
+        if ('text' in envelope) contentText = envelope.text || '';
+        if ('dataPayload' in envelope) dataPayload = envelope.dataPayload;
+        if ('notes' in envelope) notes = envelope.notes;
+        if ('fontSize' in envelope) fontSize = envelope.fontSize;
+        if ('titleFontSize' in envelope) titleFontSize = envelope.titleFontSize;
+        if ('stamp' in envelope) stamp = envelope.stamp;
+        if ('agendaItems' in envelope) agendaItems = envelope.agendaItems;
+        if ('videoUrl' in envelope) videoUrl = envelope.videoUrl;
+      }
+    } catch(e) {}
+  }
+
+  return {
+    id: d.id,
+    title: d.title || '',
+    content: contentText,
+    imageUrl: d.image_url || d.imageUrl || '',
+    videoUrl,
+    layout: d.layout || 'split',
+    order_index: d.order_index ?? 0,
+    companyId: d.company_id || d.companyId,
+    projectId: d.project_id || d.projectId,
+    ownerId: d.owner_id || d.ownerId || fallbackOwnerId || 'admin',
+    created_at: d.created_at,
+    dataPayload,
+    notes,
+    fontSize,
+    titleFontSize,
+    stamp,
+    agendaItems
+  } as Slide;
+};
 
 export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () => void, projectId?: string }) {
   const { addToast } = useToast();
@@ -239,6 +337,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
   const [isMediaLoading, setIsMediaLoading] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
   const [mobileTab, setMobileTab] = useState<'slides' | 'content' | 'design' | 'import'>('slides');
 
@@ -873,22 +972,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           const query = supabase.from('slides').select('*').eq('project_id', targetId);
           const { data: loadedSlides } = await query;
           if (loadedSlides && loadedSlides.length > 0) {
-            slidesArr = loadedSlides.map((d: any) => ({
-              ...d,
-              id: d.id,
-              title: d.title || '',
-              content: d.content || '',
-              notes: d.notes || '',
-              stamp: d.stamp || '',
-              imageUrl: d.image_url || d.imageUrl,
-              dataPayload: d.data_payload || d.dataPayload,
-              fontSize: d.font_size || d.fontSize || 18,
-              titleFontSize: d.title_font_size || d.titleFontSize || 36,
-              layout: d.layout || 'split',
-              order_index: d.order_index || 0,
-              ownerId: d.owner_id || d.ownerId || currentUser?.uid,
-              projectId: d.project_id || d.projectId
-            }));
+            slidesArr = loadedSlides.map((d: any) => deserializeSlideFromDb(d, currentUser?.uid));
           }
         }
       } catch (err) {
@@ -991,6 +1075,51 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       addToast('Upload fehlgeschlagen', 'error');
     } finally {
       setIsUploadingImage(false);
+    }
+  };
+
+  const handleDirectVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>, target: 'slide', slideId?: string) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    setIsUploadingVideo(true);
+    addToast('Video wird hochgeladen...', 'info');
+
+    try {
+      const fileExt = file.name.split('.').pop() || 'mp4';
+      const filePath = `${safeCompanyId}/videos/${Date.now()}.${fileExt}`;
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      let downloadUrl = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        downloadUrl = urlData?.publicUrl || '';
+      }
+
+      if (!downloadUrl) {
+        downloadUrl = URL.createObjectURL(file);
+      }
+
+      const targetSlideId = slideId || activeSlideId;
+      if (targetSlideId) {
+        setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, videoUrl: downloadUrl } : s));
+        const slideToUpdate = slides.find(s => s.id === targetSlideId);
+        if (slideToUpdate) {
+          const serialized = serializeSlideForDb({ ...slideToUpdate, videoUrl: downloadUrl });
+          await supabase.from('slides').update(serialized).eq('id', targetSlideId);
+        }
+        addToast('Video erfolgreich hinterlegt!', 'success');
+      }
+    } catch (err) {
+      console.error('Video upload failed:', err);
+      const fallbackUrl = URL.createObjectURL(file);
+      const targetSlideId = slideId || activeSlideId;
+      if (targetSlideId) {
+        setSlides(prev => prev.map(s => s.id === targetSlideId ? { ...s, videoUrl: fallbackUrl } : s));
+      }
+      addToast('Video lokal geladen', 'info');
+    } finally {
+      setIsUploadingVideo(false);
+      e.target.value = '';
     }
   };
 
@@ -1248,38 +1377,26 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }
   };
 
-  const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string) => {
+  const handleAddSlide = async (layout: Slide['layout'] = 'split', title = t('new_slide'), dataPayload: any = null, imageUrl?: string, videoUrl?: string) => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     const newId = `slide-${Date.now()}`;
     const newSlide: Slide = {
       id: newId, title, content: t('type_text_here'), order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
-      layout, fontSize: 18, titleFontSize: 36, dataPayload, ...(imageUrl && { imageUrl }), notes: ''
+      layout, fontSize: 18, titleFontSize: 36, dataPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: ''
     };
     try {
-      const dbPayload: any = {
-        id: newId,
-        project_id: targetId,
-        company_id: safeCompanyId,
-        title: title || 'Neue Folie',
-        content: t('type_text_here'),
-        layout: layout || 'split',
-        font_size: 18,
-        title_font_size: 36,
-        order_index: slides.length,
-        created_at: new Date().toISOString()
-      };
-      if (imageUrl) dbPayload.image_url = imageUrl;
-      if (dataPayload) dbPayload.data_payload = dataPayload;
-
+      const dbPayload = serializeSlideForDb(newSlide);
       await supabase.from('slides').insert(dbPayload);
       setSlides(prev => [...prev, newSlide]);
       setActiveSlideId(newId);
       setShowAddMenu(false);
     } catch (error) { 
       console.error("handleAddSlide error:", error);
-      addToast(t('error_create'), "error"); 
+      setSlides(prev => [...prev, newSlide]);
+      setActiveSlideId(newId);
+      setShowAddMenu(false);
     }
   };
 
@@ -1811,11 +1928,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
   const upc = (field: keyof Slide, value: any) => {
     if (!isPreviewMode && activeSlide) {
-      const validCols = ['title', 'subtitle', 'content', 'layout', 'image_url', 'order_index'];
-      const dbField = field === 'imageUrl' ? 'image_url' : field;
-      if (validCols.includes(dbField)) {
-        supabase.from('slides').update({ [dbField]: value }).eq('id', activeSlide.id).then(() => {}, () => {});
-      }
+      const updated = { ...activeSlide, [field]: value };
+      const serialized = serializeSlideForDb(updated);
+      supabase.from('slides').update(serialized).eq('id', activeSlide.id).then(() => {}, () => {});
     }
   };
 
@@ -2228,36 +2343,110 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                  <div style={{ fontSize: `${contentFs}px` }} className={cn("w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar", tc)}>{displayContent}</div>
               )}
               
-              <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'slide')} 
+              <div onClick={() => !isPreviewMode && !slide.videoUrl && openMediaPicker('render', t('choose_image'), 'slide')} 
                    className={cn("w-1/2 h-full rounded-xl md:rounded-2xl overflow-hidden relative group/img transition-colors flex flex-col items-center justify-center", 
-                      !isPreviewMode && "border-2 border-dashed cursor-pointer",
+                      !isPreviewMode && "border-2 border-dashed",
+                      !isPreviewMode && !slide.videoUrl && "cursor-pointer",
                       isDarkTheme ? (!isPreviewMode ? "bg-black/20 border-white/10 hover:bg-black/40" : "") : (!isPreviewMode ? "bg-black/5 border-black/10 hover:bg-black/10" : "")
                    )}>
-                {sanitizeUrl(slide.imageUrl) ? (
+                {slide.videoUrl ? (
+                  <>
+                    <video src={slide.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
+                    {!isPreviewMode && (
+                      <button type="button" onClick={(e) => { e.stopPropagation(); upc('videoUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, videoUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20 hover:scale-110 transition-all shadow-lg">
+                        <Trash2 size={14}/>
+                      </button>
+                    )}
+                  </>
+                ) : sanitizeUrl(slide.imageUrl) ? (
                    <>
                      <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
                      {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
                    </>
                 ) : (
-                   !isPreviewMode && <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-400"><ImageIcon size={24} className="mb-2" /><span className="text-xs font-bold uppercase tracking-widest text-center">{t('choose_image')}</span></div>
+                   !isPreviewMode && (
+                     <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 gap-3 p-4">
+                       <div className="flex flex-col items-center hover:text-zinc-300 transition-colors">
+                         <ImageIcon size={24} className="mb-1" />
+                         <span className="text-[11px] font-bold uppercase tracking-widest text-center">{t('choose_image')}</span>
+                       </div>
+                       <div className="text-[10px] opacity-40 font-bold uppercase">oder</div>
+                       <label onClick={(e) => e.stopPropagation()} className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer transition-all">
+                         <VideoIcon size={14}/> <span>Video hochladen</span>
+                         <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', slide.id)} className="hidden" />
+                       </label>
+                     </div>
+                   )
                 )}
               </div>
             </div>
           )}
           
           {slide.layout === 'image-focus' && (
-            <div onClick={() => !isPreviewMode && openMediaPicker('render', t('choose_image'), 'slide')} 
+            <div onClick={() => !isPreviewMode && !slide.videoUrl && openMediaPicker('render', t('choose_image'), 'slide')} 
                  className={cn("w-full h-full rounded-xl md:rounded-2xl overflow-hidden relative group/img transition-colors flex flex-col items-center justify-center", 
-                    !isPreviewMode && "border-2 border-dashed cursor-pointer",
+                    !isPreviewMode && "border-2 border-dashed",
+                    !isPreviewMode && !slide.videoUrl && "cursor-pointer",
                     isDarkTheme ? (!isPreviewMode ? "bg-black/20 border-white/10 hover:bg-black/40" : "") : (!isPreviewMode ? "bg-black/5 border-black/10 hover:bg-black/10" : "")
                  )}>
-              {sanitizeUrl(slide.imageUrl) ? (
+              {slide.videoUrl ? (
+                <>
+                  <video src={slide.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
+                  {!isPreviewMode && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); upc('videoUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, videoUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20 hover:scale-110 transition-all shadow-lg">
+                      <Trash2 size={14}/>
+                    </button>
+                  )}
+                </>
+              ) : sanitizeUrl(slide.imageUrl) ? (
                 <>
                   <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
                   {!isPreviewMode && <button type="button" onClick={(e) => { e.stopPropagation(); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/img:opacity-100 z-20"><Trash2 size={14}/></button>}
                 </>
               ) : (
-                !isPreviewMode && <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 hover:text-zinc-400"><ImageIcon size={32} className="mb-2" /><span className="text-sm font-bold uppercase tracking-widest">{t('choose_image')}</span></div>
+                !isPreviewMode && (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 gap-3 p-6">
+                    <div className="flex flex-col items-center hover:text-zinc-300 transition-colors">
+                      <ImageIcon size={32} className="mb-2" />
+                      <span className="text-sm font-bold uppercase tracking-widest">{t('choose_image')}</span>
+                    </div>
+                    <div className="text-xs opacity-40 font-bold uppercase">oder</div>
+                    <label onClick={(e) => e.stopPropagation()} className="px-4 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 text-xs font-bold flex items-center gap-2 cursor-pointer transition-all">
+                      <VideoIcon size={16}/> <span>Video hochladen (MP4 / 4K)</span>
+                      <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', slide.id)} className="hidden" />
+                    </label>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {slide.layout === 'video-focus' && (
+            <div className="w-full h-full rounded-xl md:rounded-2xl overflow-hidden relative border-black/10 bg-black flex items-center justify-center group/vid">
+              {slide.videoUrl || slide.imageUrl ? (
+                <>
+                  <video src={slide.videoUrl || slide.imageUrl} controls autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
+                  {!isPreviewMode && (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); upc('videoUrl', ''); upc('imageUrl', ''); setSlides(prev => prev.map(s => s.id === slide.id ? { ...s, videoUrl: '', imageUrl: '' } : s)); }} className="absolute top-4 right-4 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover/vid:opacity-100 z-20 hover:scale-110 transition-all shadow-lg">
+                      <Trash2 size={14}/>
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-zinc-400 gap-4 p-6">
+                  <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center">
+                    <VideoIcon size={32} />
+                  </div>
+                  <div className="text-center">
+                    <h4 className="font-bold text-base text-white mb-1">Video-Fokus Folie</h4>
+                    <p className="text-xs text-zinc-400 max-w-sm mb-4">Lade ein 4K- oder Full-HD Video (MP4, WebM) für deine Präsentation hoch.</p>
+                    <label className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center gap-2 cursor-pointer transition-all shadow-lg inline-flex">
+                      {isUploadingVideo ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                      <span>Video Datei auswählen</span>
+                      <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', slide.id)} className="hidden" disabled={isUploadingVideo} />
+                    </label>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -2478,6 +2667,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                          <button type="button" onClick={() => handleAddSlide('title-only', t('new_vision'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Type size={16}/> {t('title_slide')}</button>
                          <button type="button" onClick={() => handleAddSlide('split', t('new_topic'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Columns size={16}/> {t('text_and_image')}</button>
                          <button type="button" onClick={() => handleAddSlide('image-focus', t('image_slide'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><ImageIcon size={16}/> {t('image_slide')}</button>
+                         <button type="button" onClick={() => handleAddSlide('video-focus', 'Video-Präsentation')} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><VideoIcon size={16}/> Video-Fokus (HD/4K)</button>
                          <button type="button" onClick={() => handleAddSlide('text-only', t('text_block'))} className="w-full text-left px-4 py-3 text-sm font-bold bg-surface rounded-lg border border-border hover:bg-surface-hover flex items-center gap-3"><Layout size={16}/> {t('text_block')}</button>
                        </motion.div>
                      )}
@@ -2797,6 +2987,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
+                    <button type="button" onClick={() => { handleAddSlide('video-focus', 'Video-Präsentation'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><VideoIcon size={14}/> Video-Fokus (HD/4K)</button>
                     <button type="button" onClick={() => { handleAddSlide('text-only', t('text_block')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Layout size={14}/> {t('text_block')}</button>
                     <button type="button" onClick={() => { handleGenerateAgendaSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><BookOpen size={14}/> Inhaltsverzeichnis & Agenda</button>
                     <button type="button" onClick={() => { handleGenerateChartSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><PieChart size={14}/> Baukosten Donut</button>
@@ -2861,6 +3052,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       { id: 'title-only', icon: Type, title: 'Titel-Folie' },
                       { id: 'split', icon: Columns, title: 'Text & Bild' },
                       { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
+                      { id: 'video-focus', icon: VideoIcon, title: 'Video-Fokus' },
                       { id: 'text-only', icon: Layout, title: 'Nur Text' },
                       { id: 'chart-donut', icon: PieChart, title: 'Baukosten Donut Chart' }
                     ].map((l) => (
@@ -2933,6 +3125,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title={t('choose_image')} className="px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
                         <ImageIcon size={14} /> <span className="hidden xl:inline">{t('image_label')}</span>
                       </button>
+                    )}
+                    {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus' || activeSlide.layout === 'video-focus') && (
+                      <label title="Video hochladen (MP4, WebM)" className="px-2.5 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
+                        {isUploadingVideo ? <Loader2 size={14} className="animate-spin" /> : <VideoIcon size={14} />}
+                        <span className="hidden xl:inline">Video</span>
+                        <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', activeSlide.id)} className="hidden" disabled={isUploadingVideo} />
+                      </label>
                     )}
                   </div>
                 </div>

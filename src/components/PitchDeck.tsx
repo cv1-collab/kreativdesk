@@ -9,7 +9,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { cn, sanitizeUrl } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
 import { useToast } from '../contexts/ToastContext';
-import PitchDeckStudio from './PitchDeckStudio';
+import PitchDeckStudio, { deserializeSlideFromDb } from './PitchDeckStudio';
 import { demoTemplates } from '../utils/demoTemplates';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 
@@ -18,10 +18,11 @@ interface Slide {
   title: string; 
   content: string; 
   imageUrl?: string; 
+  videoUrl?: string;
   order_index: number; 
   ownerId: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
@@ -214,18 +215,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           .order('order_index', { ascending: true });
 
         if (data && data.length > 0) {
-          const loadedSlides: Slide[] = data.map(d => ({
-            id: d.id,
-            title: d.title || '',
-            content: d.content || '',
-            imageUrl: d.image_url || d.imageUrl,
-            dataPayload: d.data_payload || d.dataPayload,
-            fontSize: d.font_size || d.fontSize,
-            layout: d.layout || 'split',
-            order_index: d.order_index || 0,
-            ownerId: d.owner_id || d.ownerId || currentUser?.uid,
-            projectId: d.project_id || d.projectId
-          }));
+          const loadedSlides: Slide[] = data.map(d => deserializeSlideFromDb(d, currentUser?.uid) as any);
           setSlides(loadedSlides);
           if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
         } else if (slides.length === 0) {
@@ -486,14 +476,28 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             <div className="flex flex-row w-full h-full gap-10">
               <div style={{ fontSize: `${slide.fontSize || 18}px` }} className="w-1/2 h-full whitespace-pre-wrap leading-relaxed overflow-y-auto custom-scrollbar text-zinc-700">{slide.content}</div>
               <div className="w-1/2 h-full rounded-2xl overflow-hidden relative border-black/10 bg-black/5">
-                {sanitizeUrl(slide.imageUrl) ? <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" /> : null}
+                {slide.videoUrl ? (
+                  <video src={slide.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
+                ) : sanitizeUrl(slide.imageUrl) ? (
+                  <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
+                ) : null}
               </div>
             </div>
           )}
           
           {slide.layout === 'image-focus' && (
             <div className="w-full h-full rounded-2xl overflow-hidden relative border-black/10 bg-black/5">
-              {sanitizeUrl(slide.imageUrl) ? <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" /> : null}
+              {slide.videoUrl ? (
+                <video src={slide.videoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
+              ) : sanitizeUrl(slide.imageUrl) ? (
+                <img src={sanitizeUrl(slide.imageUrl)} className="w-full h-full object-cover absolute pointer-events-none" />
+              ) : null}
+            </div>
+          )}
+
+          {slide.layout === 'video-focus' && (
+            <div className="w-full h-full rounded-2xl overflow-hidden relative border-black/10 bg-black">
+              <video src={slide.videoUrl || slide.imageUrl} controls autoPlay loop muted playsInline className="w-full h-full object-cover absolute" />
             </div>
           )}
 
