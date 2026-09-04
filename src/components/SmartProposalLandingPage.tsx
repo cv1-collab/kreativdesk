@@ -24,6 +24,486 @@ import { sendAcceptanceConfirmationEmail, EmailDispatchResult } from '../service
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { MesseOffertePDFDocument } from './interactv/pdf/MesseOffertePDFDocument';
 
+const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
+  de: {
+    backToApp: 'Zurück zur App',
+    back: 'Zurück',
+    backTooltip: 'Zurück zum Pitch Deck Studio / Dashboard',
+    daysLeft: 'Noch {days} Tage',
+    share: 'Teilen',
+    shareTooltip: 'Offerte teilen (WhatsApp, LinkedIn, E-Mail)',
+    companyAndQR: 'Firmendaten & QR-IBAN',
+    companyAndQRTooltip: 'Schweizer Firmendaten, QR-IBAN & Bankangaben bearbeiten',
+    story: 'Story',
+    deck: 'Deck',
+    approved: 'Freigegeben',
+    accept: 'Annehmen',
+    successTitle: 'Dieses Angebot wurde erfolgreich digital freigegeben!',
+    successSubtitle: 'Rechtsverbindlich signiert für {client} ({currency} {amount})',
+    pdfStudioBtn: 'Vertragsbeleg & QR-Zahlteil PDF Studio',
+    qrSlipTitle: 'Offizieller Schweizer QR-Zahlteil (30% Projektanzahlung)',
+    depositHeading: 'Anzahlung: CHF {amount}',
+    depositDesc: 'Sie können die Projektanzahlung bequem via TWINT, Mobile-Banking oder E-Banking per QR-Code Scan begleichen. Die Ausführungsplanung startet unmittelbar nach Zahlungseingang.',
+    accountQrIban: 'Konto / QR-IBAN ({bank})',
+    creditorUid: 'Zahlungsempfänger & UID',
+    twintQrLabel: 'TWINT & E-Banking QR-Zahlteil',
+    heroBadge: 'Exklusives Projektangebot & Präsentation',
+    createdFor: 'Erstellt für:',
+    showreelLabel: '▶ 4K Projekt-Showreel',
+    storyHeading: 'Projekt-Details & Etappen',
+    storySubheading: 'Blättern Sie durch alle wesentlichen Folien und Planungsunterlagen',
+    after3d: '✨ 3D-Neubau (Nachher)',
+    beforeSite: '📷 Bestand (Vorher)',
+    noComparison: 'Keine Vergleichsbilder geladen',
+    pos: 'Pos',
+    servicePhase: 'Leistung / Phase',
+    serviceExecution: 'Leistung / Ausführung',
+    amount: 'Betrag',
+    total: 'Gesamt',
+    slideCountLabel: '{title} • Folie {curr} von {total}',
+    keyboardHint: '⌨️ [←] [→] [Space] zum Blättern',
+    showStoryMode: 'Story Mode anzeigen',
+    prev: 'Vorherige',
+    next: 'Nächste',
+    slideThumb: 'Folie {num}',
+    costHeading: 'Investitionsübersicht & Konfiguration',
+    costSubheading: 'Wählen Sie optionale Zusatzpakete für Ihr massgeschneidertes Leistungspaket',
+    baseScopeTitle: 'Basis-Leistungsumfang & Ausführung',
+    baseScopeSub: 'Konzeption, Werkplanung & Projektbegleitung gemäss SIA',
+    optionalAddons: 'Optionale Zusatzpakete',
+    totalExclVat: 'Gesamtinvestition (Exkl. MwSt.)',
+    acceptProposalCta: 'Angebot digital annehmen',
+    siaBadge: 'Transparenter SIA-Zahlungsplan',
+    siaHeading: 'Etappen & Zahlungsmeilensteine',
+    siaSubheading: 'Vergütung nach tatsächlichem Baufortschritt gemäss SIA 102 / 118',
+    tranche: 'Tranche',
+    dueAmount: 'Fälliger Betrag:',
+    defaultMs1Phase: 'Phase 1: Vorprojekt & Machbarkeit',
+    defaultMs1Desc: 'Grundlagenanalyse, Vorkonzept & Kostenschätzung (SIA 102)',
+    defaultMs2Phase: 'Phase 2: Bauprojekt & Baueingabe',
+    defaultMs2Desc: 'Bewilligungsfähige Projektpläne & Baueingabe bei Behörden',
+    defaultMs3Phase: 'Phase 3: Ausführungsplanung',
+    defaultMs3Desc: 'Detailpläne, Devisierung & Vergabe an Handwerker',
+    defaultMs4Phase: 'Phase 4: Realisierung & Bauleitung',
+    defaultMs4Desc: 'Örtliche Bauleitung, Qualitäts- & Kostenkontrolle',
+    defaultMs5Phase: 'Phase 5: Abschluss & Abnahme',
+    defaultMs5Desc: 'Schlussabrechnung, Mängelbehebung & Übergabe',
+    legalBadge: 'Rechtliche Sicherheit',
+    legalHeading: 'Vertragsdokumente & AGBs',
+    legalSubheading: 'Transparente Geschäftsbedingungen, Werkverträge & Unterlagen zur Einsicht',
+    validPerSia: 'Gültig gemäss SIA',
+    previewInBrowser: 'Vorschau im Browser',
+    downloadPdf: 'PDF Herunterladen',
+    officialLegalDoc: 'Offizielles Vertragsdokument der Kreativ Desk Planung',
+    officialLegalDocDesc: 'Dieses Dokument basiert auf den Standardkonditionen des Schweizerischen Ingenieur- und Architektenvereins (SIA) und dem Schweizerischen Obligationenrecht (OR).',
+    close: 'Schliessen',
+    inquiryHeading: 'Haben Sie eine Frage zur Offerte?',
+    inquirySubheading: 'Unser Planungsteam steht Ihnen direkt per WhatsApp, Telefon oder Chat zur Verfügung.',
+    askViaWhatsapp: 'Direkt per WhatsApp fragen',
+    inquiryNamePlaceholder: 'Ihr Name',
+    inquiryEmailPlaceholder: 'Ihre E-Mail',
+    inquiryQuestionPlaceholder: 'Ihre Frage oder Bemerkung zu einer bestimmten Position...',
+    send: 'Senden',
+    sentToast: 'Gesendet! ✅',
+    inquirySuccess: 'Vielen Dank! Ihre Rückfrage wurde an den zuständigen Projektleiter übermittelt.',
+    phoneInquiry: 'Telefonische Rückfrage',
+    emailInquiry: 'E-Mail schreiben',
+    copyright: '© 2026 Kreativ Desk & interacTV – Sichere Cloud-Präsentationen mit 30-Tage Gültigkeitsgarantie',
+    modalTitle: 'Angebot verbindlich annehmen',
+    modalSub: 'Rechtsgültige E-Signatur & Beauftragung',
+    orderSuccessTitle: 'Vielen Dank für Ihren Auftrag!',
+    orderSuccessDesc: 'Die Offerte wurde erfolgreich digital gegengezeichnet. Ihr Vertrag, die E-Mail-Bestätigung und der Schweizer QR-Zahlteil wurden generiert.',
+    sia118BadgeTitle: 'SIA 118 E-Signatur',
+    sia118BadgeDesc: 'Rechtsgültig digital signiert & revisionssicher archiviert.',
+    bexioBadgeTitle: '🇨🇭 Bexio ERP Sync',
+    bexioSuccess: 'Offerte #{num} & Anzahlung gebucht.',
+    bexioPending: 'Synchronisation mit Schweizer Buchhaltung aktiv.',
+    emailBadgeTitle: 'Bestätigungs-E-Mail',
+    emailDelivered: 'Zugestellt an {email}',
+    emailSentTo: 'Beleg & QR-Link an {email} versendet.',
+    qrBadgeTitle: 'Swiss QR-Rechnung (30%)',
+    qrBadgeDesc: 'QR-IBAN: {iban}... sofort zahlbar.',
+    downloadOrderPdf: 'Auftragsbestätigung (PDF)',
+    downloadSwissQrBill: 'Schweizer QR-Rechnung (30% Anzahlung)',
+    confirmedTotalLabel: 'Bestätigter Gesamtbetrag (exkl. MwSt.):',
+    siaCompliantBadge: 'SIA 102/118 Konform',
+    yourName: 'Ihr Name *',
+    yourNamePlaceholder: 'z. B. Dr. Thomas Keller',
+    company: 'Firma / Organisation',
+    companyPlaceholder: 'z. B. Keller Holding AG',
+    businessEmail: 'Geschäftliche E-Mail *',
+    businessEmailPlaceholder: 'z. B. keller@firma.ch',
+    phone: 'Telefonnummer',
+    phonePlaceholder: 'z. B. +41 79 123 45 67',
+    drawSignatureLabel: 'Digitale Unterschrift (mit Finger oder Maus zeichnen) *',
+    resetSignature: 'Zurücksetzen',
+    signHerePlaceholder: 'Hier unterschreiben...',
+    legalCheckboxLabel: 'Ich bestätige hiermit die verbindliche Annahme der Offerte sowie die Kenntnisnahme und Akzeptanz der Allgemeinen Geschäftsbedingungen (AGB), des Werkvertrages (SIA 118) und des SIA-Zahlungsplans.',
+    cancel: 'Abbrechen',
+    signing: 'Wird signiert...',
+    signSubmitBtn: 'Rechtsverbindlich Unterzeichnen & PDF laden',
+    floatingAiBtn: 'Fragen zum Angebot? (KI-Berater)',
+    aiAdvisorTitle: 'KI-Projektberater',
+    aiAdvisorSubtitle: 'Live-Auskunft zur Offerte #{token}',
+    aiThinking: 'Antwort wird formuliert...',
+    aiInputPlaceholder: 'Frage zu Phasen, Preis, Terminen...',
+    initialAiGreeting: 'Guten Tag! Ich bin Ihr persönlicher KI-Projektberater für dieses Angebot. Haben Sie Fragen zum Leistungsumfang, den Phasen, Zahlungskonditionen oder Garantien?',
+    shareModalTitle: 'Offerte & Präsentation teilen',
+    shareModalSub: 'Direkt per WhatsApp, LinkedIn oder E-Mail an Entscheider senden',
+    directLinkLabel: 'Direktlink zur interaktiven Offerte',
+    copy: 'Kopieren',
+    copied: 'Kopiert!',
+    smartphoneQrTitle: 'Smartphone QR-Scan',
+    smartphoneQrDesc: 'Kunde kann den QR-Code mit der Smartphone-Kamera scannen, um die Offerte sofort auf dem Handy zu prüfen & digital zu unterschreiben.',
+    companyModalTitle: 'Schweizer Firmendaten & QR-Rechnung',
+    companyModalSub: 'Verwaltung von QR-IBAN, UID-Nummer, Bankinstitut und Firmenangaben',
+    companyName: 'Firmenname / Rechnungssteller *',
+    legalForm: 'Rechtsform',
+    streetAndNo: 'Strasse & Nr.',
+    street: 'Strasse',
+    number: 'Nr.',
+    zipAndCity: 'PLZ & Ort',
+    zip: 'PLZ',
+    city: 'Ort',
+    bankingQrSection: 'Schweizer QR-Rechnung & Bankdaten',
+    qrIban: 'Schweizer QR-IBAN (Zahlteil) *',
+    bankName: 'Bankinstitut',
+    uidNumber: 'UID / MWST-Nummer',
+    regularIban: 'Reguläre IBAN',
+    officialEmail: 'Offizielle E-Mail',
+    saveCompanyBtn: 'Firmendaten & QR-Code speichern',
+    presentationNotFound: 'Präsentation nicht gefunden',
+    presentationNotFoundDesc: 'Der angeforderte Link ist ungültig oder wurde gelöscht. Bitte wenden Sie sich an Ihren Ansprechpartner.',
+    validityExpired: 'Gültigkeit abgelaufen',
+    proposalExpiredTitle: 'Dieses Angebot ist abgelaufen',
+    proposalExpiredDesc: 'Das Angebot für {title} war 30 Tage gültig und ist am {date} abgelaufen. Möchten Sie eine Verlängerung oder ein aktualisiertes Angebot anfordern?',
+    requestExtension: 'Verlängerung anfragen',
+    loadingPresentation: 'Lade Kunden-Präsentation...',
+    protectedPresentation: 'Geschützte Kunden-Präsentation',
+    pinRequired: 'Dieses Dokument ist passwortgeschützt. Bitte geben Sie Ihren PIN-Code ein.',
+    pinWrong: 'Falscher PIN-Code. Bitte erneut versuchen.',
+    openPresentation: 'Präsentation öffnen'
+  },
+  en: {
+    backToApp: 'Back to App',
+    back: 'Back',
+    backTooltip: 'Back to Pitch Deck Studio / Dashboard',
+    daysLeft: '{days} days left',
+    share: 'Share',
+    shareTooltip: 'Share proposal (WhatsApp, LinkedIn, Email)',
+    companyAndQR: 'Company & QR-IBAN',
+    companyAndQRTooltip: 'Edit Swiss company details, QR-IBAN & banking information',
+    story: 'Story',
+    deck: 'Deck',
+    approved: 'Approved',
+    accept: 'Accept',
+    successTitle: 'This proposal has been digitally approved!',
+    successSubtitle: 'Legally signed for {client} ({currency} {amount})',
+    pdfStudioBtn: 'Contract Receipt & Swiss QR PDF Studio',
+    qrSlipTitle: 'Official Swiss QR Payment Slip (30% Project Deposit)',
+    depositHeading: 'Deposit: CHF {amount}',
+    depositDesc: 'You can settle the project deposit conveniently via TWINT, mobile banking or e-banking by scanning the QR code. Execution planning commences immediately upon payment.',
+    accountQrIban: 'Account / QR-IBAN ({bank})',
+    creditorUid: 'Beneficiary & UID',
+    twintQrLabel: 'TWINT & E-Banking QR Payment Part',
+    heroBadge: 'Exclusive Project Proposal & Presentation',
+    createdFor: 'Created for:',
+    showreelLabel: '▶ 4K Project Showreel',
+    storyHeading: 'Project Details & Stages',
+    storySubheading: 'Browse through all key slides and planning documents',
+    after3d: '✨ 3D New Build (After)',
+    beforeSite: '📷 Existing Site (Before)',
+    noComparison: 'No comparison images loaded',
+    pos: 'Pos',
+    servicePhase: 'Service / Phase',
+    serviceExecution: 'Service / Execution',
+    amount: 'Amount',
+    total: 'Total',
+    slideCountLabel: '{title} • Slide {curr} of {total}',
+    keyboardHint: '⌨️ [←] [→] [Space] to navigate',
+    showStoryMode: 'Show Story Mode',
+    prev: 'Previous',
+    next: 'Next',
+    slideThumb: 'Slide {num}',
+    costHeading: 'Investment Overview & Configuration',
+    costSubheading: 'Select optional add-on packages for your customized scope of work',
+    baseScopeTitle: 'Base Scope of Work & Execution',
+    baseScopeSub: 'Concept, detail design & project management according to SIA',
+    optionalAddons: 'Optional Add-on Packages',
+    totalExclVat: 'Total Investment (Excl. VAT)',
+    acceptProposalCta: 'Accept proposal digitally',
+    siaBadge: 'Transparent SIA Payment Schedule',
+    siaHeading: 'Stages & Payment Milestones',
+    siaSubheading: 'Remuneration based on actual construction progress per SIA 102 / 118',
+    tranche: 'Installment',
+    dueAmount: 'Due Amount:',
+    defaultMs1Phase: 'Phase 1: Preliminary Project & Feasibility',
+    defaultMs1Desc: 'Basic analysis, preliminary concept & cost estimate (SIA 102)',
+    defaultMs2Phase: 'Phase 2: Building Project & Submission',
+    defaultMs2Desc: 'Approvable project plans & authority permit submission',
+    defaultMs3Phase: 'Phase 3: Detailed Execution Planning',
+    defaultMs3Desc: 'Detailed drawings, tendering & contractor procurement',
+    defaultMs4Phase: 'Phase 4: Realization & Site Supervision',
+    defaultMs4Desc: 'On-site construction supervision, quality & cost control',
+    defaultMs5Phase: 'Phase 5: Completion & Handover',
+    defaultMs5Desc: 'Final accounting, snag list resolution & formal handover',
+    legalBadge: 'Legal Certainty',
+    legalHeading: 'Contract Documents & Terms',
+    legalSubheading: 'Transparent terms and conditions, works contracts & review documents',
+    validPerSia: 'Valid according to SIA',
+    previewInBrowser: 'Preview in Browser',
+    downloadPdf: 'Download PDF',
+    officialLegalDoc: 'Official Contract Document of Kreativ Desk Planning',
+    officialLegalDocDesc: 'This document is based on standard SIA conditions and the Swiss Code of Obligations (CO).',
+    close: 'Close',
+    inquiryHeading: 'Do you have a question about this proposal?',
+    inquirySubheading: 'Our planning team is available directly via WhatsApp, phone, or chat.',
+    askViaWhatsapp: 'Ask directly via WhatsApp',
+    inquiryNamePlaceholder: 'Your Name',
+    inquiryEmailPlaceholder: 'Your Email',
+    inquiryQuestionPlaceholder: 'Your question or comment regarding a specific position...',
+    send: 'Send',
+    sentToast: 'Sent! ✅',
+    inquirySuccess: 'Thank you! Your inquiry has been forwarded to the project manager.',
+    phoneInquiry: 'Phone Inquiry',
+    emailInquiry: 'Send Email',
+    copyright: '© 2026 Kreativ Desk & interacTV – Secure Cloud Presentations with 30-Day Validity Guarantee',
+    modalTitle: 'Accept Proposal Bindingly',
+    modalSub: 'Legally binding e-signature & commissioning',
+    orderSuccessTitle: 'Thank you for your order!',
+    orderSuccessDesc: 'The proposal has been successfully counter-signed digitally. Your contract, confirmation email, and Swiss QR-bill have been generated.',
+    sia118BadgeTitle: 'SIA 118 E-Signature',
+    sia118BadgeDesc: 'Legally signed digitally & audit-proof archived.',
+    bexioBadgeTitle: '🇨🇭 Bexio ERP Sync',
+    bexioSuccess: 'Proposal #{num} & deposit booked.',
+    bexioPending: 'Sync with Swiss accounting active.',
+    emailBadgeTitle: 'Confirmation Email',
+    emailDelivered: 'Delivered to {email}',
+    emailSentTo: 'Receipt & QR link sent to {email}.',
+    qrBadgeTitle: 'Swiss QR-Bill (30%)',
+    qrBadgeDesc: 'QR-IBAN: {iban}... immediately payable.',
+    downloadOrderPdf: 'Order Confirmation (PDF)',
+    downloadSwissQrBill: 'Swiss QR-Bill (30% Deposit)',
+    confirmedTotalLabel: 'Confirmed Total Amount (excl. VAT):',
+    siaCompliantBadge: 'SIA 102/118 Compliant',
+    yourName: 'Your Name *',
+    yourNamePlaceholder: 'e.g. Dr. Thomas Keller',
+    company: 'Company / Organization',
+    companyPlaceholder: 'e.g. Keller Holding AG',
+    businessEmail: 'Business Email *',
+    businessEmailPlaceholder: 'e.g. keller@company.com',
+    phone: 'Phone Number',
+    phonePlaceholder: 'e.g. +41 79 123 45 67',
+    drawSignatureLabel: 'Digital Signature (draw with finger or mouse) *',
+    resetSignature: 'Reset',
+    signHerePlaceholder: 'Sign here...',
+    legalCheckboxLabel: 'I hereby confirm the binding acceptance of the proposal as well as the acknowledgment and acceptance of the General Terms and Conditions (GTC), the Works Contract (SIA 118), and the SIA Payment Schedule.',
+    cancel: 'Cancel',
+    signing: 'Signing...',
+    signSubmitBtn: 'Sign Bindingly & Download PDF',
+    floatingAiBtn: 'Questions on proposal? (AI Advisor)',
+    aiAdvisorTitle: 'AI Project Advisor',
+    aiAdvisorSubtitle: 'Live guidance for proposal #{token}',
+    aiThinking: 'Formulating response...',
+    aiInputPlaceholder: 'Ask about phases, pricing, deadlines...',
+    initialAiGreeting: 'Hello! I am your personal AI project advisor for this proposal. Do you have any questions regarding the scope, phases, payment terms, or warranties?',
+    shareModalTitle: 'Share Proposal & Presentation',
+    shareModalSub: 'Send directly via WhatsApp, LinkedIn or email to decision makers',
+    directLinkLabel: 'Direct link to interactive proposal',
+    copy: 'Copy',
+    copied: 'Copied!',
+    smartphoneQrTitle: 'Smartphone QR Scan',
+    smartphoneQrDesc: 'Client can scan the QR code with their smartphone camera to review and digitally sign the proposal immediately.',
+    companyModalTitle: 'Swiss Company Data & QR-Bill',
+    companyModalSub: 'Manage QR-IBAN, UID number, banking institution and company details',
+    companyName: 'Company Name / Billed By *',
+    legalForm: 'Legal Form',
+    streetAndNo: 'Street & No.',
+    street: 'Street',
+    number: 'No.',
+    zipAndCity: 'ZIP & City',
+    zip: 'ZIP',
+    city: 'City',
+    bankingQrSection: 'Swiss QR-Bill & Banking Details',
+    qrIban: 'Swiss QR-IBAN (Payment Part) *',
+    bankName: 'Banking Institution',
+    uidNumber: 'UID / VAT Number',
+    regularIban: 'Regular IBAN',
+    officialEmail: 'Official Email',
+    saveCompanyBtn: 'Save Company Data & QR-Code',
+    presentationNotFound: 'Presentation not found',
+    presentationNotFoundDesc: 'The requested link is invalid or has been deleted. Please contact your representative.',
+    validityExpired: 'Validity Expired',
+    proposalExpiredTitle: 'This proposal has expired',
+    proposalExpiredDesc: 'The proposal for {title} was valid for 30 days and expired on {date}. Would you like to request an extension or an updated offer?',
+    requestExtension: 'Request Extension',
+    loadingPresentation: 'Loading client presentation...',
+    protectedPresentation: 'Protected Client Presentation',
+    pinRequired: 'This document is password protected. Please enter your PIN code.',
+    pinWrong: 'Incorrect PIN code. Please try again.',
+    openPresentation: 'Open Presentation'
+  },
+  fr: {
+    backToApp: 'Retour à l\'app',
+    back: 'Retour',
+    backTooltip: 'Retour au Pitch Deck Studio / Tableau de bord',
+    daysLeft: 'Encore {days} j.',
+    share: 'Partager',
+    shareTooltip: 'Partager l\'offre (WhatsApp, LinkedIn, Email)',
+    companyAndQR: 'Données entreprise & QR-IBAN',
+    companyAndQRTooltip: 'Modifier les données suisses, QR-IBAN & coordonnées bancaires',
+    story: 'Histoire',
+    deck: 'Slides',
+    approved: 'Validé',
+    accept: 'Accepter',
+    successTitle: 'Cette offre a été validée numériquement avec succès!',
+    successSubtitle: 'Signé juridiquement pour {client} ({currency} {amount})',
+    pdfStudioBtn: 'Reçu contractuel & bulletin QR PDF Studio',
+    qrSlipTitle: 'Bulletin de versement QR officiel (30% acompte de projet)',
+    depositHeading: 'Acompte : CHF {amount}',
+    depositDesc: 'Vous pouvez régler l\'acompte facilement par TWINT, banque mobile ou e-banking en scannant le code QR. La planification démarre dès réception.',
+    accountQrIban: 'Compte / QR-IBAN ({bank})',
+    creditorUid: 'Bénéficiaire & UID',
+    twintQrLabel: 'Bulletin de versement QR TWINT & E-Banking',
+    heroBadge: 'Offre de projet exclusive & présentation',
+    createdFor: 'Créé pour :',
+    showreelLabel: '▶ Showreel de projet 4K',
+    storyHeading: 'Détails du projet & étapes',
+    storySubheading: 'Parcourez toutes les diapositives et documents de planification',
+    after3d: '✨ Rendu 3D (Après)',
+    beforeSite: '📷 État des lieux (Avant)',
+    noComparison: 'Aucune image de comparaison chargée',
+    pos: 'Pos',
+    servicePhase: 'Prestation / Phase',
+    serviceExecution: 'Prestation / Exécution',
+    amount: 'Montant',
+    total: 'Total',
+    slideCountLabel: '{title} • Diapositive {curr} sur {total}',
+    keyboardHint: '⌨️ [←] [→] [Espace] pour naviguer',
+    showStoryMode: 'Afficher le mode Histoire',
+    prev: 'Précédente',
+    next: 'Suivante',
+    slideThumb: 'Diapo {num}',
+    costHeading: 'Aperçu des investissements & configuration',
+    costSubheading: 'Sélectionnez des options pour votre offre sur mesure',
+    baseScopeTitle: 'Étendue des prestations de base & exécution',
+    baseScopeSub: 'Conception, plans d\'exécution et suivi de projet selon SIA',
+    optionalAddons: 'Forfaits optionnels',
+    totalExclVat: 'Investissement total (hors TVA)',
+    acceptProposalCta: 'Accepter l\'offre en ligne',
+    siaBadge: 'Plan de paiement SIA transparent',
+    siaHeading: 'Étapes & jalons de paiement',
+    siaSubheading: 'Rémunération selon l\'avancement réel des travaux selon SIA 102 / 118',
+    tranche: 'Tranche',
+    dueAmount: 'Montant dû :',
+    defaultMs1Phase: 'Phase 1 : Avant-projet & faisabilité',
+    defaultMs1Desc: 'Analyse de base, concept préalable & estimation des coûts (SIA 102)',
+    defaultMs2Phase: 'Phase 2 : Projet de construction & mise à l\'enquête',
+    defaultMs2Desc: 'Plans autorisables & dépôt du permis auprès des autorités',
+    defaultMs3Phase: 'Phase 3 : Plans d\'exécution détaillés',
+    defaultMs3Desc: 'Plans de détail, soumissions & adjudication aux artisans',
+    defaultMs4Phase: 'Phase 4 : Réalisation & direction des travaux',
+    defaultMs4Desc: 'Direction des travaux sur place, contrôle qualité et coûts',
+    defaultMs5Phase: 'Phase 5 : Clôture & réception',
+    defaultMs5Desc: 'Décompte final, levée des réserves et remise de l\'ouvrage',
+    legalBadge: 'Sécurité juridique',
+    legalHeading: 'Documents contractuels & CGV',
+    legalSubheading: 'Conditions transparentes, contrats d\'entreprise & documents à consulter',
+    validPerSia: 'Valable selon SIA',
+    previewInBrowser: 'Aperçu dans le navigateur',
+    downloadPdf: 'Télécharger le PDF',
+    officialLegalDoc: 'Document contractuel officiel de Kreativ Desk',
+    officialLegalDocDesc: 'Ce document est basé sur les normes SIA et le Code des obligations suisse (CO).',
+    close: 'Fermer',
+    inquiryHeading: 'Avez-vous une question concernant l\'offre ?',
+    inquirySubheading: 'Notre équipe est à votre disposition par WhatsApp, téléphone ou chat.',
+    askViaWhatsapp: 'Demander directement via WhatsApp',
+    inquiryNamePlaceholder: 'Votre nom',
+    inquiryEmailPlaceholder: 'Votre email',
+    inquiryQuestionPlaceholder: 'Votre question ou remarque concernant un poste...',
+    send: 'Envoyer',
+    sentToast: 'Envoyé ! ✅',
+    inquirySuccess: 'Merci ! Votre question a été transmise au chef de projet.',
+    phoneInquiry: 'Contact téléphonique',
+    emailInquiry: 'Écrire un email',
+    copyright: '© 2026 Kreativ Desk & interacTV – Présentations cloud sécurisées avec garantie de 30 jours',
+    modalTitle: 'Accepter l\'offre fermement',
+    modalSub: 'Signature électronique valable & commande',
+    orderSuccessTitle: 'Merci pour votre commande !',
+    orderSuccessDesc: 'L\'offre a été contresignée numériquement avec succès. Votre contrat, confirmation et bulletin QR suisse ont été générés.',
+    sia118BadgeTitle: 'Signature électronique SIA 118',
+    sia118BadgeDesc: 'Signé numériquement et archivé de façon infalsifiable.',
+    bexioBadgeTitle: '🇨🇭 Synchronisation Bexio ERP',
+    bexioSuccess: 'Offre #{num} & acompte enregistrés.',
+    bexioPending: 'Synchronisation avec la comptabilité suisse active.',
+    emailBadgeTitle: 'Email de confirmation',
+    emailDelivered: 'Envoyé à {email}',
+    emailSentTo: 'Reçu et lien QR envoyés à {email}.',
+    qrBadgeTitle: 'Facture QR suisse (30%)',
+    qrBadgeDesc: 'QR-IBAN : {iban}... payable immédiatement.',
+    downloadOrderPdf: 'Confirmation de commande (PDF)',
+    downloadSwissQrBill: 'Facture QR suisse (30% acompte)',
+    confirmedTotalLabel: 'Montant total confirmé (hors TVA) :',
+    siaCompliantBadge: 'Conforme SIA 102/118',
+    yourName: 'Votre nom *',
+    yourNamePlaceholder: 'ex. M. Thomas Keller',
+    company: 'Entreprise / Organisation',
+    companyPlaceholder: 'ex. Keller Holding SA',
+    businessEmail: 'Email professionnel *',
+    businessEmailPlaceholder: 'ex. keller@entreprise.ch',
+    phone: 'Numéro de téléphone',
+    phonePlaceholder: 'ex. +41 79 123 45 67',
+    drawSignatureLabel: 'Signature numérique (dessiner avec le doigt ou la souris) *',
+    resetSignature: 'Réinitialiser',
+    signHerePlaceholder: 'Signer ici...',
+    legalCheckboxLabel: 'Je confirme par la présente l\'acceptation ferme de l\'offre ainsi que la prise de connaissance et l\'acceptation des Conditions Générales (CGV), du contrat d\'entreprise (SIA 118) et du plan de paiement SIA.',
+    cancel: 'Annuler',
+    signing: 'Signature en cours...',
+    signSubmitBtn: 'Signer juridiquement & télécharger le PDF',
+    floatingAiBtn: 'Questions sur l\'offre ? (Conseiller IA)',
+    aiAdvisorTitle: 'Conseiller de projet IA',
+    aiAdvisorSubtitle: 'Renseignements en direct pour l\'offre #{token}',
+    aiThinking: 'Rédaction de la réponse...',
+    aiInputPlaceholder: 'Question sur les étapes, prix, délais...',
+    initialAiGreeting: 'Bonjour ! Je suis votre conseiller IA personnel pour cette offre. Avez-vous des questions sur les prestations, les étapes, les conditions de paiement ou les garanties ?',
+    shareModalTitle: 'Partager l\'offre & la présentation',
+    shareModalSub: 'Envoyer directement par WhatsApp, LinkedIn ou email aux décideurs',
+    directLinkLabel: 'Lien direct vers l\'offre interactive',
+    copy: 'Copier',
+    copied: 'Copié !',
+    smartphoneQrTitle: 'Scan QR sur smartphone',
+    smartphoneQrDesc: 'Le client peut scanner le code QR avec son smartphone pour consulter et signer l\'offre immédiatement.',
+    companyModalTitle: 'Données d\'entreprise suisse & facture QR',
+    companyModalSub: 'Gestion de l\'IBAN QR, numéro IDE, banque et coordonnées',
+    companyName: 'Raison sociale / Facturé par *',
+    legalForm: 'Forme juridique',
+    streetAndNo: 'Rue & N°',
+    street: 'Rue',
+    number: 'N°',
+    zipAndCity: 'NPA & Localité',
+    zip: 'NPA',
+    city: 'Localité',
+    bankingQrSection: 'Facture QR suisse & coordonnées bancaires',
+    qrIban: 'QR-IBAN suisse (bulletin de versement) *',
+    bankName: 'Établissement bancaire',
+    uidNumber: 'Numéro IDE / TVA',
+    regularIban: 'IBAN ordinaire',
+    officialEmail: 'Email officiel',
+    saveCompanyBtn: 'Enregistrer les données & le code QR',
+    presentationNotFound: 'Présentation introuvable',
+    presentationNotFoundDesc: 'Le lien demandé est invalide ou a été supprimé. Veuillez contacter votre interlocuteur.',
+    validityExpired: 'Validité expirée',
+    proposalExpiredTitle: 'Cette offre a expiré',
+    proposalExpiredDesc: 'L\'offre pour {title} était valable 30 jours et a expiré le {date}. Souhaitez-vous demander une prolongation ou une mise à jour ?',
+    requestExtension: 'Demander une prolongation',
+    loadingPresentation: 'Chargement de la présentation...',
+    protectedPresentation: 'Présentation client protégée',
+    pinRequired: 'Ce document est protégé par mot de passe. Veuillez saisir votre code PIN.',
+    pinWrong: 'Code PIN erroné. Veuillez réessayer.',
+    openPresentation: 'Ouvrir la présentation'
+  }
+};
+
 export default function SmartProposalLandingPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
   const navigate = useNavigate();
@@ -68,8 +548,36 @@ export default function SmartProposalLandingPage() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
 
-  // Language Selector (DE, FR, EN)
-  const [proposalLang, setProposalLang] = useState<'de' | 'fr' | 'en'>('de');
+  // Language Selector (DE, FR, EN) - Initialized from URL param ?lang= or default to 'de'
+  const [proposalLang, setProposalLang] = useState<'de' | 'fr' | 'en'>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParam = new URLSearchParams(window.location.search).get('lang');
+      if (urlParam === 'en' || urlParam === 'fr' || urlParam === 'de') {
+        return urlParam;
+      }
+    }
+    return 'de';
+  });
+
+  const t = (key: string, params?: Record<string, string | number>) => {
+    let text = localTranslations[proposalLang]?.[key] || localTranslations['de']?.[key] || key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      });
+    }
+    return text;
+  };
+
+  const changeLanguage = (newLang: 'de' | 'fr' | 'en') => {
+    audioFeedback.playTouchClick();
+    setProposalLang(newLang);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('lang', newLang);
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  };
 
   // Share Modal & Previews
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -87,10 +595,26 @@ export default function SmartProposalLandingPage() {
   // AI Proposal Client Concierge Chat state
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const [aiQuestionInput, setAiQuestionInput] = useState('');
-  const [aiChatMessages, setAiChatMessages] = useState<Array<{ role: 'user' | 'model'; text: string }>>([
-    { role: 'model', text: 'Guten Tag! Ich bin Ihr persönlicher KI-Projektberater für dieses Angebot. Haben Sie Fragen zum Leistungsumfang, den Phasen, Zahlungskonditionen oder Garantien?' }
+  const [aiChatMessages, setAiChatMessages] = useState<Array<{ role: 'user' | 'model'; text: string }>>(() => [
+    {
+      role: 'model',
+      text: proposalLang === 'en'
+        ? 'Hello! I am your personal AI project advisor for this proposal. Do you have any questions regarding the scope, phases, payment terms, or warranties?'
+        : proposalLang === 'fr'
+        ? 'Bonjour ! Je suis votre conseiller de projet IA personnel pour cette offre. Avez-vous des questions sur les prestations, les étapes, les conditions de paiement ou les garanties ?'
+        : 'Guten Tag! Ich bin Ihr persönlicher KI-Projektberater für dieses Angebot. Haben Sie Fragen zum Leistungsumfang, den Phasen, Zahlungskonditionen oder Garantien?'
+    }
   ]);
   const [isAiChatLoading, setIsAiChatLoading] = useState(false);
+
+  useEffect(() => {
+    setAiChatMessages(prev => {
+      if (prev.length === 1 && prev[0].role === 'model') {
+        return [{ role: 'model', text: t('initialAiGreeting') }];
+      }
+      return prev;
+    });
+  }, [proposalLang]);
 
   // Global Escape Key Listener with cascading closure
   useEffect(() => {
@@ -123,6 +647,7 @@ export default function SmartProposalLandingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          language: proposalLang,
           proposalContext: {
             title: proposal.title,
             clientName: proposal.clientName,
@@ -143,10 +668,17 @@ export default function SmartProposalLandingPage() {
         audioFeedback.playSuccessChime();
         setAiChatMessages(prev => [...prev, { role: 'model', text: resData.answer }]);
       } else {
-        throw new Error(resData.error || 'Antwort konnte nicht generiert werden.');
+        throw new Error(resData.error || (proposalLang === 'en' ? 'Could not generate response.' : proposalLang === 'fr' ? 'Impossible de générer une réponse.' : 'Antwort konnte nicht generiert werden.'));
       }
     } catch (err: any) {
-      setAiChatMessages(prev => [...prev, { role: 'model', text: `Entschuldigung, derzeit konnte keine Verbindung aufgebaut werden: ${err.message}` }]);
+      setAiChatMessages(prev => [...prev, {
+        role: 'model',
+        text: proposalLang === 'en'
+          ? `Sorry, could not connect right now: ${err.message}`
+          : proposalLang === 'fr'
+          ? `Désolé, impossible d'établir la connexion pour le moment : ${err.message}`
+          : `Entschuldigung, derzeit konnte keine Verbindung aufgebaut werden: ${err.message}`
+      }]);
     } finally {
       setIsAiChatLoading(false);
     }
@@ -645,7 +1177,7 @@ export default function SmartProposalLandingPage() {
     return (
       <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-4">
         <div className="w-12 h-12 rounded-2xl border-2 border-blue-500 border-t-transparent animate-spin mb-4"></div>
-        <p className="text-sm font-bold uppercase tracking-widest text-zinc-400">Lade Kunden-Präsentation...</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-zinc-400">{t('loadingPresentation')}</p>
       </div>
     );
   }
@@ -656,9 +1188,9 @@ export default function SmartProposalLandingPage() {
         <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mb-4">
           <AlertCircle size={32} />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Präsentation nicht gefunden</h1>
+        <h1 className="text-2xl font-bold mb-2">{t('presentationNotFound')}</h1>
         <p className="text-zinc-400 max-w-md text-sm mb-6">
-          Der angeforderte Link ist ungültig oder wurde gelöscht. Bitte wenden Sie sich an Ihren Ansprechpartner.
+          {t('presentationNotFoundDesc')}
         </p>
       </div>
     );
@@ -674,16 +1206,15 @@ export default function SmartProposalLandingPage() {
         <div className="w-20 h-20 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mb-4 border border-amber-500/20">
           <Clock size={36} />
         </div>
-        <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-3">Gültigkeit abgelaufen</span>
-        <h1 className="text-3xl font-extrabold mb-3">Dieses Angebot ist abgelaufen</h1>
+        <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-3">{t('validityExpired')}</span>
+        <h1 className="text-3xl font-extrabold mb-3">{t('proposalExpiredTitle')}</h1>
         <p className="text-zinc-400 max-w-md text-sm mb-8 leading-relaxed">
-          Das Angebot für <strong>{proposal.title}</strong> war 30 Tage gültig und ist am {new Date(proposal.expiresAt).toLocaleDateString('de-CH')} abgelaufen.
-          Möchten Sie eine Verlängerung oder ein aktualisiertes Angebot anfordern?
+          {t('proposalExpiredDesc', { title: proposal.title, date: new Date(proposal.expiresAt).toLocaleDateString(proposalLang === 'en' ? 'en-US' : 'de-CH') })}
         </p>
         <div className="flex flex-wrap gap-4 justify-center">
           {proposal.clientEmail && (
-            <a href={`mailto:${proposal.clientEmail}?subject=Verlängerung Angebot: ${proposal.title}`} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
-              <Mail size={16} /> Verlängerung anfragen
+            <a href={`mailto:${proposal.clientEmail}?subject=Extension Request: ${proposal.title}`} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg flex items-center gap-2">
+              <Mail size={16} /> {t('requestExtension')}
             </a>
           )}
         </div>
@@ -700,14 +1231,14 @@ export default function SmartProposalLandingPage() {
             <Lock size={28} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold">Geschützte Kunden-Präsentation</h2>
-            <p className="text-xs text-zinc-400 mt-1">Dieses Dokument ist passwortgeschützt. Bitte geben Sie Ihren PIN-Code ein.</p>
+            <h2 className="text-2xl font-bold">{t('protectedPresentation')}</h2>
+            <p className="text-xs text-zinc-400 mt-1">{t('pinRequired')}</p>
           </div>
 
           <form onSubmit={handlePinSubmit} className="space-y-4">
             <div>
               <input 
-                type="password"
+                type="password" 
                 maxLength={8}
                 placeholder="••••"
                 value={pinInput}
@@ -715,10 +1246,10 @@ export default function SmartProposalLandingPage() {
                 className="w-full text-center tracking-[0.3em] text-2xl font-bold font-sans py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white outline-none focus:border-blue-500"
                 autoFocus
               />
-              {pinError && <p className="text-xs text-red-400 mt-2">Falscher PIN-Code. Bitte erneut versuchen.</p>}
+              {pinError && <p className="text-xs text-red-400 mt-2">{t('pinWrong')}</p>}
             </div>
             <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg">
-              Präsentation öffnen
+              {t('openPresentation')}
             </button>
           </form>
         </div>
@@ -768,11 +1299,11 @@ export default function SmartProposalLandingPage() {
               }
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
-            title="Zurück zum Pitch Deck Studio / Dashboard"
+            title={t('backTooltip')}
           >
             <ChevronLeft size={16} />
-            <span className="hidden sm:inline">Zurück zur App</span>
-            <span className="sm:hidden">Zurück</span>
+            <span className="hidden sm:inline">{t('backToApp')}</span>
+            <span className="sm:hidden">{t('back')}</span>
           </button>
 
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 text-white font-black text-xs sm:text-sm shrink-0">
@@ -794,7 +1325,7 @@ export default function SmartProposalLandingPage() {
           <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-zinc-300">
             <Clock size={13} className="text-amber-400" />
             <span>
-              {proposalLang === 'fr' ? `Valable ${daysLeft} j.` : proposalLang === 'en' ? `${daysLeft} days left` : `Noch ${daysLeft} Tage`}
+              {t('daysLeft', { days: daysLeft })}
             </span>
           </div>
 
@@ -802,30 +1333,21 @@ export default function SmartProposalLandingPage() {
           <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-0.5 text-[11px] font-bold">
             <button 
               type="button"
-              onClick={() => {
-                audioFeedback.playTouchClick();
-                setProposalLang('de');
-              }}
+              onClick={() => changeLanguage('de')}
               className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'de' ? "bg-blue-600 text-white shadow-xs" : "text-zinc-400 hover:text-white")}
             >
               DE
             </button>
             <button 
               type="button"
-              onClick={() => {
-                audioFeedback.playTouchClick();
-                setProposalLang('fr');
-              }}
+              onClick={() => changeLanguage('fr')}
               className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'fr' ? "bg-blue-600 text-white shadow-xs" : "text-zinc-400 hover:text-white")}
             >
               FR
             </button>
             <button 
               type="button"
-              onClick={() => {
-                audioFeedback.playTouchClick();
-                setProposalLang('en');
-              }}
+              onClick={() => changeLanguage('en')}
               className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'en' ? "bg-blue-600 text-white shadow-xs" : "text-zinc-400 hover:text-white")}
             >
               EN
@@ -840,11 +1362,11 @@ export default function SmartProposalLandingPage() {
               setIsShareModalOpen(true);
             }}
             className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-            title="Offerte teilen (WhatsApp, LinkedIn, E-Mail)"
+            title={t('shareTooltip')}
           >
             <Share2 size={14} className="text-cyan-400" />
             <span className="hidden sm:inline">
-              {proposalLang === 'fr' ? 'Partager' : proposalLang === 'en' ? 'Share' : 'Teilen'}
+              {t('share')}
             </span>
           </button>
 
@@ -857,10 +1379,10 @@ export default function SmartProposalLandingPage() {
               setIsCompanySettingsModalOpen(true);
             }}
             className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-            title="Schweizer Firmendaten, QR-IBAN & Bankangaben bearbeiten"
+            title={t('companyAndQRTooltip')}
           >
             <Building2 size={14} className="text-purple-400" />
-            <span className="hidden md:inline">Firmendaten & QR-IBAN</span>
+            <span className="hidden md:inline">{t('companyAndQR')}</span>
           </button>
 
           {/* Mode Switcher */}
@@ -874,7 +1396,7 @@ export default function SmartProposalLandingPage() {
               }}
               className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'story' ? "bg-blue-600 text-white shadow-md" : "text-zinc-400 hover:text-white")}
             >
-              {proposalLang === 'fr' ? 'Histoire' : proposalLang === 'en' ? 'Story' : 'Story'}
+              {t('story')}
             </button>
             <button 
               type="button"
@@ -885,21 +1407,21 @@ export default function SmartProposalLandingPage() {
               }}
               className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'deck' ? "bg-blue-600 text-white shadow-md" : "text-zinc-400 hover:text-white")}
             >
-              {proposalLang === 'fr' ? 'Slides' : proposalLang === 'en' ? 'Deck' : 'Deck'}
+              {t('deck')}
             </button>
           </div>
 
           {/* Quick Accept CTA Button */}
           {isAcceptedSuccess ? (
             <div className="px-3.5 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
-              <CheckCircle2 size={15} /> <span>{proposalLang === 'fr' ? 'Validé' : proposalLang === 'en' ? 'Approved' : 'Freigegeben'}</span>
+              <CheckCircle2 size={15} /> <span>{t('approved')}</span>
             </div>
           ) : (
             <button 
               onClick={() => setIsAcceptModalOpen(true)}
               className="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
             >
-              <FileCheck size={15} /> <span>{proposalLang === 'fr' ? 'Accepter' : proposalLang === 'en' ? 'Accept' : 'Annehmen'}</span>
+              <FileCheck size={15} /> <span>{t('accept')}</span>
             </button>
           )}
         </div>
@@ -915,15 +1437,15 @@ export default function SmartProposalLandingPage() {
                   <Check size={22} />
                 </div>
                 <div>
-                  <div className="text-base font-extrabold text-white">Dieses Angebot wurde erfolgreich digital freigegeben!</div>
-                  <div className="text-xs text-emerald-300">Rechtsverbindlich signiert für {proposal.clientName} ({proposal.currency} {calculateTotal().toLocaleString('de-CH')})</div>
+                  <div className="text-base font-extrabold text-white">{t('successTitle')}</div>
+                  <div className="text-xs text-emerald-300">{t('successSubtitle', { client: proposal.clientName, currency: proposal.currency, amount: calculateTotal().toLocaleString(proposalLang === 'en' ? 'en-US' : 'de-CH') })}</div>
                 </div>
               </div>
               <button 
                 onClick={() => setIsPdfStudioOpen(true)}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md"
               >
-                <Download size={15} /> Vertragsbeleg & QR-Zahlteil PDF Studio
+                <Download size={15} /> {t('pdfStudioBtn')}
               </button>
             </div>
 
@@ -931,22 +1453,22 @@ export default function SmartProposalLandingPage() {
             <div className="p-6 rounded-3xl bg-neutral-900/90 border border-emerald-500/40 shadow-2xl text-white grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               <div className="md:col-span-8 space-y-3">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
-                  <QrCode size={13} /> Offizieller Schweizer QR-Zahlteil (30% Projektanzahlung)
+                  <QrCode size={13} /> {t('qrSlipTitle')}
                 </div>
                 <h3 className="text-xl font-extrabold text-white">
-                  Anzahlung: CHF {(calculateTotal() * 0.30).toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {t('depositHeading', { amount: (calculateTotal() * 0.30).toLocaleString(proposalLang === 'en' ? 'en-US' : 'de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                 </h3>
                 <p className="text-xs text-neutral-300 leading-relaxed">
-                  Sie können die Projektanzahlung bequem via TWINT, Mobile-Banking oder E-Banking per QR-Code Scan begleichen. Die Ausführungsplanung startet unmittelbar nach Zahlungseingang.
+                  {t('depositDesc')}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                    <span className="text-[10px] text-neutral-400 font-bold block uppercase">Konto / QR-IBAN ({companySettings.bankName || 'ZKB'})</span>
+                    <span className="text-[10px] text-neutral-400 font-bold block uppercase">{t('accountQrIban', { bank: companySettings.bankName || 'ZKB' })}</span>
                     <span className="font-mono font-bold text-white block select-all">{companySettings.qrIban || companySettings.iban}</span>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                    <span className="text-[10px] text-neutral-400 font-bold block uppercase">Zahlungsempfänger & UID</span>
+                    <span className="text-[10px] text-neutral-400 font-bold block uppercase">{t('creditorUid')}</span>
                     <span className="font-bold text-emerald-400 block truncate">{companySettings.companyName} • {companySettings.uid}</span>
                   </div>
                 </div>
@@ -982,7 +1504,7 @@ export default function SmartProposalLandingPage() {
                     </div>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold text-neutral-600 mt-2">TWINT & E-Banking QR-Zahlteil</span>
+                <span className="text-[10px] font-bold text-neutral-600 mt-2">{t('twintQrLabel')}</span>
               </div>
             </div>
           </div>
@@ -998,7 +1520,7 @@ export default function SmartProposalLandingPage() {
 
             <div className="space-y-6 text-center max-w-3xl mx-auto relative z-10">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold">
-                <Sparkles size={14} /> Exklusives Projektangebot & Präsentation
+                <Sparkles size={14} /> {t('heroBadge')}
               </div>
 
               <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
@@ -1006,7 +1528,7 @@ export default function SmartProposalLandingPage() {
               </h1>
 
               <div className="flex items-center justify-center gap-2 text-sm text-zinc-400">
-                <span>Erstellt für:</span>
+                <span>{t('createdFor')}</span>
                 <strong className="text-zinc-200 font-bold">{proposal.clientName}</strong>
                 {proposal.clientCompany && <span>· <span className="text-blue-400">{proposal.clientCompany}</span></span>}
               </div>
@@ -1065,7 +1587,7 @@ export default function SmartProposalLandingPage() {
                         </button>
                       </div>
                       <span className="text-xs font-bold font-sans text-white/80 bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
-                        ▶ 4K Projekt-Showreel
+                        {t('showreelLabel')}
                       </span>
                     </div>
                   </>
@@ -1079,8 +1601,8 @@ export default function SmartProposalLandingPage() {
           {/* STORY SCROLL MODE: VERTICAL WEBSITE-STYLE PRESENTATION */}
           <section className="px-4 sm:px-8 py-12 max-w-6xl mx-auto space-y-12">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Projekt-Details & Etappen</h2>
-              <p className="text-xs text-zinc-400">Blättern Sie durch alle wesentlichen Folien und Planungsunterlagen</p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{t('storyHeading')}</h2>
+              <p className="text-xs text-zinc-400">{t('storySubheading')}</p>
             </div>
 
             <div className="space-y-8">
@@ -1139,7 +1661,7 @@ export default function SmartProposalLandingPage() {
                         {/* Nachher */}
                         <img src={slide.compareImageUrl || slide.imageUrl} alt="Nachher" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
                         <span className="absolute top-4 right-4 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-xs font-extrabold rounded-full z-10 shadow-lg">
-                          ✨ 3D-Neubau (Nachher)
+                          {t('after3d')}
                         </span>
 
                         {/* Vorher */}
@@ -1149,7 +1671,7 @@ export default function SmartProposalLandingPage() {
                         >
                           <img src={slide.imageUrl} alt="Vorher" className="absolute inset-0 w-full h-full object-cover" />
                           <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
-                            📷 Bestand (Vorher)
+                            {t('beforeSite')}
                           </span>
                         </div>
 
@@ -1189,9 +1711,9 @@ export default function SmartProposalLandingPage() {
                     <div className="space-y-4">
                       <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/30">
                         <div className="grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider text-zinc-400 bg-white/5 border-b border-white/10">
-                          <div className="col-span-2">Pos</div>
-                          <div className="col-span-7">Leistung / Phase</div>
-                          <div className="col-span-3 text-right">Betrag</div>
+                          <div className="col-span-2">{t('pos')}</div>
+                          <div className="col-span-7">{t('servicePhase')}</div>
+                          <div className="col-span-3 text-right">{t('amount')}</div>
                         </div>
                         {(slide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
                           <div key={bIdx} className="grid grid-cols-12 text-xs py-2 border-b border-white/5 last:border-0">
@@ -1238,7 +1760,7 @@ export default function SmartProposalLandingPage() {
               </span>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">
-                  {proposal.title} • Folie {currentSlideIndex + 1} von {slides.length}
+                  {t('slideCountLabel', { title: proposal.title, curr: currentSlideIndex + 1, total: slides.length })}
                 </div>
                 <h2 className="text-lg font-black text-white">{activeDeckSlide.title}</h2>
               </div>
@@ -1246,14 +1768,14 @@ export default function SmartProposalLandingPage() {
 
             <div className="flex items-center gap-2">
               <span className="hidden md:inline text-[11px] text-zinc-400 bg-black/40 px-3 py-1 rounded-lg border border-white/10">
-                ⌨️ [←] [→] [Space] zum Blättern
+                {t('keyboardHint')}
               </span>
               <button
                 type="button"
                 onClick={() => setViewMode('story')}
                 className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-bold border border-white/10 transition-all cursor-pointer"
               >
-                Story Mode anzeigen
+                {t('showStoryMode')}
               </button>
             </div>
           </div>
@@ -1329,9 +1851,9 @@ export default function SmartProposalLandingPage() {
                     <div className="w-full space-y-4 max-w-3xl mx-auto">
                       <div className="rounded-2xl border border-white/15 overflow-hidden bg-neutral-900/90 shadow-xl">
                         <div className="grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider text-zinc-400 bg-white/5 border-b border-white/10">
-                          <div className="col-span-2">Pos</div>
-                          <div className="col-span-7">Leistung / Ausführung</div>
-                          <div className="col-span-3 text-right">Betrag</div>
+                          <div className="col-span-2">{t('pos')}</div>
+                          <div className="col-span-7">{t('serviceExecution')}</div>
+                          <div className="col-span-3 text-right">{t('amount')}</div>
                         </div>
                         {(activeDeckSlide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
                           <div key={bIdx} className="grid grid-cols-12 text-xs py-3 px-3 border-b border-white/5 last:border-0 items-center">
@@ -1402,7 +1924,7 @@ export default function SmartProposalLandingPage() {
                         >
                           <img src={activeDeckSlide.compareImageUrl} alt="Nachher" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
                           <span className="absolute top-4 right-4 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-xs font-black rounded-full z-10 shadow-lg">
-                            ✨ 3D-Neubau (Nachher)
+                            {t('after3d')}
                           </span>
                           <div 
                             className="absolute inset-0 overflow-hidden pointer-events-none"
@@ -1410,7 +1932,7 @@ export default function SmartProposalLandingPage() {
                           >
                             <img src={activeDeckSlide.imageUrl} alt="Vorher" className="absolute inset-0 w-full h-full object-cover" />
                             <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
-                              📷 Bestand (Vorher)
+                              {t('beforeSite')}
                             </span>
                           </div>
                           <div 
@@ -1424,7 +1946,7 @@ export default function SmartProposalLandingPage() {
                         </div>
                       ) : (
                         <div className="text-center p-6 text-zinc-400">
-                          {activeDeckSlide.imageUrl ? <img src={activeDeckSlide.imageUrl} alt={activeDeckSlide.title} className="max-h-[300px] object-cover rounded-xl" /> : <span>Keine Vergleichsbilder geladen</span>}
+                          {activeDeckSlide.imageUrl ? <img src={activeDeckSlide.imageUrl} alt={activeDeckSlide.title} className="max-h-[300px] object-cover rounded-xl" /> : <span>{t('noComparison')}</span>}
                         </div>
                       )}
                     </div>
@@ -1462,7 +1984,7 @@ export default function SmartProposalLandingPage() {
                           })()}
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
-                          <span className="text-[10px] uppercase font-bold tracking-widest opacity-60 text-zinc-400">Gesamt</span>
+                          <span className="text-[10px] uppercase font-bold tracking-widest opacity-60 text-zinc-400">{t('total')}</span>
                           <span className="text-xl font-extrabold text-blue-400">
                             CHF {(activeDeckSlide.dataPayload.totalAmount || activeDeckSlide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0)).toLocaleString('de-CH')}
                           </span>
@@ -1506,7 +2028,7 @@ export default function SmartProposalLandingPage() {
                 disabled={currentSlideIndex === 0}
                 className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
               >
-                <ChevronLeft size={16} /> Vorherige
+                <ChevronLeft size={16} /> {t('prev')}
               </button>
 
               {/* Slide Thumbnail Dots */}
@@ -1521,7 +2043,7 @@ export default function SmartProposalLandingPage() {
                         setCurrentSlideIndex(i);
                       }}
                       className={cn("h-2.5 rounded-full transition-all cursor-pointer", i === currentSlideIndex ? "bg-blue-500 w-8" : "bg-white/20 hover:bg-white/40 w-2.5")}
-                      title={`Folie ${i + 1}`}
+                      title={t('slideThumb', { num: i + 1 })}
                     />
                   ))}
                 </div>
@@ -1537,7 +2059,7 @@ export default function SmartProposalLandingPage() {
                 }}
                 className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
               >
-                Nächste <ChevronRight size={16} />
+                {t('next')} <ChevronRight size={16} />
               </button>
             </div>
           </div>
@@ -1560,7 +2082,7 @@ export default function SmartProposalLandingPage() {
                 )}
               >
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-bold">Folie {idx + 1}</span>
+                  <span className="font-bold">{t('slideThumb', { num: idx + 1 })}</span>
                   <span className="uppercase text-[9px] opacity-70">{s.layout}</span>
                 </div>
                 <div className="text-xs font-bold text-white truncate">{s.title}</div>
@@ -1574,16 +2096,16 @@ export default function SmartProposalLandingPage() {
       <section className="px-4 sm:px-8 py-16 bg-gradient-to-b from-transparent to-zinc-950 border-t border-white/10">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-extrabold text-white">Investitionsübersicht & Konfiguration</h2>
-            <p className="text-sm text-zinc-400">Wählen Sie optionale Zusatzpakete für Ihr massgeschneidertes Leistungspaket</p>
+            <h2 className="text-3xl font-extrabold text-white">{t('costHeading')}</h2>
+            <p className="text-sm text-zinc-400">{t('costSubheading')}</p>
           </div>
 
           <div className="rounded-3xl border border-white/15 bg-zinc-900/80 p-6 sm:p-8 space-y-6 shadow-2xl">
             {/* Base Offer */}
             <div className="flex items-center justify-between pb-6 border-b border-white/10">
               <div>
-                <div className="text-lg font-bold text-white">Basis-Leistungsumfang & Ausführung</div>
-                <div className="text-xs text-zinc-400">Konzeption, Werkplanung & Projektbegleitung gemäss SIA</div>
+                <div className="text-lg font-bold text-white">{t('baseScopeTitle')}</div>
+                <div className="text-xs text-zinc-400">{t('baseScopeSub')}</div>
               </div>
               <div className="text-2xl font-black text-white font-sans tracking-tight">
                 {proposal.currency} {proposal.basePrice.toLocaleString('de-CH')}
@@ -1593,7 +2115,7 @@ export default function SmartProposalLandingPage() {
             {/* Optional Packages */}
             {(proposal.options || []).length > 0 && (
               <div className="space-y-3">
-                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">Optionale Zusatzpakete</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">{t('optionalAddons')}</div>
                 {proposal.options.map(opt => {
                   const isChecked = selectedOptionIds.includes(opt.id);
                   return (
@@ -1623,7 +2145,7 @@ export default function SmartProposalLandingPage() {
             {/* Total Calculation */}
             <div className="pt-6 border-t border-white/15 flex flex-wrap items-center justify-between gap-4 bg-white/5 -mx-6 -mb-6 p-6 rounded-b-3xl">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">Gesamtinvestition (Exkl. MwSt.)</div>
+                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">{t('totalExclVat')}</div>
                 <div className="text-3xl sm:text-4xl font-black text-white font-sans tracking-tight mt-1">
                   {proposal.currency} {calculateTotal().toLocaleString('de-CH')}
                 </div>
@@ -1634,7 +2156,7 @@ export default function SmartProposalLandingPage() {
                   onClick={() => setIsAcceptModalOpen(true)}
                   className="px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-2xl font-extrabold text-sm shadow-xl shadow-blue-600/30 transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  <FileCheck size={18} /> <span>Angebot digital annehmen</span>
+                  <FileCheck size={18} /> <span>{t('acceptProposalCta')}</span>
                 </button>
               </div>
             </div>
@@ -1646,26 +2168,26 @@ export default function SmartProposalLandingPage() {
       <section className="px-4 sm:px-8 py-12 max-w-4xl mx-auto space-y-6">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-extrabold uppercase tracking-widest">
-            <Milestone size={14} /> Transparenter SIA-Zahlungsplan
+            <Milestone size={14} /> {t('siaBadge')}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Etappen & Zahlungsmeilensteine</h2>
-          <p className="text-xs text-zinc-400">Vergütung nach tatsächlichem Baufortschritt gemäss SIA 102 / 118</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{t('siaHeading')}</h2>
+          <p className="text-xs text-zinc-400">{t('siaSubheading')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {((proposal.paymentMilestones && proposal.paymentMilestones.length > 0) ? proposal.paymentMilestones : [
-            { id: 'ms-1', phase: 'Phase 1: Vorprojekt & Machbarkeit', percentage: 20, description: 'Grundlagenanalyse, Vorkonzept & Kostenschätzung (SIA 102)' },
-            { id: 'ms-2', phase: 'Phase 2: Bauprojekt & Baueingabe', percentage: 30, description: 'Bewilligungsfähige Projektpläne & Baueingabe bei Behörden' },
-            { id: 'ms-3', phase: 'Phase 3: Ausführungsplanung', percentage: 25, description: 'Detailpläne, Devisierung & Vergabe an Handwerker' },
-            { id: 'ms-4', phase: 'Phase 4: Realisierung & Bauleitung', percentage: 20, description: 'Örtliche Bauleitung, Qualitäts- & Kostenkontrolle' },
-            { id: 'ms-5', phase: 'Phase 5: Abschluss & Abnahme', percentage: 5, description: 'Schlussabrechnung, Mängelbehebung & Übergabe' }
+            { id: 'ms-1', phase: t('defaultMs1Phase'), percentage: 20, description: t('defaultMs1Desc') },
+            { id: 'ms-2', phase: t('defaultMs2Phase'), percentage: 30, description: t('defaultMs2Desc') },
+            { id: 'ms-3', phase: t('defaultMs3Phase'), percentage: 25, description: t('defaultMs3Desc') },
+            { id: 'ms-4', phase: t('defaultMs4Phase'), percentage: 20, description: t('defaultMs4Desc') },
+            { id: 'ms-5', phase: t('defaultMs5Phase'), percentage: 5, description: t('defaultMs5Desc') }
           ]).map((ms: any, mIdx: number) => {
             const currentTotal = calculateTotal();
             const milestoneAmount = Math.round((currentTotal * ms.percentage) / 100);
             return (
               <div key={ms.id || mIdx} className="p-5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md space-y-2 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Tranche 0{mIdx + 1}</span>
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{t('tranche')} 0{mIdx + 1}</span>
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black text-xs tabular-nums">
                     {ms.percentage}%
                   </span>
@@ -1673,7 +2195,7 @@ export default function SmartProposalLandingPage() {
                 <div className="font-bold text-white text-base">{ms.phase}</div>
                 <div className="text-xs text-zinc-400 leading-relaxed">{ms.description}</div>
                 <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
-                  <span className="text-zinc-500 font-medium">Fälliger Betrag:</span>
+                  <span className="text-zinc-500 font-medium">{t('dueAmount')}</span>
                   <span className="font-black text-white font-sans text-sm">
                     {proposal.currency} {milestoneAmount.toLocaleString('de-CH')}
                   </span>
@@ -1689,10 +2211,10 @@ export default function SmartProposalLandingPage() {
         <section className="px-4 sm:px-8 py-12 max-w-4xl mx-auto space-y-6">
           <div className="text-center space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-extrabold uppercase tracking-widest">
-              <ShieldCheck size={14} /> Rechtliche Sicherheit
+              <ShieldCheck size={14} /> {t('legalBadge')}
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">Vertragsdokumente & AGBs</h2>
-            <p className="text-xs text-zinc-400">Transparente Geschäftsbedingungen, Werkverträge & Unterlagen zur Einsicht</p>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{t('legalHeading')}</h2>
+            <p className="text-xs text-zinc-400">{t('legalSubheading')}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1723,7 +2245,7 @@ export default function SmartProposalLandingPage() {
                         type="button"
                         onClick={() => setSelectedLegalDocModal(doc)}
                         className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1"
-                        title="Vorschau im Browser"
+                        title={t('previewInBrowser')}
                       >
                         <Eye size={16} />
                       </button>
@@ -1733,13 +2255,13 @@ export default function SmartProposalLandingPage() {
                         target="_blank" 
                         rel="noreferrer"
                         className="p-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white transition-all"
-                        title="PDF Herunterladen"
+                        title={t('downloadPdf')}
                       >
                         <Download size={16} />
                       </a>
                     </>
                   ) : (
-                    <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-1 rounded-lg">Gültig gemäss SIA</span>
+                    <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-1 rounded-lg">{t('validPerSia')}</span>
                   )}
                 </div>
               </div>
@@ -1754,9 +2276,9 @@ export default function SmartProposalLandingPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <MessageSquare size={20} className="text-blue-400" /> Haben Sie eine Frage zur Offerte?
+                <MessageSquare size={20} className="text-blue-400" /> {t('inquiryHeading')}
               </h3>
-              <p className="text-xs text-zinc-400 mt-1">Unser Planungsteam steht Ihnen direkt per WhatsApp, Telefon oder Chat zur Verfügung.</p>
+              <p className="text-xs text-zinc-400 mt-1">{t('inquirySubheading')}</p>
             </div>
             <a 
               href={`https://wa.me/${(proposal.clientPhone || '41790000000').replace(/[^0-9]/g, '')}?text=Hallo%20Planungsteam,%20ich%20habe%20eine%20Rückfrage%20zur%20Offerte%20${encodeURIComponent(proposal.title)}`}
@@ -1764,7 +2286,7 @@ export default function SmartProposalLandingPage() {
               rel="noreferrer"
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all shrink-0 cursor-pointer"
             >
-              <MessageSquare size={16} /> <span>Direkt per WhatsApp fragen</span>
+              <MessageSquare size={16} /> <span>{t('askViaWhatsapp')}</span>
             </a>
           </div>
 
@@ -1781,14 +2303,14 @@ export default function SmartProposalLandingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input 
                 type="text" 
-                placeholder="Ihr Name" 
+                placeholder={t('inquiryNamePlaceholder')} 
                 value={inquiryName} 
                 onChange={e => setInquiryName(e.target.value)} 
                 className="px-3.5 py-2 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-blue-500"
               />
               <input 
                 type="email" 
-                placeholder="Ihre E-Mail" 
+                placeholder={t('inquiryEmailPlaceholder')} 
                 value={inquiryEmail} 
                 onChange={e => setInquiryEmail(e.target.value)} 
                 className="px-3.5 py-2 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-blue-500"
@@ -1797,7 +2319,7 @@ export default function SmartProposalLandingPage() {
             <div className="flex gap-2">
               <input 
                 type="text" 
-                placeholder="Ihre Frage oder Bemerkung zu einer bestimmten Position..."
+                placeholder={t('inquiryQuestionPlaceholder')}
                 value={inquiryQuestion}
                 onChange={e => setInquiryQuestion(e.target.value)}
                 className="flex-1 px-4 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-blue-500"
@@ -1807,11 +2329,11 @@ export default function SmartProposalLandingPage() {
                 disabled={!inquiryQuestion.trim()}
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer shrink-0"
               >
-                <Send size={14} /> <span>{inquirySent ? 'Gesendet! ✅' : 'Senden'}</span>
+                <Send size={14} /> <span>{inquirySent ? t('sentToast') : t('send')}</span>
               </button>
             </div>
             {inquirySent && (
-              <p className="text-xs text-emerald-400 font-bold">Vielen Dank! Ihre Rückfrage wurde an den zuständigen Projektleiter übermittelt.</p>
+              <p className="text-xs text-emerald-400 font-bold">{t('inquirySuccess')}</p>
             )}
           </form>
         </div>
@@ -1821,14 +2343,14 @@ export default function SmartProposalLandingPage() {
       <footer className="border-t border-white/10 bg-zinc-950 px-4 sm:px-8 py-12 text-center text-xs text-zinc-500 space-y-6">
         <div className="flex flex-wrap justify-center gap-4">
           <a href={`tel:${proposal.clientPhone || '+41790000000'}`} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-bold flex items-center gap-2">
-            <Phone size={14} className="text-emerald-400" /> Telefonische Rückfrage
+            <Phone size={14} className="text-emerald-400" /> {t('phoneInquiry')}
           </a>
           <a href={`mailto:${proposal.clientEmail || 'kontakt@kreativdesk.ch'}`} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-bold flex items-center gap-2">
-            <Mail size={14} className="text-blue-400" /> E-Mail schreiben
+            <Mail size={14} className="text-blue-400" /> {t('emailInquiry')}
           </a>
         </div>
 
-        <p>© 2026 Kreativ Desk & interacTV – Sichere Cloud-Präsentationen mit 30-Tage Gültigkeitsgarantie</p>
+        <p>{t('copyright')}</p>
       </footer>
 
       {/* DOCUMENT PREVIEW MODAL */}
@@ -1859,15 +2381,15 @@ export default function SmartProposalLandingPage() {
                   <iframe src={selectedLegalDocModal.url} className="w-full h-full min-h-[400px] border-0" title={selectedLegalDocModal.name} />
                 ) : (
                   <div className="text-center space-y-2 p-8">
-                    <p className="text-sm font-bold text-zinc-300">Offizielles Vertragsdokument der Kreativ Desk Planung</p>
-                    <p className="text-xs text-zinc-500 max-w-md">Dieses Dokument basiert auf den Standardkonditionen des Schweizerischen Ingenieur- und Architektenvereins (SIA) und dem Schweizerischen Obligationenrecht (OR).</p>
+                    <p className="text-sm font-bold text-zinc-300">{t('officialLegalDoc')}</p>
+                    <p className="text-xs text-zinc-500 max-w-md">{t('officialLegalDocDesc')}</p>
                   </div>
                 )}
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setSelectedLegalDocModal(null)} className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs">
-                  Schliessen
+                  {t('close')}
                 </button>
               </div>
             </motion.div>
@@ -1893,8 +2415,8 @@ export default function SmartProposalLandingPage() {
                     <FileSignature size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">Angebot verbindlich annehmen</h3>
-                    <p className="text-xs text-zinc-400">Rechtsgültige E-Signatur & Beauftragung</p>
+                    <h3 className="text-lg font-bold text-white">{t('modalTitle')}</h3>
+                    <p className="text-xs text-zinc-400">{t('modalSub')}</p>
                   </div>
                 </div>
                 <button type="button" onClick={() => setIsAcceptModalOpen(false)} className="p-2 text-zinc-400 hover:text-white rounded-xl bg-white/5">
@@ -1907,9 +2429,9 @@ export default function SmartProposalLandingPage() {
                   <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
                     <CheckCircle2 size={40} />
                   </div>
-                  <h4 className="text-xl font-bold text-white">Vielen Dank für Ihren Auftrag!</h4>
+                  <h4 className="text-xl font-bold text-white">{t('orderSuccessTitle')}</h4>
                   <p className="text-xs text-zinc-300">
-                    Die Offerte wurde erfolgreich digital gegengezeichnet. Ihr Vertrag, die E-Mail-Bestätigung und der Schweizer QR-Zahlteil wurden generiert.
+                    {t('orderSuccessDesc')}
                   </p>
                   
                   {/* 4 LIVE-STATUS VERIFICATION BADGES */}
@@ -1920,8 +2442,8 @@ export default function SmartProposalLandingPage() {
                         <FileCheck size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-emerald-300">SIA 118 E-Signatur</div>
-                        <div className="text-[10px] text-zinc-400">Rechtsgültig digital signiert & revisionssicher archiviert.</div>
+                        <div className="text-[11px] font-bold text-emerald-300">{t('sia118BadgeTitle')}</div>
+                        <div className="text-[10px] text-zinc-400">{t('sia118BadgeDesc')}</div>
                       </div>
                     </div>
 
@@ -1931,9 +2453,9 @@ export default function SmartProposalLandingPage() {
                         <Building2 size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-blue-300">🇨🇭 Bexio ERP Sync</div>
+                        <div className="text-[11px] font-bold text-blue-300">{t('bexioBadgeTitle')}</div>
                         <div className="text-[10px] text-zinc-400">
-                          {bexioSyncResult?.success ? `Offerte #${bexioSyncResult.offerNumber || 'BX-OFF'} & Anzahlung gebucht.` : 'Synchronisation mit Schweizer Buchhaltung aktiv.'}
+                          {bexioSyncResult?.success ? t('bexioSuccess', { num: bexioSyncResult.offerNumber || 'BX-OFF' }) : t('bexioPending')}
                         </div>
                       </div>
                     </div>
@@ -1944,9 +2466,9 @@ export default function SmartProposalLandingPage() {
                         <Mail size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-purple-300">Bestätigungs-E-Mail</div>
+                        <div className="text-[11px] font-bold text-purple-300">{t('emailBadgeTitle')}</div>
                         <div className="text-[10px] text-zinc-400 truncate max-w-[200px]">
-                          {emailDispatchResult?.success ? `Zugestellt an ${acceptEmail || proposal.clientEmail}` : `Beleg & QR-Link an ${acceptEmail || proposal.clientEmail || 'Kunde'} versendet.`}
+                          {emailDispatchResult?.success ? t('emailDelivered', { email: acceptEmail || proposal.clientEmail }) : t('emailSentTo', { email: acceptEmail || proposal.clientEmail || 'Kunde' })}
                         </div>
                       </div>
                     </div>
@@ -1957,8 +2479,8 @@ export default function SmartProposalLandingPage() {
                         <QrCode size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-cyan-300">Swiss QR-Rechnung (30%)</div>
-                        <div className="text-[10px] text-zinc-400">QR-IBAN: {companySettings.qrIban.substring(0, 14)}... sofort zahlbar.</div>
+                        <div className="text-[11px] font-bold text-cyan-300">{t('qrBadgeTitle')}</div>
+                        <div className="text-[10px] text-zinc-400">{t('qrBadgeDesc', { iban: companySettings.qrIban.substring(0, 14) })}</div>
                       </div>
                     </div>
                   </div>
@@ -1981,7 +2503,7 @@ export default function SmartProposalLandingPage() {
                       className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
                     >
                       <Download size={14} />
-                      <span>Auftragsbestätigung (PDF)</span>
+                      <span>{t('downloadOrderPdf')}</span>
                     </button>
                     <button
                       type="button"
@@ -1989,7 +2511,7 @@ export default function SmartProposalLandingPage() {
                       className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
                     >
                       <QrCode size={14} />
-                      <span>Schweizer QR-Rechnung (50% Anzahlung)</span>
+                      <span>{t('downloadSwissQrBill')}</span>
                     </button>
                   </div>
                 </div>
@@ -1997,33 +2519,33 @@ export default function SmartProposalLandingPage() {
                 <form onSubmit={handleAcceptProposal} className="space-y-4">
                   <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-zinc-400">Bestätigter Gesamtbetrag (exkl. MwSt.):</div>
+                      <div className="text-xs text-zinc-400">{t('confirmedTotalLabel')}</div>
                       <div className="text-2xl font-black font-sans tracking-tight text-emerald-400">
                         {proposal.currency} {calculateTotal().toLocaleString('de-CH')}
                       </div>
                     </div>
                     <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs">
-                      SIA 102/118 Konform
+                      {t('siaCompliantBadge')}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">Ihr Name *</label>
+                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('yourName')}</label>
                       <input 
                         type="text" 
                         required 
-                        placeholder="z. B. Dr. Thomas Keller"
+                        placeholder={t('yourNamePlaceholder')}
                         value={acceptName}
                         onChange={e => setAcceptName(e.target.value)}
                         className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">Firma / Organisation</label>
+                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('company')}</label>
                       <input 
                         type="text" 
-                        placeholder="z. B. Keller Holding AG"
+                        placeholder={t('companyPlaceholder')}
                         value={acceptCompany}
                         onChange={e => setAcceptCompany(e.target.value)}
                         className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
@@ -2033,21 +2555,21 @@ export default function SmartProposalLandingPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">Geschäftliche E-Mail *</label>
+                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('businessEmail')}</label>
                       <input 
                         type="email" 
                         required 
-                        placeholder="z. B. keller@firma.ch"
+                        placeholder={t('businessEmailPlaceholder')}
                         value={acceptEmail}
                         onChange={e => setAcceptEmail(e.target.value)}
                         className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">Telefonnummer</label>
+                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('phone')}</label>
                       <input 
                         type="text" 
-                        placeholder="z. B. +41 79 123 45 67"
+                        placeholder={t('phonePlaceholder')}
                         value={acceptPhone}
                         onChange={e => setAcceptPhone(e.target.value)}
                         className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
@@ -2059,14 +2581,14 @@ export default function SmartProposalLandingPage() {
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                        <PenTool size={14} className="text-blue-400" /> Digitale Unterschrift (mit Finger oder Maus zeichnen) *
+                        <PenTool size={14} className="text-blue-400" /> {t('drawSignatureLabel')}
                       </label>
                       <button 
                         type="button" 
                         onClick={clearSignature}
                         className="text-[11px] text-zinc-400 hover:text-red-400 flex items-center gap-1 cursor-pointer"
                       >
-                        <RotateCcw size={11} /> Zurücksetzen
+                        <RotateCcw size={11} /> {t('resetSignature')}
                       </button>
                     </div>
 
@@ -2086,7 +2608,7 @@ export default function SmartProposalLandingPage() {
                       />
                       {!hasSignature && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-zinc-600 text-xs font-medium">
-                          Hier unterschreiben...
+                          {t('signHerePlaceholder')}
                         </div>
                       )}
                     </div>
@@ -2103,7 +2625,7 @@ export default function SmartProposalLandingPage() {
                         className="mt-1 accent-blue-600" 
                       />
                       <span className="text-xs text-zinc-300 leading-relaxed">
-                        Ich bestätige hiermit die verbindliche Annahme der Offerte sowie die Kenntnisnahme und Akzeptanz der <strong className="text-white">Allgemeinen Geschäftsbedingungen (AGB)</strong>, des <strong className="text-white">Werkvertrages (SIA 118)</strong> und des <strong className="text-white">SIA-Zahlungsplans</strong>.
+                        {t('legalCheckboxLabel')}
                       </span>
                     </label>
                   </div>
@@ -2114,7 +2636,7 @@ export default function SmartProposalLandingPage() {
                       onClick={() => setIsAcceptModalOpen(false)}
                       className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white"
                     >
-                      Abbrechen
+                      {t('cancel')}
                     </button>
                     <button 
                       type="submit" 
@@ -2122,7 +2644,7 @@ export default function SmartProposalLandingPage() {
                       className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-30 text-white rounded-xl text-xs font-black shadow-xl shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer"
                     >
                       <FileCheck size={16} />
-                      <span>{isAcceptSubmitting ? 'Wird signiert...' : 'Rechtsverbindlich Unterzeichnen & PDF laden'}</span>
+                      <span>{isAcceptSubmitting ? t('signing') : t('signSubmitBtn')}</span>
                     </button>
                   </div>
                 </form>
@@ -2142,7 +2664,7 @@ export default function SmartProposalLandingPage() {
           className="px-4 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-2xl shadow-2xl shadow-blue-600/50 text-xs font-extrabold flex items-center gap-2.5 transition-all hover:scale-105 border border-white/20 cursor-pointer"
         >
           <Bot size={18} className="text-cyan-200 animate-pulse" />
-          <span>Fragen zum Angebot? (KI-Berater)</span>
+          <span>{t('floatingAiBtn')}</span>
         </button>
       </div>
 
@@ -2161,8 +2683,8 @@ export default function SmartProposalLandingPage() {
                   <Bot size={18} />
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-white">KI-Projektberater</h4>
-                  <p className="text-[10px] text-cyan-300">Live-Auskunft zur Offerte #{proposal.shareToken || 'CH-2026'}</p>
+                  <h4 className="text-xs font-black text-white">{t('aiAdvisorTitle')}</h4>
+                  <p className="text-[10px] text-cyan-300">{t('aiAdvisorSubtitle', { token: proposal.shareToken || 'CH-2026' })}</p>
                 </div>
               </div>
               <button
@@ -2190,7 +2712,7 @@ export default function SmartProposalLandingPage() {
               {isAiChatLoading && (
                 <div className="mr-auto bg-zinc-900 border border-white/10 text-cyan-300 p-3 rounded-2xl rounded-tl-none text-xs flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin text-cyan-400" />
-                  <span>Antwort wird formuliert...</span>
+                  <span>{t('aiThinking')}</span>
                 </div>
               )}
             </div>
@@ -2200,7 +2722,7 @@ export default function SmartProposalLandingPage() {
                 type="text"
                 value={aiQuestionInput}
                 onChange={(e) => setAiQuestionInput(e.target.value)}
-                placeholder="Frage zu Phasen, Preis, Terminen..."
+                placeholder={t('aiInputPlaceholder')}
                 disabled={isAiChatLoading}
                 className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-blue-500"
               />
@@ -2240,8 +2762,8 @@ export default function SmartProposalLandingPage() {
                     <Share2 size={20} />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-base text-white">Offerte & Präsentation teilen</h3>
-                    <p className="text-xs text-neutral-400">Direkt per WhatsApp, LinkedIn oder E-Mail an Entscheider senden</p>
+                    <h3 className="font-extrabold text-base text-white">{t('shareModalTitle')}</h3>
+                    <p className="text-xs text-neutral-400">{t('shareModalSub')}</p>
                   </div>
                 </div>
                 <button
@@ -2255,7 +2777,7 @@ export default function SmartProposalLandingPage() {
 
               {/* Share URL & Copy Box */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-300 block">Direktlink zur interaktiven Offerte</label>
+                <label className="text-xs font-bold text-neutral-300 block">{t('directLinkLabel')}</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -2274,7 +2796,7 @@ export default function SmartProposalLandingPage() {
                     className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
                   >
                     {copiedShareToast ? <Check size={16} /> : <Share2 size={16} />}
-                    <span>{copiedShareToast ? 'Kopiert!' : 'Kopieren'}</span>
+                    <span>{copiedShareToast ? t('copied') : t('copy')}</span>
                   </button>
                 </div>
               </div>
@@ -2319,9 +2841,9 @@ export default function SmartProposalLandingPage() {
                   <QRCode value={window.location.href} size={70} />
                 </div>
                 <div className="space-y-1 text-xs">
-                  <span className="font-bold text-white block">Smartphone QR-Scan</span>
+                  <span className="font-bold text-white block">{t('smartphoneQrTitle')}</span>
                   <p className="text-[11px] text-neutral-400 leading-snug">
-                    Kunde kann den QR-Code mit der Smartphone-Kamera scannen, um die Offerte sofort auf dem Handy zu prüfen & digital zu unterschreiben.
+                    {t('smartphoneQrDesc')}
                   </p>
                 </div>
               </div>
@@ -2354,8 +2876,8 @@ export default function SmartProposalLandingPage() {
                     <Building2 size={22} />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-lg text-white">Schweizer Firmendaten & QR-Rechnung</h3>
-                    <p className="text-xs text-neutral-400">Verwaltung von QR-IBAN, UID-Nummer, Bankinstitut und Firmenangaben</p>
+                    <h3 className="font-extrabold text-lg text-white">{t('companyModalTitle')}</h3>
+                    <p className="text-xs text-neutral-400">{t('companyModalSub')}</p>
                   </div>
                 </div>
                 <button
@@ -2380,7 +2902,7 @@ export default function SmartProposalLandingPage() {
                 {/* Firmengrunddaten */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">Firmenname / Rechnungssteller *</label>
+                    <label className="font-bold text-neutral-300">{t('companyName')}</label>
                     <input
                       type="text"
                       required
@@ -2390,7 +2912,7 @@ export default function SmartProposalLandingPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">Rechtsform</label>
+                    <label className="font-bold text-neutral-300">{t('legalForm')}</label>
                     <input
                       type="text"
                       value={tempCompanySettings.legalForm}
@@ -2403,18 +2925,18 @@ export default function SmartProposalLandingPage() {
                 {/* Adresse */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2 space-y-1">
-                    <label className="font-bold text-neutral-300">Strasse & Nr.</label>
+                    <label className="font-bold text-neutral-300">{t('streetAndNo')}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="Strasse"
+                        placeholder={t('street')}
                         value={tempCompanySettings.street}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, street: e.target.value })}
                         className="flex-1 px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none focus:border-purple-500"
                       />
                       <input
                         type="text"
-                        placeholder="Nr."
+                        placeholder={t('number')}
                         value={tempCompanySettings.buildingNumber}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, buildingNumber: e.target.value })}
                         className="w-16 px-2 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white text-center outline-none focus:border-purple-500"
@@ -2422,18 +2944,18 @@ export default function SmartProposalLandingPage() {
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">PLZ & Ort</label>
+                    <label className="font-bold text-neutral-300">{t('zipAndCity')}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        placeholder="PLZ"
+                        placeholder={t('zip')}
                         value={tempCompanySettings.postalCode}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, postalCode: e.target.value })}
                         className="w-20 px-2 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white text-center outline-none focus:border-purple-500"
                       />
                       <input
                         type="text"
-                        placeholder="Ort"
+                        placeholder={t('city')}
                         value={tempCompanySettings.city}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, city: e.target.value })}
                         className="flex-1 px-3 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none focus:border-purple-500"
@@ -2445,12 +2967,12 @@ export default function SmartProposalLandingPage() {
                 {/* Banking & Swiss QR-IBAN */}
                 <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-3">
                   <div className="flex items-center gap-2 text-purple-300 font-bold">
-                    <QrCode size={16} /> <span>Schweizer QR-Rechnung & Bankdaten</span>
+                    <QrCode size={16} /> <span>{t('bankingQrSection')}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">Schweizer QR-IBAN (Zahlteil) *</label>
+                      <label className="font-bold text-neutral-300">{t('qrIban')}</label>
                       <input
                         type="text"
                         required
@@ -2460,7 +2982,7 @@ export default function SmartProposalLandingPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">Bankinstitut</label>
+                      <label className="font-bold text-neutral-300">{t('bankName')}</label>
                       <input
                         type="text"
                         value={tempCompanySettings.bankName}
@@ -2472,7 +2994,7 @@ export default function SmartProposalLandingPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">UID / MWST-Nummer</label>
+                      <label className="font-bold text-neutral-300">{t('uidNumber')}</label>
                       <input
                         type="text"
                         value={tempCompanySettings.uid}
@@ -2481,7 +3003,7 @@ export default function SmartProposalLandingPage() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">Reguläre IBAN</label>
+                      <label className="font-bold text-neutral-300">{t('regularIban')}</label>
                       <input
                         type="text"
                         value={tempCompanySettings.iban}
@@ -2495,7 +3017,7 @@ export default function SmartProposalLandingPage() {
                 {/* Kontakt */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">Offizielle E-Mail</label>
+                    <label className="font-bold text-neutral-300">{t('officialEmail')}</label>
                     <input
                       type="email"
                       value={tempCompanySettings.contactEmail}
@@ -2504,7 +3026,7 @@ export default function SmartProposalLandingPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">Telefonnummer</label>
+                    <label className="font-bold text-neutral-300">{t('phone')}</label>
                     <input
                       type="text"
                       value={tempCompanySettings.contactPhone}
@@ -2520,13 +3042,13 @@ export default function SmartProposalLandingPage() {
                     onClick={() => setIsCompanySettingsModalOpen(false)}
                     className="px-4 py-2.5 rounded-xl text-zinc-400 hover:text-white font-bold cursor-pointer"
                   >
-                    Abbrechen
+                    {t('cancel')}
                   </button>
                   <button
                     type="submit"
                     className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold rounded-xl shadow-lg shadow-purple-600/30 transition-all cursor-pointer"
                   >
-                    Firmendaten & QR-Code speichern
+                    {t('saveCompanyBtn')}
                   </button>
                 </div>
               </form>

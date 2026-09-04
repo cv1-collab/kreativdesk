@@ -65,7 +65,26 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     slide_animation_header: 'Slide Animation', project_reporting_header: 'Project Reporting',
     title_label: 'Title:', text_label: 'Text:', stamp_label: 'Stamp', select_stamp: 'Select Stamp',
     remove_stamp: 'Remove Stamp', notes_label: 'Notes', duplicate_slide: 'Duplicate Slide',
-    image_label: 'Image', ai_create_deck: 'Create AI Deck', presenter_mode: 'Presenter Mode'
+    image_label: 'Image', ai_create_deck: 'Create AI Deck', presenter_mode: 'Presenter Mode',
+    client_link_proposal_btn: 'Client Link / Proposal', client_link_tooltip: 'Create interactive client landing page & proposal',
+    landing_page_live: 'Client Landing Page is Live!',
+    landing_page_live_sub: 'The interactive presentation for {client} has been published to the cloud.',
+    copy: 'Copy', copied: 'Copied', link_copied_toast: 'Client link copied to clipboard!',
+    send_whatsapp: 'Send via WhatsApp', send_email: 'Send via Email',
+    view_as_client: 'View as Client (Live Preview)', close_done: 'Close / Done',
+    tab_basic: '1. Basic & Client', tab_finance: '2. Finances & SIA Payment Plan', tab_legal: '3. Attach GTC & Contracts',
+    client_name_label: 'Client Name / Contact Person *', client_company_label: 'Client Company / Organization',
+    client_email_label: 'Email for Inquiries', client_phone_label: 'Phone Number for WhatsApp / Callback',
+    hero_video_label: 'Hero Video (MP4 / Showreel)', upload_file: 'Upload File', uploading: 'Uploading...',
+    validity_duration: 'Proposal Validity Duration', pin_protection: 'PIN Code Protection (Optional)',
+    pin_placeholder: 'e.g. 8005 (Leave blank = Public)', intro_text_label: 'Personal Introduction for Client',
+    base_price_label: 'Base Proposal Amount *', currency_label: 'Currency',
+    configurable_options: 'Configurable Add-on Options', configurable_options_sub: 'Client can select/deselect these',
+    new_option_placeholder: 'New package (e.g. 4K Drone Flight)', price_placeholder: 'Price', add_btn: '+ Add',
+    sia_milestones_heading: 'SIA 102/118 Payment Plan & Milestones', legal_docs_heading: 'Upload Contract Documents & Terms',
+    legal_docs_sub: 'Upload your GTC, works contracts (SIA 118) or NDAs as PDF. The client can view and bindingly accept them on the landing page.',
+    pdf_uploaded: '✅ Uploaded', pdf_none: '⚠️ No PDF attached yet', upload_pdf: 'Upload PDF',
+    cancel: 'Cancel', publish_landingpage: 'Publish Smart Landing Page', proposal_created_success: 'Client landing page created successfully!'
   },
   de: {
     new_slide: 'Neue Folie', type_text_here: 'Inhalt hier einfügen...', budget_plan: 'Projekt-Budget',
@@ -99,7 +118,26 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     slide_animation_header: 'Folien-Animation', project_reporting_header: 'Projekt-Berichterstattung',
     title_label: 'Titel:', text_label: 'Text:', stamp_label: 'Stempel', select_stamp: 'Stempel wählen',
     remove_stamp: 'Stempel entfernen', notes_label: 'Notizen', duplicate_slide: 'Folie duplizieren',
-    image_label: 'Bild', ai_create_deck: 'KI Deck erstellen', presenter_mode: 'Präsentationsmodus'
+    image_label: 'Bild', ai_create_deck: 'KI Deck erstellen', presenter_mode: 'Präsentationsmodus',
+    client_link_proposal_btn: 'Kunden-Link / Offerte', client_link_tooltip: 'Interaktive Kunden-Landingpage & Offerte erstellen',
+    landing_page_live: 'Kunden-Landingpage ist Live!',
+    landing_page_live_sub: 'Die interaktive Präsentation für {client} wurde in der Cloud veröffentlicht.',
+    copy: 'Kopieren', copied: 'Kopiert', link_copied_toast: 'Kunden-Link in Zwischenablage kopiert!',
+    send_whatsapp: 'Per WhatsApp senden', send_email: 'Per E-Mail versenden',
+    view_as_client: 'Als Kunde ansehen (Live-Vorschau)', close_done: 'Schliessen / Fertig',
+    tab_basic: '1. Basis & Kunde', tab_finance: '2. Finanzen & SIA-Zahlungsplan', tab_legal: '3. AGB & Verträge anhängen',
+    client_name_label: 'Kunden-Name / Ansprechpartner *', client_company_label: 'Kunden-Firma / Organisation',
+    client_email_label: 'E-Mail für Rückfragen', client_phone_label: 'Telefonnummer für WhatsApp / Rückruf',
+    hero_video_label: 'Hero Video (MP4 / Showreel)', upload_file: 'Datei hochladen', uploading: 'Lädt hoch...',
+    validity_duration: 'Gültigkeitsdauer der Offerte', pin_protection: 'PIN-Code Schutz (Optional)',
+    pin_placeholder: 'z. B. 8005 (Leerlassen = Öffentlich)', intro_text_label: 'Persönliche Einleitung für den Kunden',
+    base_price_label: 'Basis-Angebotssumme *', currency_label: 'Währung',
+    configurable_options: 'Konfigurierbare Zusatzoptionen', configurable_options_sub: 'Kunde kann diese an/abwählen',
+    new_option_placeholder: 'Neues Paket (z.B. 4K Drohnenflug)', price_placeholder: 'Preis', add_btn: '+ Hinzufügen',
+    sia_milestones_heading: 'SIA 102/118 Zahlungsplan & Meilensteine', legal_docs_heading: 'Vertragsdokumente & AGBs hochladen',
+    legal_docs_sub: 'Laden Sie Ihre AGB, Werkverträge (SIA 118) oder NDAs als PDF hoch. Der Kunde kann diese auf der Landingpage einsehen und verbindlich akzeptieren.',
+    pdf_uploaded: '✅ Hochgeladen', pdf_none: '⚠️ Noch keine PDF hinterlegt', upload_pdf: 'PDF hochladen',
+    cancel: 'Abbrechen', publish_landingpage: 'Smart Landingpage Veröffentlichen', proposal_created_success: 'Kunden-Landingpage erfolgreich erstellt!'
   }
 };
 
@@ -231,7 +269,15 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
-  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+  const t = (key: string, params?: Record<string, string | number>) => {
+    let text = localTranslations[currentLang]?.[key] || globalT(key) || key;
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
+      });
+    }
+    return text;
+  };
   
   const { currentUser } = useAuth();
   const { projects = [], projectMembers = [], companyUsers = [], defects = [], isDemoMode = false } = useProject() as any;
@@ -3241,9 +3287,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   setIsLandingPageModalOpen(true);
                 }}
                 className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
-                title="Interaktive Kunden-Landingpage & Offerte erstellen"
+                title={t('client_link_tooltip')}
               >
-                <Globe size={14}/> <span>Kunden-Link / Offerte</span>
+                <Globe size={14}/> <span>{t('client_link_proposal_btn')}</span>
               </button>
               {/* EXPORTIEREN BUTTON (INTEGRIERT: KEYNOTE, POWERPOINT & PDF STUDIO) */}
               <button 
@@ -3732,9 +3778,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   <CheckCircle2 size={36} />
                 </div>
                 <div>
-                  <h4 className="text-xl font-bold text-text-primary">Kunden-Landingpage ist Live!</h4>
+                  <h4 className="text-xl font-bold text-text-primary">{t('landing_page_live')}</h4>
                   <p className="text-xs text-text-muted mt-1 max-w-md mx-auto">
-                    Die interaktive Präsentation für <strong>{proposalClientName || 'Ihren Kunden'}</strong> wurde in der Cloud veröffentlicht.
+                    {t('landing_page_live_sub', { client: proposalClientName || (currentLang === 'de' ? 'Ihren Kunden' : 'Your Client') })}
                   </p>
                 </div>
 
@@ -3746,13 +3792,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     onClick={async () => {
                       await copyToClipboard(publishedShareUrl);
                       setCopiedProposalLink(true);
-                      addToast('Kunden-Link in Zwischenablage kopiert!', 'success');
+                      addToast(t('link_copied_toast'), 'success');
                       setTimeout(() => setCopiedProposalLink(false), 2000);
                     }}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
                   >
                     {copiedProposalLink ? <Check size={14} /> : <Copy size={14} />}
-                    <span>{copiedProposalLink ? 'Kopiert' : 'Kopieren'}</span>
+                    <span>{copiedProposalLink ? t('copied') : t('copy')}</span>
                   </button>
                 </div>
 
@@ -3763,13 +3809,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     rel="noreferrer"
                     className="p-3 bg-emerald-600/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
                   >
-                    <MessageSquare size={16} /> Per WhatsApp senden
+                    <MessageSquare size={16} /> {t('send_whatsapp')}
                   </a>
                   <a 
                     href={`mailto:${proposalClientEmail}?subject=${encodeURIComponent(`Präsentation & Offerte: ${activeProject?.name || 'Projekt'}`)}&body=${encodeURIComponent(`Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie den Link zu Ihrer interaktiven Projekt-Landingpage:\n${publishedShareUrl}\n\nFreundliche Grüsse`)}`}
                     className="p-3 bg-blue-600/10 text-blue-400 border border-blue-500/30 hover:bg-blue-600/20 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
                   >
-                    <Mail size={16} /> Per E-Mail versenden
+                    <Mail size={16} /> {t('send_email')}
                   </a>
                 </div>
 
@@ -3780,13 +3826,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     rel="noreferrer" 
                     className="w-full sm:w-auto px-4 py-2.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/40 text-purple-600 dark:text-purple-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all"
                   >
-                    <Eye size={15} /> <span>Als Kunde ansehen (Live-Vorschau)</span> <ArrowRight size={13} />
+                    <Eye size={15} /> <span>{t('view_as_client')}</span> <ArrowRight size={13} />
                   </a>
                   <button 
                     onClick={() => { setIsLandingPageModalOpen(false); setPublishedShareUrl(null); }} 
                     className="w-full sm:w-auto px-6 py-2.5 bg-surface border border-border rounded-xl text-xs font-bold text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
                   >
-                    Schliessen / Fertig
+                    {t('close_done')}
                   </button>
                 </div>
               </div>
@@ -3822,7 +3868,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 const publicUrl = `${window.location.origin}/p/${proposalData.shareToken}`;
                 setPublishedShareUrl(publicUrl);
                 setIsPublishingProposal(false);
-                addToast('Kunden-Landingpage erfolgreich erstellt!', 'success');
+                addToast(t('proposal_created_success'), 'success');
               }} className="space-y-5">
 
                 {/* MODAL NAVIGATION TABS */}
@@ -3832,21 +3878,21 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     onClick={() => setProposalModalTab('basic')}
                     className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", proposalModalTab === 'basic' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
-                    <Users size={14} /> <span>1. Basis & Kunde</span>
+                    <Users size={14} /> <span>{t('tab_basic')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setProposalModalTab('finance')}
                     className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", proposalModalTab === 'finance' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
-                    <DollarSign size={14} /> <span>2. Finanzen & SIA-Zahlungsplan</span>
+                    <DollarSign size={14} /> <span>{t('tab_finance')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setProposalModalTab('legal')}
                     className={cn("flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer", proposalModalTab === 'legal' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
-                    <FileText size={14} /> <span>3. AGB & Verträge anhängen</span>
+                    <FileText size={14} /> <span>{t('tab_legal')}</span>
                   </button>
                 </div>
                 
@@ -3855,7 +3901,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Kunden-Name / Ansprechpartner *</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('client_name_label')}</label>
                         <input 
                           type="text" 
                           required 
@@ -3866,7 +3912,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Kunden-Firma / Organisation</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('client_company_label')}</label>
                         <input 
                           type="text" 
                           placeholder="z. B. Keller Holding AG"
@@ -3879,7 +3925,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">E-Mail für Rückfragen</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('client_email_label')}</label>
                         <input 
                           type="email" 
                           placeholder="z. B. keller@firma.ch"
@@ -3889,7 +3935,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Telefonnummer für WhatsApp / Rückruf</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('client_phone_label')}</label>
                         <input 
                           type="text" 
                           placeholder="z. B. +41 79 123 45 67"
@@ -3902,10 +3948,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-text-muted uppercase">Hero Video (MP4 / Showreel)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase">{t('hero_video_label')}</label>
                         <label className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer">
                           {isUploadingVideo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                          <span>{isUploadingVideo ? 'Lädt hoch...' : 'Datei hochladen'}</span>
+                          <span>{isUploadingVideo ? t('uploading') : t('upload_file')}</span>
                           <input 
                             type="file" 
                             accept="video/mp4,video/webm,video/quicktime" 
@@ -3916,7 +3962,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       </div>
                       <input 
                         type="text" 
-                        placeholder="https://.../video.mp4 oder Datei hochladen"
+                        placeholder="https://.../video.mp4"
                         value={proposalHeroVideoUrl}
                         onChange={e => setProposalHeroVideoUrl(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
@@ -3925,26 +3971,26 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Gültigkeitsdauer der Offerte</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('validity_duration')}</label>
                         <select 
                           value={proposalExpiryDays}
                           onChange={e => setProposalExpiryDays(Number(e.target.value))}
                           className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-bold text-text-primary outline-none focus:border-blue-500 cursor-pointer"
                         >
-                          <option value={14}>14 Tage</option>
-                          <option value={30}>30 Tage (Standard)</option>
-                          <option value={60}>60 Tage</option>
-                          <option value={90}>90 Tage</option>
-                          <option value={180}>180 Tage (6 Monate)</option>
-                          <option value={365}>365 Tage (1 Jahr)</option>
+                          <option value={14}>14 {currentLang === 'de' ? 'Tage' : 'Days'}</option>
+                          <option value={30}>30 {currentLang === 'de' ? 'Tage (Standard)' : 'Days (Default)'}</option>
+                          <option value={60}>60 {currentLang === 'de' ? 'Tage' : 'Days'}</option>
+                          <option value={90}>90 {currentLang === 'de' ? 'Tage' : 'Days'}</option>
+                          <option value={180}>180 {currentLang === 'de' ? 'Tage (6 Monate)' : 'Days (6 Months)'}</option>
+                          <option value={365}>365 {currentLang === 'de' ? 'Tage (1 Jahr)' : 'Days (1 Year)'}</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">PIN-Code Schutz (Optional)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('pin_protection')}</label>
                         <input 
                           type="text" 
-                          placeholder="z. B. 8005 (Leerlassen = Öffentlich)"
+                          placeholder={t('pin_placeholder')}
                           value={proposalPinCode}
                           onChange={e => setProposalPinCode(e.target.value)}
                           className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
@@ -3953,7 +3999,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Persönliche Einleitung für den Kunden</label>
+                      <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('intro_text_label')}</label>
                       <textarea 
                         rows={3}
                         value={proposalIntroText}
@@ -3969,7 +4015,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Basis-Angebotssumme *</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('base_price_label')}</label>
                         <div className="flex">
                           <span className="inline-flex items-center px-3 bg-surface border border-r-0 border-border rounded-l-xl text-xs font-bold text-text-muted">
                             {proposalCurrency}
@@ -3985,7 +4031,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Währung</label>
+                        <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('currency_label')}</label>
                         <select 
                           value={proposalCurrency}
                           onChange={e => setProposalCurrency(e.target.value)}
@@ -4002,9 +4048,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     <div className="p-4 rounded-2xl bg-background border border-border space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-text-primary uppercase flex items-center gap-1.5">
-                          <CheckSquare size={14} className="text-blue-400" /> Konfigurierbare Zusatzoptionen
+                          <CheckSquare size={14} className="text-blue-400" /> {t('configurable_options')}
                         </span>
-                        <span className="text-[10px] text-text-muted font-medium">Kunde kann diese an/abwählen</span>
+                        <span className="text-[10px] text-text-muted font-medium">{t('configurable_options_sub')}</span>
                       </div>
 
                       <div className="space-y-2">
@@ -4024,14 +4070,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                         <div className="flex gap-2 pt-1">
                           <input 
                             type="text" 
-                            placeholder="Neues Paket (z.B. 4K Drohnenflug)"
+                            placeholder={t('new_option_placeholder')}
                             value={newOptionTitle}
                             onChange={e => setNewOptionTitle(e.target.value)}
                             className="flex-1 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs outline-none text-text-primary"
                           />
                           <input 
                             type="number" 
-                            placeholder="Preis"
+                            placeholder={t('price_placeholder')}
                             value={newOptionPrice || ''}
                             onChange={e => setNewOptionPrice(Number(e.target.value))}
                             className="w-24 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-right tabular-nums outline-none text-text-primary"
@@ -4047,7 +4093,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                             }}
                             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold cursor-pointer"
                           >
-                            + Hinzufügen
+                            {t('add_btn')}
                           </button>
                         </div>
                       </div>
@@ -4056,7 +4102,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     {/* SIA-ZAHLUNGSPLAN MEILENSTEINE */}
                     <div className="p-4 rounded-2xl bg-background border border-border space-y-3">
                       <span className="text-xs font-bold text-text-primary uppercase flex items-center gap-1.5">
-                        <Milestone size={14} className="text-emerald-400" /> SIA 102/118 Zahlungsplan & Meilensteine
+                        <Milestone size={14} className="text-emerald-400" /> {t('sia_milestones_heading')}
                       </span>
                       <div className="space-y-2">
                         {proposalPaymentMilestones.map((ms, msIdx) => (
@@ -4083,10 +4129,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                       <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-xs font-bold text-text-primary uppercase flex items-center gap-1.5">
-                            <ShieldCheck size={14} className="text-purple-400" /> Vertragsdokumente & AGBs hochladen
+                            <ShieldCheck size={14} className="text-purple-400" /> {t('legal_docs_heading')}
                           </h4>
                           <p className="text-[11px] text-text-muted mt-0.5">
-                            Laden Sie Ihre AGB, Werkverträge (SIA 118) oder NDAs als PDF hoch. Der Kunde kann diese auf der Landingpage einsehen und verbindlich akzeptieren.
+                            {t('legal_docs_sub')}
                           </p>
                         </div>
                       </div>
@@ -4101,7 +4147,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                               <div>
                                 <div className="font-bold text-xs text-text-primary">{doc.name}</div>
                                 <div className="text-[10px] text-text-muted flex items-center gap-2">
-                                  <span>{doc.url ? '✅ Hochgeladen' : '⚠️ Noch keine PDF hinterlegt'}</span>
+                                  <span>{doc.url ? t('pdf_uploaded') : t('pdf_none')}</span>
                                   {doc.size && <span>• {doc.size}</span>}
                                 </div>
                               </div>
@@ -4110,7 +4156,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                             <div className="flex items-center gap-2">
                               <label className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors border border-blue-500/20">
                                 {isUploadingLegalDoc ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                                <span>PDF hochladen</span>
+                                <span>{t('upload_pdf')}</span>
                                 <input 
                                   type="file" 
                                   accept=".pdf,.doc,.docx" 
@@ -4152,7 +4198,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
                   <button type="button" onClick={() => setIsLandingPageModalOpen(false)} className="px-5 py-2.5 text-xs font-bold text-text-muted hover:text-text-primary cursor-pointer">
-                    Abbrechen
+                    {t('cancel')}
                   </button>
                   <button 
                     type="submit" 
@@ -4160,7 +4206,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                     className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {isPublishingProposal ? <Loader2 size={16} className="animate-spin" /> : <Globe size={16} />}
-                    <span>Smart Landingpage Veröffentlichen</span>
+                    <span>{t('publish_landingpage')}</span>
                   </button>
                 </div>
               </form>
