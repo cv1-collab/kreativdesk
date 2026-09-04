@@ -173,32 +173,44 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     }
   }, [projectId]);
 
-  // Auto-save draft on every change
+  // Debounced Auto-Save Draft to prevent freezing during mouse move
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor };
     
-    const draftData = {
-      layers,
-      activeLayerId,
-      bgImageSrc,
-      bgImagePos,
-      stageScale,
-      stagePos,
-      activeColor,
-      updatedAt: new Date().toISOString()
-    };
-    
-    try {
-      const key = getDraftStorageKey(projectId);
-      const json = JSON.stringify(draftData);
-      localStorage.setItem(key, json);
-      localStorage.setItem('wb_draft_latest', json);
-    } catch (e) {
-      console.warn("Failed to save whiteboard draft to localStorage:", e);
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
     }
+
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const draftData = {
+          layers,
+          activeLayerId,
+          bgImageSrc,
+          bgImagePos,
+          stageScale,
+          stagePos,
+          activeColor,
+          updatedAt: new Date().toISOString()
+        };
+        const key = getDraftStorageKey(projectId);
+        const json = JSON.stringify(draftData);
+        localStorage.setItem(key, json);
+        localStorage.setItem('wb_draft_latest', json);
+      } catch (e) {
+        console.warn("Failed to save whiteboard draft to localStorage:", e);
+      }
+    }, 800);
+
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
   }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId]);
   
   const isDrawing = useRef(false);
+  const drawingStartPos = useRef<{ x: number, y: number } | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
@@ -445,45 +457,252 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     setStageScale(newScale); setStagePos({ x: center.x - relatedTo.x * newScale, y: center.y - relatedTo.y * newScale });
   };
 
+  const getEnsureActiveLayer = (): LayerData | null => {
+    let active = layers.find(l => l.id === activeLayerId);
+    if (!active || !active.visible) {
+      const fallback = layers.find(l => l.visible) || layers[0];
+      if (fallback) {
+        if (!fallback.visible) {
+          setLayers(prev => prev.map(l => l.id === fallback.id ? { ...l, visible: true } : l));
+        }
+        setActiveLayerId(fallback.id);
+        return { ...fallback, visible: true };
+      }
+    }
+    return active || null;
+  };
+
   const handleMouseDown = (e: any) => {
-    if (e.target === e.target.getStage() || e.target.name() === 'background-rect') setSelectedShapeId(null);
+    const isBackgroundClick = e.target === e.target.getStage() || e.target.name() === 'background-rect';
+    if (isBackgroundClick && tool === 'select') {
+      setSelectedShapeId(null);
+    }
     if (tool === 'select' || tool === 'pan') return; 
-    const activeLayer = layers.find(l => l.id === activeLayerId);
-    if (!activeLayer || !activeLayer.visible) { addToast('Bitte eine sichtbare Ebene auswählen.', 'info'); return; }
-    const stage = e.target.getStage(); const pointer = stage.getPointerPosition();
-    if(!pointer) return;
-    const pos = { x: (pointer.x - stage.x()) / stage.scaleX(), y: (pointer.y - stage.y()) / stage.scaleY() };
+
+    const activeLayer = getEnsureActiveLayer();
+    if (!activeLayer) return;
+
+    const stage = stageRef.current || e.target.getStage();
+    if (!stage) return;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const pos = { 
+      x: (pointer.x - stage.x()) / stage.scaleX(), 
+      y: (pointer.y - stage.y()) / stage.scaleY() 
+    };
+
     if (tool === 'polygon') {
       if (currentPolygon.length > 2) {
         const dist = Math.hypot(pos.x - currentPolygon[0], pos.y - currentPolygon[1]);
-        if (dist < 15 / stageScale) { finishPolygon(); return; }
+        if (dist < 18 / stageScale) { 
+          finishPolygon(); 
+          return; 
+        }
       }
-      if (currentPolygon.length === 0) setCurrentPolygon([pos.x, pos.y, pos.x, pos.y]); else setCurrentPolygon([...currentPolygon, pos.x, pos.y]);
+      if (currentPolygon.length === 0) {
+        setCurrentPolygon([pos.x, pos.y, pos.x, pos.y]);
+      } else {
+        setCurrentPolygon([...currentPolygon, pos.x, pos.y]);
+      }
       return;
     }
-    isDrawing.current = true; const id = Date.now().toString();
-    if (tool === 'pen' || tool === 'eraser') addItemToActiveLayer({ type: 'line', tool, points: [pos.x, pos.y, pos.x, pos.y], id, x: 0, y: 0, color: tool === 'eraser' ? canvasBgColor : activeColor });
-    else if (tool === 'rect') addItemToActiveLayer({ type: 'rect', x: pos.x, y: pos.y, width: 0, height: 0, id, color: activeColor });
-    else if (tool === 'circle') addItemToActiveLayer({ type: 'circle', x: pos.x, y: pos.y, radius: 0, id, color: activeColor });
-    else if (tool === 'text') { setTextPrompt({ isOpen: true, x: pos.x, y: pos.y, value: '' }); isDrawing.current = false; }
+
+    drawingStartPos.current = { x: pos.x, y: pos.y };
+    isDrawing.current = true;
+    const id = `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+
+    if (tool === 'pen' || tool === 'eraser') {
+      addItemToActiveLayer({ 
+        type: 'line', 
+        tool, 
+        points: [pos.x, pos.y, pos.x + 0.1, pos.y + 0.1], 
+        id, 
+        x: 0, 
+        y: 0, 
+        color: tool === 'eraser' ? canvasBgColor : activeColor 
+      });
+    } else if (tool === 'rect') {
+      addItemToActiveLayer({ 
+        type: 'rect', 
+        x: pos.x, 
+        y: pos.y, 
+        width: 0, 
+        height: 0, 
+        id, 
+        color: activeColor 
+      });
+    } else if (tool === 'circle') {
+      addItemToActiveLayer({ 
+        type: 'circle', 
+        x: pos.x, 
+        y: pos.y, 
+        radius: 0, 
+        id, 
+        color: activeColor 
+      });
+    } else if (tool === 'text') { 
+      setTextPrompt({ isOpen: true, x: pos.x, y: pos.y, value: '' }); 
+      isDrawing.current = false;
+      drawingStartPos.current = null;
+    }
   };
 
   const handleMouseMove = (e: any) => {
     if (tool === 'select' || tool === 'pan') return;
-    const stage = e.target.getStage(); const pointer = stage.getPointerPosition();
+    const stage = stageRef.current || e.target.getStage();
+    if (!stage) return;
+    const pointer = stage.getPointerPosition();
     if (!pointer) return;
-    const point = { x: (pointer.x - stage.x()) / stage.scaleX(), y: (pointer.y - stage.y()) / stage.scaleY() };
+
+    const point = { 
+      x: (pointer.x - stage.x()) / stage.scaleX(), 
+      y: (pointer.y - stage.y()) / stage.scaleY() 
+    };
+
     if (tool === 'polygon' && currentPolygon.length > 0) {
-      const newPoly = [...currentPolygon]; newPoly[newPoly.length - 2] = point.x; newPoly[newPoly.length - 1] = point.y;
-      setCurrentPolygon(newPoly); return;
+      const newPoly = [...currentPolygon];
+      newPoly[newPoly.length - 2] = point.x;
+      newPoly[newPoly.length - 1] = point.y;
+      setCurrentPolygon(newPoly);
+      return;
     }
-    if (!isDrawing.current) return;
-    if (tool === 'pen' || tool === 'eraser') updateLastItemInActiveLayer(item => ({ ...item, points: item.points.concat([point.x, point.y]) }));
-    else if (tool === 'rect') updateLastItemInActiveLayer(item => ({ ...item, width: point.x - item.x, height: point.y - item.y }));
-    else if (tool === 'circle') updateLastItemInActiveLayer(item => ({ ...item, radius: Math.sqrt(Math.pow(point.x - item.x, 2) + Math.pow(point.y - item.y, 2)) }));
+
+    if (!isDrawing.current || !drawingStartPos.current) return;
+
+    if (tool === 'pen' || tool === 'eraser') {
+      updateLastItemInActiveLayer(item => {
+        if (!item || item.type !== 'line') return item;
+        const pts = item.points;
+        const lastX = pts[pts.length - 2];
+        const lastY = pts[pts.length - 1];
+        if (Math.hypot(point.x - lastX, point.y - lastY) < (2 / stageScale)) return item;
+        return { ...item, points: pts.concat([point.x, point.y]) };
+      });
+    } else if (tool === 'rect') {
+      const startX = drawingStartPos.current.x;
+      const startY = drawingStartPos.current.y;
+      const normX = Math.min(startX, point.x);
+      const normY = Math.min(startY, point.y);
+      const normW = Math.abs(point.x - startX);
+      const normH = Math.abs(point.y - startY);
+
+      updateLastItemInActiveLayer(item => {
+        if (!item || item.type !== 'rect') return item;
+        return {
+          ...item,
+          x: normX,
+          y: normY,
+          width: Math.max(1, normW),
+          height: Math.max(1, normH)
+        };
+      });
+    } else if (tool === 'circle') {
+      const startX = drawingStartPos.current.x;
+      const startY = drawingStartPos.current.y;
+      const rad = Math.hypot(point.x - startX, point.y - startY);
+
+      updateLastItemInActiveLayer(item => {
+        if (!item || item.type !== 'circle') return item;
+        return {
+          ...item,
+          radius: Math.max(1, rad)
+        };
+      });
+    }
   };
 
-  const handleMouseUp = () => isDrawing.current = false;
+  const handleMouseUp = () => {
+    if (!isDrawing.current) return;
+    isDrawing.current = false;
+
+    if (tool === 'rect') {
+      updateLastItemInActiveLayer(item => {
+        if (item && item.type === 'rect' && (item.width < 10 || item.height < 10)) {
+          const startX = drawingStartPos.current ? drawingStartPos.current.x : item.x;
+          const startY = drawingStartPos.current ? drawingStartPos.current.y : item.y;
+          return {
+            ...item,
+            x: startX - 75,
+            y: startY - 50,
+            width: 150,
+            height: 100
+          };
+        }
+        return item;
+      });
+    } else if (tool === 'circle') {
+      updateLastItemInActiveLayer(item => {
+        if (item && item.type === 'circle' && item.radius < 10) {
+          return {
+            ...item,
+            radius: 50
+          };
+        }
+        return item;
+      });
+    }
+
+    drawingStartPos.current = null;
+  };
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDrawing.current) {
+        handleMouseUp();
+      }
+    };
+    window.addEventListener('pointerup', handleGlobalMouseUp);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    window.addEventListener('touchend', handleGlobalMouseUp);
+    return () => {
+      window.removeEventListener('pointerup', handleGlobalMouseUp);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+      window.removeEventListener('touchend', handleGlobalMouseUp);
+    };
+  }, [tool]);
+
+  const handleColorPick = (c: string) => {
+    setActiveColor(c);
+    if (selectedShapeId) {
+      updateItemById(selectedShapeId, item => ({
+        ...item,
+        color: c,
+        stroke: item.stroke ? c : (item.type === 'rect' ? c : undefined),
+        fill: item.fill ? (item.fill.startsWith('#') && item.fill.length === 9 ? `${c}33` : item.fill) : undefined
+      }));
+    }
+  };
+
+  const handleAddStickyNote = (fillColor: string, strokeColor: string) => {
+    const currentLayer = getEnsureActiveLayer();
+    if (!currentLayer) return;
+
+    const centerX = stageSize.width > 0 
+      ? (stageSize.width / 2 - stagePos.x) / stageScale - 70 
+      : 150;
+    const centerY = stageSize.height > 0 
+      ? (stageSize.height / 2 - stagePos.y) / stageScale - 70 
+      : 150;
+
+    const newId = `sticky-${Date.now()}`;
+    addItemToActiveLayer({
+      id: newId,
+      type: 'rect',
+      x: centerX,
+      y: centerY,
+      width: 140,
+      height: 140,
+      fill: fillColor,
+      stroke: strokeColor,
+      strokeWidth: 2,
+      cornerRadius: 8,
+      text: 'Notiz...'
+    });
+    setSelectedShapeId(newId);
+    setTool('select');
+    addToast('Notiz hinzugefügt', 'success');
+  };
 
   const finishPolygon = () => {
     if (currentPolygon.length > 4) {
@@ -838,6 +1057,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
   const executePdfExport = () => {
     setSelectedShapeId(null);
+    addToast('PDF Studio wird geöffnet...', 'info');
     setTimeout(() => {
       let uri: string | null = null;
       try {
@@ -847,7 +1067,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
       }
       setPdfRenderImage(uri);
       setIsPdfStudioOpen(true);
-    }, 50);
+    }, 60);
   };
 
   const handleSendToSlides = async () => {
@@ -1124,78 +1344,43 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             <div className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-1rem)] custom-scrollbar">
               <div className="flex items-center gap-1 px-1.5 border-r border-border mr-1 shrink-0">
                 {AVAILABLE_COLORS.map(c => (
-                  <button key={c} onClick={() => setActiveColor(c)} className={cn("w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-all shrink-0", activeColor === c ? "border-text-primary scale-110" : "border-transparent hover:scale-110")} style={{ backgroundColor: c }} title="Farbe wählen" />
+                  <button key={c} onClick={() => handleColorPick(c)} className={cn("w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-all shrink-0 cursor-pointer", activeColor === c ? "border-text-primary scale-110 shadow-md" : "border-transparent hover:scale-110")} style={{ backgroundColor: c }} title={`Farbe wählen: ${c}`} />
                 ))}
               </div>
-              <button onClick={() => setTool('pan')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'pan' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_pan')}><Hand size={16} /></button>
-              <button onClick={() => setTool('select')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'select' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_select')}><MousePointer2 size={16} /></button>
+              <button onClick={() => { setTool('pan'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pan' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_pan')}><Hand size={16} /></button>
+              <button onClick={() => setTool('select')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'select' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_select')}><MousePointer2 size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
-              <button onClick={() => setTool('pen')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'pen' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Stift"><PenTool size={16} /></button>
-              <button onClick={() => setTool('eraser')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'eraser' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Radierer"><Eraser size={16} /></button>
+              <button onClick={() => { setTool('pen'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pen' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Stift (Freihand zeichnen)"><PenTool size={16} /></button>
+              <button onClick={() => { setTool('eraser'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'eraser' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Radierer"><Eraser size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
-              <button onClick={() => setTool('polygon')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'polygon' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('draw_polygon')}><Hexagon size={16} /></button>
-              <button onClick={() => setTool('rect')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'rect' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Rechteck"><Square size={16} /></button>
-              <button onClick={() => setTool('circle')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'circle' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Kreis"><Circle size={16} /></button>
-              <button onClick={() => setTool('text')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0", tool === 'text' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Text"><Type size={16} /></button>
+              <button onClick={() => { setTool('polygon'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'polygon' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('draw_polygon')}><Hexagon size={16} /></button>
+              <button onClick={() => { setTool('rect'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'rect' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Rechteck (Klicken oder Ziehen)"><Square size={16} /></button>
+              <button onClick={() => { setTool('circle'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'circle' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Kreis (Klicken oder Ziehen)"><Circle size={16} /></button>
+              <button onClick={() => { setTool('text'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'text' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Text einfügen"><Type size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
               {/* STICKY NOTES PALETTE */}
-              <button onClick={() => {
-                addItemToActiveLayer({
-                  id: `sticky-${Date.now()}`,
-                  type: 'rect',
-                  x: 150,
-                  y: 150,
-                  width: 140,
-                  height: 140,
-                  fill: '#fef08a',
-                  stroke: '#eab308',
-                  strokeWidth: 2,
-                  cornerRadius: 8,
-                  text: 'Notiz...'
-                });
-                addToast('Notiz hinzugefügt', 'success');
-              }} className="w-6 h-6 rounded-md bg-yellow-200 border border-yellow-400 hover:scale-110 transition-transform shrink-0" title="Gelbe Notiz" />
-              <button onClick={() => {
-                addItemToActiveLayer({
-                  id: `sticky-${Date.now()}`,
-                  type: 'rect',
-                  x: 180,
-                  y: 180,
-                  width: 140,
-                  height: 140,
-                  fill: '#a5f3fc',
-                  stroke: '#06b6d4',
-                  strokeWidth: 2,
-                  cornerRadius: 8,
-                  text: 'Notiz...'
-                });
-                addToast('Notiz hinzugefügt', 'success');
-              }} className="w-6 h-6 rounded-md bg-cyan-200 border border-cyan-400 hover:scale-110 transition-transform shrink-0" title="Blaue Notiz" />
-              <button onClick={() => {
-                addItemToActiveLayer({
-                  id: `sticky-${Date.now()}`,
-                  type: 'rect',
-                  x: 210,
-                  y: 210,
-                  width: 140,
-                  height: 140,
-                  fill: '#fbcfe8',
-                  stroke: '#ec4899',
-                  strokeWidth: 2,
-                  cornerRadius: 8,
-                  text: 'Notiz...'
-                });
-                addToast('Notiz hinzugefügt', 'success');
-              }} className="w-6 h-6 rounded-md bg-pink-200 border border-pink-400 hover:scale-110 transition-transform shrink-0" title="Rosa Notiz" />
+              <button onClick={() => handleAddStickyNote('#fef08a', '#eab308')} className="w-6 h-6 rounded-md bg-yellow-200 border border-yellow-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title="Gelbe Notiz einfügen" />
+              <button onClick={() => handleAddStickyNote('#a5f3fc', '#06b6d4')} className="w-6 h-6 rounded-md bg-cyan-200 border border-cyan-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title="Blaue Notiz einfügen" />
+              <button onClick={() => handleAddStickyNote('#fbcfe8', '#ec4899')} className="w-6 h-6 rounded-md bg-pink-200 border border-pink-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title="Rosa Notiz einfügen" />
               <div className="w-px h-5 bg-border mx-1 shrink-0 hidden sm:block"></div>
-              <button onClick={() => setShowFilters(!showFilters)} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 hidden sm:block", showFilters ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-white/5")} title={t('img_adjust')}><SlidersHorizontal size={16} /></button>
-              <button 
-                onClick={selectedShapeId ? deleteSelectedItem : clearBoard} 
-                className={cn("p-1.5 md:p-2 rounded-lg transition-colors text-[10px] md:text-xs font-bold uppercase tracking-wider shrink-0", selectedShapeId ? "bg-red-500 text-white hover:bg-red-600" : "text-red-500 hover:bg-red-500/20")}
-                title={selectedShapeId ? "Ausgewähltes Element löschen" : "Canvas komplett löschen"}
-              >
-                {selectedShapeId ? "Element löschen" : globalT('delete')}
-              </button>
+              <button onClick={() => setShowFilters(!showFilters)} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 hidden sm:block cursor-pointer", showFilters ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-white/5")} title={t('img_adjust')}><SlidersHorizontal size={16} /></button>
+              {selectedShapeId ? (
+                <button 
+                  onClick={deleteSelectedItem} 
+                  className="px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md transition-all shrink-0 cursor-pointer"
+                  title="Ausgewähltes Element löschen (Entf)"
+                >
+                  <Trash2 size={14} /> <span>Auswahl löschen</span>
+                </button>
+              ) : (
+                <button 
+                  onClick={clearBoard} 
+                  className="p-1.5 md:p-2 rounded-lg text-red-500 hover:bg-red-500/20 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors shrink-0 cursor-pointer"
+                  title="Canvas komplett leeren"
+                >
+                  <Trash2 size={14} /> <span className="hidden sm:inline">Leeren</span>
+                </button>
+              )}
             </div>
 
             <div className="absolute top-14 md:top-auto md:bottom-4 left-4 bg-background/90 backdrop-blur-md border border-border rounded-lg p-1.5 flex items-center gap-1 z-20 shadow-lg">
@@ -1275,16 +1460,51 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   draggable={tool === 'pan'} onDragEnd={(e) => { if (e.target === stageRef.current) setStagePos({ x: e.target.x(), y: e.target.y() }); }}
                 >
                   <KonvaLayer>
-                    <Rect className="background-rect" name="background-rect" x={-stagePos.x / stageScale - 5000} y={-stagePos.y / stageScale - 5000} width={stageSize.width / stageScale + 10000} height={stageSize.height / stageScale + 10000} fill="#ffffff" listening={true} />
+                    <Rect className="background-rect" name="background-rect" x={-50000} y={-50000} width={100000} height={100000} fill="#ffffff" listening={true} />
                     {bgImage && (
-                      <KonvaImage image={bgImage} ref={imageNodeRef} x={bgImagePos.x} y={bgImagePos.y} draggable={tool === 'select'} onDragEnd={(e) => { e.cancelBubble = true; setBgImagePos({ x: e.target.x(), y: e.target.y() }); }} filters={[Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.HSL]} brightness={imageFilters.brightness} contrast={imageFilters.contrast} luminance={imageFilters.saturation} />
+                      <KonvaImage image={bgImage} ref={imageNodeRef} x={bgImagePos.x} y={bgImagePos.y} draggable={tool === 'select'} listening={tool === 'select'} onDragEnd={(e) => { e.cancelBubble = true; setBgImagePos({ x: e.target.x(), y: e.target.y() }); }} filters={[Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.HSL]} brightness={imageFilters.brightness} contrast={imageFilters.contrast} luminance={imageFilters.saturation} />
                     )}
                   </KonvaLayer>
                   {layers.map(layer => (
                     layer.visible && (
                       <KonvaLayer key={layer.id}>
                         {layer.items.map((item, i) => {
-                          if (item.type === 'line') return <Line key={item.id || i} points={item.points} x={item.x || 0} y={item.y || 0} stroke={item.color} strokeWidth={item.tool === 'eraser' ? 20 / stageScale : 3 / stageScale} tension={0.5} lineCap="round" lineJoin="round" globalCompositeOperation={item.tool === 'eraser' ? 'destination-out' : 'source-over'} draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({ ...old, x: e.target.x(), y: e.target.y() })); }} />;
+                          const isSelected = selectedShapeId === item.id && tool === 'select';
+                          if (item.type === 'line') {
+                            return (
+                              <Group key={item.id || i}>
+                                {isSelected && (
+                                  <Line 
+                                    points={item.points} 
+                                    x={item.x || 0} 
+                                    y={item.y || 0} 
+                                    stroke="#3b82f6" 
+                                    strokeWidth={((item.tool === 'eraser' ? 20 : 3) + 6) / stageScale} 
+                                    opacity={0.4} 
+                                    lineCap="round" 
+                                    lineJoin="round" 
+                                    listening={false} 
+                                  />
+                                )}
+                                <Line 
+                                  points={item.points} 
+                                  x={item.x || 0} 
+                                  y={item.y || 0} 
+                                  stroke={item.color} 
+                                  strokeWidth={item.tool === 'eraser' ? 20 / stageScale : 3 / stageScale} 
+                                  tension={item.points && item.points.length > 4 ? 0.3 : 0} 
+                                  lineCap="round" 
+                                  lineJoin="round" 
+                                  globalCompositeOperation={item.tool === 'eraser' ? 'destination-out' : 'source-over'} 
+                                  draggable={tool === 'select'} 
+                                  listening={tool === 'select'} 
+                                  onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                  onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                  onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({ ...old, x: e.target.x(), y: e.target.y() })); }} 
+                                />
+                              </Group>
+                            );
+                          }
                           if (item.type === 'rect') {
                             const isSticky = Boolean(item.text || item.fill);
                             const strokeColor = item.stroke || item.color || '#3b82f6';
@@ -1295,7 +1515,15 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                 x={item.x} 
                                 y={item.y} 
                                 draggable={tool === 'select'} 
-                                onClick={() => tool === 'select' && setSelectedShapeId(item.id)} 
+                                listening={tool === 'select'} 
+                                onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                onDblClick={() => {
+                                  if (item.text !== undefined) {
+                                    const newText = window.prompt("Notiz-Text bearbeiten:", item.text);
+                                    if (newText !== null) updateItemById(item.id, old => ({ ...old, text: newText }));
+                                  }
+                                }}
                                 onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
                               >
                                 <Rect 
@@ -1318,20 +1546,146 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                                     wrap="word" 
                                   />
                                 )}
+                                {isSelected && (
+                                  <>
+                                    <Rect 
+                                      x={-4 / stageScale} 
+                                      y={-4 / stageScale} 
+                                      width={item.width + 8 / stageScale} 
+                                      height={item.height + 8 / stageScale} 
+                                      stroke="#3b82f6" 
+                                      strokeWidth={2 / stageScale} 
+                                      dash={[6 / stageScale, 4 / stageScale]} 
+                                      cornerRadius={((item.cornerRadius || (isSticky ? 8 : 0)) + 4) / stageScale} 
+                                      listening={false} 
+                                    />
+                                    <KonvaCircle x={-4 / stageScale} y={-4 / stageScale} radius={4 / stageScale} fill="#3b82f6" listening={false} />
+                                    <KonvaCircle x={item.width + 4 / stageScale} y={-4 / stageScale} radius={4 / stageScale} fill="#3b82f6" listening={false} />
+                                    <KonvaCircle x={-4 / stageScale} y={item.height + 4 / stageScale} radius={4 / stageScale} fill="#3b82f6" listening={false} />
+                                    <KonvaCircle x={item.width + 4 / stageScale} y={item.height + 4 / stageScale} radius={4 / stageScale} fill="#3b82f6" listening={false} />
+                                  </>
+                                )}
                               </Group>
                             );
                           }
-                          if (item.type === 'circle') return <KonvaCircle key={item.id || i} x={item.x} y={item.y} radius={item.radius} stroke={item.color} strokeWidth={3 / stageScale} fill={`${item.color}33`} draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} />;
-                          if (item.type === 'text') return <KonvaText key={item.id || i} x={item.x} y={item.y} text={item.text} fontSize={24 / stageScale} fill={item.color} fontStyle="bold" draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} />;
+                          if (item.type === 'circle') {
+                            return (
+                              <Group 
+                                key={item.id || i}
+                                draggable={tool === 'select'} 
+                                listening={tool === 'select'} 
+                                onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
+                              >
+                                <KonvaCircle 
+                                  x={item.x} 
+                                  y={item.y} 
+                                  radius={item.radius} 
+                                  stroke={item.color} 
+                                  strokeWidth={3 / stageScale} 
+                                  fill={`${item.color}33`} 
+                                />
+                                {isSelected && (
+                                  <KonvaCircle 
+                                    x={item.x} 
+                                    y={item.y} 
+                                    radius={item.radius + 5 / stageScale} 
+                                    stroke="#3b82f6" 
+                                    strokeWidth={2 / stageScale} 
+                                    dash={[6 / stageScale, 4 / stageScale]} 
+                                    listening={false} 
+                                  />
+                                )}
+                              </Group>
+                            );
+                          }
+                          if (item.type === 'text') {
+                            return (
+                              <Group 
+                                key={item.id || i}
+                                x={item.x} 
+                                y={item.y} 
+                                draggable={tool === 'select'} 
+                                listening={tool === 'select'} 
+                                onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                onDblClick={() => {
+                                  const newText = window.prompt("Text bearbeiten:", item.text);
+                                  if (newText !== null) updateItemById(item.id, old => ({ ...old, text: newText }));
+                                }}
+                                onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
+                              >
+                                <KonvaText 
+                                  text={item.text} 
+                                  fontSize={24 / stageScale} 
+                                  fill={item.color} 
+                                  fontStyle="bold" 
+                                />
+                                {isSelected && (
+                                  <Rect 
+                                    x={-4 / stageScale} 
+                                    y={-4 / stageScale} 
+                                    width={(item.text.length * 15 + 8) / stageScale} 
+                                    height={32 / stageScale} 
+                                    stroke="#3b82f6" 
+                                    strokeWidth={2 / stageScale} 
+                                    dash={[6 / stageScale, 4 / stageScale]} 
+                                    listening={false} 
+                                  />
+                                )}
+                              </Group>
+                            );
+                          }
                           if (item.type === 'polygon') {
-                            const isSelected = selectedShapeId === item.id && tool === 'select';
                             return (
                               <Group key={item.id || i}>
-                                <Line points={item.points} x={item.x || 0} y={item.y || 0} closed stroke={item.color} strokeWidth={3 / stageScale} fill={`${item.color}33`} draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} />
+                                <Line 
+                                  points={item.points} 
+                                  x={item.x || 0} 
+                                  y={item.y || 0} 
+                                  closed 
+                                  stroke={item.color} 
+                                  strokeWidth={3 / stageScale} 
+                                  fill={`${item.color}33`} 
+                                  draggable={tool === 'select'} 
+                                  listening={tool === 'select'} 
+                                  onClick={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                  onTap={() => { if (tool === 'select') setSelectedShapeId(item.id); }} 
+                                  onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} 
+                                />
                                 {isSelected && (
-                                  Array.from({ length: item.points.length / 2 }).map((_, ptIndex) => (
-                                    <KonvaCircle key={`anchor-${item.id}-${ptIndex}`} x={item.points[ptIndex * 2] + (item.x || 0)} y={item.points[ptIndex * 2 + 1] + (item.y || 0)} radius={6 / stageScale} fill="white" stroke="#ef4444" strokeWidth={2 / stageScale} draggable onDragMove={(e) => { const newPoints = [...item.points]; newPoints[ptIndex * 2] = e.target.x() - (item.x || 0); newPoints[ptIndex * 2 + 1] = e.target.y() - (item.y || 0); updateItemById(item.id, old => ({...old, points: newPoints})); }} onDragEnd={(e) => { e.cancelBubble = true; }} />
-                                  ))
+                                  <>
+                                    <Line 
+                                      points={item.points} 
+                                      x={item.x || 0} 
+                                      y={item.y || 0} 
+                                      closed 
+                                      stroke="#3b82f6" 
+                                      strokeWidth={1.5 / stageScale} 
+                                      dash={[6 / stageScale, 4 / stageScale]} 
+                                      listening={false} 
+                                    />
+                                    {Array.from({ length: item.points.length / 2 }).map((_, ptIndex) => (
+                                      <KonvaCircle 
+                                        key={`anchor-${item.id}-${ptIndex}`} 
+                                        x={item.points[ptIndex * 2] + (item.x || 0)} 
+                                        y={item.points[ptIndex * 2 + 1] + (item.y || 0)} 
+                                        radius={6 / stageScale} 
+                                        fill="white" 
+                                        stroke="#3b82f6" 
+                                        strokeWidth={2 / stageScale} 
+                                        draggable 
+                                        onDragMove={(e) => { 
+                                          const newPoints = [...item.points]; 
+                                          newPoints[ptIndex * 2] = e.target.x() - (item.x || 0); 
+                                          newPoints[ptIndex * 2 + 1] = e.target.y() - (item.y || 0); 
+                                          updateItemById(item.id, old => ({...old, points: newPoints})); 
+                                        }} 
+                                        onDragEnd={(e) => { e.cancelBubble = true; }} 
+                                      />
+                                    ))}
+                                  </>
                                 )}
                               </Group>
                             );

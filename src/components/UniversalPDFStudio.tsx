@@ -38,6 +38,32 @@ export const getPageDimensions = (format: string, orientation: string) => {
   return { width: '100%', height: '100%' };
 };
 
+class PDFErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn("PDFViewer render error:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center text-text-muted">
+          <FileText size={48} className="mb-4 text-red-400" />
+          <p className="font-bold text-base text-text-primary mb-2">Vorschau wird vorbereitet</p>
+          <p className="text-xs mb-4">Das PDF kann direkt über die Buttons links heruntergeladen oder im Datenraum gespeichert werden.</p>
+          <button onClick={() => this.setState({ hasError: false })} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold cursor-pointer">Vorschau neu laden</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function UniversalPDFStudio({ 
   isOpen, onClose, title, fileName, onSaveCloud, 
   defaultOrientation = 'portrait', sidebarControls, children, 
@@ -231,9 +257,11 @@ export default function UniversalPDFStudio({
 
         {/* 🚀 NATIVE PDF VIEWER FÜR ECHTES WYSIWYG */}
         <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 relative">
-          <PDFViewer width="100%" height="100%" showToolbar={false} style={{ border: 'none', backgroundColor: 'transparent' }}>
-             {getDocument() as any}
-          </PDFViewer>
+          <PDFErrorBoundary>
+            <PDFViewer width="100%" height="100%" showToolbar={false} style={{ border: 'none', backgroundColor: 'transparent' }}>
+               {getDocument() as any}
+            </PDFViewer>
+          </PDFErrorBoundary>
         </div>
 
       </div>
