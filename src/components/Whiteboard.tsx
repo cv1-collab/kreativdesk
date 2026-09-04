@@ -96,31 +96,36 @@ const pdfStyles = StyleSheet.create({
   footerText: { fontSize: 7, color: '#9ca3af' },
 });
 
-const WhiteboardPDFDocument = ({ settings, pdfRenderImage, projectHeader }: any) => (
-  <Document>
-    <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
-      <View style={pdfStyles.safeArea}>
-        <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor }]} fixed>
-          <View style={pdfStyles.headerLeft}>
-            <Text style={[pdfStyles.title, { color: settings.accentColor }]}>Whiteboard Skizze</Text>
-            <View style={pdfStyles.metaGrid}>
-              <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{projectHeader.project}</Text></View>
-              <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{new Date(projectHeader.date).toLocaleDateString('de-CH')}</Text></View>
+const WhiteboardPDFDocument = ({ settings, pdfRenderImage, projectHeader }: any) => {
+  const projectName = projectHeader?.project || 'Projekt';
+  const projectDate = projectHeader?.date ? new Date(projectHeader.date).toLocaleDateString('de-CH') : new Date().toLocaleDateString('de-CH');
+
+  return (
+    <Document>
+      <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
+        <View style={pdfStyles.safeArea}>
+          <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor }]} fixed>
+            <View style={pdfStyles.headerLeft}>
+              <Text style={[pdfStyles.title, { color: settings.accentColor }]}>Whiteboard Skizze</Text>
+              <View style={pdfStyles.metaGrid}>
+                <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{projectName}</Text></View>
+                <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{projectDate}</Text></View>
+              </View>
             </View>
+            {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
           </View>
-          {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
+          <View style={[pdfStyles.content, { borderColor: settings.accentColor }]}>
+            {pdfRenderImage ? <PDFImage src={pdfRenderImage} style={pdfStyles.snapshot} /> : <Text style={pdfStyles.noImageText}>Keine Skizze vorhanden.</Text>}
+          </View>
         </View>
-        <View style={[pdfStyles.content, { borderColor: settings.accentColor }]}>
-          {pdfRenderImage ? <PDFImage src={pdfRenderImage} style={pdfStyles.snapshot} /> : <Text style={pdfStyles.noImageText}>Keine Skizze vorhanden.</Text>}
+        <View style={pdfStyles.footer} fixed>
+          <Text style={pdfStyles.footerText}>{settings.footerText}</Text>
+          <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
         </View>
-      </View>
-      <View style={pdfStyles.footer} fixed>
-        <Text style={pdfStyles.footerText}>{settings.footerText}</Text>
-        <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
-      </View>
-    </Page>
-  </Document>
-);
+      </Page>
+    </Document>
+  );
+};
 
 export default function Whiteboard({ projectId: propProjectId }: { projectId?: string }) {
   const { id: routeProjectId } = useParams<{ id: string }>();
@@ -532,20 +537,54 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     }
   };
 
-  const getCanvasDataUrl = (scale: number, mimeType: string = 'image/png', forceWhiteBg: boolean = false) => {
+  const deleteSelectedItem = () => {
+    if (!selectedShapeId) return;
+    setLayers(prev => prev.map(layer => ({
+      ...layer,
+      items: layer.items.filter(it => it.id !== selectedShapeId)
+    })));
+    setSelectedShapeId(null);
+    addToast('Element gelöscht', 'info');
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable);
+      if (isInput) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedShapeId) {
+        e.preventDefault();
+        deleteSelectedItem();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedShapeId]);
+
+  const getCanvasDataUrl = (scale: number = 2, mimeType: string = 'image/png', forceWhiteBg: boolean = false) => {
     if (!stageRef.current) return null;
-    const bgRect = stageRef.current.findOne('.background-rect');
-    const originalBg = bgRect ? bgRect.fill() : 'transparent';
-    if (bgRect) { 
-      bgRect.fill(forceWhiteBg ? 'white' : ((canvasBgColor as string) === 'transparent' ? 'white' : canvasBgColor)); 
-      stageRef.current.draw(); 
+    try {
+      const bgRect = stageRef.current.findOne('.background-rect');
+      const originalBg = bgRect ? bgRect.fill() : 'transparent';
+      if (bgRect) { 
+        bgRect.fill(forceWhiteBg ? 'white' : ((canvasBgColor as string) === 'transparent' ? 'white' : canvasBgColor)); 
+        stageRef.current.draw(); 
+      }
+      const dataUrl = stageRef.current.toDataURL({ pixelRatio: scale, mimeType });
+      if (bgRect) { 
+        bgRect.fill(originalBg); 
+        stageRef.current.draw(); 
+      }
+      return dataUrl;
+    } catch (err) {
+      console.warn("getCanvasDataUrl failed, trying fallback pixelRatio 1:", err);
+      try {
+        return stageRef.current.toDataURL({ pixelRatio: 1, mimeType: 'image/png' });
+      } catch (fallbackErr) {
+        console.warn("Fallback toDataURL also failed:", fallbackErr);
+        return null;
+      }
     }
-    const dataUrl = stageRef.current.toDataURL({ pixelRatio: scale, mimeType });
-    if (bgRect) { 
-      bgRect.fill(originalBg); 
-      stageRef.current.draw(); 
-    }
-    return dataUrl;
   };
 
   const openAiRenderStudio = () => {
@@ -798,9 +837,17 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   };
 
   const executePdfExport = () => {
-    if (!stageRef.current) return;
     setSelectedShapeId(null);
-    setTimeout(() => { try { const uri = getCanvasDataUrl(2, 'image/jpeg'); if (!uri) return; setPdfRenderImage(uri); setIsPdfStudioOpen(true); } catch (e) { addToast(globalT('error'), 'error'); } }, 50);
+    setTimeout(() => {
+      let uri: string | null = null;
+      try {
+        uri = getCanvasDataUrl(2, 'image/png') || getCanvasDataUrl(1, 'image/png');
+      } catch (e) {
+        console.warn("Could not capture canvas for PDF:", e);
+      }
+      setPdfRenderImage(uri);
+      setIsPdfStudioOpen(true);
+    }, 50);
   };
 
   const handleSendToSlides = async () => {
@@ -1142,8 +1189,13 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               }} className="w-6 h-6 rounded-md bg-pink-200 border border-pink-400 hover:scale-110 transition-transform shrink-0" title="Rosa Notiz" />
               <div className="w-px h-5 bg-border mx-1 shrink-0 hidden sm:block"></div>
               <button onClick={() => setShowFilters(!showFilters)} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 hidden sm:block", showFilters ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-white/5")} title={t('img_adjust')}><SlidersHorizontal size={16} /></button>
-              <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
-              <button onClick={clearBoard} className="p-1.5 md:p-2 hover:bg-red-500/20 rounded-lg text-red-500 transition-colors text-[10px] md:text-xs font-bold uppercase tracking-wider shrink-0">{globalT('delete')}</button>
+              <button 
+                onClick={selectedShapeId ? deleteSelectedItem : clearBoard} 
+                className={cn("p-1.5 md:p-2 rounded-lg transition-colors text-[10px] md:text-xs font-bold uppercase tracking-wider shrink-0", selectedShapeId ? "bg-red-500 text-white hover:bg-red-600" : "text-red-500 hover:bg-red-500/20")}
+                title={selectedShapeId ? "Ausgewähltes Element löschen" : "Canvas komplett löschen"}
+              >
+                {selectedShapeId ? "Element löschen" : globalT('delete')}
+              </button>
             </div>
 
             <div className="absolute top-14 md:top-auto md:bottom-4 left-4 bg-background/90 backdrop-blur-md border border-border rounded-lg p-1.5 flex items-center gap-1 z-20 shadow-lg">
@@ -1217,7 +1269,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               {stageSize.width > 0 && (
                 <Stage 
                   width={stageSize.width} height={stageSize.height} ref={stageRef} 
-                  onMouseDown={handleMouseDown} onMousemove={handleMouseMove} onMouseup={handleMouseUp} 
+                  onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} 
                   onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} 
                   onWheel={handleWheel} scaleX={stageScale} scaleY={stageScale} x={stagePos.x} y={stagePos.y} 
                   draggable={tool === 'pan'} onDragEnd={(e) => { if (e.target === stageRef.current) setStagePos({ x: e.target.x(), y: e.target.y() }); }}
@@ -1233,7 +1285,42 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       <KonvaLayer key={layer.id}>
                         {layer.items.map((item, i) => {
                           if (item.type === 'line') return <Line key={item.id || i} points={item.points} x={item.x || 0} y={item.y || 0} stroke={item.color} strokeWidth={item.tool === 'eraser' ? 20 / stageScale : 3 / stageScale} tension={0.5} lineCap="round" lineJoin="round" globalCompositeOperation={item.tool === 'eraser' ? 'destination-out' : 'source-over'} draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({ ...old, x: e.target.x(), y: e.target.y() })); }} />;
-                          if (item.type === 'rect') return <Rect key={item.id || i} x={item.x} y={item.y} width={item.width} height={item.height} stroke={item.color} strokeWidth={3 / stageScale} fill={`${item.color}33`} draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} />;
+                          if (item.type === 'rect') {
+                            const isSticky = Boolean(item.text || item.fill);
+                            const strokeColor = item.stroke || item.color || '#3b82f6';
+                            const fillColor = item.fill || (item.color ? `${item.color}33` : '#3b82f633');
+                            return (
+                              <Group 
+                                key={item.id || i} 
+                                x={item.x} 
+                                y={item.y} 
+                                draggable={tool === 'select'} 
+                                onClick={() => tool === 'select' && setSelectedShapeId(item.id)} 
+                                onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}}
+                              >
+                                <Rect 
+                                  width={item.width} 
+                                  height={item.height} 
+                                  stroke={strokeColor} 
+                                  strokeWidth={(item.strokeWidth || 3) / stageScale} 
+                                  fill={fillColor} 
+                                  cornerRadius={(item.cornerRadius || (isSticky ? 8 : 0)) / stageScale} 
+                                />
+                                {item.text && (
+                                  <KonvaText 
+                                    x={10 / stageScale} 
+                                    y={10 / stageScale} 
+                                    width={Math.max(20, item.width - 20) / stageScale} 
+                                    text={item.text} 
+                                    fontSize={13 / stageScale} 
+                                    fill="#1e293b" 
+                                    fontStyle="bold" 
+                                    wrap="word" 
+                                  />
+                                )}
+                              </Group>
+                            );
+                          }
                           if (item.type === 'circle') return <KonvaCircle key={item.id || i} x={item.x} y={item.y} radius={item.radius} stroke={item.color} strokeWidth={3 / stageScale} fill={`${item.color}33`} draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} />;
                           if (item.type === 'text') return <KonvaText key={item.id || i} x={item.x} y={item.y} text={item.text} fontSize={24 / stageScale} fill={item.color} fontStyle="bold" draggable={tool === 'select'} onClick={() => tool === 'select' && setSelectedShapeId(item.id)} onDragEnd={(e) => { e.cancelBubble = true; updateItemById(item.id, old => ({...old, x: e.target.x(), y: e.target.y()}))}} />;
                           if (item.type === 'polygon') {

@@ -97,13 +97,418 @@ const pdfStyles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: 'bold', color: '#000000', textTransform: 'uppercase' },
   meta: { fontSize: 8, color: '#6b7280', marginTop: 4 },
   logo: { width: 100, height: 40, objectFit: 'contain' },
-  footer: { position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 5, flexDirection: 'row', justifyContent: 'space-between' }
+  footer: { position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 5, flexDirection: 'row', justifyContent: 'space-between' },
+
+  // Month & Day specific styles
+  sectionTitle: { fontSize: 11, fontWeight: 'bold', color: '#0f172a', textTransform: 'uppercase', marginBottom: 6 },
+  gridContainer: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, overflow: 'hidden', marginBottom: 12 },
+  gridHeaderRow: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderBottomWidth: 1, borderBottomColor: '#cbd5e1' },
+  gridHeaderCell: { flex: 1, paddingVertical: 4, textAlign: 'center', fontSize: 8, fontWeight: 'bold', color: '#334155' },
+  gridWeekRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', minHeight: 38 },
+  gridDayCell: { flex: 1, padding: 2, borderRightWidth: 1, borderRightColor: '#e2e8f0', justifyContent: 'flex-start' },
+  gridDayCellInactive: { backgroundColor: '#f8fafc' },
+  dayNumber: { fontSize: 7, fontWeight: 'bold', color: '#1e293b', marginBottom: 2, paddingHorizontal: 2 },
+  dayNumberInactive: { fontSize: 7, color: '#94a3b8', marginBottom: 2, paddingHorizontal: 2 },
+  dayPill: { fontSize: 5, paddingVertical: 1, paddingHorizontal: 2, borderRadius: 2, marginBottom: 1, overflow: 'hidden' },
+
+  tableContainer: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 4, overflow: 'hidden', marginTop: 6 },
+  tableHeaderRow: { flexDirection: 'row', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#cbd5e1', paddingVertical: 4, paddingHorizontal: 6 },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f1f5f9', paddingVertical: 4, paddingHorizontal: 6, alignItems: 'center' },
+  tableCol1: { width: '36%' },
+  tableCol2: { width: '28%' },
+  tableCol3: { width: '18%' },
+  tableCol4: { width: '18%' },
+  th: { fontSize: 7, fontWeight: 'bold', color: '#475569', textTransform: 'uppercase' },
+  td: { fontSize: 7, color: '#1e293b' },
+  tdMuted: { fontSize: 7, color: '#64748b' },
+  statusBadge: { fontSize: 6, fontWeight: 'bold', paddingVertical: 1, paddingHorizontal: 4, borderRadius: 3, textTransform: 'uppercase', alignSelf: 'flex-start' },
+
+  // Day view cards & journal
+  card: { borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 6, padding: 8, marginBottom: 6, borderLeftWidth: 4, backgroundColor: '#ffffff' },
+  cardTitle: { fontSize: 10, fontWeight: 'bold', color: '#0f172a' },
+  cardMeta: { fontSize: 8, color: '#64748b', marginTop: 2 },
+  journalBox: { borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, padding: 8, minHeight: 55, marginBottom: 8, backgroundColor: '#fafafa' },
+  signatureRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#cbd5e1' },
+  signatureBox: { width: '45%' },
+  signatureLine: { borderBottomWidth: 1, borderBottomColor: '#94a3b8', marginTop: 22, marginBottom: 4 },
+  signatureLabel: { fontSize: 7, color: '#64748b' }
 });
 
 // ============================================================================
-// PDF ENGINE - STRICT LAYER RENDERING
+// PDF ENGINE - STRICT LAYER RENDERING WITH MULTI-VIEW SUPPORT
 // ============================================================================
-const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, shapes, chartMinHeight, chartWidth, getMonths, getYearPercentage, t }: any) => {
+const CalendarPDFDocument = ({ 
+  settings, 
+  exportMode = 'gantt',
+  currentMonthDate = new Date(),
+  selectedCalendarDate = new Date(),
+  docHeader, 
+  ganttTasks = [], 
+  smartMarkers = [], 
+  shapes = [], 
+  chartMinHeight, 
+  chartWidth, 
+  getMonths, 
+  getYearPercentage, 
+  t 
+}: any) => {
+
+  // 1. MONATSFOKUS VIEW EXPORT
+  if (exportMode === 'month') {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+    const monthName = currentMonthDate.toLocaleString('de-CH', { month: 'long', year: 'numeric' });
+    const firstDayOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const lastDayOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+    const monthTasks = (ganttTasks || []).filter((task: any) => {
+      if (!task.title || task.title.trim() === '') return false;
+      return task.start <= lastDayOfMonthStr && task.end >= firstDayOfMonthStr;
+    });
+
+    const monthMarkers = (smartMarkers || []).filter((marker: any) => {
+      return marker.date >= firstDayOfMonthStr && marker.date <= lastDayOfMonthStr;
+    });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Mon = 0
+    const prevMonthTotalDays = new Date(year, month, 0).getDate();
+    const cells: { day: number; dateStr: string; isCurrentMonth: boolean }[] = [];
+
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const d = prevMonthTotalDays - i;
+      const dObj = new Date(year, month - 1, d);
+      const dateStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({ day: d, dateStr, isCurrentMonth: false });
+    }
+    for (let day = 1; day <= lastDayOfMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      cells.push({ day, dateStr, isCurrentMonth: true });
+    }
+    const totalGridCells = Math.ceil(cells.length / 7) * 7;
+    const remaining = totalGridCells - cells.length;
+    for (let day = 1; day <= remaining; day++) {
+      const dObj = new Date(year, month + 1, day);
+      const dateStr = `${dObj.getFullYear()}-${String(dObj.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      cells.push({ day, dateStr, isCurrentMonth: false });
+    }
+
+    const weeks: typeof cells[] = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      weeks.push(cells.slice(i, i + 7));
+    }
+
+    const getStatusLabel = (status: string) => {
+      if (status === 'completed') return 'Abgeschlossen';
+      if (status === 'critical') return 'Kritisch';
+      return 'In Planung';
+    };
+
+    const getStatusColor = (status: string) => {
+      if (status === 'completed') return { bg: '#ecfdf5', text: '#047857' };
+      if (status === 'critical') return { bg: '#fef2f2', text: '#b91c1c' };
+      return { bg: '#eff6ff', text: '#1d4ed8' };
+    };
+
+    return (
+      <Document>
+        <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
+          {/* HEADER */}
+          <View style={[pdfStyles.header, { borderBottomColor: settings.accentColor }]} fixed>
+            <View>
+              <Text style={pdfStyles.title}>MONATSFOKUS – {monthName.toUpperCase()}</Text>
+              <Text style={pdfStyles.meta}>
+                {docHeader?.project || 'Projekt'} | Version: {docHeader?.version || 'v1.0'} | Aktive Phasen: {monthTasks.length} | Meilensteine: {monthMarkers.length} | Stand: {new Date().toLocaleDateString('de-CH')}
+              </Text>
+            </View>
+            {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
+          </View>
+
+          {/* 7-DAY CALENDAR GRID */}
+          <View style={pdfStyles.gridContainer} wrap={false}>
+            <View style={pdfStyles.gridHeaderRow}>
+              {['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'].map((dayName, dIdx) => (
+                <Text key={`header-${dIdx}`} style={pdfStyles.gridHeaderCell}>{dayName}</Text>
+              ))}
+            </View>
+            {weeks.map((week, wIdx) => (
+              <View key={`week-${wIdx}`} style={pdfStyles.gridWeekRow}>
+                {week.map((cell, cIdx) => {
+                  const dayTasks = (ganttTasks || []).filter((t: any) => t.title && cell.dateStr >= t.start && cell.dateStr <= t.end);
+                  const dayMarkers = (smartMarkers || []).filter((m: any) => m.date === cell.dateStr);
+
+                  return (
+                    <View 
+                      key={`cell-${wIdx}-${cIdx}`} 
+                      style={[
+                        pdfStyles.gridDayCell,
+                        !cell.isCurrentMonth && pdfStyles.gridDayCellInactive,
+                        cIdx === 6 && { borderRightWidth: 0 }
+                      ]}
+                    >
+                      <Text style={cell.isCurrentMonth ? pdfStyles.dayNumber : pdfStyles.dayNumberInactive}>
+                        {cell.day}
+                      </Text>
+
+                      {dayMarkers.slice(0, 1).map((m: any) => (
+                        <View key={`marker-${m.id}`} style={[pdfStyles.dayPill, { backgroundColor: m.color ? `${m.color}22` : '#ef444422' }]}>
+                          <Text style={{ fontSize: 5, color: m.color || '#ef4444', fontWeight: 'bold' }}>
+                            ★ {m.label}
+                          </Text>
+                        </View>
+                      ))}
+
+                      {dayTasks.slice(0, 2).map((t: any) => {
+                        const barColor = t.color?.startsWith('#') ? t.color : '#3b82f6';
+                        return (
+                          <View key={`task-${t.id}`} style={[pdfStyles.dayPill, { backgroundColor: `${barColor}25` }]}>
+                            <Text style={{ fontSize: 5, color: barColor, fontWeight: 'bold' }}>
+                              {t.title.length > 14 ? t.title.substring(0, 13) + '…' : t.title}
+                            </Text>
+                          </View>
+                        );
+                      })}
+
+                      {dayTasks.length > 2 && (
+                        <Text style={{ fontSize: 4.5, color: '#64748b', fontStyle: 'italic', paddingHorizontal: 2 }}>
+                          +{dayTasks.length - 2} weitere
+                        </Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+
+          {/* MONTH AGENDA / PHASES TABLE */}
+          <View style={{ marginTop: 8 }}>
+            <Text style={pdfStyles.sectionTitle}>Aktive Phasen & Meilensteine im {monthName}</Text>
+            
+            <View style={pdfStyles.tableContainer}>
+              <View style={pdfStyles.tableHeaderRow}>
+                <Text style={[pdfStyles.tableCol1, pdfStyles.th]}>Projektphase / Meilenstein</Text>
+                <Text style={[pdfStyles.tableCol2, pdfStyles.th]}>Zeitraum (Start – Ende)</Text>
+                <Text style={[pdfStyles.tableCol3, pdfStyles.th]}>Status</Text>
+                <Text style={[pdfStyles.tableCol4, pdfStyles.th]}>Notiz / Details</Text>
+              </View>
+
+              {monthTasks.map((t: any) => {
+                const sColor = getStatusColor(t.status);
+                return (
+                  <View key={`tbl-task-${t.id}`} style={pdfStyles.tableRow}>
+                    <View style={pdfStyles.tableCol1}>
+                      <Text style={[pdfStyles.td, { fontWeight: 'bold' }]}>{t.title}</Text>
+                    </View>
+                    <View style={pdfStyles.tableCol2}>
+                      <Text style={pdfStyles.tdMuted}>
+                        {new Date(t.start).toLocaleDateString('de-CH')} – {new Date(t.end).toLocaleDateString('de-CH')}
+                      </Text>
+                    </View>
+                    <View style={pdfStyles.tableCol3}>
+                      <View style={[pdfStyles.statusBadge, { backgroundColor: sColor.bg }]}>
+                        <Text style={{ color: sColor.text, fontSize: 6, fontWeight: 'bold' }}>
+                          {getStatusLabel(t.status)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={pdfStyles.tableCol4}>
+                      <Text style={pdfStyles.tdMuted}>{t.barText || '–'}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {monthMarkers.map((m: any) => (
+                <View key={`tbl-marker-${m.id}`} style={[pdfStyles.tableRow, { backgroundColor: '#fefce8' }]}>
+                  <View style={pdfStyles.tableCol1}>
+                    <Text style={[pdfStyles.td, { fontWeight: 'bold', color: m.color || '#b45309' }]}>
+                      ★ {m.label} (Meilenstein)
+                    </Text>
+                  </View>
+                  <View style={pdfStyles.tableCol2}>
+                    <Text style={[pdfStyles.tdMuted, { fontWeight: 'bold' }]}>
+                      {new Date(m.date).toLocaleDateString('de-CH')}
+                    </Text>
+                  </View>
+                  <View style={pdfStyles.tableCol3}>
+                    <View style={[pdfStyles.statusBadge, { backgroundColor: '#fef3c7' }]}>
+                      <Text style={{ color: '#b45309', fontSize: 6, fontWeight: 'bold' }}>
+                        Meilenstein
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={pdfStyles.tableCol4}>
+                    <Text style={pdfStyles.tdMuted}>Fixtermin</Text>
+                  </View>
+                </View>
+              ))}
+
+              {monthTasks.length === 0 && monthMarkers.length === 0 && (
+                <View style={[pdfStyles.tableRow, { justifyContent: 'center', paddingVertical: 12 }]}>
+                  <Text style={pdfStyles.tdMuted}>Keine aktiven Phasen oder Meilensteine in diesem Monat hinterlegt.</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* FOOTER */}
+          <View style={pdfStyles.footer} fixed>
+            <Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text>
+            <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+          </View>
+        </Page>
+      </Document>
+    );
+  }
+
+  // 2. TAGESÜBERSICHT & STANDUP VIEW EXPORT
+  if (exportMode === 'day') {
+    const selectedDateStr = selectedCalendarDate.toISOString().split('T')[0];
+    const formattedDate = selectedCalendarDate.toLocaleDateString('de-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+    const dayTasks = (ganttTasks || []).filter((t: any) => {
+      if (!t.title || t.title.trim() === '') return false;
+      return selectedDateStr >= t.start && selectedDateStr <= t.end;
+    });
+
+    const dayMarkers = (smartMarkers || []).filter((m: any) => m.date === selectedDateStr);
+
+    const getStatusLabel = (status: string) => {
+      if (status === 'completed') return 'Abgeschlossen';
+      if (status === 'critical') return 'Kritisch';
+      return 'In Bearbeitung';
+    };
+
+    const getStatusColor = (status: string) => {
+      if (status === 'completed') return { bg: '#ecfdf5', text: '#047857' };
+      if (status === 'critical') return { bg: '#fef2f2', text: '#b91c1c' };
+      return { bg: '#eff6ff', text: '#1d4ed8' };
+    };
+
+    return (
+      <Document>
+        <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
+          {/* HEADER */}
+          <View style={[pdfStyles.header, { borderBottomColor: settings.accentColor }]} fixed>
+            <View>
+              <Text style={pdfStyles.title}>TAGESÜBERSICHT & STANDUP</Text>
+              <Text style={pdfStyles.meta}>
+                {docHeader?.project || 'Projekt'} | Datum: {formattedDate} | Stand: {new Date().toLocaleDateString('de-CH')}
+              </Text>
+            </View>
+            {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
+          </View>
+
+          {/* SECTION 1: RUNNING PHASES ON THIS DAY */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={pdfStyles.sectionTitle}>Laufende Phasen & Aktivitäten am Stichtag</Text>
+            {dayTasks.map((task: any) => {
+              const brdColor = task.color?.startsWith('#') ? task.color : '#3b82f6';
+              const sColor = getStatusColor(task.status);
+              return (
+                <View key={`day-task-${task.id}`} style={[pdfStyles.card, { borderLeftColor: brdColor }]}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={pdfStyles.cardTitle}>{task.title}</Text>
+                    <View style={[pdfStyles.statusBadge, { backgroundColor: sColor.bg }]}>
+                      <Text style={{ color: sColor.text, fontSize: 6, fontWeight: 'bold' }}>
+                        {getStatusLabel(task.status)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={pdfStyles.cardMeta}>
+                      Zeitraum: {new Date(task.start).toLocaleDateString('de-CH')} bis {new Date(task.end).toLocaleDateString('de-CH')}
+                    </Text>
+                    {task.barText && (
+                      <Text style={[pdfStyles.cardMeta, { fontWeight: 'bold', color: '#1e293b' }]}>
+                        Zuständig / Rolle: {task.barText}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+
+            {dayTasks.length === 0 && (
+              <View style={[pdfStyles.card, { borderLeftColor: '#10b981', paddingVertical: 12 }]}>
+                <Text style={{ fontSize: 9, color: '#047857', fontWeight: 'bold', textAlign: 'center' }}>
+                  ✓ Keine aktiven Phasen für diesen Stichtag. Alle Arbeiten im Soll.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* SECTION 2: MILESTONES TODAY */}
+          <View style={{ marginBottom: 12 }}>
+            <Text style={pdfStyles.sectionTitle}>Meilensteine & Deadlines heute</Text>
+            {dayMarkers.map((m: any) => (
+              <View key={`day-marker-${m.id}`} style={[pdfStyles.card, { borderLeftColor: m.color || '#ef4444', backgroundColor: '#fffbeb' }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={[pdfStyles.cardTitle, { color: '#92400e' }]}>★ {m.label}</Text>
+                  <View style={[pdfStyles.statusBadge, { backgroundColor: '#fef3c7' }]}>
+                    <Text style={{ color: '#b45309', fontSize: 6, fontWeight: 'bold' }}>Fällig heute</Text>
+                  </View>
+                </View>
+                <Text style={pdfStyles.cardMeta}>Priorität: {m.priority === 'high' ? 'Hoch / Kritisch' : 'Standard'}</Text>
+              </View>
+            ))}
+
+            {dayMarkers.length === 0 && (
+              <View style={[pdfStyles.card, { borderLeftColor: '#94a3b8', backgroundColor: '#f8fafc' }]}>
+                <Text style={{ fontSize: 8, color: '#64748b' }}>Keine Meilenstein-Deadlines am heutigen Tag.</Text>
+              </View>
+            )}
+          </View>
+
+          {/* SECTION 3: BAUJOURNAL & TAGESRAPPORT */}
+          <View style={{ marginBottom: 10 }}>
+            <Text style={pdfStyles.sectionTitle}>Baujournal & Tagesrapport / Notizen</Text>
+            <View style={pdfStyles.journalBox}>
+              <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#64748b', marginBottom: 4 }}>
+                WETTER / RAHMENBEDINGUNGEN / BESONDERE VORKOMMNISSE:
+              </Text>
+              <Text style={{ fontSize: 8, color: '#94a3b8', fontStyle: 'italic' }}>
+                Temperatur, Witterung, Personalstärke vor Ort, besondere Vorkommnisse oder Behinderungen...
+              </Text>
+            </View>
+
+            <View style={pdfStyles.journalBox}>
+              <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#64748b', marginBottom: 4 }}>
+                ERREICHTE TAGESZIELE & ANWEISUNGEN:
+              </Text>
+              <Text style={{ fontSize: 8, color: '#94a3b8', fontStyle: 'italic' }}>
+                Ausgeführte Arbeiten am Stichtag, getroffene Absprachen und offene Punkte für morgen...
+              </Text>
+            </View>
+          </View>
+
+          {/* SIGNATURE FIELDS */}
+          <View style={pdfStyles.signatureRow} wrap={false}>
+            <View style={pdfStyles.signatureBox}>
+              <Text style={pdfStyles.signatureLabel}>Erstellt durch (Bauleitung / Projektleiter)</Text>
+              <View style={pdfStyles.signatureLine} />
+              <Text style={pdfStyles.signatureLabel}>Datum, Unterschrift</Text>
+            </View>
+            <View style={pdfStyles.signatureBox}>
+              <Text style={pdfStyles.signatureLabel}>Gesehen / Freigegeben (Bauherr / Gesamtleitung)</Text>
+              <View style={pdfStyles.signatureLine} />
+              <Text style={pdfStyles.signatureLabel}>Datum, Unterschrift</Text>
+            </View>
+          </View>
+
+          {/* FOOTER */}
+          <View style={pdfStyles.footer} fixed>
+            <Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text>
+            <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+          </View>
+        </Page>
+      </Document>
+    );
+  }
+
+  // 3. MASTERPLAN (GANTT) VIEW EXPORT (DEFAULT)
   const months = getMonths();
   
   const UI_HEADER_H = 44;
@@ -156,16 +561,14 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
              if (i === 0) return null;
              return <View key={`grid-${i}`} style={{ position: 'absolute', left: LEFT_COL_W + (i * MONTH_W), top: getYPt(UI_HEADER_H), bottom: 0, width: 1 * SCALE, backgroundColor: '#e5e7eb' }} />
           })}
-          {ganttTasks.filter(t => t.title && t.title.trim() !== '').map((_: any, i: number) => (
+          {ganttTasks.filter((t: any) => t.title && t.title.trim() !== '').map((_: any, i: number) => (
             <View key={`hline-${i}`} style={{ position: 'absolute', top: getYPt(UI_HEADER_H + UI_PAD_TOP + (i + 1) * UI_ROW_H - 10), left: 0, width: PDF_W, height: 1 * SCALE, backgroundColor: '#e5e7eb' }} />
           ))}
 
           {/* LAYER 2: GRAY TRACK BACKGROUNDS */}
-          {ganttTasks.filter(t => t.title && t.title.trim() !== '').map((task: any, i: number) => (
+          {ganttTasks.filter((t: any) => t.title && t.title.trim() !== '').map((task: any, i: number) => (
             <View key={`track-${task.id}`} style={{ position: 'absolute', left: LEFT_COL_W, top: getYPt(UI_HEADER_H + UI_PAD_TOP + i * UI_ROW_H) + 4 * SCALE, width: RIGHT_COL_W, height: 32 * SCALE, backgroundColor: '#f3f4f6', borderRadius: 4 * SCALE }} />
           ))}
-
-
 
           {/* LAYER 4: TABLE HEADER */}
           <View style={{ position: 'absolute', top: 0, left: 0, width: PDF_W, height: getYPt(UI_HEADER_H), borderBottomWidth: 1 * SCALE, borderBottomColor: '#d1d5db', backgroundColor: '#fafafa' }}>
@@ -180,7 +583,7 @@ const CalendarPDFDocument = ({ settings, docHeader, ganttTasks, smartMarkers, sh
           </View>
 
           {/* LAYER 5: COLORED BARS & TASK TEXT */}
-          {ganttTasks.filter(t => t.title && t.title.trim() !== '').map((task: any, i: number) => {
+          {ganttTasks.filter((t: any) => t.title && t.title.trim() !== '').map((task: any, i: number) => {
             const startPct = getYearPercentage(task.start);
             const widthPct = Math.max(0.5, getYearPercentage(task.end) - startPct);
             const bgColor = task.color?.startsWith('#') ? task.color : '#3b82f6';
@@ -334,6 +737,7 @@ export default function Calendar() {
   const [pdfLogo, setPdfLogo] = useState<string | null>(null);
   
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
+  const [pdfExportMode, setPdfExportMode] = useState<'gantt' | 'month' | 'day'>('gantt');
   
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isUploadingToCloud, setIsUploadingToCloud] = useState(false);
@@ -1114,7 +1518,13 @@ export default function Calendar() {
               <button onClick={() => setViewMode('day')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'day' ? "bg-white/10 text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}><AlignJustify size={16}/> {t('day_focus')}</button>
             </div>
 
-            <button onClick={() => setIsPdfStudioOpen(true)} className="flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0">
+            <button 
+              onClick={() => {
+                setPdfExportMode(viewMode);
+                setIsPdfStudioOpen(true);
+              }} 
+              className="flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0"
+            >
                <FileText size={16} /> <span>{t('generate_pdf')}</span>
             </button>
           </div>
@@ -1874,15 +2284,68 @@ export default function Calendar() {
         )}
       </AnimatePresence>
 
-      {/* 🚀 ÜBERGABE AN DAS NATIVE PDF STUDIO */}
+      {/* 🚀 ÜBERGABE AN DAS NATIVE PDF STUDIO MIT MEHRFACH-ANSICHT (MASTERPLAN, MONAT, TAG) */}
       <UniversalPDFStudio 
-        isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} 
-        title="Zeitplan Export" fileName={`Zeitplan_${activeSchedule?.name}`}
-        onSaveCloud={handleSavePdfToCloud} defaultOrientation="landscape"
+        isOpen={isPdfStudioOpen} 
+        onClose={() => setIsPdfStudioOpen(false)} 
+        title={
+          pdfExportMode === 'month' 
+            ? `Monatsfokus Export (${currentMonthDate.toLocaleString(language === 'en' ? 'en-US' : 'de-CH', { month: 'long', year: 'numeric' })})`
+            : pdfExportMode === 'day'
+            ? `Tagesübersicht Export (${selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH')})`
+            : `Masterplan Export (${activeSchedule?.name || 'Gantt'})`
+        } 
+        fileName={
+          pdfExportMode === 'month'
+            ? `Monatsfokus_${currentMonthDate.getFullYear()}_${String(currentMonthDate.getMonth() + 1).padStart(2, '0')}`
+            : pdfExportMode === 'day'
+            ? `Tagesuebersicht_${selectedCalendarDate.toISOString().split('T')[0]}`
+            : `Masterplan_${activeSchedule?.name || 'Gantt'}`
+        }
+        onSaveCloud={handleSavePdfToCloud} 
+        defaultOrientation={pdfExportMode === 'day' ? 'portrait' : 'landscape'}
+        sidebarControls={
+          <div className="space-y-3">
+            <label className="text-xs font-bold text-text-muted uppercase tracking-widest">
+              PDF-Ansicht wählen
+            </label>
+            <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
+              <button 
+                type="button"
+                onClick={() => setPdfExportMode('gantt')}
+                className={cn("py-2 px-1 text-xs font-bold rounded-lg transition-colors text-center cursor-pointer", pdfExportMode === 'gantt' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+              >
+                Masterplan
+              </button>
+              <button 
+                type="button"
+                onClick={() => setPdfExportMode('month')}
+                className={cn("py-2 px-1 text-xs font-bold rounded-lg transition-colors text-center cursor-pointer", pdfExportMode === 'month' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+              >
+                Monat
+              </button>
+              <button 
+                type="button"
+                onClick={() => setPdfExportMode('day')}
+                className={cn("py-2 px-1 text-xs font-bold rounded-lg transition-colors text-center cursor-pointer", pdfExportMode === 'day' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+              >
+                Tag
+              </button>
+            </div>
+            <p className="text-[11px] text-text-muted">
+              {pdfExportMode === 'gantt' && 'Kompletter Jahresüberblick & Gantt-Diagramm.'}
+              {pdfExportMode === 'month' && 'Monatskalender-Raster inkl. detaillierter Agenda aller Monatsphasen.'}
+              {pdfExportMode === 'day' && 'Tagesfokus, aktive Deadlines & Notizen/Baujournal.'}
+            </p>
+          </div>
+        }
       >
         {(settings) => (
           <CalendarPDFDocument 
             settings={settings} 
+            exportMode={pdfExportMode}
+            currentMonthDate={currentMonthDate}
+            selectedCalendarDate={selectedCalendarDate}
             docHeader={docHeader} 
             ganttTasks={ganttTasks}
             smartMarkers={smartMarkers}
