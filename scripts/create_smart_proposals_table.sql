@@ -49,18 +49,18 @@ CREATE POLICY "Company users can manage own company proposals" ON public.smart_p
     FOR ALL TO authenticated
     USING (
         company_id IN (
-            SELECT company_id FROM public.profiles WHERE id = auth.uid()::text
+            SELECT company_id::text FROM public.profiles WHERE id = auth.uid()
             UNION
-            SELECT company_id FROM public.company_users WHERE id = auth.uid()::text
+            SELECT company_id::text FROM public.company_users WHERE id::text = auth.uid()::text
         )
         OR owner_id = auth.uid()::text
         OR company_id = auth.uid()::text
     )
     WITH CHECK (
         company_id IN (
-            SELECT company_id FROM public.profiles WHERE id = auth.uid()::text
+            SELECT company_id::text FROM public.profiles WHERE id = auth.uid()
             UNION
-            SELECT company_id FROM public.company_users WHERE id = auth.uid()::text
+            SELECT company_id::text FROM public.company_users WHERE id::text = auth.uid()::text
         )
         OR owner_id = auth.uid()::text
         OR company_id = auth.uid()::text
