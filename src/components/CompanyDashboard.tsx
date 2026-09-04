@@ -229,7 +229,7 @@ export default function CompanyDashboard() {
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('change-settings-tab', { detail: 'api' }));
         }, 50);
-      } else if (['dashboard', 'projects', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(tab)) {
+      } else if (['dashboard', 'projects', 'proposals', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(tab)) {
         setActiveTab(tab as any);
       }
     };

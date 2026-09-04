@@ -41,11 +41,29 @@ CREATE TABLE IF NOT EXISTS public.smart_proposals (
 -- Row Level Security (RLS) aktivieren
 ALTER TABLE public.smart_proposals ENABLE ROW LEVEL SECURITY;
 
--- 1. Unternehmens-Mitglieder & Admins können Proposals ihres Unternehmens verwalten
+-- 1. Unternehmens-Mitglieder & Admins können Proposals ihres Unternehmens verwalten (Strikte Multi-Tenant-Isolation)
 DROP POLICY IF EXISTS "Company users can manage proposals" ON public.smart_proposals;
-CREATE POLICY "Company users can manage proposals" ON public.smart_proposals
-    FOR ALL USING (
-        auth.role() = 'authenticated'
+DROP POLICY IF EXISTS "Company users can manage own company proposals" ON public.smart_proposals;
+
+CREATE POLICY "Company users can manage own company proposals" ON public.smart_proposals
+    FOR ALL TO authenticated
+    USING (
+        company_id IN (
+            SELECT company_id FROM public.profiles WHERE id = auth.uid()::text
+            UNION
+            SELECT company_id FROM public.company_users WHERE id = auth.uid()::text
+        )
+        OR owner_id = auth.uid()::text
+        OR company_id = auth.uid()::text
+    )
+    WITH CHECK (
+        company_id IN (
+            SELECT company_id FROM public.profiles WHERE id = auth.uid()::text
+            UNION
+            SELECT company_id FROM public.company_users WHERE id = auth.uid()::text
+        )
+        OR owner_id = auth.uid()::text
+        OR company_id = auth.uid()::text
     );
 
 -- 2. Öffentlicher Lesezugriff für Kunden über den Share-Token (nur aktive & angenommene Offerten)

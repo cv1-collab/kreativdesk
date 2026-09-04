@@ -1003,8 +1003,42 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* 1. FIRMENUNTERLAGEN ROOT VIEW (GRID ODER LISTE) */}
       {/* ========================================================= */}
       {activeTab === 'company' && currentFolderId === 'root' && !searchTerm && (
-        <div className="space-y-8">
-          <div className="flex justify-between items-center">
+        <div className="space-y-6">
+          {/* SMART PROPOSALS QUICK ACCESS HUB */}
+          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-900/30 via-surface to-purple-900/20 border border-blue-500/30 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/30 shadow-inner">
+                <Sparkles size={24} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-extrabold text-sm sm:text-base text-text-primary">
+                    Digitale Kunden-Offerten & Landingpages (Smart Proposals)
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    30 Tage Cloud-Aktiv
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    🔒 Mandantensicher
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Interaktive Kunden-Webseiten mit Videos, 3D-Plänen, Preis-Konfigurator, SIA-Zahlungsplan & digitaler E-Signatur.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'proposals' }));
+              }}
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-2 cursor-pointer transition-all shrink-0"
+            >
+              <Eye size={15} /> Zu den Offerten & Landingpages →
+            </button>
+          </div>
+
+          <div className="flex justify-between items-center pt-2">
             <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Building2 size={16} className="text-blue-500" />
               {t('main_categories_company')}
@@ -1294,6 +1328,32 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* ========================================================= */}
       {(currentFolderId !== 'root' || selectedProjectId || searchTerm || sortedFiles.length > 0) && (
         <div className="space-y-4">
+          {/* SMART PROPOSALS BANNER INSIDE FINANCE OR SALES FOLDER */}
+          {activeTab === 'company' && (folderPath[folderPath.length - 1]?.name === '01_FINANZEN' || folderPath[folderPath.length - 1]?.name === '04_SALES') && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-surface to-blue-950/30 border border-emerald-500/30 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2 animate-in fade-in duration-200">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <div className="text-xs font-black text-text-primary flex items-center gap-1.5">
+                    Live-Kundenofferten & Landingpages (30-Tage aktiv)
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold">Cloud</span>
+                  </div>
+                  <div className="text-[11px] text-text-muted">
+                    Rechtssichere SIA-102/118 Angebote mit digitaler Signatur & Schweizer QR-Rechnung.
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'proposals' }))}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Eye size={13} /> Offerten anzeigen →
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             {currentFolderId === 'root' && !selectedProjectId && sortedFiles.length > 0 && !searchTerm && (
               <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2 pt-2">

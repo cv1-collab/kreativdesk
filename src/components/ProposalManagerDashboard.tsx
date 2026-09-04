@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus, Search, Filter, Clock, Eye, CheckCircle2, Share2, Copy,
   ExternalLink, Trash2, Calendar, FileText, Sparkles, RefreshCw,
-  TrendingUp, AlertCircle, ArrowUpRight, MessageSquare, Mail, Play, Check
+  TrendingUp, AlertCircle, ArrowUpRight, MessageSquare, Mail, Play, Check,
+  Smartphone, Monitor, X, ShieldCheck, Lock
 } from 'lucide-react';
 import { getCompanyProposals, extendProposalExpiry, deleteProposal, SmartProposal } from '../services/proposalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +21,8 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'accepted' | 'expired'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [previewProposal, setPreviewProposal] = useState<SmartProposal | null>(null);
+  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
 
   const companyId = currentUser?.companyId || currentUser?.uid || 'default-company';
 
@@ -92,6 +96,14 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
           <p className="text-xs sm:text-sm text-text-muted mt-1">
             Zentrale Übersicht aller versendeten Kunden-Links mit Video, interaktivem Konfigurator und 30-Tage Expiration
           </p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <ShieldCheck size={12} /> Mandanten-Tresor: Vollständig isoliert
+            </span>
+            <span className="text-[11px] text-text-muted">
+              Nur autorisierte Nutzer Ihrer Firma können diese Offerten einsehen & verwalten.
+            </span>
+          </div>
         </div>
 
         {onCreateNew && (
@@ -275,11 +287,22 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                 </div>
 
                 {/* Bottom Actions */}
-                <div className="pt-4 border-t border-border flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
+                <div className="pt-4 border-t border-border flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => {
+                        audioFeedback.playTouchClick();
+                        setPreviewProposal(proposal);
+                      }}
+                      className="px-3 py-2 rounded-xl bg-blue-600/15 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                      title="Interaktive Live-Vorschau öffnen"
+                    >
+                      <Eye size={14} /> Vorschau
+                    </button>
+
                     <button
                       onClick={() => handleCopyLink(proposal)}
-                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all"
+                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all cursor-pointer"
                       title="Kunden-Link kopieren"
                     >
                       {copiedId === proposal.id ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
@@ -289,16 +312,16 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
                       href={`/p/${proposal.shareToken}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all"
-                      title="Als Kunde ansehen"
+                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all cursor-pointer"
+                      title="In separatem Tab öffnen"
                     >
                       <ExternalLink size={15} />
                     </a>
 
                     <button
                       onClick={() => handleExtend(proposal.id)}
-                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all text-xs font-bold flex items-center gap-1"
-                      title="+30 Tage verlängern"
+                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      title="+30 Tage Gültigkeit verlängern"
                     >
                       <RefreshCw size={14} /> +30d
                     </button>
@@ -306,7 +329,7 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
 
                   <button
                     onClick={() => handleDelete(proposal.id)}
-                    className="p-2 text-text-muted hover:text-red-500 transition-colors"
+                    className="p-2 text-text-muted hover:text-red-500 transition-colors cursor-pointer"
                     title="Löschen"
                   >
                     <Trash2 size={15} />
@@ -316,6 +339,107 @@ export default function ProposalManagerDashboard({ onCreateNew }: { onCreateNew?
             );
           })}
         </div>
+      )}
+
+      {/* INTERACTIVE LIVE PREVIEW MODAL (DESKTOP & MOBILE FRAME) */}
+      {previewProposal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-in fade-in duration-200" onClick={() => setPreviewProposal(null)}>
+          <div className="bg-surface border border-border rounded-3xl w-full max-w-6xl h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+            {/* Modal Header Bar */}
+            <div className="p-4 sm:px-6 border-b border-border flex items-center justify-between gap-4 bg-surface/90 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                  <Eye size={20} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black text-sm sm:text-base text-text-primary truncate">
+                      Live-Vorschau: {previewProposal.title}
+                    </h3>
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <ShieldCheck size={11} /> Mandanten-Isolation Aktiv
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-text-muted truncate">
+                    Kunde: <strong className="text-text-primary">{previewProposal.clientName}</strong> {previewProposal.clientCompany && `(${previewProposal.clientCompany})`} · Gültig bis: {new Date(previewProposal.expiresAt).toLocaleDateString('de-CH')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Viewport Device Switcher */}
+              <div className="hidden md:flex items-center bg-background border border-border rounded-xl p-1 gap-1">
+                <button
+                  onClick={() => setPreviewDevice('desktop')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    previewDevice === 'desktop' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                  )}
+                >
+                  <Monitor size={14} /> Desktop (100%)
+                </button>
+                <button
+                  onClick={() => setPreviewDevice('mobile')}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                    previewDevice === 'mobile' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                  )}
+                >
+                  <Smartphone size={14} /> Mobile (390px)
+                </button>
+              </div>
+
+              {/* Header Action Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleCopyLink(previewProposal)}
+                  className="px-3 py-2 bg-background hover:bg-surface border border-border text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Link kopieren"
+                >
+                  {copiedId === previewProposal.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  <span className="hidden sm:inline">Link kopieren</span>
+                </button>
+
+                <a
+                  href={`/p/${previewProposal.shareToken}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
+                  title="In separatem Tab öffnen"
+                >
+                  <ExternalLink size={14} />
+                  <span className="hidden sm:inline">Neuer Tab</span>
+                </a>
+
+                <button
+                  onClick={() => setPreviewProposal(null)}
+                  className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all cursor-pointer"
+                  title="Schliessen"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body / Live Responsive Iframe */}
+            <div className="flex-1 bg-black/40 p-2 sm:p-4 overflow-hidden flex items-center justify-center">
+              <div
+                className={cn(
+                  "h-full bg-surface transition-all duration-300 overflow-hidden shadow-2xl border border-border",
+                  previewDevice === 'mobile'
+                    ? "w-[390px] rounded-[36px] border-[6px] border-zinc-800 shadow-2xl relative"
+                    : "w-full rounded-2xl"
+                )}
+              >
+                <iframe
+                  src={`/p/${previewProposal.shareToken}`}
+                  title="Offerten Live-Vorschau"
+                  className="w-full h-full border-0 bg-background"
+                />
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
