@@ -133,13 +133,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mySessionId) {
           mySessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
           localStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, mySessionId);
-          await supabase.from('profiles').update({ [deviceTypeKey]: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
+          try {
+            await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', user.id);
+          } catch (_) {}
         } else {
           const currentRemoteSession = profile[deviceTypeKey];
           if (currentRemoteSession && currentRemoteSession !== mySessionId) {
             mySessionId = `sess_${deviceTypeKey}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
             localStorage.setItem(`kreativ_session_id_${deviceTypeKey}_${user.id}`, mySessionId);
-            await supabase.from('profiles').update({ [deviceTypeKey]: mySessionId, last_active_at: new Date().toISOString() }).eq('id', user.id);
+            try {
+              await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', user.id);
+            } catch (_) {}
           }
         }
       } else {

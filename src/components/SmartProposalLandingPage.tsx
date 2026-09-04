@@ -1465,7 +1465,7 @@ export default function SmartProposalLandingPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10">
                     <span className="text-[10px] text-neutral-400 font-bold block uppercase">{t('accountQrIban', { bank: companySettings.bankName || 'ZKB' })}</span>
-                    <span className="font-mono font-bold text-white block select-all">{companySettings.qrIban || companySettings.iban}</span>
+                    <span className="font-sans font-bold text-white block select-all tracking-wide">{companySettings.qrIban || companySettings.iban}</span>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10">
                     <span className="text-[10px] text-neutral-400 font-bold block uppercase">{t('creditorUid')}</span>
@@ -2783,7 +2783,7 @@ export default function SmartProposalLandingPage() {
                     type="text"
                     readOnly
                     value={window.location.href}
-                    className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-mono select-all outline-none"
+                    className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-sans font-medium select-all outline-none"
                   />
                   <button
                     type="button"
@@ -2978,7 +2978,7 @@ export default function SmartProposalLandingPage() {
                         required
                         value={tempCompanySettings.qrIban}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, qrIban: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/80 border border-purple-500/40 rounded-xl text-emerald-400 font-mono font-bold outline-none"
+                        className="w-full px-3.5 py-2.5 bg-black/80 border border-purple-500/40 rounded-xl text-emerald-400 font-sans font-bold tracking-wide outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -2999,7 +2999,7 @@ export default function SmartProposalLandingPage() {
                         type="text"
                         value={tempCompanySettings.uid}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, uid: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-cyan-300 font-mono outline-none"
+                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-cyan-300 font-sans font-semibold tracking-wide outline-none"
                       />
                     </div>
                     <div className="space-y-1">
@@ -3008,7 +3008,7 @@ export default function SmartProposalLandingPage() {
                         type="text"
                         value={tempCompanySettings.iban}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, iban: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-zinc-300 font-mono outline-none"
+                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-zinc-300 font-sans font-semibold tracking-wide outline-none"
                       />
                     </div>
                   </div>

@@ -130,7 +130,7 @@ export default function UniversalPDFStudio({
         <div className="w-80 bg-surface border-r border-border flex flex-col shrink-0 relative z-20">
           <div className="p-6 border-b border-border flex items-center justify-between">
             <h3 className="font-bold text-lg text-text-primary flex items-center gap-2"><FileText size={18} className="text-accent-ai" /> {title}</h3>
-            <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors"><X size={20} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title="Schliessen"><X size={18} /></button>
           </div>
           
           <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">

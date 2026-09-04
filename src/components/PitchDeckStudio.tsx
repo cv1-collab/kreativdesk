@@ -3411,7 +3411,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
               <div className={cn("w-full lg:w-80 border-b lg:border-b-0 lg:border-r flex flex-col shrink-0 h-[45dvh] lg:h-full z-20", deckSettings.colorMode === 'light' ? "border-slate-200 bg-slate-50" : "border-white/10 bg-black/30")}>
                 <div className={cn("p-4 lg:p-6 pb-4 border-b flex flex-row items-center justify-between sticky top-0 z-10 shrink-0", deckSettings.colorMode === 'light' ? "border-slate-200 bg-white" : "border-white/10 bg-black/90")}>
                   <h3 className={cn("font-semibold text-lg flex items-center gap-2", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")}><PenTool size={18} className="text-accent-ai" /> {t('export_pdf_title')}</h3>
-                  <button type="button" onClick={() => setIsPdfModalOpen(false)} className={cn("p-2 rounded-lg border transition-colors", deckSettings.colorMode === 'light' ? "text-slate-500 hover:text-slate-900 bg-slate-100 border-slate-200" : "text-white/50 hover:text-white bg-white/5 border-white/10")}><X size={20}/></button>
+                  <button type="button" onClick={() => setIsPdfModalOpen(false)} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title="Schliessen"><X size={20}/></button>
                 </div>
                 
                 <div className={cn("p-4 lg:p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar", deckSettings.colorMode === 'light' ? "bg-slate-50/50" : "bg-black/50")}>
