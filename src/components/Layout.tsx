@@ -277,24 +277,24 @@ export default function Layout() {
   const handleLogout = async () => { try { await logout(); navigate('/login'); } catch (error) { console.error(error); } };
 
   return (
-    <div className="flex h-[100dvh] bg-background overflow-hidden selection:bg-accent-ai/30 text-text-primary flex-col lg:flex-row font-sans">
+    <div className="flex h-[100dvh] bg-background overflow-hidden selection:bg-accent-ai/30 text-text-primary flex-col md:flex-row font-sans">
 
-      <aside className="w-64 border-r border-border bg-surface flex-col hidden lg:flex shrink-0 z-20 tour-project-sidebar">
-        <div className="h-16 flex items-center px-4 border-b border-border/50 gap-3 shrink-0 bg-surface/30">
-          <button onClick={() => navigate('/app')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-text-primary">
-            <ArrowLeft size={18} />
+      <aside className="w-64 border-r border-border bg-surface flex-col hidden md:flex shrink-0 z-20 tour-project-sidebar">
+        <div className="h-14 md:h-16 flex items-center px-3 md:px-4 border-b border-border/50 gap-2.5 shrink-0 bg-surface/30">
+          <button onClick={() => navigate('/app')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-text-primary shrink-0" title="Zurück zum Workspace">
+            <ArrowLeft size={16} />
           </button>
           <div className="truncate flex-1">
-            <h2 className="font-semibold text-sm truncate text-text-primary">{project?.name || 'Projekt Workspace'}</h2>
-            <p className="text-[10px] text-accent-ai uppercase tracking-widest font-bold mt-0.5">Workspace</p>
+            <h2 className="font-bold text-xs md:text-sm truncate text-text-primary">{project?.name || 'Projekt Workspace'}</h2>
+            <p className="text-[9px] text-accent-ai uppercase tracking-widest font-extrabold mt-0.5">Workspace</p>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-4 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-2.5 custom-scrollbar">
           {menuGroups.map((group, index) => (
             <div key={index}>
-              <div className="px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">{group.title}</div>
-              <div className="space-y-1">
+              <div className="px-2.5 mb-1 text-[10px] font-bold text-text-muted uppercase tracking-widest">{group.title}</div>
+              <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const isLocked = item.featureId && !hasFeature(currentUser, item.featureId);
 
@@ -304,16 +304,16 @@ export default function Layout() {
                         key={item.id}
                         onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))}
                         className={cn(
-                          "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                          "w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
                           "text-text-muted/50 hover:bg-white/5 border border-transparent",
                           item.className
                         )}
                       >
-                        <div className="flex items-center gap-3">
-                          <item.icon size={18} className="shrink-0" />
+                        <div className="flex items-center gap-2.5">
+                          <item.icon size={16} className="shrink-0" />
                           <span className="truncate">{item.label}</span>
                         </div>
-                        <Lock size={14} className="text-accent-ai/70" />
+                        <Lock size={12} className="text-accent-ai/70" />
                       </button>
                     );
                   }
@@ -330,13 +330,13 @@ export default function Layout() {
                         }
                       }}
                       className={({ isActive }) => cn(
-                        "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                        isActive ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20" : "text-text-muted hover:bg-white/5 hover:text-text-primary border border-transparent",
+                        "flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-200",
+                        isActive ? "bg-accent-ai/10 text-accent-ai shadow-xs border border-accent-ai/20 font-bold" : "text-text-muted hover:bg-white/5 hover:text-text-primary border border-transparent",
                         item.className
                       )}
                     >
-                      <div className="flex items-center gap-3 truncate">
-                        <item.icon size={18} className="shrink-0" />
+                      <div className="flex items-center gap-2.5 truncate">
+                        <item.icon size={16} className="shrink-0" />
                         <span className="truncate">{item.label}</span>
                       </div>
                       {item.id === 'documents' && hasNewDocBadge && (
@@ -351,51 +351,57 @@ export default function Layout() {
             </div>
           ))}
 
-          <div className="mt-8 px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest">AI Tools</div>
-          {(!hasFeature(currentUser, 'ai_audit')) ? (
-            <button onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-bold text-text-muted/50 hover:bg-white/5 transition-all border border-transparent group tour-proj-pitch">
-              <div className="flex items-center gap-3">
-                <MonitorPlay size={18} />
+          <div className="pt-1">
+            <div className="px-2.5 mb-1 text-[10px] font-bold text-text-muted uppercase tracking-widest">AI Tools</div>
+            {(!hasFeature(currentUser, 'ai_audit')) ? (
+              <button onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-bold text-text-muted/50 hover:bg-white/5 transition-all border border-transparent group tour-proj-pitch">
+                <div className="flex items-center gap-2.5">
+                  <MonitorPlay size={16} />
+                  <span>{t('pitch_deck')}</span>
+                </div>
+                <Lock size={12} className="text-accent-ai/70" />
+              </button>
+            ) : (
+              <button onClick={() => setShowPitchModal(true)} className="w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-bold text-purple-400 hover:bg-purple-500/10 transition-all border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] group tour-proj-pitch">
+                <MonitorPlay size={16} className="group-hover:scale-110 transition-transform" />
                 <span>{t('pitch_deck')}</span>
-              </div>
-              <Lock size={14} className="text-accent-ai/70" />
-            </button>
-          ) : (
-            <button onClick={() => setShowPitchModal(true)} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold text-purple-400 hover:bg-purple-500/10 transition-all border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.15)] group tour-proj-pitch">
-              <MonitorPlay size={18} className="group-hover:scale-110 transition-transform" />
-              <span>{t('pitch_deck')}</span>
-            </button>
-          )}
+              </button>
+            )}
+          </div>
         </nav>
 
-        <div className="p-4 border-t border-border/50 shrink-0 bg-surface/50 relative">
-          <div className="space-y-3 mb-6 pb-4 border-b border-border/50">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-text-muted font-bold uppercase tracking-widest flex items-center gap-1"><Clock size={12} /> {t('booked')}</span>
-              <span className="text-xs font-mono font-bold text-accent-ai">{projectHours.toFixed(1)}h</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-text-muted font-bold uppercase tracking-widest flex items-center gap-1"><CheckCircle2 size={12} /> {t('status')}</span>
-              <span className={cn("text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider", project?.status === 'active' ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400")}>
-                {project?.status === 'active' ? t('active') : (project?.status || 'ACTIVE')}
-              </span>
-            </div>
+        {/* KOMPAKTER BOTTOM FOOTER: GEBUCHT/STATUS + USER + LOGOUT */}
+        <div className="p-2.5 border-t border-border/50 shrink-0 bg-surface/50 relative space-y-2">
+          <div className="flex items-center justify-between px-2.5 py-1.5 bg-background/80 border border-border/50 rounded-lg text-[11px]">
+            <span className="text-text-muted font-bold uppercase tracking-wider flex items-center gap-1">
+              <Clock size={11} /> {t('booked')}: <strong className="font-mono font-bold text-accent-ai ml-0.5">{projectHours.toFixed(1)}h</strong>
+            </span>
+            <span className={cn("text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1", project?.status === 'active' ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400")}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+              {project?.status === 'active' ? t('active') : (project?.status || 'AKTIV')}
+            </span>
           </div>
 
-          {currentUser && (
-            <div className="flex items-center gap-3 px-3 py-2 bg-background border border-border/50 rounded-lg mb-3">
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 font-bold shrink-0">
-                {(currentUser.displayName || currentUser.name || (currentUser.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser.email))?.charAt(0).toUpperCase()}
+          <div className="flex items-center justify-between gap-1.5 px-2 py-1.5 bg-background border border-border/50 rounded-lg">
+            <div className="flex items-center gap-2 overflow-hidden min-w-0">
+              <div className="w-7 h-7 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold shrink-0">
+                {(currentUser?.displayName || currentUser?.name || (currentUser?.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser?.email) || 'U')?.charAt(0).toUpperCase()}
               </div>
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-text-primary truncate">
-                  {currentUser.displayName || currentUser.name || (currentUser.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser.email)}
+              <div className="overflow-hidden min-w-0">
+                <p className="text-xs font-bold text-text-primary truncate leading-tight">
+                  {currentUser?.displayName || currentUser?.name || (currentUser?.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : currentUser?.email)}
                 </p>
-                <p className="text-[10px] text-text-muted truncate font-medium">{currentUser.email}</p>
+                <p className="text-[10px] text-text-muted truncate leading-none mt-0.5">{currentUser?.email}</p>
               </div>
             </div>
-          )}
-          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-all text-sm border border-red-500/20"><LogOut size={14} /> {t('logout')}</button>
+            <button 
+              onClick={handleLogout} 
+              title={t('logout')} 
+              className="p-1.5 rounded-md text-red-400 hover:bg-red-500/10 transition-colors shrink-0 border border-red-500/20 hover:border-red-500/40 cursor-pointer"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -448,12 +454,12 @@ export default function Layout() {
           </div>
         )}
 
-        <header className="h-14 lg:h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 lg:px-6 shrink-0 z-[60] sticky top-0 shadow-sm">
-          <div className="flex items-center gap-2 lg:gap-3">
-            <button onClick={() => navigate('/app')} className="p-1.5 lg:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm lg:hidden">
+        <header className="h-14 md:h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 shrink-0 z-[60] sticky top-0 shadow-sm">
+          <div className="flex items-center gap-2 md:gap-3">
+            <button onClick={() => navigate('/app')} className="p-1.5 md:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm md:hidden">
               <ArrowLeft size={18} />
             </button>
-            <span className="font-bold text-sm lg:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
+            <span className="font-bold text-sm md:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">
@@ -494,7 +500,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <div className="lg:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-xl border-b border-border overflow-x-auto hide-scrollbar shrink-0 w-full z-[55] shadow-sm sticky top-14">
+        <div className="md:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-xl border-b border-border overflow-x-auto hide-scrollbar shrink-0 w-full z-[55] shadow-sm sticky top-14">
           {mobileNavItems.map(item => {
             const path = `/project/${projectId}${item.id ? `/${item.id}` : ''}`;
             const isActive = window.location.pathname === path || window.location.pathname.startsWith(path + '/');
@@ -506,7 +512,7 @@ export default function Layout() {
           })}
         </div>
 
-        <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 lg:p-6 z-10 pb-6 tour-proj-content">
+        <div className="flex-1 overflow-y-auto relative custom-scrollbar p-2 md:p-6 z-10 pb-6 tour-proj-content">
           <ErrorBoundary fallbackTitle="Projekt-Modul konnte nicht geladen werden">
             <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="w-10 h-10 text-accent-ai animate-spin" /></div>}>
               <Outlet />

@@ -674,18 +674,18 @@ export default function CompanyDashboard() {
 
       <NotificationCenter isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
 
-      <aside className="w-[70px] xl:w-[260px] border-r border-border bg-surface hidden md:flex flex-col z-20 shrink-0 transition-all duration-300">
-        <div className="h-16 flex items-center justify-center xl:justify-start px-0 xl:px-6 border-b border-border bg-surface/50">
+      <aside className="w-64 border-r border-border bg-surface hidden md:flex flex-col z-20 shrink-0">
+        <div className="h-14 md:h-16 flex items-center px-4 border-b border-border bg-surface/50 gap-3">
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-accent-ai to-blue-600 flex items-center justify-center shadow-lg shrink-0"><span className="text-white font-bold text-lg leading-none mt-0.5">K</span></div>
-          <span className="font-bold text-lg tracking-tight hidden xl:block ml-3">Kreativ-Desk OS</span>
+          <span className="font-bold text-base tracking-tight text-text-primary">Kreativ-Desk OS</span>
         </div>
-        <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-6 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4 custom-scrollbar">
           {navGroups.map((group, i) => {
             const visibleItems = group.items.filter(item => !item.hide);
             if (visibleItems.length === 0) return null;
             return (
               <div key={i} className="space-y-1">
-                <div className="px-3 mb-2 text-[10px] font-bold text-text-muted uppercase tracking-widest hidden xl:block">{group.title}</div>
+                <div className="px-3 mb-1 text-[10px] font-bold text-text-muted uppercase tracking-widest">{group.title}</div>
                 {visibleItems.map(item => (
                   <button 
                     key={item.id} 
@@ -697,11 +697,11 @@ export default function CompanyDashboard() {
                         localStorage.removeItem('has_new_document');
                       }
                     }} 
-                    className={cn("w-full flex items-center justify-center xl:justify-between px-3 py-2.5 xl:py-2 rounded-xl text-sm font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}
+                    className={cn("w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}
                   >
                     <div className="flex items-center gap-3">
-                      <item.icon size={18} className="shrink-0" />
-                      <span className="hidden xl:block truncate">{item.label}</span>
+                      <item.icon size={16} className="shrink-0" />
+                      <span className="truncate">{item.label}</span>
                     </div>
                     {item.id === 'documents' && hasNewDocBadge && (
                       <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-black text-[9px] uppercase tracking-wider animate-pulse shadow-sm flex items-center gap-1">
@@ -709,7 +709,7 @@ export default function CompanyDashboard() {
                       </span>
                     )}
                     {item.count !== undefined && item.count > 0 && item.id !== 'documents' && (
-                      <span className={cn("hidden xl:flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-black", activeTab === item.id ? "bg-accent-ai text-white" : "bg-surface border border-border text-text-muted")}>{item.count}</span>
+                      <span className={cn("flex items-center justify-center px-1.5 py-0.5 rounded-md text-[10px] font-black", activeTab === item.id ? "bg-accent-ai text-white" : "bg-surface border border-border text-text-muted")}>{item.count}</span>
                     )}
                   </button>
                 ))}
@@ -717,13 +717,13 @@ export default function CompanyDashboard() {
             );
           })}
         </nav>
-        <div className="p-4 border-t border-border bg-surface/50 shrink-0">
+        <div className="p-3 border-t border-border bg-surface/50 shrink-0">
           {(() => {
             const userDisplayName = currentUser?.name || currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'User');
             return (
-              <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-center xl:justify-start gap-3 px-2 xl:px-3 py-2 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
+              <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-start gap-3 px-3 py-2 bg-background border border-border rounded-xl transition-all text-xs font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
                 <div className="w-7 h-7 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
-                <div className="hidden xl:block text-left overflow-hidden">
+                <div className="text-left overflow-hidden">
                   <div className="truncate text-xs font-bold text-text-primary">{userDisplayName}</div>
                   <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{userRole}</div>
                 </div>

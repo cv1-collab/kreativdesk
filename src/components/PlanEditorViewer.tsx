@@ -443,6 +443,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingOverlay, setIsUploadingOverlay] = useState(false);
+  const [isDraggingPlan, setIsDraggingPlan] = useState(false);
   const [defectPrompt, setDefectPrompt] = useState<any>(null);
   const [isSavingDefect, setIsSavingDefect] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -572,21 +573,40 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     const fetchPlans = async () => {
-      const { data: plans } = await supabase
-        .from('cad_plans')
-        .select('*')
-        .eq('project_id', currentProjectId)
-        .eq('company_id', safeCompanyId);
+      try {
+        const { data: plans, error: fetchErr } = await supabase
+          .from('cad_plans')
+          .select('*')
+          .eq('project_id', currentProjectId);
 
-      if (plans && plans.length > 0) {
-        setProjectPlans(plans as any);
-        if (!activePlanId) loadPlanDataToEditor(plans[0]);
-      } else {
-        setProjectPlans([]);
-        setActivePlanId(null);
-        setPlanImage(null);
-        setPlanName('');
-        setElements([]);
+        if (fetchErr) {
+          console.warn("Fehler beim Abrufen der CAD-Pläne:", fetchErr);
+        }
+
+        if (plans && plans.length > 0) {
+          const mappedPlans = plans.map((p: any) => {
+            const metaEl = Array.isArray(p.elements) ? p.elements.find((e: any) => e?.id === '__plan_meta__') : null;
+            return {
+              ...p,
+              plan_name: p.name || p.plan_name || 'Unbenannter Plan',
+              plan_image: p.plan_image || metaEl?.plan_image || null,
+              paper_format: p.paper_format || metaEl?.paper_format || 'A3',
+              paper_orientation: p.paper_orientation || metaEl?.paper_orientation || 'landscape',
+              plan_scale: p.plan_scale || metaEl?.plan_scale || 50,
+              elements: (p.elements || []).filter((e: any) => e?.id !== '__plan_meta__')
+            };
+          });
+          setProjectPlans(mappedPlans as any);
+          if (!activePlanId) loadPlanDataToEditor(mappedPlans[0]);
+        } else {
+          setProjectPlans([]);
+          setActivePlanId(null);
+          setPlanImage(null);
+          setPlanName('');
+          setElements([]);
+        }
+      } catch (err) {
+        console.error("Unerwarteter Fehler in fetchPlans:", err);
       }
     };
     fetchPlans();
@@ -595,14 +615,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const loadPlanDataToEditor = (planData: any) => {
     if (!planData) return;
     setActivePlanId(planData.id);
-    setPlanImage(planData.planImage || planData.plan_image || null);
-    setPlanName(planData.planName || planData.plan_name || 'Unbenannt');
-    setElements(planData.elements || []);
+    const metaEl = Array.isArray(planData.elements) ? planData.elements.find((e: any) => e?.id === '__plan_meta__') : null;
+    const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || null;
+    setPlanImage(resolvedImage);
+    setPlanName(planData.planName || planData.plan_name || planData.name || 'Unbenannt');
+    setElements((planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__'));
     setLayers(planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }]);
     setActiveLayerId(planData.activeLayerId || planData.active_layer_id || 'default');
-    setPaperFormat(planData.paperFormat || planData.paper_format || 'A3');
-    setPaperOrientation(planData.paperOrientation || planData.paper_orientation || 'landscape');
-    setPlanScale(planData.planScale || planData.plan_scale || 50);
+    setPaperFormat(planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3');
+    setPaperOrientation(planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape');
+    setPlanScale(planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50);
     setPan({ x: 0, y: 0 });
     setSelectedElement(null);
   };
@@ -634,12 +656,27 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
   const convertPdfToImage = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const loadAndConvert = () => {
-        const pdfjsLib = (window as any).pdfjsLib;
-        if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-           pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+      const loadAndConvert = async () => {
+        let pdfjsLib = (window as any).pdfjsLib;
+        if (!pdfjsLib) {
+          try {
+            const pdfjsModule = await import('pdfjs-dist');
+            pdfjsLib = pdfjsModule;
+            (window as any).pdfjsLib = pdfjsLib;
+          } catch (e) {
+            // fallback handled below
+          }
         }
-        
+
+        if (pdfjsLib && !pdfjsLib.GlobalWorkerOptions?.workerSrc) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        }
+
+        if (!pdfjsLib) {
+          reject(new Error("PDF-Engine konnte nicht initialisiert werden."));
+          return;
+        }
+
         const reader = new FileReader();
         reader.onload = async () => {
           try {
@@ -662,7 +699,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             canvas.width = viewport.width;
             
             await page.render({ canvasContext: context, viewport: viewport }).promise;
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             canvas.width = 0; canvas.height = 0;
             resolve(dataUrl);
           } catch (error) {
@@ -673,71 +710,135 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         reader.readAsArrayBuffer(file);
       };
 
-      if ((window as any).pdfjsLib) loadAndConvert();
-      else {
+      if ((window as any).pdfjsLib) {
+        loadAndConvert();
+      } else {
         const script = document.createElement('script');
         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js';
-        script.onload = loadAndConvert;
-        script.onerror = () => reject(new Error("PDF.js konnte nicht geladen werden."));
+        script.onload = () => loadAndConvert();
+        script.onerror = () => {
+          loadAndConvert().catch(err => reject(new Error("PDF.js konnte nicht geladen werden.")));
+        };
         document.head.appendChild(script);
       }
     });
   };
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const processPlanFile = async (file: File) => {
     if (isDemoMode || currentProjectId === 'demo-1') {
       addToast('Upload von neuen Plänen ist in der Demo-Version deaktiviert.', 'info');
-      event.target.value = '';
       return;
     }
 
-    const file = event.target.files?.[0];
     const safeCompId = currentUser?.companyId || currentUser?.uid;
-    if (!file || !safeCompId) return;
+    if (!file) return;
 
-    const isPdf = file.type === 'application/pdf';
-    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|svg|bmp)$/i.test(file.name);
 
-    if (!isImage && !isPdf) { addToast(t('upload_failed'), "error"); return; }
+    if (!isImage && !isPdf) {
+      addToast("Bitte lade einen gültigen Plan hoch (PDF, JPG, PNG, WebP, SVG).", "error");
+      return;
+    }
 
     setIsUploading(true);
     try {
-      let finalFileToUpload = file;
+      let finalFileToUpload: File = file;
       let finalFileName = file.name;
 
       if (isPdf) {
-         addToast(t('rasterizing_pdf'), "info");
-         const base64Image = await convertPdfToImage(file);
-         const fetchRes = await fetch(base64Image);
-         const blob = await fetchRes.blob();
-         finalFileToUpload = new File([blob], file.name.replace(/\.pdf$/i, '.jpg'), { type: 'image/jpeg' });
-         finalFileName = finalFileToUpload.name;
+        addToast(t('rasterizing_pdf') || "PDF wird verarbeitet...", "info");
+        try {
+          const base64Image = await convertPdfToImage(file);
+          const fetchRes = await fetch(base64Image);
+          const blob = await fetchRes.blob();
+          finalFileToUpload = new File([blob], file.name.replace(/\.pdf$/i, '.jpg'), { type: 'image/jpeg' });
+          finalFileName = finalFileToUpload.name;
+        } catch (pdfErr: any) {
+          console.error("PDF-Verarbeitung fehlgeschlagen:", pdfErr);
+          addToast("PDF-Verarbeitung fehlgeschlagen. Bitte alternativ JPG/PNG hochladen.", "error");
+          setIsUploading(false);
+          return;
+        }
       }
 
-      const isAllowed = await checkStorageLimit(safeCompId, finalFileToUpload.size);
-      if (!isAllowed) {
-        addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
-        setIsUploading(false);
-        return;
+      if (safeCompId) {
+        const isAllowed = await checkStorageLimit(safeCompId, finalFileToUpload.size);
+        if (!isAllowed) {
+          addToast('Speicherplatz-Limit erreicht! Bitte upgrade dein Abo.', 'error');
+          setIsUploading(false);
+          return;
+        }
       }
 
-      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, safeCompId, 'cad_plans');
+      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, safeCompId || 'global', 'cad_plans');
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
       reader.readAsDataURL(finalFileToUpload);
 
-      const newPlan = { project_id: currentProjectId, company_id: safeCompId, plan_name: finalFileName, plan_image: url, paper_format: 'A3', paper_orientation: 'landscape', plan_scale: 50, elements: [], layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }], active_layer_id: 'default' };
-      const { data: createdPlan } = await supabase.from('cad_plans').insert(newPlan).select().single();
+      const metaElement = {
+        id: '__plan_meta__',
+        type: '__plan_meta__',
+        plan_image: url,
+        paper_format: 'A3',
+        paper_orientation: 'landscape',
+        plan_scale: 50
+      };
+
+      const newPlanPayload = {
+        project_id: currentProjectId,
+        company_id: safeCompId || null,
+        name: finalFileName,
+        elements: [metaElement],
+        layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }],
+        active_layer_id: 'default'
+      };
+
+      const { data: createdPlan, error: insertErr } = await supabase
+        .from('cad_plans')
+        .insert(newPlanPayload)
+        .select()
+        .single();
+
+      if (insertErr) {
+        console.error("Supabase cad_plans insert error:", insertErr);
+        addToast(`Fehler beim Speichern des Plans: ${insertErr.message}`, "error");
+        setIsUploading(false);
+        return;
+      }
+
       if (createdPlan) {
-        const mapped = { id: createdPlan.id, ...newPlan };
+        const mapped = {
+          id: createdPlan.id,
+          name: createdPlan.name,
+          plan_name: createdPlan.name,
+          plan_image: url,
+          paper_format: 'A3',
+          paper_orientation: 'landscape',
+          plan_scale: 50,
+          elements: [],
+          layers: createdPlan.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }],
+          active_layer_id: createdPlan.active_layer_id || 'default'
+        };
         setProjectPlans(prev => [mapped, ...prev]);
         loadPlanDataToEditor(mapped);
         addToast("CAD-Plan erfolgreich hochgeladen und geladen!", "success");
       }
-    } catch (e) {
+    } catch (e: any) {
+      console.error("CAD-Plan Upload error:", e);
       addToast(t('upload_failed'), "error");
-    } finally { setIsUploading(false); event.target.value = ''; }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await processPlanFile(file);
+    }
+    event.target.value = '';
   };
 
   const handleOverlayUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -751,8 +852,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     const safeCompId = currentUser?.companyId || currentUser?.uid;
     if (!file || !safeCompId) return;
 
-    const isPdf = file.type === 'application/pdf';
-    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|svg|bmp)$/i.test(file.name);
 
     if (!isImage && !isPdf) return addToast(t('upload_failed'), "error");
     setIsUploadingOverlay(true);
@@ -762,7 +863,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       let finalFileName = file.name;
 
       if (isPdf) {
-         addToast(t('rasterizing_pdf'), "info");
+         addToast(t('rasterizing_pdf') || "PDF wird verarbeitet...", "info");
          const base64Image = await convertPdfToImage(file);
          const fetchRes = await fetch(base64Image);
          const blob = await fetchRes.blob();
@@ -795,16 +896,48 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (!activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht überschrieben werden. Lade bitte einen eigenen Plan hoch.", "info");
     setIsSaving(true);
     try {
-      await supabase.from('cad_plans').update({ elements, layers, active_layer_id: activeLayerId, updated_at: new Date().toISOString() }).eq('id', activePlanId);
-      addToast(t('save') + " ok", "success");
-    } finally { setIsSaving(false); }
+      const metaEl = {
+        id: '__plan_meta__',
+        type: '__plan_meta__',
+        plan_image: planImage,
+        paper_format: paperFormat,
+        paper_orientation: paperOrientation,
+        plan_scale: planScale
+      };
+      const elementsToPersist = [...elements.filter((e: any) => e?.id !== '__plan_meta__'), metaEl];
+      const { error: updateErr } = await supabase
+        .from('cad_plans')
+        .update({ 
+          name: planName,
+          elements: elementsToPersist, 
+          layers: layers.filter((l: any) => l?.id !== '__plan_meta__'), 
+          active_layer_id: activeLayerId, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', activePlanId);
+
+      if (updateErr) {
+        console.error("Fehler beim Speichern in Supabase:", updateErr);
+        addToast("Fehler beim Speichern: " + updateErr.message, "error");
+      } else {
+        addToast(t('save') + " ok", "success");
+      }
+    } catch (e: any) {
+      console.error("Fehler beim Speichern:", e);
+      addToast("Fehler beim Speichern", "error");
+    } finally { 
+      setIsSaving(false); 
+    }
   };
 
   const handleDeletePlan = async () => {
     if (activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht gelöscht werden.", "info");
     if (activePlanId && window.confirm(t('confirm_delete_plan'))) {
       await supabase.from('cad_plans').delete().eq('id', activePlanId);
-      setPlanImage(null); setActivePlanId(null);
+      setProjectPlans(prev => prev.filter(p => p.id !== activePlanId));
+      setPlanImage(null); 
+      setActivePlanId(null);
+      addToast("Plan gelöscht", "info");
     }
   };
 
@@ -1545,16 +1678,30 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           onWheel={handleWheel}
         >
           {!planImage ? (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300">
+            <div 
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingPlan(true); }}
+              onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsDraggingPlan(false); }}
+              onDrop={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingPlan(false);
+                const file = e.dataTransfer?.files?.[0];
+                if (file) await processPlanFile(file);
+              }}
+              className={cn(
+                "w-full h-full flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300 transition-all",
+                isDraggingPlan && "bg-blue-500/10 border-2 border-dashed border-blue-500/50"
+              )}
+            >
               <div className="max-w-md w-full bg-surface/90 backdrop-blur-xl border border-border/80 rounded-3xl p-8 shadow-2xl flex flex-col items-center text-center space-y-5">
                 <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/10">
-                  <UploadCloud size={32} />
+                  {isUploading ? <Loader2 size={32} className="animate-spin text-blue-500" /> : <UploadCloud size={32} />}
                 </div>
 
                 <div>
                   <h3 className="text-lg font-bold text-text-primary">Noch kein CAD-Plan hinterlegt</h3>
                   <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
-                    Lade einen 2D-Bauplan (PDF oder Bild) hoch, um mit der TrueScale™ Vermessung, Mängelerfassung und Vektorbeschriftung zu starten.
+                    Lade einen 2D-Bauplan (PDF oder Bild) hoch, um mit der TrueScale™ Vermessung, Mängelerfassung und Vektorbeschriftung zu starten. Datei hier ablegen oder Button klicken.
                   </p>
                 </div>
 
