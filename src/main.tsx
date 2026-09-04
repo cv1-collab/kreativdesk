@@ -76,6 +76,7 @@ import * as Sentry from "@sentry/react";
 Sentry.init({
   // Fallback auf den direkten Key, falls Vercel die Environment Variable beim Build verschluckt hat
   dsn: import.meta.env.VITE_SENTRY_DSN || "https://84f2745b5dc505891b233869c8a7df39@o4511721911287808.ingest.de.sentry.io/4511721931276368",
+  tunnel: "/api/monitoring", // First-Party Tunnel: Verhindert Tracking-Schutz & CORS-Blockaden in Firefox/Adblockern
   enabled: import.meta.env.PROD, // In lokaler Entwicklung (dev) deaktiviert, um Adblocker/CORS-Spam im Browser zu vermeiden
   integrations: [
     Sentry.browserTracingIntegration(),
