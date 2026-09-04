@@ -126,22 +126,40 @@ export default function UniversalPDFStudio({
 
     try {
       const docElement = getDocument();
-      const asPdf = pdf();
-      asPdf.updateContainer(docElement as any);
-      const blob = await asPdf.toBlob();
+      let blob: Blob | null = null;
+      try {
+        const asPdf = pdf(docElement as any);
+        blob = await asPdf.toBlob();
+      } catch (err1) {
+        console.warn("pdf(docElement) failed, trying updateContainer fallback:", err1);
+        const asPdf = pdf();
+        asPdf.updateContainer(docElement as any);
+        blob = await asPdf.toBlob();
+      }
+
+      if (!blob || blob.size === 0) {
+        throw new Error("Generiertes PDF ist leer");
+      }
 
       if (toCloud) {
         await onSaveCloud(blob);
       } else {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+        a.style.display = 'none';
         a.href = url;
         a.download = `${fileName}.pdf`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 100);
+        addToast('PDF erfolgreich heruntergeladen!', 'success');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("PDF Generation Error", error);
+      addToast(`Fehler bei der PDF-Erstellung: ${error?.message || 'Bitte erneut versuchen'}`, 'error');
     } finally {
       setIsGenerating(false);
       setIsUploading(false);

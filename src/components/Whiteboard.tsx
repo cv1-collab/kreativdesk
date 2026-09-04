@@ -36,8 +36,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import PremiumFeature from './PremiumFeature';
 
-const UniversalPDFStudio = React.lazy(() => import('./UniversalPDFStudio'));
-const WhiteboardPDFDocument = React.lazy(() => import('./WhiteboardPDFDocument'));
+const WhiteboardPDFModal = React.lazy(() => import('./WhiteboardPDFModal'));
 
 interface LayerData { id: string; name: string; visible: boolean; items: any[]; }
 
@@ -1076,17 +1075,94 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
   const executePdfExport = () => {
     setSelectedShapeId(null);
-    addToast('PDF Studio wird geöffnet...', 'info');
+    addToast('PDF Studio wird vorbereitet...', 'info');
     setTimeout(() => {
       let uri: string | null = null;
       try {
-        uri = getCanvasDataUrl(2, 'image/png') || getCanvasDataUrl(1, 'image/png');
+        uri = getCanvasDataUrl(2, 'image/jpeg', true) || getCanvasDataUrl(1.5, 'image/jpeg', true) || getCanvasDataUrl(1, 'image/png', true);
       } catch (e) {
         console.warn("Could not capture canvas for PDF:", e);
       }
       setPdfRenderImage(uri);
       setIsPdfStudioOpen(true);
-    }, 60);
+    }, 100);
+  };
+
+  const handleDirectPdfDownload = () => {
+    if (!stageRef.current) return;
+    setSelectedShapeId(null);
+    addToast('PDF wird erstellt...', 'info');
+    setTimeout(async () => {
+      try {
+        const uri = getCanvasDataUrl(2, 'image/jpeg', true) || getCanvasDataUrl(1.5, 'image/jpeg', true);
+        if (!uri) {
+          addToast('Fehler beim Erfassen der Zeichenfläche.', 'error');
+          return;
+        }
+
+        const { jsPDF } = await import('jspdf');
+        const stage = stageRef.current;
+        const width = stage?.width?.() || 1200;
+        const height = stage?.height?.() || 800;
+        const isLandscape = width >= height;
+
+        const doc = new jsPDF({
+          orientation: isLandscape ? 'landscape' : 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+
+        // Header
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text('Whiteboard Skizze', 15, 14);
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Projekt: ${activeProject?.name || 'Projekt'}  |  Datum: ${new Date().toLocaleDateString('de-CH')}`, 15, 20);
+
+        // Header Divider line
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.4);
+        doc.line(15, 23, pageWidth - 15, 23);
+
+        // Canvas Snapshot
+        const marginX = 15;
+        const marginTop = 26;
+        const availableW = pageWidth - marginX * 2;
+        const availableH = pageHeight - marginTop - 16;
+
+        const ratio = Math.min(availableW / width, availableH / height);
+        const drawW = width * ratio;
+        const drawH = height * ratio;
+        const posX = marginX + (availableW - drawW) / 2;
+        const posY = marginTop + (availableH - drawH) / 2;
+
+        doc.addImage(uri, 'JPEG', posX, posY, drawW, drawH, '', 'FAST');
+
+        // Footer Divider line & text
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(15, pageHeight - 10, pageWidth - 15, pageHeight - 10);
+
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text(`Vertraulich  |  Kreativ Desk OS  |  ${new Date().toLocaleDateString('de-CH')}`, 15, pageHeight - 6);
+        doc.text('Seite 1 von 1', pageWidth - 15, pageHeight - 6, { align: 'right' });
+
+        const safeProject = (activeProject?.name || 'Export').replace(/[^a-zA-Z0-9_-]/g, '_');
+        doc.save(`Whiteboard_${safeProject}_${Date.now()}.pdf`);
+        addToast(t('pdf_success') || 'PDF erfolgreich exportiert!', 'success');
+      } catch (err) {
+        console.error("Direct PDF export error:", err);
+        addToast('Fehler beim PDF-Export.', 'error');
+      }
+    }, 100);
   };
 
   const handleSendToSlides = async () => {
@@ -1328,9 +1404,14 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <span className="hidden md:inline">{isUploadingMedia ? 'Lädt...' : t('import_media')}</span>
             </button>
             
-            <button onClick={executePdfExport} className="hidden md:flex px-3 md:px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-bold hover:bg-red-500/20 transition-colors items-center gap-2">
-              <FileDown size={16} /> <span className="hidden md:inline">PDF Studio</span>
-            </button>
+            <div className="hidden md:flex items-center">
+              <button onClick={executePdfExport} className="px-3 md:px-3.5 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-l-md text-sm font-bold hover:bg-red-500/20 transition-colors flex items-center gap-2" title="PDF Studio öffnen (Vorschau & Optionen)">
+                <FileDown size={16} /> <span className="hidden lg:inline">PDF Studio</span>
+              </button>
+              <button onClick={handleDirectPdfDownload} className="px-2.5 py-2 bg-red-500/20 text-red-500 border-y border-r border-red-500/20 rounded-r-md text-xs font-bold hover:bg-red-500/30 transition-colors" title="Direkt als PDF herunterladen">
+                PDF
+              </button>
+            </div>
 
             <button onClick={handleExportImage} className="hidden md:flex px-3 md:px-4 py-2 bg-surface border border-border rounded-md text-sm font-bold hover:bg-white/5 transition-colors items-center gap-2">
               <Download size={16} /> <span className="hidden md:inline">{t('export_img')}</span>
@@ -1782,20 +1863,13 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
       {isPdfStudioOpen && (
         <React.Suspense fallback={null}>
-          <UniversalPDFStudio 
-            isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} 
-            title="Whiteboard Export" fileName={`Whiteboard_${Date.now()}`}
-            onSaveCloud={handleSavePdfToCloud} defaultOrientation="landscape"
-          >
-            {(settings: any) => (
-              <React.Suspense fallback={null}>
-                <WhiteboardPDFDocument 
-                  settings={settings} pdfRenderImage={pdfRenderImage}
-                  projectHeader={{ project: activeProject?.name || 'Projekt', date: new Date().toISOString() }}
-                />
-              </React.Suspense>
-            )}
-          </UniversalPDFStudio>
+          <WhiteboardPDFModal 
+            isOpen={isPdfStudioOpen} 
+            onClose={() => setIsPdfStudioOpen(false)} 
+            pdfRenderImage={pdfRenderImage}
+            projectName={activeProject?.name || 'Projekt'}
+            onSaveCloud={handleSavePdfToCloud}
+          />
         </React.Suspense>
       )}
 
