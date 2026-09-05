@@ -72,13 +72,40 @@ export default function AdminSystemTab() {
     setIsUpdatingMaintenance(true);
     try {
       const nextState = !isMaintenance;
-      await supabase
-        .from('system_config')
-        .upsert({ id: 'global_master', is_maintenance: nextState });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      let success = false;
+      if (token) {
+        try {
+          const res = await fetch('/api/admin/set-maintenance', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ isMaintenance: nextState })
+          });
+          if (res.ok) {
+            success = true;
+          }
+        } catch (apiErr) {
+          console.warn('API maintenance toggle failed, falling back to direct supabase update', apiErr);
+        }
+      }
+
+      if (!success) {
+        const { error: sbErr } = await supabase
+          .from('system_config')
+          .upsert({ id: 'global_master', is_maintenance: nextState });
+        if (sbErr) throw sbErr;
+      }
+
       setIsMaintenance(nextState);
-      addToast(nextState ? 'Wartungsmodus ABER AKTIVIERT' : 'Wartungsmodus DEAKTIVIERT', 'info');
+      addToast(nextState ? 'Wartungsmodus AKTIVIERT' : 'Wartungsmodus DEAKTIVIERT', 'info');
     } catch (e) {
-      addToast('Fehler beim Aktualisieren', 'error');
+      console.error('Error toggling maintenance:', e);
+      addToast('Fehler beim Aktualisieren des Wartungsmodus', 'error');
     } finally {
       setIsUpdatingMaintenance(false);
     }

@@ -224,6 +224,35 @@ class AudioFeedbackService {
   public playWarningTone() {
     this.playErrorTone();
   }
+
+  /**
+   * Fast frequency sweep down for trash / dismiss action
+   */
+  public playTrashSwipe() {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.12);
+
+      const targetGain = this.getEffectiveGain(0.12);
+      gain.gain.setValueAtTime(targetGain, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    } catch {
+      // Ignore
+    }
+  }
 }
 
 export const audioFeedback = new AudioFeedbackService();

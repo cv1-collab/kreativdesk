@@ -2,8 +2,8 @@ import { checkIsSuperAdmin } from '../config/admins';
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Wrench, ShieldAlert } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
@@ -15,9 +15,10 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   const [countdown, setCountdown] = useState(2700); // 45 minutes default countdown
   const { currentUser } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkMaintenance = async () => {
       try {
         const { data } = await supabase
@@ -26,13 +27,41 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
           .eq('id', 'global_master')
           .maybeSingle();
 
-        if (data) setIsMaintenance(data.is_maintenance || false);
+        if (isMounted && data) {
+          setIsMaintenance(!!data.is_maintenance);
+        }
       } catch (err) {
         // Expected fallback
       }
     };
 
     checkMaintenance();
+
+    // 1. Realtime postgres subscription for instant toggle across active tabs
+    const channel = supabase
+      .channel('maintenance-mode-sync')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'system_config',
+        filter: 'id=eq.global_master'
+      }, (payload: any) => {
+        if (payload?.new && typeof payload.new.is_maintenance === 'boolean') {
+          setIsMaintenance(payload.new.is_maintenance);
+        } else {
+          checkMaintenance();
+        }
+      })
+      .subscribe();
+
+    // 2. Periodic polling every 25 seconds as network fallback
+    const pollInterval = setInterval(checkMaintenance, 25000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel).catch(() => {});
+    };
   }, []);
 
   useEffect(() => {
@@ -55,7 +84,23 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
   };
 
   const isAdmin = checkIsSuperAdmin(currentUser?.email) || currentUser?.role === 'super_admin' || currentUser?.role === 'owner' || currentUser?.role === 'management' || bypassUnlocked;
-  const isPublicRoute = location.pathname === '/login' || location.pathname === '/';
+  
+  const isPublicRoute = 
+    location.pathname === '/login' || 
+    location.pathname === '/' || 
+    location.pathname.startsWith('/reset-password') ||
+    location.pathname === '/pricing' ||
+    location.pathname === '/privacy' ||
+    location.pathname === '/imprint' ||
+    location.pathname === '/terms' ||
+    location.pathname.startsWith('/p/') ||
+    location.pathname.startsWith('/proposal/') ||
+    location.pathname.startsWith('/offerte') ||
+    location.pathname.startsWith('/interactv/') ||
+    location.pathname.startsWith('/guest-meet/') ||
+    location.pathname.startsWith('/lead-form') ||
+    location.pathname.startsWith('/mobile-upload/') ||
+    location.pathname === '/deck';
 
   const formatCountdown = (seconds: number) => {
     const m = Math.floor(seconds / 60);
