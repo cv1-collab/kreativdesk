@@ -320,7 +320,40 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
             .select('*')
             .eq('company_id', safeCompanyId)
             .order('created_at', { ascending: false });
-          if (!error && data) setAudioNotes(data);
+          if (!error && data) {
+            const parsedNotes = data.map((n: any) => {
+              if (n.audio_url && n.audio_url.startsWith('{')) {
+                try {
+                  const p = JSON.parse(n.audio_url);
+                  return {
+                    id: n.id,
+                    title: p.title || `Sprachnotiz`,
+                    time: p.time || '',
+                    duration: p.duration || '',
+                    aiSummary: p.ai_summary || p.aiSummary || '',
+                    ai_summary: p.ai_summary || p.aiSummary || '',
+                    transcription: p.transcription || n.transcript || '',
+                    audioData: p.audio_data || p.audioData || '',
+                    audio_data: p.audio_data || p.audioData || '',
+                    created_at: n.created_at
+                  };
+                } catch (e) {}
+              }
+              return {
+                id: n.id,
+                title: n.title || `Sprachnotiz`,
+                time: n.time || '',
+                duration: n.duration || '',
+                aiSummary: n.ai_summary || n.aiSummary || '',
+                ai_summary: n.ai_summary || n.aiSummary || '',
+                transcription: n.transcript || n.transcription || '',
+                audioData: n.audio_data || n.audioData || '',
+                audio_data: n.audio_data || n.audioData || '',
+                created_at: n.created_at
+              };
+            });
+            setAudioNotes(parsedNotes);
+          }
         } catch (e) {}
       };
       fetchNotes();
@@ -1110,7 +1143,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           await supabase.from('whiteboard_exports').insert({ 
             id, 
             image_url: downloadUrl, 
-            owner_id: currentUser.uid, 
+            project_id: activeProjectId || 'global', 
             company_id: currentUser.companyId, 
             created_at: new Date().toISOString() 
           });
@@ -1240,20 +1273,33 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               const id = `an-${Date.now()}`;
               const durationStr = `${Math.floor(recordingTime / 60)}:${(recordingTime % 60).toString().padStart(2, '0')}`;
               
-              const newNoteRecord = {
-                id,
+              const payload = {
                 title: `Sprachnotiz ${new Date().toLocaleDateString('de-CH')}`,
                 time: new Date().toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' }),
                 duration: durationStr,
                 ai_summary: summary,
+                aiSummary: summary,
                 transcription: transcription,
                 audio_data: base64Audio,
-                owner_id: currentUser.uid,
+                audioData: base64Audio
+              };
+
+              const newNoteRecord = {
+                id,
+                ...payload,
                 company_id: currentUser.companyId,
+                project_id: activeProjectId || 'global',
                 created_at: new Date().toISOString()
               };
 
-              await supabase.from('audio_notes').insert(newNoteRecord);
+              await supabase.from('audio_notes').insert({
+                id,
+                company_id: currentUser.companyId,
+                project_id: activeProjectId || 'global',
+                transcript: transcription,
+                audio_url: JSON.stringify(payload),
+                created_at: new Date().toISOString()
+              });
               
               setAudioNotes(prev => [newNoteRecord, ...prev]);
               setActiveNoteId(id); 

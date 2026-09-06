@@ -121,12 +121,21 @@ export default function Settings() {
     if (!currentUser) return;
     const fetchUser = async () => {
       try {
+        const cachedContact = localStorage.getItem(`user_contact_${currentUser.uid}`);
+        if (cachedContact) {
+          try {
+            const parsed = JSON.parse(cachedContact);
+            if (parsed.phone) setPhone(parsed.phone);
+            if (parsed.street) setStreet(parsed.street);
+            if (parsed.zipCity) setZipCity(parsed.zipCity);
+          } catch (e) {}
+        }
         const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
         if (data) {
           setDbData(data);
-          setPhone(data.phone || '');
-          setStreet(data.street || '');
-          setZipCity(data.zip_city || data.zipCity || '');
+          if (data.phone) setPhone(data.phone);
+          if (data.street) setStreet(data.street);
+          if (data.zip_city || data.zipCity) setZipCity(data.zip_city || data.zipCity);
         }
       } catch (e) {}
       setIsLoadingDB(false);

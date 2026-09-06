@@ -87,10 +87,14 @@ export const sendNotification = async ({
       }
 
       try {
+        const { data: authData } = await supabase.auth.getUser();
+        const actorId = authData?.user?.id || (notifObj as any).userId || 'system';
         await supabase.from('audit_logs').insert({
           company_id: companyId,
+          user_id: actorId,
           action: 'NOTIFICATION',
-          details: JSON.stringify(notifObj)
+          details: JSON.stringify(notifObj),
+          created_at: notifObj.created_at || new Date().toISOString()
         });
       } catch (e) {
         console.warn("Audit logs table insert failed:", e);

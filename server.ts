@@ -319,7 +319,21 @@ function isSafeExternalUrl(urlStr: string): boolean {
 
       if (!company) return res.status(404).json({ error: 'Company not found' });
       
-      const webhookUrl = company.webhook_url;
+      let webhookUrl = (company as any)?.webhook_url || req.body.webhookUrl || process.env.WELCOME_WEBHOOK_URL;
+      if (!webhookUrl) {
+        const { data: doc } = await supabaseAdmin
+          .from('documents')
+          .select('url, file_url')
+          .eq('category', 'system_config')
+          .eq('name', `kreativdesk_webhooks_${companyId}`)
+          .maybeSingle();
+        if (doc?.url) {
+          try {
+            const parsed = JSON.parse(doc.url);
+            if (Array.isArray(parsed) && parsed[0]?.url) webhookUrl = parsed[0].url;
+          } catch (e) {}
+        }
+      }
 
       if (webhookUrl && isSafeExternalUrl(webhookUrl)) {
          await fetch(webhookUrl, {
