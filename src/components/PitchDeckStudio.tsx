@@ -27,6 +27,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { saveSmartProposal, SmartProposal, ProposalConfigOption } from '../services/proposalService';
+import { fetchSystemConfigJSON } from '../utils/configHelper';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -1559,8 +1560,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
     if (targetId && !targetId.startsWith('demo-')) {
       try {
-        const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetId}`).maybeSingle();
-        const data = res.data?.data || res.data;
+        const data = await fetchSystemConfigJSON(`finance_${targetId}`, currentUser?.companyId);
         if (data) {
           const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
           if (activeVersion && activeVersion.groups) {
@@ -1644,8 +1644,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       if (targetId && !targetId.startsWith('demo-')) {
         let finConfig: any = null;
         try {
-          const res = await supabase.from('system_config').select('*').eq('id', `finance_${targetId}`).maybeSingle();
-          finConfig = res.data;
+          finConfig = await fetchSystemConfigJSON(`finance_${targetId}`, currentUser?.companyId);
         } catch (e) {}
         const data = (finConfig as any)?.data || finConfig;
         if (data) {
@@ -1709,7 +1708,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           const localCache = localStorage.getItem(`schedule_cache_${targetId}`);
           let tasks: any[] = localCache ? (JSON.parse(localCache).ganttTasks || []) : [];
           if (tasks.length === 0) {
-            const { data } = await supabase.from('system_config').select('*').eq('id', `schedule_${targetId}`).maybeSingle();
+            const data = await fetchSystemConfigJSON(`schedule_${targetId}`, currentUser?.companyId);
             tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || [];
           }
           if (tasks.length > 0) {

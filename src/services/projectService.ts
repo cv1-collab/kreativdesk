@@ -9,13 +9,15 @@ export const offboardProject = async (projectId: string, companyId?: string) => 
   try {
     // 1. Delete child table records to prevent Foreign Key constraint errors
     await supabase.from('documents').delete().eq('project_id', projectId);
+    await supabase.from('cad_plans').delete().eq('project_id', projectId);
+    await supabase.from('calendar_events').delete().eq('project_id', projectId);
     await supabase.from('defects').delete().eq('project_id', projectId);
     await supabase.from('project_members').delete().eq('project_id', projectId);
     await supabase.from('project_tasks').delete().eq('project_id', projectId);
     await supabase.from('slides').delete().eq('project_id', projectId);
     await supabase.from('transactions').delete().eq('project_id', projectId);
     await supabase.from('time_entries').delete().eq('project_id', projectId);
-    await supabase.from('system_config').delete().eq('id', `schedule_${projectId}`);
+    await supabase.from('documents').delete().eq('category', 'system_config').in('name', [`schedule_${projectId}`, `finance_${projectId}`]);
 
     // 2. Delete main project record by ID directly
     const { error } = await supabase

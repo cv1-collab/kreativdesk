@@ -14,6 +14,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { purgeAllDummyData } from '../services/seedService';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
+import { fetchSystemConfigJSON } from '../utils/configHelper';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -134,12 +135,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
       let configTime: any = null;
       try {
-        const resTime = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', `time_entries_${safeCompanyId}`)
-          .maybeSingle();
-        configTime = resTime.data;
+        configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
       } catch (e) {}
 
       const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];

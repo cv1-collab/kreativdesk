@@ -223,12 +223,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
       let configTime: any = null;
       try {
-        const { data } = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', `time_entries_${safeCompanyId}`)
-          .maybeSingle();
-        configTime = data;
+        configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
       } catch (e) {}
 
       const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];

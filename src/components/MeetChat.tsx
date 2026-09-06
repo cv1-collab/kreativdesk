@@ -763,13 +763,8 @@ export default function MeetChat() {
         let configCalls: any[] = [];
         try {
           if (safeCompanyId) {
-            const { data: config } = await supabase
-              .from('system_config')
-              .select('*')
-              .eq('id', `schedule_calls_${safeCompanyId}`)
-              .maybeSingle();
-            const cData = (config as any)?.data || config;
-            if (cData?.calls) configCalls = cData.calls;
+            const config = await fetchSystemConfigJSON<{ calls?: any[] }>(`schedule_calls_${safeCompanyId}`, safeCompanyId);
+            if (config?.calls) configCalls = config.calls;
           }
         } catch (cfgErr) { }
 

@@ -399,11 +399,10 @@ function getDeterministicUUID(str: string): string {
 
   // 7. Seed Schedule (Terminplan) to system_config
   const scheduleConfigId = `schedule_${projId}`;
-  const { data: existingSchedule } = await supabase
-    .from('system_config')
-    .select('id')
-    .eq('id', scheduleConfigId)
-    .maybeSingle();
+  let existingSchedule: any = null;
+  try {
+    existingSchedule = await fetchSystemConfigJSON(scheduleConfigId, realCompanyId);
+  } catch (e) {}
 
   if (!existingSchedule) {
     const today = new Date();
@@ -525,9 +524,9 @@ export async function purgeAllDummyData(companyId: string) {
         await supabase.from('time_entries').delete().eq('project_id', p.id);
         await supabase.from('slides').delete().eq('project_id', p.id);
         await supabase.from('project_members').delete().eq('project_id', p.id);
+        await supabase.from('cad_plans').delete().eq('project_id', p.id);
         await supabase.from('projects').delete().eq('id', p.id);
-        await supabase.from('system_config').delete().eq('id', `finance_${p.id}`);
-        await supabase.from('system_config').delete().eq('id', `schedule_${p.id}`);
+        await supabase.from('documents').delete().eq('category', 'system_config').in('name', [`finance_${p.id}`, `schedule_${p.id}`]);
       }
     }
 
