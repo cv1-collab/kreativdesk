@@ -382,7 +382,7 @@ function isSafeExternalUrl(urlStr: string): boolean {
   });
 
   // --- 6. PASSWORD RESET WEBHOOK ---
-  app.post('/api/send-reset-webhook', verifyAuth, async (req, res) => {
+  app.post('/api/send-reset-webhook', async (req, res) => {
     try {
       const { email } = req.body;
       if (!email) return res.status(400).json({ error: 'Email missing' });

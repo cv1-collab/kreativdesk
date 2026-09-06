@@ -52,7 +52,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    const webhookUrl = company.webhook_url;
+    let webhookUrl = (company as any)?.webhook_url || req.body?.webhookUrl || process.env.WELCOME_WEBHOOK_URL;
+    if (!webhookUrl) {
+      const { data: doc } = await supabaseAdmin
+        .from('documents')
+        .select('url, file_url')
+        .eq('category', 'system_config')
+        .eq('name', `kreativdesk_webhooks_${companyId}`)
+        .maybeSingle();
+      if (doc?.url) {
+        try {
+          const parsed = JSON.parse(doc.url);
+          if (Array.isArray(parsed) && parsed[0]?.url) webhookUrl = parsed[0].url;
+        } catch (e) {}
+      }
+    }
 
     if (webhookUrl && isSafeExternalUrl(webhookUrl)) {
       await fetch(webhookUrl, {
@@ -60,6 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...leadData, event: 'new_lead' })
       });
+      console.log(`Lead Webhook erfolgreich gesendet an: ${webhookUrl}`);
     }
 
     return res.status(200).json({ success: true });
