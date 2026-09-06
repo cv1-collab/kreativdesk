@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { verifyAuth } from './_auth';
+import { verifyAuth } from '../_auth';
 
 export default async function handler(req: any, res: any) {
   // CORS Handling

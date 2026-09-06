@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabaseAdmin } from './_auth.js';
+import { supabaseAdmin } from '../_auth.js';
 
 function isSafeExternalUrl(urlStr: string): boolean {
   try {

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAuth } from './_auth.js';
+import { supabaseAdmin } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,26 +15,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const authUser = await verifyAuth(req);
-    const { email: bodyEmail, name, uid: bodyUid } = req.body || {};
-    const email = authUser?.email || bodyEmail;
-    const uid = authUser?.id || bodyUid;
-
+    const { email } = req.body || {};
     if (!email) {
       return res.status(400).json({ error: 'Email missing' });
     }
 
-    const formattedName = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Neuer Nutzer';
-    const webhookUrl = process.env.WELCOME_WEBHOOK_URL; 
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'recovery',
+      email: email
+    });
+
+    if (error) {
+      console.warn('Supabase generateLink recovery error:', error);
+    }
+
+    const resetLink = data?.properties?.action_link;
+    const webhookUrl = process.env.RESET_WEBHOOK_URL; 
     
-    if (webhookUrl) {
+    if (webhookUrl && resetLink) {
       await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
-          name: formattedName,
-          uid,
+          resetLink, 
           source: 'KreativDesk'
         })
       });
@@ -42,7 +46,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ success: true });
   } catch (error: any) {
-    console.error('Welcome Webhook Error:', error);
+    console.error('Reset Webhook Error:', error);
     return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }
