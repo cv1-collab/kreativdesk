@@ -86,18 +86,16 @@ export const offlineSyncManager = {
 
       for (const d of defects) {
         try {
+          const fullDesc = d.image_url ? (d.description ? `${d.description}\n[Bild: ${d.image_url}]` : `[Bild: ${d.image_url}]`) : d.description;
           const { error } = await supabase.from('defects').insert({
             project_id: d.project_id,
             company_id: d.company_id,
             owner_id: d.owner_id,
-            title: d.prompt,
             prompt: d.prompt,
-            description: d.description,
+            description: fullDesc,
             status: d.status,
             severity: d.severity,
-            priority: d.severity,
             position: d.position,
-            image_url: d.image_url || '',
             created_at: d.created_at
           });
 

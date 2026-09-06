@@ -1147,7 +1147,16 @@ export default function Finance() {
       });
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
       await supabase.from('transactions').insert({
-        date: fileData.date || new Date().toISOString().split('T')[0], description: `${displayCategory}: ${documentName}`, category: category || 'Dokument', amount: documentTotal || 0, status: defaultStatus || 'Offen', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: safeProjectId, receipt_urls: downloadUrl ? [downloadUrl] : []
+        type: category === 'Debitorenrechnung' ? 'income' : 'quote',
+        date: fileData.date || new Date().toISOString().split('T')[0], 
+        description: `${displayCategory}: ${documentName}`, 
+        category: category || 'Dokument', 
+        amount: documentTotal || 0, 
+        status: defaultStatus || 'Offen', 
+        owner_id: currentUser.uid, 
+        company_id: safeCompanyId, 
+        project_id: safeProjectId, 
+        receipt_urls: downloadUrl ? [downloadUrl] : []
       });
       await notifyNewDocument(safeCompanyId, documentName, category, safeProjectId);
       return true;
@@ -1191,11 +1200,19 @@ export default function Finance() {
 
       const isExternal = incomingData.type === 'external';
       const descPrefix = isExternal && incomingData.company ? `${incomingData.company} (${incomingData.firstName} ${incomingData.lastName})` : (incomingData.vendor || 'Firma');
+      const budgetSuffix = incomingData.budgetPosId ? ` [Budget: ${incomingData.budgetPosId}]` : '';
 
       await supabase.from('transactions').insert({
+        type: 'expense',
         date: incomingData.date || new Date().toISOString().split('T')[0],
-        description: `${descPrefix} - ${incomingData.description || 'Beleg'}`,
-        category: 'Kreditorenrechnung', amount: -Math.abs(Number(incomingData.amount) || 0), status: incomingData.status || 'Offen', project_id: safeProjectId, owner_id: currentUser.uid, company_id: safeCompanyId, budget_pos_id: incomingData.budgetPosId || '', receipt_urls: uploadedUrls
+        description: `${descPrefix} - ${incomingData.description || 'Beleg'}${budgetSuffix}`,
+        category: 'Kreditorenrechnung', 
+        amount: -Math.abs(Number(incomingData.amount) || 0), 
+        status: incomingData.status || 'Offen', 
+        project_id: safeProjectId, 
+        owner_id: currentUser.uid, 
+        company_id: safeCompanyId, 
+        receipt_urls: uploadedUrls
       });
 
       addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success');

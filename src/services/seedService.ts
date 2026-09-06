@@ -20,11 +20,11 @@ export function generateDemoTransactions(financeGroups: any[], projectId: string
             project_id: projectId,
             company_id: companyId,
             owner_id: ownerId,
-            description: `Teilrechnung: ${item.title || item.description}`,
+            type: 'expense',
+            description: `Teilrechnung: ${item.title || item.description}${item.id ? ` [Budget: ${item.id}]` : ''}`,
             category: 'Kreditorenrechnung',
             amount: -(itemTotal * 0.65),
             status: 'Bezahlt',
-            budget_pos_id: item.id,
             date: pastDate.toISOString().split('T')[0],
             created_at: pastDate.toISOString()
           });
@@ -40,6 +40,7 @@ export function generateDemoTransactions(financeGroups: any[], projectId: string
     project_id: projectId,
     company_id: companyId,
     owner_id: ownerId,
+    type: 'income',
     description: 'Akontozahlung Bauherr Phase 1',
     category: 'Debitorenrechnung',
     amount: totalPlan > 0 ? totalPlan * 0.7 : 721595,
@@ -283,12 +284,17 @@ function getDeterministicUUID(str: string): string {
       await supabase.from('cad_plans').insert({
         project_id: projId,
         company_id: realCompanyId,
-        plan_name: 'Grundriss EG - Architektur & Tragwerk',
-        plan_image: '/demo-assets/bau_pitch_render.jpg',
-        paper_format: 'A3',
-        paper_orientation: 'landscape',
-        plan_scale: 50,
-        elements: [],
+        name: 'Grundriss EG - Architektur & Tragwerk',
+        elements: [{
+          id: 'bg-img',
+          type: 'image',
+          url: '/demo-assets/bau_pitch_render.jpg',
+          x: 0,
+          y: 0,
+          scale: 50,
+          paperFormat: 'A3',
+          paperOrientation: 'landscape'
+        }],
         layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }],
         active_layer_id: 'default',
         created_at: new Date().toISOString()
@@ -314,12 +320,10 @@ function getDeterministicUUID(str: string): string {
           project_id: projId,
           company_id: realCompanyId,
           owner_id: ownerId,
-          title: def.title,
           prompt: def.title,
           description: def.description,
           status: def.status || 'Offen',
           severity: def.priority || 'High',
-          priority: def.priority || 'High',
           position: { x: 0, y: 1.5, z: 0 },
           created_at: new Date().toISOString()
         });
@@ -357,13 +361,10 @@ function getDeterministicUUID(str: string): string {
         await supabase.from('time_entries').insert({
           company_id: realCompanyId,
           project_id: projId,
-          owner_id: ownerId,
           user_id: ownerId,
           description: te.description,
           hours: te.hours,
-          hourly_rate: te.hourlyRate || 150,
           date: te.date || new Date().toISOString().split('T')[0],
-          is_billable: true,
           created_at: new Date().toISOString()
         });
       }

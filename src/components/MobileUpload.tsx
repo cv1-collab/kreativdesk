@@ -143,14 +143,23 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       setUploadProgress(90);
       const payloadString = extractedData ? JSON.stringify(extractedData) : file.name;
 
-      await supabase.from('temp_receipts').insert({
-        session_id: sessionId,
-        url: downloadUrl,
-        mime_type: file.type || 'application/octet-stream',
-        size: file.size,
-        file_name: payloadString,
-        created_at: new Date().toISOString()
-      });
+      try {
+        await supabase.from('documents').insert({
+          company_id: sessionId || 'global',
+          project_id: 'global',
+          name: payloadString,
+          url: downloadUrl,
+          file_url: downloadUrl,
+          size: `${Math.round(file.size / 1024)} KB`,
+          type: file.type || 'application/octet-stream',
+          category: 'temp_receipt',
+          folder_id: 'root',
+          is_folder: false,
+          created_at: new Date().toISOString()
+        });
+      } catch (docErr) {
+        console.warn("documents temp_receipt insert note:", docErr);
+      }
 
       // Broadcast to connected desktop sessions in real-time
       if (isVcard && extractedData) {
@@ -208,14 +217,23 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       };
 
       if (sessionId) {
-        await supabase.from('temp_receipts').insert({
-          session_id: sessionId,
-          url: photos[0] || 'https://via.placeholder.com/300',
-          mime_type: 'application/json',
-          size: 1024,
-          file_name: `Baurapport_${rapportData.date}.json`,
-          created_at: new Date().toISOString()
-        });
+        try {
+          await supabase.from('documents').insert({
+            company_id: sessionId || 'global',
+            project_id: 'global',
+            name: `Baurapport_${rapportData.date}.json`,
+            url: photos[0] || 'https://via.placeholder.com/300',
+            file_url: photos[0] || 'https://via.placeholder.com/300',
+            size: '1 KB',
+            type: 'application/json',
+            category: 'temp_receipt',
+            folder_id: 'root',
+            is_folder: false,
+            created_at: new Date().toISOString()
+          });
+        } catch (docErr) {
+          console.warn("documents rapport insert note:", docErr);
+        }
 
         try {
           const channel = supabase.channel(`rapport_upload_${sessionId}`);

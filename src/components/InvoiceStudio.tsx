@@ -235,6 +235,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         });
         
         await supabase.from('transactions').insert({ 
+          type: type === 'invoice' ? 'income' : 'quote',
           date: formData.date, 
           description: `${type === 'invoice' ? 'Rechnung' : 'Offerte'}: ${formData.invoiceNumber}`, 
           category: type === 'invoice' ? 'Debitorenrechnung' : 'Offerte', 

@@ -156,13 +156,13 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
           if (parsed.action === 'CREATE_TASK') {
             if (activeProjectId) {
               await supabase.from('defects').insert({
-                title: parsed.title,
+                prompt: parsed.title,
                 description: parsed.description,
                 project_id: activeProjectId,
                 company_id: currentUser?.companyId || 'global',
                 owner_id: currentUser?.uid || 'unknown',
                 status: 'open',
-                priority: 'Medium',
+                severity: 'Medium',
                 created_at: new Date().toISOString()
               });
               aiText = aiText.replace(jsonMatch[0], '').trim();

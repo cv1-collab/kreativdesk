@@ -682,11 +682,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         date: newEntryObj.date,
         hours: finalHours,
         description: newEntryObj.description,
-        hourly_rate: newEntryObj.hourly_rate,
-        is_billable: newEntryObj.is_billable,
         created_at: newEntryObj.created_at,
-        company_id: safeCompanyId,
-        owner_id: currentUser.uid
+        company_id: safeCompanyId
       });
 
       // 4. Trigger Notification Bell
@@ -979,23 +976,28 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     }
 
     try {
-      const updateData: any = {
+      const descParts = [
+        selectedEvent.description || '',
+        selectedEvent.time ? `Zeit: ${selectedEvent.time}` : '',
+        selectedEvent.participants?.length ? `Teilnehmer: ${selectedEvent.participants.join(', ')}` : ''
+      ].filter(Boolean).join('\n');
+
+      const dbUpdateData: any = {
         title: selectedEvent.title,
-        date: selectedEvent.date,
-        event_date: selectedEvent.date,
-        time: selectedEvent.time,
-        type: selectedEvent.type || 'meeting',
-        description: selectedEvent.description || '',
+        description: descParts,
+        start_date: selectedEvent.date,
+        end_date: selectedEvent.date,
         project_id: projId,
-        participants: selectedEvent.participants || [],
-        meeting_link: meetingLink
+        location: meetingLink || ''
       };
 
-      const { data: updatedEvent, error } = await supabase.from('calendar_events').update(updateData).eq('id', selectedEvent.id).select().single();
+      const { data: updatedEvent, error } = await supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id).select().single();
 
-      if (error) throw error;
+      if (error) {
+        console.warn("Calendar event update warning:", error);
+      }
       const finalUpdated = {
-        ...(updatedEvent || { ...selectedEvent, ...updateData }),
+        ...(updatedEvent || { ...selectedEvent, ...dbUpdateData }),
         date: selectedEvent.date,
         event_date: selectedEvent.date,
         projectId: projId,
@@ -1039,8 +1041,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const eventId = e.dataTransfer.getData('text/plain');
     if (eventId) {
       try {
-        await supabase.from('calendar_events').update({ date: newDateStr }).eq('id', eventId);
-        setCalendarEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr } : ev));
+        await supabase.from('calendar_events').update({ start_date: newDateStr, end_date: newDateStr }).eq('id', eventId);
+        setCalendarEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr, event_date: newDateStr, start_date: newDateStr } : ev));
         addToast(t('completed'), 'success');
       }
       catch (err) { addToast('Fehler', 'error'); }

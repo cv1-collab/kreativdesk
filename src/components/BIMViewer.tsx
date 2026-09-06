@@ -559,8 +559,9 @@ function Building({ layers, activeFloor, selectedId, onSelect, isExploded, measu
   );
 }
 
-export default function BIMViewer() {
-  const { projectId } = useParams<{ projectId: string }>();
+export default function BIMViewer({ projectId: propProjectId }: { projectId?: string } = {}) {
+  const { projectId: routeProjectId } = useParams<{ projectId: string }>();
+  const projectId = propProjectId || routeProjectId;
   const { language, t: globalT } = useLanguage();
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key);
 
@@ -850,9 +851,15 @@ export default function BIMViewer() {
       return;
     }
 
-    if (!projectId || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!safeCompanyId) return;
+
     const fetchModels = async () => {
-      const { data } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId).eq('project_id', projectId);
+      let query = supabase.from('documents').select('*').eq('company_id', safeCompanyId);
+      if (projectId && projectId !== 'global') {
+        query = query.eq('project_id', projectId);
+      }
+      const { data } = await query;
       if (data) {
         const models = data.filter(d => {
           const type = String(d.type || '').toLowerCase();
@@ -862,20 +869,31 @@ export default function BIMViewer() {
                  name.endsWith('.dae') || name.endsWith('.ifc') || name.endsWith('.dwg') || name.endsWith('.fbx');
         });
         setCustomModels(models);
+        const savedActive = localStorage.getItem(bimModelStorageKey);
+        if (savedActive && models.some(m => m.id === savedActive)) {
+          setActiveModelId(savedActive);
+        }
       }
     };
     fetchModels();
-  }, [projectId, currentUser, isDemoMode]);
+  }, [projectId, currentUser, isDemoMode, bimModelStorageKey]);
 
-  const ensureFolder = async (folderName: string, docCategory: string) => {
-    if (!currentUser?.companyId || !projectId) return '';
-    const { data: existing } = await supabase.from('documents').select('id').eq('name', folderName).eq('is_folder', true).eq('project_id', projectId).eq('company_id', currentUser.companyId).single();
+  const ensureFolder = async (folderName: string, docCategory: string, targetProjId: string = projectId || 'global') => {
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    if (!safeCompanyId) return '';
+    const { data: existing } = await supabase.from('documents')
+      .select('id')
+      .eq('name', folderName)
+      .eq('is_folder', true)
+      .eq('project_id', targetProjId)
+      .eq('company_id', safeCompanyId)
+      .maybeSingle();
     if (existing) return existing.id;
     const { data: newF } = await supabase.from('documents').insert({ 
       name: folderName, is_folder: true, category: docCategory, 
-      owner_id: currentUser.uid, company_id: currentUser.companyId,
-      project_id: projectId, created_at: new Date().toISOString() 
-    }).select().single();
+      owner_id: currentUser?.uid, company_id: safeCompanyId,
+      project_id: targetProjId, created_at: new Date().toISOString() 
+    }).select().maybeSingle();
     return newF ? newF.id : '';
   };
 
@@ -1220,18 +1238,42 @@ export default function BIMViewer() {
     addToast('Modell lädt in die Cloud...', 'info');
 
     try {
-      const filePath = `${currentUser.companyId}/documents/${projectId}/3d_models_${Date.now()}_${file.name}`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
-      if (upErr) throw upErr;
-      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const url = pubData.publicUrl;
+      const safeCompanyId = currentUser.companyId || currentUser.uid;
+      const safeProjectId = projectId || 'global';
+      const filePath = `${safeCompanyId}/documents/${safeProjectId}/3d_models_${Date.now()}_${file.name}`;
+      
+      let url = '';
+      try {
+        const { error: bimErr } = await supabase.storage.from('bim-models').upload(filePath, file, { upsert: true });
+        if (!bimErr) {
+          const { data: pubData } = supabase.storage.from('bim-models').getPublicUrl(filePath);
+          url = pubData?.publicUrl || '';
+        }
+      } catch (e) {}
 
-      const docCategory = projectId === 'global' ? 'company' : 'projects';
-      const folderId = await ensureFolder("3D Modelle", docCategory);
+      if (!url) {
+        try {
+          const { error: docErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+          if (!docErr) {
+            const { data: pubData } = supabase.storage.from('documents').getPublicUrl(filePath);
+            url = pubData?.publicUrl || '';
+          }
+        } catch (e) {}
+      }
+
+      if (!url) {
+        const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        url = pubData.publicUrl;
+      }
+
+      const docCategory = safeProjectId === 'global' ? 'company' : 'projects';
+      const folderId = await ensureFolder("3D Modelle", docCategory, safeProjectId);
 
       const { data: createdDoc } = await supabase.from('documents').insert({
-        name: file.name, url, file_url: url, project_id: projectId, folder_id: folderId, type: fileExt,
-        category: docCategory, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: currentUser.companyId,
+        name: file.name, url, file_url: url, project_id: safeProjectId, folder_id: folderId, type: fileExt,
+        category: docCategory, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId,
         size: formatBytes(file.size), is_folder: false,
         created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       }).select().single();

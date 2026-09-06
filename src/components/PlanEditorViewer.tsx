@@ -651,12 +651,18 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           const targetPlan = (activePlanId ? mappedPlans.find((p: any) => p.id === activePlanId) : null) || mappedPlans[0];
           loadPlanDataToEditor(targetPlan);
         } else {
-          setProjectPlans([]);
-          setActivePlanId(null);
-          setPlanImage(null);
-          setPlanName('');
-          setElements([]);
-          try { localStorage.removeItem(cadCacheKey); } catch (e) {}
+          // Falls keine Pläne in der DB gefunden wurden, prüfen, ob ein lokaler Entwurf im Cache vorliegt
+          const cached = getCachedPlan();
+          if (cached && (cached.planImage || (cached.elements && cached.elements.length > 0))) {
+            setProjectPlans([cached]);
+            loadPlanDataToEditor(cached);
+          } else {
+            setProjectPlans([]);
+            setActivePlanId(null);
+            setPlanImage(null);
+            setPlanName('');
+            setElements([]);
+          }
         }
       } catch (err) {
         console.error("Unerwarteter Fehler in fetchPlans:", err);

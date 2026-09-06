@@ -507,9 +507,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
         ]
       : activeSlide.agendaItems;
 
-    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, layout: newLayout, dataPayload: updatedPayload, agendaItems: defaultAgendaItems } : s));
+    const updatedSlide = { ...activeSlide, layout: newLayout, dataPayload: updatedPayload, agendaItems: defaultAgendaItems };
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     try {
-      await supabase.from('slides').update({ layout: newLayout, data_payload: updatedPayload, agenda_items: defaultAgendaItems }).eq('id', activeSlide.id);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
     } catch (err) {
       console.warn("Layout update error:", err);
     }
@@ -518,10 +519,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const handleSetStamp = async (stampName: string) => {
     if (!activeSlide) return;
     const nextStamp = activeSlide.stamp === stampName ? '' : stampName;
-    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, stamp: nextStamp } : s));
+    const updatedSlide = { ...activeSlide, stamp: nextStamp };
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     setShowStampMenu(false);
     try {
-      await supabase.from('slides').update({ stamp: nextStamp }).eq('id', activeSlide.id);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
       addToast(nextStamp ? `Stempel "${nextStamp}" gesetzt` : 'Stempel entfernt', 'info');
     } catch (err) {
       console.warn("Stamp update error:", err);
@@ -533,9 +535,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (!activeSlide) return;
     const currentFs = activeSlide.titleFontSize || 36;
     const newFs = Math.min(120, Math.max(14, currentFs + delta));
-    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, titleFontSize: newFs } : s));
+    const updatedSlide = { ...activeSlide, titleFontSize: newFs };
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     try {
-      await supabase.from('slides').update({ title_font_size: newFs }).eq('id', activeSlide.id);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
     } catch (err) {
       console.warn("Title font size update error:", err);
     }
@@ -545,9 +548,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (!activeSlide) return;
     const currentFs = activeSlide.fontSize || 18;
     const newFs = Math.min(80, Math.max(10, currentFs + delta));
-    setSlides(prev => prev.map(s => s.id === activeSlide.id ? { ...s, fontSize: newFs } : s));
+    const updatedSlide = { ...activeSlide, fontSize: newFs };
+    setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     try {
-      await supabase.from('slides').update({ font_size: newFs }).eq('id', activeSlide.id);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
     } catch (err) {
       console.warn("Content font size update error:", err);
     }
@@ -561,27 +565,14 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
       ...activeSlide,
       id: newId,
       title: `${activeSlide.title} (Kopie)`,
-      order_index: slides.length
+      order_index: slides.length,
+      companyId: safeCompanyId,
+      projectId: targetId
     };
     setSlides(prev => [...prev, duplicated]);
     setActiveSlideId(newId);
     try {
-      await supabase.from('slides').insert({
-        id: newId,
-        project_id: targetId,
-        company_id: safeCompanyId,
-        title: duplicated.title,
-        content: duplicated.content,
-        layout: duplicated.layout,
-        image_url: duplicated.imageUrl,
-        font_size: duplicated.fontSize,
-        title_font_size: duplicated.titleFontSize,
-        data_payload: duplicated.dataPayload,
-        notes: duplicated.notes,
-        stamp: duplicated.stamp,
-        order_index: duplicated.order_index,
-        created_at: new Date().toISOString()
-      });
+      await supabase.from('slides').insert(serializeSlideForDb(duplicated));
       addToast('Folie dupliziert!', 'success');
     } catch (e) {
       console.warn("Error duplicating slide:", e);
@@ -591,13 +582,13 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   // GENERIC PAYLOAD UPDATER FOR ALL SLIDE TYPES
   const updateSlidePayload = async (slideId: string, newPayload: any) => {
     setSlides(prev => prev.map(s => s.id === slideId ? { ...s, dataPayload: newPayload } : s));
-    try {
-      await supabase.from('slides').update({
-        data_payload: newPayload,
-        dataPayload: newPayload
-      }).eq('id', slideId);
-    } catch (err) {
-      console.warn("Payload update error:", err);
+    const target = slides.find(s => s.id === slideId);
+    if (target) {
+      try {
+        await supabase.from('slides').update(serializeSlideForDb({ ...target, dataPayload: newPayload })).eq('id', slideId);
+      } catch (err) {
+        console.warn("Payload update error:", err);
+      }
     }
   };
 
@@ -856,21 +847,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     }));
 
     try {
-      await supabase.from('slides').insert(newSlideObjects.map(s => ({
-        id: s.id,
-        title: s.title,
-        content: s.content,
-        layout: s.layout,
-        image_url: s.imageUrl,
-        data_payload: s.dataPayload,
-        notes: s.notes,
-        font_size: s.fontSize,
-        title_font_size: s.titleFontSize,
-        order_index: s.order_index,
-        company_id: s.companyId,
-        project_id: s.projectId,
-        created_at: new Date().toISOString()
-      })));
+      await supabase.from('slides').insert(newSlideObjects.map(s => serializeSlideForDb(s)));
     } catch (e) {}
 
     setSlides(newSlideObjects);
@@ -928,20 +905,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
           created_at: new Date().toISOString()
         }));
 
-        await supabase.from('slides').insert(newSlideObjects.map(s => ({
-          id: s.id,
-          title: s.title,
-          content: s.content,
-          layout: s.layout,
-          notes: s.notes,
-          data_payload: s.dataPayload,
-          font_size: s.fontSize,
-          title_font_size: s.titleFontSize,
-          order_index: s.order_index,
-          company_id: s.companyId,
-          project_id: s.projectId,
-          created_at: (s as any).created_at
-        })));
+        await supabase.from('slides').insert(newSlideObjects.map(s => serializeSlideForDb(s)));
 
         setSlides(prev => [...prev, ...newSlideObjects]);
         if (newSlideObjects.length > 0) setActiveSlideId(newSlideObjects[0].id);
@@ -1861,7 +1825,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
     setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: autoItems } : s));
     try {
-      await supabase.from('slides').update({ agenda_items: autoItems }).eq('id', slideId);
+      const targetSlide = slides.find(s => s.id === slideId);
+      if (targetSlide) {
+        await supabase.from('slides').update(serializeSlideForDb({ ...targetSlide, agendaItems: autoItems })).eq('id', slideId);
+      }
       addToast(`Inhaltsverzeichnis aus ${autoItems.length} Folien synchronisiert!`, "success");
     } catch (e) {
       console.warn("Agenda sync error:", e);
@@ -1906,9 +1873,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (!currentItems[idx]) currentItems[idx] = { num: `0${idx + 1}`, title: '', desc: '', page: `S. 0${idx + 2}` };
     currentItems[idx] = { ...currentItems[idx], [field]: val };
 
-    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: currentItems } : s));
+    const updatedSlide = { ...currentSlide, agendaItems: currentItems };
+    setSlides(prev => prev.map(s => s.id === slideId ? updatedSlide : s));
     try {
-      await supabase.from('slides').update({ agenda_items: currentItems }).eq('id', slideId);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slideId);
     } catch (e) {}
   };
 
@@ -1919,9 +1887,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     const nextIdx = currentItems.length + 1;
     currentItems.push({ num: nextIdx < 10 ? `0${nextIdx}` : `${nextIdx}`, title: 'Neuer Themenpunkt', desc: 'Kurze Beschreibung des Themas', page: `S. ${nextIdx + 2}` });
 
-    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: currentItems } : s));
+    const updatedSlide = { ...currentSlide, agendaItems: currentItems };
+    setSlides(prev => prev.map(s => s.id === slideId ? updatedSlide : s));
     try {
-      await supabase.from('slides').update({ agenda_items: currentItems }).eq('id', slideId);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slideId);
     } catch (e) {}
   };
 
@@ -1930,9 +1899,10 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (!currentSlide) return;
     const currentItems = (currentSlide.agendaItems || []).filter((_: any, i: number) => i !== idx);
 
-    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: currentItems } : s));
+    const updatedSlide = { ...currentSlide, agendaItems: currentItems };
+    setSlides(prev => prev.map(s => s.id === slideId ? updatedSlide : s));
     try {
-      await supabase.from('slides').update({ agenda_items: currentItems }).eq('id', slideId);
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slideId);
     } catch (e) {}
   };
 

@@ -505,10 +505,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         date: newEntry.date,
         hours: newEntry.hours,
         description: newEntry.description,
-        hourly_rate: newEntry.hourlyRate,
-        is_billable: entryData.isBillable !== undefined ? entryData.isBillable : true,
         company_id: safeCompanyId,
-        owner_id: currentUser.uid,
         created_at: new Date().toISOString()
       });
     } catch (err) {

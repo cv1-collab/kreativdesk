@@ -223,9 +223,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       if (isDemo || pollFailed || !vcardSessionId) return;
       try {
         const { data, error } = await supabase
-          .from('temp_receipts')
+          .from('documents')
           .select('*')
-          .eq('session_id', vcardSessionId)
+          .eq('category', 'temp_receipt')
+          .eq('company_id', vcardSessionId)
           .order('created_at', { ascending: false })
           .limit(1);
 
@@ -237,7 +238,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         if (data && data.length > 0) {
           const rec = data[0];
           let parsed: any = null;
-          try { parsed = JSON.parse(rec.file_name); } catch (e) {}
+          try { parsed = JSON.parse(rec.name || rec.file_name || '{}'); } catch (e) {}
           if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
             setScannedContactData({
               firstName: parsed.firstName || '',
@@ -252,7 +253,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
             });
             setIsScannerModalOpen(true);
             pollFailed = true;
-            try { await supabase.from('temp_receipts').delete().eq('id', rec.id); } catch (e) {}
+            try { await supabase.from('documents').delete().eq('id', rec.id); } catch (e) {}
           }
         }
       } catch (err) {
