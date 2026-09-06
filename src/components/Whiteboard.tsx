@@ -461,7 +461,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const getEnsureActiveLayer = (): LayerData => {
-    let active = layers.find(l => l.id === activeLayerId);
+    const active = layers.find(l => l.id === activeLayerId);
     if (!active || !active.visible) {
       const fallback = layers.find(l => l.visible) || layers[0];
       if (fallback) {

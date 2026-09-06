@@ -112,7 +112,7 @@ export default async function handler(req: any, res: any) {
 
     try {
       const priceId = subscription.items.data[0]?.price?.id;
-      let planName = 'Starter';
+      let planName = subscription.metadata?.plan || '';
       let maxSeats = 1;
       
       const PRICING_MATRIX: Record<string, {name: string, seats: number}> = {
@@ -127,7 +127,13 @@ export default async function handler(req: any, res: any) {
       if (priceId && PRICING_MATRIX[priceId]) {
         planName = PRICING_MATRIX[priceId].name;
         maxSeats = PRICING_MATRIX[priceId].seats;
+      } else if (!planName) {
+        planName = 'Pro';
       }
+
+      if (planName.toLowerCase().includes('studio')) maxSeats = 5;
+      else if (planName.toLowerCase().includes('agency')) maxSeats = 10;
+      else if (planName.toLowerCase().includes('enterprise')) maxSeats = 20;
 
       const isSubActive = subscription.status === 'active' || subscription.status === 'trialing';
 

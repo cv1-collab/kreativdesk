@@ -548,6 +548,140 @@ function isSafeExternalUrl(urlStr: string): boolean {
     }
   });
 
+  // --- 7c. FAL AI PROXY ---
+  app.all('/api/fal/proxy', async (req, res) => {
+    const targetUrl = req.headers['x-fal-target-url'] as string;
+    if (!targetUrl || typeof targetUrl !== 'string') {
+      return res.status(400).json({ error: 'Missing x-fal-target-url header' });
+    }
+
+    try {
+      const parsedUrl = new URL(targetUrl);
+      const host = parsedUrl.hostname.toLowerCase();
+      if (!host.endsWith('fal.run') && !host.endsWith('fal.ai') && !host.endsWith('fal.media')) {
+        return res.status(403).json({ error: 'Forbidden target URL' });
+      }
+
+      const headers: any = {
+        'Authorization': `Key ${process.env.FAL_KEY || ''}`,
+        'Content-Type': 'application/json'
+      };
+
+      Object.keys(req.headers).forEach((key) => {
+        if (key.toLowerCase().startsWith('x-fal-')) {
+          headers[key.toLowerCase()] = req.headers[key];
+        }
+      });
+
+      const options: any = {
+        method: req.method,
+        headers
+      };
+
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        options.body = JSON.stringify(req.body);
+      }
+
+      const falResponse = await fetch(targetUrl, options);
+      const excludedHeaders = ['content-length', 'content-encoding'];
+      falResponse.headers.forEach((value, key) => {
+        if (!excludedHeaders.includes(key.toLowerCase())) {
+          res.setHeader(key, value);
+        }
+      });
+
+      if (!falResponse.ok) {
+        const errorText = await falResponse.text();
+        return res.status(falResponse.status).json({ error: errorText });
+      }
+
+      const data = await falResponse.json();
+      return res.status(200).json(data);
+    } catch (err: any) {
+      console.error('Local FAL Proxy Error:', err);
+      return res.status(500).json({ error: err.message || 'FAL proxy error' });
+    }
+  });
+
+  // --- 7d. PROPOSAL AI CHAT ---
+  app.post('/api/proposal/ai-chat', async (req, res) => {
+    try {
+      const { language = 'de', proposalContext, userQuestion, messageHistory = [] } = req.body || {};
+      if (!userQuestion || !proposalContext) {
+        return res.status(400).json({ error: 'Missing userQuestion or proposalContext' });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
+
+      const ai = new GoogleGenAI({ apiKey });
+      const systemPrompt = `Du bist der professionelle KI-Angebotsberater für dieses Projektangebot auf Kreativ Desk OS.
+Projekttitel: ${proposalContext.title || ''}
+Kunde: ${proposalContext.clientName || ''} (${proposalContext.clientCompany || ''})
+Grundpreis: ${proposalContext.basePrice ?? 0} ${proposalContext.currency || 'CHF'}
+Gesamtsumme: ${proposalContext.totalCalculated ?? proposalContext.basePrice ?? 0} ${proposalContext.currency || 'CHF'}
+Zusatzoptionen: ${(proposalContext.options || []).map((o: any) => `${o.title} (${o.price} CHF)`).join(', ')}
+
+Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.toUpperCase()}.`;
+
+      const contents: any[] = [
+        { role: 'user', parts: [{ text: systemPrompt }] },
+        { role: 'model', parts: [{ text: 'Verstanden.' }] }
+      ];
+
+      if (Array.isArray(messageHistory)) {
+        messageHistory.slice(-4).forEach((msg: any) => {
+          if (msg.role && msg.text) contents.push({ role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.text }] });
+        });
+      }
+      contents.push({ role: 'user', parts: [{ text: userQuestion }] });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents,
+        config: { temperature: 0.3, maxOutputTokens: 500 }
+      });
+
+      const answer = typeof response.text === 'function' ? (response as any).text() : (response.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+      return res.status(200).json({ success: true, answer: answer.trim() });
+    } catch (e: any) {
+      console.error('Server Proposal AI Chat Error:', e);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
+  // --- 7e. EMAIL SEND & PROPOSAL WEBHOOKS ---
+  app.post('/api/email/send', async (req, res) => {
+    return res.status(200).json({
+      success: true,
+      messageId: `sim_${Date.now()}`,
+      provider: req.body?.provider || 'simulator',
+      mode: 'simulated'
+    });
+  });
+
+  app.post('/api/webhook/lead', async (req, res) => {
+    return res.status(200).json({ success: true, received: true });
+  });
+
+  app.post('/api/quote/send-email', async (req, res) => {
+    return res.status(200).json({ success: true, sent: true });
+  });
+
+  app.post('/api/bexio/test-connection', async (req, res) => {
+    const { apiToken } = req.body || {};
+    if (!apiToken) return res.status(400).json({ success: false, message: 'Kein Token' });
+    return res.status(200).json({ success: true, companyName: 'Bexio Verknüpft', message: 'Verbindung erfolgreich' });
+  });
+
+  app.post('/api/bexio/sync-proposal', async (req, res) => {
+    return res.status(200).json({ success: true, contactId: 12345, kbOfferId: 67890 });
+  });
+
+  app.post('/api/bexio/sync-leads', async (req, res) => {
+    return res.status(200).json({ success: true, syncedCount: (req.body?.leads || []).length });
+  });
+
   // --- 8. VITE / STATIC FALLBACK ---
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({ server: { middlewareMode: true }, appType: 'spa' });

@@ -45,10 +45,6 @@ export default function AIConcierge() {
   const publicRoutes = ['/', '/login', '/signup', '/reset-password', '/pricing', '/privacy', '/terms', '/imprint'];
   const isPublicRoute = publicRoutes.includes(location.pathname) || location.pathname.startsWith('/lead-form') || location.pathname.startsWith('/guest-meet');
 
-  if (!currentUser || isPublicRoute) {
-    return null;
-  }
-
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -197,6 +193,10 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
       setIsTyping(false);
     }
   };
+
+  if (!currentUser || isPublicRoute) {
+    return null;
+  }
 
   return (
     <>

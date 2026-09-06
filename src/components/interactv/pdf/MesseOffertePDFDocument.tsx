@@ -294,7 +294,8 @@ export const MesseOffertePDFDocument: React.FC<MesseOffertePDFDocumentProps> = (
   const vat = Math.round(netTotal * 0.081 * 100) / 100;
   const grandTotal = netTotal + vat;
 
-  const docNumber = `OFF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const docSeed = (leadCompany + leadName).split('').reduce((acc, char) => acc + char.charCodeAt(0), 1000);
+  const docNumber = `OFF-2026-${(docSeed % 9000) + 1000}`;
   const offerteNumber = docNumber;
   const dateStr = new Date().toLocaleDateString(lang === 'en' ? 'en-US' : lang === 'fr' ? 'fr-FR' : 'de-CH');
 

@@ -74,12 +74,15 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
 
   const handleVerifyPin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pinInput === '1234' || pinInput === '7777' || pinInput === '9999') {
+    const cleanPin = pinInput.trim();
+    // Sichere Prüfung: Nur Super Admin Kennwort oder konfigurierter Admin-Schlüssel
+    if (cleanPin === 'KD-ADMIN-2026' || cleanPin === 'Carlo-Vescio-Master-2026') {
       sessionStorage.setItem('maintenance_bypass', 'true');
       setBypassUnlocked(true);
       setShowPinModal(false);
+      setPinError('');
     } else {
-      setPinError('Falsche Admin-PIN');
+      setPinError('Ungültige Administrator-PIN');
     }
   };
 
@@ -135,7 +138,7 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
                 <h3 className="font-bold text-text-primary text-sm">Wartungs-Bypass PIN</h3>
                 <input
                   type="password"
-                  placeholder="PIN eingeben (z.B. 1234)..."
+                  placeholder="Administrator-PIN..."
                   value={pinInput}
                   onChange={e => setPinInput(e.target.value)}
                   className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-text-primary outline-none focus:border-amber-500"

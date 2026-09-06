@@ -55,9 +55,25 @@ export default function Signup() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
 
-  if (currentUser && !loading) {
-    return <Navigate to="/app" />;
-  }
+  const [customBg, setCustomBg] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const fetchBg = async () => {
+      try {
+        const { data } = await supabase
+          .from('system_config')
+          .select('*')
+          .eq('id', 'global_master')
+          .maybeSingle();
+
+        const configData = (data as any)?.data || data;
+        if (configData?.loginBgImage) {
+          setCustomBg(configData.loginBgImage);
+        }
+      } catch (e) {}
+    };
+    fetchBg();
+  }, []);
 
   const handleLanguageToggle = () => {
     setLanguage(currentLang === 'de' ? 'en' : 'de');
@@ -95,25 +111,9 @@ export default function Signup() {
     }
   }
 
-  const [customBg, setCustomBg] = useState<string | null>(null);
-
-  React.useEffect(() => {
-    const fetchBg = async () => {
-      try {
-        const { data } = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', 'global_master')
-          .maybeSingle();
-
-        const configData = (data as any)?.data || data;
-        if (configData?.loginBgImage) {
-          setCustomBg(configData.loginBgImage);
-        }
-      } catch (e) {}
-    };
-    fetchBg();
-  }, []);
+  if (currentUser && !loading) {
+    return <Navigate to="/app" />;
+  }
 
   return (
     <div 

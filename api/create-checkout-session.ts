@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { verifyAuth } from './_auth.js';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -13,28 +14,37 @@ export default async function handler(req: any, res: any) {
 
     const stripe = new Stripe(key, { apiVersion: '2025-02-24.acacia' as any });
     
-    // FIX 1: Wir extrahieren jetzt 'priceId' aus dem Body, 'amount' wird gelöscht
-    const { email, planName, uid, priceId, interval } = req.body;
+    // 1. Authentifizierten User aus Token verifizieren
+    const authUser = await verifyAuth(req);
+    
+    const { planName = 'Pro', priceId } = req.body || {};
+    const uid = authUser?.id || (authUser as any)?.uid || req.body?.uid;
+    const email = authUser?.email || req.body?.email;
+
+    if (!priceId) {
+      return res.status(400).json({ error: 'Missing priceId' });
+    }
+
+    if (!uid) {
+      return res.status(401).json({ error: 'Unauthorized: User ID required for subscription' });
+    }
+
     const domainURL = req.headers.origin || 'http://localhost:3000';
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'], 
       mode: 'subscription',
-      customer_email: email,
+      customer_email: email || undefined,
       client_reference_id: uid,
-      allow_promotion_codes: true, // Gutscheine bleiben wie gewünscht aktiv!
-      
-      // FIX 2: Der line_items Block ist nun massiv vereinfacht und feuert keinen NaN-Fehler mehr
+      allow_promotion_codes: true,
       line_items: [
         {
-          price: priceId, // Stripe zieht sich Preis, Währung und Intervall nun direkt aus dem Dashboard
+          price: priceId,
           quantity: 1,
         },
       ],
-      
       success_url: `${domainURL}/success?session_id={CHECKOUT_SESSION_ID}&plan=${planName}`,
       cancel_url: `${domainURL}/pricing?canceled=true`,
-      
       metadata: {
         supabaseUID: uid,
         plan: planName

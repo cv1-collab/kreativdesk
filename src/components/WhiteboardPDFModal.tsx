@@ -17,6 +17,11 @@ export default function WhiteboardPDFModal({
   projectName,
   onSaveCloud,
 }: WhiteboardPDFModalProps) {
+  const fileName = React.useMemo(() => {
+    const safeProj = (projectName || 'Projekt').replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `Whiteboard_${safeProj}_${Date.now()}`;
+  }, [projectName]);
+
   if (!isOpen) return null;
 
   return (
@@ -24,7 +29,7 @@ export default function WhiteboardPDFModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Whiteboard Export"
-      fileName={`Whiteboard_${(projectName || 'Projekt').replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}`}
+      fileName={fileName}
       onSaveCloud={onSaveCloud}
       defaultOrientation="landscape"
     >
