@@ -38,12 +38,13 @@ export async function queryRagStore(queryText: string, companyId: string) {
 
     // 3. Vektoren vergleichen und den besten Treffer finden
     embeddings.forEach(item => {
-      if (item.vector) {
-        const score = cosineSimilarity(queryVector, item.vector);
+      const itm = item as any;
+      if (itm.vector && Array.isArray(itm.vector)) {
+        const score = cosineSimilarity(queryVector, itm.vector);
         if (score > highestScore) {
           highestScore = score;
-          bestMatchText = item.text;
-          bestFileName = item.file_name || item.fileName;
+          bestMatchText = itm.text || itm.content || '';
+          bestFileName = itm.file_name || itm.fileName || itm.name || 'Dokument';
         }
       }
     });

@@ -254,8 +254,6 @@ export default function SettingsTab() {
         setCompanyPlan(foundComp.plan || 'Free Trial');
         if (foundComp.max_seats) {
           setMaxSeats(Number(foundComp.max_seats));
-        } else if (foundComp.maxSeats) {
-          setMaxSeats(Number(foundComp.maxSeats));
         }
       }
 
@@ -1331,7 +1329,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     try {
       const newValue = !currentValue;
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
-      const { error: profErr } = await supabase.from('profiles').update({ [colName]: newValue }).eq('id', userId);
+      const { error: profErr } = await supabase.from('profiles').update({ [colName]: newValue } as any).eq('id', userId);
       if (profErr) throw profErr;
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: newValue, [colName]: newValue } : m));
       addToast('Berechtigung erfolgreich aktualisiert', 'success');

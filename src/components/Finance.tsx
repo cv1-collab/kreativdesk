@@ -653,8 +653,9 @@ export default function Finance() {
           .select('*')
           .eq('id', safeCompanyId)
           .maybeSingle();
-        if (comp && (comp.primary_color || comp.primaryColor)) {
-          setCompanyColor(comp.primary_color || comp.primaryColor);
+        const rawComp = comp as any;
+        if (rawComp && (rawComp.primary_color || rawComp.primaryColor)) {
+          setCompanyColor(rawComp.primary_color || rawComp.primaryColor);
         }
       } catch (e) {
         console.warn('Company color fetch fallback handled:', e);

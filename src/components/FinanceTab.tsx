@@ -119,7 +119,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
           projectId: t.project_id,
           companyId: t.company_id,
           ownerId: t.owner_id,
-          receiptUrls: t.receipt_urls || t.receiptUrls || []
+          receiptUrls: t.receipt_urls || (t as any).receiptUrls || []
         } as Transaction));
       }
 

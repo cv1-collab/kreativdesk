@@ -369,7 +369,7 @@ export default function MeetChat() {
           .order('created_at', { ascending: false })
           .limit(50);
         if (calls) {
-          historyItems = calls.map(c => ({
+          historyItems = calls.map((c: any) => ({
             id: c.id,
             title: c.title || `Video Call (${c.id.substring(0, 12)})`,
             callerName: c.caller_name || 'Host',
@@ -390,7 +390,7 @@ export default function MeetChat() {
           .order('created_at', { ascending: false })
           .limit(50);
         if (events) {
-          events.filter((e: any) => !e.type || e.type === 'call').forEach(e => {
+          events.filter((e: any) => !e.type || e.type === 'call').forEach((e: any) => {
             const meetingId = e.meeting_link?.split('join=')[1] || e.id;
             if (!historyItems.some(h => h.id === meetingId || h.id === e.id)) {
               historyItems.push({

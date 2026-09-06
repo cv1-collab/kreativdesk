@@ -290,7 +290,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
       const { error } = await supabase.from('projects').update({
         [linkModal.type]: linkModal.url,
         [dbCol]: linkModal.url
-      }).eq('id', activeProject.id);
+      } as any).eq('id', activeProject.id);
 
       if (error) {
         console.error("Link Save Supabase Error:", error);

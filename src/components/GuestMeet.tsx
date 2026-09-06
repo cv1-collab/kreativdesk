@@ -232,7 +232,7 @@ export default function GuestMeet() {
         }
 
         if (callDoc) {
-          setMeetingCompanyId(callDoc.company_id || null);
+          setMeetingCompanyId((callDoc as any).company_id || null);
           setError('');
         } else {
           if (joinId && joinId.length >= 3) {
@@ -275,13 +275,13 @@ export default function GuestMeet() {
         .eq('call_id', joinId)
         .order('created_at', { ascending: true });
       if (data) {
-        setMessages(data.map(d => ({
+        setMessages(data.map((d: any) => ({
           id: d.id,
           sender: d.sender_name || d.sender || 'Gast',
           avatar: (d.sender_name || d.sender || 'G').substring(0, 2).toUpperCase(),
           time: new Date(d.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: d.message || d.text,
-          fileUrl: d.file_url || d.fileUrl
+          text: d.message || d.text || '',
+          fileUrl: d.file_url || d.fileUrl || (d.message?.match(/\[FILE:(.*?)\]/)?.[1])
         })));
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       }

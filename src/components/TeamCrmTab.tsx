@@ -134,7 +134,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const safeCompanyId = companyId || currentUser.uid;
     const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
     
-    const mappedCrm = (crmData || []).map(u => ({
+    const mappedCrm = (crmData || []).map((u: any) => ({
       id: u.id,
       firstName: u.first_name || u.firstName || u.name?.split(' ')[0] || u.name || '',
       lastName: u.last_name || u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
@@ -146,7 +146,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       isExternal: u.is_external !== undefined ? u.is_external : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external')
     }));
 
-    const mappedProfiles = (profilesData || []).map(p => ({
+    const mappedProfiles = (profilesData || []).map((p: any) => ({
       id: p.id,
       firstName: p.name?.split(' ')[0] || p.name || 'Team',
       lastName: p.name?.split(' ').slice(1).join(' ') || '',
@@ -238,7 +238,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         if (data && data.length > 0) {
           const rec = data[0];
           let parsed: any = null;
-          try { parsed = JSON.parse(rec.name || rec.file_name || '{}'); } catch (e) {}
+          try { parsed = JSON.parse(rec.name || (rec as any).file_name || '{}'); } catch (e) {}
           if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
             setScannedContactData({
               firstName: parsed.firstName || '',

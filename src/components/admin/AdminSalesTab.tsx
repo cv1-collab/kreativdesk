@@ -56,7 +56,7 @@ export default function AdminSalesTab() {
 
       if (data && data.length > 0) {
         const enriched = data
-          .map(t => {
+          .map((t: any) => {
             const prof = profileMap.get(t.user_id || t.owner_id);
             const userEmail = t.userEmail || t.user_email || prof?.email || prof?.name || null;
             return {

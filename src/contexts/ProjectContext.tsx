@@ -68,18 +68,18 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
 
-      const { data: projs } = await supabase
+      const { data } = await supabase
         .from('projects')
         .select('*')
         .or(`company_id.eq.${safeCompanyId},owner_id.eq.${currentUser.uid}`)
         .order('created_at', { ascending: false });
 
-      if (projs) {
-        const mappedProjects: Project[] = projs.map(p => ({
+      if (data) {
+        const mappedProjects: Project[] = data.map((p: any) => ({
           id: p.id,
           name: p.name,
           description: p.description || '',
-          status: p.status || 'planning',
+          status: (p.status as any) || 'planning',
           role: 'owner',
           createdAt: p.created_at || new Date().toISOString(),
           ownerId: p.owner_id || currentUser.uid,
@@ -121,21 +121,21 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .select('*')
         .eq('company_id', safeCompanyId);
 
-      const mappedProfiles: CompanyUser[] = (profs || []).map(p => ({
+      const mappedProfiles: CompanyUser[] = (profs || []).map((p: any) => ({
         id: p.id,
         name: p.name || p.email,
         email: p.email,
         role: p.role === 'owner' ? 'Admin' : 'Internal',
-        avatar: p.photo_url || '',
+        avatar: p.photo_url || p.avatar || '',
         ownerId: p.id,
         companyId: p.company_id || safeCompanyId
       }));
 
-      const mappedCrm: CompanyUser[] = (crmData || []).map(u => ({
+      const mappedCrm: CompanyUser[] = (crmData || []).map((u: any) => ({
         id: u.id,
         name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
         email: u.email || '',
-        role: u.role || 'Partner',
+        role: (u.role as any) || 'Internal',
         avatar: '',
         ownerId: u.id,
         companyId: safeCompanyId
@@ -178,7 +178,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         .eq('company_id', safeCompanyId);
 
       if (defs) {
-        setDefects(defs.map(d => {
+        setDefects(defs.map((d: any) => {
           const rawStatus = d.status || 'To Do';
           const lowerSt = rawStatus.toLowerCase().trim();
           const normStatus = (lowerSt === 'offen' || lowerSt === 'to do') ? 'To Do' :
@@ -195,7 +195,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
           return {
             id: d.id,
-            title: d.title || d.prompt || 'Mangel',
+            title: d.prompt || d.title || d.description?.substring(0, 30) || 'Mangel',
             status: normStatus,
             priority: normSev,
             assignee: d.assignee || '',

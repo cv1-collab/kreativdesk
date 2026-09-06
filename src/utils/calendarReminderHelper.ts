@@ -19,12 +19,18 @@ export const checkUpcomingEventReminders = async (companyId: string) => {
     const now = Date.now();
 
     for (const evt of events) {
-      const eventDateStr = evt.event_date || evt.date;
-      const eventTimeStr = evt.time || '10:00';
+      const startIso = evt.start_date || '';
+      const eventDateStr = startIso.includes('T') ? startIso.split('T')[0] : startIso;
+      const eventTimeStr = startIso.includes('T') ? startIso.split('T')[1].substring(0, 5) : '10:00';
       if (!eventDateStr) continue;
 
-      const eventTimeMs = new Date(`${eventDateStr}T${eventTimeStr}`).getTime();
+      const eventTimeMs = new Date(startIso.includes('T') ? startIso : `${eventDateStr}T${eventTimeStr}`).getTime();
       if (isNaN(eventTimeMs)) continue;
+
+      const desc = evt.description || '';
+      const isCall = desc.toLowerCase().includes('call') || desc.toLowerCase().includes('video');
+      const linkMatch = desc.match(/Link:\s*([^\n\r]+)/);
+      const meetingLink = linkMatch ? linkMatch[1].trim() : '/app?tab=agenda';
 
       const diffMs = eventTimeMs - now;
       const diffHours = diffMs / (1000 * 60 * 60);
@@ -37,8 +43,8 @@ export const checkUpcomingEventReminders = async (companyId: string) => {
           companyId,
           title: `⏰ Morgen: ${evt.title}`,
           message: `Termin "${evt.title}" findet morgen am ${eventDateStr} um ${eventTimeStr} Uhr statt.`,
-          type: evt.type === 'call' ? 'call' : 'meeting',
-          link: evt.meeting_link || '/app?tab=agenda'
+          type: isCall ? 'call' : 'meeting',
+          link: meetingLink
         });
       }
 
@@ -48,10 +54,10 @@ export const checkUpcomingEventReminders = async (companyId: string) => {
         sentTrackers[tracker1hKey] = true;
         await sendNotification({
           companyId,
-          title: evt.type === 'call' ? `🚨 Videocall in 1 Std: ${evt.title}` : `⏰ Termin in 1 Std: ${evt.title}`,
+          title: isCall ? `🚨 Videocall in 1 Std: ${evt.title}` : `⏰ Termin in 1 Std: ${evt.title}`,
           message: `In Kürze (${eventTimeStr} Uhr): "${evt.title}".`,
-          type: evt.type === 'call' ? 'call' : 'meeting',
-          link: evt.meeting_link || '/app?tab=agenda'
+          type: isCall ? 'call' : 'meeting',
+          link: meetingLink
         });
       }
     }

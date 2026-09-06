@@ -58,7 +58,7 @@ export default function API() {
         .order('created_at', { ascending: false });
 
       if (data) {
-        setKeys(data.map(d => ({
+        setKeys(data.map((d: any) => ({
           id: d.id,
           name: d.name || 'API Integration',
           key: d.key,

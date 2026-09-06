@@ -66,7 +66,7 @@ export default function CRM() {
       }
 
       if (data) {
-        const mapped = data.map(u => ({
+        const mapped = data.map((u: any) => ({
           id: u.id,
           name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
           role: u.role || 'partner',

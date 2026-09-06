@@ -345,7 +345,7 @@ export default function LeadsTab() {
         if (data && data.length > 0) {
           const rec = data[0];
           let parsed: any = null;
-          try { parsed = JSON.parse(rec.name || rec.file_name || '{}'); } catch (e) {}
+          try { parsed = JSON.parse(rec.name || (rec as any).file_name || '{}'); } catch (e) {}
           if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
             setScannedData({
               firstName: parsed.firstName || '',
@@ -388,7 +388,7 @@ export default function LeadsTab() {
         .order('created_at', { ascending: false });
 
       if (data) {
-        const mapped = data.map(d => {
+        const mapped = data.map((d: any) => {
           let parsedNotes: any = {};
           if (d.notes) {
             try {

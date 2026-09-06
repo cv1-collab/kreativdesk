@@ -321,12 +321,13 @@ export default function DocumentStudioModal({
           .maybeSingle();
 
         if (data) {
+          const raw = data as any;
           setCompanyData({
-            name: data.company_name || 'Kreativ-Desk OS Architecture',
-            street: data.street || 'Bahnhofstrasse 1',
-            zipCity: `${data.zip || '8001'} ${data.city || 'Zürich'}`,
-            website: data.website || 'www.kreativdesk.ch',
-            logo: data.logo_url || ''
+            name: raw.company_name || 'Kreativ-Desk OS Architecture',
+            street: raw.street || 'Bahnhofstrasse 1',
+            zipCity: `${raw.zip || '8001'} ${raw.city || 'Zürich'}`,
+            website: raw.website || 'www.kreativdesk.ch',
+            logo: raw.logo_url || ''
           });
         }
       } catch (e) {

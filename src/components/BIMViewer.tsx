@@ -790,7 +790,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       const { data } = await supabase.from('defects').select('*').eq('company_id', currentUser.companyId).eq('project_id', projectId);
       if (data) {
         const loadedPins: any[] = [];
-        data.forEach(d => {
+        data.forEach((d: any) => {
           const pinTitle = d.title || d.prompt;
           if (d.model_id === activeModelId && pinTitle) {
              loadedPins.push({

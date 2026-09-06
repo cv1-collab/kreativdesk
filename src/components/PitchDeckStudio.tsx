@@ -172,7 +172,7 @@ interface DeckSettings {
 
 // Helper to safely serialize a Slide for the remote Supabase schema
 // (Valid Supabase columns: id, project_id, company_id, title, subtitle, content, layout, image_url, order_index, created_at)
-export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any }) => {
+export const serializeSlideForDb = (slide: Partial<Slide> & { [key: string]: any }): any => {
   const dbRecord: Record<string, any> = {};
   if (slide.id !== undefined) dbRecord.id = slide.id;
   if (slide.title !== undefined) dbRecord.title = slide.title;
@@ -1086,7 +1086,7 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (updateTimeoutRef.current) clearTimeout(updateTimeoutRef.current);
     updateTimeoutRef.current = setTimeout(() => {
       if (activeSlide && !isPreviewMode) {
-        supabase.from('slides').update({ [field]: value }).eq('id', activeSlide.id);
+        supabase.from('slides').update({ [field]: value } as any).eq('id', activeSlide.id);
       }
     }, 500); 
   };

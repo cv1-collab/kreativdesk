@@ -133,9 +133,10 @@ export default function Settings() {
         const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
         if (data) {
           setDbData(data);
-          if (data.phone) setPhone(data.phone);
-          if (data.street) setStreet(data.street);
-          if (data.zip_city || data.zipCity) setZipCity(data.zip_city || data.zipCity);
+          const raw = data as any;
+          if (raw.phone) setPhone(raw.phone);
+          if (raw.street) setStreet(raw.street);
+          if (raw.zip_city || raw.zipCity) setZipCity(raw.zip_city || raw.zipCity);
         }
       } catch (e) {}
       setIsLoadingDB(false);
