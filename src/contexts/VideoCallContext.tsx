@@ -31,6 +31,7 @@ interface IncomingCall {
 interface VideoCallContextType {
   localStream: MediaStream | null;
   remoteStreams: Record<string, MediaStream>;
+  peerInfo: Record<string, { name: string; avatar?: string }>;
   screenStream: MediaStream | null;
   isMicOn: boolean;
   isCamOn: boolean;
@@ -42,7 +43,7 @@ interface VideoCallContextType {
   
   startCall: (targetUserIds?: string[], customCallId?: string) => Promise<void>; 
   joinCall: (overrideId?: string | null) => Promise<void>; 
-  hangUp: () => void;
+  hangUp: (endForAll?: boolean | unknown) => void;
   toggleMic: () => void;
   toggleCam: () => void;
   toggleScreenShare: () => Promise<void>;
@@ -72,6 +73,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [peerInfo, setPeerInfo] = useState<Record<string, { name: string; avatar?: string }>>({});
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   
   const [isMicOn, setIsMicOn] = useState(true);
@@ -92,6 +94,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [initialMyId] = useState(() => `guest_${Math.random().toString(36).substring(2, 9)}`);
   const myIdRef = useRef<string>(initialMyId);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
+  const pcsRemoteStreamsRef = useRef<Record<string, MediaStream>>({});
   const unsubSignalsRef = useRef<(() => void) | null>(null);
   const unsubParticipantsRef = useRef<(() => void) | null>(null);
 
@@ -100,6 +103,20 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       myIdRef.current = currentUser.uid;
     }
   }, [currentUser]);
+
+  const getMyDisplayName = () => {
+    return (
+      currentUser?.displayName ||
+      currentUser?.email?.split('@')[0] ||
+      localStorage.getItem('kreativdesk_guest_name') ||
+      'Teilnehmer'
+    );
+  };
+
+  const getMyAvatar = () => {
+    const name = getMyDisplayName();
+    return (name || 'T').substring(0, 2).toUpperCase();
+  };
 
   const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
 
@@ -202,29 +219,78 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const createPeerConnection = (peerId: string, currentCallId: string, stream: MediaStream) => {
-    const pc = new RTCPeerConnection(servers);
-    pcsRef.current[peerId] = pc;
+  const cleanUpPeer = (peerId: string) => {
+    if (pcsRef.current[peerId]) {
+      try {
+        pcsRef.current[peerId].close();
+      } catch (e) {}
+      delete pcsRef.current[peerId];
+    }
+    delete iceCandidateQueueRef.current[peerId];
+    delete pcsRemoteStreamsRef.current[peerId];
+    setRemoteStreams(prev => {
+      if (!prev[peerId]) return prev;
+      const next = { ...prev };
+      delete next[peerId];
+      return next;
+    });
+    setPeerInfo(prev => {
+      if (!prev[peerId]) return prev;
+      const next = { ...prev };
+      delete next[peerId];
+      return next;
+    });
+    adjustMeshBandwidth();
+  };
 
-    stream.getTracks().forEach(track => {
-      const sender = pc.addTrack(track, stream);
-      if (track.kind === 'video') {
-        setTimeout(() => {
+  const adjustMeshBandwidth = () => {
+    const peerCount = Object.keys(pcsRef.current).length;
+    // Dynamic bitrate targets per peer:
+    // 1-2 peers (up to 3 total participants): 1200 kbps (HD 720p)
+    // 3-4 peers (4-5 total participants): 450 kbps (SD 480p 30fps) -> 1.8 Mbps total upload
+    // 5+ peers (6+ total participants): 300 kbps (360p 30fps) -> 1.5 Mbps total upload
+    const targetBitrate = peerCount <= 2 ? 1200000 : peerCount <= 4 ? 450000 : 300000;
+
+    Object.values(pcsRef.current).forEach(pc => {
+      pc.getSenders().forEach(sender => {
+        if (sender.track?.kind === 'video') {
           try {
             const params = sender.getParameters();
             if (!params.encodings || params.encodings.length === 0) {
               params.encodings = [{}];
             }
-            const peerCount = Object.keys(pcsRef.current).length;
-            params.encodings[0].maxBitrate = peerCount > 3 ? 500000 : 1500000;
+            params.encodings[0].maxBitrate = targetBitrate;
             sender.setParameters(params).catch(() => {});
           } catch (e) {}
-        }, 500);
-      }
+        }
+      });
+    });
+  };
+
+  const createPeerConnection = (peerId: string, currentCallId: string, stream: MediaStream) => {
+    const pc = new RTCPeerConnection(servers);
+    pcsRef.current[peerId] = pc;
+
+    stream.getTracks().forEach(track => {
+      pc.addTrack(track, stream);
     });
 
+    setTimeout(adjustMeshBandwidth, 400);
+
     pc.ontrack = (event) => {
-      const incomingStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+      let incomingStream: MediaStream;
+      if (event.streams && event.streams[0]) {
+        incomingStream = event.streams[0];
+      } else {
+        const existing = pcsRemoteStreamsRef.current[peerId];
+        if (existing) {
+          existing.addTrack(event.track);
+          incomingStream = existing;
+        } else {
+          incomingStream = new MediaStream([event.track]);
+        }
+      }
+      pcsRemoteStreamsRef.current[peerId] = incomingStream;
       setRemoteStreams(prev => ({ ...prev, [peerId]: incomingStream }));
     };
 
@@ -235,6 +301,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           event: 'signal',
           payload: {
             from: myIdRef.current,
+            fromName: getMyDisplayName(),
+            fromAvatar: getMyAvatar(),
             to: peerId,
             type: 'candidate',
             candidate: event.candidate.toJSON()
@@ -253,12 +321,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         } catch (e) {
           console.error("ICE restart error:", e);
         }
-      } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
-        setRemoteStreams(prev => {
-          const next = { ...prev };
-          delete next[peerId];
-          return next;
-        });
+      } else if (pc.iceConnectionState === 'closed') {
+        cleanUpPeer(peerId);
+      } else if (pc.iceConnectionState === 'disconnected') {
+        setTimeout(() => {
+          if (pcsRef.current[peerId] && pcsRef.current[peerId].iceConnectionState === 'disconnected') {
+            cleanUpPeer(peerId);
+          }
+        }, 4000);
       }
     };
 
@@ -267,6 +337,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const joinMeshNetwork = async (currentCallId: string, stream: MediaStream) => {
     const myId = myIdRef.current;
+    const myName = getMyDisplayName();
+    const myAvatar = getMyAvatar();
     
     const channel = supabase.channel(`call_${currentCallId}`, {
       config: { presence: { key: myId } }
@@ -284,6 +356,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             event: 'signal',
             payload: {
               from: myId,
+              fromName: myName,
+              fromAvatar: myAvatar,
               to: peerId,
               type: 'offer',
               offer: { sdp: offer.sdp, type: offer.type }
@@ -299,10 +373,16 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .on('broadcast', { event: 'signal' }, async ({ payload }) => {
         if (payload.to !== myId) return;
         const peerId = payload.from;
+        if (payload.fromName) {
+          setPeerInfo(prev => ({ ...prev, [peerId]: { name: payload.fromName, avatar: payload.fromAvatar } }));
+        }
+
         let pc = pcsRef.current[peerId];
 
         if (payload.type === 'offer') {
-          if (!pc) pc = createPeerConnection(peerId, currentCallId, stream);
+          if (!pc || pc.signalingState === 'closed') {
+            pc = createPeerConnection(peerId, currentCallId, stream);
+          }
           await pc.setRemoteDescription(new RTCSessionDescription(payload.offer));
           await processIceQueue(peerId, pc);
           const answer = await pc.createAnswer();
@@ -312,6 +392,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             event: 'signal',
             payload: {
               from: myId,
+              fromName: myName,
+              fromAvatar: myAvatar,
               to: peerId,
               type: 'answer',
               answer: { sdp: answer.sdp, type: answer.type }
@@ -335,13 +417,27 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
       .on('broadcast', { event: 'join' }, async ({ payload }) => {
         const peerId = payload.peerId;
+        if (payload.name) {
+          setPeerInfo(prev => ({ ...prev, [peerId]: { name: payload.name, avatar: payload.avatar } }));
+        }
         if (peerId !== myId && !pcsRef.current[peerId] && myId < peerId) {
           await initiateOfferToPeer(peerId);
         }
       })
+      .on('broadcast', { event: 'leave' }, ({ payload }) => {
+        if (payload?.peerId) {
+          cleanUpPeer(payload.peerId);
+        }
+      })
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState();
-        Object.keys(presenceState).forEach(peerId => {
+        Object.entries(presenceState).forEach(([peerId, presences]: [string, any]) => {
+          if (presences && presences[0]) {
+            const p = presences[0];
+            if (p.name) {
+              setPeerInfo(prev => ({ ...prev, [peerId]: { name: p.name, avatar: p.avatar } }));
+            }
+          }
           if (peerId !== myId && !pcsRef.current[peerId]) {
             if (myId < peerId) {
               initiateOfferToPeer(peerId);
@@ -349,13 +445,21 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
         });
       })
+      .on('presence', { event: 'leave' }, ({ leftPresences }) => {
+        if (Array.isArray(leftPresences)) {
+          leftPresences.forEach((p: any) => {
+            const peerId = p.peerId || p.key;
+            if (peerId) cleanUpPeer(peerId);
+          });
+        }
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ peerId: myId, joinedAt: Date.now() });
+          await channel.track({ peerId: myId, name: myName, avatar: myAvatar, joinedAt: Date.now() });
           channel.send({
             type: 'broadcast',
             event: 'join',
-            payload: { peerId: myId }
+            payload: { peerId: myId, name: myName, avatar: myAvatar }
           });
         }
       });
@@ -401,15 +505,36 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await joinMeshNetwork(targetId, stream);
   };
 
-  const hangUp = () => {
-    if (callId) {
+  const hangUp = (endForAll?: boolean | unknown) => {
+    const shouldEndForAll = endForAll === true;
+    const myId = myIdRef.current;
+    if (activeChannelRef.current) {
+      try {
+        activeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'leave',
+          payload: { peerId: myId }
+        }).catch(() => {});
+      } catch (e) {}
+      try {
+        activeChannelRef.current.untrack().catch(() => {});
+        activeChannelRef.current.unsubscribe();
+      } catch (e) {}
+      activeChannelRef.current = null;
+    }
+
+    if (callId && shouldEndForAll) {
       try {
         Promise.resolve(supabase.from('video_calls').update({ status: 'ended' }).eq('id', callId)).catch(() => {});
       } catch (e) {}
     }
 
-    Object.values(pcsRef.current).forEach(pc => pc.close());
+    Object.values(pcsRef.current).forEach(pc => {
+      try { pc.close(); } catch (e) {}
+    });
     pcsRef.current = {};
+    pcsRemoteStreamsRef.current = {};
+    iceCandidateQueueRef.current = {};
 
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     if (screenStream) screenStream.getTracks().forEach(t => t.stop());
@@ -417,28 +542,24 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     
     setLocalStream(null); 
     setRemoteStreams({}); 
+    setPeerInfo({});
     setScreenStream(null);
     setIsScreenSharing(false); 
     setCallStatus('idle'); 
     setCallId(''); 
     setJoinCallId(''); 
     setIsMinimized(false);
-
-    if (activeChannelRef.current) {
-      activeChannelRef.current.unsubscribe();
-      activeChannelRef.current = null;
-    }
   };
 
   useEffect(() => {
     return () => {
-      hangUp();
+      hangUp(false);
     };
   }, []);
 
   return (
     <VideoCallContext.Provider value={{
-      localStream, remoteStreams, screenStream, isMicOn, isCamOn, isScreenSharing,
+      localStream, remoteStreams, peerInfo, screenStream, isMicOn, isCamOn, isScreenSharing,
       callStatus, callId, joinCallId, setJoinCallId, startCall, joinCall, hangUp, toggleMic, toggleCam, toggleScreenShare,
       isInCall, isMinimized, setIsMinimized, isChatOpen, setIsChatOpen, incomingCall, setIncomingCall
     }}>

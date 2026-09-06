@@ -14,31 +14,108 @@ const isImageFile = (url?: string, text?: string): boolean => {
   return /\.(png|jpe?g|gif|webp|svg|bmp)(\?.*)?$/i.test(target) || (url?.startsWith('data:image/') ?? false);
 };
 
-const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
+const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [needsUserClick, setNeedsUserClick] = useState(false);
+  const [hasVideoTrack, setHasVideoTrack] = useState(true);
+
   useEffect(() => {
     const video = videoRef.current;
-    if (video && stream) {
-      video.srcObject = stream;
-      video.play().catch(e => console.warn("Remote video play note:", e));
+    if (!video || !stream) return;
 
-      const handleTrackUpdate = () => {
-        if (video) {
-          video.srcObject = stream;
-          video.play().catch(() => {});
-        }
-      };
+    const checkTracks = () => {
+      const vTracks = stream.getVideoTracks();
+      setHasVideoTrack(vTracks.length > 0 && vTracks.some(t => t.enabled));
+    };
+    checkTracks();
 
-      stream.onaddtrack = handleTrackUpdate;
-      stream.onremovetrack = handleTrackUpdate;
+    video.srcObject = stream;
+    video.play().catch(err => {
+      console.warn("Remote video play note:", err);
+      video.muted = true;
+      video.play().catch(() => {});
+      setNeedsUserClick(true);
+    });
 
-      return () => {
-        stream.onaddtrack = null;
-        stream.onremovetrack = null;
-      };
-    }
+    const handleTrackUpdate = () => {
+      if (video) {
+        video.srcObject = stream;
+        video.play().catch(() => {});
+      }
+      checkTracks();
+    };
+
+    stream.onaddtrack = handleTrackUpdate;
+    stream.onremovetrack = handleTrackUpdate;
+
+    const unlockAudio = () => {
+      if (video && video.muted) {
+        video.muted = false;
+        video.play().then(() => setNeedsUserClick(false)).catch(() => {});
+      }
+    };
+    window.addEventListener('click', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+
+    return () => {
+      stream.onaddtrack = null;
+      stream.onremovetrack = null;
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
   }, [stream]);
-  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover relative z-10" />;
+
+  const handleManualUnmute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (video) {
+      video.muted = false;
+      video.play().then(() => setNeedsUserClick(false)).catch(() => {});
+    }
+  };
+
+  const displayName = peerName || 'Gastgeber / Teilnehmer';
+  const initials = displayName.substring(0, 2).toUpperCase();
+
+  return (
+    <div className="w-full h-full relative overflow-hidden bg-zinc-900 group">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className={cn(
+          "w-full h-full object-cover transition-opacity duration-300",
+          !hasVideoTrack ? "opacity-0 pointer-events-none" : "opacity-100"
+        )}
+      />
+
+      {/* Fallback Avatar if camera is disabled / audio-only */}
+      {!hasVideoTrack && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-slate-950 text-white z-10">
+          <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-accent-ai/20 border-2 border-accent-ai/50 flex items-center justify-center shadow-lg mb-2">
+            <span className="text-xl md:text-2xl font-black text-accent-ai tracking-wider">{initials}</span>
+          </div>
+          <span className="text-xs md:text-sm font-semibold text-white/90">{displayName}</span>
+          <span className="text-[10px] md:text-xs text-text-muted mt-0.5">Kamera deaktiviert</span>
+        </div>
+      )}
+
+      {/* Unmute Alert if Autoplay restricted audio */}
+      {needsUserClick && (
+        <button
+          onClick={handleManualUnmute}
+          className="absolute top-3 right-3 z-30 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 animate-bounce cursor-pointer transition-all"
+        >
+          🔊 Ton aktivieren
+        </button>
+      )}
+
+      {/* Participant Name Badge */}
+      <div className="absolute bottom-3 left-3 z-20 px-2.5 py-1 bg-black/70 backdrop-blur-md rounded-lg border border-white/10 flex items-center gap-2 pointer-events-none shadow-sm">
+        <span className="text-xs font-semibold text-white truncate max-w-[130px]">{displayName}</span>
+      </div>
+    </div>
+  );
 };
 
 export default function GuestMeet() {
@@ -107,7 +184,7 @@ export default function GuestMeet() {
   };
 
   const {
-    localStream, remoteStreams, isMicOn, isCamOn, callStatus,
+    localStream, remoteStreams, peerInfo, isMicOn, isCamOn, callStatus,
     joinCall, hangUp, toggleMic, toggleCam, setJoinCallId, isInCall,
     toggleScreenShare: contextToggleScreenShare
   } = useVideoCall();
@@ -473,21 +550,24 @@ export default function GuestMeet() {
           </div>
         ) : (
           <>
-            <div className={cn("absolute inset-0 z-10 grid gap-1", 
-              Object.keys(remoteStreams).length <= 1 ? "grid-cols-1" :
-              Object.keys(remoteStreams).length === 2 ? "grid-cols-2" :
+            <div className={cn("absolute inset-0 z-10 grid gap-1.5 p-1.5 overflow-hidden", 
+              Object.keys(remoteStreams).length === 0 ? "grid-cols-1 grid-rows-1" :
+              Object.keys(remoteStreams).length === 1 ? "grid-cols-1 grid-rows-1" :
+              Object.keys(remoteStreams).length === 2 ? "grid-cols-1 sm:grid-cols-2 grid-rows-1 sm:grid-rows-1" :
               Object.keys(remoteStreams).length <= 4 ? "grid-cols-2 grid-rows-2" :
-              "grid-cols-3 grid-rows-2"
+              Object.keys(remoteStreams).length <= 6 ? "grid-cols-2 md:grid-cols-3 grid-rows-2 md:grid-rows-2" :
+              "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 auto-rows-fr overflow-y-auto"
             )}>
               {Object.entries(remoteStreams).map(([peerId, stream]) => (
-                <div key={peerId} className="w-full h-full relative overflow-hidden bg-zinc-900 border border-white/5">
-                  <RemoteVideo stream={stream} />
+                <div key={peerId} className="w-full h-full min-h-[140px] relative overflow-hidden bg-zinc-900 border border-white/5 rounded-xl shadow-inner">
+                  <RemoteVideo stream={stream} peerName={peerInfo[peerId]?.name} />
                 </div>
               ))}
               {Object.keys(remoteStreams).length === 0 && (
                 <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
                   <Loader2 size={40} className="animate-spin mb-4 text-accent-ai" />
                   <p className="font-bold text-sm tracking-widest uppercase text-white">Warte auf Gastgeber...</p>
+                  <p className="text-xs text-text-muted mt-1">Sobald das Team beitritt, startet die Konferenz automatisch</p>
                 </div>
               )}
             </div>

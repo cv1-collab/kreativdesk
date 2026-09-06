@@ -11,7 +11,11 @@ const RemoteVideo = ({ stream }: { stream: MediaStream }) => {
     const video = videoRef.current;
     if (video && stream) {
       video.srcObject = stream;
-      video.play().catch(e => console.warn("Remote video play note:", e));
+      video.play().catch(e => {
+        console.warn("Global PiP remote video play note:", e);
+        video.muted = true;
+        video.play().catch(() => {});
+      });
 
       const handleTrackUpdate = () => {
         if (video) {
@@ -45,13 +49,6 @@ export function GlobalVideoPlayer() {
   const { activeProjectId } = useProject();
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    if (isMinimized && localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-      localVideoRef.current.play().catch(e => console.warn(e));
-    }
-  }, [isMinimized, localStream]);
 
   useEffect(() => {
     if (isMinimized && localVideoRef.current && localStream) {
@@ -157,7 +154,7 @@ export function GlobalVideoPlayer() {
         <button onClick={toggleCam} className={cn("p-2 rounded-lg backdrop-blur-sm transition-colors", isCamOn ? "bg-black/50 text-white hover:bg-black/80" : "bg-red-500 text-white")}>
           {isCamOn ? <VideoIcon size={16} /> : <VideoOff size={16} />}
         </button>
-        <button onClick={hangUp} className="p-2 bg-red-600 hover:bg-red-500 rounded-lg text-white ml-auto shadow-lg transition-colors">
+        <button onClick={() => hangUp()} className="p-2 bg-red-600 hover:bg-red-500 rounded-lg text-white ml-auto shadow-lg transition-colors cursor-pointer">
           <PhoneOff size={16} />
         </button>
       </div>
