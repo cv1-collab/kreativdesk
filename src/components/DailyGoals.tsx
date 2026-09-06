@@ -58,7 +58,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key;
 
   const fetchGoals = async () => {
-    if (!currentUser?.companyId || !projectId) return;
+    if (!currentUser?.companyId) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
@@ -69,15 +69,28 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
         .order('created_at', { ascending: false });
 
       if (data) {
-        const filtered = data.filter(d => !d.project_id || d.project_id === projectId);
-        setGoals(filtered.map(d => ({
-          id: d.id,
-          title: d.title,
-          completed: d.completed ?? d.current_value === 1,
-          priority: d.priority || 'Medium',
-          createdAt: d.created_at,
-          projectId: d.project_id || projectId
-        })));
+        setGoals(data.map(d => {
+          let priorityVal: 'Low' | 'Medium' | 'High' = 'Medium';
+          let displayTitle = d.title || '';
+          if (displayTitle.startsWith('[High] ')) {
+            priorityVal = 'High';
+            displayTitle = displayTitle.replace('[High] ', '');
+          } else if (displayTitle.startsWith('[Low] ')) {
+            priorityVal = 'Low';
+            displayTitle = displayTitle.replace('[Low] ', '');
+          } else if (displayTitle.startsWith('[Medium] ')) {
+            priorityVal = 'Medium';
+            displayTitle = displayTitle.replace('[Medium] ', '');
+          }
+          return {
+            id: d.id,
+            title: displayTitle,
+            completed: d.current_value === 1 || (d as any).completed === true,
+            priority: priorityVal,
+            createdAt: d.created_at,
+            projectId
+          };
+        }));
       }
     } catch (err) {
       console.error("Error fetching goals:", err);
@@ -103,9 +116,12 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
+      const fullTitle = priority !== 'Medium' ? `[${priority}] ${newGoal.trim()}` : newGoal.trim();
       await supabase.from('goals').insert({
-        title: newGoal,
+        title: fullTitle,
         company_id: safeCompanyId,
+        target_value: 1,
+        current_value: 0,
         created_at: new Date().toISOString()
       });
 
@@ -119,7 +135,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
 
   const handleToggleGoal = async (goalId: string, currentCompleted: boolean) => {
     try {
-      await supabase.from('goals').update({ completed: !currentCompleted }).eq('id', goalId);
+      await supabase.from('goals').update({ current_value: !currentCompleted ? 1 : 0 }).eq('id', goalId);
       setGoals(prev => prev.map(g => g.id === goalId ? { ...g, completed: !currentCompleted } : g));
     } catch (err) {
       console.error("Error toggling goal:", err);
@@ -156,14 +172,11 @@ Antworte als reines JSON-Array von Strings, z.B. ["Bewehrung EG prüfen", "Elekt
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         if (safeCompanyId) {
           for (const title of suggestions) {
-            const goalId = `goal-${Date.now()}-${Math.random()}`;
             await supabase.from('goals').insert({
-              id: goalId,
               company_id: safeCompanyId,
-              project_id: projectId,
-              title,
-              priority: 'High',
-              completed: false,
+              title: `[High] ${title}`,
+              target_value: 1,
+              current_value: 0,
               created_at: new Date().toISOString()
             });
           }

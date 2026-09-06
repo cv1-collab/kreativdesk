@@ -388,21 +388,36 @@ export default function LeadsTab() {
         .order('created_at', { ascending: false });
 
       if (data) {
-        const mapped = data.map(d => ({
-          id: d.id,
-          firstName: d.first_name || d.firstName || d.name || '',
-          lastName: d.last_name || d.lastName || '',
-          company: d.company || '',
-          email: d.email || '',
-          phone: d.phone || '',
-          zipCode: d.zip_code || d.zipCode || '',
-          city: d.city || '',
-          message: d.message || '',
-          status: d.status || 'New',
-          source: d.source || 'Webseite',
-          date: d.created_at ? new Date(d.created_at).toLocaleDateString('de-CH') : (d.date || ''),
-          companyId: d.company_id || d.companyId
-        }));
+        const mapped = data.map(d => {
+          let parsedNotes: any = {};
+          if (d.notes) {
+            try {
+              parsedNotes = JSON.parse(d.notes);
+            } catch {
+              parsedNotes = { message: d.notes };
+            }
+          }
+          const rawName = (d.name || '').trim();
+          const nameParts = rawName.split(' ');
+          const fName = d.first_name || d.firstName || (nameParts.length > 1 ? nameParts[0] : rawName);
+          const lName = d.last_name || d.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+
+          return {
+            id: d.id,
+            firstName: fName,
+            lastName: lName,
+            company: d.company || '',
+            email: d.email || '',
+            phone: d.phone || '',
+            zipCode: d.zip_code || d.zipCode || parsedNotes.zipCode || parsedNotes.zipCity || '',
+            city: d.city || parsedNotes.city || '',
+            message: d.message || parsedNotes.message || parsedNotes.description || d.notes || '',
+            status: d.status || 'New',
+            source: d.source || 'Webseite',
+            date: d.created_at ? new Date(d.created_at).toLocaleDateString('de-CH') : (d.date || ''),
+            companyId: d.company_id || d.companyId
+          };
+        });
         setCollectedLeads(mapped);
       }
     } catch (err) {
@@ -468,18 +483,22 @@ export default function LeadsTab() {
     
     setIsSubmittingScanner(true);
     try {
+      const fullName = [scannedData.firstName, scannedData.lastName].filter(Boolean).join(' ') || 'Neuer Kontakt';
+      const notesPayload = JSON.stringify({
+        street: scannedData.street || '',
+        zipCity: scannedData.zipCity || '',
+        description: scannedData.description || ''
+      });
       await supabase.from('leads').insert({
-        first_name: scannedData.firstName,
-        last_name: scannedData.lastName,
-        company: scannedData.company,
-        email: scannedData.email,
-        phone: scannedData.phone,
-        zip_code: scannedData.zipCity,
-        message: scannedData.description,
+        name: fullName,
+        company: scannedData.company || '',
+        email: scannedData.email || '',
+        phone: scannedData.phone || '',
+        notes: notesPayload,
         source: 'Visitenkarte / Event',
         status: 'New',
-        owner_id: currentUser.uid,
-        company_id: safeCompanyId
+        company_id: safeCompanyId,
+        created_at: new Date().toISOString()
       });
 
       addToast(t('scanned_lead_saved'), 'success');
@@ -500,19 +519,22 @@ export default function LeadsTab() {
 
     setIsSubmittingScanner(true);
     try {
+      const fullName = [leadForm.firstName, leadForm.lastName].filter(Boolean).join(' ') || 'Neuer Lead';
+      const notesPayload = JSON.stringify({
+        zipCode: leadForm.zipCode || '',
+        city: leadForm.city || '',
+        message: leadForm.message || ''
+      });
       await supabase.from('leads').insert({
-        first_name: leadForm.firstName,
-        last_name: leadForm.lastName,
-        company: leadForm.company,
-        email: leadForm.email,
-        phone: leadForm.phone,
-        zip_code: leadForm.zipCode,
-        city: leadForm.city,
-        message: leadForm.message,
+        name: fullName,
+        company: leadForm.company || '',
+        email: leadForm.email || '',
+        phone: leadForm.phone || '',
+        notes: notesPayload,
         source: leadForm.source || 'Webseite',
         status: 'New',
-        owner_id: currentUser.uid,
-        company_id: safeCompanyId
+        company_id: safeCompanyId,
+        created_at: new Date().toISOString()
       });
 
       setLeadForm({ firstName: '', lastName: '', company: '', email: '', phone: '', website: '', zipCode: '', city: '', projectType: 'Planung', source: 'Webseite', message: '' }); 

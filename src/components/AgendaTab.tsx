@@ -964,10 +964,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       try {
         await supabase.from('video_calls').upsert({
           id: callMeetingId,
-          project_id: projId,
-          company_id: safeCompanyId,
-          caller_name: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Host',
-          caller_id: currentUser?.uid,
+          host_id: currentUser?.uid || 'user',
+          room_name: projId,
+          status: 'active',
           created_at: new Date().toISOString()
         });
       } catch (callErr) {

@@ -169,13 +169,13 @@ export default function PublicLeadForm() {
     setSuccessMsg(null);
     
     try {
+      const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(' ') || 'Neuer Lead';
       await supabase.from('leads').insert({
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        company: formData.company,
+        name: fullName,
+        company: formData.company || '',
         email: formData.email,
-        phone: formData.phone,
-        message: formData.message,
+        phone: formData.phone || '',
+        notes: formData.message || '',
         company_id: companyId || 'kreativ-desk-website',
         source: 'Landingpage B2B Request',
         status: 'New',
