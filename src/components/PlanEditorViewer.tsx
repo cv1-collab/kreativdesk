@@ -374,10 +374,22 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => setIsMounted(true), []);
 
+  const cadCacheKey = `kreativdesk_cad_cache_${currentProjectId}`;
   const cadStorageKey = `cad_state_${currentProjectId}`;
+
+  const getCachedPlan = () => {
+    try {
+      const cached = localStorage.getItem(cadCacheKey);
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return null;
+  };
+
+  const initialCache = getCachedPlan();
   const [projectPlans, setProjectPlans] = useState<any[]>([]);
   
   const [activePlanId, setActivePlanIdRaw] = useState<string | null>(() => {
+    if (initialCache?.id) return initialCache.id;
     try {
       const saved = localStorage.getItem(cadStorageKey);
       if (saved) {
@@ -399,8 +411,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     });
   };
 
-  const [planImage, setPlanImage] = useState<string | null>(null);
-  const [planName, setPlanName] = useState<string>('');
+  const [planImage, setPlanImage] = useState<string | null>(() => initialCache?.planImage || null);
+  const [planName, setPlanName] = useState<string>(() => initialCache?.planName || '');
   
   const [activeTool, setActiveToolRaw] = useState<ToolType>(() => {
     try {
@@ -421,18 +433,55 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     } catch (e) {}
   };
 
-  const [paperFormat, setPaperFormat] = useState<string>('A3');
-  const [paperOrientation, setPaperOrientation] = useState<'landscape'|'portrait'>('landscape');
-  const [planScale, setPlanScale] = useState<number>(50); 
+  const [paperFormat, setPaperFormat] = useState<string>(() => initialCache?.paperFormat || 'A3');
+  const [paperOrientation, setPaperOrientation] = useState<'landscape'|'portrait'>(() => initialCache?.paperOrientation || 'landscape');
+  const [planScale, setPlanScale] = useState<number>(() => initialCache?.planScale || 50); 
   const [scale, setScale] = useState(0.8); 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const startPan = useRef({ x: 0, y: 0 });
   
-  const [layers, setLayers] = useState<Layer[]>([{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }]);
-  const [activeLayerId, setActiveLayerId] = useState<string>('default');
+  const [layers, setLayers] = useState<Layer[]>(() => initialCache?.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }]);
+  const [activeLayerId, setActiveLayerId] = useState<string>(() => initialCache?.activeLayerId || 'default');
   
-  const [elements, setElements] = useState<PlanElement[]>([]);
+  const [elements, setElements] = useState<PlanElement[]>(() => initialCache?.elements || []);
+
+  const savePlanToCache = (data: {
+    id: string | null;
+    planName: string;
+    planImage: string | null;
+    paperFormat: string;
+    paperOrientation: 'landscape' | 'portrait';
+    planScale: number;
+    elements: PlanElement[];
+    layers: Layer[];
+    activeLayerId: string;
+  }) => {
+    try {
+      if (data.id && data.planImage) {
+        localStorage.setItem(cadCacheKey, JSON.stringify(data));
+      }
+    } catch (e) {}
+  };
+
+  // Sync editor modifications into local intermediate cache
+  useEffect(() => {
+    if (!activePlanId || !planImage) return;
+    const timeout = setTimeout(() => {
+      savePlanToCache({
+        id: activePlanId,
+        planName,
+        planImage,
+        paperFormat,
+        paperOrientation,
+        planScale,
+        elements,
+        layers,
+        activeLayerId
+      });
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, elements, layers, activeLayerId]);
   const [draftElement, setDraftElement] = useState<PlanElement | null>(null);
   const [selectedElement, setSelectedElement] = useState<PlanElement | null>(null);
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
@@ -567,7 +616,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          activeLayerId: 'default'
        };
        setProjectPlans([mockPlan]);
-       if (!activePlanId) loadPlanDataToEditor(mockPlan);
+       loadPlanDataToEditor(mockPlan);
        return; 
     }
 
@@ -597,13 +646,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             };
           });
           setProjectPlans(mappedPlans as any);
-          if (!activePlanId) loadPlanDataToEditor(mappedPlans[0]);
+          
+          // Select and load the active plan, or fallback to the first plan in list
+          const targetPlan = (activePlanId ? mappedPlans.find((p: any) => p.id === activePlanId) : null) || mappedPlans[0];
+          loadPlanDataToEditor(targetPlan);
         } else {
           setProjectPlans([]);
           setActivePlanId(null);
           setPlanImage(null);
           setPlanName('');
           setElements([]);
+          try { localStorage.removeItem(cadCacheKey); } catch (e) {}
         }
       } catch (err) {
         console.error("Unerwarteter Fehler in fetchPlans:", err);
@@ -617,16 +670,36 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     setActivePlanId(planData.id);
     const metaEl = Array.isArray(planData.elements) ? planData.elements.find((e: any) => e?.id === '__plan_meta__') : null;
     const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || null;
+    const resolvedName = planData.planName || planData.plan_name || planData.name || 'Unbenannt';
+    const resolvedElements = (planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
+    const resolvedLayers = planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }];
+    const resolvedActiveLayerId = planData.activeLayerId || planData.active_layer_id || 'default';
+    const resolvedPaperFormat = planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3';
+    const resolvedPaperOrientation = planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape';
+    const resolvedPlanScale = planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50;
+
     setPlanImage(resolvedImage);
-    setPlanName(planData.planName || planData.plan_name || planData.name || 'Unbenannt');
-    setElements((planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__'));
-    setLayers(planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }]);
-    setActiveLayerId(planData.activeLayerId || planData.active_layer_id || 'default');
-    setPaperFormat(planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3');
-    setPaperOrientation(planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape');
-    setPlanScale(planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50);
+    setPlanName(resolvedName);
+    setElements(resolvedElements);
+    setLayers(resolvedLayers);
+    setActiveLayerId(resolvedActiveLayerId);
+    setPaperFormat(resolvedPaperFormat);
+    setPaperOrientation(resolvedPaperOrientation);
+    setPlanScale(resolvedPlanScale);
     setPan({ x: 0, y: 0 });
     setSelectedElement(null);
+
+    savePlanToCache({
+      id: planData.id,
+      planName: resolvedName,
+      planImage: resolvedImage,
+      paperFormat: resolvedPaperFormat,
+      paperOrientation: resolvedPaperOrientation,
+      planScale: resolvedPlanScale,
+      elements: resolvedElements,
+      layers: resolvedLayers,
+      activeLayerId: resolvedActiveLayerId
+    });
   };
 
   const handleAddLayer = () => {
@@ -933,10 +1006,19 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const handleDeletePlan = async () => {
     if (activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht gelöscht werden.", "info");
     if (activePlanId && window.confirm(t('confirm_delete_plan'))) {
-      await supabase.from('cad_plans').delete().eq('id', activePlanId);
-      setProjectPlans(prev => prev.filter(p => p.id !== activePlanId));
-      setPlanImage(null); 
-      setActivePlanId(null);
+      const deletedId = activePlanId;
+      await supabase.from('cad_plans').delete().eq('id', deletedId);
+      const remainingPlans = projectPlans.filter(p => p.id !== deletedId);
+      setProjectPlans(remainingPlans);
+      try { localStorage.removeItem(cadCacheKey); } catch (e) {}
+      if (remainingPlans.length > 0) {
+        loadPlanDataToEditor(remainingPlans[0]);
+      } else {
+        setPlanImage(null); 
+        setActivePlanId(null);
+        setPlanName('');
+        setElements([]);
+      }
       addToast("Plan gelöscht", "info");
     }
   };

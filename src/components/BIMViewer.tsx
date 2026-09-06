@@ -220,56 +220,67 @@ function SnapshotHelper() {
   return null;
 }
 
-const normalizeModel = (scene: THREE.Object3D) => {
-  const box = new THREE.Box3().setFromObject(scene);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-
-  scene.position.x = -center.x;
-  scene.position.y = -center.y;
-  scene.position.z = -center.z;
-
-  const maxDim = Math.max(size.x, size.y, size.z);
-  if (maxDim > 0) {
-    const scale = 10 / maxDim;
-    scene.scale.set(scale, scale, scale);
+class ModelErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode; onError?: (error: any) => void },
+  { hasError: boolean; error: any }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
   }
-
-  scene.traverse((child: any) => {
-    if (child.isMesh && child.material) {
-      if (Array.isArray(child.material)) {
-        child.material.forEach((mat: any) => {
-          if (mat.map) {
-            mat.map.generateMipmaps = false;
-            mat.map.minFilter = THREE.LinearFilter;
-          }
-        });
-      } else if (child.material.map) {
-        child.material.map.generateMipmaps = false;
-        child.material.map.minFilter = THREE.LinearFilter;
-      }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error("3D Model render error caught by ModelErrorBoundary:", error, info);
+    this.props.onError?.(error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
     }
-  });
-  return scene;
-};
+    return this.props.children;
+  }
+}
 
 function IfcModel({ url, onSelect, t }: { url: string, onSelect: (id: string, details: any) => void, t: (key: string) => string }) {
   const [model, setModel] = useState<any>(null);
+  const [scale, setScale] = useState<number>(1);
   const { addToast } = useToast();
   useEffect(() => {
     const loader = new IFCLoader();
     loader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.36/');
     loader.load(url, (ifcModel) => { 
-      normalizeModel(ifcModel);
+      ifcModel.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(ifcModel);
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+      setScale(maxDim > 0 ? 8 / maxDim : 1);
+
+      ifcModel.traverse((child: any) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m: any) => { m.side = THREE.DoubleSide; });
+            } else {
+              child.material.side = THREE.DoubleSide;
+            }
+          }
+        }
+      });
       setModel(ifcModel); 
     }, undefined, (error) => { console.error("Error loading IFC:", error); addToast(t('error_loading_ifc'), "error"); });
   }, [url, addToast, t]);
 
   if (!model) return null;
   return (
-    <Center>
-      <primitive object={model} onClick={(e: any) => { e.stopPropagation(); if (e.object.geometry && e.faceIndex !== undefined) { onSelect(`ifc-element-${Math.floor(Math.random() * 1000)}`, { type: 'IFC Element', material: 'Unknown', cost: 'N/A', status: 'Imported' }); } }} />
-    </Center>
+    <group scale={[scale, scale, scale]}>
+      <Center>
+        <primitive object={model} onClick={(e: any) => { e.stopPropagation(); if (e.object.geometry && e.faceIndex !== undefined) { onSelect(`ifc-element-${Math.floor(Math.random() * 1000)}`, { type: 'IFC Element', material: 'Unknown', cost: 'N/A', status: 'Imported' }); } }} />
+      </Center>
+    </group>
   );
 }
 
@@ -279,20 +290,132 @@ function GltfModel({ url, onClick }: { url: string, onClick: (e: any) => void })
     dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
     loader.setDRACOLoader(dracoLoader);
   }); 
-  useEffect(() => { normalizeModel(gltf.scene); }, [gltf]);
-  return <Center><primitive object={gltf.scene} onClick={onClick} /></Center>; 
+
+  const { scene, scale } = React.useMemo(() => {
+    if (!gltf || !gltf.scene) return { scene: null, scale: 1 };
+    const cloned = gltf.scene.clone(true);
+    cloned.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
+
+    cloned.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m: any) => {
+              const mat = m.clone();
+              mat.side = THREE.DoubleSide;
+              return mat;
+            });
+          } else {
+            child.material = child.material.clone();
+            child.material.side = THREE.DoubleSide;
+          }
+        }
+      }
+    });
+
+    return { scene: cloned, scale: calculatedScale };
+  }, [gltf]);
+
+  if (!scene) return null;
+  return (
+    <group scale={[scale, scale, scale]}>
+      <Center>
+        <primitive object={scene} onClick={onClick} />
+      </Center>
+    </group>
+  );
 }
 
 function ObjModel({ url, onClick }: { url: string, onClick: (e: any) => void }) { 
   const obj = useLoader(OBJLoader, url); 
-  useEffect(() => { normalizeModel(obj); }, [obj]);
-  return <Center><primitive object={obj} onClick={onClick} /></Center>; 
+  const { scene, scale } = React.useMemo(() => {
+    if (!obj) return { scene: null, scale: 1 };
+    const cloned = obj.clone(true);
+    cloned.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
+
+    cloned.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m: any) => {
+              const mat = m.clone();
+              mat.side = THREE.DoubleSide;
+              return mat;
+            });
+          } else {
+            child.material = child.material.clone();
+            child.material.side = THREE.DoubleSide;
+          }
+        }
+      }
+    });
+
+    return { scene: cloned, scale: calculatedScale };
+  }, [obj]);
+
+  if (!scene) return null;
+  return (
+    <group scale={[scale, scale, scale]}>
+      <Center>
+        <primitive object={scene} onClick={onClick} />
+      </Center>
+    </group>
+  );
 }
 
 function DaeModel({ url, onClick }: { url: string, onClick: (e: any) => void }) { 
   const dae = useLoader(ColladaLoader, url); 
-  useEffect(() => { normalizeModel(dae.scene); }, [dae]);
-  return <Center><primitive object={dae.scene} onClick={onClick} /></Center>; 
+  const { scene, scale } = React.useMemo(() => {
+    if (!dae || !dae.scene) return { scene: null, scale: 1 };
+    const cloned = dae.scene.clone(true);
+    cloned.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
+
+    cloned.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m: any) => {
+              const mat = m.clone();
+              mat.side = THREE.DoubleSide;
+              return mat;
+            });
+          } else {
+            child.material = child.material.clone();
+            child.material.side = THREE.DoubleSide;
+          }
+        }
+      }
+    });
+
+    return { scene: cloned, scale: calculatedScale };
+  }, [dae]);
+
+  if (!scene) return null;
+  return (
+    <group scale={[scale, scale, scale]}>
+      <Center>
+        <primitive object={scene} onClick={onClick} />
+      </Center>
+    </group>
+  );
 }
 
 function DwgModel({ onClick, t }: { onClick: (e: any) => void, t: (key: string) => string }) {
@@ -609,10 +732,19 @@ export default function BIMViewer() {
   
   const { addToast } = useToast();
 
+  const bimModelStorageKey = `kreativdesk_bim_${projectId || 'global'}`;
   const [customModels, setCustomModels] = useState<any[]>([]);
   const [activeModelId, setActiveModelId] = useState<string>(() => {
-    return localStorage.getItem(`kreativdesk_bim_${projectId}`) || 'default';
+    return localStorage.getItem(bimModelStorageKey) || 'default';
   });
+
+  const selectModel = (id: string) => {
+    setActiveModelId(id);
+    try {
+      localStorage.setItem(bimModelStorageKey, id);
+    } catch (e) {}
+    if (isMobile) setShowMobileTools(false);
+  };
 
   const mainInputRef = useRef<HTMLInputElement>(null);
 
@@ -1063,7 +1195,8 @@ export default function BIMViewer() {
     if (!window.confirm(t('confirm_delete_model'))) return;
     try {
       await supabase.from('documents').delete().eq('id', model.id);
-      if (activeModelId === model.id) setActiveModelId('default');
+      setCustomModels(prev => prev.filter(m => m.id !== model.id));
+      if (activeModelId === model.id) selectModel('default');
     } catch (err) { addToast(t('error_processing_model'), 'error'); }
   };
 
@@ -1103,7 +1236,10 @@ export default function BIMViewer() {
         created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       }).select().single();
 
-      if (createdDoc) setActiveModelId(createdDoc.id);
+      if (createdDoc) {
+        setCustomModels(prev => [createdDoc, ...prev.filter(m => m.id !== createdDoc.id)]);
+        selectModel(createdDoc.id);
+      }
       addToast(t('model_saved'), 'success');
     } catch (err) {
       console.error("Upload error:", err);
@@ -1142,7 +1278,7 @@ export default function BIMViewer() {
         </div>
         <div className="space-y-2 overflow-y-auto custom-scrollbar pr-2 max-h-[150px] min-h-0 relative">
           <button 
-            onClick={() => { setActiveModelId('default'); if(isMobile) setShowMobileTools(false); }} 
+            onClick={() => selectModel('default')} 
             className={cn("w-full flex items-center justify-between p-2 rounded-lg text-sm font-medium transition-colors border shrink-0", activeModelId === 'default' ? "bg-accent-ai/10 border-accent-ai/30 text-accent-ai" : "bg-background border-border hover:bg-surface text-text-primary")}
           >
             <span className="truncate">Munich Tech Campus v2.4</span>
@@ -1151,7 +1287,7 @@ export default function BIMViewer() {
           
           {customModels.map(model => (
             <div key={model.id} className={cn("flex items-center justify-between p-2 rounded-lg text-sm font-medium transition-colors border shrink-0", activeModelId === model.id ? "bg-accent-ai/10 border-accent-ai/30 text-accent-ai" : "bg-background border-border hover:bg-surface text-text-primary")}>
-              <div className="flex-1 truncate cursor-pointer pr-2" onClick={() => { setActiveModelId(model.id); if(isMobile) setShowMobileTools(false); }}>
+              <div className="flex-1 truncate cursor-pointer pr-2" onClick={() => selectModel(model.id)}>
                 {model.name}
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -1383,18 +1519,34 @@ export default function BIMViewer() {
                     <ambientLight intensity={isMobile ? 1.0 : 0.5} />
                     <directionalLight position={[10, 20, 5]} intensity={1.5} />
                     
-                    <Suspense fallback={<Html center zIndexRange={[10, 0]}><Loader2 className="animate-spin text-accent-ai" size={32} /></Html>}>
+                    <Suspense fallback={<Html center zIndexRange={[10, 0]}><div className="flex flex-col items-center gap-2 p-3.5 bg-surface/90 backdrop-blur-md border border-border rounded-xl shadow-xl text-text-primary text-xs font-semibold"><Loader2 className="animate-spin text-accent-ai" size={24} /><span>3D-Modell wird geladen...</span></div></Html>}>
                       {activeModel ? (
-                        <UploadedModelViewer 
-                           url={activeModel.url} 
-                           type={activeModel.type} 
-                           onSelect={handleSelect} 
-                           measureMode={measureMode} 
-                           onMeasureClick={handleMeasureClick} 
-                           defectMode={defectMode} 
-                           onDefectClick={handleDefectClick} 
-                           t={t} 
-                        />
+                        <ModelErrorBoundary
+                          onError={(err) => console.error("3D Model Render Error:", err)}
+                          fallback={
+                            <Html center zIndexRange={[10, 0]}>
+                              <div className="flex flex-col items-center gap-2.5 p-5 bg-surface/95 backdrop-blur-md border border-red-500/40 rounded-2xl shadow-2xl text-center max-w-xs">
+                                <AlertTriangle className="text-red-500" size={28} />
+                                <div className="font-bold text-xs text-text-primary">3D-Modell konnte nicht gerendert werden</div>
+                                <p className="text-[11px] text-text-muted leading-relaxed">Möglicherweise enthält die Datei ein inkompatibles Format oder Shader.</p>
+                                <button onClick={() => selectModel('default')} className="mt-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow transition-colors">
+                                  Standard-Modell anzeigen
+                                </button>
+                              </div>
+                            </Html>
+                          }
+                        >
+                          <UploadedModelViewer 
+                             url={activeModel.url} 
+                             type={activeModel.type} 
+                             onSelect={handleSelect} 
+                             measureMode={measureMode} 
+                             onMeasureClick={handleMeasureClick} 
+                             defectMode={defectMode} 
+                             onDefectClick={handleDefectClick} 
+                             t={t} 
+                          />
+                        </ModelErrorBoundary>
                       ) : (
                         <Building layers={layersInfo} activeFloor={activeFloor} selectedId={selectedId} onSelect={handleSelect} isExploded={isExploded} measureMode={measureMode} onMeasureClick={handleMeasureClick} defectMode={defectMode} onDefectClick={handleDefectClick} />
                       )}
@@ -1430,7 +1582,7 @@ export default function BIMViewer() {
                     
                     <OrbitControls 
                       makeDefault 
-                      target={[0, activeFloor !== null ? activeFloor * 4 : 4, 0]} 
+                      target={activeModel ? [0, 0, 0] : [0, activeFloor !== null ? activeFloor * 4 : 4, 0]} 
                       enableDamping={!isMobile}
                       dampingFactor={0.05}
                       mouseButtons={{
