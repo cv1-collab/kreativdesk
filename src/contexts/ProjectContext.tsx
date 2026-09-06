@@ -5,8 +5,12 @@ import { supabase } from '../lib/supabase';
 import { offboardProject } from '../services/projectService';
 import { demoTemplates } from '../utils/demoTemplates';
 import { ensureDefaultCompanyFolders } from '../services/seedService';
-import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { sendNotification } from '../lib/notifications';
+import { useProjectDefects, Defect } from '../hooks/useProjectDefects';
+import { useProjectTeam, CompanyUser, ProjectMember } from '../hooks/useProjectTeam';
+import { useProjectTimeEntries, TimeEntry } from '../hooks/useProjectTimeEntries';
+
+export type { Defect, CompanyUser, ProjectMember, TimeEntry };
 
 export interface Project { 
   id: string; 
@@ -31,21 +35,30 @@ export interface Project {
   accessUrl?: string;
   access_url?: string;
 }
-export interface CompanyUser { id: string; name: string; email: string; role: 'Admin' | 'Internal' | 'External Planner' | 'Client'; department?: string; hourlyRate?: number; avatar?: string; ownerId: string; companyId: string; }
-export interface TimeEntry { id: string; userId: string; projectId: string; date: string; hours: number; description: string; hourlyRate?: number; ownerId: string; companyId: string; }
-export interface Defect { id: string; title: string; status: string; priority: string; assignee: string; date: string; trade: string; location: string; description: string; imageUrl?: string; ownerId: string; companyId: string; projectId: string; dueDate?: string; }
 
 interface ProjectContextType {
-  projects: Project[]; activeProjectId: string | null; companyUsers: CompanyUser[]; projectMembers: any[]; timeEntries: TimeEntry[]; defects: Defect[];
-  setActiveProject: (id: string | null) => void; addProject: (project: any) => Promise<any>; removeProject: (id: string) => Promise<void>;
+  projects: Project[];
+  activeProjectId: string | null;
+  companyUsers: CompanyUser[];
+  projectMembers: ProjectMember[];
+  timeEntries: TimeEntry[];
+  defects: Defect[];
+  setActiveProject: (id: string | null) => void;
+  addProject: (project: any) => Promise<any>;
+  removeProject: (id: string) => Promise<void>;
   updateProjectStatus: (id: string, status: string) => Promise<void>;
   fetchCompanyUsers: () => Promise<void>;
   fetchProjects: () => Promise<void>;
   fetchProjectDetails: () => Promise<void>;
   refreshAllData: () => Promise<void>;
-  addCompanyUser: (user: any) => Promise<void>; updateCompanyUser: (id: string, user: any) => Promise<void>; removeCompanyUser: (id: string) => Promise<void>;
-  addProjectMember: (projectId: string, memberData: any) => Promise<void>; removeProjectMember: (projectId: string, userId: string) => Promise<void>;
-  addTimeEntry: (entry: any) => Promise<void>; isDemoMode: boolean; demoData: any;
+  addCompanyUser: (user: any) => Promise<void>;
+  updateCompanyUser: (id: string, user: any) => Promise<void>;
+  removeCompanyUser: (id: string) => Promise<void>;
+  addProjectMember: (projectId: string, memberData: any) => Promise<void>;
+  removeProjectMember: (projectId: string, userId: string) => Promise<void>;
+  addTimeEntry: (entry: any) => Promise<void>;
+  isDemoMode: boolean;
+  demoData: any;
 }
 
 export const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -55,15 +68,31 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
-  const [projectMembers, setProjectMembers] = useState<any[]>([]);
-  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
-  const [defects, setDefects] = useState<Defect[]>([]);
+
+  // Modular Custom Domain Hooks
+  const { defects, fetchDefects } = useProjectDefects();
+  const {
+    companyUsers,
+    projectMembers,
+    fetchCompanyUsers: fetchTeamUsers,
+    fetchProjectMembers,
+    addCompanyUser: addTeamUser,
+    updateCompanyUser: updateTeamUser,
+    removeCompanyUser: removeTeamUser,
+    addProjectMember: addTeamMember,
+    removeProjectMember: removeTeamMember
+  } = useProjectTeam();
+  const { timeEntries, fetchTimeEntries, addTimeEntry: addTimeEntryInternal } = useProjectTimeEntries();
+
+  const getSafeCompanyId = useCallback(() => {
+    if (!currentUser) return '';
+    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
+    return previewCompanyId || currentUser.companyId || currentUser.uid || '';
+  }, [currentUser]);
 
   const fetchProjects = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
-    const safeCompanyId = previewCompanyId || currentUser.companyId || currentUser.uid;
+    const safeCompanyId = getSafeCompanyId();
 
     try {
       await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
@@ -103,156 +132,29 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Error fetching projects:", err);
     }
-  }, [currentUser?.companyId, currentUser?.uid]);
+  }, [currentUser, getSafeCompanyId]);
 
   const fetchCompanyUsers = useCallback(async () => {
-    if (!currentUser || !currentUser.uid) return;
-    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
-    const safeCompanyId = previewCompanyId || currentUser.companyId || currentUser.uid;
-
-    try {
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      const { data: crmData } = await supabase
-        .from('company_users')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      const mappedProfiles: CompanyUser[] = (profs || []).map((p: any) => ({
-        id: p.id,
-        name: p.name || p.email,
-        email: p.email,
-        role: p.role === 'owner' ? 'Admin' : 'Internal',
-        avatar: p.photo_url || p.avatar || '',
-        ownerId: p.id,
-        companyId: p.company_id || safeCompanyId
-      }));
-
-      const mappedCrm: CompanyUser[] = (crmData || []).map((u: any) => ({
-        id: u.id,
-        name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
-        email: u.email || '',
-        role: (u.role as any) || 'Internal',
-        avatar: '',
-        ownerId: u.id,
-        companyId: safeCompanyId
-      }));
-
-      const userMap = new Map<string, CompanyUser>();
-      mappedProfiles.forEach(p => { if (p.id || p.email) userMap.set(p.id || p.email, p); });
-      mappedCrm.forEach(c => { if (c.id || c.email) userMap.set(c.id || c.email, c); });
-
-      const combinedUsers = Array.from(userMap.values());
-      setCompanyUsers(combinedUsers);
-    } catch (err) {
-      console.error("Error fetching company users:", err);
-    }
-  }, [currentUser]);
+    const safeCompanyId = getSafeCompanyId();
+    if (!safeCompanyId) return;
+    await fetchTeamUsers(safeCompanyId);
+  }, [getSafeCompanyId, fetchTeamUsers]);
 
   const fetchProjectDetails = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
-    const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
-    const safeCompanyId = previewCompanyId || currentUser.companyId || currentUser.uid;
+    const safeCompanyId = getSafeCompanyId();
+    if (!safeCompanyId) return;
 
     try {
-      const { data: mems } = await supabase
-        .from('project_members')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      if (mems) {
-        setProjectMembers(mems.map(m => ({
-          id: m.id,
-          projectId: m.project_id,
-          userId: m.user_id,
-          companyId: m.company_id
-        })));
-      }
-
-      const { data: defs } = await supabase
-        .from('defects')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      if (defs) {
-        setDefects(defs.map((d: any) => {
-          const rawStatus = d.status || 'To Do';
-          const lowerSt = rawStatus.toLowerCase().trim();
-          const normStatus = (lowerSt === 'offen' || lowerSt === 'to do') ? 'To Do' :
-                             (lowerSt === 'in arbeit' || lowerSt === 'in progress') ? 'In Progress' :
-                             (lowerSt === 'in prüfung' || lowerSt === 'in review') ? 'In Review' :
-                             (lowerSt === 'erledigt' || lowerSt === 'behoben' || lowerSt === 'done') ? 'Done' : rawStatus;
-
-          const rawSev = d.severity || d.priority || 'Medium';
-          const lowerSev = rawSev.toLowerCase().trim();
-          const normSev = (lowerSev === 'kritisch' || lowerSev === 'critical') ? 'Critical' :
-                          (lowerSev === 'hoch' || lowerSev === 'high') ? 'High' :
-                          (lowerSev === 'mittel' || lowerSev === 'medium') ? 'Medium' :
-                          (lowerSev === 'leicht' || lowerSev === 'low') ? 'Low' : rawSev;
-
-          return {
-            id: d.id,
-            title: d.prompt || d.title || d.description?.substring(0, 30) || 'Mangel',
-            status: normStatus,
-            priority: normSev,
-            assignee: d.assignee || '',
-            date: d.created_at || new Date().toISOString(),
-            trade: d.trade || '',
-            location: d.location || '',
-            description: d.description || '',
-            imageUrl: d.image_url,
-            ownerId: d.owner_id || currentUser.uid,
-            companyId: d.company_id,
-            projectId: d.project_id || d.projectId
-          };
-        }));
-      }
-
-      // Multi-tier TimeEntries Fetching
-      const localCacheKey = `time_entries_cache_${safeCompanyId}`;
-      const localCached = localStorage.getItem(localCacheKey);
-      const localTimes = localCached ? JSON.parse(localCached) : [];
-
-      const { data: times } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      let configTime: any = null;
-      try {
-        configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
-      } catch (e) {}
-
-      const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
-      const timeMap = new Map();
-      [...localTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
-        if (t && (t.id || t.description || t.hours)) {
-          const tId = t.id || `time-${t.date}-${t.hours}`;
-          timeMap.set(tId, {
-            id: tId,
-            userId: t.userId || t.user_id || currentUser.uid,
-            projectId: t.projectId || t.project_id || 'global',
-            date: t.date || new Date().toISOString().split('T')[0],
-            hours: Number(t.hours || 0),
-            description: t.description || 'Zeiterfassung',
-            hourlyRate: Number(t.hourlyRate || t.hourly_rate || 120),
-            isBillable: t.isBillable !== undefined ? t.isBillable : (t.is_billable !== undefined ? t.is_billable : true),
-            ownerId: t.ownerId || t.owner_id || currentUser.uid,
-            companyId: t.companyId || t.company_id || safeCompanyId
-          });
-        }
-      });
-      const mergedTimes = Array.from(timeMap.values());
-      setTimeEntries(mergedTimes as TimeEntry[]);
-      localStorage.setItem(localCacheKey, JSON.stringify(mergedTimes));
-
+      await Promise.all([
+        fetchProjectMembers(safeCompanyId),
+        fetchDefects(safeCompanyId, currentUser.uid),
+        fetchTimeEntries(safeCompanyId, currentUser.uid)
+      ]);
     } catch (err) {
-      console.error("Error fetching project details:", err);
+      console.error("Error fetching project details in ProjectContext:", err);
     }
-  }, [currentUser]);
+  }, [currentUser, getSafeCompanyId, fetchProjectMembers, fetchDefects, fetchTimeEntries]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -295,7 +197,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const addProject = async (projectData: any) => {
     if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    const safeCompanyId = getSafeCompanyId();
 
     const { data: newProj, error } = await supabase
       .from('projects')
@@ -351,7 +253,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const removeProject = async (id: string) => {
     const targetProj = projects.find(p => p.id === id);
-    const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
+    const safeCompanyId = getSafeCompanyId();
     try {
       await offboardProject(id, safeCompanyId);
     } catch (err) {
@@ -378,7 +280,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
 
   const updateProjectStatus = async (id: string, status: string) => {
     const targetProj = projects.find(p => p.id === id);
-    const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
+    const safeCompanyId = getSafeCompanyId();
     setProjects(prev => prev.map(p => p.id === id ? { ...p, status: status as any } : p));
     try {
       await supabase.from('projects').update({ status }).eq('id', id);
@@ -400,112 +302,35 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     await fetchProjects();
   };
 
-  const addCompanyUser = async (userData: any) => {
-    fetchCompanyUsers();
+  const addCompanyUser = async (_userData: any) => {
+    const safeCompanyId = getSafeCompanyId();
+    await addTeamUser(safeCompanyId);
   };
 
-  const updateCompanyUser = async (id: string, userData: any) => {
-    fetchCompanyUsers();
+  const updateCompanyUser = async (_id: string, _userData: any) => {
+    const safeCompanyId = getSafeCompanyId();
+    await updateTeamUser(safeCompanyId);
   };
 
   const removeCompanyUser = async (id: string) => {
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    try {
-      await supabase.from('company_users').delete().eq('id', id);
-      await supabase.from('profiles').delete().eq('id', id).eq('company_id', safeCompanyId);
-    } catch (e) {
-      console.error("Fehler beim Löschen des Benutzers:", e);
-    }
-    await fetchCompanyUsers();
+    const safeCompanyId = getSafeCompanyId();
+    await removeTeamUser(id, safeCompanyId);
   };
 
   const addProjectMember = async (projectId: string, memberData: any) => {
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const newMember = {
-      id: `pm-${Date.now()}`,
-      projectId,
-      userId: memberData.userId,
-      userEmail: memberData.userEmail || '',
-      projectRole: memberData.projectRole || 'Viewer',
-      companyRole: memberData.companyRole || 'External Partner',
-      companyId: safeCompanyId
-    };
-
-    setProjectMembers(prev => [...prev, newMember]);
-
-    try {
-      await supabase.from('project_members').insert({
-        project_id: projectId,
-        user_id: memberData.userId,
-        company_id: safeCompanyId
-      });
-    } catch (err) {
-      console.warn("addProjectMember error:", err);
-    }
-    fetchProjectDetails();
+    const safeCompanyId = getSafeCompanyId();
+    await addTeamMember(projectId, memberData, safeCompanyId);
   };
 
   const removeProjectMember = async (projectId: string, userId: string) => {
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    
-    setProjectMembers(prev => prev.filter(m => !(m.projectId === projectId && m.userId === userId)));
-
-    try {
-      await supabase.from('project_members').delete().eq('project_id', projectId).eq('user_id', userId);
-    } catch (err) {
-      console.warn("removeProjectMember error:", err);
-    }
-    fetchProjectDetails();
+    const safeCompanyId = getSafeCompanyId();
+    await removeTeamMember(projectId, userId, safeCompanyId);
   };
 
   const addTimeEntry = async (entryData: any) => {
-    if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-
-    const tId = entryData.id || `time-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-    const newEntry: TimeEntry = {
-      id: tId,
-      userId: entryData.userId || entryData.user_id || currentUser.uid,
-      projectId: entryData.projectId || entryData.project_id || 'global',
-      date: entryData.date || new Date().toISOString().split('T')[0],
-      hours: Number(entryData.hours || 0),
-      description: entryData.description || 'Zeiterfassung',
-      hourlyRate: Number(entryData.hourlyRate || entryData.hourly_rate || 120),
-      ownerId: currentUser.uid,
-      companyId: safeCompanyId
-    };
-
-    setTimeEntries(prev => {
-      const updated = [newEntry, ...prev];
-      localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(updated));
-      return updated;
-    });
-
-    try {
-      const existingConfig = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
-      const existingEntries = existingConfig?.entries || [];
-      await saveSystemConfigJSON(`time_entries_${safeCompanyId}`, { entries: [newEntry, ...existingEntries], companyId: safeCompanyId }, safeCompanyId);
-    } catch (err) {
-      console.warn("ProjectContext addTimeEntry backup warning:", err);
-    }
-
-    try {
-      await supabase.from('time_entries').insert({
-        id: newEntry.id,
-        user_id: newEntry.userId,
-        project_id: newEntry.projectId,
-        date: newEntry.date,
-        hours: newEntry.hours,
-        description: newEntry.description,
-        company_id: safeCompanyId,
-        created_at: new Date().toISOString()
-      });
-    } catch (err) {
-      console.warn("ProjectContext addTimeEntry insert warning:", err);
-    }
+    if (!currentUser?.uid) return;
+    const safeCompanyId = getSafeCompanyId();
+    await addTimeEntryInternal(entryData, safeCompanyId, currentUser.uid);
   };
 
   return (
