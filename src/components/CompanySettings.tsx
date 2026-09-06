@@ -81,13 +81,31 @@ export default function CompanySettings() {
 
   const maxSeats = company?.max_seats || company?.maxSeats || 5;
 
-  const handleGenerateLink = () => {
+  const handleGenerateLink = async () => {
     if (memberCount >= maxSeats) {
       addToast(t('error_limit'), 'error');
       return;
     }
     const token = Math.random().toString(36).substring(2, 15);
-    const link = `${window.location.origin}/signup?invite=${token}&companyId=${currentUser?.companyId}`;
+    const safeCompanyId = currentUser?.companyId;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safeCompanyId || '');
+
+    if (safeCompanyId && isUuid) {
+      try {
+        await supabase.from('invites').insert({
+          token,
+          company_id: safeCompanyId,
+          email: `invite_${token}@workspace.local`,
+          role: 'employee',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.warn("Could not insert invite record:", e);
+      }
+    }
+
+    const link = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
     setInviteLink(link);
     navigator.clipboard.writeText(link);
     addToast(t('copy_success'), 'success');

@@ -149,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         const urlParams = new URLSearchParams(window.location.search);
         const inviteToken = urlParams.get('invite');
+        const companyIdParam = urlParams.get('companyId');
 
         let targetCompanyId: string | null = null;
         let targetRole: Role = 'owner';
@@ -175,7 +176,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 used_at: new Date().toISOString()
               })
               .eq('id', invite.id);
+          } else if (companyIdParam) {
+            targetCompanyId = companyIdParam;
+            targetRole = 'employee';
+            isInvitedUser = true;
           }
+        } else if (companyIdParam) {
+          targetCompanyId = companyIdParam;
+          targetRole = 'employee';
+          isInvitedUser = true;
         }
 
         const trialEndDate = new Date();
@@ -183,13 +192,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Teammitglied';
 
-        // 1. Profil ZUERST anlegen (erfüllt den Foreign Key companies_owner_id_fkey)
+        // 1. Profil anlegen mit verknüpfter Organisation falls eingeladen
         const newProfile = {
           id: user.id,
           email: user.email || '',
           name: userName,
           role: targetRole,
-          company_id: null,
+          company_id: isInvitedUser ? targetCompanyId : null,
           has_active_subscription: true,
           trial_ends_at: isInvitedUser ? null : trialEndDate.toISOString(),
           has_seen_tour: false
@@ -197,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         await supabase.from('profiles').upsert(newProfile);
 
-        // 2. Organisation DANACH anlegen mit owner_id = user.id
+        // 2. Organisation anlegen falls neuer Owner, oder zu company_users hinzufügen falls eingeladen
         if (!isInvitedUser) {
           const { data: existingComp } = await supabase
             .from('companies')
@@ -227,6 +236,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               await supabase.from('profiles').update({ company_id: targetCompanyId }).eq('id', user.id);
               newProfile.company_id = targetCompanyId;
             }
+          }
+        } else if (targetCompanyId) {
+          try {
+            await supabase.from('company_users').insert({
+              company_id: targetCompanyId,
+              name: userName,
+              email: user.email || '',
+              role: targetRole,
+              status: 'Aktiv'
+            });
+            const { data: compData } = await supabase
+              .from('companies')
+              .select('used_seats')
+              .eq('id', targetCompanyId)
+              .maybeSingle();
+            if (compData) {
+              await supabase
+                .from('companies')
+                .update({ used_seats: (compData.used_seats || 1) + 1 })
+                .eq('id', targetCompanyId);
+            }
+          } catch (mErr) {
+            console.warn("Could not insert company_user record:", mErr);
           }
         }
 
