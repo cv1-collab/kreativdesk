@@ -56,7 +56,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         `Kreativ Desk OS\n` +
         `https://www.kreativdesk.ch`;
 
-    // Strictly use dedicated email invite webhook (do NOT fallback to welcome signup webhook)
+    // 1. Direct Resend delivery if key configured
+    const resendKey = process.env.RESEND_API_KEY;
+    let emailSent = false;
+
+    if (resendKey) {
+      try {
+        const formattedHtml = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+            <h2 style="color: #0f172a; margin-top: 0;">${emailSubject}</h2>
+            <p style="color: #334155; font-size: 15px; line-height: 1.6;">
+              ${host} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein.
+            </p>
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0; border: 1px solid #e2e8f0;">
+              <p style="margin: 4px 0; color: #0f172a; font-size: 16px; font-weight: bold;">${title}</p>
+              <p style="margin: 4px 0; color: #475569; font-size: 14px;">📅 ${date} um ${time} Uhr</p>
+              ${description ? `<p style="margin: 4px 0; color: #475569; font-size: 14px;">📝 ${description}</p>` : ''}
+              ${meetingLink ? `<p style="margin: 12px 0 0 0;"><a href="${meetingLink}" style="display: inline-block; padding: 10px 20px; background: #0ea5e9; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">Zum Meeting beitreten</a></p>` : ''}
+            </div>
+            <p style="color: #64748b; font-size: 13px;">Kein Login oder Download nötig. Einfach Link anklicken und beitreten.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="color: #94a3b8; font-size: 12px; margin: 0;">Kreativ Desk OS • <a href="https://www.kreativdesk.ch" style="color: #94a3b8;">kreativdesk.ch</a></p>
+          </div>
+        `;
+
+        const resendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Kreativ Desk <onboarding@resend.dev>',
+            to: recipientList,
+            subject: emailSubject,
+            html: formattedHtml
+          })
+        });
+        emailSent = resendRes.ok;
+      } catch (rErr) {
+        console.warn('Resend invitation dispatch error:', rErr);
+      }
+    }
+
+    // 2. Webhook delivery fallback
     const webhookUrl = process.env.EMAIL_INVITE_WEBHOOK_URL || process.env.CALENDAR_INVITE_WEBHOOK_URL;
     let webhookSent = false;
 

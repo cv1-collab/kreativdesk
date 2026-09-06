@@ -42,16 +42,25 @@ export default async function handler(req: any, res: any) {
     // SZENARIO A: NEUER USER (ONBOARDING)
     // ==========================================
     if (!profile) {
-      let targetCompanyId = `comp_${uid}`;
+      let targetCompanyId: string | null = null;
       let targetRole = 'owner';
       let isInvitedUser = false;
 
       if (inviteToken) {
-        const { data: inviteData } = await supabaseAdmin
+        let { data: inviteData } = await supabaseAdmin
           .from('invites')
           .select('*')
-          .eq('id', inviteToken)
-          .single();
+          .eq('token', inviteToken)
+          .maybeSingle();
+
+        if (!inviteData) {
+          const { data: byId } = await supabaseAdmin
+            .from('invites')
+            .select('*')
+            .eq('id', inviteToken)
+            .maybeSingle();
+          inviteData = byId;
+        }
 
         if (inviteData && inviteData.status === 'pending') {
           targetCompanyId = inviteData.company_id || inviteData.companyId;
@@ -62,13 +71,64 @@ export default async function handler(req: any, res: any) {
             status: 'used',
             used_by: uid,
             used_at: new Date().toISOString()
-          }).eq('id', inviteToken);
+          }).eq('id', inviteData.id);
+
+          if (targetCompanyId) {
+            const { data: comp } = await supabaseAdmin
+              .from('companies')
+              .select('used_seats')
+              .eq('id', targetCompanyId)
+              .maybeSingle();
+            if (comp) {
+              await supabaseAdmin
+                .from('companies')
+                .update({ used_seats: (comp.used_seats || 1) + 1 })
+                .eq('id', targetCompanyId);
+            }
+            await supabaseAdmin.from('company_users').insert({
+              company_id: targetCompanyId,
+              name: email?.split('@')[0] || 'Teammitglied',
+              email: email?.toLowerCase(),
+              role: targetRole,
+              status: 'aktiv',
+              created_at: new Date().toISOString()
+            });
+          }
         }
       }
 
       const timestamp = new Date();
       const trialEndDate = new Date();
       trialEndDate.setDate(timestamp.getDate() + 30);
+
+      if (!isInvitedUser) {
+        const { data: existingComp } = await supabaseAdmin
+          .from('companies')
+          .select('id')
+          .eq('owner_id', uid)
+          .maybeSingle();
+
+        if (existingComp) {
+          targetCompanyId = existingComp.id;
+        } else {
+          const { data: newComp, error: compErr } = await supabaseAdmin
+            .from('companies')
+            .insert({
+              name: `${email?.split('@')[0] || 'User'}'s Workspace`,
+              plan: 'Expert Trial',
+              max_seats: 1,
+              used_seats: 1,
+              owner_id: uid,
+              created_at: timestamp.toISOString()
+            })
+            .select()
+            .single();
+
+          if (!compErr && newComp) {
+            targetCompanyId = newComp.id;
+          }
+        }
+      }
 
       const newUserData = {
         id: uid,
@@ -83,18 +143,6 @@ export default async function handler(req: any, res: any) {
       };
 
       await supabaseAdmin.from('profiles').insert(newUserData);
-
-      if (!isInvitedUser) {
-        await supabaseAdmin.from('companies').insert({
-          id: targetCompanyId,
-          name: `${email?.split('@')[0] || 'User'}'s Workspace`,
-          plan: 'Expert Trial',
-          max_seats: 1,
-          used_seats: 1,
-          owner_id: uid,
-          created_at: timestamp.toISOString()
-        });
-      }
 
       return res.status(200).json(newUserData);
     }

@@ -516,25 +516,10 @@ export default function MeetChat() {
         created_at: new Date().toISOString()
       };
 
-      if (msgData.fileUrl) payloadPrimary.file_url = msgData.fileUrl;
-      if (msgData.isAI) payloadPrimary.is_ai = true;
-      if (msgData.isTranscript) payloadPrimary.is_transcript = true;
-      if (msgData.reference) payloadPrimary.reference = msgData.reference;
-
       try {
         const { error: insErr } = await supabase.from('chat_messages').insert(payloadPrimary);
         if (insErr) {
-          const payloadFallback: any = {
-            id: msgId + '-fb',
-            call_id: currentMeetingCallId,
-            sender_id: currentUser?.uid || `user-${Date.now()}`,
-            sender_name: senderName,
-            message: textWithEmbeddedFile,
-            created_at: new Date().toISOString()
-          };
-          try {
-            await supabase.from('chat_messages').insert(payloadFallback);
-          } catch (fbErr) {}
+          console.warn('chat_messages insert warning:', insErr);
         }
       } catch (err) {}
     };

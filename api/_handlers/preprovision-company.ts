@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import crypto from 'crypto';
 import { supabaseAdmin } from '../_auth.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -22,13 +23,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing required fields: companyName and ceoEmail' });
     }
 
-    const companyId = `comp_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 
-    // 1. Create Company Workspace
+    // 1. Create Company Workspace (Let PostgreSQL generate the UUID id)
     const { data: company, error: compErr } = await supabaseAdmin.from('companies').insert({
-      id: companyId,
       name: companyName,
       plan: plan || 'Enterprise',
       max_seats: maxSeats || 5,
@@ -36,10 +34,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       created_at: now
     }).select().single();
 
-    if (compErr) throw compErr;
+    if (compErr || !company) throw (compErr || new Error('Failed to create company'));
+    const companyId = company.id;
 
     // 2. Create Invite Token for CEO / Owner
+    const ceoToken = crypto.randomUUID();
     const { data: ceoInvite, error: inviteErr } = await supabaseAdmin.from('invites').insert({
+      token: ceoToken,
       company_id: companyId,
       email: ceoEmail.toLowerCase().trim(),
       role: 'owner',
@@ -47,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       created_at: now
     }).select().single();
 
-    if (inviteErr) throw inviteErr;
+    if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
 
     // 3. Pre-seed Default 9 Folders
     const defaultFolders = [
@@ -90,6 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 5. Pre-invite employees if provided
     if (Array.isArray(employeeEmails) && employeeEmails.length > 0) {
       const employeeRecords = employeeEmails.map((empEmail: string) => ({
+        token: crypto.randomUUID(),
         company_id: companyId,
         email: empEmail.toLowerCase().trim(),
         role: 'employee',
@@ -99,13 +101,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabaseAdmin.from('invites').insert(employeeRecords);
     }
 
-    const vipLink = `https://www.kreativdesk.ch/signup?invite=${ceoInvite.id}&email=${encodeURIComponent(ceoEmail)}`;
+    const inviteIdentifier = ceoInvite.token || ceoInvite.id;
+    const vipLink = `https://www.kreativdesk.ch/signup?invite=${inviteIdentifier}&email=${encodeURIComponent(ceoEmail)}`;
 
     return res.status(200).json({
       success: true,
       companyId,
       vipLink,
-      ceoInviteId: ceoInvite.id
+      ceoInviteId: ceoInvite.id,
+      ceoToken: ceoInvite.token
     });
 
   } catch (error: any) {

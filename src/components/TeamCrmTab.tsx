@@ -799,15 +799,17 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
       }
 
       const fullName = [scannedContactData.firstName, scannedContactData.lastName].filter(Boolean).join(' ');
+      const displayName = fullName 
+        ? (scannedContactData.company ? `${fullName} (${scannedContactData.company})` : fullName)
+        : (scannedContactData.company || t('unknown'));
 
       const dbPayload: any = {
         company_id: safeCompanyId,
         first_name: scannedContactData.firstName || null,
         last_name: scannedContactData.lastName || null,
-        name: fullName || scannedContactData.company || t('unknown'),
+        name: displayName,
         email: scannedContactData.email || null,
         phone: scannedContactData.phone || null,
-        company: scannedContactData.company || null,
         role: 'partner',
         status: 'neu',
         created_at: new Date().toISOString()

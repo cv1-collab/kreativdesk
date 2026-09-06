@@ -3,6 +3,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import { GoogleGenAI } from '@google/genai';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
@@ -720,6 +721,189 @@ Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.to
     const { leads = [], apiToken } = req.body || {};
     if (!apiToken) return res.status(400).json({ success: false, syncedCount: 0, errors: ['Kein Bexio API-Token angegeben'] });
     return res.status(200).json({ success: true, syncedCount: leads.length, errors: [] });
+  });
+
+  // --- DELETE ACCOUNT ---
+  app.post('/api/delete-account', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.split('Bearer ')[1];
+      const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+      if (authErr || !user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const uid = user.id;
+      const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', uid).maybeSingle();
+      if (!profile) return res.status(404).json({ error: 'User not found' });
+
+      const { role, company_id: companyId, stripe_customer_id: stripeCustomerId } = profile;
+
+      if (stripeCustomerId) {
+        try {
+          const subscriptions = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'active' });
+          for (const sub of subscriptions.data) {
+            await stripe.subscriptions.cancel(sub.id);
+          }
+        } catch (e) {}
+      }
+
+      if ((role === 'owner' || role === 'Owner') && companyId) {
+        const tables = [
+          'projects', 'time_entries', 'defects', 'documents', 'leads', 
+          'company_users', 'invites', 'notifications', 'smart_proposals',
+          'cad_plans', 'slides', 'transactions', 'calendar_events', 
+          'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports'
+        ];
+        for (const table of tables) {
+          try {
+            await supabaseAdmin.from(table).delete().eq('company_id', companyId);
+          } catch (e) {}
+        }
+        try {
+          await supabaseAdmin.from('profiles').update({ company_id: null }).eq('company_id', companyId);
+          await supabaseAdmin.from('companies').delete().eq('id', companyId);
+        } catch (e) {}
+      }
+
+      await supabaseAdmin.from('projects').delete().eq('owner_id', uid);
+      await supabaseAdmin.from('documents').delete().eq('owner_id', uid);
+      await supabaseAdmin.from('defects').delete().eq('owner_id', uid);
+      await supabaseAdmin.from('time_entries').delete().eq('user_id', uid);
+      await supabaseAdmin.from('profiles').delete().eq('id', uid);
+      await supabaseAdmin.auth.admin.deleteUser(uid);
+
+      return res.status(200).json({ success: true, message: 'Account deleted successfully' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- PREPROVISION COMPANY ---
+  app.post('/api/preprovision-company', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const token = authHeader.split('Bearer ')[1];
+      const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+      const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
+      if (authErr || !user || !SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
+        return res.status(403).json({ error: 'Forbidden: Super Admin access required' });
+      }
+
+      const { companyName, ceoName, ceoEmail, plan, maxSeats, employeeEmails, seedDemoProject } = req.body;
+      if (!companyName || !ceoEmail) {
+        return res.status(400).json({ error: 'Missing required fields: companyName and ceoEmail' });
+      }
+
+      const now = new Date().toISOString();
+      const { data: company, error: compErr } = await supabaseAdmin.from('companies').insert({
+        name: companyName,
+        plan: plan || 'Enterprise',
+        max_seats: maxSeats || 5,
+        used_seats: 1,
+        created_at: now
+      }).select().single();
+
+      if (compErr || !company) throw (compErr || new Error('Failed to create company'));
+      const companyId = company.id;
+
+      const ceoToken = crypto.randomUUID();
+      const { data: ceoInvite, error: inviteErr } = await supabaseAdmin.from('invites').insert({
+        token: ceoToken,
+        company_id: companyId,
+        email: ceoEmail.toLowerCase().trim(),
+        role: 'owner',
+        status: 'pending',
+        created_at: now
+      }).select().single();
+
+      if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
+
+      if (Array.isArray(employeeEmails) && employeeEmails.length > 0) {
+        const employeeRecords = employeeEmails.map((empEmail: string) => ({
+          token: crypto.randomUUID(),
+          company_id: companyId,
+          email: empEmail.toLowerCase().trim(),
+          role: 'employee',
+          status: 'pending',
+          created_at: now
+        }));
+        await supabaseAdmin.from('invites').insert(employeeRecords);
+      }
+
+      const inviteIdentifier = ceoInvite.token || ceoInvite.id;
+      const vipLink = `https://www.kreativdesk.ch/signup?invite=${inviteIdentifier}&email=${encodeURIComponent(ceoEmail)}`;
+
+      return res.status(200).json({ success: true, companyId, vipLink, ceoInviteId: ceoInvite.id });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- SEND INVITATION ---
+  app.post('/api/send-invitation', async (req, res) => {
+    try {
+      const { title, date, time, description, meetingLink, recipients, senderName, language, type } = req.body || {};
+      if (!title || !recipients || (Array.isArray(recipients) && recipients.length === 0)) {
+        return res.status(400).json({ error: 'Missing title or recipients' });
+      }
+      const host = senderName || 'Carlo Vescio';
+      const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+      const isDe = !language || language === 'de';
+      const isCall = type !== 'meeting';
+      const emailSubject = isDe
+        ? (isCall ? '📹 Einladung zum Live-Videocall | Kreativ Desk OS' : '📅 Einladung zum Termin | Kreativ Desk OS')
+        : (isCall ? '📹 Invitation to Live Video Call | Kreativ Desk OS' : '📅 Invitation to Meeting | Kreativ Desk OS');
+      const emailBody = `${host} lädt dich zu einem ${isCall ? 'Live-Videocall' : 'Termin'} auf Kreativ Desk OS ein.\n\nTitel: ${title}\nDatum: ${date} um ${time} Uhr\nLink: ${meetingLink || 'https://www.kreativdesk.ch'}`;
+
+      const resendKey = process.env.RESEND_API_KEY;
+      if (resendKey) {
+        try {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'Kreativ Desk <onboarding@resend.dev>',
+              to: recipientList,
+              subject: emailSubject,
+              text: emailBody
+            })
+          });
+        } catch (e) {}
+      }
+
+      const webhookUrl = process.env.EMAIL_INVITE_WEBHOOK_URL || process.env.CALENDAR_INVITE_WEBHOOK_URL;
+      if (webhookUrl) {
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ event: 'calendar_invitation', to: recipientList[0], recipients: recipientList, subject: emailSubject, body: emailBody, meetingLink })
+          });
+        } catch (e) {}
+      }
+
+      return res.status(200).json({ success: true, message: `Invitation triggered for ${recipientList.join(',')}` });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- REGISTER COMPANY ---
+  app.post('/api/register-company', async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/register-company.js')).default;
+      return handler(req, res);
+    } catch (err: any) {
+      console.error('register-company route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   // --- 8. VITE / STATIC FALLBACK ---

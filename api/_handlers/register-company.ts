@@ -29,7 +29,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const now = new Date().toISOString();
-    let assignedCompanyId = `comp_${uid}`;
+    let assignedCompanyId: string | null = null;
     let assignedRole = 'owner';
     let isInvite = false;
 
@@ -38,20 +38,20 @@ export default async function handler(req: any, res: any) {
         .from('invites')
         .select('*')
         .eq('token', inviteToken)
-        .single();
+        .maybeSingle();
 
       if (!inviteData) {
         const { data: byId } = await supabaseAdmin
           .from('invites')
           .select('*')
           .eq('id', inviteToken)
-          .single();
+          .maybeSingle();
         inviteData = byId;
       }
 
       if (inviteData && inviteData.status === 'pending' && inviteData.email.toLowerCase() === email.toLowerCase()) {
         assignedCompanyId = inviteData.company_id || inviteData.companyId;
-        assignedRole = inviteData.role || 'Mitarbeiter';
+        assignedRole = inviteData.role || 'employee';
         isInvite = true;
 
         await supabaseAdmin.from('invites').update({
@@ -59,6 +59,28 @@ export default async function handler(req: any, res: any) {
           used_by: uid,
           used_at: now
         }).eq('id', inviteData.id);
+
+        if (assignedCompanyId) {
+          const { data: comp } = await supabaseAdmin
+            .from('companies')
+            .select('used_seats')
+            .eq('id', assignedCompanyId)
+            .maybeSingle();
+          if (comp) {
+            await supabaseAdmin
+              .from('companies')
+              .update({ used_seats: (comp.used_seats || 1) + 1 })
+              .eq('id', assignedCompanyId);
+          }
+          await supabaseAdmin.from('company_users').insert({
+            company_id: assignedCompanyId,
+            name: email.split('@')[0] || 'Teammitglied',
+            email: email.toLowerCase(),
+            role: assignedRole,
+            status: 'aktiv',
+            created_at: now
+          });
+        }
       }
     }
 
@@ -68,7 +90,36 @@ export default async function handler(req: any, res: any) {
     const maxSeats = isEnterprise ? 50 : 1;
     const companyName = enterpriseData?.companyName || `${email.split('@')[0] || 'User'}s Workspace`;
 
-    // 1. Create or Update Profile in Supabase
+    // 1. Create or Find Company if not an invite
+    if (!isInvite) {
+      const { data: existingComp } = await supabaseAdmin
+        .from('companies')
+        .select('id')
+        .eq('owner_id', uid)
+        .maybeSingle();
+
+      if (existingComp) {
+        assignedCompanyId = existingComp.id;
+      } else {
+        const { data: newComp, error: compErr } = await supabaseAdmin
+          .from('companies')
+          .insert({
+            name: companyName,
+            plan: plan,
+            max_seats: maxSeats,
+            used_seats: 1,
+            owner_id: uid,
+            created_at: now
+          })
+          .select()
+          .single();
+
+        if (compErr || !newComp) throw (compErr || new Error('Failed to create company'));
+        assignedCompanyId = newComp.id;
+      }
+    }
+
+    // 2. Create or Update Profile in Supabase with valid UUID company_id
     await supabaseAdmin.from('profiles').upsert({
       id: uid,
       email: email,
@@ -79,19 +130,6 @@ export default async function handler(req: any, res: any) {
       trial_ends_at: trialEndDate.toISOString(),
       created_at: now
     });
-
-    // 2. Create Company if not an invite
-    if (!isInvite) {
-      await supabaseAdmin.from('companies').upsert({
-        id: assignedCompanyId,
-        name: companyName,
-        plan: plan,
-        max_seats: maxSeats,
-        used_seats: 1,
-        owner_id: uid,
-        created_at: now
-      });
-    }
 
     return res.status(200).json({ success: true, companyId: assignedCompanyId, role: assignedRole });
 

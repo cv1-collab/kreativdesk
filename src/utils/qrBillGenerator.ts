@@ -33,6 +33,8 @@ export function generateSwissQRPayload(data: SwissQRBillData): string {
 
   const refType = data.reference && data.reference.length >= 26 ? 'QRR' : 'NON';
 
+  const hasDebtor = !!(data.debtor && data.debtor.name);
+
   const lines = [
     'SPC',                                       // Header
     '0200',                                      // Version
@@ -48,13 +50,13 @@ export function generateSwissQRPayload(data: SwissQRBillData): string {
     '', '', '', '', '', '', '',                  // Ultimate Creditor (Empty)
     amountStr,                                   // Amount
     currency,                                    // Currency
-    'K',                                         // Ultimate Debtor Type
-    data.debtor?.name || '',                     // Debtor Name
-    data.debtor?.street || '',                   // Debtor Street
-    data.debtor?.buildingNumber || '',           // Debtor House No
-    data.debtor?.postalCode || '',               // Debtor ZIP
-    data.debtor?.city || '',                     // Debtor City
-    data.debtor?.country || 'CH',                // Debtor Country
+    hasDebtor ? 'K' : '',                        // Ultimate Debtor Type
+    hasDebtor ? (data.debtor?.name || '') : '',  // Debtor Name
+    hasDebtor ? (data.debtor?.street || '') : '',// Debtor Street
+    hasDebtor ? (data.debtor?.buildingNumber || '') : '', // Debtor House No
+    hasDebtor ? (data.debtor?.postalCode || '') : '',     // Debtor ZIP
+    hasDebtor ? (data.debtor?.city || '') : '',  // Debtor City
+    hasDebtor ? (data.debtor?.country || 'CH') : '',      // Debtor Country
     refType,                                     // Reference Type (NON = Without Reference, QRR = QR Reference)
     data.reference || '',                        // Reference Number
     data.unstructuredMessage || 'Rechnung Kreativ Desk', // Unstructured Message
