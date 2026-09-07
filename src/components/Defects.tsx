@@ -15,6 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { offlineSyncManager } from '../utils/offlineSyncManager';
+import { useDefectsQuery } from '../hooks/queries/useDefectsQuery';
 import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -272,76 +273,22 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const wasDragged = useRef(false);
 
-  // === MULTI-TENANT FILTERUNG & DEMO DATEN ===
-  useEffect(() => {
-    if (!currentProjectId) return;
+  // === MULTI-TENANT FILTERUNG MIT TANSTACK QUERY & REALTIME SYNC ===
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+  const { defects: queryDefects, invalidateDefects } = useDefectsQuery(
+    isDemo ? null : safeCompanyId,
+    isDemo ? null : currentProjectId
+  );
 
-    // DEMO-MODUS: Offline Zero-Latency Mock Data, Keine Supabase WebSockets
+  useEffect(() => {
     if (isDemo) {
       setDefects(DEMO_DEFECTS);
       return;
     }
-
-    const normalizeStatus = (st: string) => {
-      if (!st) return 'To Do';
-      const lower = st.toLowerCase().trim();
-      if (lower === 'offen' || lower === 'to do' || lower === 'todo') return 'To Do';
-      if (lower === 'in arbeit' || lower === 'in progress' || lower === 'in_progress') return 'In Progress';
-      if (lower === 'in prüfung' || lower === 'in review' || lower === 'in_review') return 'In Review';
-      if (lower === 'erledigt' || lower === 'behoben' || lower === 'done') return 'Done';
-      return st;
-    };
-
-    const normalizePriority = (pr: string) => {
-      if (!pr) return 'Medium';
-      const lower = pr.toLowerCase().trim();
-      if (lower === 'kritisch' || lower === 'critical') return 'Critical';
-      if (lower === 'hoch' || lower === 'high') return 'High';
-      if (lower === 'mittel' || lower === 'medium') return 'Medium';
-      if (lower === 'leicht' || lower === 'niedrig' || lower === 'low') return 'Low';
-      return pr;
-    };
-
-    const fetchDefects = async () => {
-      let query = supabase
-        .from('defects')
-        .select('*')
-        .eq('project_id', currentProjectId);
-      
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-      if (safeCompanyId) {
-        query = query.eq('company_id', safeCompanyId);
-      }
-
-      const { data: defs } = await query;
-      if (defs && defs.length > 0) {
-        setDefects(defs.map((d: any) => ({
-          ...d,
-          id: d.id,
-          title: d.title || d.prompt || 'Mangel',
-          description: d.description || '',
-          status: normalizeStatus(d.status),
-          priority: normalizePriority(d.severity || d.priority),
-          dueDate: d.dueDate || d.due_date || '',
-          imageUrl: d.imageUrl || d.image_url || '',
-          projectId: d.projectId || d.project_id || currentProjectId
-        })));
-      } else {
-        setDefects([]);
-      }
-    };
-
-    fetchDefects();
-
-    const channel = supabase
-      .channel('defects-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'defects', filter: `project_id=eq.${currentProjectId}` }, fetchDefects)
-      .subscribe();
-
-    return () => {
-      if (channel) supabase.removeChannel(channel).catch(() => {});
-    };
-  }, [currentProjectId]);
+    if (queryDefects) {
+      setDefects(queryDefects as any);
+    }
+  }, [isDemo, queryDefects]);
 
   useEffect(() => {
     return offlineSyncManager.registerAutoSync((msg, type) => {
@@ -360,7 +307,10 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
 
     if (currentProjectId === 'demo-1') return;
 
-    try { await supabase.from('defects').update({ status }).eq('id', id); } 
+    try { 
+      await supabase.from('defects').update({ status }).eq('id', id); 
+      invalidateDefects();
+    } 
     catch (error) { addToast('Fehler', 'error'); }
   };
 

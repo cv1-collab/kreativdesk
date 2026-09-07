@@ -15,6 +15,8 @@ import { purgeAllDummyData } from '../services/seedService';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
+import { useFinancialQuery } from '../hooks/queries/useFinancialQuery';
+import { useProjectsQuery } from '../hooks/queries/useProjectsQuery';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -101,91 +103,21 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
   const opCategories = ['AHV / Sozialleistungen', 'Pensionskasse (BVG)', 'SUVA / Versicherungen', 'Steuern & MWST', 'Treuhand & Beratung', 'Miete & Infrastruktur', 'Software & Lizenzen', 'Fremdleistungen & Subunternehmer', 'Fahrzeuge & Mobilität', 'Marketing & Akquise'];
 
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
+  const { transactions: queryTransactions, invalidateFinancial } = useFinancialQuery(safeCompanyId, selectedYear);
+  const { projects: queryProjects } = useProjectsQuery(safeCompanyId);
+
   useEffect(() => {
-    if (!currentUser || !currentUser.uid) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    if (queryTransactions) {
+      setTransactions(queryTransactions as any);
+    }
+  }, [queryTransactions]);
 
-    const fetchData = async () => {
-      const { data: txs } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .order('created_at', { ascending: false });
-
-      let baseTxs: Transaction[] = [];
-      if (txs) {
-        baseTxs = txs.map(t => ({
-          ...t,
-          projectId: t.project_id,
-          companyId: t.company_id,
-          ownerId: t.owner_id,
-          receiptUrls: t.receipt_urls || (t as any).receiptUrls || []
-        } as Transaction));
-      }
-
-      // Merge time entries (Zeiterfassung / Rapporte)
-      const { data: times } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      const localCacheKey = `time_entries_cache_${safeCompanyId}`;
-      const rawCache = localStorage.getItem(localCacheKey);
-      const localCachedTimes: any[] = rawCache ? JSON.parse(rawCache) : [];
-
-      let configTime: any = null;
-      try {
-        configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
-      } catch (e) {}
-
-      const configTimes = (configTime as any)?.data?.entries || configTime?.entries || [];
-
-      const timeMap = new Map();
-      [...localCachedTimes, ...configTimes, ...(times || [])].forEach((t: any) => {
-        if (t && (t.id || t.hours)) {
-          const entryId = t.id || `time-${t.date}-${t.hours}`;
-          const hoursNum = Number(t.hours || 0);
-          const rateNum = Number(t.hourly_rate || t.hourlyRate || 120);
-          timeMap.set(entryId, {
-            id: entryId,
-            type: 'time_entry',
-            category: 'Interne Stunden',
-            description: `${hoursNum}h Rapport: ${t.description || 'Stundenerfassung'}`,
-            amount: hoursNum * rateNum,
-            date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
-            status: 'Gebucht',
-            projectId: t.project_id || t.projectId || 'global',
-            companyId: safeCompanyId,
-            createdAt: t.created_at || new Date().toISOString()
-          });
-        }
-      });
-
-      const mappedTimeTxs = Array.from(timeMap.values()) as Transaction[];
-      setTransactions([...baseTxs, ...mappedTimeTxs]);
-
-      const { data: projs } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('company_id', safeCompanyId);
-
-      if (projs) {
-        setProjects(projs as any);
-      }
-    };
-
-    fetchData();
-
-    const channel = supabase
-      .channel('finance-tab-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'time_entries', filter: `company_id=eq.${safeCompanyId}` }, fetchData)
-      .subscribe();
-
-    return () => {
-      if (channel) supabase.removeChannel(channel).catch(() => { });
-    };
-  }, [currentUser]);
+  useEffect(() => {
+    if (queryProjects) {
+      setProjects(queryProjects as any);
+    }
+  }, [queryProjects]);
 
   const applyAiData = (aiData: any) => {
     const vendorName = aiData.vendor || aiData.merchant || aiData.company || aiData.description || '';
@@ -300,6 +232,7 @@ export default function FinanceTab({ addToast, setShowExpenseModal, setShowInvoi
 
       await notifyNewDocument(safeCompanyId, fileName, 'operating_cost', 'global');
 
+      invalidateFinancial();
       addToast(t('ext_costs_booked'), "success"); setIsPdfStudioOpen(false); setShowOpCostModal(false); setOpCostReceipts([]); setOpCostData({ category: 'Fremdleistungen & Subunternehmer', description: '', amount: '', date: new Date().toISOString().split('T')[0] });
     } catch (error) { addToast(t('save_error'), "error"); } finally { setIsSubmitting(false); }
   };

@@ -34,6 +34,7 @@ import { jsPDF } from 'jspdf';
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import PremiumFeature from './PremiumFeature';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import { BIMCanvasViewport } from './bim/BIMCanvasViewport';
 
 import { fal } from "@fal-ai/client";
 
@@ -207,357 +208,7 @@ const BIMReportPDFDocument = ({ settings, docHeader, snapshotImage, auditReport,
     </Document>
   );
 };
-
-function SnapshotHelper() {
-  const { gl, scene, camera } = useThree();
-  useEffect(() => {
-    (window as any).captureBimSnapshot = () => {
-      gl.render(scene, camera);
-      return gl.domElement.toDataURL('image/png');
-    };
-    return () => { delete (window as any).captureBimSnapshot; };
-  }, [gl, scene, camera]);
-  return null;
-}
-
-class ModelErrorBoundary extends React.Component<
-  { fallback: React.ReactNode; children: React.ReactNode; onError?: (error: any) => void },
-  { hasError: boolean; error: any }
-> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: any, info: any) {
-    console.error("3D Model render error caught by ModelErrorBoundary:", error, info);
-    this.props.onError?.(error);
-  }
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback;
-    }
-    return this.props.children;
-  }
-}
-
-function IfcModel({ url, onSelect, t }: { url: string, onSelect: (id: string, details: any) => void, t: (key: string) => string }) {
-  const [model, setModel] = useState<any>(null);
-  const [scale, setScale] = useState<number>(1);
-  const { addToast } = useToast();
-  useEffect(() => {
-    const loader = new IFCLoader();
-    loader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.36/');
-    loader.load(url, (ifcModel) => { 
-      ifcModel.updateMatrixWorld(true);
-      const box = new THREE.Box3().setFromObject(ifcModel);
-      const size = box.getSize(new THREE.Vector3());
-      const maxDim = Math.max(size.x, size.y, size.z);
-      setScale(maxDim > 0 ? 8 / maxDim : 1);
-
-      ifcModel.traverse((child: any) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach((m: any) => { m.side = THREE.DoubleSide; });
-            } else {
-              child.material.side = THREE.DoubleSide;
-            }
-          }
-        }
-      });
-      setModel(ifcModel); 
-    }, undefined, (error) => { console.error("Error loading IFC:", error); addToast(t('error_loading_ifc'), "error"); });
-  }, [url, addToast, t]);
-
-  if (!model) return null;
-  return (
-    <group scale={[scale, scale, scale]}>
-      <Center>
-        <primitive object={model} onClick={(e: any) => { e.stopPropagation(); if (e.object.geometry && e.faceIndex !== undefined) { onSelect(`ifc-element-${Math.floor(Math.random() * 1000)}`, { type: 'IFC Element', material: 'Unknown', cost: 'N/A', status: 'Imported' }); } }} />
-      </Center>
-    </group>
-  );
-}
-
-function GltfModel({ url, onClick }: { url: string, onClick: (e: any) => void }) { 
-  const gltf = useLoader(GLTFLoader, url, (loader: any) => {
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-    loader.setDRACOLoader(dracoLoader);
-  }); 
-
-  const { scene, scale } = React.useMemo(() => {
-    if (!gltf || !gltf.scene) return { scene: null, scale: 1 };
-    const cloned = gltf.scene.clone(true);
-    cloned.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(cloned);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
-
-    cloned.traverse((child: any) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material) {
-          if (Array.isArray(child.material)) {
-            child.material = child.material.map((m: any) => {
-              const mat = m.clone();
-              mat.side = THREE.DoubleSide;
-              return mat;
-            });
-          } else {
-            child.material = child.material.clone();
-            child.material.side = THREE.DoubleSide;
-          }
-        }
-      }
-    });
-
-    return { scene: cloned, scale: calculatedScale };
-  }, [gltf]);
-
-  if (!scene) return null;
-  return (
-    <group scale={[scale, scale, scale]}>
-      <Center>
-        <primitive object={scene} onClick={onClick} />
-      </Center>
-    </group>
-  );
-}
-
-function ObjModel({ url, onClick }: { url: string, onClick: (e: any) => void }) { 
-  const obj = useLoader(OBJLoader, url); 
-  const { scene, scale } = React.useMemo(() => {
-    if (!obj) return { scene: null, scale: 1 };
-    const cloned = obj.clone(true);
-    cloned.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(cloned);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
-
-    cloned.traverse((child: any) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material) {
-          if (Array.isArray(child.material)) {
-            child.material = child.material.map((m: any) => {
-              const mat = m.clone();
-              mat.side = THREE.DoubleSide;
-              return mat;
-            });
-          } else {
-            child.material = child.material.clone();
-            child.material.side = THREE.DoubleSide;
-          }
-        }
-      }
-    });
-
-    return { scene: cloned, scale: calculatedScale };
-  }, [obj]);
-
-  if (!scene) return null;
-  return (
-    <group scale={[scale, scale, scale]}>
-      <Center>
-        <primitive object={scene} onClick={onClick} />
-      </Center>
-    </group>
-  );
-}
-
-function DaeModel({ url, onClick }: { url: string, onClick: (e: any) => void }) { 
-  const dae = useLoader(ColladaLoader, url); 
-  const { scene, scale } = React.useMemo(() => {
-    if (!dae || !dae.scene) return { scene: null, scale: 1 };
-    const cloned = dae.scene.clone(true);
-    cloned.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(cloned);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const calculatedScale = maxDim > 0 ? 8 / maxDim : 1;
-
-    cloned.traverse((child: any) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material) {
-          if (Array.isArray(child.material)) {
-            child.material = child.material.map((m: any) => {
-              const mat = m.clone();
-              mat.side = THREE.DoubleSide;
-              return mat;
-            });
-          } else {
-            child.material = child.material.clone();
-            child.material.side = THREE.DoubleSide;
-          }
-        }
-      }
-    });
-
-    return { scene: cloned, scale: calculatedScale };
-  }, [dae]);
-
-  if (!scene) return null;
-  return (
-    <group scale={[scale, scale, scale]}>
-      <Center>
-        <primitive object={scene} onClick={onClick} />
-      </Center>
-    </group>
-  );
-}
-
-function DwgModel({ onClick, t }: { onClick: (e: any) => void, t: (key: string) => string }) {
-  return (
-    <group onClick={onClick}>
-      <Center><mesh><boxGeometry args={[10, 10, 10]} /><meshBasicMaterial color="#3b82f6" wireframe={true} /></mesh></Center>
-      <Html position={[0, 6, 0]} center zIndexRange={[10, 0]}>
-        <div className="bg-surface/90 backdrop-blur-md border border-blue-500/50 text-blue-400 px-4 py-2 rounded-lg text-sm whitespace-nowrap shadow-xl flex items-center gap-2"><Loader2 size={16} className="animate-spin" /><span>{t('dwg_mock')}</span></div>
-      </Html>
-    </group>
-  );
-}
-
-function UploadedModelViewer({ url, type, onSelect, measureMode, onMeasureClick, defectMode, onDefectClick, t }: any) {
-  const tType = type?.toLowerCase() || '';
-
-  const handleClick = (e: any) => {
-    e.stopPropagation();
-    if (measureMode) {
-      onMeasureClick(e.point);
-    } else if (defectMode) {
-      let worldNormal = new THREE.Vector3(0, 1, 0);
-      if (e.face?.normal && e.object) {
-        const normalMatrix = new THREE.Matrix3().getNormalMatrix(e.object.matrixWorld);
-        worldNormal = e.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-      }
-      onDefectClick(e.point, worldNormal);
-    } else {
-      onSelect(`uploaded-element-${Math.floor(Math.random() * 1000)}`, { type: `${type.toUpperCase()} Element`, material: 'Imported', cost: 'N/A', status: 'Loaded' });
-    }
-  };
-
-  if (tType === 'ifc') return <IfcModel url={url} onSelect={onSelect} t={t} />;
-  if (tType === 'obj') return <ObjModel url={url} onClick={handleClick} />;
-  if (tType === 'gltf' || tType === 'glb') return <GltfModel url={url} onClick={handleClick} />;
-  if (tType === 'dae') return <DaeModel url={url} onClick={handleClick} />;
-  if (tType === 'dwg') return <DwgModel onClick={handleClick} t={t} />;
-  return null;
-}
-
-function CameraRig({ isTouring }: { isTouring: boolean }) {
-  const timeRef = useRef(0);
-  useFrame((state, delta) => {
-    if (isTouring) {
-      timeRef.current += delta;
-      const t = timeRef.current * 0.2;
-      const x = Math.sin(t) * 25; const z = Math.cos(t) * 25; const y = 10 + Math.sin(t * 2) * 5;
-      state.camera.position.lerp(new THREE.Vector3(x, y, z), delta * 2);
-      state.camera.lookAt(0, 4, 0);
-    }
-  });
-  return null;
-}
-
-function Building({ layers, activeFloor, selectedId, onSelect, isExploded, measureMode, onMeasureClick, defectMode, onDefectClick }: any) {
-  const isArchVisible = layers.find((l: any) => l.id === 'arch')?.visible;
-  const isTgaVisible = layers.find((l: any) => l.id === 'tga')?.visible;
-  const isStructVisible = layers.find((l: any) => l.id === 'struct')?.visible;
-  const isFireVisible = layers.find((l: any) => l.id === 'fire')?.visible;
-
-  const floors = [0, 1, 2];
-  const floorRefs = useRef<(THREE.Group | null)[]>([]);
-
-  useFrame((state, delta) => {
-    floors.forEach((floor, i) => {
-      const ref = floorRefs.current[i];
-      if (ref) {
-        const targetY = (floor * 4) + (isExploded ? floor * 5 : 0);
-        ref.position.y = THREE.MathUtils.lerp(ref.position.y, targetY, delta * 5);
-      }
-    });
-  });
-
-  const handleClick = (e: any, id: string) => {
-    e.stopPropagation();
-    if (measureMode) {
-      onMeasureClick(e.point);
-    } else if (defectMode) {
-      let worldNormal = new THREE.Vector3(0, 1, 0);
-      if (e.face?.normal && e.object) {
-        const normalMatrix = new THREE.Matrix3().getNormalMatrix(e.object.matrixWorld);
-        worldNormal = e.face.normal.clone().applyMatrix3(normalMatrix).normalize();
-      }
-      onDefectClick(e.point, worldNormal);
-    } else {
-      onSelect(id);
-    }
-  };
-
-  return (
-    <group position={[0, -1, 0]}>
-      {floors.map((floor, i) => {
-        if (activeFloor !== null && activeFloor !== floor) return null;
-        return (
-          <group key={floor} ref={(el) => (floorRefs.current[i] = el)} position={[0, floor * 4, 0]}>
-            {isStructVisible && (
-              <DreiBox args={[12, 0.4, 12]} position={[0, 0.2, 0]} onClick={(e) => handleClick(e, `slab-${floor}`)}>
-                <meshStandardMaterial color={selectedId === `slab-${floor}` ? "#fcd34d" : "#f97316"} transparent opacity={0.8} />
-              </DreiBox>
-            )}
-            {isStructVisible && (
-              <group>
-                {[[-5, -5], [5, -5], [-5, 5], [5, 5], [0, 0]].map((pos, idx) => (
-                  <Cylinder key={idx} args={[0.3, 0.3, 3.6]} position={[pos[0], 2.2, pos[1]]} onClick={(e) => handleClick(e, `col-${floor}-${idx}`)}>
-                    <meshStandardMaterial color={selectedId === `col-${floor}-${idx}` ? "#fcd34d" : "#ea580c"} />
-                  </Cylinder>
-                ))}
-              </group>
-            )}
-            {isArchVisible && (
-              <group>
-                <DreiBox args={[4, 3.6, 4]} position={[0, 2.2, 0]} onClick={(e) => handleClick(e, `core-${floor}`)}>
-                  <meshStandardMaterial color={selectedId === `core-${floor}` ? "#fcd34d" : "#a1a1aa"} />
-                </DreiBox>
-                <DreiBox args={[11.6, 3.6, 0.1]} position={[0, 2.2, -5.8]} onClick={(e) => handleClick(e, `glass-n-${floor}`)}><meshStandardMaterial color="#38bdf8" transparent opacity={0.2} metalness={0.9} roughness={0.1} /></DreiBox>
-                <DreiBox args={[11.6, 3.6, 0.1]} position={[0, 2.2, 5.8]} onClick={(e) => handleClick(e, `glass-s-${floor}`)}><meshStandardMaterial color="#38bdf8" transparent opacity={0.2} metalness={0.9} roughness={0.1} /></DreiBox>
-                <DreiBox args={[0.1, 3.6, 11.6]} position={[-5.8, 2.2, 0]} onClick={(e) => handleClick(e, `glass-w-${floor}`)}><meshStandardMaterial color="#38bdf8" transparent opacity={0.2} metalness={0.9} roughness={0.1} /></DreiBox>
-                <DreiBox args={[0.1, 3.6, 11.6]} position={[5.8, 2.2, 0]} onClick={(e) => handleClick(e, `glass-e-${floor}`)}><meshStandardMaterial color="#38bdf8" transparent opacity={0.2} metalness={0.9} roughness={0.1} /></DreiBox>
-              </group>
-            )}
-            {isTgaVisible && (
-              <group>
-                <DreiBox args={[8, 0.4, 0.6]} position={[0, 3.6, 2]} onClick={(e) => handleClick(e, `hvac-main-${floor}`)}>
-                  <meshStandardMaterial color={selectedId === `hvac-main-${floor}` ? "#fcd34d" : "#3b82f6"} metalness={0.8} roughness={0.2} />
-                </DreiBox>
-                <DreiBox args={[0.4, 0.4, 6]} position={[2, 3.6, -1]} onClick={(e) => handleClick(e, `hvac-branch-${floor}`)}>
-                  <meshStandardMaterial color={selectedId === `hvac-branch-${floor}` ? "#fcd34d" : "#3b82f6"} metalness={0.8} roughness={0.2} />
-                </DreiBox>
-              </group>
-            )}
-            {isFireVisible && (
-              <group>
-                <DreiBox args={[0.3, 0.5, 0.3]} position={[-2, 1, -2]} onClick={(e) => handleClick(e, `fire-1-${floor}`)}><meshStandardMaterial color="#ef4444" /></DreiBox>
-                <DreiBox args={[0.3, 0.5, 0.3]} position={[2, 1, 2]} onClick={(e) => handleClick(e, `fire-2-${floor}`)}><meshStandardMaterial color="#ef4444" /></DreiBox>
-              </group>
-            )}
-          </group>
-        );
-      })}
-    </group>
-  );
-}
+// 3D Canvas Viewport and model loaders extracted to ./bim/BIMCanvasViewport.tsx for Three.js state-isolation.
 
 export default function BIMViewer({ projectId: propProjectId }: { projectId?: string } = {}) {
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
@@ -809,6 +460,27 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     };
 
     fetchDefects();
+
+    // Realtime Sync: Mängel von mobilen Geräten live im 3D-Viewer empfangen
+    const channel = supabase
+      .channel(`bim_defects_realtime_${projectId || 'global'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'defects' },
+        (payload: any) => {
+          if (
+            (payload.new && payload.new.project_id === projectId) ||
+            (payload.old && payload.old.project_id === projectId)
+          ) {
+            fetchDefects();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
   }, [projectId, activeModelId, currentUser, isDemoMode]);
 
   useEffect(() => {
@@ -1549,92 +1221,28 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                 )}
 
                 <div className="absolute inset-0 pt-12 z-0 overflow-hidden bg-background">
-                  <Canvas 
-                    camera={{ position: [15, 12, 15], fov: 50 }} 
-                    gl={{ preserveDrawingBuffer: true, powerPreference: "high-performance", antialias: true, failIfMajorPerformanceCaveat: false }} 
-                    ref={canvasRef}
-                    onPointerMissed={() => { if(!measureMode && !defectMode) setSelectedId(null); }}
-                  >
-                    {!isMobile && <SnapshotHelper />}
-                    <CameraRig isTouring={isTouring} />
-                    <color attach="background" args={[theme === 'dark' ? '#09090b' : '#f4f4f5']} />
-                    <ambientLight intensity={isMobile ? 1.0 : 0.5} />
-                    <directionalLight position={[10, 20, 5]} intensity={1.5} />
-                    
-                    <Suspense fallback={<Html center zIndexRange={[10, 0]}><div className="flex flex-col items-center gap-2 p-3.5 bg-surface/90 backdrop-blur-md border border-border rounded-xl shadow-xl text-text-primary text-xs font-semibold"><Loader2 className="animate-spin text-accent-ai" size={24} /><span>3D-Modell wird geladen...</span></div></Html>}>
-                      {activeModel ? (
-                        <ModelErrorBoundary
-                          onError={(err) => console.error("3D Model Render Error:", err)}
-                          fallback={
-                            <Html center zIndexRange={[10, 0]}>
-                              <div className="flex flex-col items-center gap-2.5 p-5 bg-surface/95 backdrop-blur-md border border-red-500/40 rounded-2xl shadow-2xl text-center max-w-xs">
-                                <AlertTriangle className="text-red-500" size={28} />
-                                <div className="font-bold text-xs text-text-primary">3D-Modell konnte nicht gerendert werden</div>
-                                <p className="text-[11px] text-text-muted leading-relaxed">Möglicherweise enthält die Datei ein inkompatibles Format oder Shader.</p>
-                                <button onClick={() => selectModel('default')} className="mt-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow transition-colors">
-                                  Standard-Modell anzeigen
-                                </button>
-                              </div>
-                            </Html>
-                          }
-                        >
-                          <UploadedModelViewer 
-                             url={activeModel.url} 
-                             type={activeModel.type} 
-                             onSelect={handleSelect} 
-                             measureMode={measureMode} 
-                             onMeasureClick={handleMeasureClick} 
-                             defectMode={defectMode} 
-                             onDefectClick={handleDefectClick} 
-                             t={t} 
-                          />
-                        </ModelErrorBoundary>
-                      ) : (
-                        <Building layers={layersInfo} activeFloor={activeFloor} selectedId={selectedId} onSelect={handleSelect} isExploded={isExploded} measureMode={measureMode} onMeasureClick={handleMeasureClick} defectMode={defectMode} onDefectClick={handleDefectClick} />
-                      )}
-                      
-                      {measurePoints.map((p, i) => (<mesh key={i} position={p}><sphereGeometry args={[0.15, 16, 16]} /><meshBasicMaterial color="#fcd34d" /></mesh>))}
-                      {measurePoints.length === 2 && (
-                        <><Line points={[measurePoints[0], measurePoints[1]]} color="#fcd34d" lineWidth={3} />
-                        <Html position={measurePoints[0].clone().lerp(measurePoints[1], 0.5)} center zIndexRange={[10, 0]}>
-                          <div className="bg-surface text-text-primary px-2 py-1 rounded border border-border font-mono text-xs whitespace-nowrap shadow-lg">{measurePoints[0].distanceTo(measurePoints[1]).toFixed(2)} m</div>
-                        </Html></>
-                      )}
-
-                      {defectPins.map((pin, i) => {
-                        const quaternion = new THREE.Quaternion();
-                        quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pin.normal);
-                        return (
-                          <group key={pin.id} position={pin.position} quaternion={quaternion}>
-                            <mesh position={[0, 0.25, 0]}><coneGeometry args={[0.1, 0.5, 16]} /><meshStandardMaterial color="#ef4444" /></mesh>
-                            <mesh position={[0, 0.5, 0]}><sphereGeometry args={[0.15, 16, 16]} /><meshStandardMaterial color="#ef4444" /></mesh>
-                            {!isMobile && (
-                              <Html position={[0, 0.8, 0]} center zIndexRange={[10, 0]}>
-                                <div className="bg-red-500 text-white px-2 py-1 rounded border border-red-700 font-mono text-xs whitespace-nowrap shadow-lg cursor-pointer hover:bg-red-600 transition-colors flex flex-col items-center">
-                                  <span className="font-bold">{t('defect')} #{i + 1}</span><span className="text-[10px] opacity-90">{pin.description}</span>
-                                </div>
-                              </Html>
-                            )}
-                          </group>
-                        );
-                      })}
-                      
-                      {!isMobile && <Environment preset="city" />}
-                    </Suspense>
-                    
-                    <OrbitControls 
-                      makeDefault 
-                      target={activeModel ? [0, 0, 0] : [0, activeFloor !== null ? activeFloor * 4 : 4, 0]} 
-                      enableDamping={!isMobile}
-                      dampingFactor={0.05}
-                      mouseButtons={{
-                        LEFT: cameraMode === 'rotate' ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN,
-                        MIDDLE: THREE.MOUSE.DOLLY,
-                        RIGHT: cameraMode === 'rotate' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE
-                      }}
-                    />
-                    {!isMobile && <Grid infiniteGrid fadeDistance={40} sectionColor={theme === 'dark' ? "#27272a" : "#d4d4d8"} cellColor={theme === 'dark' ? "#18181b" : "#e4e4e7"} />}
-                  </Canvas>
+                  <BIMCanvasViewport
+                    canvasRef={canvasRef}
+                    theme={theme}
+                    isMobile={isMobile}
+                    isTouring={isTouring}
+                    cameraMode={cameraMode}
+                    activeModel={activeModel}
+                    selectModel={selectModel}
+                    layersInfo={layersInfo}
+                    activeFloor={activeFloor}
+                    selectedId={selectedId}
+                    setSelectedId={setSelectedId}
+                    isExploded={isExploded}
+                    measureMode={measureMode}
+                    measurePoints={measurePoints}
+                    handleMeasureClick={handleMeasureClick}
+                    defectMode={defectMode}
+                    defectPins={defectPins}
+                    handleDefectClick={handleDefectClick}
+                    handleSelect={handleSelect}
+                    t={t}
+                  />
 
                   {isMobile && forceMobile3D && (
                     <>

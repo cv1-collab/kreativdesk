@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/server.mjs --external:express --external:vite --external:@google/genai --external:dotenv --external:stripe --external:@supabase/supabase-js",
+    "build": "tsc --noEmit && vite build && esbuild server.ts --bundle --platform=node --target=node18 --format=esm --outfile=dist/server.mjs --external:express --external:vite --external:@google/genai --external:dotenv --external:stripe --external:@supabase/supabase-js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives ",
     "start": "node dist/server.mjs",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "types:generate": "node scripts/generate_database_types.mjs"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",
@@ -22,6 +25,7 @@
     "@sentry/react": "^10.65.0",
     "@supabase/supabase-js": "^2.112.0",
     "@tailwindcss/vite": "^4.1.14",
+    "@tanstack/react-query": "^5.102.8",
     "@vercel/analytics": "^2.0.1",
     "@vitejs/plugin-react": "^5.0.4",
     "buffer": "^6.0.3",
@@ -55,6 +59,7 @@
     "tsx": "^4.21.0",
     "uuid": "^13.0.0",
     "vite": "^6.2.0",
+    "vitest": "^5.0.0",
     "web-ifc-three": "^0.0.126",
     "web-ifc-viewer": "^1.0.218",
     "xlsx": "^0.18.5"

@@ -7,6 +7,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { supabase } from '../lib/supabase';
+import { useDocumentsQuery } from '../hooks/queries/useDocumentsQuery';
 import { 
   FolderOpen, FolderPlus, Upload, Trash2, Download, FileText, 
   Building2, Briefcase, ChevronRight, Loader2, RefreshCw, Plus, Sparkles, Edit3, 
@@ -371,46 +372,26 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     setIsStudioOpen(true);
   };
 
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+  const { documents: queryDocuments, invalidateDocuments } = useDocumentsQuery(
+    isDemo ? null : safeCompanyId
+  );
+
   const fetchDocuments = async () => {
-    if (!currentUser?.companyId && !currentUser?.uid) return;
-    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-
+    if (!safeCompanyId) return;
     try {
-      await ensureDefaultCompanyFolders(safeCompanyId, currentUser.uid);
-
-      const { data, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .order('is_folder', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setDocuments(data);
-      }
+      await ensureDefaultCompanyFolders(safeCompanyId, currentUser?.uid || '');
     } catch (err) {
       console.error(err);
     }
+    invalidateDocuments();
   };
 
   useEffect(() => {
-    fetchDocuments();
-
-    if (isDemo || !currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    const channel = supabase
-      .channel('documents-realtime-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'documents', filter: `company_id=eq.${safeCompanyId}` }, () => {
-        fetchDocuments();
-      })
-      .subscribe();
-
-    return () => {
-      if (channel) {
-        supabase.removeChannel(channel).catch(() => {});
-      }
-    };
-  }, [currentUser, activeProjectId, projects?.length, isDemo]);
+    if (queryDocuments && !isDemo) {
+      setDocuments(queryDocuments as any);
+    }
+  }, [queryDocuments, isDemo]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;

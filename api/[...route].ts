@@ -24,10 +24,13 @@ import setTenantClaim from './_handlers/set-tenant-claim.js';
 import bexioSyncProposal from './_handlers/bexio-sync-proposal.js';
 import bexioTestConnection from './_handlers/bexio-test-connection.js';
 import bexioSyncLeads from './_handlers/bexio-sync-leads.js';
+import financialLedger from './_handlers/financial-ledger.js';
 
 type RouteHandler = (req: VercelRequest | any, res: VercelResponse | any) => Promise<any> | any;
 
 const handlers: Record<string, RouteHandler> = {
+  'financial-ledger': financialLedger,
+  'financial/ledger': financialLedger,
   'create-checkout-session': createCheckoutSession,
   'create-portal-session': createPortalSession,
   'get-user-status': getUserStatus,
