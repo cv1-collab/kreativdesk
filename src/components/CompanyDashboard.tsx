@@ -43,6 +43,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 
 import { PLAN_FEATURES, PlanTier } from '../utils/planFeatures';
+import { offlineSyncManager } from '../utils/offlineSyncManager';
 import { demoTemplates } from '../utils/demoTemplates';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -139,9 +140,17 @@ export default function CompanyDashboard() {
       e.preventDefault();
       setDeferredPrompt(e);
     };
+
+    const unregisterAutoSync = offlineSyncManager.registerAutoSync((msg, type) => {
+      addToast(msg, type);
+    });
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-  }, []);
+    return () => {
+      unregisterAutoSync?.();
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    };
+  }, [addToast]);
 
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 

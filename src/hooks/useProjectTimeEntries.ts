@@ -27,6 +27,9 @@ export function useProjectTimeEntries() {
       const localCacheKey = `time_entries_cache_${safeCompanyId}`;
       const localCached = localStorage.getItem(localCacheKey);
       const localTimes = localCached ? JSON.parse(localCached) : [];
+      if (localTimes.length > 0) {
+        setTimeEntries(localTimes);
+      }
 
       const { data: times } = await supabase
         .from('time_entries')

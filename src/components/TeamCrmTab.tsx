@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { jsPDF } from 'jspdf';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
+import { useToast } from '../contexts/ToastContext';
 import { 
   Users, Mail, Building, Phone, Shield, 
   Search, UserPlus, CheckCircle2, ShieldAlert,
@@ -94,13 +95,11 @@ const safeStr = (str: any, maxLen: number) => {
 
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
+  const { addToast } = useToast();
   const { fetchCompanyUsers, isDemoMode } = useProject() as any;
   const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
-  
-  // Dummy Toast for UI
-  const addToast = (msg: string, type: string) => console.log(msg);
 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;

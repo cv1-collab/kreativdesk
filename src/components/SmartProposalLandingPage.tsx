@@ -547,6 +547,7 @@ export default function SmartProposalLandingPage() {
   const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
+  const [signatureError, setSignatureError] = useState(false);
 
   // Language Selector (DE, FR, EN) - Initialized from URL param ?lang= or default to 'de'
   const [proposalLang, setProposalLang] = useState<'de' | 'fr' | 'en'>(() => {
@@ -900,6 +901,7 @@ export default function SmartProposalLandingPage() {
     if (!ctx) return;
     setIsDrawing(true);
     setHasSignature(true);
+    setSignatureError(false);
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -1109,7 +1111,7 @@ export default function SmartProposalLandingPage() {
     if (!proposal) return;
 
     if (!hasSignature) {
-      alert('Bitte leisten Sie Ihre digitale Unterschrift im Unterschriften-Feld.');
+      setSignatureError(true);
       return;
     }
 
@@ -2592,7 +2594,7 @@ export default function SmartProposalLandingPage() {
                       </button>
                     </div>
 
-                    <div className="rounded-2xl border-2 border-dashed border-white/20 bg-zinc-950 p-1 relative overflow-hidden flex flex-col items-center justify-center">
+                    <div className={cn("rounded-2xl border-2 border-dashed bg-zinc-950 p-1 relative overflow-hidden flex flex-col items-center justify-center transition-all duration-200", signatureError ? "border-amber-500/80 ring-2 ring-amber-500/20" : "border-white/20")}>
                       <canvas 
                         ref={signatureCanvasRef}
                         width={500}
@@ -2612,6 +2614,11 @@ export default function SmartProposalLandingPage() {
                         </div>
                       )}
                     </div>
+                    {signatureError && (
+                      <p className="text-amber-400 text-xs font-semibold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1">
+                        ⚠️ Bitte leisten Sie Ihre digitale Unterschrift im Unterschriften-Feld.
+                      </p>
+                    )}
                   </div>
 
                   {/* MANDATORY LEGAL ACCEPTANCE CHECKBOX */}

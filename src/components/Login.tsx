@@ -79,6 +79,16 @@ export default function Login() {
     }
   }, [currentUser, navigate]);
 
+  React.useEffect(() => {
+    try {
+      const conflictReason = sessionStorage.getItem('auth_conflict_reason');
+      if (conflictReason) {
+        setError(conflictReason);
+        sessionStorage.removeItem('auth_conflict_reason');
+      }
+    } catch (e) {}
+  }, []);
+
   const [customBg, setCustomBg] = useState<string | null>(null);
 
   React.useEffect(() => {

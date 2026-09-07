@@ -24,6 +24,7 @@ import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
 import { fetchNotifications } from '../lib/notifications';
 import { checkUpcomingEventReminders } from '../utils/calendarReminderHelper';
+import { offlineSyncManager } from '../utils/offlineSyncManager';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -134,16 +135,21 @@ export default function Layout() {
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
+    const unregisterAutoSync = offlineSyncManager.registerAutoSync((msg, type) => {
+      addToast(msg, type);
+    });
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
     return () => {
+      unregisterAutoSync?.();
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [addToast]);
 
   const handleInstallApp = async () => {
     if (deferredPrompt) {

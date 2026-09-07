@@ -8,6 +8,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
+import { useCompanyUsersQuery, COMPANY_USERS_QUERY_KEY } from '../hooks/queries/useCompanyUsersQuery';
+import { useQueryClient } from '@tanstack/react-query';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     crm_docs: 'CRM & Contacts', crm_docs_desc: 'Manage contact partners and stakeholders for your company.',
@@ -27,14 +30,14 @@ interface Contact { id: string; name: string; role: string; company: string; ema
 
 export default function CRM() {
   const { currentUser } = useAuth();
-  const { fetchCompanyUsers, isDemoMode } = useProject() as any;
+  const { isDemoMode } = useProject() as any;
   const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
+  const queryClient = useQueryClient();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newContact, setNewContact] = useState({ name: '', role: '', company: '', email: '', phone: '' });
@@ -46,44 +49,19 @@ export default function CRM() {
     { id: 'c4', name: 'Thomas Widmer', role: 'Elektro-Ingenieur', company: 'Widmer Elektro AG', email: 't.widmer@widmer-elektro.ch', phone: '+41 52 300 77 88' }
   ];
 
-  const fetchContacts = async () => {
-    if (isDemo) {
-      setContacts(DEMO_CRM_CONTACTS);
-      return;
-    }
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
-    try {
-      const { data, error } = await supabase
-        .from('company_users')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .order('created_at', { ascending: false });
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
+  const { data: queryContacts, isLoading: isQueryLoading } = useCompanyUsersQuery(isDemo ? null : safeCompanyId);
 
-      if (error) {
-        console.error("Error fetching CRM contacts:", error);
-        return;
-      }
-
-      if (data) {
-        const mapped = data.map((u: any) => ({
-          id: u.id,
-          name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
-          role: u.role || 'partner',
-          company: u.company || '',
-          email: u.email || '',
-          phone: u.phone || ''
-        }));
-        setContacts(mapped);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    fetchContacts();
-  }, [currentUser, isDemo]);
+  const contacts: Contact[] = isDemo 
+    ? DEMO_CRM_CONTACTS 
+    : (queryContacts || []).map(u => ({
+        id: u.id,
+        name: u.name,
+        role: u.role,
+        company: u.company || '',
+        email: u.email || '',
+        phone: u.phone || ''
+      }));
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,8 +70,7 @@ export default function CRM() {
       setIsModalOpen(false);
       return;
     }
-    if (!currentUser) return;
-    const safeCompanyId = currentUser.companyId || currentUser.uid;
+    if (!currentUser || !safeCompanyId) return;
     const nameParts = newContact.name.trim().split(' ');
     const firstName = nameParts[0] || newContact.name;
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -117,10 +94,10 @@ export default function CRM() {
         return;
       }
 
+      queryClient.invalidateQueries({ queryKey: [COMPANY_USERS_QUERY_KEY, safeCompanyId] });
       setIsModalOpen(false);
       setNewContact({ name: '', role: '', company: '', email: '', phone: '' });
       addToast('Kontakt gespeichert!', 'success');
-      fetchContacts();
     } catch (error) {
       addToast('Fehler beim Speichern', 'error');
     }
@@ -128,14 +105,20 @@ export default function CRM() {
 
   const handleDeleteContact = async (id: string) => {
     if (!window.confirm('Kontakt wirklich löschen?')) return;
+    if (isDemo) {
+      addToast('Löschen in der Demo deaktiviert.', 'info');
+      return;
+    }
+
     try {
-      setContacts(prev => prev.filter(c => c.id !== id));
-      await supabase.from('company_users').delete().eq('id', id);
-      await supabase.from('profiles').delete().eq('id', id);
-      addToast('Kontakt gelöscht', 'info');
-      fetchContacts();
-      fetchCompanyUsers?.();
-    } catch (error) {
+      const { error } = await supabase.from('company_users').delete().eq('id', id);
+      if (error) {
+        addToast('Fehler beim Löschen', 'error');
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: [COMPANY_USERS_QUERY_KEY, safeCompanyId] });
+      addToast('Kontakt gelöscht.', 'success');
+    } catch (err) {
       addToast('Fehler beim Löschen', 'error');
     }
   };
@@ -171,7 +154,12 @@ export default function CRM() {
         </div>
 
         <div className="divide-y divide-border/50">
-          {filteredContacts.length === 0 ? (
+          {isQueryLoading && contacts.length === 0 ? (
+            <div className="flex items-center justify-center py-12 gap-2 text-text-muted text-sm font-medium">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+              <span>Kontakte werden geladen...</span>
+            </div>
+          ) : filteredContacts.length === 0 ? (
             <div className="text-center py-12 text-text-muted">{t('no_contacts')}</div>
           ) : (
             filteredContacts.map(contact => (

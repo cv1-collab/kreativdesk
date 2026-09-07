@@ -339,7 +339,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }, (payload: any) => {
         const remoteSessionId = payload.new?.[deviceTypeKey];
         if (remoteSessionId && remoteSessionId !== mySessionId) {
-          alert(`⚠️ Sitzung Beendet: Dein Konto wurde auf einem zweiten ${deviceTypeName} angemeldet. Du kannst dich gleichzeitig auf 1 Laptop und 1 Smartphone/iPad anmelden, jedoch nicht auf zwei ${deviceTypeName}en gleichzeitig.`);
+          try {
+            sessionStorage.setItem(
+              'auth_conflict_reason',
+              `⚠️ Sitzung Beendet: Dein Konto wurde auf einem zweiten ${deviceTypeName} angemeldet. Du kannst dich gleichzeitig auf 1 Laptop und 1 Smartphone/iPad anmelden, jedoch nicht auf zwei ${deviceTypeName}en gleichzeitig.`
+            );
+          } catch (e) {}
           logout();
         }
       })
