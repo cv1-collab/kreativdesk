@@ -245,11 +245,21 @@ export default function CompanyDashboard() {
       }
     };
 
+    const handleOpenPitchModal = (e?: Event) => {
+      const customEv = e as CustomEvent;
+      const openPublish = customEv?.detail?.openPublishModal ?? true;
+      setActiveTab('proposals');
+      setPitchModalInitialPublish(openPublish);
+      setShowPitchModal(true);
+    };
+
     window.addEventListener('document_created', handleDocCreated);
     window.addEventListener('navigate-to-tab', handleNavigateTab);
+    window.addEventListener('open-pitch-modal', handleOpenPitchModal);
     return () => {
       window.removeEventListener('document_created', handleDocCreated);
       window.removeEventListener('navigate-to-tab', handleNavigateTab);
+      window.removeEventListener('open-pitch-modal', handleOpenPitchModal);
     };
   }, []);
 
@@ -257,7 +267,23 @@ export default function CompanyDashboard() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [showPitchModal, setShowPitchModal] = useState(false);
+  const [pitchModalInitialPublish, setPitchModalInitialPublish] = useState(false);
   const [showOpCostModal, setShowOpCostModal] = useState(false);
+
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#pitchdeck') {
+        setActiveTab('proposals');
+        setPitchModalInitialPublish(true);
+        setShowPitchModal(true);
+      } else if (window.location.hash === '#proposals') {
+        setActiveTab('proposals');
+      }
+    };
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
   
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectData, setNewProjectData] = useState({ name: '', description: '', status: 'active' as const, role: 'owner' as const });
@@ -895,10 +921,15 @@ export default function CompanyDashboard() {
                )}
                
                {activeTab === 'proposals' && (
-                  <div className="h-full w-full overflow-y-auto custom-scrollbar">
-                    <ProposalManagerDashboard />
-                  </div>
-                )}
+                   <div className="h-full w-full overflow-y-auto custom-scrollbar">
+                     <ProposalManagerDashboard 
+                       onCreateNew={() => {
+                         setPitchModalInitialPublish(true);
+                         setShowPitchModal(true);
+                       }}
+                     />
+                   </div>
+                 )}
                 {activeTab === 'team' && <div className="h-full w-full"><TeamCrmTab userRole={userRole} companyUsers={safeCompanyUsers} /></div>}
                {activeTab === 'finance' && canSeeFinances && <div className="h-full w-full"><FinanceTab addToast={addToast} setShowExpenseModal={setShowExpenseModal} setShowInvoiceModal={setShowInvoiceModal} setShowQuoteModal={setShowQuoteModal} /></div>}
                {activeTab === 'documents' && <div className="h-full w-full"><DocumentsTab /></div>}
@@ -1088,7 +1119,19 @@ export default function CompanyDashboard() {
       {isMounted && showExpenseModal && createPortal(<ExpenseReport onClose={() => setShowExpenseModal(false)} onSave={() => setShowExpenseModal(false)} />, document.body)}
       {isMounted && showInvoiceModal && createPortal(<InvoiceStudio type="invoice" onClose={() => setShowInvoiceModal(false)} />, document.body)}
       {isMounted && showQuoteModal && createPortal(<InvoiceStudio type="quote" onClose={() => setShowQuoteModal(false)} />, document.body)}
-      {isMounted && showPitchModal && createPortal(<PitchDeckStudio onClose={() => setShowPitchModal(false)} />, document.body)}
+      {isMounted && showPitchModal && createPortal(
+        <PitchDeckStudio 
+          initialOpenPublishModal={pitchModalInitialPublish}
+          onClose={() => {
+            setShowPitchModal(false);
+            setPitchModalInitialPublish(false);
+            if (window.location.hash === '#pitchdeck') {
+              window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+          }} 
+        />, 
+        document.body
+      )}
       {isMounted && showOpCostModal && createPortal(<OpCostStudio onClose={() => setShowOpCostModal(false)} />, document.body)}
     </div>
   );

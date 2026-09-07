@@ -23,7 +23,7 @@ import PitchDeckStudio from './PitchDeckStudio';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { sendNotification } from '../lib/notifications';
 
-const localTranslations: Record<'en' | 'de', Record<string, string>> = {
+const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: { 
     document_hub: 'Document Hub', 
     cloud_storage_desc: 'Manage company & project documents securely in Cloud Storage',
@@ -73,7 +73,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     preset_07_ASSETS_label: 'Media & Assets',
     preset_07_ASSETS_desc: 'Images, Renderings, Graphics & Logos',
     preset_08_PLÄNE_label: 'CAD & 3D Plans',
-    preset_08_PLÄNE_desc: 'CAD Drawings, BIM Models & Structural Reports'
+    preset_08_PLÄNE_desc: 'CAD Drawings, BIM Models & Structural Reports',
+    preset_09_DOKUMENTATION_label: 'Documentation & Reports',
+    preset_09_DOKUMENTATION_desc: 'Site logs, reports & meeting minutes',
+    preset_10_KI_STUDIO_label: 'AI Contracts & Studio Letters',
+    preset_10_KI_STUDIO_desc: 'Documents generated with AI editor or letter studio',
+    preset_11_WHITEBOARD_3D_label: 'Whiteboard & 3D Snapshots',
+    preset_11_WHITEBOARD_3D_desc: 'Exports from whiteboards, 3D viewer & site cameras'
   },
   de: { 
     document_hub: 'Dokumenten Hub', 
@@ -124,7 +130,70 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     preset_07_ASSETS_label: 'Medien & Assets',
     preset_07_ASSETS_desc: 'Bilder, Renderings, Grafiken & Logos',
     preset_08_PLÄNE_label: 'CAD & 3D Pläne',
-    preset_08_PLÄNE_desc: 'CAD-Zeichnungen, BIM-Modelle & Statikberichte'
+    preset_08_PLÄNE_desc: 'CAD-Zeichnungen, BIM-Modelle & Statikberichte',
+    preset_09_DOKUMENTATION_label: 'Dokumentation',
+    preset_09_DOKUMENTATION_desc: 'Bautagebücher, Berichte & Sitzungsprotokolle',
+    preset_10_KI_STUDIO_label: 'KI-Verträge & Studio-Briefe',
+    preset_10_KI_STUDIO_desc: 'Mit KI-Editor oder Brief-Studio generierte Dokumente',
+    preset_11_WHITEBOARD_3D_label: 'Whiteboard & 3D Snapshots',
+    preset_11_WHITEBOARD_3D_desc: 'Exporte aus Whiteboards, 3D Viewer & Baukamera'
+  },
+  fr: {
+    document_hub: 'Centre de documents',
+    cloud_storage_desc: 'Gérez vos documents d’entreprise et de projet en toute sécurité sur le Cloud',
+    company_docs: 'Documents d’entreprise',
+    project_docs: 'Documents de projet',
+    proposals_tab: 'Offres & Landing pages',
+    proposals_desc: 'Offres clients interactives avec modèles 3D, vidéo et signature électronique',
+    open_proposals_fullscreen: 'Ouvrir en plein écran',
+    create_proposal_btn: 'Créer une nouvelle offre',
+    new_folder: 'Nouveau dossier',
+    upload: 'Téléverser un fichier',
+    confirm_delete: 'Voulez-vous vraiment supprimer cet élément ?',
+    upload_failed: 'Échec du téléversement',
+    no_files: 'Aucun document dans ce dossier.',
+    root: 'Répertoire principal',
+    seed_demo_btn: 'Restaurer les données démo',
+    seed_success: 'Données démo et dossiers d’entreprise restaurés !',
+    grid_view: 'Grille',
+    list_view: 'Liste',
+    open_folder: 'Ouvrir le dossier',
+    open_folder_arrow: 'Ouvrir le dossier →',
+    open_project_docs: 'Ouvrir les documents du projet',
+    loose_files: 'Récemment créés / Documents non assignés',
+    search_placeholder: 'Rechercher documents et dossiers...',
+    zip_download: 'Télécharger en archive .ZIP',
+    select_all: 'Tout sélectionner',
+    deselect_all: 'Désélectionner tout',
+    files_selected: 'fichiers sélectionnés',
+    main_categories_company: 'Catégories principales d’entreprise',
+    topic_folders: 'Dossiers thématiques',
+    file_single: 'Fichier',
+    file_plural: 'Fichiers',
+
+    // Preset Folder Labels & Descriptions
+    preset_01_FINANZEN_label: 'Finances & Comptabilité',
+    preset_01_FINANZEN_desc: 'Factures, devis, bilans, justificatifs & frais',
+    preset_02_RECHTLICHES_label: 'Juridique & Contrats',
+    preset_02_RECHTLICHES_desc: 'CGV, contrats, normes SIA & conformité',
+    preset_03_HR_MITARBEITER_label: 'RH & Collaborateurs',
+    preset_03_HR_MITARBEITER_desc: 'Dossiers du personnel, contrats de travail & salaires',
+    preset_04_SALES_label: 'Ventes & Acquisition',
+    preset_04_SALES_desc: 'Offres clients, prospection & présentations',
+    preset_05_MARKETING_label: 'Marketing & RP',
+    preset_05_MARKETING_desc: 'Branding, logos, médias & publications',
+    preset_06_OPERATIONS_label: 'Opérations & QM',
+    preset_06_OPERATIONS_desc: 'Processus opérationnels, qualité & modèles',
+    preset_07_ASSETS_label: 'Médias & Ressources',
+    preset_07_ASSETS_desc: 'Images, rendus, graphismes & logos',
+    preset_08_PLÄNE_label: 'Plans CAO & 3D',
+    preset_08_PLÄNE_desc: 'Dessins CAO, maquettes BIM & rapports de structure',
+    preset_09_DOKUMENTATION_label: 'Documentation & Rapports',
+    preset_09_DOKUMENTATION_desc: 'Journaux de chantier, rapports & procès-verbaux',
+    preset_10_KI_STUDIO_label: 'Contrats IA & Studio de lettres',
+    preset_10_KI_STUDIO_desc: 'Documents générés avec l’éditeur IA ou le studio',
+    preset_11_WHITEBOARD_3D_label: 'Tableau blanc & Instantanés 3D',
+    preset_11_WHITEBOARD_3D_desc: 'Exports tableau blanc, visualiseur 3D & caméra chantier'
   }
 };
 
@@ -242,9 +311,19 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const defaultProjId = propProjectId || routeProjectId || null;
   const isDemo = isDemoMode || defaultProjId === 'demo-1' || defaultProjId?.startsWith('demo-') || activeProjectId === 'demo-1';
   const canUpload = !isDemo && hasPermission('canUploadFiles');
-  const canDelete = !isDemo && hasPermission('canDeleteFiles');
-  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
-  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+  const canDelete = !isDemo && (hasPermission('canDeleteFiles') || currentUser?.role === 'super_admin' || currentUser?.role === 'owner' || !currentUser?.role);
+  const currentLang: 'en' | 'de' | 'fr' = (typeof language === 'string' && language.toLowerCase().startsWith('fr'))
+    ? 'fr'
+    : ((typeof language === 'string' && language.toLowerCase().includes('de')) ? 'de' : 'en');
+  const t = (key: string) => {
+    const direct = localTranslations[currentLang]?.[key];
+    if (direct) return direct;
+    const deFallback = localTranslations['de']?.[key];
+    if (deFallback) return deFallback;
+    const globalRes = globalT(key);
+    if (globalRes && globalRes !== key) return globalRes;
+    return key;
+  };
 
   const docsStorageKey = `docs_state_${defaultProjId || 'global'}`;
 
@@ -265,6 +344,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   };
 
   const [showPitchModal, setShowPitchModal] = useState(false);
+  const [pitchModalInitialPublish, setPitchModalInitialPublish] = useState(false);
 
   useEffect(() => {
     const handleTabNav = (e: any) => {
@@ -1106,8 +1186,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
                 const fileCount = getCompanyFolderCount(folderKey);
 
-                const presetLabel = t(`preset_${folderKey}_label`) || preset.label;
-                const presetDesc = t(`preset_${folderKey}_desc`) || preset.desc;
+                const rawLabel = t(`preset_${folderKey}_label`);
+                const presetLabel = (rawLabel && rawLabel !== `preset_${folderKey}_label`) ? rawLabel : preset.label;
+                const rawDesc = t(`preset_${folderKey}_desc`);
+                const presetDesc = (rawDesc && rawDesc !== `preset_${folderKey}_desc`) ? rawDesc : preset.desc;
+                const cleanFolderBadge = folderKey.replace(/_/g, ' ');
 
                 return (
                   <div
@@ -1147,7 +1230,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                     </div>
 
                     <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold relative z-10">
-                      <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">{folderKey}</span>
+                      <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">{cleanFolderBadge}</span>
                       <span className={cn("flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold", preset.text)}>
                         {t('open_folder')} <ArrowRight size={14} />
                       </span>
@@ -1206,6 +1289,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 const IconComp = preset.icon;
                 const folderObj = documents.find(d => d.is_folder && d.name === folderKey);
                 const fileCount = getCompanyFolderCount(folderKey);
+                const rawLabel = t(`preset_${folderKey}_label`);
+                const presetLabel = (rawLabel && rawLabel !== `preset_${folderKey}_label`) ? rawLabel : preset.label;
+                const rawDesc = t(`preset_${folderKey}_desc`);
+                const presetDesc = (rawDesc && rawDesc !== `preset_${folderKey}_desc`) ? rawDesc : preset.desc;
+                const cleanFolderBadge = folderKey.replace(/_/g, ' ');
 
                 return (
                   <div
@@ -1214,7 +1302,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       if (folderObj) {
                         navigateToFolder(folderObj.id, folderObj.name);
                       } else {
-                        addToast(`Ordner ${preset.label} wird geladen...`, 'info');
+                        addToast(`Ordner ${presetLabel} wird geladen...`, 'info');
                         fetchDocuments();
                       }
                     }}
@@ -1226,16 +1314,16 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
                       <div>
                         <div className="font-bold text-sm text-text-primary group-hover:text-blue-500 transition-colors flex items-center gap-2">
-                          {preset.label}
-                          <span className="text-[10px] uppercase font-black px-2 py-0.5 bg-background border border-border/50 text-text-muted rounded-md">{folderKey}</span>
+                          {presetLabel}
+                          <span className="text-[10px] uppercase font-black px-2 py-0.5 bg-background border border-border/50 text-text-muted rounded-md">{cleanFolderBadge}</span>
                         </div>
-                        <div className="text-xs text-text-muted font-medium">{preset.desc}</div>
+                        <div className="text-xs text-text-muted font-medium">{presetDesc}</div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-bold text-text-muted bg-background border border-border/50 px-3 py-1 rounded-full">
-                        {fileCount} Datei{fileCount === 1 ? '' : 'en'}
+                        {fileCount} {fileCount === 1 ? t('file_single') : t('file_plural')}
                       </span>
                       <ChevronRight size={18} className="text-text-muted group-hover:text-blue-500 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -1674,7 +1762,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         <div className="space-y-6 animate-in fade-in duration-200">
           <ProposalManagerDashboard 
             embedded={true} 
-            onCreateNew={() => setShowPitchModal(true)} 
+            onCreateNew={() => {
+              setPitchModalInitialPublish(true);
+              setShowPitchModal(true);
+            }} 
           />
         </div>
       )}
@@ -1682,7 +1773,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* Pitch Deck Studio Modal zum Erstellen neuer Kunden-Offerten & Landingpages */}
       {showPitchModal && typeof document !== 'undefined' && createPortal(
         <PitchDeckStudio 
-          onClose={() => setShowPitchModal(false)} 
+          initialOpenPublishModal={pitchModalInitialPublish}
+          onClose={() => {
+            setShowPitchModal(false);
+            setPitchModalInitialPublish(false);
+          }} 
           projectId={selectedProjectId || defaultProjId || undefined} 
         />,
         document.body

@@ -13,7 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { cn, copyToClipboard } from '../utils';
 import { audioFeedback } from '../utils/audioFeedback';
 
-const localTranslations: Record<'en' | 'de', Record<string, string>> = {
+const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: {
     dashboard_title: 'Pitch & Proposal Landing Pages',
     dashboard_subtitle: 'Central overview of all sent client links with video, interactive configurator, and 30-day expiration',
@@ -109,6 +109,54 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     toast_extended: 'Gültigkeit erfolgreich um 30 Tage verlängert!',
     toast_deleted: 'Landingpage gelöscht.',
     confirm_delete: 'Möchten Sie diese Kunden-Landingpage wirklich löschen?'
+  },
+  fr: {
+    dashboard_title: 'Pitch & Landing pages d’offres',
+    dashboard_subtitle: 'Vue d’ensemble des liens clients envoyés avec vidéo, configurateur interactif et expiration à 30 jours',
+    vault_badge: 'Coffre-fort mandataire : Entièrement isolé',
+    vault_desc: 'Seuls les utilisateurs autorisés de votre entreprise peuvent consulter et gérer ces offres.',
+    btn_create_new: 'Créer une nouvelle offre & landing page',
+    stat_active_links: 'Liens actifs',
+    stat_active_sub: 'Cloud 30 jours actif',
+    stat_accepted: 'Acceptées numériquement',
+    stat_accepted_sub: 'Offres validées',
+    stat_volume: 'Volume conclu',
+    stat_volume_sub: 'Issu de la validation',
+    stat_total: 'Total créées',
+    stat_total_sub: 'Landing pages dans le système',
+    search_placeholder: 'Rechercher client, projet ou entreprise...',
+    filter_all: 'Tous',
+    filter_active: 'Actifs',
+    filter_accepted: 'Acceptés',
+    filter_expired: 'Expirés',
+    empty_title: 'Aucune landing page d’offre trouvée',
+    empty_desc: 'Créez dans le Pitch Deck Studio une nouvelle landing page client avec vidéos, tarifs et profils.',
+    empty_btn: 'Créer la première offre',
+    status_accepted: 'Acceptée numériquement',
+    status_expired: 'Expirée',
+    status_days_left: 'Encore {days} jours',
+    views_suffix: 'Vues',
+    client_label: 'Client :',
+    investment_sum: 'Montant de l’investissement',
+    badge_video: 'Vidéo',
+    btn_preview: 'Aperçu',
+    btn_copy: 'Copier le lien',
+    btn_open_tab: 'Ouvrir dans un nouvel onglet',
+    btn_extend: '+30j',
+    btn_delete: 'Supprimer',
+    preview_title: 'Aperçu en direct :',
+    preview_tenant_badge: 'Isolation des locataires active',
+    preview_client: 'Client :',
+    preview_valid_until: 'Valable jusqu’au :',
+    preview_desktop: 'Bureau (100%)',
+    preview_mobile: 'Mobile (390px)',
+    preview_copy_btn: 'Copier le lien',
+    preview_tab_btn: 'Nouvel onglet',
+    close: 'Fermer',
+    toast_copied: 'Lien de la landing page copié !',
+    toast_extended: 'Validité prolongée avec succès de 30 jours !',
+    toast_deleted: 'Landing page supprimée.',
+    confirm_delete: 'Voulez-vous vraiment supprimer cette landing page client ?'
   }
 };
 
@@ -116,7 +164,9 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language } = useLanguage();
-  const currentLang = (language === 'en' ? 'en' : 'de') as 'en' | 'de';
+  const currentLang: 'en' | 'de' | 'fr' = (typeof language === 'string' && language.toLowerCase().startsWith('fr'))
+    ? 'fr'
+    : (language === 'en' ? 'en' : 'de');
   const t = (key: string) => localTranslations[currentLang]?.[key] || localTranslations['de']?.[key] || key;
 
   const [proposals, setProposals] = useState<SmartProposal[]>([]);
@@ -138,6 +188,20 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
 
   useEffect(() => {
     loadProposals();
+  }, [loadProposals]);
+
+  useEffect(() => {
+    const handleReload = () => {
+      loadProposals();
+    };
+    window.addEventListener('proposal_saved', handleReload);
+    window.addEventListener('proposal_created', handleReload);
+    window.addEventListener('focus', handleReload);
+    return () => {
+      window.removeEventListener('proposal_saved', handleReload);
+      window.removeEventListener('proposal_created', handleReload);
+      window.removeEventListener('focus', handleReload);
+    };
   }, [loadProposals]);
 
   const handleCopyLink = async (proposal: SmartProposal) => {
@@ -192,10 +256,11 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
   const totalVolume = proposals.filter(p => p.status === 'accepted').reduce((sum, p) => sum + (p.acceptedBy?.finalPrice || p.basePrice || 0), 0);
 
   const handleTriggerCreate = () => {
+    audioFeedback.playTouchClick();
     if (onCreateNew) {
       onCreateNew();
     } else {
-      window.dispatchEvent(new CustomEvent('open-pitch-modal'));
+      window.dispatchEvent(new CustomEvent('open-pitch-modal', { detail: { openPublishModal: true } }));
       window.location.hash = '#pitchdeck';
     }
   };
@@ -473,7 +538,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
                     </span>
                   </div>
                   <p className="text-[11px] text-text-muted truncate">
-                    {t('preview_client')} <strong className="text-text-primary">{previewProposal.clientName}</strong> {previewProposal.clientCompany && `(${previewProposal.clientCompany})`} · {t('preview_valid_until')} {new Date(previewProposal.expiresAt).toLocaleDateString(currentLang === 'en' ? 'en-US' : 'de-CH')}
+                    {t('preview_client')} <strong className="text-text-primary">{previewProposal.clientName}</strong> {previewProposal.clientCompany && `(${previewProposal.clientCompany})`} · {t('preview_valid_until')} {new Date(previewProposal.expiresAt).toLocaleDateString(currentLang === 'en' ? 'en-US' : (currentLang === 'fr' ? 'fr-CH' : 'de-CH'))}
                   </p>
                 </div>
               </div>

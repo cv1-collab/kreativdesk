@@ -266,7 +266,15 @@ export const deserializeSlideFromDb = (d: any, fallbackOwnerId?: string): Slide 
   } as Slide;
 };
 
-export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () => void, projectId?: string }) {
+export default function PitchDeckStudio({ 
+  onClose, 
+  projectId, 
+  initialOpenPublishModal = false 
+}: { 
+  onClose?: () => void; 
+  projectId?: string; 
+  initialOpenPublishModal?: boolean; 
+}) {
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
@@ -398,7 +406,8 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
 
   // SMART PROPOSAL & LANDINGPAGE STATES
-  const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(false);
+  const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(initialOpenPublishModal);
+  const [proposalTitle, setProposalTitle] = useState('');
   const [proposalModalTab, setProposalModalTab] = useState<'basic' | 'finance' | 'legal'>('basic');
   const [proposalClientName, setProposalClientName] = useState('');
   const [proposalClientCompany, setProposalClientCompany] = useState('');
@@ -949,7 +958,19 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
     if (activeProject?.deckSettings) {
       setDeckSettings(prev => ({ ...prev, ...activeProject.deckSettings }));
     }
-  }, [activeProject?.deckSettings]);
+    if (activeProject?.name && !proposalTitle) {
+      setProposalTitle(activeProject.name);
+    }
+  }, [activeProject?.deckSettings, activeProject?.name, proposalTitle]);
+
+  useEffect(() => {
+    if (initialOpenPublishModal) {
+      setIsLandingPageModalOpen(true);
+      if (!proposalClientName) {
+        setProposalClientName(activeProject?.name ? `Kunde für ${activeProject.name}` : 'Kunde');
+      }
+    }
+  }, [initialOpenPublishModal, activeProject?.name, proposalClientName]);
 
   const updateDeckSettings = async (newSettings: Partial<DeckSettings>) => {
     const updated = { ...deckSettings, ...newSettings };
@@ -3812,9 +3833,9 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
 
                 const proposalData = await saveSmartProposal({
                   projectId: targetId,
-                  companyId: currentUser?.companyId || 'company-default',
+                  companyId: currentUser?.companyId || currentUser?.uid || 'company-default',
                   ownerId: currentUser?.uid || 'user',
-                  title: activeProject?.name || 'Projekt-Präsentation',
+                  title: proposalTitle.trim() || activeProject?.name || 'Projekt-Präsentation',
                   clientName: proposalClientName.trim() || 'Sehr geehrte Damen und Herren',
                   clientCompany: proposalClientCompany.trim(),
                   clientEmail: proposalClientEmail.trim(),
@@ -3838,6 +3859,11 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 setPublishedShareUrl(publicUrl);
                 setIsPublishingProposal(false);
                 addToast(t('proposal_created_success'), 'success');
+
+                if (typeof window !== 'undefined') {
+                  window.dispatchEvent(new CustomEvent('proposal_saved', { detail: proposalData }));
+                  window.dispatchEvent(new CustomEvent('proposal_created', { detail: proposalData }));
+                }
               }} className="space-y-5">
 
                 {/* MODAL NAVIGATION TABS */}
@@ -3868,6 +3894,18 @@ export default function PitchDeckStudio({ onClose, projectId }: { onClose?: () =
                 {/* TAB 1: KUNDE & PROJEKT */}
                 {proposalModalTab === 'basic' && (
                   <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">Titel der Offerte / Landingpage</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder={activeProject?.name || 'z. B. Siemens History Wall'}
+                        value={proposalTitle}
+                        onChange={e => setProposalTitle(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase block mb-1.5">{t('client_name_label')}</label>

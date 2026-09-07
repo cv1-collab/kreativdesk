@@ -52,7 +52,7 @@ fal.config({
   }
 });
 
-const localTranslations: Record<'en' | 'de', Record<string, string>> = {
+const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: {
     error_loading_ifc: 'Error loading IFC', defect: 'Defect', defect_saved: 'Defect saved!',
     error_saving_defect: 'Error saving defect.', ai_audit_complete: 'AI Audit complete.',
@@ -126,6 +126,43 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     landscape: 'Querformat', portrait: 'Hochformat', pdf_export: 'Report Studio', generating_pdf: 'PDF wird erstellt...',
     mobile_3d_title: 'BIM 3D-Viewer', mobile_3d_desc: 'Komplexe 3D-Modelle benötigen viel Arbeitsspeicher. Um Abstürze zu vermeiden, ist die 3D-Ansicht auf Smartphones pausiert. Bitte wechsle für das volle Erlebnis an einen Desktop-PC oder Tablet.',
     force_load: 'Trotzdem laden (Hoher RAM)', download_pdf_local: 'Lokal herunterladen'
+  },
+  fr: {
+    error_loading_ifc: 'Erreur lors du chargement de l\'IFC', defect: 'Défaut', defect_saved: 'Défaut enregistré !',
+    error_saving_defect: 'Erreur lors de l\'enregistrement du défaut.', ai_audit_complete: 'Audit IA terminé.',
+    error_generating_render: 'Erreur lors de la génération du rendu.', render_saved: 'Rendu enregistré !',
+    error_saving_cloud: 'Erreur d\'enregistrement sur le cloud.', fbx_optimization_info: 'Les modèles FBX seront automatiquement optimisés dans le cloud.',
+    unsupported_format: 'Format non pris en charge. Veuillez utiliser IFC, OBJ, GLTF, DAE ou DWG.',
+    model_saved: 'Modèle enregistré !', error_processing_model: 'Erreur lors du traitement du modèle.',
+    enter_new_name: 'Entrer un nouveau nom :', confirm_delete_model: 'Voulez-vous vraiment supprimer ce modèle ?',
+    layer_arch: 'Architecture', layer_tga: 'MEP / CVC', layer_fire: 'Protection incendie', layer_struct: 'Structure',
+    viewer_title: 'Visionneuse 3D', analyzing_model: 'Analyse en cours...', ai_modelaudit: 'Audit IA du modèle',
+    ai_render: 'Rendu IA', rotate: 'Pivoter', pan: 'Déplacer', defect_pin_mode: 'Mode épingle de défaut',
+    measurement_mode: 'Outil de mesure', exploded_view: 'Vue éclatée', ai_site_tour: 'Visite de chantier IA',
+    floor_up: 'Étage supérieur', floor_down: 'Étage inférieur', download_screenshot: 'Capture d\'écran', fullscreen: 'Plein écran',
+    model_library: 'Bibliothèque de modèles', rename: 'Renommer', upload_model: 'Télécharger un modèle',
+    supported_3d_formats: 'Pris en charge : IFC, OBJ, GLTF, DAE, DWG, FBX', model_layers: 'Calques du modèle',
+    layer_import_native: 'La structure des calques est importée nativement depuis le fichier {type}.',
+    selected_object: 'Objet sélectionné', click_anywhere_defect: 'Cliquez n\'importe où sur le modèle pour placer une épingle de défaut.',
+    clear_all_pins: 'Effacer toutes les épingles', click_point_start: 'Cliquez pour le point de départ',
+    click_second_point: 'Cliquez pour le point d\'arrivée', distance_calculated: 'Distance calculée',
+    audit_report: 'Rapport d\'audit', no_report_generated: 'Cliquez sur "Audit IA du modèle" pour analyser la vue actuelle.',
+    close_audit: 'Fermer l\'audit', click_object_3d: 'Cliquez sur un objet dans le modèle 3D pour afficher les détails.',
+    ai_high_end_rendering: 'Rendu IA haute fidélité', style_presets: 'Préréglages de style',
+    photorealistic: 'Photoréaliste', blue_hour: 'Heure bleue', cyberpunk: 'Cyberpunk',
+    pencil_sketch: 'Croquis au crayon', clay_model: 'Modèle en plâtre', watercolor: 'Aquarelle',
+    custom_prompt: 'Invite personnalisée', describe_lighting_mood: 'Décrivez l\'éclairage, l\'ambiance, la saison...',
+    click_generate_render: 'Générer le rendu', generating_render: 'Génération du rendu...',
+    download_image: 'Télécharger l\'image', save_to_dataroom: 'Enregistrer dans l\'espace de données', describe_defect: 'Décrire le défaut',
+    cancel: 'Annuler', create_ticket: 'Créer un ticket', defect_placeholder: 'ex. Fissure dans le mur',
+    type: 'Type', material: 'Matériau', cost: 'Coût', status: 'Statut',
+    dwg_mock: 'DWG chargé via conversion cloud (Mock)', saving_cloud: 'Enregistrement dans le cloud...',
+    saved_cloud: 'Enregistré dans le dossier de construction !', create_pdf_btn: '+ Créer un PDF', pdf_exported: 'PDF exporté avec succès !',
+    export_error: 'Erreur lors de la génération du PDF.', report_title: 'Titre du rapport', report_color: 'Couleur d\'accent',
+    report_footer: 'Pied de page', upload_logo: 'Télécharger le logo', format: 'Format', orientation: 'Orientation',
+    landscape: 'Paysage', portrait: 'Portrait', pdf_export: 'Studio de rapports', generating_pdf: 'Création du PDF en cours...',
+    mobile_3d_title: 'Visionneuse 3D BIM', mobile_3d_desc: 'Les modèles 3D complexes nécessitent une mémoire importante. Pour éviter les pannes, la vue 3D est suspendue sur smartphone. Veuillez utiliser un ordinateur de bureau ou une tablette pour profiter pleinement de l\'expérience.',
+    force_load: 'Charger quand même (mémoire vive élevée)', download_pdf_local: 'Télécharger localement'
   }
 };
 
@@ -214,7 +251,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
   const projectId = propProjectId || routeProjectId;
   const { language, t: globalT } = useLanguage();
-  const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key);
+  const t = (key: string) => (localTranslations as any)[language]?.[key] || localTranslations['de']?.[key] || globalT(key);
 
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   useEffect(() => { setPortalNode(document.body); }, []);
@@ -722,19 +759,19 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       let generatedUrl: string | null = null;
       let uploadedImageUrl: string | undefined = undefined;
 
-      if (currentUser?.companyId) {
-        try {
-          const fetchRes = await fetch(dataUrl);
-          const blob = await fetchRes.blob();
-          const fileName = `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp_3d_${Date.now()}.png`;
-          const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
-          if (!upErr) {
-            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-            uploadedImageUrl = data.publicUrl;
-          }
-        } catch (e) {
-          console.warn("Snapshot upload failed, using direct snapshot data URL:", e);
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
+      const safeUserId = currentUser?.uid || 'anonymous';
+      try {
+        const fetchRes = await fetch(dataUrl);
+        const blob = await fetchRes.blob();
+        const fileName = `${safeCompanyId}/whiteboardExports/${safeUserId}/tmp_3d_${Date.now()}.png`;
+        const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
+        if (!upErr) {
+          const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+          uploadedImageUrl = data.publicUrl;
         }
+      } catch (e) {
+        console.warn("Snapshot upload failed, using direct snapshot data URL:", e);
       }
 
       if (uploadedImageUrl) {

@@ -314,6 +314,10 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
   // 2. Im LocalStorage persistieren
   saveProposalLocally(fullProposal);
 
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('proposal_saved', { detail: fullProposal }));
+  }
+
   return fullProposal;
 }
 
@@ -342,10 +346,17 @@ export async function extendProposalExpiry(proposalId: string, days: number = 30
         item.status = 'active';
         item.updatedAt = new Date().toISOString();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('proposal_saved', { detail: item }));
+        }
         return item;
       }
     }
   } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('proposal_saved', { detail: { id: proposalId, extended: true } }));
+  }
 
   return null;
 }
@@ -449,6 +460,10 @@ export async function deleteProposal(proposalId: string): Promise<boolean> {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     }
   } catch (e) {}
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('proposal_saved', { detail: { id: proposalId, deleted: true } }));
+  }
 
   return true;
 }

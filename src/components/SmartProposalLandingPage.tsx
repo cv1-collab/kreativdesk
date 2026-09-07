@@ -504,6 +504,130 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   }
 };
 
+const SLIDE_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Projekt Status Overview': {
+    de: 'Projekt Status Overview',
+    en: 'Project Status Overview',
+    fr: 'Aperçu du statut du projet'
+  },
+  'Projektstatus Übersicht': {
+    de: 'Projektstatus Übersicht',
+    en: 'Project Status Overview',
+    fr: 'Aperçu du statut du projet'
+  },
+  'Aktueller Baufortschritt': {
+    de: 'Aktueller Baufortschritt',
+    en: 'Current Construction Progress',
+    fr: 'Avancement actuel des travaux'
+  },
+  'Das Projekt-Team': {
+    de: 'Das Projekt-Team',
+    en: 'The Project Team',
+    fr: 'L’équipe du projet'
+  },
+  'Projekt-Budget': {
+    de: 'Projekt-Budget',
+    en: 'Project Budget',
+    fr: 'Budget du projet'
+  },
+  'Projekt Budget': {
+    de: 'Projekt Budget',
+    en: 'Project Budget',
+    fr: 'Budget du projet'
+  },
+  'Meilensteine & Zeitplan': {
+    de: 'Meilensteine & Zeitplan',
+    en: 'Milestones & Timeline',
+    fr: 'Jalons & calendrier'
+  },
+  'Architektur & Konzept': {
+    de: 'Architektur & Konzept',
+    en: 'Architecture & Concept',
+    fr: 'Architecture & concept'
+  },
+  '3D Modell & Visualisierung': {
+    de: '3D Modell & Visualisierung',
+    en: '3D Model & Visualization',
+    fr: 'Modèle 3D & Visualisation'
+  },
+  'Offerte & Kostenübersicht': {
+    de: 'Offerte & Kostenübersicht',
+    en: 'Proposal & Cost Overview',
+    fr: 'Offre & aperçu des coûts'
+  },
+  'interacTV Smart Station Konzept': {
+    de: 'interacTV Smart Station Konzept',
+    en: 'interacTV Smart Station Concept',
+    fr: 'Concept interacTV Smart Station'
+  },
+  '1. 60s Flightcase-Unboxing & Werkzeugloser Aufbau': {
+    de: '1. 60s Flightcase-Unboxing & Werkzeugloser Aufbau',
+    en: '1. 60s Flightcase Unboxing & Toolless Setup',
+    fr: '1. Déballage flightcase 60s & montage sans outils'
+  },
+  'Vorher / Nachher Vergleich': {
+    de: 'Vorher / Nachher Vergleich',
+    en: 'Before / After Comparison',
+    fr: 'Comparatif Avant / Après'
+  },
+  '3D Raummodell & Grundriss': {
+    de: '3D Raummodell & Grundriss',
+    en: '3D Room Model & Floor Plan',
+    fr: 'Modèle spatial 3D & Plan d’étage'
+  },
+  'Projekt Übersicht': {
+    de: 'Projekt Übersicht',
+    en: 'Project Overview',
+    fr: 'Aperçu du projet'
+  },
+  'Ausführungsplanung': {
+    de: 'Ausführungsplanung',
+    en: 'Execution Planning',
+    fr: 'Plans d’exécution'
+  },
+  'Projekt Meilensteine': {
+    de: 'Projekt Meilensteine',
+    en: 'Project Milestones',
+    fr: 'Jalons du projet'
+  }
+};
+
+const SLIDE_CONTENT_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.': {
+    de: 'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.',
+    en: 'Structural work is 80% complete. Interior construction begins as scheduled next week.',
+    fr: 'Les travaux de gros œuvre sont achevés à 80%. L’aménagement intérieur commence comme prévu la semaine prochaine.'
+  },
+  'Der Fokus liegt aktuell auf dem Betonieren der Decke über dem 1. Obergeschoss sowie der Vorbereitung für die Fassadenelemente.': {
+    de: 'Der Fokus liegt aktuell auf dem Betonieren der Decke über dem 1. Obergeschoss sowie der Vorbereitung für die Fassadenelemente.',
+    en: 'The current focus is on pouring concrete for the ceiling above the 1st floor and preparing facade elements.',
+    fr: 'L’accent est actuellement mis sur le bétonnage du plafond au-dessus du 1er étage et sur la préparation des éléments de façade.'
+  }
+};
+
+const INTRO_TEXT_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.': {
+    de: 'Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.',
+    en: 'Thank you for placing your trust in our team. Below we present the tailored concept, all project videos, milestones, and the binding cost breakdown.',
+    fr: 'Merci de votre confiance envers notre équipe. Nous vous présentons ci-dessous le concept sur mesure, toutes les vidéos de projet, les jalons et le détail des coûts.'
+  },
+  'Herzlichen Dank für Ihr Interesse an der interacTV Smart Station. Nachfolgend präsentieren wir Ihnen das modulare Konzept für Ihren Messeauftritt – mit Schweizer CAD-Präzisions-Chassis, flexibler Display-Wahl (BYOD oder 4K Touchscreen), interaktiver Lead-Erfassung und verbindlicher Kostenaufstellung.': {
+    de: 'Herzlichen Dank für Ihr Interesse an der interacTV Smart Station. Nachfolgend präsentieren wir Ihnen das modulare Konzept für Ihren Messeauftritt – mit Schweizer CAD-Präzisions-Chassis, flexibler Display-Wahl (BYOD oder 4K Touchscreen), interaktiver Lead-Erfassung und verbindlicher Kostenaufstellung.',
+    en: 'Thank you for your interest in the interacTV Smart Station. Below we present the modular concept for your exhibition booth – featuring Swiss CAD precision chassis, flexible display options (BYOD or 4K touchscreen), interactive lead capture, and binding cost breakdown.',
+    fr: 'Merci de votre intérêt pour l’interacTV Smart Station. Nous vous présentons ci-dessous le concept modulaire pour votre stand – avec châssis de précision CAO suisse, choix d’écran flexible (BYOD ou écran tactile 4K), saisie interactive des prospects et détail des coûts.'
+  },
+  'Herzlichen Dank für das persönliche Gespräch. Wir freuen uns, Ihnen unser umfassendes Konzept für Architektur, Ausführungsplanung und BIM-Projektsteuerung präsentieren zu dürfen.': {
+    de: 'Herzlichen Dank für das persönliche Gespräch. Wir freuen uns, Ihnen unser umfassendes Konzept für Architektur, Ausführungsplanung und BIM-Projektsteuerung präsentieren zu dürfen.',
+    en: 'Thank you for the personal meeting. We are delighted to present our comprehensive concept for architecture, execution planning, and BIM project management.',
+    fr: 'Merci beaucoup pour cet échange personnel. Nous sommes ravis de vous présenter notre concept global pour l’architecture, les plans d’exécution et le pilotage de projet BIM.'
+  },
+  'Exklusives Angebot und massgeschneidertes Projektkonzept.': {
+    de: 'Exklusives Angebot und massgeschneidertes Projektkonzept.',
+    en: 'Exclusive proposal and tailored project concept.',
+    fr: 'Offre exclusive et concept de projet sur mesure.'
+  }
+};
+
 export default function SmartProposalLandingPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
   const navigate = useNavigate();
@@ -566,6 +690,33 @@ export default function SmartProposalLandingPage() {
       Object.entries(params).forEach(([k, v]) => {
         text = text.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v));
       });
+    }
+    return text;
+  };
+
+  const getTranslatedSlideTitle = (title?: string) => {
+    if (!title) return '';
+    const trimmed = title.trim();
+    if (SLIDE_TITLE_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return SLIDE_TITLE_TRANSLATIONS[trimmed][proposalLang];
+    }
+    return title;
+  };
+
+  const getTranslatedSlideContent = (content?: string) => {
+    if (!content) return '';
+    const trimmed = content.trim();
+    if (SLIDE_CONTENT_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return SLIDE_CONTENT_TRANSLATIONS[trimmed][proposalLang];
+    }
+    return content;
+  };
+
+  const getTranslatedIntroText = (text?: string) => {
+    if (!text) return '';
+    const trimmed = text.trim();
+    if (INTRO_TEXT_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return INTRO_TEXT_TRANSLATIONS[trimmed][proposalLang];
     }
     return text;
   };
@@ -1536,7 +1687,7 @@ export default function SmartProposalLandingPage() {
               </div>
 
               <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-2xl mx-auto">
-                {proposal.introText}
+                {getTranslatedIntroText(proposal.introText)}
               </p>
             </div>
 
@@ -1615,13 +1766,13 @@ export default function SmartProposalLandingPage() {
                       <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 font-extrabold flex items-center justify-center text-xs font-sans">
                         {sIdx + 1}
                       </span>
-                      <h3 className="text-xl sm:text-2xl font-extrabold text-white">{slide.title}</h3>
+                      <h3 className="text-xl sm:text-2xl font-extrabold text-white">{getTranslatedSlideTitle(slide.title)}</h3>
                     </div>
                   </div>
 
                   {slide.layout === 'split' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                      <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{slide.content}</div>
+                      <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{getTranslatedSlideContent(slide.content)}</div>
                       {slide.imageUrl && (
                         <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video relative group">
                           <img 
@@ -1642,7 +1793,7 @@ export default function SmartProposalLandingPage() {
                   {/* VORHER / NACHHER MORPHING SLIDER */}
                   {slide.layout === 'before-after' && (
                     <div className="space-y-4">
-                      {slide.content && <p className="text-sm text-zinc-300">{slide.content}</p>}
+                      {slide.content && <p className="text-sm text-zinc-300">{getTranslatedSlideContent(slide.content)}</p>}
                       <div 
                         className="rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black relative select-none cursor-ew-resize"
                         onMouseMove={(e) => {
@@ -1702,7 +1853,7 @@ export default function SmartProposalLandingPage() {
 
                   {slide.layout === 'video-focus' && (
                     <div className="space-y-4">
-                      {slide.content && <p className="text-sm text-zinc-300">{slide.content}</p>}
+                      {slide.content && <p className="text-sm text-zinc-300">{getTranslatedSlideContent(slide.content)}</p>}
                       <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black relative">
                         <video src={slide.videoUrl || proposal.heroVideoUrl} controls playsInline className="w-full h-full object-cover" />
                       </div>
@@ -1764,7 +1915,7 @@ export default function SmartProposalLandingPage() {
                 <div className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">
                   {t('slideCountLabel', { title: proposal.title, curr: currentSlideIndex + 1, total: slides.length })}
                 </div>
-                <h2 className="text-lg font-black text-white">{activeDeckSlide.title}</h2>
+                <h2 className="text-lg font-black text-white">{getTranslatedSlideTitle(activeDeckSlide.title)}</h2>
               </div>
             </div>
 
@@ -1806,10 +1957,10 @@ export default function SmartProposalLandingPage() {
                           <Sparkles size={13} /> {proposal.clientCompany || 'interacTV Solution'}
                         </div>
                         <h3 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
-                          {activeDeckSlide.title}
+                          {getTranslatedSlideTitle(activeDeckSlide.title)}
                         </h3>
                         <p className="text-sm sm:text-base text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                          {activeDeckSlide.content}
+                          {getTranslatedSlideContent(activeDeckSlide.content)}
                         </p>
                       </div>
 
@@ -1818,7 +1969,7 @@ export default function SmartProposalLandingPage() {
                           <div className="rounded-2xl overflow-hidden border border-white/15 aspect-video shadow-2xl relative group">
                             <img
                               src={activeDeckSlide.imageUrl}
-                              alt={activeDeckSlide.title}
+                              alt={getTranslatedSlideTitle(activeDeckSlide.title)}
                               className="w-full h-full object-cover"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
@@ -1842,7 +1993,7 @@ export default function SmartProposalLandingPage() {
                       </div>
                       {activeDeckSlide.content && (
                         <p className="text-xs text-center text-zinc-300 max-w-xl mx-auto">
-                          {activeDeckSlide.content}
+                          {getTranslatedSlideContent(activeDeckSlide.content)}
                         </p>
                       )}
                     </div>
@@ -1890,14 +2041,14 @@ export default function SmartProposalLandingPage() {
                         <div className="rounded-2xl overflow-hidden border border-white/15 aspect-video max-h-[380px] mx-auto shadow-2xl relative group">
                           <img
                             src={activeDeckSlide.imageUrl}
-                            alt={activeDeckSlide.title}
+                            alt={getTranslatedSlideTitle(activeDeckSlide.title)}
                             className="w-full h-full object-cover"
                           />
                         </div>
                       )}
                       {activeDeckSlide.content && (
                         <p className="text-xs text-center text-zinc-300 max-w-xl mx-auto">
-                          {activeDeckSlide.content}
+                          {getTranslatedSlideContent(activeDeckSlide.content)}
                         </p>
                       )}
                     </div>
@@ -1924,7 +2075,7 @@ export default function SmartProposalLandingPage() {
                             }
                           }}
                         >
-                          <img src={activeDeckSlide.compareImageUrl} alt="Nachher" className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+                          <img src={activeDeckSlide.compareImageUrl} alt={t('after3d')} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
                           <span className="absolute top-4 right-4 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-xs font-black rounded-full z-10 shadow-lg">
                             {t('after3d')}
                           </span>
@@ -1932,7 +2083,7 @@ export default function SmartProposalLandingPage() {
                             className="absolute inset-0 overflow-hidden pointer-events-none"
                             style={{ clipPath: `polygon(0 0, ${beforeAfterPosMap[activeDeckSlide.id] ?? 50}% 0, ${beforeAfterPosMap[activeDeckSlide.id] ?? 50}% 100%, 0 100%)` }}
                           >
-                            <img src={activeDeckSlide.imageUrl} alt="Vorher" className="absolute inset-0 w-full h-full object-cover" />
+                            <img src={activeDeckSlide.imageUrl} alt={t('beforeSite')} className="absolute inset-0 w-full h-full object-cover" />
                             <span className="absolute top-4 left-4 px-3 py-1 bg-black/80 backdrop-blur-md text-zinc-300 text-xs font-bold rounded-full z-10 border border-white/20">
                               {t('beforeSite')}
                             </span>
@@ -1948,7 +2099,7 @@ export default function SmartProposalLandingPage() {
                         </div>
                       ) : (
                         <div className="text-center p-6 text-zinc-400">
-                          {activeDeckSlide.imageUrl ? <img src={activeDeckSlide.imageUrl} alt={activeDeckSlide.title} className="max-h-[300px] object-cover rounded-xl" /> : <span>{t('noComparison')}</span>}
+                          {activeDeckSlide.imageUrl ? <img src={activeDeckSlide.imageUrl} alt={getTranslatedSlideTitle(activeDeckSlide.title)} className="max-h-[300px] object-cover rounded-xl" /> : <span>{t('noComparison')}</span>}
                         </div>
                       )}
                     </div>
@@ -2011,8 +2162,8 @@ export default function SmartProposalLandingPage() {
                   {/* Fallback Layout */}
                   {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && (
                     <div className="text-center space-y-4 max-w-2xl mx-auto">
-                      <h3 className="text-3xl font-extrabold text-white">{activeDeckSlide.title}</h3>
-                      <p className="text-base text-zinc-300 leading-relaxed whitespace-pre-wrap">{activeDeckSlide.content}</p>
+                      <h3 className="text-3xl font-extrabold text-white">{getTranslatedSlideTitle(activeDeckSlide.title)}</h3>
+                      <p className="text-base text-zinc-300 leading-relaxed whitespace-pre-wrap">{getTranslatedSlideContent(activeDeckSlide.content)}</p>
                     </div>
                   )}
                 </motion.div>
@@ -2038,60 +2189,60 @@ export default function SmartProposalLandingPage() {
                 <div className="flex gap-1.5">
                   {slides.map((_, i) => (
                     <button 
-                      key={i} 
-                      type="button"
-                      onClick={() => {
-                        audioFeedback.playTouchClick();
-                        setCurrentSlideIndex(i);
-                      }}
-                      className={cn("h-2.5 rounded-full transition-all cursor-pointer", i === currentSlideIndex ? "bg-blue-500 w-8" : "bg-white/20 hover:bg-white/40 w-2.5")}
-                      title={t('slideThumb', { num: i + 1 })}
-                    />
-                  ))}
-                </div>
-                <span className="text-xs font-bold font-sans text-zinc-400 ml-2">{currentSlideIndex + 1} / {slides.length}</span>
+                    key={i} 
+                    type="button"
+                    onClick={() => {
+                      audioFeedback.playTouchClick();
+                      setCurrentSlideIndex(i);
+                    }}
+                    className={cn("h-2.5 rounded-full transition-all cursor-pointer", i === currentSlideIndex ? "bg-blue-500 w-8" : "bg-white/20 hover:bg-white/40 w-2.5")}
+                    title={t('slideThumb', { num: i + 1 })}
+                  />
+                ))}
               </div>
-
-              <button 
-                type="button"
-                disabled={currentSlideIndex === slides.length - 1}
-                onClick={() => {
-                  audioFeedback.playTouchClick();
-                  setCurrentSlideIndex(prev => prev + 1);
-                }}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
-              >
-                {t('next')} <ChevronRight size={16} />
-              </button>
+              <span className="text-xs font-bold font-sans text-zinc-400 ml-2">{currentSlideIndex + 1} / {slides.length}</span>
             </div>
-          </div>
 
-          {/* Slide Deck Thumbnail Strip Drawer */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
-            {slides.map((s, idx) => (
-              <button
-                key={s.id || idx}
-                type="button"
-                onClick={() => {
-                  audioFeedback.playTouchClick();
-                  setCurrentSlideIndex(idx);
-                }}
-                className={cn(
-                  "p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 shadow-sm",
-                  idx === currentSlideIndex
-                    ? "bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/20"
-                    : "bg-zinc-900/60 border-white/10 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
-                )}
-              >
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-bold">{t('slideThumb', { num: idx + 1 })}</span>
-                  <span className="uppercase text-[9px] opacity-70">{s.layout}</span>
-                </div>
-                <div className="text-xs font-bold text-white truncate">{s.title}</div>
-              </button>
-            ))}
+            <button 
+              type="button"
+              disabled={currentSlideIndex === slides.length - 1}
+              onClick={() => {
+                audioFeedback.playTouchClick();
+                setCurrentSlideIndex(prev => prev + 1);
+              }}
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+            >
+              {t('next')} <ChevronRight size={16} />
+            </button>
           </div>
-        </section>
+        </div>
+
+        {/* Slide Deck Thumbnail Strip Drawer */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+          {slides.map((s, idx) => (
+            <button
+              key={s.id || idx}
+              type="button"
+              onClick={() => {
+                audioFeedback.playTouchClick();
+                setCurrentSlideIndex(idx);
+              }}
+              className={cn(
+                "p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 shadow-sm",
+                idx === currentSlideIndex
+                  ? "bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/20"
+                  : "bg-zinc-900/60 border-white/10 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+              )}
+            >
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="font-bold">{t('slideThumb', { num: idx + 1 })}</span>
+                <span className="uppercase text-[9px] opacity-70">{s.layout}</span>
+              </div>
+              <div className="text-xs font-bold text-white truncate">{getTranslatedSlideTitle(s.title)}</div>
+            </button>
+          ))}
+        </div>
+      </section>
       )}
 
       {/* 4. INTERACTIVE COST CONFIGURATOR & OPTIONS */}

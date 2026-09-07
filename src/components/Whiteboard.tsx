@@ -64,9 +64,10 @@ const loadProjectDraft = (pid: string | undefined) => {
   return null;
 };
 
-const localTranslations: Record<'en' | 'de', Record<string, string>> = {
+const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: { title: 'Whiteboard & Audio Hub', desc: 'Interactive canvas for ideation and AI-transcribed voice notes.', import_media: 'Import Media', export_pdf: 'Export PDF', export_img: 'Export Image', save_cloud: 'Save to Cloud', saving_cloud: 'Saving...', saved_cloud: 'Saved to Documents!', send_slides: 'Send to Pitch Deck', sending: 'Sending...', sent: 'Sent to Slides!', draw_polygon: 'Draw Polygon', img_adjust: 'Image Adjustments', brightness: 'Brightness', contrast: 'Contrast', saturation: 'Saturation', delete_btn: 'Delete', close_shape: 'Close shape', ai_analyzing: 'AI is analyzing...', no_data: 'No voice notes yet.', ai_summary: 'AI Summary', full_transcript: 'Full Transcription', info_text: 'The AI will transcribe your voice note and extract key tasks automatically.', stop_rec: 'Stop Recording', start_rec: 'Record Voice Note', click_points: 'Click to add points...', clear_canvas: 'Clear Canvas?', mic_error: 'Microphone access denied.', ai_error: 'Failed to analyze audio.', pdf_success: 'PDF exported successfully!', add_text: 'Insert Text', enter_text: 'Add Text', type_text_here: 'Enter text...', cancel: 'Cancel', delete_note: 'Delete Note', confirm_delete_note: 'Are you sure you want to delete this voice note?', note_deleted: 'Voice note deleted!', tool_pan: 'Pan Canvas', tool_select: 'Select / Move', reset_zoom: 'Reset Zoom & Pan', fullscreen: 'Fullscreen', exit_fullscreen: 'Exit Fullscreen', layers: 'Layers', add_layer: 'Add Layer', base_layer: 'Base Layer', ai_render: 'AI Rendering', ai_render_desc: 'Transform your sketch into a photorealistic concept render.', describe_vision: 'Describe your vision (e.g. Futuristic sports car, neon colors, cyberpunk style)...', generate_render: 'Generate Concept', rendering: 'Rendering...', add_to_canvas: 'Add to Canvas as Base Layer', your_sketch: 'Your Sketch' },
-  de: { title: 'Whiteboard & Audio Hub', desc: 'Interaktive Zeichenfläche und KI-transkribierte Sprachnotizen.', import_media: 'Import (Bild/PDF)', export_pdf: 'Als PDF Exportieren', export_img: 'Als Bild Exportieren', save_cloud: 'In Cloud speichern', saving_cloud: 'Speichert...', saved_cloud: 'Im Dokumenten-Ordner gespeichert!', send_slides: 'An Pitch Deck', sending: 'Sende...', sent: 'Gesendet!', draw_polygon: 'Polygon', img_adjust: 'Bildbearbeitung', brightness: 'Helligkeit', contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schließen', ai_analyzing: 'KI analysiert...', no_data: 'Noch keine Sprachnotizen.', ai_summary: 'KI Zusammenfassung', full_transcript: 'Transkription', info_text: 'Die KI analysiert deine Aufnahme und leitet automatisch Aufgaben ab.', stop_rec: 'Aufnahme stoppen', start_rec: 'Sprachnotiz aufnehmen', click_points: 'Klicke auf Punkte...', clear_canvas: 'Canvas komplett löschen?', mic_error: 'Mikrofon blockiert.', ai_error: 'KI-Analyse fehlgeschlagen.', pdf_success: 'PDF erfolgreich exportiert!', add_text: 'Einfügen', enter_text: 'Text hinzufügen', type_text_here: 'Text eingeben...', cancel: 'Abbrechen', delete_note: 'Notiz löschen', confirm_delete_note: 'Bist du sicher, dass du diese Sprachnotiz unwiderruflich löschen möchtest?', note_deleted: 'Sprachnotiz gelöscht!', tool_pan: 'Ansicht verschieben (Pan)', tool_select: 'Auswählen / Bewegen', reset_zoom: 'Ansicht zentrieren', fullscreen: 'Vollbild', exit_fullscreen: 'Vollbild verlassen', layers: 'Ebenen', add_layer: 'Neue Ebene', base_layer: 'Basis-Ebene', ai_render: 'AI Rendering', ai_render_desc: 'Verwandle deine Skizze in ein fotorealistisches Konzept-Design.', describe_vision: 'Beschreibe deine Vision (z.B. Comicfigur, Neonfarben, Cyberpunk Stil)...', generate_render: 'Skizze Rendern', rendering: 'KI generiert Bild...', add_to_canvas: 'Als neue Basis-Ebene einfügen', your_sketch: 'Deine Skizze' }
+  de: { title: 'Whiteboard & Audio Hub', desc: 'Interaktive Zeichenfläche und KI-transkribierte Sprachnotizen.', import_media: 'Import (Bild/PDF)', export_pdf: 'Als PDF Exportieren', export_img: 'Als Bild Exportieren', save_cloud: 'In Cloud speichern', saving_cloud: 'Speichert...', saved_cloud: 'Im Dokumenten-Ordner gespeichert!', send_slides: 'An Pitch Deck', sending: 'Sende...', sent: 'Gesendet!', draw_polygon: 'Polygon', img_adjust: 'Bildbearbeitung', brightness: 'Helligkeit', contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schließen', ai_analyzing: 'KI analysiert...', no_data: 'Noch keine Sprachnotizen.', ai_summary: 'KI Zusammenfassung', full_transcript: 'Transkription', info_text: 'Die KI analysiert deine Aufnahme und leitet automatisch Aufgaben ab.', stop_rec: 'Aufnahme stoppen', start_rec: 'Sprachnotiz aufnehmen', click_points: 'Klicke auf Punkte...', clear_canvas: 'Canvas komplett löschen?', mic_error: 'Mikrofon blockiert.', ai_error: 'KI-Analyse fehlgeschlagen.', pdf_success: 'PDF erfolgreich exportiert!', add_text: 'Einfügen', enter_text: 'Text hinzufügen', type_text_here: 'Text eingeben...', cancel: 'Abbrechen', delete_note: 'Notiz löschen', confirm_delete_note: 'Bist du sicher, dass du diese Sprachnotiz unwiderruflich löschen möchtest?', note_deleted: 'Sprachnotiz gelöscht!', tool_pan: 'Ansicht verschieben (Pan)', tool_select: 'Auswählen / Bewegen', reset_zoom: 'Ansicht zentrieren', fullscreen: 'Vollbild', exit_fullscreen: 'Vollbild verlassen', layers: 'Ebenen', add_layer: 'Neue Ebene', base_layer: 'Basis-Ebene', ai_render: 'AI Rendering', ai_render_desc: 'Verwandle deine Skizze in ein fotorealistisches Konzept-Design.', describe_vision: 'Beschreibe deine Vision (z.B. Comicfigur, Neonfarben, Cyberpunk Stil)...', generate_render: 'Skizze Rendern', rendering: 'KI generiert Bild...', add_to_canvas: 'Als neue Basis-Ebene einfügen', your_sketch: 'Deine Skizze' },
+  fr: { title: 'Tableau blanc & Audio Hub', desc: 'Espace de dessin interactif et notes vocales transcrites par IA.', import_media: 'Importer (Image/PDF)', export_pdf: 'Exporter en PDF', export_img: 'Exporter en image', save_cloud: 'Enregistrer sur le Cloud', saving_cloud: 'Enregistrement...', saved_cloud: 'Enregistré dans Documents !', send_slides: 'Envoyer au Pitch Deck', sending: 'Envoi...', sent: 'Envoyé aux slides !', draw_polygon: 'Polygone', img_adjust: 'Ajustements image', brightness: 'Luminosité', contrast: 'Contraste', saturation: 'Saturation', delete_btn: 'Supprimer', close_shape: 'Fermer la forme', ai_analyzing: 'L’IA analyse...', no_data: 'Aucune note vocale pour l’instant.', ai_summary: 'Résumé IA', full_transcript: 'Transcription complète', info_text: 'L’IA analyse votre enregistrement et extrait automatiquement les tâches clés.', stop_rec: 'Arrêter l’enregistrement', start_rec: 'Enregistrer une note vocale', click_points: 'Cliquez pour ajouter des points...', clear_canvas: 'Effacer tout le tableau ?', mic_error: 'Accès au micro refusé.', ai_error: 'Échec de l’analyse audio.', pdf_success: 'PDF exporté avec succès !', add_text: 'Insérer texte', enter_text: 'Ajouter du texte', type_text_here: 'Saisissez du texte...', cancel: 'Annuler', delete_note: 'Supprimer la note', confirm_delete_note: 'Voulez-vous vraiment supprimer cette note vocale ?', note_deleted: 'Note vocale supprimée !', tool_pan: 'Déplacer le tableau (Pan)', tool_select: 'Sélectionner / Déplacer', reset_zoom: 'Réinitialiser le zoom', fullscreen: 'Plein écran', exit_fullscreen: 'Quitter le plein écran', layers: 'Calques', add_layer: 'Nouveau calque', base_layer: 'Calque de base', ai_render: 'Rendu IA', ai_render_desc: 'Transformez votre esquisse en rendu conceptuel photoréaliste.', describe_vision: 'Décrivez votre vision (ex. Voiture futuriste, néon, style cyberpunk)...', generate_render: 'Générer le concept', rendering: 'Génération en cours...', add_to_canvas: 'Ajouter au tableau comme calque de base', your_sketch: 'Votre esquisse' }
 };
 
 const AVAILABLE_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#fafafa', '#18181b'];
@@ -90,7 +91,12 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const isDemo = isDemoMode || projectId === 'demo-1' || projectId?.startsWith('demo-');
   const activeProject = projects?.find((p: any) => p.id === projectId);
   
-  const t = (key: string) => localTranslations[language as 'en'|'de'][key] || globalT(key);
+  const t = (key: string) => {
+    const lang = (typeof language === 'string' && language.toLowerCase().startsWith('fr')) 
+      ? 'fr' 
+      : ((typeof language === 'string' && language.toLowerCase().includes('de')) ? 'de' : 'en');
+    return (localTranslations as any)[lang]?.[key] || (localTranslations as any)['de']?.[key] || (localTranslations as any)['en']?.[key] || globalT(key) || key;
+  };
 
   const initialDraft = useRef(loadProjectDraft(projectId)).current;
 
@@ -164,6 +170,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   
   const isDrawing = useRef(false);
   const drawingStartPos = useRef<{ x: number, y: number } | null>(null);
+  const currentDrawingLayerId = useRef<string | null>(null);
+  const currentDrawingItemId = useRef<string | null>(null);
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
@@ -274,7 +282,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     });
   };
 
-  const updateLastItemInActiveLayer = (updateFn: (item: any) => any, explicitLayerId?: string) => { 
+  const updateLastItemInActiveLayer = (updateFn: (item: any) => any, explicitLayerId?: string, explicitItemId?: string | null) => { 
     setLayers(prev => {
       const targetId = explicitLayerId || activeLayerId;
       const exists = prev.some(l => l.id === targetId);
@@ -282,7 +290,12 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       return prev.map(layer => { 
         if (layer.id === effectiveId && layer.items && layer.items.length > 0) { 
           const newItems = [...layer.items]; 
-          newItems[newItems.length - 1] = updateFn(newItems[newItems.length - 1]); 
+          let idx = newItems.length - 1;
+          if (explicitItemId) {
+            const foundIdx = newItems.findIndex(i => i.id === explicitItemId);
+            if (foundIdx > -1) idx = foundIdx;
+          }
+          newItems[idx] = updateFn(newItems[idx]); 
           return { ...layer, items: newItems }; 
         } 
         return layer; 
@@ -526,7 +539,20 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
     const stage = stageRef.current || (typeof e.target?.getStage === 'function' ? e.target.getStage() : null);
     if (!stage) return;
-    const pointer = stage.getPointerPosition();
+    let pointer = stage.getPointerPosition();
+    if (!pointer && e.evt) {
+      try {
+        const containerRect = stage.container().getBoundingClientRect();
+        const clientX = e.evt.clientX ?? (e.evt.touches && e.evt.touches[0]?.clientX);
+        const clientY = e.evt.clientY ?? (e.evt.touches && e.evt.touches[0]?.clientY);
+        if (clientX !== undefined && clientY !== undefined) {
+          pointer = {
+            x: clientX - containerRect.left,
+            y: clientY - containerRect.top
+          };
+        }
+      } catch (err) {}
+    }
     if (!pointer) return;
 
     const stageX = typeof stage.x === 'function' ? stage.x() : stagePos.x;
@@ -558,6 +584,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     drawingStartPos.current = { x: pos.x, y: pos.y };
     isDrawing.current = true;
     const id = `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    currentDrawingLayerId.current = activeLayer.id;
+    currentDrawingItemId.current = id;
 
     if (tool === 'pen' || tool === 'eraser') {
       addItemToActiveLayer({ 
@@ -592,6 +620,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       setTextPrompt({ isOpen: true, x: pos.x, y: pos.y, value: '' }); 
       isDrawing.current = false;
       drawingStartPos.current = null;
+      currentDrawingLayerId.current = null;
+      currentDrawingItemId.current = null;
     }
   };
 
@@ -599,7 +629,20 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     if (tool === 'select' || tool === 'pan') return;
     const stage = stageRef.current || (typeof e.target?.getStage === 'function' ? e.target.getStage() : null);
     if (!stage) return;
-    const pointer = stage.getPointerPosition();
+    let pointer = stage.getPointerPosition();
+    if (!pointer && e.evt) {
+      try {
+        const containerRect = stage.container().getBoundingClientRect();
+        const clientX = e.evt.clientX ?? (e.evt.touches && e.evt.touches[0]?.clientX);
+        const clientY = e.evt.clientY ?? (e.evt.touches && e.evt.touches[0]?.clientY);
+        if (clientX !== undefined && clientY !== undefined) {
+          pointer = {
+            x: clientX - containerRect.left,
+            y: clientY - containerRect.top
+          };
+        }
+      } catch (err) {}
+    }
     if (!pointer) return;
 
     const stageX = typeof stage.x === 'function' ? stage.x() : stagePos.x;
@@ -622,15 +665,18 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
     if (!isDrawing.current || !drawingStartPos.current) return;
 
+    const targetLayerId = currentDrawingLayerId.current || activeLayerId;
+    const targetItemId = currentDrawingItemId.current;
+
     if (tool === 'pen' || tool === 'eraser') {
       updateLastItemInActiveLayer(item => {
         if (!item || item.type !== 'line') return item;
-        const pts = item.points;
+        const pts = item.points || [];
         const lastX = pts[pts.length - 2];
         const lastY = pts[pts.length - 1];
-        if (Math.hypot(point.x - lastX, point.y - lastY) < (2 / stageScale)) return item;
+        if (lastX !== undefined && lastY !== undefined && Math.hypot(point.x - lastX, point.y - lastY) < (2 / stageScale)) return item;
         return { ...item, points: pts.concat([point.x, point.y]) };
-      });
+      }, targetLayerId, targetItemId);
     } else if (tool === 'rect') {
       const startX = drawingStartPos.current.x;
       const startY = drawingStartPos.current.y;
@@ -648,7 +694,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           width: Math.max(1, normW),
           height: Math.max(1, normH)
         };
-      });
+      }, targetLayerId, targetItemId);
     } else if (tool === 'circle') {
       const startX = drawingStartPos.current.x;
       const startY = drawingStartPos.current.y;
@@ -660,13 +706,15 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           ...item,
           radius: Math.max(1, rad)
         };
-      });
+      }, targetLayerId, targetItemId);
     }
   };
 
   const handleMouseUp = () => {
     if (!isDrawing.current) return;
     isDrawing.current = false;
+    const targetLayerId = currentDrawingLayerId.current || activeLayerId;
+    const targetItemId = currentDrawingItemId.current;
 
     if (tool === 'rect') {
       updateLastItemInActiveLayer(item => {
@@ -682,7 +730,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           };
         }
         return item;
-      });
+      }, targetLayerId, targetItemId);
     } else if (tool === 'circle') {
       updateLastItemInActiveLayer(item => {
         if (item && item.type === 'circle' && item.radius < 10) {
@@ -692,10 +740,12 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
           };
         }
         return item;
-      });
+      }, targetLayerId, targetItemId);
     }
 
     drawingStartPos.current = null;
+    currentDrawingLayerId.current = null;
+    currentDrawingItemId.current = null;
   };
 
   useEffect(() => {
@@ -1520,6 +1570,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                 <Stage 
                   width={stageSize.width} height={stageSize.height} ref={stageRef} 
                   onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} 
+                  onPointerDown={handleMouseDown} onPointerMove={handleMouseMove} onPointerUp={handleMouseUp}
                   onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} 
                   onWheel={handleWheel} scaleX={stageScale} scaleY={stageScale} x={stagePos.x} y={stagePos.y} 
                   draggable={tool === 'pan'} onDragEnd={(e) => { if (e.target === stageRef.current) setStagePos({ x: e.target.x(), y: e.target.y() }); }}
