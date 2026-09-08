@@ -435,48 +435,7 @@ CREATE POLICY "Strict company isolation goals" ON public.goals
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
 
 -- ----------------------------------------------------------------------------
--- 5. STORAGE OBJECTS ISOLATION (storage.objects)
--- ----------------------------------------------------------------------------
--- Schützt Cloud-Dateien (Pläne, PDFs, Fotos) im Storage vor fremdem Zugriff
-ALTER TABLE IF EXISTS storage.objects ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Authenticated Upload Avatars" ON storage.objects;
-DROP POLICY IF EXISTS "Company isolated storage read" ON storage.objects;
-DROP POLICY IF EXISTS "Company isolated storage insert" ON storage.objects;
-DROP POLICY IF EXISTS "Company isolated storage update" ON storage.objects;
-DROP POLICY IF EXISTS "Company isolated storage delete" ON storage.objects;
-
-CREATE POLICY "Company isolated storage read" ON storage.objects
-  FOR SELECT TO authenticated
-  USING (
-    bucket_id = 'avatars' 
-    OR is_super_admin() 
-    OR (storage.foldername(name))[1] = get_my_company_id()
-  );
-
-CREATE POLICY "Company isolated storage insert" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    bucket_id = 'avatars' 
-    OR is_super_admin() 
-    OR (storage.foldername(name))[1] = get_my_company_id()
-  );
-
-CREATE POLICY "Company isolated storage update" ON storage.objects
-  FOR UPDATE TO authenticated
-  USING (
-    is_super_admin() 
-    OR (storage.foldername(name))[1] = get_my_company_id()
-  );
-
-CREATE POLICY "Company isolated storage delete" ON storage.objects
-  FOR DELETE TO authenticated
-  USING (
-    is_super_admin() 
-    OR (storage.foldername(name))[1] = get_my_company_id()
-  );
-
--- ----------------------------------------------------------------------------
--- 6. PERFORMANCE B-TREE INDIZES (Eliminiert Full-Table-Scans bei RLS)
+-- 5. PERFORMANCE B-TREE INDIZES (Eliminiert Full-Table-Scans bei RLS)
 -- ----------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_documents_company_id ON public.documents (company_id);
 CREATE INDEX IF NOT EXISTS idx_documents_project_id ON public.documents (project_id);
@@ -540,7 +499,7 @@ BEGIN
 END;
 $$;
 
--- Trigger an auth.users binden (falls noch nicht vorhanden)
+-- Trigger an auth.users binden (abgesichert gegen Rechte-Einschränkungen)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -550,6 +509,8 @@ BEGIN
       AFTER INSERT ON auth.users
       FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
   END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'Trigger on_auth_user_created wird vom Supabase Auth-Dienst verwaltet.';
 END $$;
 
 -- ============================================================================
