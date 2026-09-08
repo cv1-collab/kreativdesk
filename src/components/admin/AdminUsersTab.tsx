@@ -440,21 +440,21 @@ export default function AdminUsersTab() {
 
       {/* VIP CONCIERGE PREPROVISION MODAL */}
       {isPreprovisionOpen && createPortal(
-        <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#121215] border border-white/10 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 shadow-2xl space-y-6 text-white">
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-surface border border-border/50 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 shadow-2xl space-y-6 text-text-primary">
+            <div className="flex justify-between items-center border-b border-border/50 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-500">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-lg text-white">VIP Concierge Akquise</h3>
-                  <p className="text-xs text-zinc-400">Neuen Kunden-Workspace vorab einrichten & Einladung generieren</p>
+                  <h3 className="font-extrabold text-lg text-text-primary">VIP Concierge Akquise</h3>
+                  <p className="text-xs text-text-muted">Neuen Kunden-Workspace vorab einrichten & Einladung generieren</p>
                 </div>
               </div>
               <button 
                 onClick={() => { setIsPreprovisionOpen(false); setCreatedVipLink(''); }} 
-                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+                className="text-text-muted hover:text-text-primary p-1 rounded-lg hover:bg-surface-hover transition-colors"
               >
                 <X size={20} />
               </button>
@@ -464,20 +464,20 @@ export default function AdminUsersTab() {
               <div className="space-y-5 animate-in zoom-in-95 duration-300">
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center space-y-2">
                   <CheckCircle2 size={32} className="text-emerald-500 mx-auto" />
-                  <h4 className="font-bold text-white text-base">Workspace & VIP-Link sind bereit!</h4>
-                  <p className="text-xs text-emerald-200">
+                  <h4 className="font-bold text-text-primary text-base">Workspace & VIP-Link sind bereit!</h4>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300">
                     Schicke diesen persönlichen Einladungslink jetzt an <strong>{ceoName || companyName}</strong> ({ceoEmail}):
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Persönlicher VIP Einladungslink</label>
-                  <div className="flex items-center gap-2 bg-black/50 border border-white/10 rounded-xl p-2.5">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Persönlicher VIP Einladungslink</label>
+                  <div className="flex items-center gap-2 bg-background border border-border/50 rounded-xl p-2.5">
                     <input 
                       type="text" 
                       readOnly 
                       value={createdVipLink} 
-                      className="bg-transparent text-xs text-blue-400 flex-1 outline-none font-mono"
+                      className="bg-transparent text-xs text-blue-600 dark:text-blue-400 flex-1 outline-none font-mono"
                     />
                     <button 
                       onClick={() => {
@@ -517,7 +517,7 @@ export default function AdminUsersTab() {
                     setCeoEmail('');
                     setEmployeeEmailsStr('');
                   }}
-                  className="w-full py-2.5 border border-white/10 rounded-xl text-xs font-bold text-zinc-300 hover:bg-white/5 transition-colors"
+                  className="w-full py-2.5 border border-border rounded-xl text-xs font-bold text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
                 >
                   Schliessen
                 </button>
@@ -525,49 +525,49 @@ export default function AdminUsersTab() {
             ) : (
               <form onSubmit={handlePreprovisionSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Firmenname der Kunden-Firma *</label>
+                  <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Firmenname der Kunden-Firma *</label>
                   <input 
                     type="text" 
                     required
                     placeholder="z.B. Muster Architekten AG"
                     value={companyName}
                     onChange={e => setCompanyName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                    className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">CEO / Ansprechpartner Name</label>
+                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">CEO / Ansprechpartner Name</label>
                     <input 
                       type="text" 
                       placeholder="z.B. Peter Muster"
                       value={ceoName}
                       onChange={e => setCeoName(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">CEO E-Mail Adresse *</label>
+                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">CEO E-Mail Adresse *</label>
                     <input 
                       type="email" 
                       required
                       placeholder="peter@muster.ch"
                       value={ceoEmail}
                       onChange={e => setCeoEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Abo / Plan</label>
+                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Abo / Plan</label>
                     <select
                       value={plan}
                       onChange={e => setPlan(e.target.value)}
-                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white focus:outline-none focus:border-blue-500"
+                      className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
                     >
                       <option value="Enterprise">Enterprise (Full OS - ab CHF 50'000.-)</option>
                       <option value="Pro">Pro (3D BIM & Mängel)</option>
@@ -577,54 +577,54 @@ export default function AdminUsersTab() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Lizenzen (Seats)</label>
+                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Lizenzen (Seats)</label>
                     <input 
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={maxSeats}
-                      onChange={e => setMaxSeats(Number(e.target.value))}
-                      className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white focus:outline-none focus:border-blue-500"
+                      type="number" 
+                      min="1" 
+                      max="100" 
+                      value={maxSeats} 
+                      onChange={e => setMaxSeats(Number(e.target.value))} 
+                      className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500" 
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-400 mb-1 uppercase tracking-wider">Mitarbeiter E-Mails (Optional, Komma-getrennt)</label>
+                  <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Mitarbeiter E-Mails (Optional, Komma-getrennt)</label>
                   <input 
                     type="text" 
-                    placeholder="mitarbeiter1@muster.ch, mitarbeiter2@muster.ch"
-                    value={employeeEmailsStr}
-                    onChange={e => setEmployeeEmailsStr(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-black/50 border border-white/10 rounded-xl text-sm font-medium text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 text-xs font-mono"
+                    placeholder="mitarbeiter1@muster.ch, mitarbeiter2@muster.ch" 
+                    value={employeeEmailsStr} 
+                    onChange={e => setEmployeeEmailsStr(e.target.value)} 
+                    className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-blue-500 text-xs font-mono" 
                   />
                 </div>
 
                 <div className="flex items-center gap-3 p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl">
                   <input 
-                    type="checkbox"
-                    id="seed-demo"
-                    checked={seedDemoProject}
-                    onChange={e => setSeedDemoProject(e.target.checked)}
-                    className="w-4 h-4 rounded border-zinc-700 text-blue-600 focus:ring-blue-500"
+                    type="checkbox" 
+                    id="seed-demo" 
+                    checked={seedDemoProject} 
+                    onChange={e => setSeedDemoProject(e.target.checked)} 
+                    className="w-4 h-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer" 
                   />
-                  <label htmlFor="seed-demo" className="text-xs font-medium text-blue-200 cursor-pointer">
+                  <label htmlFor="seed-demo" className="text-xs font-medium text-blue-900 dark:text-blue-200 cursor-pointer">
                     9 Firmenordner, Muster-Projekt & Baujournal vorab automatisch erstellen
                   </label>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
                   <button 
                     type="button" 
                     onClick={() => setIsPreprovisionOpen(false)} 
-                    className="px-4 py-2.5 rounded-xl border border-white/10 text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
+                    className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
                   >
                     Abbrechen
                   </button>
                   <button 
                     type="submit" 
                     disabled={isPreprovisioning} 
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     {isPreprovisioning ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                     {isPreprovisioning ? 'Erstelle Workspace...' : '🚀 VIP Link Generieren'}

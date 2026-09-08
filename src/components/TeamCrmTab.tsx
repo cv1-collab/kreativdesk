@@ -436,6 +436,19 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     } catch (e) { addToast(t('upload_failed'), 'error'); }
   };
 
+  const formatRoleLabel = (role?: string) => {
+    if (!role) return t('mitarbeiter');
+    const r = role.toLowerCase();
+    if (r === 'owner' || r === 'admin') return 'Admin / Inhaber';
+    if (r === 'management') return 'Geschäftsleitung';
+    if (r === 'employee' || r === 'internal') return 'Interner Mitarbeiter';
+    if (r === 'partner' || r === 'external planner' || r === 'external') return 'Externer Planer / Partner';
+    if (r === 'client') return 'Kunde / Bauherr';
+    if (r === 'guest') return 'Gast';
+    if (r === 'viewer') return 'Betrachter';
+    return role;
+  };
+
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       const isExt = newRole === 'partner' || newRole === 'guest' || newRole === 'viewer';
@@ -1303,17 +1316,39 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   </div>
                 </div>
 
-                {(selectedContact.isAppUser || selectedContact.role) && hasPermission('canManageUsers') && (
-                  <div className="col-span-2 space-y-4 pt-4 border-t border-border/50">
-                     <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest">{t('role_management_system')}</h3>
-                     <select value={selectedContact.role || 'employee'} onChange={(e) => handleRoleChange(selectedContact.id, e.target.value)} disabled={selectedContact.id === currentUser?.uid && isSuperAdmin} className="w-full max-w-xs px-4 py-2.5 rounded-xl text-sm font-bold border outline-none cursor-pointer bg-background hover:bg-white/5 border-border text-text-primary focus:border-accent-ai transition-colors">
-                        <option value="owner" className="bg-surface">{t('owner_management')}</option>
-                        <option value="management" className="bg-surface">{t('management')}</option>
-                        <option value="employee" className="bg-surface">{t('mitarbeiter')}</option>
-                        <option value="partner" className="bg-surface">{t('partner')}</option>
-                        <option value="guest" className="bg-surface">{t('guest')}</option>
-                        <option value="viewer" className="bg-surface">{t('viewer')}</option>
-                      </select>
+                {(selectedContact.isAppUser || selectedContact.role) && (
+                  <div className="col-span-2 space-y-3 pt-4 border-t border-border/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-1.5">
+                        <Shield size={12} className="text-accent-ai" /> {t('role_management_system')}
+                      </h3>
+                      {hasPermission('canManageUsers') && (
+                        <button
+                          type="button"
+                          onClick={() => window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'settings' }))}
+                          className="text-xs font-bold text-accent-ai hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          Rollen & Rechte in Einstellungen verwalten →
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3.5 bg-background border border-border/50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-accent-ai/10 border border-accent-ai/20 flex items-center justify-center text-accent-ai font-bold shrink-0">
+                          <UserCheck size={16} />
+                        </div>
+                        <div>
+                          <p className="text-[11px] text-text-muted font-semibold">Aktuelle Rolle im Unternehmen</p>
+                          <p className="text-sm font-bold text-text-primary">
+                            {formatRoleLabel(selectedContact.role)}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2.5 py-1 bg-surface border border-border/60 rounded-lg text-xs font-bold text-text-muted">
+                        Unternehmensebene
+                      </span>
+                    </div>
                   </div>
                 )}
                 {selectedContact.description && (
