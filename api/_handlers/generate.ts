@@ -8,17 +8,16 @@ export default async function handler(req: any, res: any) {
 
   try {
     const user = await verifyAuth(req);
-    if (!user) {
+    const { model, contents, config, isPublic } = req.body || {};
+    if (!user && !isPublic) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-
     const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_AI_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'Gemini API key not configured on server' });
     }
     
     const ai = new GoogleGenAI({ apiKey });
-    const { model, contents, config } = req.body || {};
     const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
 
     let safeContents = contents;
