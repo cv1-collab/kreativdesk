@@ -53,6 +53,7 @@ REVOKE EXECUTE ON FUNCTION public.is_super_admin() FROM PUBLIC, anon;
 
 -- A) API KEYS
 ALTER TABLE IF EXISTS public.api_keys ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.api_keys TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access api_keys" ON public.api_keys;
 DROP POLICY IF EXISTS "Strict company isolation api_keys" ON public.api_keys;
 CREATE POLICY "Strict company isolation api_keys" ON public.api_keys
@@ -62,6 +63,7 @@ CREATE POLICY "Strict company isolation api_keys" ON public.api_keys
 
 -- B) CAD PLANS
 ALTER TABLE IF EXISTS public.cad_plans ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.cad_plans TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access cad_plans" ON public.cad_plans;
 DROP POLICY IF EXISTS "Strict company isolation cad_plans" ON public.cad_plans;
 CREATE POLICY "Strict company isolation cad_plans" ON public.cad_plans
@@ -71,6 +73,8 @@ CREATE POLICY "Strict company isolation cad_plans" ON public.cad_plans
 
 -- C) DOCUMENTS
 ALTER TABLE IF EXISTS public.documents ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.documents TO authenticated, service_role;
+GRANT SELECT, INSERT ON public.documents TO anon;
 DROP POLICY IF EXISTS "Authenticated users access documents" ON public.documents;
 DROP POLICY IF EXISTS "Strict company isolation documents" ON public.documents;
 DROP POLICY IF EXISTS "Allow anon insert temp_receipt documents" ON public.documents;
@@ -92,6 +96,7 @@ CREATE POLICY "Allow anon select temp_receipt documents" ON public.documents
 
 -- D) DEFECTS & TICKETS
 ALTER TABLE IF EXISTS public.defects ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.defects TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access defects" ON public.defects;
 DROP POLICY IF EXISTS "Strict company isolation defects" ON public.defects;
 CREATE POLICY "Strict company isolation defects" ON public.defects
@@ -101,6 +106,8 @@ CREATE POLICY "Strict company isolation defects" ON public.defects
 
 -- E) LEADS CRM
 ALTER TABLE IF EXISTS public.leads ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.leads TO authenticated, service_role;
+GRANT INSERT ON public.leads TO anon;
 DROP POLICY IF EXISTS "Authenticated users access leads" ON public.leads;
 DROP POLICY IF EXISTS "Strict company isolation leads" ON public.leads;
 DROP POLICY IF EXISTS "Allow anon insert leads" ON public.leads;
@@ -117,6 +124,7 @@ CREATE POLICY "Allow anon insert leads" ON public.leads
 
 -- F) TIME ENTRIES
 ALTER TABLE IF EXISTS public.time_entries ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.time_entries TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access time_entries" ON public.time_entries;
 DROP POLICY IF EXISTS "Strict company isolation time_entries" ON public.time_entries;
 CREATE POLICY "Strict company isolation time_entries" ON public.time_entries
@@ -126,6 +134,7 @@ CREATE POLICY "Strict company isolation time_entries" ON public.time_entries
 
 -- G) CALENDAR EVENTS
 ALTER TABLE IF EXISTS public.calendar_events ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.calendar_events TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access calendar_events" ON public.calendar_events;
 DROP POLICY IF EXISTS "Strict company isolation calendar_events" ON public.calendar_events;
 CREATE POLICY "Strict company isolation calendar_events" ON public.calendar_events
@@ -135,6 +144,7 @@ CREATE POLICY "Strict company isolation calendar_events" ON public.calendar_even
 
 -- H) PROJECTS (projects.company_id und owner_id sind UUID in Supabase)
 ALTER TABLE IF EXISTS public.projects ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.projects TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access projects" ON public.projects;
 DROP POLICY IF EXISTS "Strict company isolation projects" ON public.projects;
 CREATE POLICY "Strict company isolation projects" ON public.projects
@@ -144,6 +154,7 @@ CREATE POLICY "Strict company isolation projects" ON public.projects
 
 -- I) TRANSACTIONS / FINANCE
 ALTER TABLE IF EXISTS public.transactions ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.transactions TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access transactions" ON public.transactions;
 DROP POLICY IF EXISTS "Strict company isolation transactions" ON public.transactions;
 CREATE POLICY "Strict company isolation transactions" ON public.transactions
@@ -153,6 +164,7 @@ CREATE POLICY "Strict company isolation transactions" ON public.transactions
 
 -- J) TASKS & PROJECT TASKS
 ALTER TABLE IF EXISTS public.project_tasks ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.project_tasks TO authenticated, service_role;
 DROP POLICY IF EXISTS "Allow delete for authenticated" ON public.project_tasks;
 DROP POLICY IF EXISTS "Allow insert for authenticated" ON public.project_tasks;
 DROP POLICY IF EXISTS "Allow select for authenticated" ON public.project_tasks;
@@ -177,6 +189,7 @@ CREATE POLICY "Strict company isolation project_tasks" ON public.project_tasks
 
 -- Bereinigung der ungenutzten tasks-Tabelle
 ALTER TABLE IF EXISTS public.tasks ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.tasks TO authenticated, service_role;
 DROP POLICY IF EXISTS "Allow public select" ON public.tasks;
 DROP POLICY IF EXISTS "Allow select for authenticated" ON public.tasks;
 DROP POLICY IF EXISTS "Allow insert for authenticated" ON public.tasks;
@@ -191,6 +204,8 @@ CREATE POLICY "Strict company isolation tasks" ON public.tasks
 
 -- K) SMART PROPOSALS
 ALTER TABLE IF EXISTS public.smart_proposals ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.smart_proposals TO authenticated, service_role;
+GRANT SELECT, UPDATE ON public.smart_proposals TO anon;
 DROP POLICY IF EXISTS "Authenticated users access smart_proposals" ON public.smart_proposals;
 DROP POLICY IF EXISTS "Strict company isolation smart_proposals" ON public.smart_proposals;
 DROP POLICY IF EXISTS "Allow anon view smart_proposals by token" ON public.smart_proposals;
@@ -213,6 +228,8 @@ CREATE POLICY "Allow anon accept smart_proposals" ON public.smart_proposals
 
 -- L) CHAT MESSAGES
 ALTER TABLE IF EXISTS public.chat_messages ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.chat_messages TO authenticated, service_role;
+GRANT SELECT, INSERT ON public.chat_messages TO anon;
 DROP POLICY IF EXISTS "Authenticated users access chat_messages" ON public.chat_messages;
 DROP POLICY IF EXISTS "Strict company isolation chat_messages" ON public.chat_messages;
 DROP POLICY IF EXISTS "Allow room guests chat insert" ON public.chat_messages;
@@ -235,6 +252,7 @@ CREATE POLICY "Allow room guests chat select" ON public.chat_messages
 
 -- M) COMPANY SETTINGS
 ALTER TABLE IF EXISTS public.company_settings ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.company_settings TO authenticated, service_role;
 DROP POLICY IF EXISTS "Authenticated users access company_settings" ON public.company_settings;
 DROP POLICY IF EXISTS "Strict company isolation company_settings" ON public.company_settings;
 CREATE POLICY "Strict company isolation company_settings" ON public.company_settings
@@ -244,6 +262,8 @@ CREATE POLICY "Strict company isolation company_settings" ON public.company_sett
 
 -- N) COMPANY USERS (Team & CRM Kontakte)
 ALTER TABLE IF EXISTS public.company_users ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.company_users TO authenticated, service_role;
+DROP POLICY IF EXISTS "Authenticated users access company_users" ON public.company_users;
 DROP POLICY IF EXISTS "Strict company isolation company_users" ON public.company_users;
 CREATE POLICY "Strict company isolation company_users" ON public.company_users
   FOR ALL TO authenticated
