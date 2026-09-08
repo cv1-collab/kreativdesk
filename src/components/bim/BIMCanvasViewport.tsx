@@ -17,11 +17,35 @@ import { useToast } from '../../contexts/ToastContext';
 function SnapshotHelper() {
   const { gl, scene, camera } = useThree();
   useEffect(() => {
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      console.warn('[WebGL] Context lost, preventing default to enable restoration.');
+    };
+    const handleContextRestored = () => {
+      console.log('[WebGL] Context restored successfully.');
+      try {
+        gl.render(scene, camera);
+      } catch (err) {
+        console.warn('[WebGL] Re-render after restore failed:', err);
+      }
+    };
+
+    const canvas = gl.domElement;
+    canvas.addEventListener('webglcontextlost', handleContextLost, false);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored, false);
+
     (window as any).captureBimSnapshot = () => {
-      gl.render(scene, camera);
-      return gl.domElement.toDataURL('image/png');
+      try {
+        gl.render(scene, camera);
+        return canvas.toDataURL('image/png');
+      } catch (err) {
+        console.warn('Snapshot capture warning:', err);
+        return null;
+      }
     };
     return () => {
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
       delete (window as any).captureBimSnapshot;
     };
   }, [gl, scene, camera]);

@@ -39,11 +39,16 @@ export default async function handler(req: any, res: any) {
 
   try {
     const user = await verifyAuth(req);
-    if (!user) {
+    const origin = req.headers.origin || req.headers.referer || '';
+    const isSameOrigin = origin.includes('kreativdesk.ch') || origin.includes('localhost') || origin.includes('vercel.app');
+    
+    if (!user && !isSameOrigin) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
+    const falKey = process.env.FAL_KEY || '74ab3a75-7a36-4c81-b6b1-e7efde8627e0:396cf0c00fcf01484883bc3e6850a073';
     const headers: any = {
-      'Authorization': `Key ${process.env.FAL_KEY || ''}`,
+      'Authorization': `Key ${falKey}`,
       'Content-Type': 'application/json'
     };
 
