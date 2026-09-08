@@ -55,6 +55,7 @@ export interface SmartProposal {
   paymentMilestones?: PaymentMilestone[]; // SIA 102 / 108 / 118 Zahlungsplan
   themeStyle: 'keynote' | 'architecture' | 'photography' | 'scenography' | 'swiss' | 'neo-brutalism' | 'glassmorphism' | 'cyberpunk' | 'minimal-tech';
   themeColor: string;
+  colorMode?: 'dark' | 'light' | 'auto';
   slides: any[];
   status: 'active' | 'expired' | 'accepted' | 'draft';
   expiresAt: string; // ISO date string (default 30 days)
@@ -258,6 +259,7 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
     paymentMilestones: proposal.paymentMilestones || [],
     themeStyle: proposal.themeStyle || 'scenography',
     themeColor: proposal.themeColor || '#3b82f6',
+    colorMode: proposal.colorMode || 'dark',
     slides: proposal.slides || [],
     status: proposal.status || 'active',
     expiresAt,
@@ -294,6 +296,7 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
         payment_milestones: fullProposal.paymentMilestones,
         theme_style: fullProposal.themeStyle,
         theme_color: fullProposal.themeColor,
+        color_mode: fullProposal.colorMode,
         slides: fullProposal.slides,
         status: fullProposal.status,
         expires_at: fullProposal.expiresAt,
@@ -305,7 +308,7 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
         accepted_by: fullProposal.acceptedBy
       };
 
-      await supabase.from('smart_proposals').upsert(dbPayload);
+      await (supabase.from('smart_proposals') as any).upsert(dbPayload);
     }
   } catch (e) {
     console.warn('Supabase upsert proposal warning:', e);
@@ -320,6 +323,8 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
 
   return fullProposal;
 }
+
+export const saveProposal = saveSmartProposal;
 
 /**
  * Verlängert eine Offerte um zusätzliche 30 Tage
@@ -517,6 +522,7 @@ function mapDbToProposal(d: any): SmartProposal {
     paymentMilestones: Array.isArray(d.payment_milestones || d.paymentMilestones) ? (d.payment_milestones || d.paymentMilestones) : [],
     themeStyle: d.theme_style || d.themeStyle || 'scenography',
     themeColor: d.theme_color || d.themeColor || '#3b82f6',
+    colorMode: (d.color_mode || d.colorMode || 'dark') as 'dark' | 'light' | 'auto',
     slides: Array.isArray(d.slides) ? d.slides : [],
     status: d.status || 'active',
     expiresAt: d.expires_at || d.expiresAt,

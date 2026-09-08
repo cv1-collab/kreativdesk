@@ -7,7 +7,8 @@ import {
   ArrowRight, FileText, ChevronRight, Sparkles, Building2, User, 
   Check, Lock, AlertCircle, ExternalLink, Presentation, ChevronLeft,
   DollarSign, FileCheck, RefreshCw, Send, Layers, HelpCircle, PenTool,
-  RotateCcw, Eye, FileSignature, CheckSquare, Milestone, X, Bot, QrCode, CreditCard, Loader2
+  RotateCcw, Eye, FileSignature, CheckSquare, Milestone, X, Bot, QrCode, CreditCard, Loader2,
+  Sun, Moon
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { getProposalByShareToken, acceptProposalByClient, SmartProposal } from '../services/proposalService';
@@ -182,7 +183,12 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     protectedPresentation: 'Geschützte Kunden-Präsentation',
     pinRequired: 'Dieses Dokument ist passwortgeschützt. Bitte geben Sie Ihren PIN-Code ein.',
     pinWrong: 'Falscher PIN-Code. Bitte erneut versuchen.',
-    openPresentation: 'Präsentation öffnen'
+    openPresentation: 'Präsentation öffnen',
+    lightMode: 'Hell',
+    darkMode: 'Dunkel',
+    switchToLight: 'Zum Hell-Modus wechseln',
+    switchToDark: 'Zum Dunkel-Modus wechseln',
+    shareThemeLabel: 'Design beim Teilen'
   },
   en: {
     backToApp: 'Back to App',
@@ -341,7 +347,12 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     protectedPresentation: 'Protected Client Presentation',
     pinRequired: 'This document is password protected. Please enter your PIN code.',
     pinWrong: 'Incorrect PIN code. Please try again.',
-    openPresentation: 'Open Presentation'
+    openPresentation: 'Open Presentation',
+    lightMode: 'Light',
+    darkMode: 'Dark',
+    switchToLight: 'Switch to Light Mode',
+    switchToDark: 'Switch to Dark Mode',
+    shareThemeLabel: 'Design when sharing'
   },
   fr: {
     backToApp: 'Retour à l\'app',
@@ -500,7 +511,12 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     protectedPresentation: 'Présentation client protégée',
     pinRequired: 'Ce document est protégé par mot de passe. Veuillez saisir votre code PIN.',
     pinWrong: 'Code PIN erroné. Veuillez réessayer.',
-    openPresentation: 'Ouvrir la présentation'
+    openPresentation: 'Ouvrir la présentation',
+    lightMode: 'Clair',
+    darkMode: 'Sombre',
+    switchToLight: 'Passer au mode clair',
+    switchToDark: 'Passer au mode sombre',
+    shareThemeLabel: 'Thème lors du partage'
   }
 };
 
@@ -730,6 +746,70 @@ export default function SmartProposalLandingPage() {
       window.history.replaceState({}, '', url.toString());
     } catch (e) {}
   };
+
+  // Theme Mode: 'dark' | 'light' - Initialized from URL param ?theme= or ?mode=, or stored in localStorage, or fallback to proposal.colorMode / 'dark'
+  const [themeMode, setThemeMode] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const urlParam = new URLSearchParams(window.location.search).get('theme') || new URLSearchParams(window.location.search).get('mode');
+      if (urlParam === 'light' || urlParam === 'dark') {
+        return urlParam;
+      }
+      const saved = localStorage.getItem('kd_proposal_theme');
+      if (saved === 'light' || saved === 'dark') {
+        return saved;
+      }
+    }
+    return 'dark';
+  });
+
+  const [shareTheme, setShareTheme] = useState<'dark' | 'light'>(() => themeMode);
+
+  // Sync with proposal's default colorMode if no explicit URL param or saved user preference
+  useEffect(() => {
+    if (proposal && typeof window !== 'undefined') {
+      const urlParam = new URLSearchParams(window.location.search).get('theme') || new URLSearchParams(window.location.search).get('mode');
+      const saved = localStorage.getItem('kd_proposal_theme');
+      if (!urlParam && !saved && proposal.colorMode && (proposal.colorMode === 'light' || proposal.colorMode === 'dark')) {
+        setThemeMode(proposal.colorMode);
+        setShareTheme(proposal.colorMode);
+      }
+    }
+  }, [proposal]);
+
+  // Listen to popstate / location search updates (e.g., when iframe src changes)
+  useEffect(() => {
+    const handleUrlThemeChange = () => {
+      if (typeof window !== 'undefined') {
+        const urlParam = new URLSearchParams(window.location.search).get('theme') || new URLSearchParams(window.location.search).get('mode');
+        if (urlParam === 'light' || urlParam === 'dark') {
+          setThemeMode(urlParam);
+          setShareTheme(urlParam);
+        }
+      }
+    };
+    window.addEventListener('popstate', handleUrlThemeChange);
+    return () => window.removeEventListener('popstate', handleUrlThemeChange);
+  }, []);
+
+  const changeThemeMode = (newMode: 'dark' | 'light') => {
+    audioFeedback.playTouchClick();
+    setThemeMode(newMode);
+    setShareTheme(newMode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('kd_proposal_theme', newMode);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('theme', newMode);
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {}
+    }
+  };
+
+  const toggleThemeMode = () => {
+    changeThemeMode(themeMode === 'dark' ? 'light' : 'dark');
+  };
+
+  const isLight = themeMode === 'light';
 
   // Share Modal & Previews
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -1378,14 +1458,14 @@ export default function SmartProposalLandingPage() {
   // PIN Protection Screen
   if (!isPinUnlocked) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/20">
+      <div className={cn("min-h-screen flex flex-col items-center justify-center p-6", isLight ? "bg-[#f8fafc] text-slate-900 light" : "bg-zinc-950 text-white dark")}>
+        <div className={cn("rounded-3xl p-8 max-w-md w-full shadow-2xl space-y-6 text-center border", isLight ? "bg-white border-slate-200 shadow-slate-200/50" : "bg-zinc-900 border-zinc-800")}>
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto border border-blue-500/20">
             <Lock size={28} />
           </div>
           <div>
-            <h2 className="text-2xl font-bold">{t('protectedPresentation')}</h2>
-            <p className="text-xs text-zinc-400 mt-1">{t('pinRequired')}</p>
+            <h2 className={cn("text-2xl font-bold", isLight ? "text-slate-900" : "text-white")}>{t('protectedPresentation')}</h2>
+            <p className={cn("text-xs mt-1", isLight ? "text-slate-600" : "text-zinc-400")}>{t('pinRequired')}</p>
           </div>
 
           <form onSubmit={handlePinSubmit} className="space-y-4">
@@ -1396,12 +1476,12 @@ export default function SmartProposalLandingPage() {
                 placeholder="••••"
                 value={pinInput}
                 onChange={e => setPinInput(e.target.value)}
-                className="w-full text-center tracking-[0.3em] text-2xl font-bold font-sans py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white outline-none focus:border-blue-500"
+                className={cn("w-full text-center tracking-[0.3em] text-2xl font-bold font-sans py-3 rounded-xl outline-none focus:border-blue-500 border", isLight ? "bg-slate-50 border-slate-300 text-slate-900" : "bg-zinc-950 border-zinc-800 text-white")}
                 autoFocus
               />
-              {pinError && <p className="text-xs text-red-400 mt-2">{t('pinWrong')}</p>}
+              {pinError && <p className="text-xs text-red-500 mt-2">{t('pinWrong')}</p>}
             </div>
-            <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg">
+            <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg cursor-pointer">
               {t('openPresentation')}
             </button>
           </form>
@@ -1436,10 +1516,10 @@ export default function SmartProposalLandingPage() {
   const activeDeckSlide = slides[currentSlideIndex] || slides[0] || defaultProposalSlides[0];
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans selection:bg-blue-500 selection:text-white">
+    <div className={cn("min-h-screen font-sans selection:bg-blue-500 selection:text-white transition-colors duration-300", isLight ? "bg-[#f8fafc] text-slate-900 light" : "bg-[#09090b] text-zinc-100 dark")}>
       
       {/* 1. TOP ANNOUNCEMENT & BRAND HEADER */}
-      <header className="sticky top-0 z-50 bg-[#09090b]/85 backdrop-blur-xl border-b border-white/10 px-3 sm:px-8 py-3 flex items-center justify-between gap-2">
+      <header className={cn("sticky top-0 z-50 backdrop-blur-xl border-b px-3 sm:px-8 py-3 flex items-center justify-between gap-2 transition-colors", isLight ? "bg-white/90 border-slate-200 text-slate-900 shadow-xs" : "bg-[#09090b]/85 border-white/10 text-zinc-100")}>
         <div className="flex items-center gap-2 sm:gap-3">
           {/* ZURÜCK ZUR APP / STUDIO BUTTON */}
           <button 
@@ -1451,7 +1531,7 @@ export default function SmartProposalLandingPage() {
                 navigate('/app');
               }
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 hover:text-white text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
+            className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0", isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white")}
             title={t('backTooltip')}
           >
             <ChevronLeft size={16} />
@@ -1463,11 +1543,11 @@ export default function SmartProposalLandingPage() {
             KD
           </div>
           <div>
-            <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1.5">
+            <div className={cn("text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center gap-1.5", isLight ? "text-slate-500" : "text-zinc-400")}>
               <span>Kreativ Desk</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             </div>
-            <div className="text-xs sm:text-sm font-extrabold text-white truncate max-w-[140px] sm:max-w-md">
+            <div className={cn("text-xs sm:text-sm font-extrabold truncate max-w-[140px] sm:max-w-md", isLight ? "text-slate-900" : "text-white")}>
               {proposal.title}
             </div>
           </div>
@@ -1475,7 +1555,7 @@ export default function SmartProposalLandingPage() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Expiry Badge */}
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/5 border border-white/10 text-zinc-300">
+          <div className={cn("hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border", isLight ? "bg-slate-100 border-slate-200 text-slate-700" : "bg-white/5 border-white/10 text-zinc-300")}>
             <Clock size={13} className="text-amber-400" />
             <span>
               {t('daysLeft', { days: daysLeft })}
@@ -1483,29 +1563,45 @@ export default function SmartProposalLandingPage() {
           </div>
 
           {/* Trilingual Language Switcher */}
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-0.5 text-[11px] font-bold">
+          <div className={cn("flex items-center border rounded-xl p-0.5 text-[11px] font-bold", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
             <button 
               type="button"
               onClick={() => changeLanguage('de')}
-              className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'de' ? "bg-blue-600 text-white shadow-xs" : "text-zinc-400 hover:text-white")}
+              className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'de' ? "bg-blue-600 text-white shadow-xs" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
               DE
             </button>
             <button 
               type="button"
               onClick={() => changeLanguage('fr')}
-              className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'fr' ? "bg-blue-600 text-white shadow-xs" : "text-zinc-400 hover:text-white")}
+              className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'fr' ? "bg-blue-600 text-white shadow-xs" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
               FR
             </button>
             <button 
               type="button"
               onClick={() => changeLanguage('en')}
-              className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'en' ? "bg-blue-600 text-white shadow-xs" : "text-zinc-400 hover:text-white")}
+              className={cn("px-2 py-1 rounded-lg transition-all cursor-pointer", proposalLang === 'en' ? "bg-blue-600 text-white shadow-xs" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
               EN
             </button>
           </div>
+
+          {/* Theme Mode Toggle (Hell / Dunkel) */}
+          <button 
+            type="button"
+            onClick={toggleThemeMode}
+            className={cn(
+              "p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm",
+              isLight 
+                ? "bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700" 
+                : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white"
+            )}
+            title={isLight ? t('switchToDark') : t('switchToLight')}
+          >
+            {isLight ? <Sun size={14} className="text-amber-500" /> : <Moon size={14} className="text-blue-400" />}
+            <span className="hidden xl:inline">{isLight ? t('lightMode') : t('darkMode')}</span>
+          </button>
 
           {/* Share Button (WhatsApp, LinkedIn, Link) */}
           <button 
@@ -1514,7 +1610,7 @@ export default function SmartProposalLandingPage() {
               audioFeedback.playTouchClick();
               setIsShareModalOpen(true);
             }}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-zinc-200 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className={cn("p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm", isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white")}
             title={t('shareTooltip')}
           >
             <Share2 size={14} className="text-cyan-400" />
@@ -1531,7 +1627,7 @@ export default function SmartProposalLandingPage() {
               setTempCompanySettings(companySettings);
               setIsCompanySettingsModalOpen(true);
             }}
-            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            className={cn("p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm", isLight ? "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700" : "bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/30 text-purple-300 hover:text-white")}
             title={t('companyAndQRTooltip')}
           >
             <Building2 size={14} className="text-purple-400" />
@@ -1539,7 +1635,7 @@ export default function SmartProposalLandingPage() {
           </button>
 
           {/* Mode Switcher */}
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1">
+          <div className={cn("flex items-center border rounded-xl p-1", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
             <button 
               type="button"
               onClick={() => {
@@ -1547,7 +1643,7 @@ export default function SmartProposalLandingPage() {
                 setViewMode('story');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'story' ? "bg-blue-600 text-white shadow-md" : "text-zinc-400 hover:text-white")}
+              className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'story' ? "bg-blue-600 text-white shadow-md" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
               {t('story')}
             </button>
@@ -1558,7 +1654,7 @@ export default function SmartProposalLandingPage() {
                 setViewMode('deck');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'deck' ? "bg-blue-600 text-white shadow-md" : "text-zinc-400 hover:text-white")}
+              className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'deck' ? "bg-blue-600 text-white shadow-md" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
               {t('deck')}
             </button>
@@ -1672,28 +1768,28 @@ export default function SmartProposalLandingPage() {
             <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none"></div>
 
             <div className="space-y-6 text-center max-w-3xl mx-auto relative z-10">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 dark:text-blue-400 text-xs font-bold">
                 <Sparkles size={14} /> {t('heroBadge')}
               </div>
 
-              <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
+              <h1 className={cn("text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight", isLight ? "text-slate-900" : "text-white")}>
                 {proposal.title}
               </h1>
 
-              <div className="flex items-center justify-center gap-2 text-sm text-zinc-400">
+              <div className={cn("flex items-center justify-center gap-2 text-sm", isLight ? "text-slate-600" : "text-zinc-400")}>
                 <span>{t('createdFor')}</span>
-                <strong className="text-zinc-200 font-bold">{proposal.clientName}</strong>
-                {proposal.clientCompany && <span>· <span className="text-blue-400">{proposal.clientCompany}</span></span>}
+                <strong className={cn("font-bold", isLight ? "text-slate-800" : "text-zinc-200")}>{proposal.clientName}</strong>
+                {proposal.clientCompany && <span>· <span className="text-blue-500 font-semibold">{proposal.clientCompany}</span></span>}
               </div>
 
-              <p className="text-sm sm:text-base text-zinc-300 leading-relaxed max-w-2xl mx-auto">
+              <p className={cn("text-sm sm:text-base leading-relaxed max-w-2xl mx-auto", isLight ? "text-slate-600" : "text-zinc-300")}>
                 {getTranslatedIntroText(proposal.introText)}
               </p>
             </div>
 
             {/* HERO VIDEO / SHOWREEL PLAYER */}
             {(proposal.heroVideoUrl || proposal.heroImageUrl) && (
-              <div className="mt-10 rounded-3xl overflow-hidden border border-white/15 bg-zinc-900 shadow-2xl relative group aspect-video max-w-5xl mx-auto">
+              <div className={cn("mt-10 rounded-3xl overflow-hidden relative group aspect-video max-w-5xl mx-auto border", isLight ? "border-slate-200 bg-slate-100 shadow-xl" : "border-white/15 bg-zinc-900 shadow-2xl")}>
                 {proposal.heroVideoUrl ? (
                   <>
                     <video 
@@ -1754,27 +1850,27 @@ export default function SmartProposalLandingPage() {
           {/* STORY SCROLL MODE: VERTICAL WEBSITE-STYLE PRESENTATION */}
           <section className="px-4 sm:px-8 py-12 max-w-6xl mx-auto space-y-12">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{t('storyHeading')}</h2>
-              <p className="text-xs text-zinc-400">{t('storySubheading')}</p>
+              <h2 className={cn("text-2xl sm:text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{t('storyHeading')}</h2>
+              <p className={cn("text-xs", isLight ? "text-slate-600" : "text-zinc-400")}>{t('storySubheading')}</p>
             </div>
 
             <div className="space-y-8">
               {slides.map((slide, sIdx) => (
-                <div key={slide.id || sIdx} className="rounded-3xl border border-white/10 bg-zinc-900/60 backdrop-blur-md p-6 sm:p-10 shadow-xl space-y-6">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div key={slide.id || sIdx} className={cn("rounded-3xl backdrop-blur-md p-6 sm:p-10 shadow-xl space-y-6 border", isLight ? "bg-white border-slate-200/90 shadow-slate-200/50" : "bg-zinc-900/60 border-white/10")}>
+                  <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
                     <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 font-extrabold flex items-center justify-center text-xs font-sans">
+                      <span className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-500 dark:text-blue-400 font-extrabold flex items-center justify-center text-xs font-sans">
                         {sIdx + 1}
                       </span>
-                      <h3 className="text-xl sm:text-2xl font-extrabold text-white">{getTranslatedSlideTitle(slide.title)}</h3>
+                      <h3 className={cn("text-xl sm:text-2xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(slide.title)}</h3>
                     </div>
                   </div>
 
                   {slide.layout === 'split' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                      <div className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{getTranslatedSlideContent(slide.content)}</div>
+                      <div className={cn("text-sm leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</div>
                       {slide.imageUrl && (
-                        <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video relative group">
+                        <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
                           <img 
                             src={slide.imageUrl} 
                             alt={slide.title} 
@@ -1793,9 +1889,9 @@ export default function SmartProposalLandingPage() {
                   {/* VORHER / NACHHER MORPHING SLIDER */}
                   {slide.layout === 'before-after' && (
                     <div className="space-y-4">
-                      {slide.content && <p className="text-sm text-zinc-300">{getTranslatedSlideContent(slide.content)}</p>}
+                      {slide.content && <p className={cn("text-sm", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</p>}
                       <div 
-                        className="rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black relative select-none cursor-ew-resize"
+                        className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative select-none cursor-ew-resize border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}
                         onMouseMove={(e) => {
                           const rect = e.currentTarget.getBoundingClientRect();
                           const x = e.clientX - rect.left;
@@ -1842,7 +1938,7 @@ export default function SmartProposalLandingPage() {
                   )}
 
                   {slide.layout === 'image-focus' && slide.imageUrl && (
-                    <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video relative group">
+                    <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
                       <img 
                         src={slide.imageUrl} 
                         alt={slide.title} 
@@ -1853,8 +1949,8 @@ export default function SmartProposalLandingPage() {
 
                   {slide.layout === 'video-focus' && (
                     <div className="space-y-4">
-                      {slide.content && <p className="text-sm text-zinc-300">{getTranslatedSlideContent(slide.content)}</p>}
-                      <div className="rounded-2xl overflow-hidden border border-white/10 aspect-video bg-black relative">
+                      {slide.content && <p className={cn("text-sm", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(slide.content)}</p>}
+                      <div className={cn("rounded-2xl overflow-hidden aspect-video bg-black relative border", isLight ? "border-slate-200 shadow-md" : "border-white/10")}>
                         <video src={slide.videoUrl || proposal.heroVideoUrl} controls playsInline className="w-full h-full object-cover" />
                       </div>
                     </div>
@@ -1862,17 +1958,17 @@ export default function SmartProposalLandingPage() {
 
                   {slide.layout === 'data-budget' && (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/30">
-                        <div className="grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider text-zinc-400 bg-white/5 border-b border-white/10">
+                      <div className={cn("rounded-2xl overflow-hidden border", isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/10")}>
+                        <div className={cn("grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider border-b", isLight ? "text-slate-600 bg-slate-100 border-slate-200" : "text-zinc-400 bg-white/5 border-white/10")}>
                           <div className="col-span-2">{t('pos')}</div>
                           <div className="col-span-7">{t('servicePhase')}</div>
                           <div className="col-span-3 text-right">{t('amount')}</div>
                         </div>
                         {(slide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
-                          <div key={bIdx} className="grid grid-cols-12 text-xs py-2 border-b border-white/5 last:border-0">
-                            <div className="col-span-2 font-bold text-zinc-400 font-sans">{grp.pos}</div>
-                            <div className="col-span-7 text-zinc-200 font-medium">{grp.title}</div>
-                            <div className="col-span-3 text-right font-bold text-white font-sans">{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
+                          <div key={bIdx} className={cn("grid grid-cols-12 text-xs py-2 border-b last:border-0", isLight ? "border-slate-200" : "border-white/5")}>
+                            <div className={cn("col-span-2 font-bold font-sans", isLight ? "text-slate-600" : "text-zinc-400")}>{grp.pos}</div>
+                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{grp.title}</div>
+                            <div className={cn("col-span-3 text-right font-bold font-sans", isLight ? "text-slate-900" : "text-white")}>{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
                           </div>
                         ))}
                       </div>
@@ -1882,13 +1978,13 @@ export default function SmartProposalLandingPage() {
                   {slide.layout === 'team-grid' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {(slide.dataPayload?.members || []).map((member: any, mIdx: number) => (
-                        <div key={mIdx} className="p-5 rounded-2xl border border-white/10 bg-white/5 flex items-center gap-4">
+                        <div key={mIdx} className={cn("p-5 rounded-2xl flex items-center gap-4 border", isLight ? "bg-slate-50 border-slate-200 shadow-sm" : "border-white/10 bg-white/5")}>
                           <img src={member.photoURL || member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'} alt={member.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-500" />
                           <div>
-                            <div className="font-bold text-white text-base">{member.name}</div>
-                            <div className="text-xs text-blue-400 font-medium">{member.role}</div>
+                            <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{member.name}</div>
+                            <div className="text-xs text-blue-500 font-medium">{member.role}</div>
                             <div className="flex items-center gap-2 mt-2">
-                              <a href={`https://wa.me/41790000000`} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 text-xs font-bold flex items-center gap-1">
+                              <a href={`https://wa.me/41790000000`} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 text-xs font-bold flex items-center gap-1">
                                 <MessageSquare size={12} /> WhatsApp
                               </a>
                             </div>
@@ -1906,27 +2002,27 @@ export default function SmartProposalLandingPage() {
         /* DEDICATED 16:9 PRESENTATION DECK STUDIO */
         <section className="px-4 sm:px-8 py-8 max-w-6xl mx-auto space-y-6">
           {/* Deck Top Header Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-zinc-900/90 border border-white/10 backdrop-blur-md">
+          <div className={cn("flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl backdrop-blur-md border", isLight ? "bg-white/95 border-slate-200 shadow-sm" : "bg-zinc-900/90 border-white/10")}>
             <div className="flex items-center gap-3">
               <span className="w-8 h-8 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shadow-md">
                 {currentSlideIndex + 1}
               </span>
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-blue-400 font-bold">
+                <div className="text-[10px] uppercase tracking-wider text-blue-500 font-bold">
                   {t('slideCountLabel', { title: proposal.title, curr: currentSlideIndex + 1, total: slides.length })}
                 </div>
-                <h2 className="text-lg font-black text-white">{getTranslatedSlideTitle(activeDeckSlide.title)}</h2>
+                <h2 className={cn("text-lg font-black", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(activeDeckSlide.title)}</h2>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="hidden md:inline text-[11px] text-zinc-400 bg-black/40 px-3 py-1 rounded-lg border border-white/10">
+              <span className={cn("hidden md:inline text-[11px] px-3 py-1 rounded-lg border", isLight ? "text-slate-600 bg-slate-100 border-slate-200" : "text-zinc-400 bg-black/40 border-white/10")}>
                 {t('keyboardHint')}
               </span>
               <button
                 type="button"
                 onClick={() => setViewMode('story')}
-                className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-bold border border-white/10 transition-all cursor-pointer"
+                className={cn("px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border-slate-200" : "bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border-white/10")}
               >
                 {t('showStoryMode')}
               </button>
@@ -1934,9 +2030,9 @@ export default function SmartProposalLandingPage() {
           </div>
 
           {/* 16:9 Presentation Stage */}
-          <div className="rounded-3xl border border-white/15 bg-neutral-950 shadow-2xl p-6 sm:p-10 min-h-[460px] md:aspect-[16/9] flex flex-col justify-between relative overflow-hidden group">
+          <div className={cn("rounded-3xl p-6 sm:p-10 min-h-[460px] md:aspect-[16/9] flex flex-col justify-between relative overflow-hidden group border shadow-2xl transition-colors", isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-200/50" : "bg-neutral-950 border-white/15 text-zinc-100")}>
             {/* Ambient Lighting */}
-            <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/10 blur-[100px] pointer-events-none" />
+            <div className={cn("absolute top-0 right-0 w-96 h-96 blur-[100px] pointer-events-none", isLight ? "bg-blue-400/10" : "bg-blue-600/10")} />
 
             {/* Slide Content Stage */}
             <div className="flex-1 flex items-center justify-center w-full my-4">
@@ -1953,20 +2049,20 @@ export default function SmartProposalLandingPage() {
                   {activeDeckSlide.layout === 'split' && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center w-full">
                       <div className="lg:col-span-6 space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 text-blue-300 text-xs font-bold border border-blue-500/20">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 text-blue-500 dark:text-blue-300 text-xs font-bold border border-blue-500/20">
                           <Sparkles size={13} /> {proposal.clientCompany || 'interacTV Solution'}
                         </div>
-                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
+                        <h3 className={cn("text-2xl sm:text-3xl font-extrabold leading-tight", isLight ? "text-slate-900" : "text-white")}>
                           {getTranslatedSlideTitle(activeDeckSlide.title)}
                         </h3>
-                        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                        <p className={cn("text-sm sm:text-base leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>
                           {getTranslatedSlideContent(activeDeckSlide.content)}
                         </p>
                       </div>
 
                       <div className="lg:col-span-6">
                         {activeDeckSlide.imageUrl && (
-                          <div className="rounded-2xl overflow-hidden border border-white/15 aspect-video shadow-2xl relative group">
+                          <div className={cn("rounded-2xl overflow-hidden aspect-video relative group border", isLight ? "border-slate-200 shadow-xl" : "border-white/15 shadow-2xl")}>
                             <img
                               src={activeDeckSlide.imageUrl}
                               alt={getTranslatedSlideTitle(activeDeckSlide.title)}
@@ -1982,7 +2078,7 @@ export default function SmartProposalLandingPage() {
                   {/* Video Focus Layout */}
                   {activeDeckSlide.layout === 'video-focus' && (
                     <div className="w-full space-y-4">
-                      <div className="rounded-2xl overflow-hidden border border-white/15 aspect-video max-h-[380px] mx-auto bg-black relative shadow-2xl">
+                      <div className={cn("rounded-2xl overflow-hidden aspect-video max-h-[380px] mx-auto bg-black relative border", isLight ? "border-slate-200 shadow-xl" : "border-white/15 shadow-2xl")}>
                         <video
                           src={activeDeckSlide.videoUrl || proposal.heroVideoUrl}
                           controls
@@ -1992,7 +2088,7 @@ export default function SmartProposalLandingPage() {
                         />
                       </div>
                       {activeDeckSlide.content && (
-                        <p className="text-xs text-center text-zinc-300 max-w-xl mx-auto">
+                        <p className={cn("text-xs text-center max-w-xl mx-auto", isLight ? "text-slate-700" : "text-zinc-300")}>
                           {getTranslatedSlideContent(activeDeckSlide.content)}
                         </p>
                       )}
@@ -2002,17 +2098,17 @@ export default function SmartProposalLandingPage() {
                   {/* Budget Table Layout */}
                   {activeDeckSlide.layout === 'data-budget' && (
                     <div className="w-full space-y-4 max-w-3xl mx-auto">
-                      <div className="rounded-2xl border border-white/15 overflow-hidden bg-neutral-900/90 shadow-xl">
-                        <div className="grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider text-zinc-400 bg-white/5 border-b border-white/10">
+                      <div className={cn("rounded-2xl border overflow-hidden shadow-xl", isLight ? "bg-slate-50 border-slate-200" : "bg-neutral-900/90 border-white/15")}>
+                        <div className={cn("grid grid-cols-12 p-3 text-xs font-bold uppercase tracking-wider border-b", isLight ? "text-slate-600 bg-slate-100 border-slate-200" : "text-zinc-400 bg-white/5 border-white/10")}>
                           <div className="col-span-2">{t('pos')}</div>
                           <div className="col-span-7">{t('serviceExecution')}</div>
                           <div className="col-span-3 text-right">{t('amount')}</div>
                         </div>
                         {(activeDeckSlide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
-                          <div key={bIdx} className="grid grid-cols-12 text-xs py-3 px-3 border-b border-white/5 last:border-0 items-center">
-                            <div className="col-span-2 font-bold text-cyan-400 tabular-nums">{grp.pos}</div>
-                            <div className="col-span-7 text-zinc-200 font-medium">{grp.title}</div>
-                            <div className="col-span-3 text-right font-bold text-white tabular-nums">{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
+                          <div key={bIdx} className={cn("grid grid-cols-12 text-xs py-3 px-3 border-b last:border-0 items-center", isLight ? "border-slate-200" : "border-white/5")}>
+                            <div className={cn("col-span-2 font-bold tabular-nums", isLight ? "text-blue-600" : "text-cyan-400")}>{grp.pos}</div>
+                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{grp.title}</div>
+                            <div className={cn("col-span-3 text-right font-bold tabular-nums", isLight ? "text-slate-900" : "text-white")}>{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
                           </div>
                         ))}
                       </div>
@@ -2023,11 +2119,11 @@ export default function SmartProposalLandingPage() {
                   {activeDeckSlide.layout === 'team-grid' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl mx-auto">
                       {(activeDeckSlide.dataPayload?.members || []).map((member: any, mIdx: number) => (
-                        <div key={mIdx} className="p-5 rounded-2xl border border-white/15 bg-neutral-900/80 flex items-center gap-4 shadow-lg">
+                        <div key={mIdx} className={cn("p-5 rounded-2xl border flex items-center gap-4 shadow-lg", isLight ? "bg-slate-50 border-slate-200" : "bg-neutral-900/80 border-white/15")}>
                           <img src={member.photoURL || member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'} alt={member.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-500" />
                           <div>
-                            <div className="font-bold text-white text-base">{member.name}</div>
-                            <div className="text-xs text-blue-400 font-medium">{member.role}</div>
+                            <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{member.name}</div>
+                            <div className="text-xs text-blue-500 font-medium">{member.role}</div>
                           </div>
                         </div>
                       ))}
@@ -2038,7 +2134,7 @@ export default function SmartProposalLandingPage() {
                   {activeDeckSlide.layout === 'image-focus' && (
                     <div className="w-full h-full flex flex-col items-center justify-center space-y-4">
                       {activeDeckSlide.imageUrl && (
-                        <div className="rounded-2xl overflow-hidden border border-white/15 aspect-video max-h-[380px] mx-auto shadow-2xl relative group">
+                        <div className={cn("rounded-2xl overflow-hidden aspect-video max-h-[380px] mx-auto relative group border", isLight ? "border-slate-200 shadow-xl" : "border-white/15 shadow-2xl")}>
                           <img
                             src={activeDeckSlide.imageUrl}
                             alt={getTranslatedSlideTitle(activeDeckSlide.title)}
@@ -2047,7 +2143,7 @@ export default function SmartProposalLandingPage() {
                         </div>
                       )}
                       {activeDeckSlide.content && (
-                        <p className="text-xs text-center text-zinc-300 max-w-xl mx-auto">
+                        <p className={cn("text-xs text-center max-w-xl mx-auto", isLight ? "text-slate-700" : "text-zinc-300")}>
                           {getTranslatedSlideContent(activeDeckSlide.content)}
                         </p>
                       )}
@@ -2137,20 +2233,20 @@ export default function SmartProposalLandingPage() {
                           })()}
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
-                          <span className="text-[10px] uppercase font-bold tracking-widest opacity-60 text-zinc-400">{t('total')}</span>
-                          <span className="text-xl font-extrabold text-blue-400">
+                          <span className={cn("text-[10px] uppercase font-bold tracking-widest opacity-60", isLight ? "text-slate-500" : "text-zinc-400")}>{t('total')}</span>
+                          <span className="text-xl font-extrabold text-blue-500 dark:text-blue-400">
                             CHF {(activeDeckSlide.dataPayload.totalAmount || activeDeckSlide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0)).toLocaleString('de-CH')}
                           </span>
                         </div>
                       </div>
                       <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto custom-scrollbar w-full">
                         {activeDeckSlide.dataPayload.chartSegments.map((seg: any, idx: number) => (
-                          <div key={idx} className="p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between">
+                          <div key={idx} className={cn("p-3 rounded-xl border flex items-center justify-between", isLight ? "bg-slate-50 border-slate-200" : "border-white/10 bg-white/5")}>
                             <div className="flex items-center gap-2 truncate">
                               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color || '#3b82f6' }} />
                               <div className="truncate">
-                                <div className="text-xs font-bold text-white truncate">{seg.label}</div>
-                                <div className="text-[10px] text-zinc-400 tabular-nums">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                                <div className={cn("text-xs font-bold truncate", isLight ? "text-slate-800" : "text-white")}>{seg.label}</div>
+                                <div className={cn("text-[10px] tabular-nums", isLight ? "text-slate-500" : "text-zinc-400")}>CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
                               </div>
                             </div>
                           </div>
@@ -2162,8 +2258,8 @@ export default function SmartProposalLandingPage() {
                   {/* Fallback Layout */}
                   {activeDeckSlide.layout !== 'split' && activeDeckSlide.layout !== 'video-focus' && activeDeckSlide.layout !== 'data-budget' && activeDeckSlide.layout !== 'team-grid' && activeDeckSlide.layout !== 'image-focus' && activeDeckSlide.layout !== 'before-after' && activeDeckSlide.layout !== 'chart-donut' && (
                     <div className="text-center space-y-4 max-w-2xl mx-auto">
-                      <h3 className="text-3xl font-extrabold text-white">{getTranslatedSlideTitle(activeDeckSlide.title)}</h3>
-                      <p className="text-base text-zinc-300 leading-relaxed whitespace-pre-wrap">{getTranslatedSlideContent(activeDeckSlide.content)}</p>
+                      <h3 className={cn("text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedSlideTitle(activeDeckSlide.title)}</h3>
+                      <p className={cn("text-base leading-relaxed whitespace-pre-wrap", isLight ? "text-slate-700" : "text-zinc-300")}>{getTranslatedSlideContent(activeDeckSlide.content)}</p>
                     </div>
                   )}
                 </motion.div>
@@ -2171,7 +2267,7 @@ export default function SmartProposalLandingPage() {
             </div>
 
             {/* Deck Navigation Controls */}
-            <div className="flex items-center justify-between pt-4 border-t border-white/10">
+            <div className={cn("flex items-center justify-between pt-4 border-t", isLight ? "border-slate-200" : "border-white/10")}>
               <button 
                 type="button"
                 onClick={() => {
@@ -2179,7 +2275,7 @@ export default function SmartProposalLandingPage() {
                   setCurrentSlideIndex(prev => Math.max(0, prev - 1));
                 }}
                 disabled={currentSlideIndex === 0}
-                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold disabled:opacity-30 flex items-center gap-1.5 cursor-pointer shadow-md transition-all"
+                className={cn("px-4 py-2.5 rounded-xl text-xs font-bold disabled:opacity-30 flex items-center gap-1.5 cursor-pointer shadow-md transition-all", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200" : "bg-white/10 hover:bg-white/20 text-white")}
               >
                 <ChevronLeft size={16} /> {t('prev')}
               </button>
@@ -2195,12 +2291,12 @@ export default function SmartProposalLandingPage() {
                       audioFeedback.playTouchClick();
                       setCurrentSlideIndex(i);
                     }}
-                    className={cn("h-2.5 rounded-full transition-all cursor-pointer", i === currentSlideIndex ? "bg-blue-500 w-8" : "bg-white/20 hover:bg-white/40 w-2.5")}
+                    className={cn("h-2.5 rounded-full transition-all cursor-pointer", i === currentSlideIndex ? "bg-blue-500 w-8" : isLight ? "bg-slate-300 hover:bg-slate-400 w-2.5" : "bg-white/20 hover:bg-white/40 w-2.5")}
                     title={t('slideThumb', { num: i + 1 })}
                   />
                 ))}
               </div>
-              <span className="text-xs font-bold font-sans text-zinc-400 ml-2">{currentSlideIndex + 1} / {slides.length}</span>
+              <span className={cn("text-xs font-bold font-sans ml-2", isLight ? "text-slate-500" : "text-zinc-400")}>{currentSlideIndex + 1} / {slides.length}</span>
             </div>
 
             <button 
@@ -2230,15 +2326,17 @@ export default function SmartProposalLandingPage() {
               className={cn(
                 "p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 shadow-sm",
                 idx === currentSlideIndex
-                  ? "bg-blue-600/20 border-blue-500 text-white shadow-lg shadow-blue-500/20"
-                  : "bg-zinc-900/60 border-white/10 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                  ? "bg-blue-600/20 border-blue-500 text-blue-600 dark:text-white shadow-lg shadow-blue-500/20"
+                  : isLight
+                    ? "bg-white border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900"
+                    : "bg-zinc-900/60 border-white/10 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200"
               )}
             >
               <div className="flex items-center justify-between text-[10px]">
                 <span className="font-bold">{t('slideThumb', { num: idx + 1 })}</span>
                 <span className="uppercase text-[9px] opacity-70">{s.layout}</span>
               </div>
-              <div className="text-xs font-bold text-white truncate">{getTranslatedSlideTitle(s.title)}</div>
+              <div className={cn("text-xs font-bold truncate", isLight ? (idx === currentSlideIndex ? "text-blue-700 font-extrabold" : "text-slate-800") : "text-white")}>{getTranslatedSlideTitle(s.title)}</div>
             </button>
           ))}
         </div>
@@ -2246,21 +2344,21 @@ export default function SmartProposalLandingPage() {
       )}
 
       {/* 4. INTERACTIVE COST CONFIGURATOR & OPTIONS */}
-      <section className="px-4 sm:px-8 py-16 bg-gradient-to-b from-transparent to-zinc-950 border-t border-white/10">
+      <section className={cn("px-4 sm:px-8 py-16 border-t", isLight ? "bg-slate-50/50 border-slate-200" : "bg-gradient-to-b from-transparent to-zinc-950 border-white/10")}>
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="text-center space-y-2">
-            <h2 className="text-3xl font-extrabold text-white">{t('costHeading')}</h2>
-            <p className="text-sm text-zinc-400">{t('costSubheading')}</p>
+            <h2 className={cn("text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{t('costHeading')}</h2>
+            <p className={cn("text-sm", isLight ? "text-slate-600" : "text-zinc-400")}>{t('costSubheading')}</p>
           </div>
 
-          <div className="rounded-3xl border border-white/15 bg-zinc-900/80 p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className={cn("rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl border", isLight ? "bg-white border-slate-200 shadow-slate-200/50" : "bg-zinc-900/80 border-white/15 shadow-2xl")}>
             {/* Base Offer */}
-            <div className="flex items-center justify-between pb-6 border-b border-white/10">
+            <div className={cn("flex items-center justify-between pb-6 border-b", isLight ? "border-slate-200" : "border-white/10")}>
               <div>
-                <div className="text-lg font-bold text-white">{t('baseScopeTitle')}</div>
-                <div className="text-xs text-zinc-400">{t('baseScopeSub')}</div>
+                <div className={cn("text-lg font-bold", isLight ? "text-slate-900" : "text-white")}>{t('baseScopeTitle')}</div>
+                <div className={cn("text-xs", isLight ? "text-slate-500" : "text-zinc-400")}>{t('baseScopeSub')}</div>
               </div>
-              <div className="text-2xl font-black text-white font-sans tracking-tight">
+              <div className={cn("text-2xl font-black font-sans tracking-tight", isLight ? "text-slate-900" : "text-white")}>
                 {proposal.currency} {proposal.basePrice.toLocaleString('de-CH')}
               </div>
             </div>
@@ -2268,25 +2366,30 @@ export default function SmartProposalLandingPage() {
             {/* Optional Packages */}
             {(proposal.options || []).length > 0 && (
               <div className="space-y-3">
-                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">{t('optionalAddons')}</div>
+                <div className={cn("text-xs font-bold uppercase tracking-wider", isLight ? "text-slate-500" : "text-zinc-400")}>{t('optionalAddons')}</div>
                 {proposal.options.map(opt => {
                   const isChecked = selectedOptionIds.includes(opt.id);
                   return (
                     <div 
                       key={opt.id} 
                       onClick={() => toggleOption(opt.id)}
-                      className={cn("p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4", isChecked ? "bg-blue-600/10 border-blue-500/50 shadow-md" : "bg-white/5 border-white/5 hover:border-white/20")}
+                      className={cn(
+                        "p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4",
+                        isChecked 
+                          ? (isLight ? "bg-blue-50/80 border-blue-400 shadow-sm" : "bg-blue-600/10 border-blue-500/50 shadow-md") 
+                          : (isLight ? "bg-slate-50 border-slate-200 hover:border-slate-300" : "bg-white/5 border-white/5 hover:border-white/20")
+                      )}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center mt-0.5 transition-all shrink-0", isChecked ? "bg-blue-600 text-white" : "border border-white/30")}>
+                        <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center mt-0.5 transition-all shrink-0", isChecked ? "bg-blue-600 text-white" : isLight ? "border border-slate-300" : "border border-white/30")}>
                           {isChecked && <Check size={14} />}
                         </div>
                         <div>
-                          <div className="font-bold text-white text-sm">{opt.title}</div>
-                          {opt.description && <div className="text-xs text-zinc-400 mt-0.5">{opt.description}</div>}
+                          <div className={cn("font-bold text-sm", isLight ? "text-slate-900" : "text-white")}>{opt.title}</div>
+                          {opt.description && <div className={cn("text-xs mt-0.5", isLight ? "text-slate-500" : "text-zinc-400")}>{opt.description}</div>}
                         </div>
                       </div>
-                      <div className="text-sm font-bold text-blue-400 shrink-0 font-sans tracking-tight">
+                      <div className="text-sm font-bold text-blue-500 dark:text-blue-400 shrink-0 font-sans tracking-tight">
                         +{proposal.currency} {opt.price.toLocaleString('de-CH')}
                       </div>
                     </div>
@@ -2296,10 +2399,10 @@ export default function SmartProposalLandingPage() {
             )}
 
             {/* Total Calculation */}
-            <div className="pt-6 border-t border-white/15 flex flex-wrap items-center justify-between gap-4 bg-white/5 -mx-6 -mb-6 p-6 rounded-b-3xl">
+            <div className={cn("pt-6 border-t flex flex-wrap items-center justify-between gap-4 -mx-6 -mb-6 p-6 rounded-b-3xl", isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/15")}>
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-zinc-400">{t('totalExclVat')}</div>
-                <div className="text-3xl sm:text-4xl font-black text-white font-sans tracking-tight mt-1">
+                <div className={cn("text-xs font-bold uppercase tracking-wider", isLight ? "text-slate-500" : "text-zinc-400")}>{t('totalExclVat')}</div>
+                <div className={cn("text-3xl sm:text-4xl font-black font-sans tracking-tight mt-1", isLight ? "text-slate-900" : "text-white")}>
                   {proposal.currency} {calculateTotal().toLocaleString('de-CH')}
                 </div>
               </div>
@@ -2320,11 +2423,11 @@ export default function SmartProposalLandingPage() {
       {/* 4.5. SIA 102 / 118 ZAHLUNGSPLAN & MEILENSTEIN-RECHNER */}
       <section className="px-4 sm:px-8 py-12 max-w-4xl mx-auto space-y-6">
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-extrabold uppercase tracking-widest">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-extrabold uppercase tracking-widest">
             <Milestone size={14} /> {t('siaBadge')}
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{t('siaHeading')}</h2>
-          <p className="text-xs text-zinc-400">{t('siaSubheading')}</p>
+          <h2 className={cn("text-2xl sm:text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{t('siaHeading')}</h2>
+          <p className={cn("text-xs", isLight ? "text-slate-600" : "text-zinc-400")}>{t('siaSubheading')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2338,18 +2441,18 @@ export default function SmartProposalLandingPage() {
             const currentTotal = calculateTotal();
             const milestoneAmount = Math.round((currentTotal * ms.percentage) / 100);
             return (
-              <div key={ms.id || mIdx} className="p-5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md space-y-2 relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+              <div key={ms.id || mIdx} className={cn("p-5 rounded-2xl backdrop-blur-md space-y-2 relative overflow-hidden group transition-all border", isLight ? "bg-white border-slate-200 shadow-sm hover:border-emerald-500/50" : "bg-zinc-900/60 border-white/10 hover:border-emerald-500/40")}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{t('tranche')} 0{mIdx + 1}</span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-black text-xs tabular-nums">
+                  <span className="text-xs font-bold text-emerald-500 uppercase tracking-wider">{t('tranche')} 0{mIdx + 1}</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-black text-xs tabular-nums">
                     {ms.percentage}%
                   </span>
                 </div>
-                <div className="font-bold text-white text-base">{ms.phase}</div>
-                <div className="text-xs text-zinc-400 leading-relaxed">{ms.description}</div>
-                <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
-                  <span className="text-zinc-500 font-medium">{t('dueAmount')}</span>
-                  <span className="font-black text-white font-sans text-sm">
+                <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{ms.phase}</div>
+                <div className={cn("text-xs leading-relaxed", isLight ? "text-slate-600" : "text-zinc-400")}>{ms.description}</div>
+                <div className={cn("pt-2 border-t flex items-center justify-between text-xs", isLight ? "border-slate-100" : "border-white/5")}>
+                  <span className={cn("font-medium", isLight ? "text-slate-500" : "text-zinc-500")}>{t('dueAmount')}</span>
+                  <span className={cn("font-black font-sans text-sm", isLight ? "text-slate-900" : "text-white")}>
                     {proposal.currency} {milestoneAmount.toLocaleString('de-CH')}
                   </span>
                 </div>
@@ -2363,29 +2466,29 @@ export default function SmartProposalLandingPage() {
       {((proposal.legalDocuments && proposal.legalDocuments.length > 0) || (proposal.attachments && proposal.attachments.length > 0)) && (
         <section className="px-4 sm:px-8 py-12 max-w-4xl mx-auto space-y-6">
           <div className="text-center space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-extrabold uppercase tracking-widest">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-500 dark:text-purple-400 text-xs font-extrabold uppercase tracking-widest">
               <ShieldCheck size={14} /> {t('legalBadge')}
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">{t('legalHeading')}</h2>
-            <p className="text-xs text-zinc-400">{t('legalSubheading')}</p>
+            <h2 className={cn("text-2xl sm:text-3xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>{t('legalHeading')}</h2>
+            <p className={cn("text-xs", isLight ? "text-slate-600" : "text-zinc-400")}>{t('legalSubheading')}</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {((proposal.legalDocuments && proposal.legalDocuments.length > 0) ? proposal.legalDocuments : (proposal.attachments || [])).map((doc: any, i: number) => (
               <div 
                 key={doc.id || i}
-                className="p-5 rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-md flex items-center justify-between group hover:border-purple-500/40 transition-all"
+                className={cn("p-5 rounded-2xl backdrop-blur-md flex items-center justify-between group transition-all border", isLight ? "bg-white border-slate-200 shadow-sm hover:border-purple-500/50" : "bg-zinc-900/60 border-white/10 hover:border-purple-500/40")}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-lg">
+                  <div className="w-11 h-11 rounded-2xl bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center font-bold text-lg">
                     📄
                   </div>
                   <div>
-                    <div className="font-bold text-sm text-white group-hover:text-purple-300 transition-colors truncate max-w-[200px]">
+                    <div className={cn("font-bold text-sm transition-colors truncate max-w-[200px]", isLight ? "text-slate-900 group-hover:text-purple-600" : "text-white group-hover:text-purple-300")}>
                       {doc.name}
                     </div>
-                    <div className="text-[11px] text-zinc-500 flex items-center gap-1.5 mt-0.5">
-                      <span className="uppercase text-purple-400 font-bold">{doc.type || 'PDF'}</span>
+                    <div className={cn("text-[11px] flex items-center gap-1.5 mt-0.5", isLight ? "text-slate-500" : "text-zinc-500")}>
+                      <span className="uppercase text-purple-500 dark:text-purple-400 font-bold">{doc.type || 'PDF'}</span>
                       {doc.size && <span>• {doc.size}</span>}
                     </div>
                   </div>
@@ -2397,7 +2500,7 @@ export default function SmartProposalLandingPage() {
                       <button 
                         type="button"
                         onClick={() => setSelectedLegalDocModal(doc)}
-                        className="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white transition-all text-xs font-bold flex items-center gap-1"
+                        className={cn("p-2 rounded-xl transition-all text-xs font-bold flex items-center gap-1 cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/5 hover:bg-white/15 text-zinc-300 hover:text-white")}
                         title={t('previewInBrowser')}
                       >
                         <Eye size={16} />
@@ -2407,14 +2510,14 @@ export default function SmartProposalLandingPage() {
                         download 
                         target="_blank" 
                         rel="noreferrer"
-                        className="p-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-white transition-all"
+                        className="p-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 dark:text-purple-300 hover:text-white transition-all"
                         title={t('downloadPdf')}
                       >
                         <Download size={16} />
                       </a>
                     </>
                   ) : (
-                    <span className="text-[10px] text-zinc-500 bg-white/5 px-2 py-1 rounded-lg">{t('validPerSia')}</span>
+                    <span className={cn("text-[10px] px-2 py-1 rounded-lg", isLight ? "text-slate-500 bg-slate-100" : "text-zinc-500 bg-white/5")}>{t('validPerSia')}</span>
                   )}
                 </div>
               </div>
@@ -2425,13 +2528,13 @@ export default function SmartProposalLandingPage() {
 
       {/* 6. DIREKTE RÜCKFRAGEN ZUR OFFERTE */}
       <section className="px-4 sm:px-8 py-12 max-w-4xl mx-auto space-y-6">
-        <div className="rounded-3xl border border-white/10 bg-gradient-to-r from-blue-950/40 via-zinc-900/60 to-purple-950/40 p-6 sm:p-10 backdrop-blur-xl space-y-6">
+        <div className={cn("rounded-3xl p-6 sm:p-10 backdrop-blur-xl space-y-6 border", isLight ? "bg-gradient-to-r from-blue-50/80 via-white to-purple-50/80 border-slate-200 shadow-xl" : "bg-gradient-to-r from-blue-950/40 via-zinc-900/60 to-purple-950/40 border-white/10")}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <MessageSquare size={20} className="text-blue-400" /> {t('inquiryHeading')}
+              <h3 className={cn("text-xl font-extrabold flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                <MessageSquare size={20} className="text-blue-500" /> {t('inquiryHeading')}
               </h3>
-              <p className="text-xs text-zinc-400 mt-1">{t('inquirySubheading')}</p>
+              <p className={cn("text-xs mt-1", isLight ? "text-slate-600" : "text-zinc-400")}>{t('inquirySubheading')}</p>
             </div>
             <a 
               href={`https://wa.me/${(proposal.clientPhone || '41790000000').replace(/[^0-9]/g, '')}?text=Hallo%20Planungsteam,%20ich%20habe%20eine%20Rückfrage%20zur%20Offerte%20${encodeURIComponent(proposal.title)}`}
@@ -2459,14 +2562,14 @@ export default function SmartProposalLandingPage() {
                 placeholder={t('inquiryNamePlaceholder')} 
                 value={inquiryName} 
                 onChange={e => setInquiryName(e.target.value)} 
-                className="px-3.5 py-2 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                className={cn("px-3.5 py-2 rounded-xl text-xs outline-none focus:border-blue-500 border", isLight ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" : "bg-zinc-950 border-white/10 text-white")}
               />
               <input 
                 type="email" 
                 placeholder={t('inquiryEmailPlaceholder')} 
                 value={inquiryEmail} 
                 onChange={e => setInquiryEmail(e.target.value)} 
-                className="px-3.5 py-2 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                className={cn("px-3.5 py-2 rounded-xl text-xs outline-none focus:border-blue-500 border", isLight ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" : "bg-zinc-950 border-white/10 text-white")}
               />
             </div>
             <div className="flex gap-2">
@@ -2475,7 +2578,7 @@ export default function SmartProposalLandingPage() {
                 placeholder={t('inquiryQuestionPlaceholder')}
                 value={inquiryQuestion}
                 onChange={e => setInquiryQuestion(e.target.value)}
-                className="flex-1 px-4 py-2.5 bg-zinc-950 border border-white/10 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                className={cn("flex-1 px-4 py-2.5 rounded-xl text-xs outline-none focus:border-blue-500 border", isLight ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400" : "bg-zinc-950 border-white/10 text-white")}
               />
               <button 
                 type="submit" 
@@ -2486,20 +2589,20 @@ export default function SmartProposalLandingPage() {
               </button>
             </div>
             {inquirySent && (
-              <p className="text-xs text-emerald-400 font-bold">{t('inquirySuccess')}</p>
+              <p className="text-xs text-emerald-500 font-bold">{t('inquirySuccess')}</p>
             )}
           </form>
         </div>
       </section>
 
       {/* 7. FOOTER WITH DIRECT CONTACT BUTTONS */}
-      <footer className="border-t border-white/10 bg-zinc-950 px-4 sm:px-8 py-12 text-center text-xs text-zinc-500 space-y-6">
+      <footer className={cn("border-t px-4 sm:px-8 py-12 text-center text-xs space-y-6", isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-zinc-950 border-white/10 text-zinc-500")}>
         <div className="flex flex-wrap justify-center gap-4">
-          <a href={`tel:${proposal.clientPhone || '+41790000000'}`} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-bold flex items-center gap-2">
-            <Phone size={14} className="text-emerald-400" /> {t('phoneInquiry')}
+          <a href={`tel:${proposal.clientPhone || '+41790000000'}`} className={cn("px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all", isLight ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-white/5 hover:bg-white/10 text-zinc-300")}>
+            <Phone size={14} className="text-emerald-500" /> {t('phoneInquiry')}
           </a>
-          <a href={`mailto:${proposal.clientEmail || 'kontakt@kreativdesk.ch'}`} className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 font-bold flex items-center gap-2">
-            <Mail size={14} className="text-blue-400" /> {t('emailInquiry')}
+          <a href={`mailto:${proposal.clientEmail || 'kontakt@kreativdesk.ch'}`} className={cn("px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all", isLight ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-white/5 hover:bg-white/10 text-zinc-300")}>
+            <Mail size={14} className="text-blue-500" /> {t('emailInquiry')}
           </a>
         </div>
 
@@ -2933,78 +3036,135 @@ export default function SmartProposalLandingPage() {
                 </button>
               </div>
 
-              {/* Share URL & Copy Box */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-neutral-300 block">{t('directLinkLabel')}</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    readOnly
-                    value={window.location.href}
-                    className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-sans font-medium select-all outline-none"
-                  />
+              {/* Theme Mode Selector for Sharing */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-neutral-300 block">{t('shareThemeLabel')}</label>
+                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-2xl border border-white/10">
                   <button
                     type="button"
-                    onClick={async () => {
-                      audioFeedback.playSuccessChime();
-                      await copyToClipboard(window.location.href);
-                      setCopiedShareToast(true);
-                      setTimeout(() => setCopiedShareToast(false), 3000);
+                    onClick={() => {
+                      audioFeedback.playTouchClick();
+                      setShareTheme('light');
                     }}
-                    className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                    className={cn(
+                      "py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
+                      shareTheme === 'light'
+                        ? "bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm"
+                        : "border-transparent text-neutral-400 hover:text-white"
+                    )}
                   >
-                    {copiedShareToast ? <Check size={16} /> : <Share2 size={16} />}
-                    <span>{copiedShareToast ? t('copied') : t('copy')}</span>
+                    <Sun size={15} className="text-amber-400" />
+                    <span>{t('lightMode')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      audioFeedback.playTouchClick();
+                      setShareTheme('dark');
+                    }}
+                    className={cn(
+                      "py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
+                      shareTheme === 'dark'
+                        ? "bg-blue-600/20 border-blue-500/60 text-blue-300 shadow-sm"
+                        : "border-transparent text-neutral-400 hover:text-white"
+                    )}
+                  >
+                    <Moon size={15} className="text-blue-400" />
+                    <span>{t('darkMode')}</span>
                   </button>
                 </div>
               </div>
 
-              {/* 1-Click Platform Channels */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
-                {/* WhatsApp */}
-                <a
-                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Guten Tag, hier ist das interaktive Angebot "${proposal.title}": ${window.location.href}`)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-3 rounded-2xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
-                >
-                  <span className="text-lg">💬</span>
-                  <span>WhatsApp</span>
-                </a>
+              {/* Share URL & Copy Box */}
+              {(() => {
+                const calculatedShareUrl = (() => {
+                  if (typeof window === 'undefined') return '';
+                  try {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('theme', shareTheme);
+                    url.searchParams.set('lang', proposalLang);
+                    return url.toString();
+                  } catch (e) {
+                    return window.location.href;
+                  }
+                })();
 
-                {/* LinkedIn */}
-                <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="p-3 rounded-2xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-blue-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
-                >
-                  <span className="text-lg">💼</span>
-                  <span>LinkedIn</span>
-                </a>
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-neutral-300 block">{t('directLinkLabel')}</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          readOnly
+                          value={calculatedShareUrl}
+                          className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-sans font-medium select-all outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            audioFeedback.playSuccessChime();
+                            await copyToClipboard(calculatedShareUrl);
+                            setCopiedShareToast(true);
+                            setTimeout(() => setCopiedShareToast(false), 3000);
+                          }}
+                          className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                        >
+                          {copiedShareToast ? <Check size={16} /> : <Share2 size={16} />}
+                          <span>{copiedShareToast ? t('copied') : t('copy')}</span>
+                        </button>
+                      </div>
+                    </div>
 
-                {/* E-Mail */}
-                <a
-                  href={`mailto:?subject=${encodeURIComponent(`Angebot: ${proposal.title}`)}&body=${encodeURIComponent(`Guten Tag,\n\nhier ist der Link zu Ihrem interaktiven Angebot:\n${window.location.href}\n\nFreundliche Grüsse,\nKreativ Desk & interacTV`)}`}
-                  className="p-3 rounded-2xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
-                >
-                  <span className="text-lg">✉️</span>
-                  <span>E-Mail</span>
-                </a>
-              </div>
+                    {/* 1-Click Platform Channels */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                      {/* WhatsApp */}
+                      <a
+                        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Guten Tag, hier ist das interaktive Angebot "${proposal.title}": ${calculatedShareUrl}`)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-3 rounded-2xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
+                      >
+                        <span className="text-lg">💬</span>
+                        <span>WhatsApp</span>
+                      </a>
 
-              {/* QR Code Quick Scan on Smartphone */}
-              <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-4">
-                <div className="p-2 bg-white rounded-xl shrink-0 shadow-md">
-                  <QRCode value={window.location.href} size={70} />
-                </div>
-                <div className="space-y-1 text-xs">
-                  <span className="font-bold text-white block">{t('smartphoneQrTitle')}</span>
-                  <p className="text-[11px] text-neutral-400 leading-snug">
-                    {t('smartphoneQrDesc')}
-                  </p>
-                </div>
-              </div>
+                      {/* LinkedIn */}
+                      <a
+                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(calculatedShareUrl)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-3 rounded-2xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-blue-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
+                      >
+                        <span className="text-lg">💼</span>
+                        <span>LinkedIn</span>
+                      </a>
+
+                      {/* E-Mail */}
+                      <a
+                        href={`mailto:?subject=${encodeURIComponent(`Angebot: ${proposal.title}`)}&body=${encodeURIComponent(`Guten Tag,\n\nhier ist der Link zu Ihrem interaktiven Angebot:\n${calculatedShareUrl}\n\nFreundliche Grüsse,\nKreativ Desk & interacTV`)}`}
+                        className="p-3 rounded-2xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
+                      >
+                        <span className="text-lg">✉️</span>
+                        <span>E-Mail</span>
+                      </a>
+                    </div>
+
+                    {/* QR Code Quick Scan on Smartphone */}
+                    <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-4">
+                      <div className="p-2 bg-white rounded-xl shrink-0 shadow-md">
+                        <QRCode value={calculatedShareUrl} size={70} />
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        <span className="font-bold text-white block">{t('smartphoneQrTitle')}</span>
+                        <p className="text-[11px] text-neutral-400 leading-snug">
+                          {t('smartphoneQrDesc')}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </motion.div>
           </motion.div>
         )}

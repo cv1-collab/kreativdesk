@@ -4,9 +4,9 @@ import {
   Plus, Search, Filter, Clock, Eye, CheckCircle2, Share2, Copy,
   ExternalLink, Trash2, Calendar, FileText, Sparkles, RefreshCw,
   TrendingUp, AlertCircle, ArrowUpRight, MessageSquare, Mail, Play, Check,
-  Smartphone, Monitor, X, ShieldCheck, Lock
+  Smartphone, Monitor, X, ShieldCheck, Lock, Sun, Moon
 } from 'lucide-react';
-import { getCompanyProposals, extendProposalExpiry, deleteProposal, SmartProposal } from '../services/proposalService';
+import { getCompanyProposals, extendProposalExpiry, deleteProposal, saveProposal, SmartProposal } from '../services/proposalService';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -56,6 +56,11 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     preview_mobile: 'Mobile (390px)',
     preview_copy_btn: 'Copy Link',
     preview_tab_btn: 'New Tab',
+    preview_light_mode: 'Light',
+    preview_dark_mode: 'Dark',
+    light_mode: 'Light',
+    dark_mode: 'Dark',
+    btn_toggle_mode: 'Switch default mode (Light/Dark)',
     close: 'Close',
     toast_copied: 'Client landing page link copied!',
     toast_extended: 'Validity successfully extended by 30 days!',
@@ -104,6 +109,11 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     preview_mobile: 'Mobile (390px)',
     preview_copy_btn: 'Link kopieren',
     preview_tab_btn: 'Neuer Tab',
+    preview_light_mode: 'Hell',
+    preview_dark_mode: 'Dunkel',
+    light_mode: 'Hell',
+    dark_mode: 'Dunkel',
+    btn_toggle_mode: 'Standard-Modus wechseln (Hell/Dunkel)',
     close: 'Schliessen',
     toast_copied: 'Kunden-Landingpage Link kopiert!',
     toast_extended: 'Gültigkeit erfolgreich um 30 Tage verlängert!',
@@ -152,6 +162,11 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     preview_mobile: 'Mobile (390px)',
     preview_copy_btn: 'Copier le lien',
     preview_tab_btn: 'Nouvel onglet',
+    preview_light_mode: 'Clair',
+    preview_dark_mode: 'Sombre',
+    light_mode: 'Clair',
+    dark_mode: 'Sombre',
+    btn_toggle_mode: 'Basculer le mode par défaut (Clair/Sombre)',
     close: 'Fermer',
     toast_copied: 'Lien de la landing page copié !',
     toast_extended: 'Validité prolongée avec succès de 30 jours !',
@@ -176,6 +191,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [previewProposal, setPreviewProposal] = useState<SmartProposal | null>(null);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
+  const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
 
   const companyId = currentUser?.companyId || currentUser?.uid || 'default-company';
 
@@ -204,15 +220,30 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
     };
   }, [loadProposals]);
 
-  const handleCopyLink = async (proposal: SmartProposal) => {
+  const handleCopyLink = async (proposal: SmartProposal, theme?: 'dark' | 'light') => {
     audioFeedback.playTouchClick();
-    const url = `${window.location.origin}/p/${proposal.shareToken}`;
+    const effectiveTheme = theme || proposal.colorMode || 'dark';
+    const url = `${window.location.origin}/p/${proposal.shareToken}?theme=${effectiveTheme}`;
     const ok = await copyToClipboard(url);
     if (ok) {
       setCopiedId(proposal.id);
       addToast(t('toast_copied'), 'success');
       setTimeout(() => setCopiedId(null), 2500);
     }
+  };
+
+  const handleToggleProposalColorMode = async (e: React.MouseEvent, proposal: SmartProposal) => {
+    e.stopPropagation();
+    audioFeedback.playTouchClick();
+    const nextMode: 'dark' | 'light' = proposal.colorMode === 'light' ? 'dark' : 'light';
+    const updated: SmartProposal = { ...proposal, colorMode: nextMode };
+    await saveProposal(updated);
+    setProposals(prev => prev.map(p => p.id === proposal.id ? updated : p));
+    if (previewProposal && previewProposal.id === proposal.id) {
+      setPreviewProposal(updated);
+      setPreviewTheme(nextMode);
+    }
+    addToast(nextMode === 'light' ? 'Standard: Hell' : 'Standard: Dunkel', 'info');
   };
 
   const handleExtend = async (proposalId: string) => {
@@ -470,11 +501,26 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
                       onClick={() => {
                         audioFeedback.playTouchClick();
                         setPreviewProposal(proposal);
+                        setPreviewTheme(proposal.colorMode === 'light' ? 'light' : 'dark');
                       }}
                       className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white dark:bg-blue-600/15 dark:hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white border border-blue-200 dark:border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                       title={t('btn_preview')}
                     >
                       <Eye size={14} /> {t('btn_preview')}
+                    </button>
+
+                    <button
+                      onClick={(e) => handleToggleProposalColorMode(e, proposal)}
+                      className={cn(
+                        "px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs",
+                        proposal.colorMode === 'light'
+                          ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30"
+                          : "bg-background hover:bg-surface border-border text-text-muted hover:text-text-primary"
+                      )}
+                      title={t('btn_toggle_mode')}
+                    >
+                      {proposal.colorMode === 'light' ? <Sun size={13} className="text-amber-500" /> : <Moon size={13} className="text-blue-400" />}
+                      <span className="hidden sm:inline">{proposal.colorMode === 'light' ? t('light_mode') : t('dark_mode')}</span>
                     </button>
 
                     <button
@@ -543,41 +589,70 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
                 </div>
               </div>
 
-              {/* Viewport Device Switcher */}
-              <div className="hidden md:flex items-center bg-background border border-border rounded-xl p-1 gap-1">
-                <button
-                  onClick={() => setPreviewDevice('desktop')}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                    previewDevice === 'desktop' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
-                  )}
-                >
-                  <Monitor size={14} /> {t('preview_desktop')}
-                </button>
-                <button
-                  onClick={() => setPreviewDevice('mobile')}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                    previewDevice === 'mobile' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
-                  )}
-                >
-                  <Smartphone size={14} /> {t('preview_mobile')}
-                </button>
+              {/* Viewport & Theme Switchers */}
+              <div className="hidden md:flex items-center gap-2">
+                {/* Theme Mode Switcher (Hell / Dunkel) */}
+                <div className="flex items-center bg-background border border-border rounded-xl p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewTheme('light')}
+                    className={cn(
+                      "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      previewTheme === 'light' ? "bg-amber-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                    )}
+                    title={t('preview_light_mode')}
+                  >
+                    <Sun size={14} /> {t('preview_light_mode')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewTheme('dark')}
+                    className={cn(
+                      "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      previewTheme === 'dark' ? "bg-zinc-800 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                    )}
+                    title={t('preview_dark_mode')}
+                  >
+                    <Moon size={14} /> {t('preview_dark_mode')}
+                  </button>
+                </div>
+
+                {/* Device Switcher (Desktop / Mobile) */}
+                <div className="flex items-center bg-background border border-border rounded-xl p-1 gap-1">
+                  <button
+                    onClick={() => setPreviewDevice('desktop')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      previewDevice === 'desktop' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                    )}
+                  >
+                    <Monitor size={14} /> {t('preview_desktop')}
+                  </button>
+                  <button
+                    onClick={() => setPreviewDevice('mobile')}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      previewDevice === 'mobile' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                    )}
+                  >
+                    <Smartphone size={14} /> {t('preview_mobile')}
+                  </button>
+                </div>
               </div>
 
               {/* Header Action Buttons */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleCopyLink(previewProposal)}
+                  onClick={() => handleCopyLink(previewProposal, previewTheme)}
                   className="px-3 py-2 bg-background hover:bg-surface border border-border text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
                   title={t('preview_copy_btn')}
                 >
                   {copiedId === previewProposal.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                  <span className="hidden sm:inline">{t('preview_copy_btn')}</span>
+                  <span className="hidden sm:inline">{t('preview_copy_btn')} ({previewTheme === 'light' ? t('preview_light_mode') : t('preview_dark_mode')})</span>
                 </button>
 
                 <a
-                  href={`/p/${previewProposal.shareToken}`}
+                  href={`/p/${previewProposal.shareToken}?theme=${previewTheme}&lang=${currentLang}`}
                   target="_blank"
                   rel="noreferrer"
                   className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
@@ -608,7 +683,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
                 )}
               >
                 <iframe
-                  src={`/p/${previewProposal.shareToken}?lang=${currentLang}`}
+                  src={`/p/${previewProposal.shareToken}?lang=${currentLang}&theme=${previewTheme}`}
                   title={t('preview_title')}
                   className="w-full h-full border-0 bg-background"
                 />

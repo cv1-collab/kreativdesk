@@ -3849,6 +3849,7 @@ export default function PitchDeckStudio({
                   paymentMilestones: proposalPaymentMilestones,
                   themeStyle: deckSettings.themeStyle,
                   themeColor: deckSettings.themeColor,
+                  colorMode: deckSettings.colorMode || 'dark',
                   slides: slides,
                   status: 'active',
                   expiresAt: new Date(Date.now() + proposalExpiryDays * 24 * 60 * 60 * 1000).toISOString(),
