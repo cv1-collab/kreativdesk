@@ -9,7 +9,8 @@ import {
   Users, Mail, Building, Phone, Shield, 
   Search, UserPlus, CheckCircle2, ShieldAlert,
   X, Loader2, FileUp, Camera, Smartphone, Globe, MapPin, FileText, Briefcase,
-  Edit2, Trash2, Contact, Download, CheckSquare, ListChecks, PenTool, Image as ImageIcon, ZoomOut, ZoomIn, Cloud
+  Edit2, Trash2, Contact, Download, CheckSquare, ListChecks, PenTool, Image as ImageIcon, ZoomOut, ZoomIn, Cloud,
+  Link as LinkIcon, Send, UserCheck, Copy
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -133,33 +134,87 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const safeCompanyId = companyId || currentUser.uid;
     const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
     
-    const mappedCrm = (crmData || []).map((u: any) => ({
-      id: u.id,
-      firstName: u.first_name || u.firstName || u.name?.split(' ')[0] || u.name || '',
-      lastName: u.last_name || u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
-      name: u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Kontakt',
-      email: u.email || '',
-      phone: u.phone || '',
-      company: u.company || '',
-      status: u.status || 'neu',
-      isExternal: u.is_external !== undefined ? u.is_external : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external')
-    }));
+    // Fallback local metadata if Postgres columns are still being migrated
+    let localCrmCache: Record<string, any> = {};
+    try {
+      const cached = localStorage.getItem(`crm_metadata_${safeCompanyId}`);
+      if (cached) localCrmCache = JSON.parse(cached);
+    } catch (_) {}
+
+    const mappedCrm = (crmData || []).map((u: any) => {
+      const fallback = localCrmCache[u.id] || (u.email ? localCrmCache[u.email] : null) || {};
+      const fullName = u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || fallback.name || u.email || 'Kontakt';
+      const isExternalVal = u.is_external !== undefined && u.is_external !== null
+        ? u.is_external
+        : (fallback.isExternal !== undefined
+            ? fallback.isExternal
+            : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external' || (u.status && u.status !== 'team')));
+
+      return {
+        id: u.id,
+        firstName: u.first_name || u.firstName || fallback.firstName || fullName.split(' ')[0] || '',
+        lastName: u.last_name || u.lastName || fallback.lastName || fullName.split(' ').slice(1).join(' ') || '',
+        name: fullName,
+        email: u.email || fallback.email || '',
+        phone: u.phone || fallback.phone || '',
+        company: u.company || fallback.company || '',
+        street: u.street || fallback.street || '',
+        zipCity: u.zip_city || u.zipCity || fallback.zipCity || '',
+        website: u.website || fallback.website || '',
+        uid: u.uid_number || u.uid || fallback.uid || '',
+        vat: u.vat_number || u.vat || fallback.vat || '',
+        description: u.notes || u.description || fallback.description || '',
+        photoURL: u.photo_url || u.photoURL || fallback.photoURL || null,
+        status: u.status || fallback.status || (isExternalVal ? 'neu' : 'team'),
+        role: u.role || fallback.role || (isExternalVal ? 'partner' : 'employee'),
+        isExternal: Boolean(isExternalVal),
+        isAppUser: false,
+        canViewFinance: u.can_view_finance ?? fallback.canViewFinance ?? false,
+        canApproveBudget: u.can_approve_budget ?? fallback.canApproveBudget ?? false
+      };
+    });
 
     const mappedProfiles = (profilesData || []).map((p: any) => ({
       id: p.id,
       firstName: p.name?.split(' ')[0] || p.name || 'Team',
       lastName: p.name?.split(' ').slice(1).join(' ') || '',
       name: p.name || p.email || 'Team Member',
-      email: p.email,
+      email: p.email || '',
       company: p.company_name || 'Kreativ Desk',
       status: 'team',
       role: p.role || 'owner',
-      isExternal: false
+      isExternal: false,
+      isAppUser: true,
+      canViewFinance: p.can_view_finance ?? false,
+      canApproveBudget: p.can_approve_budget ?? false
     }));
 
     const combinedMap = new Map();
-    mappedProfiles.forEach(p => { if (p.id || p.email) combinedMap.set(p.id || p.email, p); });
-    mappedCrm.forEach(c => { if (c.id || c.email) combinedMap.set(c.id || c.email, c); });
+    // Profiles first
+    mappedProfiles.forEach(p => { 
+      const key = (p.email || p.id || '').toLowerCase();
+      if (key) combinedMap.set(key, p); 
+    });
+    // Merge or add CRM contacts
+    mappedCrm.forEach(c => { 
+      const key = (c.email || c.id || '').toLowerCase();
+      if (key) {
+        const existing = combinedMap.get(key);
+        if (existing) {
+          combinedMap.set(key, { 
+            ...existing, 
+            ...c, 
+            isAppUser: true, // If it had a profile, it is an active app user
+            company: c.company || existing.company,
+            street: c.street || existing.street,
+            zipCity: c.zipCity || existing.zipCity,
+            phone: c.phone || existing.phone
+          });
+        } else {
+          combinedMap.set(key, c);
+        }
+      }
+    });
 
     const combined = Array.from(combinedMap.values());
     setCrmUsers(combined);
@@ -302,8 +357,38 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const handleUpdateStatus = async (contactId: string, newStatus: string) => {
     try {
-      await supabase.from('company_users').update({ status: newStatus }).eq('id', contactId);
-      if (selectedContact?.id === contactId) setSelectedContact({ ...selectedContact, status: newStatus });
+      const isExt = newStatus !== 'team';
+      const newRole = newStatus === 'team' ? 'employee' : 'partner';
+      
+      const payload: any = {
+        status: newStatus,
+        is_external: isExt,
+        role: newRole
+      };
+      
+      let { error } = await supabase.from('company_users').update(payload).eq('id', contactId);
+      if (error) {
+        // Fallback if is_external does not exist in DB yet
+        await supabase.from('company_users').update({ status: newStatus, role: newRole }).eq('id', contactId);
+      }
+      
+      // Update local storage cache
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      if (safeCompanyId) {
+        try {
+          const cacheKey = `crm_metadata_${safeCompanyId}`;
+          const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+          if (currentCache[contactId]) {
+            currentCache[contactId] = { ...currentCache[contactId], status: newStatus, isExternal: isExt, role: newRole };
+            localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+          }
+        } catch (_) {}
+      }
+
+      setCrmUsers((prev: any[]) => prev.map(u => u.id === contactId ? { ...u, status: newStatus, isExternal: isExt, role: newRole } : u));
+      if (selectedContact?.id === contactId) {
+        setSelectedContact((prev: any) => prev ? { ...prev, status: newStatus, isExternal: isExt, role: newRole } : null);
+      }
       addToast(t('save') + ' ' + t('completed'), 'success');
     } catch (error) { addToast(t('upload_failed'), 'error'); }
   };
@@ -353,12 +438,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      await supabase.from('company_users').update({ role: newRole }).eq('id', userId);
+      const isExt = newRole === 'partner' || newRole === 'guest' || newRole === 'viewer';
+      await supabase.from('company_users').update({ role: newRole, is_external: isExt } as any).eq('id', userId);
       await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
       
-      setCrmUsers((prev: any[]) => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+      setCrmUsers((prev: any[]) => prev.map(u => u.id === userId ? { ...u, role: newRole, isExternal: isExt } : u));
       if (selectedContact?.id === userId) {
-        setSelectedContact((prev: any) => prev ? { ...prev, role: newRole } : null);
+        setSelectedContact((prev: any) => prev ? { ...prev, role: newRole, isExternal: isExt } : null);
       }
       addToast(`${t('role')} "${newRole}" ${t('completed')}`, 'success');
     } catch (error) { 
@@ -367,14 +453,78 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     }
   };
 
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+
+  const handleGenerateInvite = async (contact: any) => {
+    if (!contact?.email) {
+      addToast('Für die Einladung wird eine gültige E-Mail-Adresse benötigt.', 'error');
+      return null;
+    }
+    setIsGeneratingInvite(true);
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    try {
+      if (safeCompanyId) {
+        await supabase.from('invites').insert({
+          token,
+          company_id: safeCompanyId,
+          email: contact.email,
+          role: contact.role || 'employee',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+      }
+      
+      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      addToast(`Einladungslink für ${formatName(contact)} in die Zwischenablage kopiert!`, 'success');
+      return inviteUrl;
+    } catch (err) {
+      console.error("Invite generation failed:", err);
+      const fallbackUrl = `${window.location.origin}/signup?companyId=${safeCompanyId}`;
+      await navigator.clipboard.writeText(fallbackUrl);
+      addToast('Direktlink kopiert!', 'success');
+      return fallbackUrl;
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
+  const handleSendInviteEmail = async (contact: any) => {
+    const inviteUrl = await handleGenerateInvite(contact);
+    if (!inviteUrl) return;
+    const name = formatName(contact);
+    const subject = encodeURIComponent(`Einladung zu Kreativ-Desk OS`);
+    const body = encodeURIComponent(
+      `Hallo ${name},\n\n` +
+      `Du wurdest eingeladen, unserem Workspace auf Kreativ-Desk OS beizutreten.\n\n` +
+      `Klicke auf den folgenden Link, um dein Konto zu erstellen, dein Passwort festzulegen und dich einzuloggen:\n` +
+      `${inviteUrl}\n\n` +
+      `Beste Grüsse,\n${currentUser?.displayName || currentUser?.email || 'Dein Team'}`
+    );
+    window.open(`mailto:${contact.email}?subject=${subject}&body=${body}`, '_blank');
+  };
+
   const openEditModal = () => {
     if (!selectedContact) return;
+    const isExt = selectedContact.isExternal !== false && selectedContact.status !== 'team';
     setNewContact({
-      id: selectedContact.id, firstName: selectedContact.firstName || '', lastName: selectedContact.lastName || '',
-      email: selectedContact.email || '', phone: selectedContact.phone || '', company: selectedContact.company || '',
-      street: selectedContact.street || '', zipCity: selectedContact.zipCity || '', website: selectedContact.website || '',
-      uid: selectedContact.uid || '', vat: selectedContact.vat || '', description: selectedContact.description || '',
-      isExternal: selectedContact.isExternal !== false, status: selectedContact.status || 'neu'
+      id: selectedContact.id,
+      firstName: selectedContact.firstName || '',
+      lastName: selectedContact.lastName || '',
+      email: selectedContact.email || '',
+      phone: selectedContact.phone || '',
+      company: selectedContact.company || '',
+      street: selectedContact.street || '',
+      zipCity: selectedContact.zipCity || '',
+      website: selectedContact.website || '',
+      uid: selectedContact.uid || '',
+      vat: selectedContact.vat || '',
+      description: selectedContact.description || '',
+      isExternal: isExt,
+      status: selectedContact.status || (isExt ? 'neu' : 'team'),
+      role: selectedContact.role || (isExt ? 'partner' : 'employee')
     });
     setAvatarPreview(selectedContact.photoURL || null);
     setIsAddModalOpen(true);
@@ -408,40 +558,96 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       }
 
       const fullName = [newContact.firstName, newContact.lastName].filter(Boolean).join(' ');
+      const isExt = Boolean(newContact.isExternal);
+      const finalRole = newContact.role || (isExt ? 'partner' : 'employee');
+      const finalStatus = newContact.status || (isExt ? 'neu' : 'team');
 
-      // Strictly filter fields matching valid columns in company_users table to prevent schema rejection
-      const dbPayload: any = {
+      // Full payload with all CRM fields
+      const fullDbPayload: any = {
         company_id: safeCompanyId,
         first_name: newContact.firstName || null,
         last_name: newContact.lastName || null,
         name: fullName || newContact.company || t('unknown'),
         email: newContact.email || null,
         phone: newContact.phone || null,
-        role: newContact.isExternal ? 'partner' : 'employee',
-        status: newContact.status || 'neu'
+        company: newContact.company || null,
+        street: newContact.street || null,
+        zip_city: newContact.zipCity || null,
+        website: newContact.website || null,
+        uid_number: newContact.uid || null,
+        vat_number: newContact.vat || null,
+        notes: newContact.description || null,
+        photo_url: photoURL || null,
+        is_external: isExt,
+        role: finalRole,
+        status: finalStatus
+      };
+
+      // Base payload in case Postgres columns are not migrated yet
+      const baseDbPayload: any = {
+        company_id: safeCompanyId,
+        first_name: newContact.firstName || null,
+        last_name: newContact.lastName || null,
+        name: fullName || newContact.company || t('unknown'),
+        email: newContact.email || null,
+        phone: newContact.phone || null,
+        role: finalRole,
+        status: finalStatus
       };
 
       const fullContactObject = {
         ...newContact,
-        ...dbPayload,
+        ...fullDbPayload,
         firstName: newContact.firstName,
         lastName: newContact.lastName,
+        company: newContact.company,
+        street: newContact.street,
+        zipCity: newContact.zipCity,
+        website: newContact.website,
+        uid: newContact.uid,
+        vat: newContact.vat,
+        description: newContact.description,
         companyId: safeCompanyId,
         photoURL,
-        isExternal: newContact.isExternal !== false
+        isExternal: isExt,
+        role: finalRole,
+        status: finalStatus,
+        isAppUser: selectedContact?.isAppUser || false
+      };
+
+      const updateLocalCache = (cid: string) => {
+        try {
+          const cacheKey = `crm_metadata_${safeCompanyId}`;
+          const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+          currentCache[cid] = fullContactObject;
+          if (newContact.email) currentCache[newContact.email] = fullContactObject;
+          localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+        } catch (_) {}
       };
 
       if (newContact.id) {
-        const { error: updateErr } = await supabase.from('company_users').update(dbPayload).eq('id', newContact.id);
-        if (updateErr) console.warn("Update error in company_users:", updateErr);
+        let updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', newContact.id);
+        if (updateRes.error) {
+          console.warn("Full update failed, trying base update:", updateRes.error);
+          updateRes = await supabase.from('company_users').update(baseDbPayload).eq('id', newContact.id);
+        }
         
+        updateLocalCache(newContact.id);
         const updatedContact = { ...selectedContact, ...fullContactObject };
         setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? updatedContact : u));
         setSelectedContact(updatedContact);
         addToast(t('save') + ' ' + t('completed'), 'success');
       } else {
-        dbPayload.created_at = new Date().toISOString();
-        const { data: created, error: insertErr } = await supabase.from('company_users').insert(dbPayload).select().single();
+        fullDbPayload.created_at = new Date().toISOString();
+        baseDbPayload.created_at = fullDbPayload.created_at;
+        
+        let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().single();
+        if (insertErr) {
+          console.warn("Full insert failed, trying base insert:", insertErr);
+          const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().single();
+          created = baseRes.data;
+          insertErr = baseRes.error;
+        }
         
         if (insertErr) {
           console.error("Error inserting contact into company_users:", insertErr);
@@ -450,9 +656,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           return;
         }
 
+        const newId = created ? created.id : `user-${Date.now()}`;
+        updateLocalCache(newId);
         const finalContact = {
           ...fullContactObject,
-          id: created ? created.id : `user-${Date.now()}`
+          id: newId
         };
 
         setCrmUsers((prev: any[]) => [finalContact, ...prev]);
@@ -462,7 +670,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           action: 'USER_INVITED',
           userId: currentUser.uid,
           companyId: safeCompanyId,
-          details: { invitedUserId: finalContact.id, isExternal: newContact.isExternal }
+          details: { invitedUserId: finalContact.id, isExternal: isExt }
         });
         
         addToast(t('save') + ' ' + t('completed'), 'success');
@@ -480,7 +688,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     setNewContact({
       id: null, firstName: '', lastName: '', email: '', phone: '', company: '',
       street: '', zipCity: '', website: '', uid: '', vat: '', description: '',
-      isExternal: activeFilter !== 'team', status: 'neu'
+      isExternal: activeFilter !== 'team', status: activeFilter === 'team' ? 'team' : 'neu'
     });
   };
 
@@ -517,10 +725,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     return u.displayName || u.name || t('unknown');
   };
 
-  const allContacts = [
-    ...realUsers.map(u => ({ ...u, isAppUser: true, status: 'team' })),
-    ...crmUsers.filter(cu => !realUsers.some(ru => ru.email === cu.email))
-  ];
+  const allContacts = crmUsers;
 
   const filteredContacts = allContacts.filter(u => {
     const searchString = `${formatName(u)} ${u.company || ''} ${u.email || ''}`.toLowerCase();
@@ -531,7 +736,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
     if (activeFilter === 'alle') matchesFilter = true;
     else if (activeFilter === 'team') matchesFilter = u.isAppUser || !u.isExternal || cStatus === 'team';
-    else matchesFilter = cStatus === activeFilter && u.isExternal !== false && !u.isAppUser;
+    else if (activeFilter === 'lead') matchesFilter = (cStatus === 'lead') && Boolean(u.isExternal);
+    else if (activeFilter === 'partner') matchesFilter = (cStatus === 'partner' || u.role === 'partner') && Boolean(u.isExternal);
+    else if (activeFilter === 'neu') matchesFilter = (cStatus === 'neu' || !u.status) && Boolean(u.isExternal);
+    else matchesFilter = cStatus === activeFilter;
 
     return matchesSearch && matchesFilter;
   }).sort((a, b) => formatName(a).localeCompare(formatName(b)));
@@ -802,7 +1010,26 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         ? (scannedContactData.company ? `${fullName} (${scannedContactData.company})` : fullName)
         : (scannedContactData.company || t('unknown'));
 
-      const dbPayload: any = {
+      const fullDbPayload: any = {
+        company_id: safeCompanyId,
+        first_name: scannedContactData.firstName || null,
+        last_name: scannedContactData.lastName || null,
+        name: displayName,
+        email: scannedContactData.email || null,
+        phone: scannedContactData.phone || null,
+        company: scannedContactData.company || null,
+        street: scannedContactData.street || null,
+        zip_city: scannedContactData.zipCity || null,
+        website: scannedContactData.website || null,
+        notes: scannedContactData.description || null,
+        photo_url: photoURL || null,
+        role: 'partner',
+        status: 'neu',
+        is_external: true,
+        created_at: new Date().toISOString()
+      };
+
+      const baseDbPayload: any = {
         company_id: safeCompanyId,
         first_name: scannedContactData.firstName || null,
         last_name: scannedContactData.lastName || null,
@@ -811,10 +1038,16 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         phone: scannedContactData.phone || null,
         role: 'partner',
         status: 'neu',
-        created_at: new Date().toISOString()
+        created_at: fullDbPayload.created_at
       };
 
-      const { data: created, error: insertErr } = await supabase.from('company_users').insert(dbPayload).select().single();
+      let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().single();
+      if (insertErr) {
+        console.warn("Full scanned contact insert failed, trying base:", insertErr);
+        const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().single();
+        created = baseRes.data;
+        insertErr = baseRes.error;
+      }
 
       if (insertErr) {
         console.error("Error inserting contact:", insertErr);
@@ -823,13 +1056,22 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         return;
       }
 
+      const newId = created ? created.id : `user-${Date.now()}`;
       const finalContact = {
         ...scannedContactData,
-        ...dbPayload,
-        id: created ? created.id : `user-${Date.now()}`,
+        ...fullDbPayload,
+        id: newId,
         photoURL,
         isExternal: true
       };
+
+      try {
+        const cacheKey = `crm_metadata_${safeCompanyId}`;
+        const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+        currentCache[newId] = finalContact;
+        if (scannedContactData.email) currentCache[scannedContactData.email] = finalContact;
+        localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+      } catch (_) {}
 
       setCrmUsers((prev: any[]) => [finalContact, ...prev]);
       setSelectedContact(finalContact);
@@ -996,7 +1238,54 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-12 gap-y-10 pt-10 border-t border-border/50">
+              {/* TEAM INVITATION BANNER & QUICK ACTIONS */}
+              {(!selectedContact.isExternal || selectedContact.status === 'team') && selectedContact.email !== currentUser?.email && (
+                <div className="bg-accent-ai/5 border border-accent-ai/20 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      {selectedContact.isAppUser ? (
+                        <>
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                          <span className="text-xs font-bold text-emerald-500 flex items-center gap-1.5"><UserCheck size={14} /> Aktiver Workspace-Nutzer (In Supabase Auth registriert)</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                          <span className="text-xs font-bold text-amber-500 flex items-center gap-1.5">Noch nicht in Auth registriert (Einladung ausstehend)</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-text-muted leading-relaxed">
+                      {selectedContact.isAppUser 
+                        ? 'Dieses Teammitglied besitzt bereits ein aktives Login und vollen Zugriff auf den Workspace.'
+                        : `${formatName(selectedContact)} erscheint in der Supabase auth.users Tabelle, sobald die Person den Einladungslink öffnet und ihr Passwort setzt.`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateInvite(selectedContact)}
+                      disabled={isGeneratingInvite}
+                      className="px-4 py-2.5 bg-surface border border-border hover:border-accent-ai text-text-primary rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer hover:bg-white/5"
+                      title="Kopiert den Registrierungslink in die Zwischenablage"
+                    >
+                      <LinkIcon size={14} className="text-accent-ai" /> {isGeneratingInvite ? 'Erstelle...' : 'Einladungslink kopieren'}
+                    </button>
+                    {selectedContact.email && (
+                      <button
+                        type="button"
+                        onClick={() => handleSendInviteEmail(selectedContact)}
+                        className="px-4 py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                        title="Öffnet dein E-Mail-Programm mit vorausgefüllter Einladung"
+                      >
+                        <Send size={14} /> Per E-Mail einladen
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-x-12 gap-y-10 pt-6 border-t border-border/50">
                 <div className="space-y-6">
                   <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest border-b border-border pb-2">{t('contact_methods')}</h3>
                   <div className="space-y-4 text-sm font-medium text-text-primary">
@@ -1090,6 +1379,36 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                   </div>
                 )}
               </div>
+
+              {/* Mobile Team Member Invitation */}
+              {(!selectedContact.isExternal || selectedContact.status === 'team') && selectedContact.email !== currentUser?.email && (
+                <div className="p-3.5 bg-accent-ai/5 border border-accent-ai/20 rounded-2xl space-y-2.5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-text-primary">
+                      {selectedContact.isAppUser ? '✅ In Supabase registriert' : '⏳ Einladung ausstehend'}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateInvite(selectedContact)}
+                      disabled={isGeneratingInvite}
+                      className="flex-1 py-2.5 bg-surface border border-border rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 text-text-primary cursor-pointer hover:bg-white/5"
+                    >
+                      <LinkIcon size={14} className="text-accent-ai" /> Link kopieren
+                    </button>
+                    {selectedContact.email && (
+                      <button
+                        type="button"
+                        onClick={() => handleSendInviteEmail(selectedContact)}
+                        className="flex-1 py-2.5 bg-accent-ai text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <Send size={14} /> Per E-Mail
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Status Picker & Actions */}
               <div className="space-y-3 pt-2">
@@ -1192,8 +1511,8 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                       <div className="space-y-2">
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('contact_type')}</label>
                         <div className="flex bg-surface border border-border/50 rounded-lg p-1">
-                          <button type="button" onClick={() => setNewContact((prev: any) => ({...prev, isExternal: false, status: 'team'}))} className={cn("flex-1 py-2 text-sm font-bold rounded-md transition-all", !newContact.isExternal ? "bg-accent-ai text-white shadow-md" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
-                          <button type="button" onClick={() => setNewContact((prev: any) => ({...prev, isExternal: true, status: newContact.id ? newContact.status : 'neu'}))} className={cn("flex-1 py-2 text-sm font-bold rounded-md transition-all", newContact.isExternal ? "bg-blue-500 text-white shadow-md" : "text-text-muted hover:text-text-primary")}>{t('external_client_partner')}</button>
+                          <button type="button" onClick={() => setNewContact((prev: any) => ({...prev, isExternal: false, status: 'team', role: 'employee'}))} className={cn("flex-1 py-2 text-sm font-bold rounded-md transition-all", !newContact.isExternal ? "bg-accent-ai text-white shadow-md" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
+                          <button type="button" onClick={() => setNewContact((prev: any) => ({...prev, isExternal: true, status: (prev.status === 'team' ? 'partner' : (prev.status || 'neu')), role: 'partner'}))} className={cn("flex-1 py-2 text-sm font-bold rounded-md transition-all", newContact.isExternal ? "bg-blue-500 text-white shadow-md" : "text-text-muted hover:text-text-primary")}>{t('external_client_partner')}</button>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4">

@@ -266,6 +266,17 @@ export interface Database {
           role: string | null;
           status: string | null;
           created_at: string | null;
+          company: string | null;
+          street: string | null;
+          zip_city: string | null;
+          website: string | null;
+          uid_number: string | null;
+          vat_number: string | null;
+          is_external: boolean | null;
+          notes: string | null;
+          photo_url: string | null;
+          can_view_finance: boolean | null;
+          can_approve_budget: boolean | null;
         };
         Insert: {
           id?: string;
@@ -278,6 +289,17 @@ export interface Database {
           role?: string | null;
           status?: string | null;
           created_at?: string | null;
+          company?: string | null;
+          street?: string | null;
+          zip_city?: string | null;
+          website?: string | null;
+          uid_number?: string | null;
+          vat_number?: string | null;
+          is_external?: boolean | null;
+          notes?: string | null;
+          photo_url?: string | null;
+          can_view_finance?: boolean | null;
+          can_approve_budget?: boolean | null;
         };
         Update: {
           id?: string;
@@ -290,6 +312,17 @@ export interface Database {
           role?: string | null;
           status?: string | null;
           created_at?: string | null;
+          company?: string | null;
+          street?: string | null;
+          zip_city?: string | null;
+          website?: string | null;
+          uid_number?: string | null;
+          vat_number?: string | null;
+          is_external?: boolean | null;
+          notes?: string | null;
+          photo_url?: string | null;
+          can_view_finance?: boolean | null;
+          can_approve_budget?: boolean | null;
         };
         Relationships: [];
       };

@@ -1283,25 +1283,42 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
       try {
         const { data: cuMembers } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
         const { data: profMembers } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
+        
+        let localCrmCache: Record<string, any> = {};
+        try {
+          const cached = localStorage.getItem(`crm_metadata_${safeCompanyId}`);
+          if (cached) localCrmCache = JSON.parse(cached);
+        } catch (_) {}
+
         const map = new Map();
         (profMembers || []).forEach((p: any) => {
-          const key = p.id || p.email;
+          const key = (p.email || p.id || '').toLowerCase();
           map.set(key, {
             ...p,
+            id: p.id,
+            email: p.email,
+            name: p.name || p.email,
             role: p.role || 'owner',
+            isRegistered: true,
             canViewFinance: p.can_view_finance ?? p.canViewFinance ?? false,
             canApproveBudget: p.can_approve_budget ?? p.canApproveBudget ?? false
           });
         });
         (cuMembers || []).forEach((c: any) => {
-          const key = c.id || c.email;
-          const existing = map.get(key) || {};
+          const key = (c.email || c.id || '').toLowerCase();
+          const fallback = localCrmCache[c.id] || (c.email ? localCrmCache[c.email] : null) || {};
+          const existing = map.get(key) || (c.id ? map.get(c.id) : null) || {};
+          
           map.set(key, {
             ...existing,
             ...c,
-            email: c.email || c.name,
-            canViewFinance: c.can_view_finance ?? c.canViewFinance ?? existing.canViewFinance ?? false,
-            canApproveBudget: c.can_approve_budget ?? c.canApproveBudget ?? existing.canApproveBudget ?? false
+            id: c.id || existing.id,
+            email: c.email || existing.email || c.name,
+            name: c.name || existing.name || c.email,
+            role: c.role || existing.role || 'Internal',
+            isRegistered: Boolean(existing.isRegistered),
+            canViewFinance: c.can_view_finance ?? fallback.canViewFinance ?? existing.canViewFinance ?? false,
+            canApproveBudget: c.can_approve_budget ?? fallback.canApproveBudget ?? existing.canApproveBudget ?? false
           });
         });
         setTeamMembers(Array.from(map.values()));
@@ -1316,11 +1333,35 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
 
   const updateRole = async (userId: string, newRole: string) => {
     try {
+      const member = teamMembers.find(m => m.id === userId);
+      const isExt = newRole === 'External Planner' || newRole === 'Client' || newRole === 'partner';
+      
       await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
-      await supabase.from('company_users').update({ role: newRole }).eq('id', userId);
+      if (member?.email) {
+        await supabase.from('profiles').update({ role: newRole }).eq('email', member.email);
+      }
+
+      try {
+        await supabase.from('company_users').update({ 
+          role: newRole,
+          is_external: isExt,
+          status: isExt ? 'partner' : 'team'
+        } as any).eq('id', userId);
+        if (member?.email) {
+          await supabase.from('company_users').update({ 
+            role: newRole,
+            is_external: isExt,
+            status: isExt ? 'partner' : 'team'
+          } as any).eq('email', member.email);
+        }
+      } catch (cuErr) {
+        console.warn("company_users role update fallback:", cuErr);
+      }
+
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, role: newRole } : m));
       addToast('Rolle erfolgreich aktualisiert', 'success');
     } catch (err) {
+      console.error("Role update error:", err);
       addToast('Fehler beim Aktualisieren der Rolle', 'error');
     }
   };
@@ -1329,12 +1370,66 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     try {
       const newValue = !currentValue;
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
-      const { error: profErr } = await supabase.from('profiles').update({ [colName]: newValue } as any).eq('id', userId);
-      if (profErr) throw profErr;
+      const member = teamMembers.find(m => m.id === userId);
+      
+      // Update profiles
+      await supabase.from('profiles').update({ [colName]: newValue } as any).eq('id', userId);
+      if (member?.email) {
+        await supabase.from('profiles').update({ [colName]: newValue } as any).eq('email', member.email);
+      }
+
+      // Update company_users
+      try {
+        await supabase.from('company_users').update({ [colName]: newValue } as any).eq('id', userId);
+        if (member?.email) {
+          await supabase.from('company_users').update({ [colName]: newValue } as any).eq('email', member.email);
+        }
+      } catch (cuErr) {
+        console.warn("company_users permission update fallback:", cuErr);
+      }
+
+      // Update local storage fallback
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+      if (safeCompanyId) {
+        try {
+          const cacheKey = `crm_metadata_${safeCompanyId}`;
+          const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+          if (currentCache[userId]) currentCache[userId][field] = newValue;
+          if (member?.email && currentCache[member.email]) currentCache[member.email][field] = newValue;
+          localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+        } catch (_) {}
+      }
+
       setTeamMembers(prev => prev.map(m => m.id === userId ? { ...m, [field]: newValue, [colName]: newValue } : m));
       addToast('Berechtigung erfolgreich aktualisiert', 'success');
     } catch (err) {
+      console.error("Permission update error:", err);
       addToast('Fehler beim Aktualisieren der Berechtigung', 'error');
+    }
+  };
+
+  const handleCopyInviteLink = async (member: any) => {
+    if (!member.email) return;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    try {
+      if (safeCompanyId) {
+        await supabase.from('invites').insert({
+          token,
+          company_id: safeCompanyId,
+          email: member.email,
+          role: member.role || 'employee',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+      }
+      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      addToast(`Einladungslink für ${member.name || member.email} kopiert!`, 'success');
+    } catch (_) {
+      const fallbackUrl = `${window.location.origin}/signup?companyId=${safeCompanyId}`;
+      await navigator.clipboard.writeText(fallbackUrl);
+      addToast('Direktlink kopiert!', 'success');
     }
   };
 
@@ -1365,23 +1460,39 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
           {teamMembers.map(member => (
             <div key={member.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-background/30 border border-border/30 rounded-xl gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-bold text-text-primary">{member.email || member.name}</p>
                   {member.role === 'super_admin' && (
                     <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 rounded text-[10px] font-black uppercase">Super Admin</span>
                   )}
+                  {member.isRegistered ? (
+                    <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded text-[10px] font-bold">Aktiv</span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded text-[10px] font-bold">Einladung offen</span>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 pt-1">
                   <select
                     value={member.role || 'Internal'}
                     onChange={e => updateRole(member.id, e.target.value)}
-                    className="bg-background border border-border/50 rounded px-2 py-1 text-[11px] font-semibold text-text-primary outline-none focus:border-accent-ai"
+                    className="bg-background border border-border/50 rounded px-2 py-1 text-[11px] font-semibold text-text-primary outline-none focus:border-accent-ai cursor-pointer"
                   >
                     <option value="Admin">Admin</option>
                     <option value="Internal">Interner Mitarbeiter</option>
                     <option value="External Planner">Externer Planer</option>
                     <option value="Client">Kunde / Auftraggeber</option>
                   </select>
+
+                  {!member.isRegistered && member.email && (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyInviteLink(member)}
+                      className="px-2 py-1 bg-surface border border-border hover:border-accent-ai rounded text-[11px] font-bold text-text-muted hover:text-accent-ai flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Einladungslink kopieren"
+                    >
+                      <LinkIcon size={12} /> Link kopieren
+                    </button>
+                  )}
                 </div>
               </div>
 
