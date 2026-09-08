@@ -26,7 +26,12 @@ export function useProjectTimeEntries() {
     try {
       const localCacheKey = `time_entries_cache_${safeCompanyId}`;
       const localCached = localStorage.getItem(localCacheKey);
-      const localTimes = localCached ? JSON.parse(localCached) : [];
+      let localTimes: any[] = [];
+      try {
+        localTimes = localCached ? JSON.parse(localCached) : [];
+      } catch (e) {
+        localTimes = [];
+      }
       if (localTimes.length > 0) {
         setTimeEntries(localTimes);
       }

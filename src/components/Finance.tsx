@@ -759,7 +759,12 @@ export default function Finance() {
       try {
         const localCacheKey = `time_entries_cache_${safeCompanyId}`;
         const localCached = localStorage.getItem(localCacheKey);
-        const localTimes = localCached ? JSON.parse(localCached) : [];
+        let localTimes: any[] = [];
+        try {
+          localTimes = localCached ? JSON.parse(localCached) : [];
+        } catch (e) {
+          localTimes = [];
+        }
 
         const { data: times } = await supabase.from('time_entries').select('*').eq('company_id', safeCompanyId);
         const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
