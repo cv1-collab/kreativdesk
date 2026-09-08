@@ -10,7 +10,7 @@ import { cn } from '../utils';
 import { 
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
-  Camera, Video, MonitorPlay, Box, Layers
+  Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText
 } from 'lucide-react';
 
 export default function ProductTour() {
@@ -36,7 +36,8 @@ export default function ProductTour() {
       title: string, 
       content: string, 
       IconComponent: any, 
-      proTip?: string
+      proTip?: string,
+      submodules?: string[]
     ) => (
       <div className={cn("flex flex-col gap-3 p-1 text-left max-w-sm", isDark ? "text-white" : "text-slate-900")}>
         <div className={cn("flex items-center justify-between border-b pb-3 mb-1", isDark ? "border-slate-800" : "border-slate-200")}>
@@ -57,10 +58,27 @@ export default function ProductTour() {
             </div>
           </div>
         </div>
+        {submodules && submodules.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {submodules.map((sm, idx) => (
+              <span 
+                key={idx} 
+                className={cn(
+                  "px-2 py-0.5 text-[10px] font-bold rounded-md border tracking-tight",
+                  isDark 
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-300" 
+                    : "bg-blue-50 border-blue-200 text-blue-700"
+                )}
+              >
+                {sm}
+              </span>
+            ))}
+          </div>
+        )}
         <p className={cn("text-xs leading-relaxed font-medium", isDark ? "text-slate-200" : "text-slate-700")}>{content}</p>
         {proTip && (
           <div className={cn(
-            "mt-2 rounded-xl p-3 flex gap-2.5 items-start border shadow-sm",
+            "mt-1 rounded-xl p-2.5 flex gap-2.5 items-start border shadow-sm",
             isDark 
               ? "bg-blue-950/60 border-blue-500/30 text-slate-200" 
               : "bg-blue-50/80 border-blue-200 text-slate-800"
@@ -83,6 +101,7 @@ export default function ProductTour() {
       content: string;
       IconComponent: any;
       proTip?: string;
+      submodules?: string[];
       placement?: any;
       disableBeacon?: boolean;
     }
@@ -91,42 +110,151 @@ export default function ProductTour() {
 
     if (location.pathname.includes('/project/')) {
       candidateDefs = [
-        { target: 'body', title: isGerman ? 'Projekt-Workspace' : 'Project Workspace', content: isGerman ? 'Willkommen in deiner zentralen Baustellen- & Projektzentrale! Hier fließen Architektur, Termine, Budgets und Team-Kollaboration nahtlos zusammen.' : 'Welcome to your central project workspace! Architecture, schedules, budgets, and collaboration converge here.', IconComponent: Briefcase, proTip: isGerman ? 'Nutze die Tabs links zur schnellen Navigation zwischen den Fachbereichen.' : 'Use the left sidebar tabs for rapid navigation.', placement: 'center', disableBeacon: true },
-        { target: '.tour-proj-dashboard', title: isGerman ? 'Kommandozentrale' : 'Dashboard', content: isGerman ? 'Generiere per Knopfdruck PDF-Reportings, die Live-Daten aus Budgets, Mängeln und Timelines automatisch vereinen.' : 'Generate live PDF reports combining budgets, defects, and timelines instantly.', IconComponent: LayoutDashboard, proTip: isGerman ? 'Exportiere druckreife Bautagebücher direkt im Universal PDF Studio.' : 'Export print-ready reports in the Universal PDF Studio.', placement: 'right' },
-        { target: '.tour-proj-finance', title: isGerman ? 'Integriertes Projekt-Ledger' : 'Finance Ledger', content: isGerman ? 'Erfasse Baustellen-Spesen und Rechnungen direkt hier. Alles synchronisiert sich vollautomatisch mit den BKP-Kosten-Gruppen.' : 'Integrated Ledger. Syncs automatically with cost groups and global company budget.', IconComponent: DollarSign, proTip: isGerman ? 'Demo-Projekte laden automatisch realistische BKP 1-9 Budgetgruppen.' : 'Demo projects load realistic BKP budget structures automatically.', placement: 'right' },
-        { target: '.tour-proj-calendar', title: isGerman ? 'Smart Calendar & Gantt' : 'Smart Calendar', content: isGerman ? 'Plane Meilensteine, Bauphasen und verknüpfe Deadlines direkt mit Aufgaben. Keine isolierten Termine mehr.' : 'Plan milestones and link deadlines directly to tasks.', IconComponent: Calendar, proTip: isGerman ? 'Wechsle zwischen Gantt-Chart und Kalenderansicht.' : 'Switch effortlessly between Gantt chart and calendar view.', placement: 'right' },
-        { target: '.tour-proj-bim', title: isGerman ? '3D BIM Viewer im Browser' : 'Web 3D BIM Viewer', content: isGerman ? 'Lade IFC-Modelle hoch und betrachte die 3D-Architektur interaktiv direkt im Browser – ohne teure CAD-Software.' : 'Upload IFC models and view 3D architecture directly in your browser.', IconComponent: Box, proTip: isGerman ? 'Klicke auf 3D-Bauteile, um sofort Geometrie- & Materialdaten einzusehen.' : 'Click 3D elements to inspect geometry & material parameters.', placement: 'right' },
-        { target: '.tour-proj-cad', title: isGerman ? '2D Pläne & Ausführung' : '2D CAD Plans', content: isGerman ? 'Verwalte hochauflösende 2D-Grundrisse und vektorbasierte Schnittzeichnungen für Bauleiter und Handwerker.' : 'Manage high-res 2D floor plans and vector cuts.', IconComponent: Folder, proTip: isGerman ? 'Mängel lassen sich zentimetergenau als PIN auf dem Plan platzieren.' : 'Drop pinpoint defects directly on 2D floor plans.', placement: 'right' },
-        { target: '.tour-proj-defects', title: isGerman ? 'Mängel- & Ticket-Tracking' : 'Defect Tracking', content: isGerman ? 'Erfasse Baumängel inklusive Fotos. Das PWA-System speichert Daten auf der Baustelle auch offline und synchronisiert bei Verbindung.' : 'Record defect tickets with photos. Offline sync handles field data seamlessly.', IconComponent: Target, proTip: isGerman ? 'Mängel lassen sich auf dem Smartphone oder iPad offline aufnehmen.' : 'Record defects on mobile/iPad even without active internet connection.', placement: 'right' },
-        { target: '.tour-proj-camera', title: isGerman ? 'Bau-Kamera & Zeitraffer' : 'Site Camera', content: isGerman ? 'Verfolge den realen Baufortschritt oder Messeaufbau über Live-Feeds und Zeitraffer-Aufnahmen.' : 'Monitor site progress via live feeds and time-lapse snapshots.', IconComponent: Camera, proTip: isGerman ? 'Dokumentiere den Fortschritt stündlich für Bauherren.' : 'Document hourly construction milestones for stakeholders.', placement: 'right' },
-        { target: '.tour-proj-whiteboard', title: isGerman ? 'AI-Whiteboard' : 'AI Whiteboard', content: isGerman ? 'Skizziere Layouts in Echtzeit mit dem Team und nutze die Gemini-KI, um visuelle Konzepte direkt per Prompt zu generieren.' : 'Real-time whiteboard with integrated AI concept generation.', IconComponent: Sparkles, proTip: isGerman ? 'Generiere Moodboards per KI-Prompt direkt auf dem Board.' : 'Generate visual moodboards via AI prompts directly on canvas.', placement: 'right' },
-        { target: '.tour-proj-meet', title: isGerman ? 'Nahtlose Kommunikation' : 'Video Meetings', content: isGerman ? 'Starte Video-Calls und Bau-Besprechungen direkt im System. Externe Partner betreten den Raum simpel per Einladungs-Link.' : 'Start video calls instantly. External partners join via simple magic links.', IconComponent: Video, proTip: isGerman ? 'Integriertes Chat & Filesharing während des Calls.' : 'Integrated chat and document sharing during video calls.', placement: 'right' },
-        { target: '.tour-proj-docs', title: isGerman ? 'Digitale Bauakte' : 'Project Docs', content: isGerman ? 'Ein hochsicherer, verschlüsselter Datenraum für Verträge, Pläne und Baufein-Protokolle.' : 'Secure data room for contracts and construction assets.', IconComponent: Folder, proTip: isGerman ? 'Mit integrierter Volltext-Suche und Vorschau-Funktion.' : 'Built-in full-text search and instant file previews.', placement: 'right' },
-        { target: '.tour-proj-pitch', title: isGerman ? 'Pitch Deck Studio' : 'Pitch Deck Studio', content: isGerman ? 'Nutze die Live-Projektdaten, um hochprofessionelle, visuelle Präsentationen für deine Kunden zu rendern.' : 'Create highly professional visual presentations for clients.', IconComponent: MonitorPlay, proTip: isGerman ? 'Interaktive Slides für Investoren und Bauherren.' : 'Interactive slide decks for investors and clients.', placement: 'right' },
-        { target: '.tour-proj-team', title: isGerman ? 'Granulare Rechteverwaltung' : 'Granular Access', content: isGerman ? 'Bestimme exakt, welche Bauleiter, Subunternehmer oder Bauherren welche Daten sehen und bearbeiten dürfen.' : 'Control exact permissions for contractors and partners.', IconComponent: Users, proTip: isGerman ? 'Setze Rollen auf Owner, Admin, Editor oder Viewer.' : 'Assign explicit Owner, Admin, Editor, or Viewer roles.', placement: 'right' }
+        { target: 'body', title: isGerman ? 'Projekt-Workspace' : 'Project Workspace', content: isGerman ? 'Willkommen in deiner zentralen Baustellen- & Projektzentrale! Hier fließen Architektur, Termine, Budgets und Team-Kollaboration nahtlos zusammen.' : 'Welcome to your central project workspace! Architecture, schedules, budgets, and collaboration converge here.', IconComponent: Briefcase, submodules: isGerman ? ['360° Übersicht', 'BIM & CAD', 'Timeline', 'Budget-Sync'] : ['360° Overview', 'BIM & CAD', 'Timeline', 'Budget-Sync'], proTip: isGerman ? 'Nutze die Tabs links zur schnellen Navigation zwischen den Fachbereichen.' : 'Use the left sidebar tabs for rapid navigation.', placement: 'center', disableBeacon: true },
+        { target: '.tour-proj-dashboard', title: isGerman ? 'Kommandozentrale' : 'Dashboard', content: isGerman ? 'Generiere per Knopfdruck PDF-Reportings, die Live-Daten aus Budgets, Mängeln und Timelines automatisch vereinen.' : 'Generate live PDF reports combining budgets, defects, and timelines instantly.', IconComponent: LayoutDashboard, submodules: isGerman ? ['Live-Status', 'Universal PDF-Studio', 'Meilensteine'] : ['Live Status', 'Universal PDF Studio', 'Milestones'], proTip: isGerman ? 'Exportiere druckreife Bautagebücher direkt im Universal PDF Studio.' : 'Export print-ready reports in the Universal PDF Studio.', placement: 'right' },
+        { target: '.tour-proj-finance', title: isGerman ? 'Integriertes Projekt-Ledger' : 'Finance Ledger', content: isGerman ? 'Erfasse Baustellen-Spesen und Rechnungen direkt hier. Alles synchronisiert sich vollautomatisch mit den BKP-Kosten-Gruppen.' : 'Integrated Ledger. Syncs automatically with cost groups and global company budget.', IconComponent: DollarSign, submodules: isGerman ? ['BKP 1–9 Soll/Ist', 'Handwerker-Rechnungen', 'Spesen-Scan'] : ['BKP 1–9 Actual/Plan', 'Contractor Invoices', 'Expense Scan'], proTip: isGerman ? 'Demo-Projekte laden automatisch realistische BKP 1-9 Budgetgruppen.' : 'Demo projects load realistic BKP budget structures automatically.', placement: 'right' },
+        { target: '.tour-proj-calendar', title: isGerman ? 'Smart Calendar & Gantt' : 'Smart Calendar', content: isGerman ? 'Plane Meilensteine, Bauphasen und verknüpfe Deadlines direkt mit Aufgaben. Keine isolierten Termine mehr.' : 'Plan milestones and link deadlines directly to tasks.', IconComponent: Calendar, submodules: isGerman ? ['Gantt-Timeline', 'Kritischer Pfad', 'Baujournal-Sync'] : ['Gantt Timeline', 'Critical Path', 'Site Journal Sync'], proTip: isGerman ? 'Wechsle zwischen Gantt-Chart und Kalenderansicht.' : 'Switch effortlessly between Gantt chart and calendar view.', placement: 'right' },
+        { target: '.tour-proj-bim', title: isGerman ? '3D BIM Viewer im Browser' : 'Web 3D BIM Viewer', content: isGerman ? 'Lade IFC-Modelle hoch und betrachte die 3D-Architektur interaktiv direkt im Browser – ohne teure CAD-Software.' : 'Upload IFC models and view 3D architecture directly in your browser.', IconComponent: Box, submodules: isGerman ? ['IFC 3D-Modelle', 'Kollisionsprüfung', 'Bauteil-Inspektor'] : ['IFC 3D Models', 'Clash Detection', 'Component Inspector'], proTip: isGerman ? 'Klicke auf 3D-Bauteile, um sofort Geometrie- & Materialdaten einzusehen.' : 'Click 3D elements to inspect geometry & material parameters.', placement: 'right' },
+        { target: '.tour-proj-cad', title: isGerman ? '2D Pläne & Ausführung' : '2D CAD Plans', content: isGerman ? 'Verwalte hochauflösende 2D-Grundrisse und vektorbasierte Schnittzeichnungen für Bauleiter und Handwerker.' : 'Manage high-res 2D floor plans and vector cuts.', IconComponent: Folder, submodules: isGerman ? ['Grundrisse & Schnitte', 'PIN-Mängelmarker', 'Plan-Archiv'] : ['Floorplans & Cuts', 'Pinpoint Defect Pins', 'Plan Archive'], proTip: isGerman ? 'Mängel lassen sich zentimetergenau als PIN auf dem Plan platzieren.' : 'Drop pinpoint defects directly on 2D floor plans.', placement: 'right' },
+        { target: '.tour-proj-defects', title: isGerman ? 'Mängel- & Ticket-Tracking' : 'Defect Tracking', content: isGerman ? 'Erfasse Baumängel inklusive Fotos. Das PWA-System speichert Daten auf der Baustelle auch offline und synchronisiert bei Verbindung.' : 'Record defect tickets with photos. Offline sync handles field data seamlessly.', IconComponent: Target, submodules: isGerman ? ['PWA Offline-Modus', 'Fotodokumentation', 'Fristen & Mahnwesen'] : ['PWA Offline Mode', 'Photo Documentation', 'Deadlines & Reminders'], proTip: isGerman ? 'Mängel lassen sich auf dem Smartphone oder iPad offline aufnehmen.' : 'Record defects on mobile/iPad even without active internet connection.', placement: 'right' },
+        { target: '.tour-proj-camera', title: isGerman ? 'Bau-Kamera & Zeitraffer' : 'Site Camera', content: isGerman ? 'Verfolge den realen Baufortschritt oder Messeaufbau über Live-Feeds und Zeitraffer-Aufnahmen.' : 'Monitor site progress via live feeds and time-lapse snapshots.', IconComponent: Camera, submodules: isGerman ? ['Live-Kamerabild', 'Zeitraffer-Video', 'Bautagebuch-Sync'] : ['Live Camera Feed', 'Timelapse Video', 'Site Journal Sync'], proTip: isGerman ? 'Dokumentiere den Fortschritt stündlich für Bauherren.' : 'Document hourly construction milestones for stakeholders.', placement: 'right' },
+        { target: '.tour-proj-whiteboard', title: isGerman ? 'AI-Whiteboard' : 'AI Whiteboard', content: isGerman ? 'Skizziere Layouts in Echtzeit mit dem Team und nutze die Gemini-KI, um visuelle Konzepte direkt per Prompt zu generieren.' : 'Real-time whiteboard with integrated AI concept generation.', IconComponent: Sparkles, submodules: isGerman ? ['Echtzeit-Skizzen', 'Gemini KI-Prompt', 'Moodboard-Export'] : ['Real-time Canvas', 'Gemini AI Prompts', 'Moodboard Export'], proTip: isGerman ? 'Generiere Moodboards per KI-Prompt direkt auf dem Board.' : 'Generate visual moodboards via AI prompts directly on canvas.', placement: 'right' },
+        { target: '.tour-proj-meet', title: isGerman ? 'Nahtlose Kommunikation' : 'Video Meetings', content: isGerman ? 'Starte Video-Calls und Bau-Besprechungen direkt im System. Externe Partner betreten den Raum simpel per Einladungs-Link.' : 'Start video calls instantly. External partners join via simple magic links.', IconComponent: Video, submodules: isGerman ? ['HD Video-Call', 'Screen-Sharing', 'Gäste-Einladung'] : ['HD Video Call', 'Screen Sharing', 'Guest Invitations'], proTip: isGerman ? 'Integriertes Chat & Filesharing während des Calls.' : 'Integrated chat and document sharing during video calls.', placement: 'right' },
+        { target: '.tour-proj-docs', title: isGerman ? 'Digitale Bauakte' : 'Project Docs', content: isGerman ? 'Ein hochsicherer, verschlüsselter Datenraum für Verträge, Pläne und Baufein-Protokolle.' : 'Secure data room for contracts and construction assets.', IconComponent: Folder, submodules: isGerman ? ['Volltext-Suche', 'Verschlüsselter Cloud-Storage', 'Versionierung'] : ['Full-text Search', 'Encrypted Storage', 'Versioning'], proTip: isGerman ? 'Mit integrierter Volltext-Suche und Vorschau-Funktion.' : 'Built-in full-text search and instant file previews.', placement: 'right' },
+        { target: '.tour-proj-pitch', title: isGerman ? 'Pitch Deck Studio' : 'Pitch Deck Studio', content: isGerman ? 'Nutze die Live-Projektdaten, um hochprofessionelle, visuelle Präsentationen für deine Kunden zu rendern.' : 'Create highly professional visual presentations for clients.', IconComponent: MonitorPlay, submodules: isGerman ? ['Live-Slides', 'Keynote & PPTX Export', 'Bauherren-Präsentation'] : ['Live Slides', 'Keynote & PPTX Export', 'Client Pitch'], proTip: isGerman ? 'Interaktive Slides für Investoren und Bauherren.' : 'Interactive slide decks for investors and clients.', placement: 'right' },
+        { target: '.tour-proj-team', title: isGerman ? 'Granulare Rechteverwaltung' : 'Granular Access', content: isGerman ? 'Bestimme exakt, welche Bauleiter, Subunternehmer oder Bauherren welche Daten sehen und bearbeiten dürfen.' : 'Control exact permissions for contractors and partners.', IconComponent: Users, submodules: isGerman ? ['Owner & Admins', 'Bauleiter (Editor)', 'Subunternehmer / Viewer'] : ['Owner & Admins', 'Site Manager (Editor)', 'Contractor / Viewer'], proTip: isGerman ? 'Setze Rollen auf Owner, Admin, Editor oder Viewer.' : 'Assign explicit Owner, Admin, Editor, or Viewer roles.', placement: 'right' }
       ];
     } else if (location.pathname.startsWith('/admin')) {
       candidateDefs = [
-        { target: 'body', title: isGerman ? 'Systemsteuerung (Root Access)' : 'System Control', content: isGerman ? 'Willkommen im Maschinenraum von Kreativ Desk. Hier verwaltest du die globale SaaS-Plattform, Mandanten und System-Logs.' : 'Welcome to the system machine room. Manage your global SaaS platform, tenants, and system logs.', IconComponent: Shield, proTip: isGerman ? 'Root-Zugriff ist nur für autorisierte Super-Admins freigeschaltet.' : 'Root access is restricted to authorized super administrators.', placement: 'center', disableBeacon: true },
-        { target: '.tour-admin-metrics', title: isGerman ? 'Echtzeit-Metriken' : 'Live Metrics', content: isGerman ? 'Überwache aktiven Nutzerzuwachs, System-Umsatz und Datenbank-Auslastung auf einen Blick.' : 'Monitor user growth, system revenue, and database health in real time.', IconComponent: Target, proTip: isGerman ? 'Zeigt Live-Transaktionen aus dem Stripe Ledger an.' : 'Displays live transactions from your Stripe ledger.', placement: 'right' },
-        { target: '.tour-admin-leads', title: isGerman ? 'B2B Leads & Anfragen' : 'Lead Engine', content: isGerman ? 'Verwalte eingehende B2B-Anfragen von der Landingpage in Echtzeit.' : 'Manage incoming B2B requests from the landing page in real time.', IconComponent: Megaphone, proTip: isGerman ? 'Erhalte automatische Push-Signale bei neuen Leads.' : 'Receive live push signals when new leads arrive.', placement: 'right' },
-        { target: '.tour-admin-tenants', title: isGerman ? 'Mandanten- & Nutzer-Hub' : 'Tenant Hub', content: isGerman ? 'Steuere Lizenzen, Seat-Limits (`max_seats`) und Abo-Tarife aller registrierten Unternehmen.' : 'Control licenses, seat limits, and subscriptions for all companies.', IconComponent: Users, proTip: isGerman ? 'Passe Seat-Limits für Enterprise-Kunden manuell an.' : 'Adjust seat limits for enterprise clients on the fly.', placement: 'right' },
-        { target: '.tour-admin-sales', title: isGerman ? 'Stripe & Abrechnung' : 'Stripe Integration', content: isGerman ? 'Verwalte globale Abonnements, Zahlungsströme und manuelle Rechnungen.' : 'Manage global subscriptions, cashflows, and manual invoicing.', IconComponent: DollarSign, proTip: isGerman ? 'Direkter Sprung ins Stripe Customer Portal.' : 'Direct shortcut to Stripe Customer Portal.', placement: 'right' },
-        { target: '.tour-admin-brand', title: isGerman ? 'White-Label Branding' : 'White-Labeling', content: isGerman ? 'Passe Firmenname, Master-Logos und Stammdaten deiner Instanz an.' : 'Customize master logos and corporate identity for your instance.', IconComponent: Sparkles, proTip: isGerman ? 'Passe das White-Label Erscheinungsbild individuell an.' : 'Tailor the white-label branding as needed.', placement: 'right' },
-        { target: '.tour-admin-support', title: isGerman ? 'Central Support Desk' : 'Support Desk', content: isGerman ? 'Alle Kundentickets fließen zentral hier zusammen und lassen sich priorisieren.' : 'Manage and resolve all customer support tickets centrally.', IconComponent: Target, proTip: isGerman ? 'Schneller Überblick über offene und gelöste Tickets.' : 'Clear overview of open vs resolved user tickets.', placement: 'right' },
-        { target: '.tour-admin-api', title: isGerman ? 'API-Keys & Webhooks' : 'API & Webhooks', content: isGerman ? 'Generiere API-Schlüssel für externe Systemintegrationen und Schnittstellen.' : 'Generate API keys and webhooks for external integrations.', IconComponent: Settings, proTip: isGerman ? 'API Keys lassen sich per Klick kopieren oder widerrufen.' : 'API keys can be copied or revoked in one click.', placement: 'right' }
+        { target: 'body', title: isGerman ? 'Systemsteuerung (Root Access)' : 'System Control', content: isGerman ? 'Willkommen im Maschinenraum von Kreativ Desk. Hier verwaltest du die globale SaaS-Plattform, Mandanten und System-Logs.' : 'Welcome to the system machine room. Manage your global SaaS platform, tenants, and system logs.', IconComponent: Shield, submodules: isGerman ? ['Super-Admin', 'Multi-Tenant', 'Plattform-Status'] : ['Super Admin', 'Multi-Tenant', 'Platform Status'], proTip: isGerman ? 'Root-Zugriff ist nur für autorisierte Super-Admins freigeschaltet.' : 'Root access is restricted to authorized super administrators.', placement: 'center', disableBeacon: true },
+        { target: '.tour-admin-metrics', title: isGerman ? 'Echtzeit-Metriken' : 'Live Metrics', content: isGerman ? 'Überwache aktiven Nutzerzuwachs, System-Umsatz und Datenbank-Auslastung auf einen Blick.' : 'Monitor user growth, system revenue, and database health in real time.', IconComponent: Target, submodules: isGerman ? ['MRR / ARR', 'Aktive Tenants', 'DB-Auslastung'] : ['MRR / ARR', 'Active Tenants', 'DB Health'], proTip: isGerman ? 'Zeigt Live-Transaktionen aus dem Stripe Ledger an.' : 'Displays live transactions from your Stripe ledger.', placement: 'right' },
+        { target: '.tour-admin-leads', title: isGerman ? 'B2B Leads & Anfragen' : 'Lead Engine', content: isGerman ? 'Verwalte eingehende B2B-Anfragen von der Landingpage in Echtzeit.' : 'Manage incoming B2B requests from the landing page in real time.', IconComponent: Megaphone, submodules: isGerman ? ['Inbound Anfragen', 'Qualifizierung', 'Push-Notifikation'] : ['Inbound Inquiries', 'Qualification', 'Push Notification'], proTip: isGerman ? 'Erhalte automatische Push-Signale bei neuen Leads.' : 'Receive live push signals when new leads arrive.', placement: 'right' },
+        { target: '.tour-admin-tenants', title: isGerman ? 'Mandanten- & Nutzer-Hub' : 'Tenant Hub', content: isGerman ? 'Steuere Lizenzen, Seat-Limits (`max_seats`) und Abo-Tarife aller registrierten Unternehmen.' : 'Control licenses, seat limits, and subscriptions for all companies.', IconComponent: Users, submodules: isGerman ? ['Unternehmen & Rollen', 'Seat-Limits', 'Abo-Stufen'] : ['Companies & Roles', 'Seat Limits', 'Tier Management'], proTip: isGerman ? 'Passe Seat-Limits für Enterprise-Kunden manuell an.' : 'Adjust seat limits for enterprise clients on the fly.', placement: 'right' },
+        { target: '.tour-admin-sales', title: isGerman ? 'Stripe & Abrechnung' : 'Stripe Integration', content: isGerman ? 'Verwalte globale Abonnements, Zahlungsströme und manuelle Rechnungen.' : 'Manage global subscriptions, cashflows, and manual invoicing.', IconComponent: DollarSign, submodules: isGerman ? ['Stripe Portal', 'Invoicing', 'Transaktionshistorie'] : ['Stripe Portal', 'Invoicing', 'Transaction History'], proTip: isGerman ? 'Direkter Sprung ins Stripe Customer Portal.' : 'Direct shortcut to Stripe Customer Portal.', placement: 'right' },
+        { target: '.tour-admin-brand', title: isGerman ? 'White-Label Branding' : 'White-Labeling', content: isGerman ? 'Passe Firmenname, Master-Logos und Stammdaten deiner Instanz an.' : 'Customize master logos and corporate identity for your instance.', IconComponent: Sparkles, submodules: isGerman ? ['Eigenes Logo', 'Domain & CI', 'E-Mail Vorlagen'] : ['Custom Logo', 'Domain & CI', 'Email Templates'], proTip: isGerman ? 'Passe das White-Label Erscheinungsbild individuell an.' : 'Tailor the white-label branding as needed.', placement: 'right' },
+        { target: '.tour-admin-support', title: isGerman ? 'Central Support Desk' : 'Support Desk', content: isGerman ? 'Alle Kundentickets fließen zentral hier zusammen und lassen sich priorisieren.' : 'Manage and resolve all customer support tickets centrally.', IconComponent: Target, submodules: isGerman ? ['Ticket-Eingang', 'Prioritäten', 'Status-Tracking'] : ['Ticket Inbox', 'Priorities', 'Status Tracking'], proTip: isGerman ? 'Schneller Überblick über offene und gelöste Tickets.' : 'Clear overview of open vs resolved user tickets.', placement: 'right' },
+        { target: '.tour-admin-api', title: isGerman ? 'API-Keys & Webhooks' : 'API & Webhooks', content: isGerman ? 'Generiere API-Schlüssel für externe Systemintegrationen und Schnittstellen.' : 'Generate API keys and webhooks for external integrations.', IconComponent: Settings, submodules: isGerman ? ['REST API Keys', 'Webhooks', 'ERP-Anbindung'] : ['REST API Keys', 'Webhooks', 'ERP Integration'], proTip: isGerman ? 'API Keys lassen sich per Klick kopieren oder widerrufen.' : 'API keys can be copied or revoked in one click.', placement: 'right' }
       ];
     } else {
       candidateDefs = [
-        { target: 'body', title: isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', content: isGerman ? 'Willkommen bei Kreativ-Desk OS! Deine ganzheitliche Plattform für Spatial Design, Baustellen-Management und Unternehmens-Steuerung.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for spatial design, site management, and business control.', IconComponent: Sparkles, proTip: isGerman ? 'In wenigen Schritten entdeckst du die wichtigsten Funktionen.' : 'Discover all core capabilities in just a few quick steps.', placement: 'center', disableBeacon: true },
-        { target: '.tour-dashboard', title: isGerman ? 'Der globale Puls' : 'Global Pulse', content: isGerman ? 'Hier fließen Projektstatus, offene Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', IconComponent: LayoutDashboard, proTip: isGerman ? 'Klicke auf die KPI-Karten, um direkt in die Details zu springen.' : 'Click KPI cards to jump directly into detailed views.', placement: 'right' },
-        { target: '.tour-projects', title: isGerman ? 'Portfolio-Management' : 'Portfolio Management', content: isGerman ? 'Verwalte all deine Bau- & Designprojekte. Ein Klick bringt dich tief in die 3D- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D and collaboration tools.', IconComponent: Briefcase, proTip: isGerman ? 'Hier siehst du den Status und Fortschritt aller aktiven Projekte.' : 'View status and progress for all active project environments.', placement: 'right' },
-        { target: '.tour-finance', title: isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', content: isGerman ? 'Überwache den gesamten Firmen-Cashflow, Betriebskosten (OpEx) und BKP-Kostenstellen.' : 'Monitor global cashflow, operating expenses, and budgets.', IconComponent: DollarSign, proTip: isGerman ? 'Erstelle professionelle Offerten und Rechnungen als PDF.' : 'Generate professional quotes and invoices as PDFs.', placement: 'right' },
-        { target: '.tour-documents', title: isGerman ? 'Firmen-Archiv & Assets' : 'Company Archive', content: isGerman ? 'Ein sicherer Cloud-Ordnerbaum für deine HR-Dokumente, Verträge und Branding-Assets.' : 'Secure cloud folder structure for HR docs, contracts, and branding assets.', IconComponent: Folder, proTip: isGerman ? 'Dokumente lassen sich kategorisieren und verschlüsselt speichern.' : 'Store and categorize assets with end-to-end cloud encryption.', placement: 'right' },
-        { target: '.tour-templates', title: isGerman ? 'Workflow-Booster' : 'Workflow Booster', content: isGerman ? 'Speichere intelligente Bausteine und Layout-Vorlagen, um Routineaufgaben zu automatisieren.' : 'Save templates and reusable blocks to automate routine work.', IconComponent: LayoutTemplate, proTip: isGerman ? 'Spare wertvolle Zeit bei wiederkehrenden Angeboten.' : 'Save time on recurring client offers and site protocols.', placement: 'right' },
-        { target: '.tour-leads', title: isGerman ? 'Leads & Kundenanfragen' : 'Lead Engine', content: isGerman ? 'Erfasse und verwalte Kundendaten und eingehende Projekt-Anfragen direkt im Workspace.' : 'Capture and manage inbound customer leads directly in your workspace.', IconComponent: Megaphone, proTip: isGerman ? 'Neue Leads lassen sich direkt in aktive Projekte umwandeln.' : 'Convert new leads into active project environments.', placement: 'right' },
-        { target: '.tour-crm', title: isGerman ? 'Team & Partner-Netzwerk' : 'Team Network', content: isGerman ? 'Das Zentrum deines Netzwerks. Lade Mitarbeiter und externe Partner per E-Mail in dein Ökosystem ein.' : 'The core of your network. Invite team members via magic links.', IconComponent: Users, proTip: isGerman ? 'Behalte den Überblick über verfügbare Lizenzen und Rollen.' : 'Keep track of available licenses and company roles.', placement: 'right' },
-        { target: '.tour-settings', title: isGerman ? 'System-Einstellungen & Abos' : 'System Settings', content: isGerman ? 'Konfiguriere dein Firmenprofil, MWST-Stammdaten und verwalte deine aktiven Stripe-Lizenzen.' : 'Configure company profiles, VAT, and active SaaS licenses.', IconComponent: Settings, proTip: isGerman ? 'Hier kannst du jederzeit dein Abo upgraden oder verwalten.' : 'Upgrade or manage your subscription plan anytime.', placement: 'right' }
+        { 
+          target: 'body', 
+          title: isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', 
+          content: isGerman ? 'Willkommen bei Kreativ-Desk OS! Deine ganzheitliche Plattform für Spatial Design, Baustellen-Management und Schweizer Unternehmens-Steuerung.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for spatial design, site management, and business control.', 
+          IconComponent: Sparkles, 
+          submodules: isGerman ? ['Multi-Tenant OS', 'Schweizer Standards', 'Echtzeit-Kollaboration'] : ['Multi-Tenant OS', 'Swiss Standards', 'Realtime Collaboration'],
+          proTip: isGerman ? 'In wenigen Schritten entdeckst du die wichtigsten Funktionen und Module.' : 'Discover all core capabilities and submodules in just a few quick steps.', 
+          placement: 'center', 
+          disableBeacon: true 
+        },
+        { 
+          target: '.tour-dashboard', 
+          title: isGerman ? 'Der globale Puls' : 'Global Pulse', 
+          content: isGerman ? 'Hier fließen Projektstatus, offene Leads und Finanz-KPIs deines Unternehmens in einer Live-Übersicht zusammen.' : 'The global pulse: Project status, leads, and financial KPIs in one live view.', 
+          IconComponent: LayoutDashboard, 
+          submodules: isGerman ? ['Echtzeit-KPIs', 'Umsatz & Cashflow', 'Aktive Projekte', 'Schnellzugriff'] : ['Live KPIs', 'Revenue & Cashflow', 'Active Projects', 'Quick Actions'],
+          proTip: isGerman ? 'Klicke auf die KPI-Karten, um direkt in die Details zu springen.' : 'Click KPI cards to jump directly into detailed views.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-projects', 
+          title: isGerman ? 'Portfolio-Management' : 'Portfolio Management', 
+          content: isGerman ? 'Verwalte all deine Bau- & Designprojekte. Ein Klick bringt dich tief in die 3D-BIM- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D BIM and collaboration tools.', 
+          IconComponent: Briefcase, 
+          submodules: isGerman ? ['3D BIM / IFC', '2D CAD Pläne', 'PIN-Mängelmarker', 'Zeitraffer-Kamera', 'Bautagebuch'] : ['3D BIM / IFC', '2D CAD Plans', 'Pinpoint Defects', 'Timelapse Camera', 'Site Journal'],
+          proTip: isGerman ? 'Hier siehst du den Status und Fortschritt aller aktiven Projekte auf einen Blick.' : 'View status and progress for all active project environments.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-proposals', 
+          title: isGerman ? 'Offerten & Verträge' : 'Smart Proposals & Contracts', 
+          content: isGerman ? 'Erstelle interaktive Web-Offerten mit digitaler E-Signatur, dynamischer Varianten-Auswahl und automatischem PDF-Export.' : 'Create interactive web proposals with digital signatures, dynamic option selection, and PDF export.', 
+          IconComponent: Globe, 
+          submodules: isGerman ? ['Smarte Web-Offerten', 'Digitale E-Signatur', 'Vertragsumwandlung', 'Universal PDF Studio'] : ['Smart Web Proposals', 'Digital E-Sign', 'Contract Conversion', 'Universal PDF Studio'],
+          proTip: isGerman ? 'Kunden können Offerten direkt im Browser digital unterschreiben und annehmen.' : 'Clients can sign and accept proposals directly in their web browser.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-finance', 
+          title: isGerman ? 'Globales Finanz-Cockpit' : 'Finance Cockpit', 
+          content: isGerman ? 'Überwache den gesamten Firmen-Cashflow, Betriebskosten (OpEx), Schweizer QR-Rechnungen und BKP-Kostenstellen.' : 'Monitor global cashflow, operating expenses (OpEx), Swiss QR-bills, and construction budgets.', 
+          IconComponent: DollarSign, 
+          submodules: isGerman ? ['BKP 1–9 Baukosten', 'CH QR-Rechnung', 'OpCost Studio (OpEx)', 'Bexio ERP Sync'] : ['BKP 1–9 Cost Plan', 'Swiss QR-Bill', 'OpCost Studio (OpEx)', 'Bexio ERP Sync'],
+          proTip: isGerman ? 'Verbuche Spesen und Rechnungen direkt mit automatischem QR-Code-Generator.' : 'Book expenses and invoices directly with automated Swiss QR-bill rendering.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-documents', 
+          title: isGerman ? 'Firmen-Archiv & Beleg-Scan' : 'Company Archive & Scanning', 
+          content: isGerman ? 'Ein sicherer Cloud-Ordnerbaum für Bauakten, Verträge und Pläne inklusive Smartphone Beleg-Scan per QR-Code.' : 'Secure cloud folder structure for site archives, contracts, and QR mobile receipt scanning.', 
+          IconComponent: FileText, 
+          submodules: isGerman ? ['Digitale Bauakten', 'QR Smartphone-Scan', 'Pläne & CAD-Archive', 'OCR Volltextsuche'] : ['Digital Site Records', 'QR Mobile Scan', 'CAD & Plan Archives', 'OCR Full-Text Search'],
+          proTip: isGerman ? 'Scanne Belege auf der Baustelle mit dem Smartphone – sie landen sofort im richtigen Ordner.' : 'Scan receipts on site with your phone – they sync instantly to the cloud folder.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-templates', 
+          title: isGerman ? 'Workflow-Booster' : 'Workflow Booster', 
+          content: isGerman ? 'Speichere intelligente Bausteine, BKP-Vorlagen und Leistungsbeschriebe, um Routineaufgaben zu automatisieren.' : 'Save templates, BKP structures, and reusable blocks to automate routine work.', 
+          IconComponent: LayoutTemplate, 
+          submodules: isGerman ? ['BKP-Vorlagen', 'Leistungsbeschriebe', 'Muster-Offerten', 'Baustein-Bibliothek'] : ['BKP Templates', 'Scope of Work', 'Template Quotes', 'Component Library'],
+          proTip: isGerman ? 'Spare wertvolle Zeit bei wiederkehrenden Angeboten und Bauleiter-Protokollen.' : 'Save time on recurring client offers and site protocols.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-leads', 
+          title: isGerman ? 'Leads & Kundenanfragen' : 'Lead Engine', 
+          content: isGerman ? 'Erfasse und verwalte Interessenten und eingehende Projekt-Anfragen direkt im Workspace mit Pipeline-Tracking.' : 'Capture and manage inbound customer leads directly in your workspace with pipeline tracking.', 
+          IconComponent: Megaphone, 
+          submodules: isGerman ? ['Lead-Pipeline', 'Projekt-Umwandlung', 'Echtzeit-Push', 'Kontakt-Dossier'] : ['Lead Pipeline', 'Project Conversion', 'Realtime Alerts', 'Contact Dossier'],
+          proTip: isGerman ? 'Neue Leads lassen sich mit einem Klick in aktive Projekt-Workspaces umwandeln.' : 'Convert new leads into active project environments with a single click.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-crm', 
+          title: isGerman ? 'Team & Partner-Netzwerk' : 'Team Network', 
+          content: isGerman ? 'Das Zentrum deines Netzwerks. Verwalte Mitarbeiter, Subunternehmer und scanne Visitenkarten per KI.' : 'The core of your network. Manage staff, subcontractors, and scan business cards via AI.', 
+          IconComponent: Users, 
+          submodules: isGerman ? ['KI-Visitenkarten-Scan', 'Rollen & Rechte', 'Magic Invite-Links', 'Stundensätze'] : ['AI Business Card Scan', 'Roles & Permissions', 'Magic Invite Links', 'Hourly Rates'],
+          proTip: isGerman ? 'Lade externe Handwerker und Planer per Magic Link mit begrenzten Rechten ein.' : 'Invite external subcontractors and planners via magic links with restricted rights.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-meet', 
+          title: isGerman ? 'Meet & Live-Chat' : 'Meet & Live Chat', 
+          content: isGerman ? 'Integrierte HD-Videokonferenzen und Team-Chats direkt im Browser – ohne externe Tools oder Software-Downloads.' : 'Integrated HD video calls and team chats directly in the browser – no downloads needed.', 
+          IconComponent: Video, 
+          submodules: isGerman ? ['HD Video-Konferenzen', 'Kein Software-Download', 'Screen-Sharing', 'Chat-Protokoll'] : ['HD Video Calls', 'Zero Software Download', 'Screen Sharing', 'Chat Transcripts'],
+          proTip: isGerman ? 'Kunden und Partner können ohne Login oder Registrierung sofort per Link beitreten.' : 'Clients and partners can join immediately via link without registration.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-agenda', 
+          title: isGerman ? 'Agenda & Rapporte' : 'Agenda & Time Reports', 
+          content: isGerman ? 'Zentraler Kalender für Baustellenbesuche, Meetings und digitale Zeiterfassung mit automatischem Rapport-PDF-Export.' : 'Central calendar for site visits, meetings, and digital time tracking with PDF report exports.', 
+          IconComponent: CalendarDays, 
+          submodules: isGerman ? ['Tages- & Monatskalender', 'Regiebericht & Rapport', 'iCal-Synchronisation', 'KI-Tagesbericht'] : ['Day & Month Calendar', 'Time Tracking & Rapport', 'iCal Sync', 'AI Site Summary'],
+          proTip: isGerman ? 'Exportiere Arbeits-Rapporte und Stundenabrechnungen direkt als druckreife PDFs.' : 'Export labor reports and time billings directly as print-ready PDF dossiers.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-settings', 
+          title: isGerman ? 'System-Einstellungen & Abos' : 'System Settings', 
+          content: isGerman ? 'Konfiguriere dein Firmenprofil, Schweizer MWST-Stammdaten und verwalte deine aktiven Stripe-Lizenzen.' : 'Configure company profiles, Swiss VAT, and active SaaS licenses.', 
+          IconComponent: Settings, 
+          submodules: isGerman ? ['Firmendaten & Logo', 'MWST-Sätze (CH)', 'Stripe Billing & Seats', 'Zentrale Rechte'] : ['Company Data & Logo', 'Swiss VAT Rates', 'Stripe Billing & Seats', 'Central Permissions'],
+          proTip: isGerman ? 'Hier kannst du jederzeit dein Abo upgraden oder neue Mitarbeiter-Seats buchen.' : 'Upgrade or manage your subscription plan and add seats anytime.', 
+          placement: 'right' 
+        },
+        { 
+          target: '.tour-audit', 
+          title: isGerman ? 'Revisionssichere Audit-Logs' : 'Audit Logs & Compliance', 
+          content: isGerman ? 'Lückenlose Nachverfolgung aller System-Änderungen für Schweizer Datenschutz (DSG) und DSGVO Compliance.' : 'Comprehensive audit logs for Swiss data protection (DSG) and GDPR compliance.', 
+          IconComponent: Shield, 
+          submodules: isGerman ? ['DSG & DSGVO konform', 'Revisionssichere Logs', 'Sicherheits-Audit', 'Filter & Export'] : ['DSG & GDPR Compliant', 'Tamper-evident Logs', 'Security Audit', 'Filter & Export'],
+          proTip: isGerman ? 'Geschäftsleitung und Auditoren können historische Transaktionen sekundengenau einsehen.' : 'Executive managers and auditors can inspect historical logs with second-level precision.', 
+          placement: 'right' 
+        }
       ];
     }
 
@@ -156,7 +284,7 @@ export default function ProductTour() {
       const effectivePlacement = isMobile && c.placement !== 'center' ? 'auto' : (c.placement || 'right');
       return {
         target: c.resolvedTarget as any,
-        content: buildStepContent(stepNum, totalSteps, c.title, c.content, c.IconComponent, c.proTip),
+        content: buildStepContent(stepNum, totalSteps, c.title, c.content, c.IconComponent, c.proTip, c.submodules),
         placement: effectivePlacement,
         disableBeacon: !!c.disableBeacon,
         disableScrolling: isMobile ? false : true,

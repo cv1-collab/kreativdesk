@@ -700,11 +700,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       if (timeTrackingMode === 'timer') { resetTimer(); }
       setTimeEntryForm({ ...timeEntryForm, hours: 0, description: '' });
       addToast(`${t('book_time_entry')} (${finalHours}h) ${t('completed')}`, 'success');
-      setTimeEntryForm({ ...timeEntryForm, hours: 0, description: '' });
-      addToast(`${t('book_time_entry')} (${finalHours}h) ${t('completed')}`, 'success');
     } catch (err) {
       console.error("Error logging time:", err);
-      addToast('Zeiteintrag erfolgreich verbucht!', 'success');
+      addToast('Fehler beim Verbuchen des Zeiteintrags', 'error');
     }
   };
 
@@ -945,7 +943,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       addToast('Termin erfolgreich in der Agenda eingetragen!', 'success');
     } catch (err) {
       console.error(err);
-      addToast('Termin erfolgreich eingetragen!', 'success');
+      addToast('Fehler beim Eintragen des Termins', 'error');
     }
   };
 
@@ -1024,14 +1022,41 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const handleDeleteCalendarEvent = async (eventId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!currentUser) return;
+    const safeCompanyId = currentUser.companyId || currentUser.uid;
+
     if (window.confirm(t('delete') + '?')) {
       try {
+        // 1. Live-State & LocalStorage-Cache sofort aktualisieren
+        const localCacheKey = `agenda_events_cache_${safeCompanyId}`;
+        setCalendarEvents(prev => {
+          const updated = prev.filter(ev => ev.id !== eventId);
+          if (safeCompanyId) {
+            localStorage.setItem(localCacheKey, JSON.stringify(updated));
+          }
+          return updated;
+        });
+
+        // 2. Aus Supabase calendar_events löschen
         await supabase.from('calendar_events').delete().eq('id', eventId);
-        setCalendarEvents(prev => prev.filter(ev => ev.id !== eventId));
+
+        // 3. Aus documents Backup entfernen
+        if (safeCompanyId) {
+          try {
+            const config = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${safeCompanyId}`, safeCompanyId);
+            if (config?.events) {
+              const updatedConfigEvents = config.events.filter((ev: any) => ev.id !== eventId);
+              await saveSystemConfigJSON(`agenda_events_${safeCompanyId}`, { ...config, events: updatedConfigEvents }, safeCompanyId, currentUser.uid);
+            }
+          } catch (cfgErr) {}
+        }
+
         addToast(t('delete') + ' ' + t('completed'), 'success');
         setSelectedEvent(null);
+      } catch (err) {
+        console.error("Delete calendar event error:", err);
+        addToast('Fehler beim Löschen des Termins', 'error');
       }
-      catch (err) { addToast('Fehler', 'error'); }
     }
   };
 
@@ -1364,14 +1389,14 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <div className="relative">
-                          <input type="number" step="0.25" min="0.25" required value={timeEntryForm.hours || ''} onChange={e => setTimeEntryForm({ ...timeEntryForm, hours: parseFloat(e.target.value) })} className="w-full bg-background border border-border/50 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-accent-ai [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.0" />
+                          <input type="number" step="0.25" min="0.25" required value={timeEntryForm.hours || ''} onChange={e => setTimeEntryForm({ ...timeEntryForm, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-md pl-3 pr-8 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-accent-ai [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.0" />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-bold pointer-events-none">{t('hours')}</span>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm font-bold pointer-events-none">CHF</span>
-                          <input type="number" step="1" min="0" required value={timeEntryForm.hourlyRate || ''} onChange={e => setTimeEntryForm({ ...timeEntryForm, hourlyRate: parseFloat(e.target.value) })} className="w-full bg-background border border-border/50 rounded-md pl-12 pr-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
+                          <input type="number" step="1" min="0" required value={timeEntryForm.hourlyRate || ''} onChange={e => setTimeEntryForm({ ...timeEntryForm, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-md pl-12 pr-3 py-2 text-sm focus:outline-none focus:border-accent-ai/50 text-right font-bold text-text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
                         </div>
                       </div>
                     </div>
