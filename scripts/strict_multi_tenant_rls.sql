@@ -25,6 +25,7 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.get_my_company_id() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_my_company_id() FROM PUBLIC, anon;
 
 -- 2. HILFSFUNKTION: Ist der Benutzer Super-Admin?
 CREATE OR REPLACE FUNCTION public.is_super_admin()
@@ -44,6 +45,7 @@ AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.is_super_admin() FROM PUBLIC, anon;
 
 -- ----------------------------------------------------------------------------
 -- 3. RLS AKTIVIEREN & POLICIES ERSTELLEN (Alle Vergleiche mit ::text typensicher)
@@ -130,14 +132,43 @@ CREATE POLICY "Strict company isolation transactions" ON public.transactions
   USING (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text);
 
--- J) TASKS (tasks.company_id und assigned_to sind UUID in Supabase)
+-- J) TASKS & PROJECT TASKS
+ALTER TABLE IF EXISTS public.project_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow delete for authenticated" ON public.project_tasks;
+DROP POLICY IF EXISTS "Allow insert for authenticated" ON public.project_tasks;
+DROP POLICY IF EXISTS "Allow select for authenticated" ON public.project_tasks;
+DROP POLICY IF EXISTS "Allow update for authenticated" ON public.project_tasks;
+DROP POLICY IF EXISTS "Authenticated users access project_tasks" ON public.project_tasks;
+DROP POLICY IF EXISTS "Strict company isolation project_tasks" ON public.project_tasks;
+
+CREATE POLICY "Strict company isolation project_tasks" ON public.project_tasks
+  FOR ALL TO authenticated
+  USING (
+    is_super_admin() 
+    OR company_id::text = get_my_company_id() 
+    OR owner_id::text = auth.uid()::text 
+    OR assigned_to::text = auth.uid()::text
+  )
+  WITH CHECK (
+    is_super_admin() 
+    OR company_id::text = get_my_company_id() 
+    OR owner_id::text = auth.uid()::text 
+    OR assigned_to::text = auth.uid()::text
+  );
+
+-- Bereinigung der ungenutzten tasks-Tabelle
 ALTER TABLE IF EXISTS public.tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public select" ON public.tasks;
+DROP POLICY IF EXISTS "Allow select for authenticated" ON public.tasks;
+DROP POLICY IF EXISTS "Allow insert for authenticated" ON public.tasks;
+DROP POLICY IF EXISTS "Allow update for authenticated" ON public.tasks;
+DROP POLICY IF EXISTS "Allow delete for authenticated" ON public.tasks;
 DROP POLICY IF EXISTS "Authenticated users access tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Strict company isolation tasks" ON public.tasks;
 CREATE POLICY "Strict company isolation tasks" ON public.tasks
   FOR ALL TO authenticated
-  USING (is_super_admin() OR company_id::text = get_my_company_id() OR assigned_to::text = auth.uid()::text)
-  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR assigned_to::text = auth.uid()::text);
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
 
 -- K) SMART PROPOSALS
 ALTER TABLE IF EXISTS public.smart_proposals ENABLE ROW LEVEL SECURITY;
@@ -179,6 +210,10 @@ CREATE POLICY "Strict company isolation company_settings" ON public.company_sett
   USING (is_super_admin() OR company_id::text = get_my_company_id())
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
 
+-- N) STORAGE CLEANUP
+DROP POLICY IF EXISTS "Authenticated Upload Avatars" ON storage.objects;
+
 -- ============================================================================
 -- FERTIG: Datenisolation ist nun serverseitig in der Datenbank garantiert!
 -- ============================================================================
+
