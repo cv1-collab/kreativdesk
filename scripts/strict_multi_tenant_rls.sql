@@ -284,8 +284,42 @@ CREATE POLICY "Strict company isolation notifications" ON public.notifications
   USING (is_super_admin() OR company_id::text = get_my_company_id())
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
 
+-- Q) AUDIT LOGS (Compliance & Security Protokoll)
+ALTER TABLE IF EXISTS public.audit_logs ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.audit_logs TO authenticated, service_role;
+DROP POLICY IF EXISTS "Strict company isolation audit_logs" ON public.audit_logs;
+CREATE POLICY "Strict company isolation audit_logs" ON public.audit_logs
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- R) SUPPORT TICKETS
+ALTER TABLE IF EXISTS public.support_tickets ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.support_tickets TO authenticated, service_role;
+DROP POLICY IF EXISTS "Strict company isolation support_tickets" ON public.support_tickets;
+CREATE POLICY "Strict company isolation support_tickets" ON public.support_tickets
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- S) AUDIO NOTES (Sprachmemos & Transkripte)
+ALTER TABLE IF EXISTS public.audio_notes ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.audio_notes TO authenticated, service_role;
+DROP POLICY IF EXISTS "Strict company isolation audio_notes" ON public.audio_notes;
+CREATE POLICY "Strict company isolation audio_notes" ON public.audio_notes
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- T) WHITEBOARD EXPORTS
+ALTER TABLE IF EXISTS public.whiteboard_exports ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.whiteboard_exports TO authenticated, service_role;
+DROP POLICY IF EXISTS "Strict company isolation whiteboard_exports" ON public.whiteboard_exports;
+CREATE POLICY "Strict company isolation whiteboard_exports" ON public.whiteboard_exports
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
 -- ============================================================================
 -- FERTIG: Datenisolation ist nun serverseitig in der Datenbank garantiert!
 -- ============================================================================
-
-

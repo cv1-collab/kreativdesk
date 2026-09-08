@@ -42,8 +42,8 @@ const pdfStyles = StyleSheet.create({
   headerContainer: { flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#a855f7', paddingBottom: 10, marginBottom: 20 },
   headerLeft: { flex: 1 }, title: { fontSize: 24, fontWeight: 'bold', color: '#a855f7', textTransform: 'uppercase', marginBottom: 8 }, subtitle: { fontSize: 12, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' },
   metaRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 4 }, metaLabel: { fontSize: 9, color: '#6b7280', marginRight: 10 }, metaValue: { fontSize: 9, color: '#000000', fontWeight: 'bold', width: 80, textAlign: 'right' },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 5 }, tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6 },
-  col1: { width: '30%' }, col2: { width: '50%' }, col3: { width: '20%', textAlign: 'right' }, textBold: { fontWeight: 'bold', color: '#000' },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 5 }, tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6, alignItems: 'flex-start' },
+  col1: { width: '30%', paddingTop: 1 }, col2: { width: '50%', paddingRight: 8 }, col3: { width: '20%', textAlign: 'right', paddingTop: 1 }, textBold: { fontWeight: 'bold', color: '#000' },
   footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 }, footerText: { fontSize: 8, color: '#9ca3af' },
   receiptsTitle: { fontSize: 12, fontWeight: 'bold', color: '#a855f7', borderBottomWidth: 1, borderBottomColor: '#a855f7', paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase', marginTop: 20 }, receiptsGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   receiptImage: { width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }
@@ -64,7 +64,7 @@ const ExternalCostPDFDocument = ({ settings, opCostData, opCostReceipts, formatC
       </View>
       <View style={pdfStyles.tableRow} wrap={false}>
         <View style={pdfStyles.col1}><Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontSize: 8, fontWeight: 'bold' }}>{opCostData.category}</Text></View>
-        <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{opCostData.description || '-'}</Text>
+        <View style={pdfStyles.col2}><Text style={[pdfStyles.textBold, { lineHeight: 1.35 }]}>{opCostData.description || '-'}</Text></View>
         <Text style={[pdfStyles.col3, pdfStyles.textBold, { color: '#a855f7' }]}>{formatCHF(Number(opCostData.amount))}</Text>
       </View>
       {opCostReceipts.length > 0 && (

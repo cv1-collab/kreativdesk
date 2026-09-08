@@ -87,13 +87,13 @@ const pdfStyles = StyleSheet.create({
   logo: { width: 100, height: 40, objectFit: 'contain' },
 
   tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingBottom: 5, marginBottom: 5 },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6 },
-  col1: { width: '15%' },
-  col2: { width: '20%' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6, alignItems: 'flex-start' },
+  col1: { width: '15%', paddingTop: 1 },
+  col2: { width: '20%', paddingTop: 1 },
   col3: { width: '30%', paddingRight: 10 },
-  col4: { width: '15%' },
-  col5: { width: '10%', textAlign: 'right' },
-  col6: { width: '10%', textAlign: 'right' },
+  col4: { width: '15%', paddingTop: 1 },
+  col5: { width: '10%', textAlign: 'right', paddingTop: 1 },
+  col6: { width: '10%', textAlign: 'right', paddingTop: 1 },
   textBold: { fontWeight: 'bold', color: '#000000' },
   textMuted: { color: '#6b7280', fontSize: 8, marginTop: 2 },
 
@@ -165,7 +165,7 @@ const AgendaRapportPDFDocument = ({ settings, printType, t, currentLang, company
                       <View key={entry.id} style={pdfStyles.tableRow} wrap={false}>
                         <Text style={pdfStyles.col1}>{new Date(entry.date).toLocaleDateString(currentLang === 'de' ? 'de-CH' : 'en-US')}</Text>
                         <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{displayName}</Text>
-                        <Text style={pdfStyles.col3}>{entry.description}</Text>
+                        <View style={pdfStyles.col3}><Text style={{ lineHeight: 1.35 }}>{entry.description || '-'}</Text></View>
                         <Text style={[pdfStyles.col4, { color: isBillable ? '#10b981' : '#9ca3af', fontSize: 8, textTransform: 'uppercase' }]}>{isBillable ? t('billable') : t('own_contribution')}</Text>
                         <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{Number(entry.hours).toFixed(2)}h</Text>
                         <Text style={pdfStyles.col6}>{isBillable ? `CHF ${cost.toFixed(2)}` : '-'}</Text>
