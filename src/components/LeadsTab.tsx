@@ -634,7 +634,7 @@ export default function LeadsTab() {
       addToast(t('save') + ' ' + t('completed'), 'success'); 
       setIsModalOpen(false);
       fetchLeads();
-    } catch (error) { addToast(t('upload_failed'), 'error'); } 
+    } catch (error) { addToast(t('save_lead_error'), 'error'); } 
     finally { setIsSubmittingScanner(false); }
   };
 

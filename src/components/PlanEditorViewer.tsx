@@ -1013,19 +1013,24 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan') return addToast("Demo-Plan kann nicht gelöscht werden.", "info");
     if (activePlanId && window.confirm(t('confirm_delete_plan'))) {
       const deletedId = activePlanId;
-      await supabase.from('cad_plans').delete().eq('id', deletedId);
-      const remainingPlans = projectPlans.filter(p => p.id !== deletedId);
-      setProjectPlans(remainingPlans);
-      try { localStorage.removeItem(cadCacheKey); } catch (e) {}
-      if (remainingPlans.length > 0) {
-        loadPlanDataToEditor(remainingPlans[0]);
-      } else {
-        setPlanImage(null); 
-        setActivePlanId(null);
-        setPlanName('');
-        setElements([]);
+      try {
+        await supabase.from('cad_plans').delete().eq('id', deletedId);
+        const remainingPlans = projectPlans.filter(p => p.id !== deletedId);
+        setProjectPlans(remainingPlans);
+        try { localStorage.removeItem(cadCacheKey); } catch (e) {}
+        if (remainingPlans.length > 0) {
+          loadPlanDataToEditor(remainingPlans[0]);
+        } else {
+          setPlanImage(null); 
+          setActivePlanId(null);
+          setPlanName('');
+          setElements([]);
+        }
+        addToast("Plan gelöscht", "info");
+      } catch (err) {
+        console.error("Error deleting plan:", err);
+        addToast("Fehler beim Löschen des Plans", "error");
       }
-      addToast("Plan gelöscht", "info");
     }
   };
 

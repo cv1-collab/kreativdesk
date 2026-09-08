@@ -54,7 +54,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     dashboard: 'Overview', projects: 'Projects', finance_budget: 'Finance', documents: 'Documents', 
     templates: 'Templates', crm_leads: 'Leads', project_team: 'CRM & Team', agenda_rapport: 'Agenda & Reports',
     settings: 'Settings', logout: 'Logout', central: 'Central', upload_success: 'Saved successfully!', 
-    upload_failed: 'Action failed.', delete_completed: 'Deletion completed.', confirm_delete: 'Are you sure?', 
+    upload_failed: 'Action failed.', folder_create_error: 'Error creating folder.', delete_completed: 'Deletion completed.', delete_error: 'Error deleting item.', confirm_delete: 'Are you sure?', 
     loading_project: 'Loading project...', cancel: 'Cancel', create_project: 'Create Project', 
     new_project: 'New Project', project_name: 'Project Name', description: 'Description', folder: 'Folder', 
     no_description: 'No description', active: 'Active', archived: 'Archived', created_at: 'Created at',
@@ -70,7 +70,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     dashboard: 'Übersicht', projects: 'Projekte', finance_budget: 'Finanzen', documents: 'Dokumente', 
     templates: 'Vorlagen', crm_leads: 'Leads', project_team: 'CRM & Team', agenda_rapport: 'Agenda & Rapport',
     settings: 'Einstellungen', logout: 'Abmelden', central: 'Zentrale', upload_success: 'Erfolgreich gespeichert!', 
-    upload_failed: 'Aktion fehlgeschlagen.', delete_completed: 'Löschen erfolgreich.', 
+    upload_failed: 'Aktion fehlgeschlagen.', folder_create_error: 'Fehler beim Erstellen des Ordners.', delete_completed: 'Löschen erfolgreich.', delete_error: 'Fehler beim Löschen.',
     confirm_delete: 'Bist du sicher?', loading_project: 'Lade Projekt...', cancel: 'Abbrechen', 
     create_project: 'Projekt anlegen', new_project: 'Neues Projekt', project_name: 'Projektname', 
     description: 'Beschreibung', folder: 'Ordner', no_description: 'Keine Beschreibung vorhanden.', 
@@ -620,7 +620,7 @@ export default function CompanyDashboard() {
       setNewFolderName('');
       setIsNewFolderModalOpen(false);
       addToast(t('upload_success'), 'success');
-    } catch (err) { addToast(t('upload_failed'), 'error'); }
+    } catch (err) { addToast(t('folder_create_error'), 'error'); }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -655,7 +655,7 @@ export default function CompanyDashboard() {
       await supabase.from('documents').delete().eq('id', id);
       if (activeFolderId === id) setActiveFolderId(null);
       addToast(t('delete_completed'), 'success');
-    } catch (err) { addToast(t('upload_failed'), 'error'); }
+    } catch (err) { addToast(t('delete_error'), 'error'); }
   };
 
   useEffect(() => {

@@ -52,7 +52,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     budget_imported: 'Budget imported!', team_imported: 'Team imported!', roadmap_imported: 'Calendar imported!',
     defects_imported: 'Defects imported!', error_load: 'Error loading data.', error_create: 'Error creating slide.',
     delete_slide_confirm: 'Delete slide?', delete_all_confirm: 'Delete all slides in this project?',
-    reset_deck: 'Reset Deck', close_studio: 'Exit Studio', pdf_generated: 'PDF generated successfully!',
+    slide_deleted: 'Slide deleted.', reset_deck: 'Reset Deck', close_studio: 'Exit Studio', pdf_generated: 'PDF generated successfully!',
     error_pdf: 'Error generating PDF.', all_selected: 'Select All', new_vision: 'The Vision',
     new_topic: 'New Topic', total_budget: 'Total Project Budget', timeline: 'Timeline',
     deck_cleared: 'Deck cleared.', error_delete: 'Error deleting.', location: 'Location:',
@@ -105,7 +105,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     budget_imported: 'Budget importiert!', team_imported: 'Team importiert!', roadmap_imported: 'Terminplan importiert!',
     defects_imported: 'Mängel importiert!', error_load: 'Fehler beim Laden.', error_create: 'Fehler beim Erstellen.',
     delete_slide_confirm: 'Folie löschen?', delete_all_confirm: 'Alle Folien löschen?',
-    reset_deck: 'Deck leeren', close_studio: 'Studio verlassen', pdf_generated: 'PDF erfolgreich exportiert!',
+    slide_deleted: 'Folie gelöscht.', reset_deck: 'Deck leeren', close_studio: 'Studio verlassen', pdf_generated: 'PDF erfolgreich exportiert!',
     error_pdf: 'Fehler bei der PDF-Generierung.', all_selected: 'Alle anwählen', new_vision: 'Die Vision',
     new_topic: 'Neues Thema', total_budget: 'Gesamtbudget Projekt', timeline: 'Terminplan',
     deck_cleared: 'Deck wurde geleert.', error_delete: 'Fehler beim Löschen.', location: 'Ort:',
@@ -1514,6 +1514,7 @@ export default function PitchDeckStudio({
         if (activeSlideId === id) setActiveSlideId(remaining[0]?.id || null);
         return remaining;
       });
+      addToast(t('slide_deleted'), 'success');
     } catch (error) { addToast(globalT('error'), "error"); }
   };
 

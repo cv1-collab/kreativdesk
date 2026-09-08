@@ -37,6 +37,8 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     upload: 'Upload File',
     confirm_delete: 'Are you sure you want to delete this item?',
     upload_failed: 'Failed to upload document',
+    folder_create_failed: 'Failed to create folder',
+    delete_failed: 'Failed to delete item',
     no_files: 'No documents found in this folder.',
     root: 'Root',
     seed_demo_btn: 'Restore Demo Data',
@@ -94,6 +96,8 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     upload: 'Datei hochladen',
     confirm_delete: 'Möchtest du dieses Element wirklich löschen?',
     upload_failed: 'Fehler beim Hochladen',
+    folder_create_failed: 'Fehler beim Erstellen des Ordners',
+    delete_failed: 'Fehler beim Löschen',
     no_files: 'Keine Dokumente in diesem Ordner vorhanden.',
     root: 'Hauptverzeichnis',
     seed_demo_btn: 'Demo-Daten wiederherstellen',
@@ -151,6 +155,8 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     upload: 'Téléverser un fichier',
     confirm_delete: 'Voulez-vous vraiment supprimer cet élément ?',
     upload_failed: 'Échec du téléversement',
+    folder_create_failed: 'Erreur lors de la création du dossier',
+    delete_failed: 'Erreur lors de la suppression',
     no_files: 'Aucun document dans ce dossier.',
     root: 'Répertoire principal',
     seed_demo_btn: 'Restaurer les données démo',
@@ -524,7 +530,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       addToast('Ordner erstellt', 'success');
       fetchDocuments();
     } catch (err) {
-      addToast(t('upload_failed'), 'error');
+      addToast(t('folder_create_failed'), 'error');
     }
   };
 
@@ -672,7 +678,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       addToast("Gelöscht", "info");
       fetchDocuments();
     } catch (err) {
-      addToast(t('upload_failed'), "error");
+      addToast(t('delete_failed'), "error");
     }
   };
 

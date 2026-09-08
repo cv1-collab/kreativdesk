@@ -39,7 +39,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     quick_save_company: 'Quick Save (Company Documents)',
     quick_save_project: 'Quick Save (Project Folder)',
     copy: 'Copy',
-    copied: 'Copied'
+    copied: 'Copied',
+    ai_fallback_notice: 'AI offline – standard template loaded'
   },
   de: {
     templates_hub: 'Interaktive Vorlagen',
@@ -65,7 +66,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     quick_save_company: 'Schnell-Speichern (Firmen-Dokumente)',
     quick_save_project: 'Schnell-Speichern (Projekt-Bauakte)',
     copy: 'Kopieren',
-    copied: 'Kopiert'
+    copied: 'Kopiert',
+    ai_fallback_notice: 'KI nicht erreichbar – Standard-Vorlage geladen'
   }
 };
 
@@ -218,7 +220,7 @@ Muster AG
 [Unterschrift / Geschäftsleitung]`;
 
       setGeneratedTemplate(fallbackTemplate);
-      addToast('Vorlage erstellt!', 'success');
+      addToast(t('ai_fallback_notice'), 'info');
     } finally {
       setIsGeneratingAi(false);
     }

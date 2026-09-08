@@ -44,7 +44,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     street_number: 'Street & Number', zip_code: 'ZIP', city: 'City', website: 'Website', uid_number: 'UID Number',
     vat_number: 'VAT Number', cancel: 'Cancel', save_changes: 'Save Changes', save_contact: 'Save Contact',
     vcard_received: 'Business card data received from smartphone!', delete_user_confirm: 'Permanently delete this contact and free all assignments?',
-    completed: 'completed', upload_failed: 'Action failed.', save: 'Save', role: 'Role', name_or_company_required: 'Please provide a name or company.',
+    completed: 'completed', upload_failed: 'Action failed.', delete_failed: 'Failed to delete contact.', update_failed: 'Failed to update contact.', pdf_export_failed: 'Failed to export PDF.', save: 'Save', role: 'Role', name_or_company_required: 'Please provide a name or company.',
     unknown: 'Unknown', vcf_extracted: 'VCF data successfully extracted.', no_export_data: 'No data available to export.',
     select_external_to_delete: 'Please select external contacts to delete.', confirm_delete_multiple: 'contacts permanently?',
     contacts_deleted: 'contacts deleted.', contacts_updated: 'contacts updated.', no_company: 'No Company',
@@ -73,7 +73,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     street_number: 'Straße & Hausnummer', zip_code: 'PLZ', city: 'Ort', website: 'Webseite', uid_number: 'UID-Nummer',
     vat_number: 'MwSt.-Nummer', cancel: 'Abbrechen', save_changes: 'Änderungen speichern', save_contact: 'Kontakt speichern',
     vcard_received: 'Visitenkarten-Daten vom Smartphone empfangen!', delete_user_confirm: 'Diesen Kontakt wirklich unwiderruflich löschen und alle Verknüpfungen freigeben?',
-    completed: 'erfolgreich', upload_failed: 'Aktion fehlgeschlagen.', save: 'Speichern', role: 'Rolle', name_or_company_required: 'Bitte Name oder Firma angeben.',
+    completed: 'erfolgreich', upload_failed: 'Aktion fehlgeschlagen.', delete_failed: 'Fehler beim Löschen des Kontakts.', update_failed: 'Fehler beim Aktualisieren.', pdf_export_failed: 'Fehler beim Exportieren des PDFs.', save: 'Speichern', role: 'Rolle', name_or_company_required: 'Bitte Name oder Firma angeben.',
     unknown: 'Unbekannt', vcf_extracted: 'VCF Daten erfolgreich extrahiert.', no_export_data: 'Keine Daten zum Exportieren vorhanden.',
     select_external_to_delete: 'Bitte wähle externe Kontakte zum Löschen aus.', confirm_delete_multiple: 'Kontakte unwiderruflich löschen?',
     contacts_deleted: 'Kontakte gelöscht.', contacts_updated: 'Kontakte aktualisiert.', no_company: 'Keine Firma',
@@ -346,11 +346,23 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         setRealUsers((prev: any[]) => prev.filter(u => u.id !== contactId));
         if (selectedContact?.id === contactId) setSelectedContact(null);
 
+        // Clean up local cache
+        if (safeCompanyId) {
+          try {
+            const cacheKey = `crm_metadata_${safeCompanyId}`;
+            const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+            if (currentCache[contactId]) {
+              delete currentCache[contactId];
+              localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+            }
+          } catch (_) {}
+        }
+
         addToast(t('delete') + ' ' + t('completed'), 'success');
         fetchCompanyUsers?.();
         fetchAllContacts();
       } catch (error) { 
-        addToast(t('upload_failed'), 'error'); 
+        addToast(t('delete_failed'), 'error'); 
       }
     }
   };
@@ -390,7 +402,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         setSelectedContact((prev: any) => prev ? { ...prev, status: newStatus, isExternal: isExt, role: newRole } : null);
       }
       addToast(t('save') + ' ' + t('completed'), 'success');
-    } catch (error) { addToast(t('upload_failed'), 'error'); }
+    } catch (error) { addToast(t('update_failed'), 'error'); }
   };
 
   const handleToggleSelection = (id: string, e: React.MouseEvent) => {
@@ -417,11 +429,29 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         setIsSelectionMode(false);
         if (selectedContact && deletableIds.includes(selectedContact.id)) setSelectedContact(null);
 
+        // Clean up local cache
+        if (safeCompanyId) {
+          try {
+            const cacheKey = `crm_metadata_${safeCompanyId}`;
+            const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+            let modified = false;
+            deletableIds.forEach(id => {
+              if (currentCache[id]) {
+                delete currentCache[id];
+                modified = true;
+              }
+            });
+            if (modified) {
+              localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+            }
+          } catch (_) {}
+        }
+
         addToast(`${deletableIds.length} ${t('contacts_deleted')}`, 'success');
         fetchCompanyUsers?.();
         fetchAllContacts();
       } catch (e) { 
-        addToast(t('upload_failed'), 'error'); 
+        addToast(t('delete_failed'), 'error'); 
       }
     }
   };
@@ -433,7 +463,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       await Promise.all(updatableIds.map(id => supabase.from('company_users').update({ status: newStatus }).eq('id', id)));
       setSelectedIds([]); setIsSelectionMode(false);
       addToast(`${updatableIds.length} ${t('contacts_updated')}`, 'success');
-    } catch (e) { addToast(t('upload_failed'), 'error'); }
+    } catch (e) { addToast(t('update_failed'), 'error'); }
   };
 
   const formatRoleLabel = (role?: string) => {
@@ -926,7 +956,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const fileName = `CRM_Report_${Date.now()}.pdf`;
       pdf.save(fileName);
       addToast(t('pdf_exported'), "success"); setIsPrintModalOpen(false);
-    } catch (error: any) { addToast(t('upload_failed'), "error"); } finally { setIsGeneratingPdf(false); }
+    } catch (error: any) { addToast(t('pdf_export_failed'), "error"); } finally { setIsGeneratingPdf(false); }
   };
 
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);

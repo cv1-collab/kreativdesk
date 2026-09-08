@@ -911,16 +911,17 @@ export default function Calendar() {
     if (isDemoMode || isInitialLoad || !activeScheduleId || !currentUser?.companyId) return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
-    autoSaveTimeout.current = setTimeout(() => {
-      setSchedules(prevSchedules => {
-         const updated = prevSchedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
-         const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-         supabase.from('project_schedules').upsert({ id: scheduleDocId, schedules: updated, active_schedule_id: activeScheduleId, company_id: currentUser.companyId });
-         return updated;
-      });
+    autoSaveTimeout.current = setTimeout(async () => {
+      try {
+        const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
+        const updated = schedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
+        await supabase.from('project_schedules').upsert({ id: scheduleDocId, schedules: updated, active_schedule_id: activeScheduleId, company_id: currentUser.companyId });
+      } catch (err) {
+        console.warn("Auto-save schedule error:", err);
+      }
     }, 1000);
     return () => clearTimeout(autoSaveTimeout.current!);
-  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, isDemoMode]);
+  }, [ganttTasks, smartMarkers, shapes, targetYear, activeScheduleId, isInitialLoad, currentUser, currentProjectId, isDemoMode, schedules]);
 
   const setTargetYearHelper = (year: number) => {
     setTargetYear(year);
@@ -939,52 +940,66 @@ export default function Calendar() {
     }
   };
 
-  const handleCreateSchedule = () => {
+  const handleCreateSchedule = async () => {
     const name = window.prompt("Name des Zeitplans:", "Neuer Plan");
     if (!name || !currentUser?.companyId) return;
     const newSchedule: Schedule = { id: `s-${Date.now()}`, name, targetYear: new Date().getFullYear(), ganttTasks: [], smartMarkers: [], shapes: [] };
     const updatedSchedules = [...schedules, newSchedule];
     setSchedules(updatedSchedules);
     const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-    supabase.from('project_schedules').upsert({ 
-      id: scheduleDocId,
-      schedules: updatedSchedules, 
-      active_schedule_id: newSchedule.id,
-      company_id: currentUser.companyId
-    });
+    try {
+      await supabase.from('project_schedules').upsert({ 
+        id: scheduleDocId,
+        schedules: updatedSchedules, 
+        active_schedule_id: newSchedule.id,
+        company_id: currentUser.companyId
+      });
+    } catch (err) {
+      console.warn("Create schedule save warning:", err);
+    }
     handleSwitchSchedule(newSchedule.id, updatedSchedules);
     setIsLibraryOpen(false);
   };
 
-  const handleRenameSchedule = (id: string, currentName: string) => {
+  const handleRenameSchedule = async (id: string, currentName: string) => {
     const newName = window.prompt(t('rename'), currentName);
     if (newName && newName !== currentName && currentUser?.companyId) {
       const newSchedules = schedules.map(s => s.id === id ? { ...s, name: newName } : s);
       setSchedules(newSchedules);
       if (id === activeScheduleId) setDocHeader(prev => ({ ...prev, title: newName }));
       const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-      supabase.from('project_schedules').upsert({ 
-        id: scheduleDocId,
-        schedules: newSchedules, 
-        active_schedule_id: activeScheduleId,
-        company_id: currentUser.companyId
-      });
+      try {
+        await supabase.from('project_schedules').upsert({ 
+          id: scheduleDocId,
+          schedules: newSchedules, 
+          active_schedule_id: activeScheduleId,
+          company_id: currentUser.companyId
+        });
+      } catch (err) {
+        console.warn("Rename schedule save warning:", err);
+      }
     }
   };
 
-  const handleDeleteSchedule = (id: string) => {
+  const handleDeleteSchedule = async (id: string) => {
     if (schedules.length <= 1) return addToast("Mindestens ein Plan muss bestehen bleiben.", "error");
     if (window.confirm(t('confirm_delete')) && currentUser?.companyId) {
       const newSchedules = schedules.filter(s => s.id !== id);
       const newActive = activeScheduleId === id ? newSchedules[0].id : activeScheduleId;
       setSchedules(newSchedules);
       const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-      supabase.from('project_schedules').upsert({ 
-        id: scheduleDocId,
-        schedules: newSchedules, 
-        active_schedule_id: newActive,
-        company_id: currentUser.companyId
-      });
+      try {
+        await supabase.from('project_schedules').upsert({ 
+          id: scheduleDocId,
+          schedules: newSchedules, 
+          active_schedule_id: newActive,
+          company_id: currentUser.companyId
+        });
+        addToast("Terminplan gelöscht", "info");
+      } catch (err) {
+        console.error("Delete schedule error:", err);
+        addToast("Fehler beim Löschen des Terminplans", "error");
+      }
       if (activeScheduleId === id) handleSwitchSchedule(newActive!, newSchedules);
     }
   };

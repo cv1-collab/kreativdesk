@@ -1382,7 +1382,12 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation();
     if (window.confirm(t('confirm_delete_note'))) {
-      try { await supabase.from('audio_notes').delete().eq('id', noteId); if (activeNoteId === noteId) setActiveNoteId(null); addToast(t('note_deleted'), 'success'); } 
+      try { 
+        await supabase.from('audio_notes').delete().eq('id', noteId); 
+        setAudioNotes(prev => prev.filter(n => n.id !== noteId));
+        if (activeNoteId === noteId) setActiveNoteId(null); 
+        addToast(t('note_deleted'), 'success'); 
+      } 
       catch (err) { addToast(globalT('error'), 'error'); }
     }
   };
