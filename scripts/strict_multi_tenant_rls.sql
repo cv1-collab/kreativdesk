@@ -73,10 +73,22 @@ CREATE POLICY "Strict company isolation cad_plans" ON public.cad_plans
 ALTER TABLE IF EXISTS public.documents ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated users access documents" ON public.documents;
 DROP POLICY IF EXISTS "Strict company isolation documents" ON public.documents;
+DROP POLICY IF EXISTS "Allow anon insert temp_receipt documents" ON public.documents;
+DROP POLICY IF EXISTS "Allow anon select temp_receipt documents" ON public.documents;
+
 CREATE POLICY "Strict company isolation documents" ON public.documents
   FOR ALL TO authenticated
   USING (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text);
+
+-- Erlaubt Smartphone-Scans (QR-Code Live-Upload) temporäre Belege abzulegen
+CREATE POLICY "Allow anon insert temp_receipt documents" ON public.documents
+  FOR INSERT TO anon
+  WITH CHECK (category = 'temp_receipt' AND company_id IS NOT NULL);
+
+CREATE POLICY "Allow anon select temp_receipt documents" ON public.documents
+  FOR SELECT TO anon
+  USING (category = 'temp_receipt');
 
 -- D) DEFECTS & TICKETS
 ALTER TABLE IF EXISTS public.defects ENABLE ROW LEVEL SECURITY;
@@ -91,10 +103,17 @@ CREATE POLICY "Strict company isolation defects" ON public.defects
 ALTER TABLE IF EXISTS public.leads ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated users access leads" ON public.leads;
 DROP POLICY IF EXISTS "Strict company isolation leads" ON public.leads;
+DROP POLICY IF EXISTS "Allow anon insert leads" ON public.leads;
+
 CREATE POLICY "Strict company isolation leads" ON public.leads
   FOR ALL TO authenticated
   USING (is_super_admin() OR company_id::text = get_my_company_id())
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- Erlaubt anonyme Einreichungen über das öffentliche Lead-Formular (/lead-form/:companyId) und Video-Gäste
+CREATE POLICY "Allow anon insert leads" ON public.leads
+  FOR INSERT TO anon
+  WITH CHECK (company_id IS NOT NULL);
 
 -- F) TIME ENTRIES
 ALTER TABLE IF EXISTS public.time_entries ENABLE ROW LEVEL SECURITY;
@@ -174,10 +193,23 @@ CREATE POLICY "Strict company isolation tasks" ON public.tasks
 ALTER TABLE IF EXISTS public.smart_proposals ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Authenticated users access smart_proposals" ON public.smart_proposals;
 DROP POLICY IF EXISTS "Strict company isolation smart_proposals" ON public.smart_proposals;
+DROP POLICY IF EXISTS "Allow anon view smart_proposals by token" ON public.smart_proposals;
+DROP POLICY IF EXISTS "Allow anon accept smart_proposals" ON public.smart_proposals;
+
 CREATE POLICY "Strict company isolation smart_proposals" ON public.smart_proposals
   FOR ALL TO authenticated
   USING (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text);
+
+-- Erlaubt Kunden ohne Login, geteilte Offerten anhand des Share-Tokens aufzurufen & digital zu signieren
+CREATE POLICY "Allow anon view smart_proposals by token" ON public.smart_proposals
+  FOR SELECT TO anon
+  USING (share_token IS NOT NULL);
+
+CREATE POLICY "Allow anon accept smart_proposals" ON public.smart_proposals
+  FOR UPDATE TO anon
+  USING (share_token IS NOT NULL)
+  WITH CHECK (share_token IS NOT NULL);
 
 -- L) CHAT MESSAGES
 ALTER TABLE IF EXISTS public.chat_messages ENABLE ROW LEVEL SECURITY;
@@ -210,7 +242,15 @@ CREATE POLICY "Strict company isolation company_settings" ON public.company_sett
   USING (is_super_admin() OR company_id::text = get_my_company_id())
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
 
--- N) STORAGE CLEANUP
+-- N) COMPANY USERS (Team & CRM Kontakte)
+ALTER TABLE IF EXISTS public.company_users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Strict company isolation company_users" ON public.company_users;
+CREATE POLICY "Strict company isolation company_users" ON public.company_users
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- O) STORAGE CLEANUP
 DROP POLICY IF EXISTS "Authenticated Upload Avatars" ON storage.objects;
 
 -- ============================================================================

@@ -186,7 +186,8 @@ export default function HelpCenter() {
                       try {
                         const prompt = `Du bist der Kundensupport-Assistent für Kreativ-Desk OS (Schweizer Projekt- und Bausoftware). Beantworte präzise auf Deutsch: "${searchQuery}"`;
                         const res = await callGeminiAPI('gemini-2.5-flash', [{ text: prompt }]);
-                        setAiAnswer(typeof res === 'string' ? res : JSON.stringify(res));
+                        const text = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+                        setAiAnswer(text || "Entschuldigung, keine Antwort generiert.");
                       } catch (err) {
                         setAiAnswer("Entschuldigung, die KI-Antwort konnte nicht generiert werden.");
                       } finally {

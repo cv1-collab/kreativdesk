@@ -505,7 +505,9 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
         { text: prompt }
       ]);
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const aiData = JSON.parse(jsonMatch[0]);
         setCurrentDefect(prev => ({

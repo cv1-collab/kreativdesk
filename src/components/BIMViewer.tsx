@@ -688,7 +688,8 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       if (!base64Data) throw new Error("No image data");
       const prompt = language === 'de' ? `Du bist ein erfahrener BIM-Auditor. Analysiere diesen Screenshot. Erstelle einen Prüfbericht in 3 Stichpunkten auf Deutsch.` : `You are an expert BIM auditor. Analyze this screenshot. Provide a report in 3 bullet points in English.`;
       const response = await callGeminiAPI('gemini-2.5-flash', [ { inlineData: { data: base64Data, mimeType: 'image/png' } }, { text: prompt } ]);
-      setAuditReport(response.text || 'Audit completed with no findings.');
+      const text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '');
+      setAuditReport(text || 'Audit completed with no findings.');
       addToast(t('ai_audit_complete'), "success");
     } catch (error: any) { setAuditReport("Fehler beim Audit."); } finally { setIsAuditing(false); }
   };
