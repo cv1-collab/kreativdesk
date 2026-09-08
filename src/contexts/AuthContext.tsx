@@ -176,15 +176,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 used_at: new Date().toISOString()
               })
               .eq('id', invite.id);
-          } else if (companyIdParam) {
-            targetCompanyId = companyIdParam;
-            targetRole = 'employee';
-            isInvitedUser = true;
+          } else {
+            console.warn("Invalid or already used invite token:", inviteToken);
           }
-        } else if (companyIdParam) {
-          targetCompanyId = companyIdParam;
-          targetRole = 'employee';
-          isInvitedUser = true;
         }
 
         const trialEndDate = new Date();
