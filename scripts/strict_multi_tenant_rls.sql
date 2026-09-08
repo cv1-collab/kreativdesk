@@ -493,13 +493,22 @@ DROP POLICY IF EXISTS "Allow anon insert video_calls" ON public.video_calls;
 DROP POLICY IF EXISTS "Allow anon update video_calls" ON public.video_calls;
 
 CREATE POLICY "Allow authenticated full access video_calls" ON public.video_calls
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated 
+  USING (auth.uid() IS NOT NULL) 
+  WITH CHECK (auth.uid() IS NOT NULL);
+
 CREATE POLICY "Allow anon select video_calls" ON public.video_calls
-  FOR SELECT TO anon USING (true);
+  FOR SELECT TO anon 
+  USING (room_name IS NOT NULL);
+
 CREATE POLICY "Allow anon insert video_calls" ON public.video_calls
-  FOR INSERT TO anon WITH CHECK (true);
+  FOR INSERT TO anon 
+  WITH CHECK (room_name IS NOT NULL);
+
 CREATE POLICY "Allow anon update video_calls" ON public.video_calls
-  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+  FOR UPDATE TO anon 
+  USING (room_name IS NOT NULL) 
+  WITH CHECK (room_name IS NOT NULL);
 
 -- AD) SYSTEM CONFIG (Globale System- & Mandanten-Einstellungen)
 ALTER TABLE IF EXISTS public.system_config ENABLE ROW LEVEL SECURITY;
@@ -509,7 +518,9 @@ DROP POLICY IF EXISTS "Allow public read system_config" ON public.system_config;
 DROP POLICY IF EXISTS "Strict super_admin write system_config" ON public.system_config;
 
 CREATE POLICY "Allow public read system_config" ON public.system_config
-  FOR SELECT TO PUBLIC USING (true);
+  FOR SELECT TO PUBLIC 
+  USING (id IS NOT NULL);
+
 CREATE POLICY "Strict super_admin write system_config" ON public.system_config
   FOR ALL TO authenticated
   USING (is_super_admin())
