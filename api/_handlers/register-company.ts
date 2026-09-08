@@ -49,7 +49,8 @@ export default async function handler(req: any, res: any) {
         inviteData = byId;
       }
 
-      if (inviteData && inviteData.status === 'pending' && inviteData.email.toLowerCase() === email.toLowerCase()) {
+      const isPlaceholder = inviteData?.email?.startsWith('invite_') || inviteData?.email?.endsWith('@workspace.local');
+      if (inviteData && inviteData.status === 'pending' && (isPlaceholder || inviteData.email.toLowerCase() === email.toLowerCase())) {
         assignedCompanyId = inviteData.company_id || inviteData.companyId;
         assignedRole = inviteData.role || 'employee';
         isInvite = true;
@@ -57,6 +58,7 @@ export default async function handler(req: any, res: any) {
         await supabaseAdmin.from('invites').update({
           status: 'used',
           used_by: uid,
+          email: email.toLowerCase(),
           used_at: now
         }).eq('id', inviteData.id);
 

@@ -14,6 +14,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
+import { safeStorage } from '../utils/safeStorage';
 
 // === PROVIDER PRESETS FÜR SCHNELLE EINBINDUNG ===
 interface ProviderPreset {
@@ -198,18 +199,14 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
   const { isDemoMode } = projectCtx; // WICHTIG: Auslesen des Demo-Status
 
   const [activeTab, setActiveTabRaw] = useState<'overview' | 'safety' | 'logistics' | 'drones' | 'access'>(() => {
-    try {
-      const saved = localStorage.getItem(`camera_activeTab_${currentProjectId}`);
-      if (saved && ['overview', 'safety', 'logistics', 'drones', 'access'].includes(saved)) return saved as any;
-    } catch (e) {}
+    const saved = safeStorage.getString(`camera_activeTab_${currentProjectId}`);
+    if (saved && ['overview', 'safety', 'logistics', 'drones', 'access'].includes(saved)) return saved as any;
     return 'overview';
   });
 
   const setActiveTab = (tab: 'overview' | 'safety' | 'logistics' | 'drones' | 'access') => {
     setActiveTabRaw(tab);
-    try {
-      localStorage.setItem(`camera_activeTab_${currentProjectId}`, tab);
-    } catch (e) {}
+    safeStorage.setItem(`camera_activeTab_${currentProjectId}`, tab);
   };
   const { addToast } = useToast();
   
@@ -356,7 +353,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
     setIsSavingLink(true);
     try {
       setCustomLocation(trimmedLoc);
-      localStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
+      safeStorage.setItem(`project_location_${activeProject.id}`, trimmedLoc);
 
       const { error } = await supabase.from('projects').update({
         description: activeProject.description ? activeProject.description : trimmedLoc

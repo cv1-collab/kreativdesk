@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import PitchDeckStudio, { deserializeSlideFromDb } from './PitchDeckStudio';
 import { demoTemplates } from '../utils/demoTemplates';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 interface Slide { 
   id: string; 
@@ -196,16 +197,11 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
     const fetchSlides = async () => {
       // 0ms Cache Fallback from Studio Persistence
-      try {
-        const cached = localStorage.getItem(`pitch_deck_slides_${currentProjectId}`) || localStorage.getItem(`pitch_deck_slides_global`);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setSlides(parsed);
-            setActiveSlideId(parsed[0].id);
-          }
-        }
-      } catch(e) {}
+      const cached = safeStorage.getItem<any[] | null>(`pitch_deck_slides_${currentProjectId}`, null) || safeStorage.getItem<any[] | null>(`pitch_deck_slides_global`, null);
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        setSlides(cached);
+        setActiveSlideId(cached[0].id);
+      }
 
       try {
         const { data } = await supabase
@@ -266,8 +262,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   }, [activeSlideId, slides, isFullscreen, goNextSlide, goPrevSlide]);
 
   const activeProject = projects.find((p: any) => p.id === currentProjectId);
-  const cachedSettingsStr = typeof window !== 'undefined' ? (localStorage.getItem(`pitch_deckSettings_${currentProjectId || 'global'}`) || localStorage.getItem('pitch_deckSettings_global')) : null;
-  const cachedSettings = cachedSettingsStr ? (() => { try { return JSON.parse(cachedSettingsStr); } catch (e) { return null; } })() : null;
+  const cachedSettings = safeStorage.getItem<any>(`pitch_deckSettings_${currentProjectId || 'global'}`, null) || safeStorage.getItem<any>('pitch_deckSettings_global', null);
   const deckSettings = {
     logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', transitionEffect: 'slide',
     ...(activeProject?.deckSettings || {}),

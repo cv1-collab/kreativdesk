@@ -25,6 +25,7 @@ import { sendAcceptanceConfirmationEmail, EmailDispatchResult } from '../service
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { MesseOffertePDFDocument } from './interactv/pdf/MesseOffertePDFDocument';
 import { sendNotification } from '../lib/notifications';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   de: {
@@ -755,7 +756,7 @@ export default function SmartProposalLandingPage() {
       if (urlParam === 'light' || urlParam === 'dark') {
         return urlParam;
       }
-      const saved = localStorage.getItem('kd_proposal_theme');
+      const saved = safeStorage.getItem('kd_proposal_theme');
       if (saved === 'light' || saved === 'dark') {
         return saved;
       }
@@ -769,7 +770,7 @@ export default function SmartProposalLandingPage() {
   useEffect(() => {
     if (proposal && typeof window !== 'undefined') {
       const urlParam = new URLSearchParams(window.location.search).get('theme') || new URLSearchParams(window.location.search).get('mode');
-      const saved = localStorage.getItem('kd_proposal_theme');
+      const saved = safeStorage.getItem('kd_proposal_theme');
       if (!urlParam && !saved && proposal.colorMode && (proposal.colorMode === 'light' || proposal.colorMode === 'dark')) {
         setThemeMode(proposal.colorMode);
         setShareTheme(proposal.colorMode);
@@ -797,7 +798,7 @@ export default function SmartProposalLandingPage() {
     setThemeMode(newMode);
     setShareTheme(newMode);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('kd_proposal_theme', newMode);
+      safeStorage.setItem('kd_proposal_theme', newMode);
       try {
         const url = new URL(window.location.href);
         url.searchParams.set('theme', newMode);

@@ -348,25 +348,13 @@ export default function Finance() {
 
   const finStorageKey = `fin_state_${currentProjectId || 'global'}`;
   const [activeTab, setActiveTabRaw] = useState<'overview' | 'budget' | 'control' | 'cashflow'>(() => {
-    try {
-      const saved = localStorage.getItem(finStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.activeTab) return parsed.activeTab;
-      }
-    } catch (e) {}
-    return 'overview';
+    const saved = safeStorage.getItem<{ activeTab?: any } | null>(finStorageKey, null);
+    return saved?.activeTab || 'overview';
   });
 
   const [timeFilter, setTimeFilterRaw] = useState<'all' | 'year' | 'month' | 'today'>(() => {
-    try {
-      const saved = localStorage.getItem(finStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.timeFilter) return parsed.timeFilter;
-      }
-    } catch (e) {}
-    return 'all';
+    const saved = safeStorage.getItem<{ timeFilter?: any } | null>(finStorageKey, null);
+    return saved?.timeFilter || 'all';
   });
 
   const setActiveTab = (tab: 'overview' | 'budget' | 'control' | 'cashflow') => {
@@ -596,13 +584,9 @@ export default function Finance() {
         setTransactions([]);
       }
 
-      // LocalStorage Cache Key
+      // SafeStorage Cache Key
       const localCacheKey = `finance_cache_${currentProjectId}`;
-      const cachedStr = typeof localStorage !== 'undefined' ? localStorage.getItem(localCacheKey) : null;
-      let cachedData: any = null;
-      if (cachedStr) {
-        try { cachedData = JSON.parse(cachedStr); } catch (e) {}
-      }
+      const cachedData = safeStorage.getItem<any>(localCacheKey, null);
 
       // FETCH BUDGET VERSIONS FROM SYSTEM_CONFIG (silently handle missing column/table error)
       let finConfig: any = null;
@@ -644,9 +628,7 @@ export default function Finance() {
         setVersions([initVersion]);
         setActiveVersionId(initVersion.id);
         setProjectHeader(initialFinanceData.projectHeader);
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(localCacheKey, JSON.stringify(initialFinanceData));
-        }
+        safeStorage.setItem(localCacheKey, initialFinanceData);
 
         try {
           await saveSystemConfigJSON(`finance_${currentProjectId}`, {
@@ -688,9 +670,7 @@ export default function Finance() {
       companyId: safeCompanyId,
       projectId: currentProjectId
     };
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(localCacheKey, JSON.stringify(saveData));
-    }
+    safeStorage.setItem(localCacheKey, saveData);
 
     const timeout = setTimeout(async () => {
       try {
@@ -755,13 +735,7 @@ export default function Finance() {
     const fetchTimes = async () => {
       try {
         const localCacheKey = `time_entries_cache_${safeCompanyId}`;
-        const localCached = localStorage.getItem(localCacheKey);
-        let localTimes: any[] = [];
-        try {
-          localTimes = localCached ? JSON.parse(localCached) : [];
-        } catch (e) {
-          localTimes = [];
-        }
+        const localTimes: any[] = safeStorage.getItem<any[]>(localCacheKey, []);
 
         const { data: times } = await supabase.from('time_entries').select('*').eq('company_id', safeCompanyId);
         const configTime = await fetchSystemConfigJSON<{ entries?: any[] }>(`time_entries_${safeCompanyId}`, safeCompanyId);
@@ -1214,12 +1188,12 @@ export default function Finance() {
       .eq('company_id', currentUser.companyId)
       .eq('name', folderName)
       .eq('project_id', currentProjectId)
-      .single();
+      .maybeSingle();
     if (existing) return existing.id;
 
     const { data: newF } = await supabase.from('documents').insert({
       name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString()
-    }).select().single();
+    }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 

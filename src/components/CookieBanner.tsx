@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 import { initGoogleAnalytics } from '../utils/analytics';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -30,7 +31,7 @@ export default function CookieBanner() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   useEffect(() => {
-    const consent = localStorage.getItem('kreativ_cookie_consent');
+    const consent = safeStorage.getString('kreativ_cookie_consent');
     if (consent === 'all') {
       initGoogleAnalytics();
     } else if (!consent) {
@@ -39,7 +40,7 @@ export default function CookieBanner() {
   }, []);
 
   const handleCookieConsent = (type: 'all' | 'essential') => {
-    localStorage.setItem('kreativ_cookie_consent', type);
+    safeStorage.setItem('kreativ_cookie_consent', type);
     setShowCookieBanner(false);
     
     if (type === 'all') {

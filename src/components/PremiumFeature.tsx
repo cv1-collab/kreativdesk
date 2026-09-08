@@ -59,7 +59,7 @@ export default function PremiumFeature({ children, title, description }: Premium
           .from('profiles')
           .select('has_active_subscription, trial_ends_at')
           .eq('id', currentUser.uid)
-          .single();
+          .maybeSingle();
 
         if (data && isMounted) {
           const hasSub = data.has_active_subscription === true;

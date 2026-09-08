@@ -15,6 +15,7 @@ import { checkStorageLimit, incrementStorage, STORAGE_LIMITS } from '../utils/st
 import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/stripeClient';
 import { hasFeature } from '../utils/planFeatures';
 import { webhookNotifier } from '../utils/webhookNotifier';
+import { safeStorage } from '../utils/safeStorage';
 import API from './API';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -213,13 +214,13 @@ export default function SettingsTab() {
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [is2FAEnabled, setIs2FAEnabled] = useState(false);
   const [show2FASetup, setShow2FASetup] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>(() => (localStorage.getItem('settings_active_subtab') as any) || 'general');
+  const [activeSubTab, setActiveSubTab] = useState<'general' | 'api'>(() => (safeStorage.getString('settings_active_subtab') as any) || 'general');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubTabChangeState = (subTab: 'general' | 'api') => {
     setActiveSubTab(subTab);
-    localStorage.setItem('settings_active_subtab', subTab);
+    safeStorage.setItem('settings_active_subtab', subTab);
   };
 
   useEffect(() => {
@@ -278,10 +279,7 @@ export default function SettingsTab() {
       // Fallback cache key
       const cacheKey = `company_profile_${compId}`;
       if (!loadedConfig) {
-        const localCached = localStorage.getItem(cacheKey);
-        if (localCached) {
-          try { loadedConfig = JSON.parse(localCached); } catch (e) {}
-        }
+        loadedConfig = safeStorage.getItem<any>(cacheKey, null);
       }
 
       if (loadedConfig) {
@@ -339,7 +337,7 @@ export default function SettingsTab() {
     const updatedConfig = { ...currentConfig, ...updates, updatedAt: new Date().toISOString() };
     const payloadStr = JSON.stringify(updatedConfig);
 
-    localStorage.setItem(`company_profile_${compId}`, payloadStr);
+    safeStorage.setItem(`company_profile_${compId}`, payloadStr);
 
     if (existingDoc?.id) {
       await supabase.from('documents').update({
@@ -1149,7 +1147,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
         screensaver_timeout: Number(timeout),
         screensaver_image: image
       });
-      localStorage.setItem('ws_screensaver_bg', image);
+      safeStorage.setItem('ws_screensaver_bg', image);
       window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
       addToast(currentLang === 'de' ? 'Screensaver-Einstellungen gespeichert!' : 'Screensaver settings saved!', 'success');
     } catch (err) { addToast('Save failed', 'error'); } 
@@ -1166,7 +1164,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const url = pubData.publicUrl;
       setImage(url);
-      localStorage.setItem('ws_screensaver_bg', url);
+      safeStorage.setItem('ws_screensaver_bg', url);
       window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
       await supabase.from('company_settings').upsert({ company_id: currentUser.companyId, screensaver_image: url });
       addToast(currentLang === 'de' ? 'Hintergrundbild erfolgreich hochgeladen!' : 'Background image uploaded!', 'success');
@@ -1220,7 +1218,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
                 key={preset.url}
                 onClick={() => {
                   setImage(preset.url);
-                  localStorage.setItem('ws_screensaver_bg', preset.url);
+                  safeStorage.setItem('ws_screensaver_bg', preset.url);
                   window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
                 }}
                 className={cn(
@@ -1248,7 +1246,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
           type="button" 
           onClick={() => {
             if (image) {
-              localStorage.setItem('ws_screensaver_bg', image);
+              safeStorage.setItem('ws_screensaver_bg', image);
               window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
             }
             window.dispatchEvent(new Event('triggerScreensaver'));
@@ -1284,11 +1282,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
         const { data: cuMembers } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
         const { data: profMembers } = await supabase.from('profiles').select('*').eq('company_id', safeCompanyId);
         
-        let localCrmCache: Record<string, any> = {};
-        try {
-          const cached = localStorage.getItem(`crm_metadata_${safeCompanyId}`);
-          if (cached) localCrmCache = JSON.parse(cached);
-        } catch (_) {}
+        const localCrmCache: Record<string, any> = safeStorage.getItem<Record<string, any>>(`crm_metadata_${safeCompanyId}`, {});
 
         const map = new Map();
         (profMembers || []).forEach((p: any) => {
@@ -1393,10 +1387,10 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
       if (safeCompanyId) {
         try {
           const cacheKey = `crm_metadata_${safeCompanyId}`;
-          const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+          const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
           if (currentCache[userId]) currentCache[userId][field] = newValue;
           if (member?.email && currentCache[member.email]) currentCache[member.email][field] = newValue;
-          localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+          safeStorage.setItem(cacheKey, currentCache);
         } catch (_) {}
       }
 
@@ -1414,7 +1408,18 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     try {
       if (safeCompanyId) {
-        await supabase.from('invites').insert({
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('used_seats, max_seats')
+          .eq('id', safeCompanyId)
+          .maybeSingle();
+
+        if (comp && comp.max_seats && (comp.used_seats || 1) >= comp.max_seats) {
+          addToast('Lizenzlimit erreicht. Bitte erweitere deine Plätze in den Firmen-Einstellungen.', 'error');
+          return;
+        }
+
+        const { error: insertErr } = await supabase.from('invites').insert({
           token,
           company_id: safeCompanyId,
           email: member.email,
@@ -1422,14 +1427,17 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
           status: 'pending',
           created_at: new Date().toISOString()
         });
+
+        if (insertErr) {
+          console.error("Invite insert error:", insertErr);
+          throw insertErr;
+        }
       }
       const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
       await navigator.clipboard.writeText(inviteUrl);
       addToast(`Einladungslink für ${member.name || member.email} kopiert!`, 'success');
     } catch (_) {
-      const fallbackUrl = `${window.location.origin}/signup?companyId=${safeCompanyId}`;
-      await navigator.clipboard.writeText(fallbackUrl);
-      addToast('Direktlink kopiert!', 'success');
+      addToast('Fehler beim Erstellen des Einladungslinks.', 'error');
     }
   };
 

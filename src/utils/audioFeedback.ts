@@ -4,34 +4,24 @@
  * Unterstützt stufenlose Lautstärkeregelung und Akustik-Profile (Messehalle vs. Lounge).
  */
 
+import { safeStorage } from './safeStorage';
+
 export type AudioProfile = 'fair' | 'lounge';
 
 class AudioFeedbackService {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = (() => {
-    try {
-      return localStorage.getItem('interactv_audio_muted') === 'true';
-    } catch {
-      return false;
-    }
+    return safeStorage.getItem('interactv_audio_muted') === 'true';
   })();
 
   private volume: number = (() => {
-    try {
-      const saved = localStorage.getItem('interactv_audio_volume');
-      return saved !== null ? Math.max(0, Math.min(1, parseFloat(saved))) : 0.75;
-    } catch {
-      return 0.75;
-    }
+    const saved = safeStorage.getItem('interactv_audio_volume');
+    return saved !== null ? Math.max(0, Math.min(1, parseFloat(saved))) : 0.75;
   })();
 
   private profile: AudioProfile = (() => {
-    try {
-      const saved = localStorage.getItem('interactv_audio_profile') as AudioProfile;
-      return saved === 'lounge' ? 'lounge' : 'fair';
-    } catch {
-      return 'fair';
-    }
+    const saved = safeStorage.getItem('interactv_audio_profile') as AudioProfile;
+    return saved === 'lounge' ? 'lounge' : 'fair';
   })();
 
   private getContext(): AudioContext | null {
@@ -52,9 +42,7 @@ class AudioFeedbackService {
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
-    try {
-      localStorage.setItem('interactv_audio_muted', String(muted));
-    } catch {}
+    safeStorage.setItem('interactv_audio_muted', String(muted));
   }
 
   public getMuted(): boolean {
@@ -63,9 +51,7 @@ class AudioFeedbackService {
 
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
-    try {
-      localStorage.setItem('interactv_audio_volume', String(this.volume));
-    } catch {}
+    safeStorage.setItem('interactv_audio_volume', String(this.volume));
   }
 
   public getVolume(): number {
@@ -74,9 +60,7 @@ class AudioFeedbackService {
 
   public setProfile(prof: AudioProfile) {
     this.profile = prof;
-    try {
-      localStorage.setItem('interactv_audio_profile', prof);
-    } catch {}
+    safeStorage.setItem('interactv_audio_profile', prof);
   }
 
   public getProfile(): AudioProfile {

@@ -1,4 +1,5 @@
 export type WebhookEventType = 'defect.created' | 'invoice.created' | 'lead.created' | 'document.uploaded';
+import { safeStorage } from './safeStorage';
 
 export interface WebhookEndpoint {
   id: string;
@@ -38,16 +39,15 @@ export const webhookNotifier = {
   getWebhooks(companyId?: string): WebhookEndpoint[] {
     try {
       const key = this.getStorageKey(companyId);
-      const data = localStorage.getItem(key);
-      if (data) {
-        return JSON.parse(data);
+      const data = safeStorage.getItem<WebhookEndpoint[] | null>(key, null);
+      if (data && Array.isArray(data)) {
+        return data;
       }
 
       // Legacy fallback
-      const oldData = localStorage.getItem('kreativdesk_webhook_urls');
-      if (oldData) {
-        const urls: string[] = JSON.parse(oldData);
-        return urls.map((url, i) => ({
+      const oldData = safeStorage.getItem<string[] | null>('kreativdesk_webhook_urls', null);
+      if (oldData && Array.isArray(oldData)) {
+        return oldData.map((url, i) => ({
           id: `wh_${Date.now()}_${i}`,
           name: url.includes('slack.com') ? 'Slack Channel' : `Webhook ${i + 1}`,
           url,
@@ -64,19 +64,19 @@ export const webhookNotifier = {
 
   saveWebhooks(webhooks: WebhookEndpoint[], companyId?: string): void {
     const key = this.getStorageKey(companyId);
-    localStorage.setItem(key, JSON.stringify(webhooks));
+    safeStorage.setItem(key, webhooks);
     
     // Maintain legacy compatibility
     const urls = webhooks.filter(w => w.active).map(w => w.url);
-    localStorage.setItem('kreativdesk_webhook_urls', JSON.stringify(urls));
+    safeStorage.setItem('kreativdesk_webhook_urls', urls);
   },
 
   getSecretKey(companyId?: string): string {
     const key = this.getSecretKeyStorageKey(companyId);
-    let secret = localStorage.getItem(key);
+    let secret = safeStorage.getString(key);
     if (!secret) {
       secret = `whsec_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-      localStorage.setItem(key, secret);
+      safeStorage.setItem(key, secret);
     }
     return secret;
   },
@@ -84,7 +84,7 @@ export const webhookNotifier = {
   regenerateSecretKey(companyId?: string): string {
     const secret = `whsec_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
     const key = this.getSecretKeyStorageKey(companyId);
-    localStorage.setItem(key, secret);
+    safeStorage.setItem(key, secret);
     return secret;
   },
 

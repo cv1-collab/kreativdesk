@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
 import { useTour } from '../contexts/TourContext';
 import { useAuth } from '../contexts/AuthContext';
+import { safeStorage } from '../utils/safeStorage';
 
 export default function WelcomeOnboarding({ currentUser, onComplete }: { currentUser: any, onComplete: () => void }) {
   const { stopTour } = useTour();
@@ -67,7 +68,7 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
           })
           .eq('id', userId);
         updateCurrentUser({ name, photoURL, hasCompletedOnboarding: true });
-        localStorage.setItem(`onboarding_completed_${userId}`, 'true');
+        safeStorage.setItem(`onboarding_completed_${userId}`, 'true');
       }
 
       setStep(3);

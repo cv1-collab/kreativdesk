@@ -1,4 +1,5 @@
 import { sendNotification } from '../lib/notifications';
+import { safeStorage } from './safeStorage';
 
 /**
  * Triggers an app notification and sets the red badge on the Documents menu
@@ -30,9 +31,9 @@ export const notifyNewDocument = async (
     console.warn("Error sending document notification:", err);
   }
 
-  // 2. Set red badge in localStorage and dispatch CustomEvent for real-time sidebar badge
+  // 2. Set red badge in storage and dispatch CustomEvent for real-time sidebar badge
   try {
-    localStorage.setItem('has_new_document', 'true');
+    safeStorage.setItem('has_new_document', 'true');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('doc_created', { detail: { docName, category, companyId } }));
     }

@@ -18,6 +18,7 @@ import API from './API';
 import NotificationCenter from './NotificationCenter';
 
 import { useAuth } from '../contexts/AuthContext';
+import { safeStorage } from '../utils/safeStorage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { supabase } from '../lib/supabase';
@@ -50,16 +51,12 @@ export default function AdminDashboard() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [activeTab, setActiveTabRaw] = useState(() => {
-    try {
-      const saved = localStorage.getItem('admin_activeTab');
-      if (saved) return saved;
-    } catch (e) {}
-    return 'overview';
+    return safeStorage.getString('admin_activeTab') || 'overview';
   });
 
   const setActiveTab = (tab: string) => {
     setActiveTabRaw(tab);
-    try { localStorage.setItem('admin_activeTab', tab); } catch (e) {}
+    safeStorage.setItem('admin_activeTab', tab);
   };
 
   const [showNotifications, setShowNotifications] = useState(false);

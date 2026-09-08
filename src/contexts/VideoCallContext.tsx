@@ -4,6 +4,7 @@ import { useAuth } from './AuthContext';
 import { useProject } from './ProjectContext';
 import { useToast } from './ToastContext';
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 const servers: RTCConfiguration = {
   iceServers: [
@@ -108,7 +109,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return (
       currentUser?.displayName ||
       currentUser?.email?.split('@')[0] ||
-      localStorage.getItem('kreativdesk_guest_name') ||
+      safeStorage.getItem('kreativdesk_guest_name') ||
       'Teilnehmer'
     );
   };

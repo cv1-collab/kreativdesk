@@ -47,12 +47,14 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   vatRate: 8.1
 };
 
+import { safeStorage } from '../utils/safeStorage';
+
 export function getCompanySettings(): CompanySettings {
   if (typeof window === 'undefined') return DEFAULT_COMPANY_SETTINGS;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = safeStorage.getItem<CompanySettings | null>(STORAGE_KEY, null);
     if (saved) {
-      return { ...DEFAULT_COMPANY_SETTINGS, ...JSON.parse(saved) };
+      return { ...DEFAULT_COMPANY_SETTINGS, ...saved };
     }
   } catch (e) {
     console.error('Error loading company settings', e);
@@ -64,7 +66,7 @@ export function saveCompanySettings(settings: Partial<CompanySettings>): Company
   const current = getCompanySettings();
   const updated = { ...current, ...settings };
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    safeStorage.setItem(STORAGE_KEY, updated);
   }
   return updated;
 }

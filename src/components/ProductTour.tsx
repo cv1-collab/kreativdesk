@@ -7,6 +7,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { cn } from '../utils';
+import { safeStorage } from '../utils/safeStorage';
 import { 
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
@@ -303,8 +304,8 @@ export default function ProductTour() {
       setSteps([]);
       
       if (currentUser?.uid) {
-        localStorage.setItem(`tour_${currentUser.uid}`, 'true');
-        localStorage.setItem(`tour_completed_${currentUser.uid}`, 'true');
+        safeStorage.setItem(`tour_${currentUser.uid}`, 'true');
+        safeStorage.setItem(`tour_completed_${currentUser.uid}`, 'true');
         try {
           await supabase.from('profiles').update({ has_seen_tour: true }).eq('id', currentUser.uid);
         } catch (e) {

@@ -6,6 +6,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { Layers, ArrowLeft, Sun, Moon } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -43,7 +44,10 @@ export default function Signup() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
   const [searchParams] = useSearchParams();
-  const inviteToken = searchParams.get('invite');
+  const rawInviteToken = searchParams.get('invite');
+  const [inviteToken, setInviteToken] = useState<string | null>(() => {
+    return rawInviteToken || safeStorage.getString('pending_invite_token') || null;
+  });
   const initialEmail = searchParams.get('email') || '';
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
@@ -51,9 +55,46 @@ export default function Signup() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [inviteInfo, setInviteInfo] = useState<{ companyName?: string; role?: string; email?: string } | null>(null);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
+
+  React.useEffect(() => {
+    const token = rawInviteToken || safeStorage.getString('pending_invite_token');
+    if (!token) return;
+    setInviteToken(token);
+    safeStorage.setItem('pending_invite_token', token);
+
+    const checkInvite = async () => {
+      try {
+        const { data: inv } = await supabase
+          .from('invites')
+          .select('*')
+          .eq('token', token)
+          .eq('status', 'pending')
+          .maybeSingle();
+
+        if (inv) {
+          let compName = '';
+          if (inv.company_id) {
+            const { data: c } = await supabase.from('companies').select('name').eq('id', inv.company_id).maybeSingle();
+            if (c?.name) compName = c.name;
+          }
+          const isPlaceholder = inv.email?.startsWith('invite_') || inv.email?.endsWith('@workspace.local');
+          setInviteInfo({
+            email: isPlaceholder ? undefined : inv.email,
+            companyName: compName,
+            role: inv.role || 'employee'
+          });
+          if (!isPlaceholder && inv.email && !email) {
+            setEmail(inv.email);
+          }
+        }
+      } catch (e) {}
+    };
+    checkInvite();
+  }, [rawInviteToken]);
 
   const [customBg, setCustomBg] = useState<string | null>(null);
 
@@ -82,18 +123,26 @@ export default function Signup() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
+    if (password.length < 6) {
+      return setError(currentLang === 'de' ? 'Das Passwort muss mindestens 6 Zeichen lang sein.' : 'Password must be at least 6 characters long.');
+    }
     if (password !== passwordConfirm) return setError(t('password_mismatch'));
     if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.');
 
     try {
       setError(''); setLoading(true);
+      const effectiveInviteToken = inviteToken || safeStorage.getString('pending_invite_token') || null;
+      if (effectiveInviteToken) {
+        safeStorage.setItem('pending_invite_token', effectiveInviteToken);
+      }
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/app`,
           data: {
-            inviteToken: inviteToken || null
+            inviteToken: effectiveInviteToken
           }
         }
       });
@@ -162,6 +211,16 @@ export default function Signup() {
           </div>
 
           <div className="mt-8 bg-white dark:bg-[#18181b] p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-[#27272a] shadow-xl dark:shadow-2xl transition-colors duration-200">
+            {inviteInfo && (
+              <div className="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs flex items-center gap-2 font-medium">
+                <span className="text-base">🏢</span>
+                <span>
+                  {currentLang === 'de' ? 'Einladung zu: ' : 'Invited to: '}
+                  <strong>{inviteInfo.companyName || 'Team Workspace'}</strong>
+                  {inviteInfo.role ? ` (${inviteInfo.role})` : ''}
+                </span>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="rounded-xl bg-red-500/10 p-3.5 border border-red-500/20">

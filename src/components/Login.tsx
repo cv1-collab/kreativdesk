@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Command, Loader2, X, ArrowLeft, Sun, Moon } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -81,6 +82,12 @@ export default function Login() {
 
   React.useEffect(() => {
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const inv = urlParams.get('invite');
+      if (inv) {
+        safeStorage.setItem('pending_invite_token', inv);
+      }
+
       const conflictReason = sessionStorage.getItem('auth_conflict_reason');
       if (conflictReason) {
         setError(conflictReason);

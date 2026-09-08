@@ -28,6 +28,7 @@ import FinanceTab from './FinanceTab';
 import SettingsTab from './SettingsTab';
 import AuditLogsTab from './AuditLogsTab';
 import WelcomeOnboarding from './WelcomeOnboarding';
+import { safeStorage } from '../utils/safeStorage';
 import MeetChat from './MeetChat';
 import ProposalManagerDashboard from './ProposalManagerDashboard';
 import { motion, AnimatePresence } from 'motion/react';
@@ -106,18 +107,16 @@ export default function CompanyDashboard() {
   const { startTour } = useTour();
 
   const [activeTab, setActiveTabRaw] = useState<'dashboard' | 'projects' | 'proposals' | 'team' | 'documents' | 'finance' | 'templates' | 'leads' | 'agenda' | 'settings' | 'audit' | 'meet'>(() => {
-    try {
-      const saved = localStorage.getItem('company_activeTab');
-      if (saved && ['dashboard', 'projects', 'proposals', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(saved)) {
-        return saved as any;
-      }
-    } catch (e) {}
+    const saved = safeStorage.getString('company_activeTab');
+    if (saved && ['dashboard', 'projects', 'proposals', 'team', 'documents', 'finance', 'templates', 'leads', 'agenda', 'settings', 'audit', 'meet'].includes(saved)) {
+      return saved as any;
+    }
     return 'dashboard';
   });
 
   const setActiveTab = (tab: any) => {
     setActiveTabRaw(tab);
-    try { localStorage.setItem('company_activeTab', tab); } catch (e) {}
+    safeStorage.setItem('company_activeTab', tab);
   };
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
@@ -186,8 +185,8 @@ export default function CompanyDashboard() {
     const onboardingKey = `onboarding_completed_${userId}`;
     const tourKey = `tour_completed_${userId}`;
 
-    const onboardingDoneInStorage = localStorage.getItem(onboardingKey) === 'true';
-    const tourDoneInStorage = localStorage.getItem(tourKey) === 'true';
+    const onboardingDoneInStorage = safeStorage.getString(onboardingKey) === 'true';
+    const tourDoneInStorage = safeStorage.getString(tourKey) === 'true';
 
     const needsOnboarding = currentUser.hasCompletedOnboarding !== true && !onboardingDoneInStorage;
     const needsTour = currentUser.hasSeenTour !== true && !tourDoneInStorage;
@@ -196,7 +195,7 @@ export default function CompanyDashboard() {
       setShowOnboarding(true);
     } else if (needsTour) {
       setShowOnboarding(false);
-      localStorage.setItem(tourKey, 'true');
+      safeStorage.setItem(tourKey, 'true');
       supabase.from('profiles').update({ has_seen_tour: true }).eq('id', userId).then();
       const timer = setTimeout(() => {
         startTour();
@@ -223,12 +222,12 @@ export default function CompanyDashboard() {
   
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [usedStorageMB, setUsedStorageMB] = useState(0);
-  const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => localStorage.getItem('has_new_document') === 'true');
+  const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => safeStorage.getString('has_new_document') === 'true');
 
   useEffect(() => {
     const handleDocCreated = () => {
       setHasNewDocBadge(true);
-      localStorage.setItem('has_new_document', 'true');
+      safeStorage.setItem('has_new_document', 'true');
     };
     const handleNavigateTab = (e: Event) => {
       const customEv = e as CustomEvent;
@@ -299,16 +298,12 @@ export default function CompanyDashboard() {
 
   // --- ARCHIV-LOGIK ---
   const [activeProjectFilter, setActiveProjectFilterRaw] = useState<'active' | 'archived' | string>(() => {
-    try {
-      const saved = localStorage.getItem('company_activeProjectFilter');
-      if (saved) return saved;
-    } catch (e) {}
-    return 'active';
+    return safeStorage.getString('company_activeProjectFilter') || 'active';
   });
 
   const setActiveProjectFilter = (filter: any) => {
     setActiveProjectFilterRaw(filter);
-    try { localStorage.setItem('company_activeProjectFilter', filter); } catch (e) {}
+    safeStorage.setItem('company_activeProjectFilter', filter);
   };
 
   const safeProjects = Array.isArray(projects) ? projects : [];
@@ -364,7 +359,7 @@ export default function CompanyDashboard() {
         .from('profiles')
         .select('*')
         .eq('id', currentUser.uid)
-        .single();
+        .maybeSingle();
       if (profile) setUserProfile(profile);
 
       const { data: leads } = await supabase
@@ -531,7 +526,7 @@ export default function CompanyDashboard() {
             owner_id: currentUser.uid
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (error) throw error;
         createdId = newProj?.id || null;
@@ -714,7 +709,7 @@ export default function CompanyDashboard() {
           currentUser={currentUser} 
           onComplete={() => {
             if (currentUser?.uid) {
-              localStorage.setItem(`onboarding_completed_${currentUser.uid}`, 'true');
+              safeStorage.setItem(`onboarding_completed_${currentUser.uid}`, 'true');
             }
             setShowOnboarding(false);
             setTimeout(() => {
@@ -746,7 +741,7 @@ export default function CompanyDashboard() {
                       setActiveTab(item.id as any);
                       if (item.id === 'documents') {
                         setHasNewDocBadge(false);
-                        localStorage.removeItem('has_new_document');
+                        safeStorage.removeItem('has_new_document');
                       }
                     }} 
                     className={cn("w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 group border", activeTab === item.id ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20 shadow-sm" : "bg-transparent text-text-muted border-transparent hover:bg-white/5 hover:text-text-primary", (item as any).className)}
@@ -799,7 +794,7 @@ export default function CompanyDashboard() {
             <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}><HelpCircle size={18} /></button>
             <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
-            <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); setUnreadNotifications(0); localStorage.removeItem('has_new_document'); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"><Bell size={18} />{(unreadNotifications > 0 || localStorage.getItem('has_new_document') === 'true') && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
+            <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); setUnreadNotifications(0); safeStorage.removeItem('has_new_document'); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"><Bell size={18} />{(unreadNotifications > 0 || safeStorage.getString('has_new_document') === 'true') && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
             {isSuperAdmin && (
               <button onClick={() => navigate('/admin')} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">
                 <Shield size={16} /> <span className="hidden sm:inline text-xs font-bold">{t('admin')}</span>
@@ -1054,7 +1049,7 @@ export default function CompanyDashboard() {
             setShowOnboarding(false);
             const userId = currentUser?.uid || currentUser?.id;
             if (userId) {
-              localStorage.setItem(`onboarding_completed_${userId}`, 'true');
+              safeStorage.setItem(`onboarding_completed_${userId}`, 'true');
             }
             setTimeout(() => {
               startTour();

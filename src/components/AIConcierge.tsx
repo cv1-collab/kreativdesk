@@ -6,6 +6,7 @@ import { useAI } from '../contexts/AIContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 
 import { callGeminiAPI, callGeminiChatAPI } from '../utils/geminiClient';
@@ -61,9 +62,9 @@ export default function AIConcierge() {
   const [hasLoadedPos, setHasLoadedPos] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('kreativ_ai_pos');
-    if (saved) {
-      try { setPos(JSON.parse(saved)); } catch (e) { console.error('Failed to parse saved pos', e); }
+    const saved = safeStorage.getJSON<{ x: number; y: number } | null>('kreativ_ai_pos', null);
+    if (saved && typeof saved.x === 'number' && typeof saved.y === 'number') {
+      setPos(saved);
     }
     setHasLoadedPos(true);
   }, []);
@@ -214,7 +215,7 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
               const newX = pos.x + info.offset.x;
               const newY = pos.y + info.offset.y;
               setPos({ x: newX, y: newY });
-              localStorage.setItem('kreativ_ai_pos', JSON.stringify({ x: newX, y: newY }));
+              safeStorage.setJSON('kreativ_ai_pos', { x: newX, y: newY });
             }}
             initial={{ scale: 0, opacity: 0, x: pos.x, y: pos.y }} 
             animate={{ scale: 1, opacity: 1, x: pos.x, y: pos.y }} 

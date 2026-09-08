@@ -20,6 +20,7 @@ import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { sendNotification } from '../lib/notifications';
+import { safeStorage } from '../utils/safeStorage';
 
 // NATIVE PDF IMPORTS
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
@@ -194,18 +195,14 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
 
   const [defects, setDefects] = useState<Defect[]>([]);
   const [viewMode, setViewModeRaw] = useState<'board' | 'list'>(() => {
-    try {
-      const saved = localStorage.getItem(`defects_viewMode_${currentProjectId}`);
-      if (saved && (saved === 'board' || saved === 'list')) return saved;
-    } catch (e) {}
+    const saved = safeStorage.getString(`defects_viewMode_${currentProjectId}`);
+    if (saved && (saved === 'board' || saved === 'list')) return saved as any;
     return 'board';
   });
 
   const setViewMode = (mode: 'board' | 'list') => {
     setViewModeRaw(mode);
-    try {
-      localStorage.setItem(`defects_viewMode_${currentProjectId}`, mode);
-    } catch (e) {}
+    safeStorage.setItem(`defects_viewMode_${currentProjectId}`, mode);
   };
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -404,7 +401,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           severity: currentDefect.priority || 'Medium',
           created_at: new Date().toISOString()
         };
-        const { data: created, error } = await supabase.from('defects').insert(payload).select().single();
+        const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
         if (error) throw error;
 
         const newDefectItem: any = {
@@ -589,7 +586,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           .eq('company_id', currentUser.companyId)
           .eq('name', 'Mängel & Tickets')
           .eq('project_id', currentProjectId)
-          .single();
+          .maybeSingle();
 
         if (existingFolder) {
           targetFolderId = existingFolder.id;
@@ -602,7 +599,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
             owner_id: currentUser.uid,
             company_id: currentUser.companyId,
             created_at: new Date().toISOString()
-          }).select().single();
+          }).select().maybeSingle();
           if (newF) targetFolderId = newF.id;
         }
       }

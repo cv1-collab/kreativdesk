@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { safeStorage } from '../utils/safeStorage';
 
 type Language = 'en' | 'de';
 
@@ -14,12 +15,12 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguage] = useState<Language>(() => {
-    const saved = localStorage.getItem('language');
+    const saved = safeStorage.getItem('language');
     return (saved as Language) || 'de';
   });
 
   useEffect(() => {
-    localStorage.setItem('language', language);
+    safeStorage.setItem('language', language);
   }, [language]);
 
   const toggleLanguage = () => {

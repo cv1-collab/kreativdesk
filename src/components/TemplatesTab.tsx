@@ -13,6 +13,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 
 import DocumentStudioModal from './DocumentStudioModal';
 import { sendNotification } from '../lib/notifications';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -133,12 +134,12 @@ export default function TemplatesTab({
         size: `${Math.max(1, Math.round(generatedTemplate.length / 1024))} KB`,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString()
-      }).select().single();
+      }).select().maybeSingle();
 
       if (error) throw error;
 
-      localStorage.setItem('has_new_document', 'true');
-      localStorage.setItem('last_created_doc_title', docFileName);
+      safeStorage.setItem('has_new_document', 'true');
+      safeStorage.setItem('last_created_doc_title', docFileName);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title: docFileName, id: data?.id } }));
 
       const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';

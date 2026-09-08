@@ -438,11 +438,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     layers: Layer[];
     activeLayerId: string;
   }) => {
-    try {
-      if (data.id && data.planImage) {
-        localStorage.setItem(cadCacheKey, JSON.stringify(data));
-      }
-    } catch (e) {}
+    if (data.id && data.planImage) {
+      safeStorage.setItem(cadCacheKey, data);
+    }
   };
 
   // Sync editor modifications into local intermediate cache
@@ -859,7 +857,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         .from('cad_plans')
         .insert(newPlanPayload)
         .select()
-        .single();
+        .maybeSingle();
 
       if (insertErr) {
         console.error("Supabase cad_plans insert error:", insertErr);
@@ -998,7 +996,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         await supabase.from('cad_plans').delete().eq('id', deletedId);
         const remainingPlans = projectPlans.filter(p => p.id !== deletedId);
         setProjectPlans(remainingPlans);
-        try { localStorage.removeItem(cadCacheKey); } catch (e) {}
+        safeStorage.removeItem(cadCacheKey);
         if (remainingPlans.length > 0) {
           loadPlanDataToEditor(remainingPlans[0]);
         } else {
@@ -1436,7 +1434,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           created_at: new Date().toISOString()
         };
 
-        const { data: created, error } = await supabase.from('defects').insert(payload).select().single();
+        const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
         if (error) throw error;
 
         if (created?.id) {

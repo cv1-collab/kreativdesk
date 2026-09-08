@@ -62,7 +62,7 @@ export default function CompanySettings() {
           .from('companies')
           .select('*')
           .eq('id', currentUser.companyId)
-          .single();
+          .maybeSingle();
 
         if (data) setCompany(data);
 
@@ -86,13 +86,13 @@ export default function CompanySettings() {
       addToast(t('error_limit'), 'error');
       return;
     }
-    const token = Math.random().toString(36).substring(2, 15);
+    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     const safeCompanyId = currentUser?.companyId;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safeCompanyId || '');
 
     if (safeCompanyId && isUuid) {
       try {
-        await supabase.from('invites').insert({
+        const { error } = await supabase.from('invites').insert({
           token,
           company_id: safeCompanyId,
           email: `invite_${token}@workspace.local`,
@@ -100,14 +100,21 @@ export default function CompanySettings() {
           status: 'pending',
           created_at: new Date().toISOString()
         });
+        if (error) {
+          console.error("Could not insert invite record:", error);
+          addToast(t('error_limit'), 'error');
+          return;
+        }
       } catch (e) {
         console.warn("Could not insert invite record:", e);
+        addToast(t('error_limit'), 'error');
+        return;
       }
     }
 
     const link = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
     setInviteLink(link);
-    navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(link);
     addToast(t('copy_success'), 'success');
   };
 

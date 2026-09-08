@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { safeStorage } from '../utils/safeStorage';
 
 const DEFAULT_SCREENSAVER_BG = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop";
 
@@ -9,12 +10,12 @@ export default function Screensaver() {
   const { currentUser } = useAuth();
   const [isActive, setIsActive] = useState(false);
   const [time, setTime] = useState(new Date());
-  const [bgImg, setBgImg] = useState(() => localStorage.getItem('ws_screensaver_bg') || DEFAULT_SCREENSAVER_BG);
+  const [bgImg, setBgImg] = useState(() => safeStorage.getString('ws_screensaver_bg') || DEFAULT_SCREENSAVER_BG);
   const [timeoutMinutes, setTimeoutMinutes] = useState(5);
 
   useEffect(() => {
     const handleUpdate = () => {
-      setBgImg(localStorage.getItem('ws_screensaver_bg') || '');
+      setBgImg(safeStorage.getString('ws_screensaver_bg') || '');
     };
     const handleTrigger = () => {
       setIsActive(true);
@@ -50,7 +51,7 @@ export default function Screensaver() {
         }
 
         const isCompActive = compData && compData.screensaver_active !== null && compData.screensaver_active !== undefined;
-        let image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || localStorage.getItem('ws_screensaver_bg') || '';
+        let image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || safeStorage.getString('ws_screensaver_bg') || '';
         if (image && (image.includes('1618221118493') || image.includes('1600607686527'))) {
           image = DEFAULT_SCREENSAVER_BG;
         }

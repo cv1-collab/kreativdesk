@@ -5,6 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabase';
 import { cn } from '../../utils';
+import { safeStorage } from '../../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -88,7 +89,7 @@ export default function AdminBrandTab() {
       if (dataUrl) {
         setConfig(prev => ({ ...prev, [targetField]: dataUrl }));
         if (targetField === 'screensaverImage') {
-          localStorage.setItem('ws_screensaver_bg', dataUrl);
+          safeStorage.setItem('ws_screensaver_bg', dataUrl);
           window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
         }
         addToast('Bild erfolgreich geladen!', 'success');

@@ -20,6 +20,7 @@ import { sendNotification } from '../lib/notifications';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { checkUpcomingEventReminders } from '../utils/calendarReminderHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -294,20 +295,20 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   // FILTER & AI STATES
   const [selectedTypeFilter, setSelectedTypeFilterRaw] = useState<string>(() => {
-    try { return localStorage.getItem('agenda_typeFilter') || 'all'; } catch (e) { return 'all'; }
+    return safeStorage.getString('agenda_typeFilter', 'all');
   });
   const [selectedProjectFilter, setSelectedProjectFilterRaw] = useState<string>(() => {
-    try { return localStorage.getItem('agenda_projectFilter') || 'all'; } catch (e) { return 'all'; }
+    return safeStorage.getString('agenda_projectFilter', 'all');
   });
 
   const setSelectedTypeFilter = (filter: string) => {
     setSelectedTypeFilterRaw(filter);
-    try { localStorage.setItem('agenda_typeFilter', filter); } catch (e) {}
+    safeStorage.setItem('agenda_typeFilter', filter);
   };
 
   const setSelectedProjectFilter = (filter: string) => {
     setSelectedProjectFilterRaw(filter);
-    try { localStorage.setItem('agenda_projectFilter', filter); } catch (e) {}
+    safeStorage.setItem('agenda_projectFilter', filter);
   };
   const [isGeneratingAIRapport, setIsGeneratingAIRapport] = useState(false);
   const [aiRapportModalOpen, setAiRapportModalOpen] = useState(false);
@@ -428,13 +429,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     const fetchData = async () => {
       try {
         const localCacheKey = `agenda_cache_${safeCompanyId}`;
-        const localCachedRaw = localStorage.getItem(localCacheKey);
-        let localCachedEvents: any[] = [];
-        try {
-          localCachedEvents = localCachedRaw ? JSON.parse(localCachedRaw) : [];
-        } catch (e) {
-          localCachedEvents = [];
-        }
+        const localCachedEvents = safeStorage.getItem<any[]>(localCacheKey, []);
 
         const { data: dbEvents } = await supabase
           .from('calendar_events')
@@ -451,18 +446,29 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         [...localCachedEvents, ...configEvents, ...(dbEvents || [])].forEach((evt: any) => {
           if (evt && (evt.title || evt.id)) {
             const dateStr = evt.date || evt.event_date || evt.start_date || (evt.created_at ? evt.created_at.split('T')[0] : '');
-            const link = evt.meetingLink || evt.meeting_link || null;
+            const desc = evt.description || '';
+            const timeMatch = desc.match(/Uhrzeit:\s*(\d{1,2}:\d{2})/i) || desc.match(/Time:\s*(\d{1,2}:\d{2})/i);
+            const extractedTime = evt.time || (timeMatch ? timeMatch[1] : undefined);
+
+            const typeMatch = desc.match(/Typ:\s*([a-zA-Z0-9_-]+)/i);
+            const extractedType = evt.type || (typeMatch ? typeMatch[1] : (desc.toLowerCase().includes('call') || desc.toLowerCase().includes('video') ? 'call' : 'meeting'));
+
+            const linkMatch = desc.match(/Meeting Link:\s*([^\n\r]+)/i);
+            const link = evt.meetingLink || evt.meeting_link || evt.location || (linkMatch ? linkMatch[1].trim() : null);
+
             const normalized = {
               ...evt,
               id: evt.id || `evt-${Date.now()}-${Math.random()}`,
               date: dateStr,
               event_date: dateStr,
               start_date: dateStr,
+              time: extractedTime,
               projectId: evt.projectId || evt.project_id || 'global',
               project_id: evt.projectId || evt.project_id || 'global',
               meetingLink: link,
               meeting_link: link,
-              type: evt.type || 'meeting'
+              location: link || evt.location || '',
+              type: extractedType
             };
             eventMap.set(normalized.id, normalized);
           }
@@ -470,17 +476,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         const mergedEvents = Array.from(eventMap.values());
         setCalendarEvents(mergedEvents);
-        localStorage.setItem(localCacheKey, JSON.stringify(mergedEvents));
+        safeStorage.setItem(localCacheKey, mergedEvents);
         checkUpcomingEventReminders(safeCompanyId);
 
         const timeCacheKey = `time_entries_cache_${safeCompanyId}`;
-        const rawTimeCache = localStorage.getItem(timeCacheKey);
-        let localCachedTimes: any[] = [];
-        try {
-          localCachedTimes = rawTimeCache ? JSON.parse(rawTimeCache) : [];
-        } catch (e) {
-          localCachedTimes = [];
-        }
+        const localCachedTimes = safeStorage.getItem<any[]>(timeCacheKey, []);
 
         let configTime: any = null;
         try {
@@ -516,7 +516,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         const mergedTimes = Array.from(timeMap.values());
         setLocalTimeEntries(mergedTimes);
-        localStorage.setItem(timeCacheKey, JSON.stringify(mergedTimes));
+        safeStorage.setItem(timeCacheKey, mergedTimes);
 
         const { data: users } = await supabase
           .from('profiles')
@@ -557,45 +557,31 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const [timeTrackingMode, setTimeTrackingMode] = useState<'manual' | 'timer'>('manual');
   
   const [timerSeconds, setTimerSeconds] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem(TIMER_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.isRunning && parsed.startTime) {
-          const elapsed = Math.floor((Date.now() - parsed.startTime) / 1000);
-          return (parsed.accumulated || 0) + elapsed;
-        }
-        return parsed.accumulated || 0;
+    const parsed = safeStorage.getItem<any>(TIMER_STORAGE_KEY, null);
+    if (parsed) {
+      if (parsed.isRunning && parsed.startTime) {
+        const elapsed = Math.floor((Date.now() - parsed.startTime) / 1000);
+        return (parsed.accumulated || 0) + elapsed;
       }
-    } catch (e) {}
+      return parsed.accumulated || 0;
+    }
     return 0;
   });
 
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem(TIMER_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return Boolean(parsed.isRunning);
-      }
-    } catch (e) {}
-    return false;
+    const parsed = safeStorage.getItem<any>(TIMER_STORAGE_KEY, null);
+    return Boolean(parsed?.isRunning);
   });
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isTimerRunning) {
       interval = setInterval(() => {
-        try {
-          const saved = localStorage.getItem(TIMER_STORAGE_KEY);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            const elapsed = Math.floor((Date.now() - (parsed.startTime || Date.now())) / 1000);
-            setTimerSeconds((parsed.accumulated || 0) + elapsed);
-          } else {
-            setTimerSeconds(s => s + 1);
-          }
-        } catch (e) {
+        const parsed = safeStorage.getItem<any>(TIMER_STORAGE_KEY, null);
+        if (parsed) {
+          const elapsed = Math.floor((Date.now() - (parsed.startTime || Date.now())) / 1000);
+          setTimerSeconds((parsed.accumulated || 0) + elapsed);
+        } else {
           setTimerSeconds(s => s + 1);
         }
       }, 1000);
@@ -606,25 +592,25 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   const toggleTimer = () => {
     if (isTimerRunning) {
       setIsTimerRunning(false);
-      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({
+      safeStorage.setItem(TIMER_STORAGE_KEY, {
         accumulated: timerSeconds,
         isRunning: false,
         startTime: null
-      }));
+      });
     } else {
       setIsTimerRunning(true);
-      localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify({
+      safeStorage.setItem(TIMER_STORAGE_KEY, {
         accumulated: timerSeconds,
         isRunning: true,
         startTime: Date.now()
-      }));
+      });
     }
   };
 
   const resetTimer = () => {
     setIsTimerRunning(false);
     setTimerSeconds(0);
-    localStorage.removeItem(TIMER_STORAGE_KEY);
+    safeStorage.removeItem(TIMER_STORAGE_KEY);
   };
 
   const formatTimerTime = (totalSeconds: number) => {
@@ -673,7 +659,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       // 1. Update state immediately so UI refreshes live
       setLocalTimeEntries(prev => {
         const next = [newEntryObj, ...prev];
-        localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(next));
+        safeStorage.setItem(`time_entries_cache_${safeCompanyId}`, next);
         return next;
       });
 
@@ -803,7 +789,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       };
 
       let createdEvent: any = null;
-      const { data, error } = await supabase.from('calendar_events').insert(eventToInsert).select().single();
+      const { data, error } = await supabase.from('calendar_events').insert(eventToInsert).select().maybeSingle();
 
       if (error) {
         // Retry with minimal columns if table has custom constraint
@@ -812,7 +798,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           description: descParts,
           company_id: safeCompanyId,
           created_at: new Date().toISOString()
-        }).select().single();
+        }).select().maybeSingle();
         if (!retryRes.error) {
           createdEvent = retryRes.data;
         }
@@ -835,7 +821,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
       setCalendarEvents(prev => {
         const next = [...prev, normalizedFinal];
-        localStorage.setItem(`agenda_cache_${safeCompanyId}`, JSON.stringify(next));
+        safeStorage.setItem(`agenda_cache_${safeCompanyId}`, next);
         return next;
       });
 
@@ -858,10 +844,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           const sysMsgText = currentLang === 'de'
             ? `Ein neuer Video-Call "${newEvent.title}" wurde für den ${newEvent.date} um ${newEvent.time} Uhr in der Agenda geplant.`
             : `A new video call "${newEvent.title}" has been scheduled for ${newEvent.date} at ${newEvent.time} in Agenda.`;
-          await supabase.from('chat_messages').insert({
+          await (supabase.from('chat_messages') as any).insert({
             sender_id: currentUser.uid,
             sender_name: 'System',
             message: sysMsgText,
+            company_id: safeCompanyId,
             created_at: new Date().toISOString()
           });
         } catch (chatErr) {
@@ -998,7 +985,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         location: meetingLink || ''
       };
 
-      const { data: updatedEvent, error } = await supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id).select().single();
+      const { data: updatedEvent, error } = await supabase.from('calendar_events').update(dbUpdateData).eq('id', selectedEvent.id).select().maybeSingle();
 
       if (error) {
         console.warn("Calendar event update warning:", error);
@@ -1017,7 +1004,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       setCalendarEvents(prev => {
         const next = prev.map(ev => ev.id === selectedEvent.id ? finalUpdated : ev);
         if (safeCompanyId) {
-          localStorage.setItem(`agenda_cache_${safeCompanyId}`, JSON.stringify(next));
+          safeStorage.setItem(`agenda_cache_${safeCompanyId}`, next);
         }
         return next;
       });
@@ -1038,11 +1025,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
     if (window.confirm(t('delete') + '?')) {
       try {
         // 1. Live-State & LocalStorage-Cache sofort aktualisieren
-        const localCacheKey = `agenda_events_cache_${safeCompanyId}`;
+        const localCacheKey = `agenda_cache_${safeCompanyId}`;
         setCalendarEvents(prev => {
           const updated = prev.filter(ev => ev.id !== eventId);
           if (safeCompanyId) {
-            localStorage.setItem(localCacheKey, JSON.stringify(updated));
+            safeStorage.setItem(localCacheKey, updated);
           }
           return updated;
         });
@@ -1072,11 +1059,18 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
   const handleDropEvent = async (e: React.DragEvent, newDateStr: string) => {
     e.preventDefault();
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
     const eventId = e.dataTransfer.getData('text/plain');
     if (eventId) {
       try {
         await supabase.from('calendar_events').update({ start_date: newDateStr, end_date: newDateStr }).eq('id', eventId);
-        setCalendarEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr, event_date: newDateStr, start_date: newDateStr } : ev));
+        setCalendarEvents(prev => {
+          const next = prev.map(ev => ev.id === eventId ? { ...ev, date: newDateStr, event_date: newDateStr, start_date: newDateStr } : ev);
+          if (safeCompanyId) {
+            safeStorage.setItem(`agenda_cache_${safeCompanyId}`, next);
+          }
+          return next;
+        });
         addToast(t('completed'), 'success');
       }
       catch (err) { addToast('Fehler', 'error'); }
@@ -1159,9 +1153,9 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       .eq('name', folderName)
       .eq('is_folder', true)
       .eq('company_id', safeCompanyId)
-      .single();
+      .maybeSingle();
     if (existing) return existing.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().single();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 
@@ -1204,7 +1198,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         setLocalTimeEntries(prev => {
           const updated = prev.filter((t: any) => t.id !== entryId);
           if (safeCompanyId) {
-            localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(updated));
+            safeStorage.setItem(`time_entries_cache_${safeCompanyId}`, updated);
           }
           return updated;
         });

@@ -319,14 +319,14 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
         .select('*')
         .eq('company_id', safeCompanyId)
         .eq('name', '01_FINANZEN')
-        .single();
+        .maybeSingle();
 
       if (existingFolder) {
         targetFolderId = existingFolder.id;
       } else {
         const { data: newF } = await supabase.from('documents').insert({
           name: '01_FINANZEN', is_folder: true, category: 'company', project_id: 'global', folder_id: 'root', owner_id: currentUser.uid, company_id: safeCompanyId, created_at: new Date().toISOString()
-        }).select().single();
+        }).select().maybeSingle();
         if (newF) targetFolderId = newF.id;
       }
 

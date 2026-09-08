@@ -22,6 +22,7 @@ import ProposalManagerDashboard from './ProposalManagerDashboard';
 import PitchDeckStudio from './PitchDeckStudio';
 import { uploadFileWithFallback, deleteFileFromStorage } from '../utils/cloudStorageHelper';
 import { sendNotification } from '../lib/notifications';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: { 
@@ -335,18 +336,14 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   const [activeTab, setActiveTabRaw] = useState<'company' | 'projects' | 'proposals'>(() => {
     if (defaultProjId) return 'projects';
-    try {
-      const saved = localStorage.getItem(`${docsStorageKey}_tab`);
-      if (saved && (saved === 'company' || saved === 'projects' || saved === 'proposals')) return saved;
-    } catch (e) {}
+    const saved = safeStorage.getString(`${docsStorageKey}_tab`);
+    if (saved && (saved === 'company' || saved === 'projects' || saved === 'proposals')) return saved as any;
     return 'company';
   });
 
   const setActiveTab = (tab: 'company' | 'projects' | 'proposals') => {
     setActiveTabRaw(tab);
-    try {
-      localStorage.setItem(`${docsStorageKey}_tab`, tab);
-    } catch (e) {}
+    safeStorage.setItem(`${docsStorageKey}_tab`, tab);
   };
 
   const [showPitchModal, setShowPitchModal] = useState(false);
@@ -367,40 +364,28 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   }, []);
 
   const [viewMode, setViewModeRaw] = useState<'grid' | 'list'>(() => {
-    try {
-      const saved = localStorage.getItem(`${docsStorageKey}_viewMode`);
-      if (saved && (saved === 'grid' || saved === 'list')) return saved;
-    } catch (e) {}
+    const saved = safeStorage.getString(`${docsStorageKey}_viewMode`);
+    if (saved && (saved === 'grid' || saved === 'list')) return saved as any;
     return 'grid';
   });
 
   const setViewMode = (mode: 'grid' | 'list') => {
     setViewModeRaw(mode);
-    try {
-      localStorage.setItem(`${docsStorageKey}_viewMode`, mode);
-    } catch (e) {}
+    safeStorage.setItem(`${docsStorageKey}_viewMode`, mode);
   };
   const [documents, setDocuments] = useState<any[]>([]);
   const [currentFolderId, setCurrentFolderIdRaw] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem(`${docsStorageKey}_folderId`);
-      if (saved) return saved;
-    } catch (e) {}
-    return 'root';
+    return safeStorage.getString(`${docsStorageKey}_folderId`, 'root');
   });
 
   const [folderPath, setFolderPathRaw] = useState<{ id: string; name: string }[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${docsStorageKey}_folderPath`);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return [{ id: 'root', name: 'Root' }];
+    return safeStorage.getItem<{ id: string; name: string }[]>(`${docsStorageKey}_folderPath`, [{ id: 'root', name: 'Root' }]);
   });
 
   const setCurrentFolderId = (folderId: string | ((prev: string) => string)) => {
     setCurrentFolderIdRaw(prev => {
       const nextId = typeof folderId === 'function' ? folderId(prev) : folderId;
-      try { localStorage.setItem(`${docsStorageKey}_folderId`, nextId); } catch (e) {}
+      safeStorage.setItem(`${docsStorageKey}_folderId`, nextId);
       return nextId;
     });
   };
@@ -408,7 +393,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const setFolderPath = (path: { id: string; name: string }[] | ((prev: { id: string; name: string }[]) => { id: string; name: string }[])) => {
     setFolderPathRaw(prev => {
       const nextPath = typeof path === 'function' ? path(prev) : path;
-      try { localStorage.setItem(`${docsStorageKey}_folderPath`, JSON.stringify(nextPath)); } catch (e) {}
+      safeStorage.setItem(`${docsStorageKey}_folderPath`, nextPath);
       return nextPath;
     });
   };

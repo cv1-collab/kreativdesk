@@ -7,6 +7,7 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, PhoneForwarded, Loader2, 
 import { cn, sanitizeUrl } from '../utils';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { downloadICSFile } from '../utils/icsGenerator';
+import { safeStorage } from '../utils/safeStorage';
 
 const isImageFile = (url?: string, text?: string): boolean => {
   if (!url && !text) return false;
@@ -121,7 +122,7 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 export default function GuestMeet() {
   const { joinId } = useParams<{ joinId: string }>();
   const navigate = useNavigate();
-  const [guestName, setGuestName] = useState(() => localStorage.getItem('kreativdesk_guest_name') || '');
+  const [guestName, setGuestName] = useState(() => safeStorage.getString('kreativdesk_guest_name', '') || '');
   const [guestEmail, setGuestEmail] = useState('');
   const [meetingCompanyId, setMeetingCompanyId] = useState<string | null>(null);
   const [isJoined, setIsJoined] = useState(false);
@@ -130,20 +131,15 @@ export default function GuestMeet() {
 
   useEffect(() => {
     if (!joinId) return;
-    try {
-      const cached = localStorage.getItem(chatCacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
-      }
-    } catch (e) {}
+    const cached = safeStorage.getJSON<any[] | null>(chatCacheKey, null);
+    if (Array.isArray(cached) && cached.length > 0) {
+      setMessages(cached);
+    }
   }, [joinId, chatCacheKey]);
 
   useEffect(() => {
     if (messages.length > 0 && joinId) {
-      try {
-        localStorage.setItem(chatCacheKey, JSON.stringify(messages));
-      } catch (e) {}
+      safeStorage.setJSON(chatCacheKey, messages);
     }
   }, [messages, joinId, chatCacheKey]);
 
@@ -158,16 +154,16 @@ export default function GuestMeet() {
   const bgFileInputRef = useRef<HTMLInputElement>(null);
 
   const [showBgModal, setShowBgModal] = useState(false);
-  const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom'>(() => (localStorage.getItem('guest_bg_mode') as any) || 'none');
-  const [bgBlurAmount, setBgBlurAmount] = useState<string>(() => localStorage.getItem('guest_bg_blur') || '12px');
-  const [bgImageUrl, setBgImageUrl] = useState<string>(() => localStorage.getItem('guest_bg_image') || '');
-  const [customBgImage, setCustomBgImage] = useState<string>(() => localStorage.getItem('guest_custom_bg') || '');
+  const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom'>(() => (safeStorage.getString('guest_bg_mode', 'none') as any) || 'none');
+  const [bgBlurAmount, setBgBlurAmount] = useState<string>(() => safeStorage.getString('guest_bg_blur', '12px'));
+  const [bgImageUrl, setBgImageUrl] = useState<string>(() => safeStorage.getString('guest_bg_image', ''));
+  const [customBgImage, setCustomBgImage] = useState<string>(() => safeStorage.getString('guest_custom_bg', ''));
 
   const handleSelectBgMode = (mode: 'none' | 'blur' | 'preset' | 'custom', url?: string, blur?: string) => {
     setBgMode(mode);
-    localStorage.setItem('guest_bg_mode', mode);
-    if (blur) { setBgBlurAmount(blur); localStorage.setItem('guest_bg_blur', blur); }
-    if (url) { setBgImageUrl(url); localStorage.setItem('guest_bg_image', url); }
+    safeStorage.setItem('guest_bg_mode', mode);
+    if (blur) { setBgBlurAmount(blur); safeStorage.setItem('guest_bg_blur', blur); }
+    if (url) { setBgImageUrl(url); safeStorage.setItem('guest_bg_image', url); }
   };
 
   const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,7 +173,7 @@ export default function GuestMeet() {
     reader.onloadend = () => {
       const result = (reader.result as string) || '';
       setCustomBgImage(result);
-      localStorage.setItem('guest_custom_bg', result);
+      safeStorage.setItem('guest_custom_bg', result);
       handleSelectBgMode('custom', result);
     };
     reader.readAsDataURL(file);
@@ -360,7 +356,7 @@ export default function GuestMeet() {
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestName.trim() || error) return;
-    localStorage.setItem('kreativdesk_guest_name', guestName);
+    safeStorage.setItem('kreativdesk_guest_name', guestName);
     setIsJoined(true);
     await joinCall(joinId);
 

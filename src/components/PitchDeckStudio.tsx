@@ -28,6 +28,7 @@ import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { saveSmartProposal, SmartProposal, ProposalConfigOption } from '../services/proposalService';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -299,13 +300,8 @@ export default function PitchDeckStudio({
   const settingsCacheKey = `pitch_deck_settings_${targetId}`;
 
   const [slides, setSlidesRaw] = useState<Slide[]>(() => {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
+    const cached = safeStorage.getItem<any[]>(cacheKey, null);
+    if (cached && Array.isArray(cached) && cached.length > 0) return cached;
     return [
       { id: `slide-demo-${targetId}-0`, title: "Projekt Status Overview", content: "Dies ist eine kurze Zusammenfassung des aktuellen Projektstatus für das Testbau Projekt.", layout: 'title-only', notes: "Einleitung und Übersicht für den Investor.", order_index: 0, ownerId: currentUser?.uid || 'demo' },
       { id: `slide-demo-${targetId}-1`, title: "Aktueller Baufortschritt", content: "Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.", layout: 'split', notes: "Auf Verzögerungen bei der Rohbaulieferung eingehen.", order_index: 1, ownerId: currentUser?.uid || 'demo' },
@@ -317,28 +313,20 @@ export default function PitchDeckStudio({
   const setSlides = (value: React.SetStateAction<Slide[]>) => {
     setSlidesRaw(prev => {
       const nextSlides = typeof value === 'function' ? value(prev) : value;
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(nextSlides));
-      } catch (e) {}
+      safeStorage.setItem(cacheKey, nextSlides);
       return nextSlides;
     });
   };
 
   const [activeSlideId, setActiveSlideIdRaw] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(`pitch_activeSlideId_${targetId}`) || null;
-    } catch (e) {
-      return null;
-    }
+    return safeStorage.getString(`pitch_activeSlideId_${targetId}`) || null;
   });
 
   const setActiveSlideId = (id: string | null | ((prev: string | null) => string | null)) => {
     setActiveSlideIdRaw(prev => {
       const nextId = typeof id === 'function' ? id(prev) : id;
-      try {
-        if (nextId) localStorage.setItem(`pitch_activeSlideId_${targetId}`, nextId);
-        else localStorage.removeItem(`pitch_activeSlideId_${targetId}`);
-      } catch (e) {}
+      if (nextId) safeStorage.setItem(`pitch_activeSlideId_${targetId}`, nextId);
+      else safeStorage.removeItem(`pitch_activeSlideId_${targetId}`);
       return nextId;
     });
   };
@@ -932,21 +920,17 @@ export default function PitchDeckStudio({
   };
 
   const [deckSettings, setDeckSettingsRaw] = useState<DeckSettings>(() => {
-    try {
-      const cached = localStorage.getItem(settingsCacheKey);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {}
+    const cached = safeStorage.getItem<any>(settingsCacheKey, null);
+    if (cached) return cached;
     return {
       logoUrl: '', footerText: 'Vertraulich – Projekt Status Report', themeColor: '#3b82f6', themeStyle: 'scenography', colorMode: 'dark', transitionEffect: 'slide'
     };
   });
 
-  const setDeckSettings = (value: React.SetStateAction<DeckSettings>) => {
+  const setDeckSettings = (value: React.SetStateAction<any>) => {
     setDeckSettingsRaw(prev => {
       const nextSettings = typeof value === 'function' ? value(prev) : value;
-      try {
-        localStorage.setItem(settingsCacheKey, JSON.stringify(nextSettings));
-      } catch (e) {}
+      safeStorage.setItem(settingsCacheKey, nextSettings);
       return nextSettings;
     });
   };
@@ -975,10 +959,9 @@ export default function PitchDeckStudio({
   const updateDeckSettings = async (newSettings: Partial<DeckSettings>) => {
     const updated = { ...deckSettings, ...newSettings };
     setDeckSettings(updated);
-    try {
-      localStorage.setItem(`pitch_deckSettings_${targetId || 'global'}`, JSON.stringify(updated));
-      localStorage.setItem('pitch_deckSettings_global', JSON.stringify(updated));
-    } catch (e) {}
+    safeStorage.setItem(`pitch_deckSettings_${targetId || 'global'}`, updated);
+    safeStorage.setItem('pitch_deckSettings_global', updated);
+    
     if (activeProject?.id && activeProject.id !== 'global' && !activeProject.id.startsWith('demo-')) {
        const payloadStr = JSON.stringify(updated);
        try {
@@ -988,15 +971,15 @@ export default function PitchDeckStudio({
            .select('id')
            .eq('project_id', activeProject.id)
            .eq('category', 'pitch_deck_config')
-           .eq('name', 'deck_settings')
-           .maybeSingle();
+           .eq('name', 'deck_settings');
+         const activeDoc = (existingDoc || [])[0];
 
-         if (existingDoc?.id) {
+         if (activeDoc?.id) {
            await supabase.from('documents').update({
              url: payloadStr,
              file_url: payloadStr,
              uploaded_at: new Date().toISOString()
-           }).eq('id', existingDoc.id);
+           }).eq('id', activeDoc.id);
          } else {
            await supabase.from('documents').insert({
              company_id: compId,
@@ -1140,8 +1123,9 @@ export default function PitchDeckStudio({
         owner_id: currentUser.uid, company_id: safeCompanyId,
         project_id: targetId, category: 'projects', is_folder: false, created_at: new Date().toISOString()
       };
-      const { data: created } = await supabase.from('documents').insert(newDoc).select().single();
-      const docId = created ? created.id : `doc-${Date.now()}`;
+      const { data: created } = await supabase.from('documents').insert(newDoc).select();
+      const createdDoc = (created || [])[0];
+      const docId = createdDoc ? createdDoc.id : `doc-${Date.now()}`;
       setAvailableMedia([{ id: docId, ...newDoc }, ...availableMedia]);
       setSelectedMediaIds([docId]); 
       addToast('Bild erfolgreich hochgeladen', 'success');
@@ -1437,17 +1421,17 @@ export default function PitchDeckStudio({
         .eq('company_id', safeCompanyId)
         .eq('project_id', targetId)
         .eq('is_folder', true)
-        .eq('name', 'Pitch Decks')
-        .single();
-      let targetFolderId = 'root';
+        .eq('name', 'Pitch Decks');
+      const folderArr = existingFolder || [];
       
-      if (existingFolder) { targetFolderId = existingFolder.id; } 
+      let targetFolderId = 'root';
+      if (folderArr.length > 0) { targetFolderId = folderArr[0].id; } 
       else {
          const { data: newF } = await supabase.from('documents').insert({
             name: 'Pitch Decks', is_folder: true, project_id: targetId, folder_id: 'root', 
             owner_id: currentUser.uid, company_id: safeCompanyId, category: 'projects', created_at: new Date().toISOString()
-         }).select().single();
-         if (newF) targetFolderId = newF.id;
+         }).select();
+         if (newF && newF[0]) targetFolderId = newF[0].id;
       }
 
       const fileName = `Pitch_Deck_Report_${new Date().toISOString().split('T')[0]}.pdf`;
@@ -1639,12 +1623,10 @@ export default function PitchDeckStudio({
     } catch (e) {}
 
     if (!whiteboardImage) {
-      try {
-        const localDraft = localStorage.getItem(`whiteboard_export_${targetId}`) || localStorage.getItem('whiteboard_draft');
-        if (localDraft && localDraft.startsWith('data:image')) {
-          whiteboardImage = localDraft;
-        }
-      } catch (e) {}
+      const localDraft = safeStorage.getString(`whiteboard_export_${targetId}`) || safeStorage.getString('whiteboard_draft');
+      if (localDraft && localDraft.startsWith('data:image')) {
+        whiteboardImage = localDraft;
+      }
     }
 
     if (!whiteboardImage) {
@@ -1727,8 +1709,8 @@ export default function PitchDeckStudio({
       let milestones: any[] = [];
       if (targetId && !targetId.startsWith('demo-')) {
         try {
-          const localCache = localStorage.getItem(`schedule_cache_${targetId}`);
-          let tasks: any[] = localCache ? (JSON.parse(localCache).ganttTasks || []) : [];
+          const localCache = safeStorage.getItem<any>(`schedule_cache_${targetId}`, null);
+          let tasks: any[] = localCache ? (localCache.ganttTasks || []) : [];
           if (tasks.length === 0) {
             const data = await fetchSystemConfigJSON(`schedule_${targetId}`, currentUser?.companyId);
             tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || [];

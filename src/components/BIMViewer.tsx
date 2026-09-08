@@ -21,6 +21,7 @@ import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFulls
 
 import { IFCLoader } from 'web-ifc-three/IFCLoader';
 import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/storageGuard';
+import { safeStorage } from '../utils/safeStorage';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature } from '../utils/planFeatures';
@@ -313,16 +314,12 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const bimStorageKey = `bim_state_${projectId || 'global'}`;
 
   const [layerVis, setLayerVis] = useState<Record<string, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(`${bimStorageKey}_layers`);
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return { arch: true, tga: true, fire: false, struct: true };
+    return safeStorage.getJSON(`${bimStorageKey}_layers`, { arch: true, tga: true, fire: false, struct: true });
   });
 
   const toggleLayer = (id: string) => setLayerVis(prev => {
     const next = { ...prev, [id]: !prev[id] };
-    try { localStorage.setItem(`${bimStorageKey}_layers`, JSON.stringify(next)); } catch (e) {}
+    safeStorage.setJSON(`${bimStorageKey}_layers`, next);
     return next;
   });
 
@@ -334,17 +331,13 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   ];
 
   const [activeFloor, setActiveFloorRaw] = useState<number | null>(() => {
-    try {
-      const saved = localStorage.getItem(`${bimStorageKey}_floor`);
-      if (saved !== null && saved !== undefined) return JSON.parse(saved);
-    } catch (e) {}
-    return null;
+    return safeStorage.getJSON<number | null>(`${bimStorageKey}_floor`, null);
   });
 
   const setActiveFloor = (val: number | null | ((prev: number | null) => number | null)) => {
     setActiveFloorRaw(prev => {
       const nextVal = typeof val === 'function' ? val(prev) : val;
-      try { localStorage.setItem(`${bimStorageKey}_floor`, JSON.stringify(nextVal)); } catch (e) {}
+      safeStorage.setJSON(`${bimStorageKey}_floor`, nextVal);
       return nextVal;
     });
   };
@@ -357,15 +350,13 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const [auditReport, setAuditReport] = useState<string | null>(null);
   
   const [isExploded, setIsExplodedRaw] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(`${bimStorageKey}_exploded`) === 'true';
-    } catch (e) { return false; }
+    return safeStorage.getItem(`${bimStorageKey}_exploded`) === 'true';
   });
 
   const setIsExploded = (val: boolean | ((prev: boolean) => boolean)) => {
     setIsExplodedRaw(prev => {
       const nextVal = typeof val === 'function' ? val(prev) : val;
-      try { localStorage.setItem(`${bimStorageKey}_exploded`, String(nextVal)); } catch (e) {}
+      safeStorage.setItem(`${bimStorageKey}_exploded`, String(nextVal));
       return nextVal;
     });
   };
@@ -425,14 +416,12 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const bimModelStorageKey = `kreativdesk_bim_${projectId || 'global'}`;
   const [customModels, setCustomModels] = useState<any[]>([]);
   const [activeModelId, setActiveModelId] = useState<string>(() => {
-    return localStorage.getItem(bimModelStorageKey) || 'default';
+    return safeStorage.getItem(bimModelStorageKey) || 'default';
   });
 
   const selectModel = (id: string) => {
     setActiveModelId(id);
-    try {
-      localStorage.setItem(bimModelStorageKey, id);
-    } catch (e) {}
+    safeStorage.setItem(bimModelStorageKey, id);
     if (isMobile) setShowMobileTools(false);
   };
 
@@ -580,7 +569,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                  name.endsWith('.dae') || name.endsWith('.ifc') || name.endsWith('.dwg') || name.endsWith('.fbx');
         });
         setCustomModels(models);
-        const savedActive = localStorage.getItem(bimModelStorageKey);
+        const savedActive = safeStorage.getItem(bimModelStorageKey);
         if (savedActive && models.some(m => m.id === savedActive)) {
           setActiveModelId(savedActive);
         }
@@ -665,7 +654,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           created_at: new Date().toISOString()
         };
 
-        const { data: created, error } = await supabase.from('defects').insert(payload).select().single();
+        const { data: created, error } = await supabase.from('defects').insert(payload).select().maybeSingle();
         if (error) throw error;
 
         if (created?.id) {
@@ -1017,7 +1006,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         category: docCategory, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId,
         size: formatBytes(file.size), is_folder: false,
         created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
-      }).select().single();
+      }).select().maybeSingle();
 
       if (createdDoc) {
         setCustomModels(prev => [createdDoc, ...prev.filter(m => m.id !== createdDoc.id)]);

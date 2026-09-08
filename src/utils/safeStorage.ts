@@ -3,24 +3,69 @@
  * Prevents JSON.parse and localStorage exceptions from crashing the application.
  */
 
-export const safeStorage = {
+export interface ISafeStorage {
   /**
-   * Retrieves and parses a JSON item from localStorage safely.
-   * If the key does not exist or JSON parsing fails, returns the provided fallback.
+   * Retrieves an item from localStorage safely.
+   * - If called with only key, behaves like window.localStorage.getItem (returns string | null).
+   * - If called with a fallback object/array, parses JSON and falls back safely on error.
    */
-  getItem<T>(key: string, fallback: T): T {
+  getItem(key: string): string | null;
+  getItem<T>(key: string, fallback: T): T;
+  getJSON<T = any>(key: string, fallback?: T): T;
+  getString(key: string, fallback?: string): string;
+  setItem(key: string, value: any): boolean;
+  setJson(key: string, value: any): boolean;
+  setJSON(key: string, value: any): boolean;
+  removeItem(key: string): void;
+}
+
+export const safeStorage: ISafeStorage = {
+  getItem<T = string>(key: string, fallback?: T): any {
     if (typeof window === 'undefined' || !window.localStorage) {
-      return fallback;
+      return fallback !== undefined ? fallback : null;
     }
     try {
       const raw = window.localStorage.getItem(key);
       if (raw === null || raw === undefined) {
-        return fallback;
+        return fallback !== undefined ? fallback : null;
       }
-      return JSON.parse(raw) as T;
+      if (fallback === undefined) {
+        return raw;
+      }
+      if (typeof fallback !== 'string') {
+        try {
+          return JSON.parse(raw) as T;
+        } catch {
+          return fallback;
+        }
+      }
+      return raw as unknown as T;
     } catch (error) {
-      console.warn(`[safeStorage] Failed to parse key "${key}", falling back:`, error);
-      return fallback;
+      console.warn(`[safeStorage] Failed to read key "${key}":`, error);
+      return fallback !== undefined ? fallback : null;
+    }
+  },
+
+  /**
+   * Retrieves and parses a JSON item from localStorage safely.
+   */
+  getJSON<T = any>(key: string, fallback?: T): T {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return (fallback !== undefined ? fallback : null) as unknown as T;
+    }
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw === null || raw === undefined) {
+        return (fallback !== undefined ? fallback : null) as unknown as T;
+      }
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        return (fallback !== undefined ? fallback : null) as unknown as T;
+      }
+    } catch (error) {
+      console.warn(`[safeStorage] Failed to parse JSON key "${key}":`, error);
+      return (fallback !== undefined ? fallback : null) as unknown as T;
     }
   },
 
@@ -61,16 +106,14 @@ export const safeStorage = {
    * Safely serializes and writes an object to localStorage as JSON.
    */
   setJson(key: string, value: any): boolean {
-    if (typeof window === 'undefined' || !window.localStorage) {
-      return false;
-    }
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (error) {
-      console.warn(`[safeStorage] Failed to write JSON key "${key}":`, error);
-      return false;
-    }
+    return safeStorage.setItem(key, value);
+  },
+
+  /**
+   * Alias for setJson.
+   */
+  setJSON(key: string, value: any): boolean {
+    return safeStorage.setItem(key, value);
   },
 
   /**

@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useToast } from '../contexts/ToastContext';
 import { sanitizeUrl } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
+import { safeStorage } from '../utils/safeStorage';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
@@ -123,14 +124,11 @@ export default function Settings() {
     if (!currentUser) return;
     const fetchUser = async () => {
       try {
-        const cachedContact = localStorage.getItem(`user_contact_${currentUser.uid}`);
+        const cachedContact = safeStorage.getItem<{ phone?: string; street?: string; zipCity?: string } | null>(`user_contact_${currentUser.uid}`, null);
         if (cachedContact) {
-          try {
-            const parsed = JSON.parse(cachedContact);
-            if (parsed.phone) setPhone(parsed.phone);
-            if (parsed.street) setStreet(parsed.street);
-            if (parsed.zipCity) setZipCity(parsed.zipCity);
-          } catch (e) {}
+          if (cachedContact.phone) setPhone(cachedContact.phone);
+          if (cachedContact.street) setStreet(cachedContact.street);
+          if (cachedContact.zipCity) setZipCity(cachedContact.zipCity);
         }
         const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.uid).maybeSingle();
         if (data) {
@@ -151,7 +149,7 @@ export default function Settings() {
     if (!currentUser) return;
     setIsUpdatingProfile(true);
     try {
-      localStorage.setItem(`user_contact_${currentUser.uid}`, JSON.stringify({ phone, street, zipCity }));
+      safeStorage.setItem(`user_contact_${currentUser.uid}`, { phone, street, zipCity });
       await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
       setProfileSuccess(true);
       addToast(t('upload_success'), 'success');
@@ -192,7 +190,7 @@ export default function Settings() {
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
       const photoURL = pubData.publicUrl;
       await supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', currentUser.uid);
-      if (photoURL) localStorage.setItem(`avatar_${currentUser.uid}`, photoURL);
+      if (photoURL) safeStorage.setItem(`avatar_${currentUser.uid}`, photoURL);
       addToast(t('upload_success'), 'success');
     } catch (error) {
       addToast(t('upload_failed'), 'error');

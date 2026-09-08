@@ -170,7 +170,7 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    localStorage.setItem(cacheKey, JSON.stringify(allNotifs.slice(0, 50)));
+    safeStorage.setItem(cacheKey, allNotifs.slice(0, 50));
     return allNotifs;
   } catch (err) {
     console.warn("Notifications fetch fallback handled:", err);
@@ -183,11 +183,10 @@ export const markNotificationAsRead = async (notifId: string, companyId: string)
 
   try {
     const cacheKey = `notifs_cache_${companyId}`;
-    const rawCache = localStorage.getItem(cacheKey);
-    if (rawCache) {
-      const list: AppNotification[] = JSON.parse(rawCache);
+    const list = safeStorage.getItem<AppNotification[]>(cacheKey, []);
+    if (list && list.length > 0) {
       const updated = list.map(n => n.id === notifId ? { ...n, is_read: true } : n);
-      localStorage.setItem(cacheKey, JSON.stringify(updated));
+      safeStorage.setItem(cacheKey, updated);
     }
 
     if (isUUID(notifId)) {
@@ -207,11 +206,10 @@ export const markAllNotificationsAsRead = async (companyId: string) => {
 
   try {
     const cacheKey = `notifs_cache_${companyId}`;
-    const rawCache = localStorage.getItem(cacheKey);
-    if (rawCache) {
-      const list: AppNotification[] = JSON.parse(rawCache);
+    const list = safeStorage.getItem<AppNotification[]>(cacheKey, []);
+    if (list && list.length > 0) {
       const updated = list.map(n => ({ ...n, is_read: true }));
-      localStorage.setItem(cacheKey, JSON.stringify(updated));
+      safeStorage.setItem(cacheKey, updated);
     }
 
     if (isUUID(companyId)) {

@@ -4,6 +4,7 @@
  */
 
 import { getCompanySettings } from './companySettingsService';
+import { safeStorage } from '../utils/safeStorage';
 
 export interface EmailDispatchPayload {
   to: string;
@@ -42,8 +43,8 @@ export function getEmailConfig() {
     };
   }
   try {
-    const saved = localStorage.getItem('interactv_email_config');
-    if (saved) return JSON.parse(saved);
+    const saved = safeStorage.getItem<any>('interactv_email_config', null);
+    if (saved) return saved;
   } catch {}
   return {
     provider: 'resend',

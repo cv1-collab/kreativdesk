@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { safeStorage } from './safeStorage';
 
 export interface OfflineDefect {
   id: string;
@@ -42,8 +43,8 @@ export const offlineSyncManager = {
 
   getOfflineDefects(): OfflineDefect[] {
     try {
-      const data = localStorage.getItem(DEFECTS_QUEUE_KEY);
-      return data ? JSON.parse(data) : [];
+      const data = safeStorage.getItem<OfflineDefect[] | null>(DEFECTS_QUEUE_KEY, null);
+      return Array.isArray(data) ? data : [];
     } catch {
       return [];
     }
@@ -52,13 +53,13 @@ export const offlineSyncManager = {
   saveOfflineDefect(defect: OfflineDefect): void {
     const queue = this.getOfflineDefects();
     queue.push(defect);
-    localStorage.setItem(DEFECTS_QUEUE_KEY, JSON.stringify(queue));
+    safeStorage.setItem(DEFECTS_QUEUE_KEY, queue);
   },
 
   getOfflineDocuments(): OfflineDocument[] {
     try {
-      const data = localStorage.getItem(DOCUMENTS_QUEUE_KEY);
-      return data ? JSON.parse(data) : [];
+      const data = safeStorage.getItem<OfflineDocument[] | null>(DOCUMENTS_QUEUE_KEY, null);
+      return Array.isArray(data) ? data : [];
     } catch {
       return [];
     }
@@ -67,7 +68,7 @@ export const offlineSyncManager = {
   saveOfflineDocument(doc: OfflineDocument): void {
     const queue = this.getOfflineDocuments();
     queue.push(doc);
-    localStorage.setItem(DOCUMENTS_QUEUE_KEY, JSON.stringify(queue));
+    safeStorage.setItem(DOCUMENTS_QUEUE_KEY, queue);
   },
 
   async syncOfflineQueue(onStatusChange?: (msg: string, type: 'info' | 'success' | 'error') => void): Promise<{ defectsSynced: number; docsSynced: number }> {
@@ -109,7 +110,7 @@ export const offlineSyncManager = {
         }
       }
 
-      localStorage.setItem(DEFECTS_QUEUE_KEY, JSON.stringify(remainingDefects));
+      safeStorage.setItem(DEFECTS_QUEUE_KEY, remainingDefects);
     }
 
     // Sync Documents
@@ -131,7 +132,7 @@ export const offlineSyncManager = {
         }
       }
 
-      localStorage.setItem(DOCUMENTS_QUEUE_KEY, JSON.stringify(remainingDocs));
+      safeStorage.setItem(DOCUMENTS_QUEUE_KEY, remainingDocs);
     }
 
     if ((defectsSynced > 0 || docsSynced > 0) && onStatusChange) {

@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 import { cn } from '../utils';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 // Universal PDF Studio Engine Imports
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -415,12 +416,12 @@ ${footerText}
         size: `${Math.max(1, Math.round(fullDocumentText.length / 1024))} KB`,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString()
-      }).select().single();
+      }).select().maybeSingle();
 
       if (error) throw error;
 
-      localStorage.setItem('has_new_document', 'true');
-      localStorage.setItem('last_created_doc_title', docFileName);
+      safeStorage.setItem('has_new_document', 'true');
+      safeStorage.setItem('last_created_doc_title', docFileName);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title: docFileName, id: data?.id } }));
 
       const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';
@@ -472,12 +473,12 @@ ${footerText}
         size: `${Math.max(1, Math.round(blob.size / 1024))} KB`,
         created_at: new Date().toISOString(),
         uploaded_at: new Date().toISOString()
-      }).select().single();
+      }).select().maybeSingle();
 
       if (error) throw error;
 
-      localStorage.setItem('has_new_document', 'true');
-      localStorage.setItem('last_created_doc_title', fileName);
+      safeStorage.setItem('has_new_document', 'true');
+      safeStorage.setItem('last_created_doc_title', fileName);
       window.dispatchEvent(new CustomEvent('document_created', { detail: { title: fileName, id: data?.id } }));
 
       const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';

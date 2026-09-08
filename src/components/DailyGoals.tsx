@@ -58,7 +58,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key;
 
   const fetchGoals = async () => {
-    if (!currentUser?.companyId) return;
+    if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {

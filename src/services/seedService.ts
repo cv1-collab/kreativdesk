@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { demoTemplates } from '../utils/demoTemplates';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 export function generateDemoTransactions(financeGroups: any[], projectId: string, companyId: string, ownerId: string) {
   const dummyTxs: any[] = [];
@@ -74,7 +75,7 @@ export async function getOrCreateRealCompanyId(companyId: string, ownerId: strin
       owner_id: ownerId
     })
     .select('id')
-    .single();
+    .maybeSingle();
 
   if (newComp?.id) {
     await supabase.from('profiles').update({ company_id: newComp.id }).eq('id', ownerId);
@@ -175,7 +176,7 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
         updated_at: new Date().toISOString()
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error || !newProj) {
       console.error('Failed to seed demo project:', error);
@@ -448,9 +449,7 @@ function getDeterministicUUID(str: string): string {
       companyId: realCompanyId,
       projectId: projId
     };
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`schedule_cache_${projId}`, JSON.stringify(schedPayload));
-    }
+    safeStorage.setItem(`schedule_cache_${projId}`, schedPayload);
     try {
       await saveSystemConfigJSON(scheduleConfigId, schedPayload, realCompanyId, ownerId);
     } catch (e) {}
@@ -488,9 +487,7 @@ function getDeterministicUUID(str: string): string {
       companyId: realCompanyId,
       projectId: projId
     };
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(`finance_cache_${projId}`, JSON.stringify(finPayload));
-    }
+    safeStorage.setItem(`finance_cache_${projId}`, finPayload);
     try {
       await saveSystemConfigJSON(financeConfigId, finPayload, realCompanyId, ownerId);
     } catch (e) {}

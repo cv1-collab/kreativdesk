@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { safeStorage } from './safeStorage';
 
 export interface CompanyProfileConfig {
   agencyName?: string;
@@ -34,16 +35,7 @@ export const getCompanyProfileConfig = async (companyId?: string): Promise<Compa
   if (!companyId) return defaultConfig;
 
   const cacheKey = `company_profile_${companyId}`;
-  const localCached = localStorage.getItem(cacheKey);
-  let config: any = null;
-
-  if (localCached) {
-    try {
-      config = JSON.parse(localCached);
-    } catch (e) {
-      console.warn('Failed to parse cached company profile config:', e);
-    }
-  }
+  let config: any = safeStorage.getItem<any>(cacheKey, null);
 
   if (!config) {
     try {
@@ -57,7 +49,7 @@ export const getCompanyProfileConfig = async (companyId?: string): Promise<Compa
 
       if (configDoc?.file_url || configDoc?.url) {
         config = JSON.parse(configDoc.file_url || configDoc.url);
-        localStorage.setItem(cacheKey, JSON.stringify(config));
+        safeStorage.setItem(cacheKey, config);
       }
     } catch (e) {
       console.warn('Could not load company_profile_config from Supabase:', e);

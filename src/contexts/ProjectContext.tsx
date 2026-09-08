@@ -209,7 +209,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         owner_id: currentUser.uid
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error("Error creating project:", error);

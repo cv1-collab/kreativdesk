@@ -50,7 +50,7 @@ export default function AdminSystemTab() {
           .from('system_config')
           .select('is_maintenance')
           .eq('id', 'global_master')
-          .single();
+          .maybeSingle();
         if (config) setIsMaintenance(config.is_maintenance || false);
 
         const { data: logsData } = await supabase

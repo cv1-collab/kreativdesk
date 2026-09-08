@@ -136,11 +136,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     const { data: crmData } = await supabase.from('company_users').select('*').eq('company_id', safeCompanyId);
     
     // Fallback local metadata if Postgres columns are still being migrated
-    let localCrmCache: Record<string, any> = {};
-    try {
-      const cached = localStorage.getItem(`crm_metadata_${safeCompanyId}`);
-      if (cached) localCrmCache = JSON.parse(cached);
-    } catch (_) {}
+    const localCrmCache: Record<string, any> = safeStorage.getItem<Record<string, any>>(`crm_metadata_${safeCompanyId}`, {});
 
     const mappedCrm = (crmData || []).map((u: any) => {
       const fallback = localCrmCache[u.id] || (u.email ? localCrmCache[u.email] : null) || {};
@@ -351,10 +347,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         if (safeCompanyId) {
           try {
             const cacheKey = `crm_metadata_${safeCompanyId}`;
-            const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+            const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
             if (currentCache[contactId]) {
               delete currentCache[contactId];
-              localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+              safeStorage.setItem(cacheKey, currentCache);
             }
           } catch (_) {}
         }
@@ -379,7 +375,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         role: newRole
       };
       
-      let { error } = await supabase.from('company_users').update(payload).eq('id', contactId);
+      const { error } = await supabase.from('company_users').update(payload).eq('id', contactId);
       if (error) {
         // Fallback if is_external does not exist in DB yet
         await supabase.from('company_users').update({ status: newStatus, role: newRole }).eq('id', contactId);
@@ -390,10 +386,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       if (safeCompanyId) {
         try {
           const cacheKey = `crm_metadata_${safeCompanyId}`;
-          const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+          const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
           if (currentCache[contactId]) {
             currentCache[contactId] = { ...currentCache[contactId], status: newStatus, isExternal: isExt, role: newRole };
-            localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+            safeStorage.setItem(cacheKey, currentCache);
           }
         } catch (_) {}
       }
@@ -434,7 +430,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         if (safeCompanyId) {
           try {
             const cacheKey = `crm_metadata_${safeCompanyId}`;
-            const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+            const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
             let modified = false;
             deletableIds.forEach(id => {
               if (currentCache[id]) {
@@ -443,7 +439,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
               }
             });
             if (modified) {
-              localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+              safeStorage.setItem(cacheKey, currentCache);
             }
           } catch (_) {}
         }
@@ -510,7 +506,18 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     
     try {
       if (safeCompanyId) {
-        await supabase.from('invites').insert({
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('used_seats, max_seats')
+          .eq('id', safeCompanyId)
+          .maybeSingle();
+
+        if (comp && comp.max_seats && (comp.used_seats || 1) >= comp.max_seats) {
+          addToast('Lizenzlimit erreicht. Bitte upgrade deinen Plan für weitere Mitarbeiter.', 'error');
+          return null;
+        }
+
+        const { error: insertErr } = await supabase.from('invites').insert({
           token,
           company_id: safeCompanyId,
           email: contact.email,
@@ -518,6 +525,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           status: 'pending',
           created_at: new Date().toISOString()
         });
+
+        if (insertErr) {
+          console.error("Invite insert error:", insertErr);
+          throw insertErr;
+        }
       }
       
       const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
@@ -526,10 +538,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       return inviteUrl;
     } catch (err) {
       console.error("Invite generation failed:", err);
-      const fallbackUrl = `${window.location.origin}/signup?companyId=${safeCompanyId}`;
-      await navigator.clipboard.writeText(fallbackUrl);
-      addToast('Direktlink kopiert!', 'success');
-      return fallbackUrl;
+      addToast('Fehler beim Erstellen des Einladungslinks.', 'error');
+      return null;
     } finally {
       setIsGeneratingInvite(false);
     }
@@ -662,10 +672,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const updateLocalCache = (cid: string) => {
         try {
           const cacheKey = `crm_metadata_${safeCompanyId}`;
-          const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+          const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
           currentCache[cid] = fullContactObject;
           if (newContact.email) currentCache[newContact.email] = fullContactObject;
-          localStorage.setItem(cacheKey, JSON.stringify(currentCache));
+          safeStorage.setItem(cacheKey, currentCache);
         } catch (_) {}
       };
 
@@ -685,10 +695,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         fullDbPayload.created_at = new Date().toISOString();
         baseDbPayload.created_at = fullDbPayload.created_at;
         
-        let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().single();
+        let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().maybeSingle();
         if (insertErr) {
           console.warn("Full insert failed, trying base insert:", insertErr);
-          const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().single();
+          const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().maybeSingle();
           created = baseRes.data;
           insertErr = baseRes.error;
         }
@@ -920,9 +930,9 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       .eq('name', folderName)
       .eq('is_folder', true)
       .eq('company_id', safeCompanyId)
-      .single();
+      .maybeSingle();
     if (existing) return existing.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().single();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: 'company', owner_id: currentUser.uid, company_id: safeCompanyId, project_id: 'global', created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
 
@@ -1085,10 +1095,10 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         created_at: fullDbPayload.created_at
       };
 
-      let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().single();
+      let { data: created, error: insertErr } = await supabase.from('company_users').insert(fullDbPayload).select().maybeSingle();
       if (insertErr) {
         console.warn("Full scanned contact insert failed, trying base:", insertErr);
-        const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().single();
+        const baseRes = await supabase.from('company_users').insert(baseDbPayload).select().maybeSingle();
         created = baseRes.data;
         insertErr = baseRes.error;
       }

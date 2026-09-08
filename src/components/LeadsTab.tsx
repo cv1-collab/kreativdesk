@@ -514,7 +514,7 @@ export default function LeadsTab() {
             .eq('company_id', safeCompanyId)
             .eq('project_id', 'global')
             .eq('name', '04_SALES')
-            .single();
+            .maybeSingle();
           const targetFolderId = existingFolder ? existingFolder.id : 'root';
 
           await supabase.from('documents').insert({
@@ -703,7 +703,7 @@ export default function LeadsTab() {
         .eq('company_id', safeCompanyId)
         .eq('project_id', 'global')
         .eq('name', '04_SALES')
-        .single();
+        .maybeSingle();
       const targetFolderId = existingFolder ? existingFolder.id : 'root';
       
       await supabase.from('documents').insert({

@@ -25,6 +25,7 @@ import { supabase } from '../lib/supabase';
 import { fetchNotifications } from '../lib/notifications';
 import { checkUpcomingEventReminders } from '../utils/calendarReminderHelper';
 import { offlineSyncManager } from '../utils/offlineSyncManager';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -70,7 +71,7 @@ export default function Layout() {
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [hasUnread, setHasUnread] = useState(false);
-  const [lastSeen, setLastSeen] = useState<number>(() => parseInt(localStorage.getItem('lastSeenNotifs') || '0'));
+  const [lastSeen, setLastSeen] = useState<number>(() => parseInt(safeStorage.getString('lastSeenNotifs') || '0'));
 
   // PWA & Offline State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -212,7 +213,7 @@ export default function Layout() {
     return new Date(timeVal).getTime();
   };
 
-  const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => localStorage.getItem('has_new_document') === 'true');
+  const [hasNewDocBadge, setHasNewDocBadge] = useState<boolean>(() => safeStorage.getString('has_new_document') === 'true');
   const [unreadNotifCount, setUnreadNotifCount] = useState<number>(0);
 
   const fetchNotifs = useCallback(async () => {
@@ -223,7 +224,7 @@ export default function Layout() {
       const notifItems = await fetchNotifications(safeCompanyId);
       const unread = notifItems.filter(n => !n.is_read).length;
       setUnreadNotifCount(unread);
-      if (unread > 0 || localStorage.getItem('has_new_document') === 'true') {
+      if (unread > 0 || safeStorage.getString('has_new_document') === 'true') {
         setHasUnread(true);
       } else {
         setHasUnread(false);
@@ -280,7 +281,7 @@ export default function Layout() {
       setHasUnread(false);
       const now = Date.now();
       setLastSeen(now);
-      localStorage.setItem('lastSeenNotifs', now.toString());
+      safeStorage.setItem('lastSeenNotifs', now.toString());
     }
   };
 
@@ -336,7 +337,7 @@ export default function Layout() {
                       onClick={() => {
                         if (item.id === 'documents') {
                           setHasNewDocBadge(false);
-                          localStorage.removeItem('has_new_document');
+                          safeStorage.removeItem('has_new_document');
                         }
                       }}
                       className={({ isActive }) => cn(
@@ -496,7 +497,7 @@ export default function Layout() {
                   setHasUnread(false);
                   setUnreadNotifCount(0);
                   setHasNewDocBadge(false);
-                  localStorage.removeItem('has_new_document');
+                  safeStorage.removeItem('has_new_document');
                 }}
                 className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
               >

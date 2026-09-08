@@ -20,6 +20,7 @@ import { useToast } from '../contexts/ToastContext';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { demoTemplates } from '../utils/demoTemplates';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 import DailyGoals from './DailyGoals';
 
 // 🚀 NATIVES PDF STUDIO & VEKTOR ENGINE
@@ -196,11 +197,7 @@ export default function Dashboard() {
         }
 
         const localCacheKey = `finance_cache_${activeProject.id}`;
-        const cachedStr = typeof localStorage !== 'undefined' ? localStorage.getItem(localCacheKey) : null;
-        let cachedData: any = null;
-        if (cachedStr) {
-          try { cachedData = JSON.parse(cachedStr); } catch (e) {}
-        }
+        const cachedData = safeStorage.getJSON<any>(localCacheKey, null);
 
         let finConfig: any = null;
         try {

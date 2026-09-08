@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 export interface TimeEntry {
   id: string;
@@ -25,13 +26,7 @@ export function useProjectTimeEntries() {
 
     try {
       const localCacheKey = `time_entries_cache_${safeCompanyId}`;
-      const localCached = localStorage.getItem(localCacheKey);
-      let localTimes: any[] = [];
-      try {
-        localTimes = localCached ? JSON.parse(localCached) : [];
-      } catch (e) {
-        localTimes = [];
-      }
+      const localTimes = safeStorage.getItem<TimeEntry[]>(localCacheKey, []);
       if (localTimes.length > 0) {
         setTimeEntries(localTimes);
       }
@@ -69,7 +64,7 @@ export function useProjectTimeEntries() {
 
       const mergedTimes = Array.from(timeMap.values()) as TimeEntry[];
       setTimeEntries(mergedTimes);
-      localStorage.setItem(localCacheKey, JSON.stringify(mergedTimes));
+      safeStorage.setItem(localCacheKey, mergedTimes);
       setLoadingTime(false);
       return mergedTimes;
     } catch (err) {
@@ -97,7 +92,7 @@ export function useProjectTimeEntries() {
 
     setTimeEntries(prev => {
       const updated = [newEntry, ...prev];
-      localStorage.setItem(`time_entries_cache_${safeCompanyId}`, JSON.stringify(updated));
+      safeStorage.setItem(`time_entries_cache_${safeCompanyId}`, updated);
       return updated;
     });
 

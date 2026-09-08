@@ -19,6 +19,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { sendNotification } from '../lib/notifications';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -190,18 +191,14 @@ export default function MeetChat() {
   const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
 
   const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
-    try {
-      const saved = localStorage.getItem(`meetchat_activeView_${currentProjectId}`);
-      if (saved && (saved === 'video' || saved === 'whiteboard')) return saved;
-    } catch (e) {}
+    const saved = safeStorage.getItem(`meetchat_activeView_${currentProjectId}`);
+    if (saved === 'video' || saved === 'whiteboard') return saved;
     return 'video';
   });
 
   const setActiveView = (view: 'video' | 'whiteboard') => {
     setActiveViewRaw(view);
-    try {
-      localStorage.setItem(`meetchat_activeView_${currentProjectId}`, view);
-    } catch (e) {}
+    safeStorage.setItem(`meetchat_activeView_${currentProjectId}`, view);
   };
 
   const [showChat, setShowChat] = useState(() => window.innerWidth >= 1024);
@@ -211,43 +208,30 @@ export default function MeetChat() {
   const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
   const chatCacheKey = `meetchat_history_${currentMeetingCallId || currentProjectId}`;
 
-  // Restore cached chat messages from LocalStorage whenever room or project changes
+  // Restore cached chat messages from safeStorage whenever room or project changes
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem(chatCacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
-        }
-      }
-    } catch (e) {}
+    const parsed = safeStorage.getJSON<ChatMessage[] | null>(chatCacheKey, null);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      setMessages(parsed);
+    }
   }, [chatCacheKey]);
 
-  // Persist messages to LocalStorage whenever messages state updates
+  // Persist messages to safeStorage whenever messages state updates
   useEffect(() => {
     if (messages.length > 0) {
-      try {
-        localStorage.setItem(chatCacheKey, JSON.stringify(messages));
-      } catch (e) {}
+      safeStorage.setJSON(chatCacheKey, messages);
     }
   }, [messages, chatCacheKey]);
   const [upcomingCalls, setUpcomingCalls] = useState<any[]>([]);
   const [newMessage, setNewMessageRaw] = useState<string>(() => {
-    try {
-      return localStorage.getItem(`meetchat_draft_${currentProjectId}`) || '';
-    } catch (e) {
-      return '';
-    }
+    return safeStorage.getItem(`meetchat_draft_${currentProjectId}`) || '';
   });
 
   const setNewMessage = (val: string | ((prev: string) => string)) => {
     setNewMessageRaw(prev => {
       const nextVal = typeof val === 'function' ? val(prev) : val;
-      try {
-        if (nextVal) localStorage.setItem(`meetchat_draft_${currentProjectId}`, nextVal);
-        else localStorage.removeItem(`meetchat_draft_${currentProjectId}`);
-      } catch (e) {}
+      if (nextVal) safeStorage.setItem(`meetchat_draft_${currentProjectId}`, nextVal);
+      else safeStorage.removeItem(`meetchat_draft_${currentProjectId}`);
       return nextVal;
     });
   };
@@ -292,11 +276,11 @@ export default function MeetChat() {
   const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   const [showBgModal, setShowBgModal] = useState(false);
-  const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom' | 'screensaver'>(() => (localStorage.getItem('meetchat_bg_mode') as any) || 'none');
-  const [bgBlurAmount, setBgBlurAmount] = useState<string>(() => localStorage.getItem('meetchat_bg_blur') || '12px');
-  const [bgImageUrl, setBgImageUrl] = useState<string>(() => localStorage.getItem('meetchat_bg_image') || '');
-  const [customBgImage, setCustomBgImage] = useState<string>(() => localStorage.getItem('meetchat_custom_bg') || '');
-  const [screensaverBg, setScreensaverBg] = useState<string>(() => localStorage.getItem('ws_screensaver_bg') || '');
+  const [bgMode, setBgMode] = useState<'none' | 'blur' | 'preset' | 'custom' | 'screensaver'>(() => (safeStorage.getItem('meetchat_bg_mode') as any) || 'none');
+  const [bgBlurAmount, setBgBlurAmount] = useState<string>(() => safeStorage.getItem('meetchat_bg_blur') || '12px');
+  const [bgImageUrl, setBgImageUrl] = useState<string>(() => safeStorage.getItem('meetchat_bg_image') || '');
+  const [customBgImage, setCustomBgImage] = useState<string>(() => safeStorage.getItem('meetchat_custom_bg') || '');
+  const [screensaverBg, setScreensaverBg] = useState<string>(() => safeStorage.getItem('ws_screensaver_bg') || '');
 
   useEffect(() => {
     const fetchScreensaverBg = async () => {
@@ -306,7 +290,7 @@ export default function MeetChat() {
           const { data } = await supabase.from('company_settings').select('screensaver_image').eq('company_id', safeComp).maybeSingle();
           if (data?.screensaver_image) {
             setScreensaverBg(data.screensaver_image);
-            localStorage.setItem('ws_screensaver_bg', data.screensaver_image);
+            safeStorage.setItem('ws_screensaver_bg', data.screensaver_image);
           }
         }
       } catch (e) {}
@@ -316,9 +300,9 @@ export default function MeetChat() {
 
   const handleSelectBgMode = (mode: 'none' | 'blur' | 'preset' | 'custom' | 'screensaver', url?: string, blur?: string) => {
     setBgMode(mode);
-    localStorage.setItem('meetchat_bg_mode', mode);
-    if (blur) { setBgBlurAmount(blur); localStorage.setItem('meetchat_bg_blur', blur); }
-    if (url) { setBgImageUrl(url); localStorage.setItem('meetchat_bg_image', url); }
+    safeStorage.setItem('meetchat_bg_mode', mode);
+    if (blur) { setBgBlurAmount(blur); safeStorage.setItem('meetchat_bg_blur', blur); }
+    if (url) { setBgImageUrl(url); safeStorage.setItem('meetchat_bg_image', url); }
   };
 
   const handleCustomBgUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,7 +317,7 @@ export default function MeetChat() {
     reader.onloadend = () => {
       const result = (reader.result as string) || '';
       setCustomBgImage(result);
-      localStorage.setItem('meetchat_custom_bg', result);
+      safeStorage.setItem('meetchat_custom_bg', result);
       handleSelectBgMode('custom', result);
     };
     reader.readAsDataURL(file);
@@ -997,14 +981,10 @@ export default function MeetChat() {
 
       setUpcomingCalls(prev => [newCallObj, ...prev]);
 
-      // Save to local storage cache for Agenda tab
-      try {
-        const agendaCacheKey = `agenda_cache_${currentUser.companyId}`;
-        const existingAgendaCache = JSON.parse(localStorage.getItem(agendaCacheKey) || '[]');
-        localStorage.setItem(agendaCacheKey, JSON.stringify([newCallObj, ...existingAgendaCache]));
-      } catch (cacheErr) {
-        console.warn("Agenda cache sync fail:", cacheErr);
-      }
+      // Save to safe storage cache for Agenda tab
+      const agendaCacheKey = `agenda_cache_${currentUser.companyId}`;
+      const existingAgendaCache = safeStorage.getJSON<any[]>(agendaCacheKey, []);
+      safeStorage.setJSON(agendaCacheKey, [newCallObj, ...existingAgendaCache]);
 
       // 2. Backup to documents (both calls and agenda events)
       try {

@@ -14,6 +14,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import { fal } from "@fal-ai/client";
 
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 fal.config({
   proxyUrl: "/api/fal/proxy",
@@ -51,15 +52,12 @@ const getDraftStorageKey = (pid: string | undefined) => `wb_draft_${pid || 'glob
 const loadProjectDraft = (pid: string | undefined) => {
   try {
     const key = getDraftStorageKey(pid);
-    const saved = localStorage.getItem(key) || localStorage.getItem('wb_draft_latest');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed && Array.isArray(parsed.layers) && parsed.layers.length > 0) {
-        return parsed;
-      }
+    const saved = safeStorage.getItem<any>(key, null) || safeStorage.getItem<any>('wb_draft_latest', null);
+    if (saved && Array.isArray(saved.layers) && saved.layers.length > 0) {
+      return saved;
     }
   } catch (e) {
-    console.warn("Failed to load whiteboard draft from localStorage:", e);
+    console.warn("Failed to load whiteboard draft:", e);
   }
   return null;
 };
@@ -155,11 +153,10 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
           updatedAt: new Date().toISOString()
         };
         const key = getDraftStorageKey(projectId);
-        const json = JSON.stringify(draftData);
-        localStorage.setItem(key, json);
-        localStorage.setItem('wb_draft_latest', json);
+        safeStorage.setItem(key, draftData);
+        safeStorage.setItem('wb_draft_latest', draftData);
       } catch (e) {
-        console.warn("Failed to save whiteboard draft to localStorage:", e);
+        console.warn("Failed to save whiteboard draft:", e);
       }
     }, 800);
 
@@ -835,8 +832,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
       try {
         const key = getDraftStorageKey(projectId);
-        localStorage.removeItem(key);
-        localStorage.removeItem('wb_draft_latest');
+        safeStorage.removeItem(key);
+        safeStorage.removeItem('wb_draft_latest');
       } catch (e) {}
     }
   };
@@ -1062,9 +1059,9 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
       .eq('company_id', currentUser.companyId)
       .eq('name', folderName)
       .eq('is_folder', true)
-      .single();
+      .maybeSingle();
     if (existingFolder) return existingFolder.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().single();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : '';
   };
 
