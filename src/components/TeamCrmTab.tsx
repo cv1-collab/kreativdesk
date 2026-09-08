@@ -22,6 +22,7 @@ import { logAuditAction } from '../utils/auditLogger';
 import { offboardCompanyUser } from '../services/userService';
 import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -492,7 +493,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       addToast(`${t('role')} "${newRole}" ${t('completed')}`, 'success');
     } catch (error) { 
       console.error("Role update error:", error);
-      addToast(t('upload_failed'), 'error'); 
+      addToast(t('update_failed'), 'error'); 
     }
   };
 
@@ -1094,7 +1095,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
 
       if (insertErr) {
         console.error("Error inserting contact:", insertErr);
-        addToast(t('upload_failed'), 'error');
+        addToast(currentLang === 'de' ? 'Fehler beim Speichern des Kontakts.' : 'Failed to save contact.', 'error');
         setIsSubmitting(false);
         return;
       }
@@ -1108,13 +1109,11 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         isExternal: true
       };
 
-      try {
-        const cacheKey = `crm_metadata_${safeCompanyId}`;
-        const currentCache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-        currentCache[newId] = finalContact;
-        if (scannedContactData.email) currentCache[scannedContactData.email] = finalContact;
-        localStorage.setItem(cacheKey, JSON.stringify(currentCache));
-      } catch (_) {}
+      const cacheKey = `crm_metadata_${safeCompanyId}`;
+      const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
+      currentCache[newId] = finalContact;
+      if (scannedContactData.email) currentCache[scannedContactData.email] = finalContact;
+      safeStorage.setItem(cacheKey, currentCache);
 
       setCrmUsers((prev: any[]) => [finalContact, ...prev]);
       setSelectedContact(finalContact);

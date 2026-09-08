@@ -23,6 +23,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { hasFeature } from '../utils/planFeatures';
 import { useTheme } from '../contexts/ThemeContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { safeStorage } from '../utils/safeStorage';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
@@ -370,18 +371,14 @@ export default function Finance() {
 
   const setActiveTab = (tab: 'overview' | 'budget' | 'control' | 'cashflow') => {
     setActiveTabRaw(tab);
-    try {
-      const saved = JSON.parse(localStorage.getItem(finStorageKey) || '{}');
-      localStorage.setItem(finStorageKey, JSON.stringify({ ...saved, activeTab: tab }));
-    } catch (e) {}
+    const saved = safeStorage.getItem<Record<string, any>>(finStorageKey, {});
+    safeStorage.setItem(finStorageKey, { ...saved, activeTab: tab });
   };
 
   const setTimeFilter = (tf: 'all' | 'year' | 'month' | 'today') => {
     setTimeFilterRaw(tf);
-    try {
-      const saved = JSON.parse(localStorage.getItem(finStorageKey) || '{}');
-      localStorage.setItem(finStorageKey, JSON.stringify({ ...saved, timeFilter: tf }));
-    } catch (e) {}
+    const saved = safeStorage.getItem<Record<string, any>>(finStorageKey, {});
+    safeStorage.setItem(finStorageKey, { ...saved, timeFilter: tf });
   };
 
   // --- DIE NEUE ROTATIONS LOGIK FÜR iOS & MOBILE ---
@@ -1595,7 +1592,7 @@ export default function Finance() {
                       <td colSpan={4} className="px-4 py-3"></td>
                       <td className="px-4 py-3 text-right text-xs uppercase font-semibold text-text-muted flex justify-end items-center gap-2 whitespace-nowrap">
                         {t('vat')}
-                        <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: Number(e.target.value) } : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
+                        <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: parseFloat(e.target.value) || 0 } : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
                       </td>
                       {includeOptions && <td></td>}
                       <td className="px-4 py-3 text-right font-medium text-sm text-text-muted whitespace-nowrap">{formatCHF(totalBudget * (vatRate / 100))}</td>
@@ -2241,7 +2238,7 @@ export default function Finance() {
               )}
               <div className="flex justify-between items-center text-sm font-bold text-text-muted border-t border-border/30 pt-3">
                 <span className="flex items-center gap-2">
-                  {t('vat')} <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: Number(e.target.value) } : v))} className="w-14 bg-background border border-border/50 rounded p-1 outline-none text-text-primary text-center" disabled={activeVersion.status === 'approved'} />%
+                  {t('vat')} <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: parseFloat(e.target.value) || 0 } : v))} className="w-14 bg-background border border-border/50 rounded p-1 outline-none text-text-primary text-center" disabled={activeVersion.status === 'approved'} />%
                 </span>
                 <span>{formatCHF(totalBudget * (vatRate / 100))}</span>
               </div>
@@ -2470,7 +2467,7 @@ export default function Finance() {
                         <td colSpan={4} className="px-4 py-3"></td>
                         <td className="px-4 py-3 text-right text-xs uppercase font-semibold text-text-muted flex justify-end items-center gap-2 whitespace-nowrap">
                           {t('vat')}
-                          <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: Number(e.target.value) } : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
+                          <input type="number" value={vatRate} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, vatRate: parseFloat(e.target.value) || 0 } : v))} className={cn(numberInputClass, "font-medium w-16 px-2 py-1 rounded border border-border/50 bg-surface outline-none text-text-primary")} disabled={activeVersion.status === 'approved'} />%
                         </td>
                         {includeOptions && <td></td>}
                         <td className="px-4 py-3 text-right font-medium text-sm text-text-muted whitespace-nowrap">{formatCHF(totalBudget * (vatRate / 100))}</td>
@@ -2733,11 +2730,11 @@ export default function Finance() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
-                    <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
+                    <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stundensatz (CHF)</label>
-                    <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
+                    <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
                   </div>
                 </div>
 

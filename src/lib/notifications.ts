@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { fetchSystemConfigJSON } from '../utils/configHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 export interface AppNotification {
   id: string;
@@ -57,12 +58,11 @@ export const sendNotification = async ({
   };
 
   try {
-    // 1. Update localStorage cache
+    // 1. Update localStorage cache safely
     const cacheKey = `notifs_cache_${companyId}`;
-    const rawCache = localStorage.getItem(cacheKey);
-    const existingCache: AppNotification[] = rawCache ? JSON.parse(rawCache) : [];
+    const existingCache = safeStorage.getItem<AppNotification[]>(cacheKey, []);
     const updatedCache = [notifObj, ...existingCache.filter(n => n.id !== notifId)].slice(0, 50);
-    localStorage.setItem(cacheKey, JSON.stringify(updatedCache));
+    safeStorage.setItem(cacheKey, updatedCache);
 
     // 2. Dispatch Live Event for instant UI update across tabs/components
     if (typeof window !== 'undefined') {
@@ -110,8 +110,7 @@ export const fetchNotifications = async (companyId: string): Promise<AppNotifica
 
   try {
     const cacheKey = `notifs_cache_${companyId}`;
-    const rawCache = localStorage.getItem(cacheKey);
-    const localNotifs: AppNotification[] = rawCache ? JSON.parse(rawCache) : [];
+    const localNotifs = safeStorage.getItem<AppNotification[]>(cacheKey, []);
 
     let configNotifs: AppNotification[] = [];
     try {

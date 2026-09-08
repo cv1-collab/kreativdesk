@@ -19,7 +19,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     no_team_members: 'No team members yet.', remove: 'Remove', existing_user: 'Select existing', new_user: 'Invite new',
     search_contacts: 'Search contacts...', select_person: '-- Select Person --', email: 'Email', company_role_label: 'Company Role',
     cancel: 'Cancel', processing: 'Processing...', invite_and_add: 'Invite & Add', save: 'Save', upload_success: 'Successfully added!',
-    upload_failed: 'Action failed.', delete_confirm: 'Are you sure?', completed: 'completed', role_external: 'External Partner',
+    upload_failed: 'Action failed.', remove_failed: 'Failed to remove member.', role_update_failed: 'Failed to update role.', delete_confirm: 'Are you sure?', completed: 'completed', role_external: 'External Partner',
     role_client: 'Client / Owner', role_internal: 'Internal Employee'
   },
   de: {
@@ -29,7 +29,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     no_team_members: 'Noch keine Teammitglieder.', remove: 'Entfernen', existing_user: 'Bestehenden wählen', new_user: 'Neuen einladen',
     search_contacts: 'Kontakte suchen...', select_person: '-- Person auswählen --', email: 'E-Mail', company_role_label: 'Firma Rolle',
     cancel: 'Abbrechen', processing: 'Verarbeite...', invite_and_add: 'Einladen & Hinzufügen', save: 'Speichern', upload_success: 'Erfolgreich hinzugefügt!',
-    upload_failed: 'Aktion fehlgeschlagen.', delete_confirm: 'Bist du sicher?', completed: 'abgeschlossen', role_external: 'Externer Partner',
+    upload_failed: 'Aktion fehlgeschlagen.', remove_failed: 'Fehler beim Entfernen des Mitglieds.', role_update_failed: 'Fehler beim Aktualisieren der Rolle.', delete_confirm: 'Bist du sicher?', completed: 'abgeschlossen', role_external: 'Externer Partner',
     role_client: 'Bauherr / Kunde', role_internal: 'Interner Mitarbeiter'
   }
 };
@@ -167,7 +167,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
       await removeProjectMember(currentProjectId, userId); 
       addToast(t('remove') + ' ' + t('completed'), 'success'); 
     } catch (e) { 
-      addToast(t('upload_failed'), 'error'); 
+      addToast(t('remove_failed'), 'error'); 
     }
   };
   const handleRoleChange = async (memberId: string, newRole: string) => {
@@ -178,7 +178,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     try {
       addToast(t('status_updated'), 'success');
     } catch (e) {
-      addToast(t('upload_failed'), 'error');
+      addToast(t('role_update_failed'), 'error');
     }
   };
 

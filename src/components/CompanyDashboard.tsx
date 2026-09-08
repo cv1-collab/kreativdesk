@@ -55,6 +55,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     templates: 'Templates', crm_leads: 'Leads', project_team: 'CRM & Team', agenda_rapport: 'Agenda & Reports',
     settings: 'Settings', logout: 'Logout', central: 'Central', upload_success: 'Saved successfully!', 
     upload_failed: 'Action failed.', folder_create_error: 'Error creating folder.', delete_completed: 'Deletion completed.', delete_error: 'Error deleting item.', confirm_delete: 'Are you sure?', 
+    project_create_error: 'Error creating project.', status_update_error: 'Error updating status.',
     loading_project: 'Loading project...', cancel: 'Cancel', create_project: 'Create Project', 
     new_project: 'New Project', project_name: 'Project Name', description: 'Description', folder: 'Folder', 
     no_description: 'No description', active: 'Active', archived: 'Archived', created_at: 'Created at',
@@ -71,6 +72,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     templates: 'Vorlagen', crm_leads: 'Leads', project_team: 'CRM & Team', agenda_rapport: 'Agenda & Rapport',
     settings: 'Einstellungen', logout: 'Abmelden', central: 'Zentrale', upload_success: 'Erfolgreich gespeichert!', 
     upload_failed: 'Aktion fehlgeschlagen.', folder_create_error: 'Fehler beim Erstellen des Ordners.', delete_completed: 'Löschen erfolgreich.', delete_error: 'Fehler beim Löschen.',
+    project_create_error: 'Fehler beim Erstellen des Projekts.', status_update_error: 'Fehler beim Aktualisieren des Status.',
     confirm_delete: 'Bist du sicher?', loading_project: 'Lade Projekt...', cancel: 'Abbrechen', 
     create_project: 'Projekt anlegen', new_project: 'Neues Projekt', project_name: 'Projektname', 
     description: 'Beschreibung', folder: 'Ordner', no_description: 'Keine Beschreibung vorhanden.', 
@@ -546,7 +548,7 @@ export default function CompanyDashboard() {
       }
     } catch (err) { 
       console.error(err);
-      addToast(t('upload_failed'), 'error'); 
+      addToast(t('project_create_error'), 'error'); 
     } finally { 
       setIsSubmitting(false); 
     }
@@ -576,7 +578,7 @@ export default function CompanyDashboard() {
       }
     } catch (err) {
       console.error(err);
-      addToast(t('upload_failed'), 'error');
+      addToast(t('status_update_error'), 'error');
     }
   };
 
@@ -604,7 +606,7 @@ export default function CompanyDashboard() {
       addToast(t('delete_completed'), 'success');
     } catch (err) { 
       console.error(err);
-      addToast(t('upload_failed'), 'error'); 
+      addToast(t('delete_error'), 'error'); 
     }
   };
 

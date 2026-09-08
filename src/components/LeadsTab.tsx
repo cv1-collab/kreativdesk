@@ -66,6 +66,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     convert_lead: 'Convert to Project & CRM',
     completed: 'completed',
     upload_failed: 'Action failed.',
+    delete_lead_error: 'Error deleting lead',
+    convert_lead_error: 'Error converting lead to CRM',
     link_copied: 'Link copied!',
     copy_link_error: 'Error copying link',
     vcard_received: 'Business card data received from smartphone!',
@@ -140,6 +142,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     convert_lead: 'In CRM & Projekt umwandeln',
     completed: 'erfolgreich',
     upload_failed: 'Aktion fehlgeschlagen.',
+    delete_lead_error: 'Fehler beim Löschen des Leads',
+    convert_lead_error: 'Fehler beim Übertragen ins CRM',
     link_copied: 'Link kopiert!',
     copy_link_error: 'Fehler beim Kopieren',
     vcard_received: 'Visitenkarten-Daten vom Smartphone empfangen!',
@@ -612,7 +616,7 @@ export default function LeadsTab() {
         if (editingLead?.id === id) setIsModalOpen(false);
         fetchLeads();
       } catch (error) {
-        addToast(t('upload_failed'), 'error');
+        addToast(t('delete_lead_error'), 'error');
       }
     } 
   };
@@ -662,7 +666,7 @@ export default function LeadsTab() {
       const { error: insErr } = await supabase.from('company_users').insert(contactData);
       if (insErr) {
         console.error("Error converting lead to CRM contact:", insErr);
-        addToast(t('upload_failed'), 'error');
+        addToast(t('convert_lead_error'), 'error');
         return;
       }
       let updQuery = supabase.from('leads').update({ status: 'Converted' }).eq('id', lead.id);
@@ -672,7 +676,7 @@ export default function LeadsTab() {
       if (editingLead?.id === lead.id) setIsModalOpen(false);
       fetchLeads();
     } catch(e) { 
-      addToast(t('upload_failed'), 'error'); 
+      addToast(t('convert_lead_error'), 'error'); 
     }
   };
 

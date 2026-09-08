@@ -18,6 +18,7 @@ import { checkStorageLimit, incrementStorage, decrementStorage } from '../utils/
 import { supabase } from '../lib/supabase';
 import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
+import { safeStorage } from '../utils/safeStorage';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -378,11 +379,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const cadStorageKey = `cad_state_${currentProjectId}`;
 
   const getCachedPlan = () => {
-    try {
-      const cached = localStorage.getItem(cadCacheKey);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {}
-    return null;
+    return safeStorage.getItem<any>(cadCacheKey, null);
   };
 
   const initialCache = getCachedPlan();
@@ -390,23 +387,15 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   
   const [activePlanId, setActivePlanIdRaw] = useState<string | null>(() => {
     if (initialCache?.id) return initialCache.id;
-    try {
-      const saved = localStorage.getItem(cadStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.activePlanId) return parsed.activePlanId;
-      }
-    } catch (e) {}
-    return null;
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    return saved.activePlanId || null;
   });
 
   const setActivePlanId = (id: string | null | ((prev: string | null) => string | null)) => {
     setActivePlanIdRaw(prev => {
       const nextId = typeof id === 'function' ? id(prev) : id;
-      try {
-        const saved = JSON.parse(localStorage.getItem(cadStorageKey) || '{}');
-        localStorage.setItem(cadStorageKey, JSON.stringify({ ...saved, activePlanId: nextId }));
-      } catch (e) {}
+      const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+      safeStorage.setItem(cadStorageKey, { ...saved, activePlanId: nextId });
       return nextId;
     });
   };
@@ -415,22 +404,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [planName, setPlanName] = useState<string>(() => initialCache?.planName || '');
   
   const [activeTool, setActiveToolRaw] = useState<ToolType>(() => {
-    try {
-      const saved = localStorage.getItem(cadStorageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.activeTool) return parsed.activeTool;
-      }
-    } catch (e) {}
-    return 'pan';
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    return (saved.activeTool as ToolType) || 'pan';
   });
 
   const setActiveTool = (tool: ToolType) => {
     setActiveToolRaw(tool);
-    try {
-      const saved = JSON.parse(localStorage.getItem(cadStorageKey) || '{}');
-      localStorage.setItem(cadStorageKey, JSON.stringify({ ...saved, activeTool: tool }));
-    } catch (e) {}
+    const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
+    safeStorage.setItem(cadStorageKey, { ...saved, activeTool: tool });
   };
 
   const [paperFormat, setPaperFormat] = useState<string>(() => initialCache?.paperFormat || 'A3');
