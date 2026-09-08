@@ -24,6 +24,7 @@ import { getCompanySettings, saveCompanySettings, CompanySettings } from '../ser
 import { sendAcceptanceConfirmationEmail, EmailDispatchResult } from '../services/emailService';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import { MesseOffertePDFDocument } from './interactv/pdf/MesseOffertePDFDocument';
+import { sendNotification } from '../lib/notifications';
 
 const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   de: {
@@ -2546,10 +2547,43 @@ export default function SmartProposalLandingPage() {
             </a>
           </div>
 
-          <form onSubmit={(e) => {
+          <form onSubmit={async (e) => {
             e.preventDefault();
             if (inquiryQuestion.trim()) {
               setInquirySent(true);
+
+              // 1. Send in-app notification to the company that created this proposal
+              try {
+                if (proposal?.companyId) {
+                  await sendNotification({
+                    companyId: proposal.companyId,
+                    title: `Rückfrage zur Offerte: ${proposal.title || 'Smart Proposal'}`,
+                    message: `${inquiryName || 'Kunde'} (${inquiryEmail || 'Keine E-Mail'}): "${inquiryQuestion.trim()}"`,
+                    type: 'quote',
+                    link: `/proposals`
+                  });
+                }
+              } catch (nErr) {
+                console.warn('Inquiry notification note:', nErr);
+              }
+
+              // 2. Fire outbound webhook to notify sales team via Make.com / n8n
+              try {
+                fetch('/api/webhook/lead', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    event: 'PROPOSAL_INQUIRY',
+                    proposalId: proposal.id,
+                    proposalTitle: proposal.title,
+                    clientName: inquiryName || '',
+                    clientEmail: inquiryEmail || '',
+                    question: inquiryQuestion.trim(),
+                    companyId: proposal.companyId
+                  })
+                }).catch(() => {});
+              } catch (whErr) {}
+
               setTimeout(() => {
                 setInquiryQuestion('');
                 setInquirySent(false);

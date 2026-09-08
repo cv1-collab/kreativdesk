@@ -386,11 +386,13 @@ export default function LeadsTab() {
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
     try {
-      const { data } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('company_id', safeCompanyId)
-        .order('created_at', { ascending: false });
+      let query = supabase.from('leads').select('*');
+      if (safeCompanyId === 'dce2daae-e8d5-4596-a264-a3fcdb326a6c') {
+        query = query.or(`company_id.eq.${safeCompanyId},company_id.eq.kreativ-desk-website`);
+      } else {
+        query = query.eq('company_id', safeCompanyId);
+      }
+      const { data } = await query.order('created_at', { ascending: false });
 
       if (data) {
         const mapped = data.map((d: any) => {

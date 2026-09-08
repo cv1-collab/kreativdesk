@@ -1091,7 +1091,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   </div>
                   <p className="text-text-muted text-sm leading-relaxed mb-8">{t('b2b_sys1_desc')}</p>
                 </div>
-                <button onClick={() => navigate('/lead-form')} className="w-full py-4 bg-background hover:bg-surface border border-border text-text-primary rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+                <button onClick={() => navigate('/lead-form?plan=Studio%20OS')} className="w-full py-4 bg-background hover:bg-surface border border-border text-text-primary rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
                   {t('b2b_cta_request')} <ArrowRight size={18} />
                 </button>
               </div>
@@ -1113,7 +1113,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   </div>
                   <p className="text-text-muted text-sm leading-relaxed mb-8">{t('b2b_sys2_desc')}</p>
                 </div>
-                <button onClick={() => navigate('/lead-form')} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
+                <button onClick={() => navigate('/lead-form?plan=Agency%20OS')} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
                   {t('b2b_cta_request')} <ArrowRight size={18} />
                 </button>
               </div>
@@ -1132,7 +1132,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   </div>
                   <p className="text-text-muted text-sm leading-relaxed mb-8">{t('b2b_sys3_desc')}</p>
                 </div>
-                <button onClick={() => navigate('/lead-form')} className="w-full py-4 bg-background hover:bg-surface border border-border text-text-primary rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
+                <button onClick={() => navigate('/lead-form?plan=Enterprise%20OS')} className="w-full py-4 bg-background hover:bg-surface border border-border text-text-primary rounded-2xl font-bold transition-all flex items-center justify-center gap-2">
                   {t('b2b_cta_request')} <ArrowRight size={18} />
                 </button>
               </div>

@@ -253,7 +253,19 @@ CREATE POLICY "Strict company isolation company_users" ON public.company_users
 -- O) STORAGE CLEANUP
 DROP POLICY IF EXISTS "Authenticated Upload Avatars" ON storage.objects;
 
+-- P) NOTIFICATIONS (In-App Benachrichtigungen & Modul-Events)
+ALTER TABLE IF EXISTS public.notifications ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.notifications TO authenticated, service_role;
+DROP POLICY IF EXISTS "Strict company isolation notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Authenticated users access notifications" ON public.notifications;
+
+CREATE POLICY "Strict company isolation notifications" ON public.notifications
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
 -- ============================================================================
 -- FERTIG: Datenisolation ist nun serverseitig in der Datenbank garantiert!
 -- ============================================================================
+
 

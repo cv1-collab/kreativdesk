@@ -250,7 +250,7 @@ export default function PricingPage() {
                   <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 p-1.5 bg-zinc-900 rounded border border-zinc-800 self-start">{t('sys1_renewal')}</div>
                   <div className="text-xs font-semibold text-blue-400 mb-8">{t('sys1_seats')}</div>
                   <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1">{t('sys1_desc')}</p>
-                  <button onClick={() => navigate('/lead-form')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
+                  <button onClick={() => navigate('/lead-form?plan=Studio%20OS')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
                     {t('b2b_cta')} <ArrowRight size={18} />
                   </button>
               </div>
@@ -267,7 +267,7 @@ export default function PricingPage() {
                   <div className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-3 p-1.5 bg-blue-500/10 rounded border border-blue-500/20 self-start">{t('sys2_renewal')}</div>
                   <div className="text-xs font-semibold text-blue-400 mb-8">{t('sys2_seats')}</div>
                   <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1">{t('sys2_desc')}</p>
-                  <button onClick={() => navigate('/lead-form')} className="block w-full py-4 bg-blue-600 text-white text-center rounded-2xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
+                  <button onClick={() => navigate('/lead-form?plan=Agency%20OS')} className="block w-full py-4 bg-blue-600 text-white text-center rounded-2xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
                     {t('b2b_cta')} <ArrowRight size={18} />
                   </button>
               </div>
@@ -283,7 +283,7 @@ export default function PricingPage() {
                   <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 p-1.5 bg-emerald-500/10 rounded border border-emerald-500/20 self-start">{t('sys3_renewal')}</div>
                   <div className="text-xs font-semibold text-emerald-400 mb-8">{t('sys3_seats')}</div>
                   <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1">{t('sys3_desc')}</p>
-                  <button onClick={() => navigate('/lead-form')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
+                  <button onClick={() => navigate('/lead-form?plan=Enterprise%20OS')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2">
                     {t('b2b_cta')} <ArrowRight size={18} />
                   </button>
               </div>

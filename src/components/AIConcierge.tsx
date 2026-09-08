@@ -146,7 +146,7 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
       }));
       
       const response = await callGeminiChatAPI('gemini-2.5-flash', userMessage.text, formattedHistory, config);
-      let aiText = response.text;
+      let aiText = typeof response === 'string' ? response : (response?.text || (response as any)?.candidates?.[0]?.content?.parts?.[0]?.text || '');
 
       // Extract JSON if present for Task Creation
       const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/);

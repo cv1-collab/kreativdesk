@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
-import { CheckCircle2, Building2, User, Mail, Phone, MessageSquare, Send, Loader2, Camera, QrCode } from 'lucide-react';
+import { CheckCircle2, Building2, User, Mail, Phone, MessageSquare, Send, Loader2, Camera, QrCode, Briefcase, Zap, Shield, Sparkles } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
@@ -16,6 +16,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     lead_submitted_success: 'Your information has been successfully submitted. We will get back to you shortly.',
     contact_us: 'Enterprise Setup Request',
     fill_out_form: 'Please fill out the form below and we will get in touch to discuss your specific infrastructure needs.',
+    select_plan: 'Selected System / Package',
     first_name: 'First Name',
     first_name_placeholder: 'John',
     last_name: 'Last Name',
@@ -43,6 +44,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     lead_submitted_success: 'Deine Anfrage wurde erfolgreich übermittelt. Wir melden uns in Kürze bei dir für die nächsten Schritte.',
     contact_us: 'Enterprise Setup anfragen',
     fill_out_form: 'Bitte fülle das Formular aus. Wir melden uns zeitnah, um deine individuelle Infrastruktur zu besprechen.',
+    select_plan: 'Gewähltes System / Paket',
     first_name: 'Vorname',
     first_name_placeholder: 'Max',
     last_name: 'Nachname',
@@ -68,6 +70,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 export default function PublicLeadForm() {
   const { companyId } = useParams<{ companyId: string }>();
+  const [searchParams] = useSearchParams();
+  const initialPlan = searchParams.get('plan') || '';
+  const [selectedPlan, setSelectedPlan] = useState(initialPlan);
+
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -101,9 +107,76 @@ export default function PublicLeadForm() {
     message: ''
   });
 
-  // Listener für Smartphone-Daten
+  // Listener für Smartphone-Daten (Realtime Broadcast + Polling Fallback)
   useEffect(() => {
     if (!sessionId || isMobileOrTablet) return;
+
+    const channel = supabase.channel(`vcard_upload_${sessionId}`)
+      .on('broadcast', { event: 'vcard_scanned' }, ({ payload }) => {
+        if (payload) {
+          setFormData(prev => ({
+            ...prev,
+            firstName: payload.firstName || prev.firstName,
+            lastName: payload.lastName || prev.lastName,
+            company: payload.company || prev.company,
+            email: payload.email || prev.email,
+            phone: payload.phone || prev.phone,
+            message: payload.description ? `${prev.message ? prev.message + '\n' : ''}${payload.description}` : prev.message
+          }));
+          setShowQR(false);
+          setSuccessMsg(t('scan_success'));
+        }
+      })
+      .subscribe();
+
+    let pollStop = false;
+    const interval = setInterval(async () => {
+      if (pollStop || !sessionId) return;
+      try {
+        const { data, error } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('category', 'temp_receipt')
+          .eq('company_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (error) {
+          pollStop = true;
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const rec = data[0];
+          let parsed: any = null;
+          try { parsed = JSON.parse(rec.name || (rec as any).file_name || '{}'); } catch (e) {}
+          if (parsed && (parsed.firstName || parsed.company || parsed.email || parsed.lastName)) {
+            setFormData(prev => ({
+              ...prev,
+              firstName: parsed.firstName || prev.firstName,
+              lastName: parsed.lastName || prev.lastName,
+              company: parsed.company || prev.company,
+              email: parsed.email || prev.email,
+              phone: parsed.phone || prev.phone,
+              message: parsed.description ? `${prev.message ? prev.message + '\n' : ''}${parsed.description}` : prev.message
+            }));
+            setShowQR(false);
+            setSuccessMsg(t('scan_success'));
+            pollStop = true;
+            try { await supabase.from('documents').delete().eq('id', rec.id); } catch (e) {}
+          }
+        }
+      } catch (err) {
+        pollStop = true;
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(interval);
+      if (channel) {
+        supabase.removeChannel(channel).catch(() => {});
+      }
+    };
   }, [sessionId, isMobileOrTablet, t]);
 
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
@@ -128,7 +201,7 @@ export default function PublicLeadForm() {
         ]);
         
         let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
-        text = text.replace(/`{3}json/g, '').replace(/`{3}/g, '').trim();
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
         
         try {
           const data = JSON.parse(text);
@@ -170,24 +243,67 @@ export default function PublicLeadForm() {
     
     try {
       const fullName = [formData.firstName, formData.lastName].filter(Boolean).join(' ') || 'Neuer Lead';
-      await supabase.from('leads').insert({
-        name: fullName,
-        company: formData.company || '',
-        email: formData.email,
-        phone: formData.phone || '',
-        notes: formData.message || '',
-        company_id: companyId || 'kreativ-desk-website',
-        source: 'Landingpage B2B Request',
-        status: 'New',
-        created_at: new Date().toISOString()
-      });
+      const KREATIV_DESK_PLATFORM_COMPANY = 'dce2daae-e8d5-4596-a264-a3fcdb326a6c';
+      const targetCompanyId = companyId || KREATIV_DESK_PLATFORM_COMPANY;
 
-      if (companyId) {
+      // 1. Try serverless backend endpoint first (bypasses RLS safely and fires webhooks)
+      let backendSuccess = false;
+      try {
+        const res = await fetch('/api/public/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            company: formData.company,
+            email: formData.email,
+            phone: formData.phone,
+            message: formData.message,
+            plan: selectedPlan || undefined,
+            companyId: targetCompanyId,
+            source: selectedPlan ? `Landingpage B2B Request (${selectedPlan})` : 'Landingpage B2B Request',
+            honeypot
+          })
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success) backendSuccess = true;
+        }
+      } catch (apiErr) {
+        console.warn('API endpoint fallback to direct insert:', apiErr);
+      }
+
+      // 2. Client fallback if backend endpoint was unreachable
+      if (!backendSuccess) {
+        const notesObj = JSON.stringify({
+          message: formData.message,
+          plan: selectedPlan || null,
+          submittedAt: new Date().toISOString()
+        });
+
+        const { error: insErr } = await supabase.from('leads').insert({
+          name: fullName,
+          company: formData.company || '',
+          email: formData.email,
+          phone: formData.phone || '',
+          notes: notesObj,
+          company_id: targetCompanyId,
+          source: selectedPlan ? `Landingpage B2B Request (${selectedPlan})` : 'Landingpage B2B Request',
+          status: 'New',
+          created_at: new Date().toISOString()
+        });
+
+        if (insErr) {
+          console.error('Direct Supabase insert error:', insErr);
+          throw new Error(insErr.message || 'Insert failed');
+        }
+
         try {
           await sendNotification({
-            companyId: companyId,
-            title: 'Neue Lead-Anfrage',
-            message: `Neuer Lead: ${formData.firstName} ${formData.lastName} (${formData.company || formData.email})`,
+            companyId: targetCompanyId,
+            title: selectedPlan ? `Neue Setup-Anfrage (${selectedPlan})` : 'Neue Lead-Anfrage',
+            message: `Neuer Lead: ${fullName} (${formData.company || formData.email})`,
             type: 'info',
             link: '/crm'
           });
@@ -197,7 +313,7 @@ export default function PublicLeadForm() {
       }
 
       setIsSubmitted(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error submitting lead:', err);
       setError(t('submit_error'));
     } finally {
@@ -325,6 +441,39 @@ export default function PublicLeadForm() {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <input type="text" name="website_hp_field" value={honeypot} onChange={e => setHoneypot(e.target.value)} style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
+
+            {/* B2B Plan / System Selection */}
+            <div>
+              <label className="block text-sm font-bold text-text-primary mb-2">
+                {t('select_plan')}
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { id: 'Studio OS', label: 'Studio OS', price: 'ab CHF 15’000' },
+                  { id: 'Agency OS', label: 'Agency OS', price: 'CHF 25’000 (Booster)' },
+                  { id: 'Enterprise OS', label: 'Enterprise OS', price: 'ab CHF 50’000' },
+                  { id: 'Individuell', label: 'Individuell', price: 'Massgeschneidert' }
+                ].map(p => {
+                  const isSelected = selectedPlan === p.id || (p.id === 'Agency OS' && selectedPlan?.includes('Agency')) || (p.id === 'Studio OS' && selectedPlan?.includes('Studio')) || (p.id === 'Enterprise OS' && selectedPlan?.includes('Enterprise'));
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelectedPlan(p.id)}
+                      className={`p-3 rounded-xl border text-left transition-all ${
+                        isSelected 
+                          ? 'bg-blue-600/10 border-blue-500 text-blue-500 shadow-sm ring-1 ring-blue-500/50' 
+                          : 'bg-background border-border text-text-muted hover:border-border/80'
+                      }`}
+                    >
+                      <div className="text-xs font-black text-text-primary">{p.label}</div>
+                      <div className="text-[10px] text-text-muted mt-0.5">{p.price}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="firstName" className="block text-sm font-bold text-text-primary">
