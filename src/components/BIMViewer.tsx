@@ -545,6 +545,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [isUpscaling, setIsUpscaling] = useState(false);
   const [showRenderModal, setShowRenderModal] = useState(false);
+  const [capturedSnapshot, setCapturedSnapshot] = useState<string | null>(null);
 
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [snapshotImage, setSnapshotImage] = useState<string | null>(null);
@@ -750,9 +751,9 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const handleGenerateRender = async () => {
     setIsRendering(true);
     try {
-      const dataUrl = typeof (window as any).captureBimSnapshot === 'function' 
+      const dataUrl = capturedSnapshot || (typeof (window as any).captureBimSnapshot === 'function' 
         ? (window as any).captureBimSnapshot() 
-        : canvasRef.current?.toDataURL('image/png');
+        : canvasRef.current?.toDataURL('image/png'));
 
       if (!dataUrl) throw new Error("Kein 3D-Snapshot vorhanden.");
 
@@ -764,25 +765,37 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       try {
         const fetchRes = await fetch(dataUrl);
         const blob = await fetchRes.blob();
-        const fileName = `${safeCompanyId}/whiteboardExports/${safeUserId}/tmp_3d_${Date.now()}.png`;
-        const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
-        if (!upErr) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-          uploadedImageUrl = data.publicUrl;
+
+        // 1. Direct high-speed upload to FAL Storage (ultra-reliable)
+        try {
+          uploadedImageUrl = await fal.storage.upload(blob);
+          console.log("[FAL] Direct storage upload succeeded:", uploadedImageUrl);
+        } catch (falStorageErr) {
+          console.warn("[FAL] fal.storage.upload fallback to Supabase:", falStorageErr);
+        }
+
+        // 2. Supabase Storage fallback
+        if (!uploadedImageUrl) {
+          const fileName = `${safeCompanyId}/whiteboardExports/${safeUserId}/tmp_3d_${Date.now()}.png`;
+          const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
+          if (!upErr) {
+            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+            uploadedImageUrl = data.publicUrl;
+          }
         }
       } catch (e) {
-        console.warn("Snapshot upload failed, using direct snapshot data URL:", e);
+        console.warn("Snapshot upload preparation failed:", e);
       }
 
       if (uploadedImageUrl) {
         try {
-          let styleStrength = 0.88;
+          let styleStrength = 0.85;
           if (activeStyle === 'sketch') styleStrength = 0.75;
-          if (activeStyle === 'cyberpunk') styleStrength = 0.90;
+          if (activeStyle === 'cyberpunk') styleStrength = 0.88;
 
           const prompt = renderPrompt 
-            ? `Transform this 3D massing model into a photorealistic architectural building. IMPORTANT RULES: 1. You MUST keep the exact shape, volume and massing of the original building in the image. 2. DO NOT change the outline or geometry. 3. Add actual architectural materials, realistic windows, and facades. 4. Completely replace the white background with a realistic environment (sky, ground, trees, context). Style: ${renderPrompt}` 
-            : `Transform this 3D massing model into a photorealistic architectural building. IMPORTANT RULES: 1. You MUST keep the exact shape, volume and massing of the original building in the image. 2. DO NOT change the outline or geometry. 3. Add actual architectural materials, realistic windows, and facades. 4. Completely replace the white background with a realistic environment (sky, ground, trees, context).`;
+            ? `Transform this 3D architectural massing model into a high-end rendering. IMPORTANT RULES: 1. Keep the exact volume, structure and shape of the building in the image. 2. Add realistic architectural materials, glass windows, facades, and detailed textures. 3. Replace background with a photorealistic environment (sky, daylight, landscaping, trees, context). Style: ${renderPrompt}` 
+            : `Transform this 3D architectural massing model into a photorealistic modern building. Keep the exact shape and volume. Add architectural glass facades, realistic concrete/steel textures, daylight and natural environmental surroundings.`;
 
           const result: any = await fal.subscribe("fal-ai/flux/dev/image-to-image", {
             input: { prompt, image_url: uploadedImageUrl, strength: styleStrength },
@@ -871,6 +884,20 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: projectId, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: currentUser.companyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       addToast(t('render_saved'), 'success'); setShowRenderModal(false); setGeneratedImage(null);
     } catch (err) { addToast(t('error_saving_cloud'), 'error'); } finally { setIsUploading(false); }
+  };
+
+  const handleOpenRenderModal = () => {
+    try {
+      const snap = typeof (window as any).captureBimSnapshot === 'function' 
+        ? (window as any).captureBimSnapshot() 
+        : canvasRef.current?.toDataURL('image/png') || null;
+      if (snap) {
+        setCapturedSnapshot(snap);
+      }
+    } catch (err) {
+      console.warn("Could not capture immediate snapshot:", err);
+    }
+    setShowRenderModal(true);
   };
 
   const handleOpenPdfStudio = () => {
@@ -1174,7 +1201,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                 <button onClick={handleOpenPdfStudio} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-medium hover:bg-background transition-colors flex items-center gap-2 shadow-sm">
                   <FileText size={16} /> <span>{t('create_pdf_btn')}</span>
                 </button>
-                <button onClick={() => setShowRenderModal(true)} className="px-4 py-2 bg-accent-ai text-white rounded-md text-sm font-medium hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center gap-2">
+                <button onClick={handleOpenRenderModal} className="px-4 py-2 bg-accent-ai text-white rounded-md text-sm font-medium hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center gap-2">
                   <Camera size={16} />{t('ai_render')}
                 </button>
               </div>
@@ -1368,6 +1395,13 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                       <div className="flex flex-col items-center gap-4 text-accent-ai"><Loader2 size={56} className="animate-spin" /><p className="text-sm font-bold tracking-widest uppercase animate-pulse">{t('generating_render')}</p></div>
                     ) : generatedImage ? (
                       <img src={generatedImage} alt="Generated Render" className="w-full h-full object-contain" />
+                    ) : capturedSnapshot ? (
+                      <div className="relative w-full h-full flex items-center justify-center p-2">
+                        <img src={capturedSnapshot} alt="3D Model Preview" className="w-full h-full object-contain rounded-xl" />
+                        <div className="absolute bottom-4 left-4 bg-surface/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-border text-xs text-text-muted font-medium flex items-center gap-2 shadow-md">
+                          <Camera size={14} className="text-accent-ai" /> 3D Modell Snapshot
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center gap-4 text-text-muted"><Camera size={56} className="opacity-30" /><p className="text-sm font-medium">{t('click_generate_render')}</p></div>
                     )}
