@@ -179,6 +179,27 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         }
       }
 
+      // Broadcast receipt to connected desktop sessions (Spesen & Externe Kosten)
+      try {
+        const receiptChannel = supabase.channel(`mobile_upload_${sessionId}`);
+        await receiptChannel.subscribe();
+        await receiptChannel.send({
+          type: 'broadcast',
+          event: 'receipt_uploaded',
+          payload: {
+            url: downloadUrl,
+            name: file.name,
+            type: file.type || 'image/jpeg',
+            sessionId
+          }
+        });
+        setTimeout(() => {
+          try { supabase.removeChannel(receiptChannel); } catch (e) {}
+        }, 3000);
+      } catch (channelErr) {
+        console.warn("Realtime receipt broadcast note:", channelErr);
+      }
+
       setUploadProgress(100);
       setIsSuccess(true);
       addToast(isVcard ? 'Visitenkarte per KI analysiert & gesendet!' : 'Beleg erfolgreich übertragen!', 'success');

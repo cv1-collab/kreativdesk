@@ -479,6 +479,55 @@ export default function Finance() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Realtime & Polling listener for Smartphone Live Scan (QR Code)
+  useEffect(() => {
+    if (!opCostSessionId) return;
+    let isMounted = true;
+
+    const channel = supabase.channel(`mobile_upload_${opCostSessionId}`)
+      .on('broadcast', { event: 'receipt_uploaded' }, async (payload: any) => {
+        if (!isMounted) return;
+        const data = payload?.payload;
+        if (data?.url) {
+          setIncomingReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
+          await processImageWithAI(null, data.url, data.type || 'image/jpeg');
+          addToast('Beleg vom Smartphone empfangen & analysiert!', 'success');
+        }
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(async () => {
+      if (!isMounted) return;
+      try {
+        const { data: docs } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('company_id', opCostSessionId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (docs && docs.length > 0) {
+          const doc = docs[0];
+          const docUrl = doc.url || doc.file_url;
+          if (docUrl) {
+            setIncomingReceipts(prev => {
+              if (prev.includes(docUrl)) return prev;
+              processImageWithAI(null, docUrl, doc.type || 'image/jpeg');
+              addToast('Beleg vom Smartphone empfangen & analysiert!', 'success');
+              return [...prev, docUrl];
+            });
+          }
+        }
+      } catch (err) {}
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [opCostSessionId]);
+
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
     // 🔥 DEMO-BRÜCKE: Lade Daten aus deinem Template!
@@ -1075,22 +1124,53 @@ export default function Finance() {
     }));
   };
 
-  const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string) => {
+  const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string = 'image/jpeg') => {
     setIsAnalyzingAI(true); addToast(t('analyzing_ai'), 'info');
     try {
-      if (!base64Data) throw new Error("No image data");
-      const prompt = "Analysiere diese Quittung. Antworte NUR im JSON Format: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
+      let b64 = base64Data;
+      let effectiveMime = mimeType || 'image/jpeg';
+      if (!b64 && imageUrl) {
+        try {
+          const res = await fetch(imageUrl);
+          const blob = await res.blob();
+          effectiveMime = blob.type || 'image/jpeg';
+          const reader = new FileReader();
+          b64 = await new Promise((resolve) => {
+            reader.onloadend = () => {
+              const resStr = (reader.result as string) || '';
+              resolve(resStr.split(',')[1] || null);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } catch (fetchErr) {
+          console.warn("Could not convert imageUrl to base64:", fetchErr);
+        }
+      }
+      if (!b64) throw new Error("No image data");
+
+      const prompt = "Analysiere diese Quittung / diese Rechnung. Antworte AUSSCHLIESSLICH im JSON Format mit diesen Keys: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
       const response = await callGeminiAPI('gemini-2.5-flash', [
-        { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
+        { inlineData: { data: b64, mimeType: effectiveMime } },
         { text: prompt }
       ]);
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+
+      let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+
       if (jsonMatch) {
         const aiData = JSON.parse(jsonMatch[0]);
         applyAiData(aiData);
         addToast(t('receipt_live_received'), 'success');
+      } else {
+        addToast(t('ai_failed'), 'error');
       }
-    } catch (error) { addToast(t('ai_failed'), 'error'); } finally { setIsAnalyzingAI(false); }
+    } catch (error) { 
+      console.error("AI receipt error:", error);
+      addToast(t('ai_failed'), 'error'); 
+    } finally { 
+      setIsAnalyzingAI(false); 
+    }
   };
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

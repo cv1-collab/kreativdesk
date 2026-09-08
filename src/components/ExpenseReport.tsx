@@ -130,43 +130,125 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string) => {
+  const processImageWithAI = async (base64Data: string | null, imageUrl: string | null, mimeType: string = 'image/jpeg') => {
     setIsAnalyzingAI(true);
     addToast(t('analyzing_ai'), 'info');
     try {
-      if (!base64Data) throw new Error("No image data");
-      const prompt = "Analysiere diese Quittung. Antworte NUR im JSON Format: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
-      const response = await callGeminiAPI('gemini-2.0-flash', [
-        { inlineData: { data: base64Data, mimeType: mimeType || 'image/jpeg' } },
+      let b64 = base64Data;
+      let effectiveMime = mimeType || 'image/jpeg';
+      if (!b64 && imageUrl) {
+        try {
+          const res = await fetch(imageUrl);
+          const blob = await res.blob();
+          effectiveMime = blob.type || 'image/jpeg';
+          const reader = new FileReader();
+          b64 = await new Promise((resolve) => {
+            reader.onloadend = () => {
+              const resStr = (reader.result as string) || '';
+              resolve(resStr.split(',')[1] || null);
+            };
+            reader.readAsDataURL(blob);
+          });
+        } catch (fetchErr) {
+          console.warn("Could not convert imageUrl to base64:", fetchErr);
+        }
+      }
+      if (!b64) throw new Error("No image data");
+
+      const prompt = "Analysiere diese Quittung / diesen Spesenbeleg. Antworte AUSSCHLIESSLICH im JSON Format mit diesen Keys: {\"total\": number, \"vendor\": string, \"category\": string, \"description\": string}";
+      const response = await callGeminiAPI('gemini-2.5-flash', [
+        { inlineData: { data: b64, mimeType: effectiveMime } },
         { text: prompt }
       ]);
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
+
+      let text = typeof response === 'string' ? response : (response?.text || response?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+
       if (jsonMatch) {
         const aiData = JSON.parse(jsonMatch[0]);
         const rawAmount = aiData.total || aiData.amount || aiData.sum || '';
         const cleanAmount = rawAmount ? String(rawAmount).replace(/[^0-9.,]/g, '').replace(',', '.') : '';
         const desc = aiData.vendor || aiData.merchant || aiData.description || '';
+        const cat = aiData.category || 'Verpflegung';
 
         if (cleanAmount || desc) {
            setPositions(prev => {
              const newPos = [...prev];
              const lastIdx = newPos.length - 1;
-             if (!newPos[lastIdx].amount && !newPos[lastIdx].description) {
-               newPos[lastIdx] = { ...newPos[lastIdx], amount: cleanAmount || newPos[lastIdx].amount, description: desc || newPos[lastIdx].description };
+             if (lastIdx >= 0 && !newPos[lastIdx].amount && !newPos[lastIdx].description) {
+               newPos[lastIdx] = { 
+                 ...newPos[lastIdx], 
+                 amount: cleanAmount || newPos[lastIdx].amount, 
+                 description: desc || newPos[lastIdx].description,
+                 category: cat || newPos[lastIdx].category
+               };
              } else {
-               newPos.push({ id: Date.now().toString(), category: 'Verpflegung', description: desc, amount: cleanAmount });
+               newPos.push({ id: Date.now().toString(), category: cat, description: desc, amount: cleanAmount });
              }
              return newPos;
            });
-           addToast('Beleg analysiert!', 'success');
+           addToast('Beleg analysiert & Spesenposition ausgefüllt!', 'success');
         }
       }
     } catch (err) { 
+      console.error("AI receipt error:", err);
       addToast(t('save_error'), 'error'); 
     } finally { 
       setIsAnalyzingAI(false); 
     }
   };
+
+  // Realtime & Polling listener for Smartphone Live Scan (QR Code)
+  useEffect(() => {
+    if (!sessionId) return;
+    let isMounted = true;
+
+    const channel = supabase.channel(`mobile_upload_${sessionId}`)
+      .on('broadcast', { event: 'receipt_uploaded' }, async (payload: any) => {
+        if (!isMounted) return;
+        const data = payload?.payload;
+        if (data?.url) {
+          setReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
+          await processImageWithAI(null, data.url, data.type || 'image/jpeg');
+          addToast('Beleg vom Smartphone empfangen!', 'success');
+        }
+      })
+      .subscribe();
+
+    const pollInterval = setInterval(async () => {
+      if (!isMounted) return;
+      try {
+        const { data: docs } = await supabase
+          .from('documents')
+          .select('*')
+          .eq('company_id', sessionId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (docs && docs.length > 0) {
+          const doc = docs[0];
+          const docUrl = doc.url || doc.file_url;
+          if (docUrl) {
+            setReceipts(prev => {
+              if (prev.includes(docUrl)) return prev;
+              processImageWithAI(null, docUrl, doc.type || 'image/jpeg');
+              addToast('Beleg vom Smartphone empfangen!', 'success');
+              return [...prev, docUrl];
+            });
+          }
+        }
+      } catch (err) {
+        // quiet poll
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId]);
 
   const handleMobileCardScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -301,26 +383,30 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
                   </div>
                 ))}
                 
-                {isMobileOrTablet ? (
-                  <div className="aspect-square flex flex-col gap-2">
-                    <button onClick={() => mobileFileInputRef.current?.click()} disabled={isAnalyzingAI} className="w-full h-full rounded-xl border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
-                      {isAnalyzingAI ? <Loader2 className="animate-spin text-orange-500 mb-2" size={24} /> : <Camera size={24} className="text-text-muted group-hover:text-orange-500 mb-2 transition-colors" />}
-                      <span className="text-[10px] font-bold text-text-muted group-hover:text-orange-500">{isAnalyzingAI ? t('analyzing_ai') : t('take_photo')}</span>
-                    </button>
-                    <input type="file" accept="image/*" capture="environment" ref={mobileFileInputRef} onChange={handleMobileCardScan} className="hidden" />
+                {/* Camera / Photo Option */}
+                <div className="aspect-square flex flex-col gap-2">
+                  <button onClick={() => mobileFileInputRef.current?.click()} disabled={isAnalyzingAI} className="w-full h-full rounded-xl border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
+                    {isAnalyzingAI ? <Loader2 className="animate-spin text-orange-500 mb-2" size={24} /> : <Camera size={24} className="text-orange-500 mb-2 group-hover:scale-110 transition-transform" />}
+                    <span className="text-[10px] font-bold text-text-muted group-hover:text-orange-500">{isAnalyzingAI ? t('analyzing_ai') : t('take_photo')}</span>
+                  </button>
+                  <input type="file" accept="image/*" capture="environment" ref={mobileFileInputRef} onChange={handleMobileCardScan} className="hidden" />
+                </div>
+
+                {/* File / Gallery Option */}
+                <div className="aspect-square flex flex-col gap-2">
+                  <button onClick={() => fileInputRef.current?.click()} disabled={isAnalyzingAI} className="w-full h-full rounded-xl border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
+                    {isAnalyzingAI ? <Loader2 className="animate-spin text-orange-500 mb-2" size={24} /> : <ImageIcon size={24} className="text-text-muted group-hover:text-orange-500 mb-2 transition-colors" />}
+                    <span className="text-[10px] font-bold text-text-muted group-hover:text-orange-500">{isAnalyzingAI ? t('analyzing_ai') : t('upload_document')}</span>
+                  </button>
+                  <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
+                </div>
+
+                {/* Desktop QR Code Live Scan */}
+                {!isMobileOrTablet && (
+                  <div className="aspect-square rounded-xl border border-orange-500/30 bg-orange-500/10 flex flex-col items-center justify-center p-3 text-center group relative overflow-hidden" title="Scanne diesen Code mit dem Handy">
+                    <div className="bg-white p-1.5 rounded-lg mb-2 shadow-sm"><QRCode value={mobileUploadUrl} size={64} /></div>
+                    <span className="text-[10px] font-bold text-orange-500 flex items-center gap-1.5"><Smartphone size={12}/> {t('live_scan')}</span>
                   </div>
-                ) : (
-                  <>
-                    <button onClick={() => fileInputRef.current?.click()} disabled={isAnalyzingAI} className="aspect-square rounded-xl border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
-                      {isAnalyzingAI ? <Loader2 className="animate-spin text-orange-500 mb-2" size={24} /> : <ImageIcon size={24} className="text-text-muted group-hover:text-orange-500 mb-2 transition-colors" />}
-                      <span className="text-[10px] font-bold text-text-muted group-hover:text-orange-500">{isAnalyzingAI ? t('analyzing_ai') : t('upload_document')}</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
-                    <div className="aspect-square rounded-xl border border-orange-500/30 bg-orange-500/10 flex flex-col items-center justify-center p-3 text-center group relative overflow-hidden" title="Scanne diesen Code mit dem Handy">
-                      <div className="bg-white p-1.5 rounded-lg mb-2 shadow-sm"><QRCode value={mobileUploadUrl} size={64} /></div>
-                      <span className="text-[10px] font-bold text-orange-500 flex items-center gap-1.5"><Smartphone size={12}/> {t('live_scan')}</span>
-                    </div>
-                  </>
                 )}
               </div>
             </div>
