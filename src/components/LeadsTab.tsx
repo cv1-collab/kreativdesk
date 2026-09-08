@@ -15,7 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { callGeminiAPI } from '../utils/geminiClient';
-import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
+import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/cloudStorageHelper';
 
 // FIX: Unterdrückt die "Buffer is not defined" Warnung von React-PDF in Vite
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
@@ -291,11 +291,14 @@ export default function LeadsTab() {
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
   const isMobileOrTablet = windowWidth < 1024;
 
-  const leadFormUrl = `${window.location.origin}/lead/${currentUser?.uid || 'demo'}`;
+  const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'demo';
+  const leadFormUrl = `${window.location.origin}/lead-form/${safeCompanyId}`;
 
   // Kamera-Scan States
   const mobileFileInputRef = useRef<HTMLInputElement>(null);
   const [isScanningCard, setIsScanningCard] = useState(false);
+  const [scannedCardFile, setScannedCardFile] = useState<File | null>(null);
+  const [scannedCardPreview, setScannedCardPreview] = useState<string | null>(null);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -412,9 +415,11 @@ export default function LeadsTab() {
             zipCode: d.zip_code || d.zipCode || parsedNotes.zipCode || parsedNotes.zipCity || '',
             city: d.city || parsedNotes.city || '',
             message: d.message || parsedNotes.message || parsedNotes.description || d.notes || '',
+            photoUrl: parsedNotes.photoUrl || d.photo_url || null,
             status: d.status || 'New',
             source: d.source || 'Webseite',
             date: d.created_at ? new Date(d.created_at).toLocaleDateString('de-CH') : (d.date || ''),
+            createdAt: d.created_at || new Date().toISOString(),
             companyId: d.company_id || d.companyId
           };
         });
@@ -432,11 +437,14 @@ export default function LeadsTab() {
   const handleMobileCardScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setScannedCardFile(file);
     setIsScanningCard(true);
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
+        const fullDataUrl = reader.result as string;
+        setScannedCardPreview(fullDataUrl);
+        const base64Data = fullDataUrl.split(',')[1];
         const prompt = `Analysiere diese Visitenkarte. Extrahiere die Daten als striktes JSON Objekt mit exakt diesen Keys: "firstName" (Vorname), "lastName" (Nachname), "company" (Firma), "email", "phone" (Telefon), "zipCity" (PLZ & Ort), "description" (Jobtitel oder Notizen). Antworte NUR mit dem JSON-Code ohne Markdown-Formatierung.`;
         
         const response = await callGeminiAPI('gemini-2.5-flash', [
@@ -484,10 +492,48 @@ export default function LeadsTab() {
     setIsSubmittingScanner(true);
     try {
       const fullName = [scannedData.firstName, scannedData.lastName].filter(Boolean).join(' ') || 'Neuer Kontakt';
+      
+      let photoUrl = '';
+      if (scannedCardFile) {
+        try {
+          const safeFileName = `Visitenkarte_${fullName.replace(/\s+/g, '_')}_${Date.now()}.jpg`;
+          photoUrl = await uploadFileWithFallback(scannedCardFile, safeFileName, safeCompanyId, 'business_cards');
+
+          // Automatisch in Dokumente (04_SALES) archivieren
+          const { data: existingFolder } = await supabase
+            .from('documents')
+            .select('id')
+            .eq('company_id', safeCompanyId)
+            .eq('project_id', 'global')
+            .eq('name', '04_SALES')
+            .single();
+          const targetFolderId = existingFolder ? existingFolder.id : 'root';
+
+          await supabase.from('documents').insert({
+            name: safeFileName,
+            url: photoUrl,
+            file_url: photoUrl,
+            project_id: 'global',
+            folder_id: targetFolderId,
+            category: 'company',
+            owner_id: currentUser.uid,
+            company_id: safeCompanyId,
+            type: scannedCardFile.type || 'image/jpeg',
+            size: `${Math.round(scannedCardFile.size / 1024)} KB`,
+            is_folder: false,
+            created_at: new Date().toISOString(),
+            uploaded_at: new Date().toISOString()
+          });
+        } catch (uploadErr) {
+          console.warn("Card photo upload note:", uploadErr);
+        }
+      }
+
       const notesPayload = JSON.stringify({
         street: scannedData.street || '',
         zipCity: scannedData.zipCity || '',
-        description: scannedData.description || ''
+        description: scannedData.description || '',
+        photoUrl: photoUrl || undefined
       });
       await supabase.from('leads').insert({
         name: fullName,
@@ -501,8 +547,10 @@ export default function LeadsTab() {
         created_at: new Date().toISOString()
       });
 
-      addToast(t('scanned_lead_saved'), 'success');
+      addToast(photoUrl ? 'Visitenkarte als Lead gespeichert & in Dokumente archiviert!' : t('scanned_lead_saved'), 'success');
       setScannedData({ firstName: '', lastName: '', company: '', email: '', phone: '', street: '', zipCity: '', description: '' });
+      setScannedCardFile(null);
+      setScannedCardPreview(null);
       setLeadTab('leads');
       fetchLeads();
     } catch (error) {
@@ -598,6 +646,10 @@ export default function LeadsTab() {
         name: fullName,
         email: lead.email || null,
         phone: lead.phone || null,
+        company: lead.company || null,
+        photo_url: lead.photoUrl || null,
+        street: lead.street || null,
+        zip_city: (lead.zipCode || lead.city) ? `${lead.zipCode || ''} ${lead.city || ''}`.trim() : null,
         role: 'partner',
         status: 'neu',
         created_at: new Date().toISOString(),
@@ -700,23 +752,19 @@ export default function LeadsTab() {
         </div>
       </div>
 
-      <div className="flex bg-surface border border-border/50 rounded-md p-1 shadow-sm">
-            <button onClick={() => setLeadTab('form')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors", leadTab === 'form' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
-              {t('preview')}
-            </button>
-            <button onClick={() => setLeadTab('scanner')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5", leadTab === 'scanner' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 shadow-sm" : "text-text-muted hover:text-text-primary")}>
-              <Smartphone size={14}/> {t('live_scan')}
-            </button>
-            <button onClick={() => setLeadTab('leads')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2", leadTab === 'leads' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
-              {t('inbox')} <span className="bg-accent-ai text-white text-[10px] px-1.5 py-0.5 rounded-full">{collectedLeads.length}</span>
-            </button>
-          </div>
-          
-          {leadTab === 'leads' && (
-            <button onClick={() => setIsPdfStudioOpen(true)} className="flex px-3 sm:px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-xs sm:text-sm font-bold hover:bg-background transition-colors items-center gap-1.5 sm:gap-2 whitespace-nowrap shadow-sm">
-              <Download size={14}/> PDF
-            </button>
-          )}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex bg-surface border border-border/50 rounded-md p-1 shadow-sm">
+          <button onClick={() => setLeadTab('form')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors", leadTab === 'form' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
+            {t('preview')}
+          </button>
+          <button onClick={() => setLeadTab('scanner')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5", leadTab === 'scanner' ? "bg-blue-500/10 text-blue-500 border border-blue-500/20 shadow-sm" : "text-text-muted hover:text-text-primary")}>
+            <Smartphone size={14}/> {t('live_scan')}
+          </button>
+          <button onClick={() => setLeadTab('leads')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2", leadTab === 'leads' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
+            {t('inbox')} <span className="bg-accent-ai text-white text-[10px] px-1.5 py-0.5 rounded-full">{collectedLeads.length}</span>
+          </button>
+        </div>
+      </div>
       
       {leadTab === 'form' && (
         <div className="bg-surface border border-border rounded-xl p-6 md:p-8 max-w-3xl mx-auto w-full relative overflow-hidden shadow-sm animate-in fade-in">
@@ -798,7 +846,34 @@ export default function LeadsTab() {
             )}
 
             <div className={cn("lg:col-span-2", isMobileOrTablet ? "lg:col-span-3" : "")}>
-              <h3 className="text-xl font-bold mb-4">{t('scanned_lead_data')}</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">{t('scanned_lead_data')}</h3>
+                {scannedCardPreview && (
+                  <span className="text-xs bg-emerald-500/10 text-emerald-500 font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5">
+                    <CheckCircle2 size={12}/> Foto erfasst & bereit
+                  </span>
+                )}
+              </div>
+
+              {scannedCardPreview && (
+                <div className="mb-5 p-3 bg-background border border-border/80 rounded-xl flex items-center justify-between gap-4 animate-in fade-in">
+                  <div className="flex items-center gap-3">
+                    <img src={scannedCardPreview} alt="Visitenkarte" className="w-16 h-12 object-cover rounded-lg border border-border shadow-sm" />
+                    <div>
+                      <div className="text-xs font-bold text-text-primary">Visitenkarten-Foto</div>
+                      <div className="text-[11px] text-text-muted">Wird beim Speichern automatisch in Dokumente (04_SALES) archiviert</div>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => { setScannedCardFile(null); setScannedCardPreview(null); }}
+                    className="p-2 text-text-muted hover:text-red-500 rounded-lg hover:bg-surface transition-colors"
+                    title="Foto entfernen"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleSaveScannedLead} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('first_name')} *</label><input type="text" required value={scannedData.firstName} onChange={e => setScannedData({...scannedData, firstName: e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-2 text-sm outline-none focus:border-accent-ai font-medium text-text-primary" /></div>
@@ -934,6 +1009,17 @@ export default function LeadsTab() {
                           <div className="text-sm text-text-primary whitespace-pre-wrap p-4 bg-background rounded-lg border border-border/50 leading-relaxed">
                             {editingLead.message}
                           </div>
+                        </div>
+                      )}
+                      {editingLead.photoUrl && (
+                        <div className="pt-4 border-t border-border/50">
+                          <span className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2">Original Visitenkarte / Foto</span>
+                          <a href={editingLead.photoUrl} target="_blank" rel="noopener noreferrer" className="block relative group overflow-hidden rounded-xl border border-border/70 hover:border-blue-500/50 transition-colors shadow-sm">
+                            <img src={editingLead.photoUrl} alt="Visitenkarte" className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-300" />
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-2">
+                              In voller Grösse öffnen
+                            </div>
+                          </a>
                         </div>
                       )}
                     </div>

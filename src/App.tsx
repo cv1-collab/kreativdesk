@@ -159,8 +159,10 @@ export default function App() {
                                 <Route path="/imprint" element={<Imprint />} />
                                 <Route path="/terms" element={<TermsOfService />} />
 
-                                <Route path="/lead-form/:companyId" element={<PublicLeadForm />} />
-                                <Route path="/lead-form" element={<PublicLeadForm />} />
+                                 <Route path="/lead-form/:companyId" element={<PublicLeadForm />} />
+                                 <Route path="/lead-form" element={<PublicLeadForm />} />
+                                 <Route path="/lead/:companyId" element={<PublicLeadForm />} />
+                                 <Route path="/lead" element={<PublicLeadForm />} />
 
                                 {/* Smart Offerten & Pitch-Landingpages (Öffentlich für Kunden) */}
                                 <Route path="/p/:shareToken" element={<SmartProposalLandingPage />} />
