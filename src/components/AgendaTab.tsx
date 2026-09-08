@@ -429,7 +429,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       try {
         const localCacheKey = `agenda_cache_${safeCompanyId}`;
         const localCachedRaw = localStorage.getItem(localCacheKey);
-        const localCachedEvents = localCachedRaw ? JSON.parse(localCachedRaw) : [];
+        let localCachedEvents: any[] = [];
+        try {
+          localCachedEvents = localCachedRaw ? JSON.parse(localCachedRaw) : [];
+        } catch (e) {
+          localCachedEvents = [];
+        }
 
         const { data: dbEvents } = await supabase
           .from('calendar_events')
@@ -470,7 +475,12 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
 
         const timeCacheKey = `time_entries_cache_${safeCompanyId}`;
         const rawTimeCache = localStorage.getItem(timeCacheKey);
-        const localCachedTimes: any[] = rawTimeCache ? JSON.parse(rawTimeCache) : [];
+        let localCachedTimes: any[] = [];
+        try {
+          localCachedTimes = rawTimeCache ? JSON.parse(rawTimeCache) : [];
+        } catch (e) {
+          localCachedTimes = [];
+        }
 
         let configTime: any = null;
         try {

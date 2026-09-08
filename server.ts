@@ -757,7 +757,9 @@ Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.to
           'projects', 'time_entries', 'defects', 'documents', 'leads', 
           'company_users', 'invites', 'notifications', 'smart_proposals',
           'cad_plans', 'slides', 'transactions', 'calendar_events', 
-          'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports'
+          'chat_messages', 'company_settings', 'audio_notes', 'whiteboard_exports',
+          'project_tasks', 'project_members', 'project_schedules', 'audit_logs',
+          'knowledge_docs', 'embeddings', 'goals'
         ];
         for (const table of tables) {
           try {

@@ -18,8 +18,8 @@ import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
-  en: { expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment', global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant', amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached', upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book', cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description', generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ext_costs_booked: 'Expenses successfully booked' },
-  de: { expense_studio: 'Spesen Studio', employee: 'Mitarbeiter', date: 'Datum', project_assignment: 'Projekt-Zuweisung', global_expenses: 'Globale Spesen (Kein Projekt)', category: 'Kategorie', purpose_merchant: 'Zweck / Merchant', amount: 'Betrag', add_position: 'Position hinzufügen', receipts_photos: 'Belege / Fotos', attached: 'angehängt', upload_document: 'Beleg hochladen', live_scan: 'Live Scan', total: 'Total', save_book: 'Speichern & Verbuchen', cancel: 'Abbrechen', analyzing_ai: 'KI analysiert Beleg...', take_photo: 'Foto aufnehmen', select: 'Wählen...', description: 'Beschreibung', generate_pdf: 'PDF generieren & Verbuchen', save_error: 'Fehler beim Speichern', ext_costs_booked: 'Spesen erfolgreich verbucht' }
+  en: { expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment', global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant', amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached', upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book', cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description', generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ai_failed: 'AI receipt analysis failed', ext_costs_booked: 'Expenses successfully booked' },
+  de: { expense_studio: 'Spesen Studio', employee: 'Mitarbeiter', date: 'Datum', project_assignment: 'Projekt-Zuweisung', global_expenses: 'Globale Spesen (Kein Projekt)', category: 'Kategorie', purpose_merchant: 'Zweck / Merchant', amount: 'Betrag', add_position: 'Position hinzufügen', receipts_photos: 'Belege / Fotos', attached: 'angehängt', upload_document: 'Beleg hochladen', live_scan: 'Live Scan', total: 'Total', save_book: 'Speichern & Verbuchen', cancel: 'Abbrechen', analyzing_ai: 'KI analysiert Beleg...', take_photo: 'Foto aufnehmen', select: 'Wählen...', description: 'Beschreibung', generate_pdf: 'PDF generieren & Verbuchen', save_error: 'Fehler beim Speichern', ai_failed: 'KI-Beleganalyse fehlgeschlagen', ext_costs_booked: 'Spesen erfolgreich verbucht' }
 };
 
 const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
@@ -193,7 +193,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
       }
     } catch (err) { 
       console.error("AI receipt error:", err);
-      addToast(t('save_error'), 'error'); 
+      addToast(t('ai_failed'), 'error'); 
     } finally { 
       setIsAnalyzingAI(false); 
     }
@@ -253,20 +253,33 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
   const handleMobileCardScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setIsAnalyzingAI(true);
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        if (reader.result) {
-          const base64String = reader.result as string;
-          setReceipts(prev => [...prev, base64String]);
-          const base64Data = base64String.split(',')[1];
-          await processImageWithAI(base64Data, null, file.type);
+        try {
+          if (reader.result) {
+            const base64String = reader.result as string;
+            setReceipts(prev => [...prev, base64String]);
+            const base64Data = base64String.split(',')[1];
+            await processImageWithAI(base64Data, null, file.type);
+          }
+        } catch (err) {
+          console.error("Scan processing error:", err);
+          setIsAnalyzingAI(false);
+          addToast(t('ai_failed'), 'error');
         }
       };
+      reader.onerror = () => {
+        setIsAnalyzingAI(false);
+        addToast('Upload Fehler', 'error');
+      };
       reader.readAsDataURL(file);
-    } catch (error) { addToast('Upload Fehler', 'error'); } 
-    finally { if (mobileFileInputRef.current) mobileFileInputRef.current.value = ''; }
+    } catch (error) {
+      setIsAnalyzingAI(false);
+      addToast('Upload Fehler', 'error');
+    } finally {
+      if (mobileFileInputRef.current) mobileFileInputRef.current.value = '';
+    }
   };
 
   const handleLocalImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

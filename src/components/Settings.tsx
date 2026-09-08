@@ -49,6 +49,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     confirm_sure: 'Are you absolutely sure?',
     upload_success: 'Saved successfully!',
     upload_failed: 'Error saving data.',
+    delete_account_error: 'Error deleting account.',
     recent_login_required: 'Security lock: Please log out and log in again to delete your account.'
   },
   de: {
@@ -85,7 +86,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     confirm_sure: 'Bist du dir absolut sicher?',
     upload_success: 'Erfolgreich gespeichert!',
     upload_failed: 'Fehler beim Speichern.',
-    recent_login_required: 'Sicherheitssperre: Bitte melde dich einmal ab und wieder an, um deinen Account endgültig zu löschen.'
+    delete_account_error: 'Fehler beim Löschen des Accounts.',
+    recent_login_required: 'Sicherheits-Sperre: Bitte melde dich ab und erneut an, um dein Konto zu löschen.'
   }
 };
 
@@ -317,7 +319,7 @@ export default function Settings() {
       navigate('/login');
     } catch (error: any) {
       console.error(error);
-      addToast(t('upload_failed'), 'error');
+      addToast(error.message || t('delete_account_error'), 'error');
       setIsDeletingAccount(false);
     }
   };

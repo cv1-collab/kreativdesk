@@ -578,13 +578,22 @@ export default function MeetChat() {
     }
     if (isTranscribing) {
       setIsTranscribing(false);
-      if (recognitionRef.current) recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) { console.warn(e); }
+      }
       setCurrentTranscript('');
       addToast("Live-Transkription deaktiviert", "info");
     } else {
-      setIsTranscribing(true);
       if (recognitionRef.current) {
-        try { recognitionRef.current.start(); addToast("Live-Transkription gestartet", "success"); } catch (e) { console.warn(e); }
+        try {
+          recognitionRef.current.start();
+          setIsTranscribing(true);
+          addToast("Live-Transkription gestartet", "success");
+        } catch (e) {
+          console.warn(e);
+          setIsTranscribing(false);
+          addToast("Fehler beim Starten der Live-Transkription", "error");
+        }
       }
     }
   };
