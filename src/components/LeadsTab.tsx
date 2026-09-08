@@ -4,7 +4,7 @@ import {
   Megaphone, LogOut, Download, Trash2, Smartphone, Loader2, CheckCircle2, 
   Link as LinkIcon, PenTool, Image as ImageIcon, ZoomOut, ZoomIn, X, Cloud, 
   Briefcase, FileText, Search, Building, Mail, Phone, Clock, UserCheck, 
-  ArrowLeft, RefreshCw, Camera 
+  ArrowLeft, RefreshCw, Camera, UploadCloud
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn } from '../utils';
@@ -96,6 +96,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     status_converted: 'Converted',
     status_rejected: 'Rejected',
     take_photo: 'Take Photo of Business Card',
+    upload_file: 'Upload Card / Image File',
     analyzing: 'Analyzing card...'
   },
   de: {
@@ -120,8 +121,11 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     how_did_you_hear: 'Wie bist auf uns aufmerksam geworden?',
     message: 'Nachricht',
     send_request: 'Anfrage senden',
-    qr_scanner_title: 'Live QR-Scanner',
-    qr_scanner_desc: 'Scanne diesen Code mit der Handy-Kamera, um eine physische Visitenkarte abzufotografieren.',
+    take_photo: 'Visitenkarte live abfotografieren',
+    upload_file: 'Datei / Foto vom Computer hochladen',
+    analyzing: 'Analysiere Karte...',
+    qr_scanner_title: 'Mit Smartphone fotografieren',
+    qr_scanner_desc: 'Scanne diesen QR-Code mit der Handy-Kamera, um eine physische Visitenkarte live aufzunehmen.',
     scanned_lead_data: 'Gescannte Daten',
     event_notes: 'Event-Notizen',
     save_lead_crm: 'Lead in CRM speichern',
@@ -164,9 +168,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     status_pending: 'Pendent',
     status_contacted: 'Kontaktiert',
     status_converted: 'Umgewandelt',
-    status_rejected: 'Abgesagt',
-    take_photo: 'Visitenkarte fotografieren',
-    analyzing: 'Analysiere Visitenkarte...'
+    status_rejected: 'Abgesagt'
   }
 };
 
@@ -827,8 +829,18 @@ export default function LeadsTab() {
                 disabled={isScanningCard} 
                 className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all cursor-pointer disabled:opacity-50"
               >
-                {isScanningCard ? <Loader2 className="animate-spin" size={20}/> : <Camera size={20}/>}
-                {isScanningCard ? t('analyzing') : t('take_photo')}
+                {isScanningCard ? (
+                  <Loader2 className="animate-spin" size={20}/>
+                ) : isMobileOrTablet ? (
+                  <Camera size={20}/>
+                ) : (
+                  <UploadCloud size={20}/>
+                )}
+                {isScanningCard 
+                  ? t('analyzing') 
+                  : isMobileOrTablet 
+                    ? t('take_photo') 
+                    : t('upload_file')}
               </button>
             </div>
 
