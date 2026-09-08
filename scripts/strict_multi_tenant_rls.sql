@@ -201,8 +201,8 @@ DROP POLICY IF EXISTS "Authenticated users access tasks" ON public.tasks;
 DROP POLICY IF EXISTS "Strict company isolation tasks" ON public.tasks;
 CREATE POLICY "Strict company isolation tasks" ON public.tasks
   FOR ALL TO authenticated
-  USING (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text)
-  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR owner_id::text = auth.uid()::text);
+  USING (is_super_admin() OR company_id::text = get_my_company_id() OR assigned_to::text = auth.uid()::text)
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR assigned_to::text = auth.uid()::text);
 
 -- K) SMART PROPOSALS (Offerten & Verträge)
 ALTER TABLE IF EXISTS public.smart_proposals ENABLE ROW LEVEL SECURITY;
@@ -451,7 +451,6 @@ CREATE POLICY "Company isolated storage read" ON storage.objects
     bucket_id = 'avatars' 
     OR is_super_admin() 
     OR (storage.foldername(name))[1] = get_my_company_id()
-    OR auth.uid()::text = owner::text
   );
 
 CREATE POLICY "Company isolated storage insert" ON storage.objects
@@ -460,7 +459,6 @@ CREATE POLICY "Company isolated storage insert" ON storage.objects
     bucket_id = 'avatars' 
     OR is_super_admin() 
     OR (storage.foldername(name))[1] = get_my_company_id()
-    OR auth.uid()::text = owner::text
   );
 
 CREATE POLICY "Company isolated storage update" ON storage.objects
@@ -468,7 +466,6 @@ CREATE POLICY "Company isolated storage update" ON storage.objects
   USING (
     is_super_admin() 
     OR (storage.foldername(name))[1] = get_my_company_id()
-    OR auth.uid()::text = owner::text
   );
 
 CREATE POLICY "Company isolated storage delete" ON storage.objects
@@ -476,7 +473,6 @@ CREATE POLICY "Company isolated storage delete" ON storage.objects
   USING (
     is_super_admin() 
     OR (storage.foldername(name))[1] = get_my_company_id()
-    OR auth.uid()::text = owner::text
   );
 
 -- ----------------------------------------------------------------------------
