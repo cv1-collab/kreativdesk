@@ -66,16 +66,16 @@ const pdfStyles = StyleSheet.create({
   metaLabel: { fontSize: 8, color: '#6b7280', textTransform: 'uppercase' },
   metaValue: { fontSize: 12, color: '#000000', fontWeight: 'bold' },
   logo: { width: 120, height: 40, objectFit: 'contain' },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingBottom: 5, marginBottom: 5 },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6 },
-  groupRow: { flexDirection: 'row', backgroundColor: '#f9fafb', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', paddingVertical: 8, marginTop: 10 },
-  hrRow: { flexDirection: 'row', backgroundColor: '#fff7ed', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#fdba74', paddingVertical: 6, marginTop: 5 },
-  col1: { width: '10%' },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingBottom: 5, marginBottom: 5, alignItems: 'center' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingVertical: 6, alignItems: 'flex-start' },
+  groupRow: { flexDirection: 'row', backgroundColor: '#f9fafb', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', paddingVertical: 8, marginTop: 10, alignItems: 'flex-start' },
+  hrRow: { flexDirection: 'row', backgroundColor: '#fff7ed', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#fdba74', paddingVertical: 6, marginTop: 5, alignItems: 'flex-start' },
+  col1: { width: '10%', paddingTop: 1 },
   col2: { width: '40%', paddingRight: 10 },
-  col3: { width: '10%', textAlign: 'right' },
-  col4: { width: '10%', paddingLeft: 10 },
-  col5: { width: '15%', textAlign: 'right' },
-  col6: { width: '15%', textAlign: 'right' },
+  col3: { width: '10%', textAlign: 'right', paddingTop: 1 },
+  col4: { width: '10%', paddingLeft: 10, paddingTop: 1 },
+  col5: { width: '15%', textAlign: 'right', paddingTop: 1 },
+  col6: { width: '15%', textAlign: 'right', paddingTop: 1 },
   textBold: { fontWeight: 'bold', color: '#000000' },
   footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
   footerText: { fontSize: 8, color: '#9ca3af' },
@@ -112,7 +112,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               <React.Fragment key={group.id}>
                 <View style={pdfStyles.groupRow} wrap={false}>
                   <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{group.pos}</Text>
-                  <Text style={[pdfStyles.col2, pdfStyles.textBold, { color: settings.accentColor }]}>{group.title}</Text>
+                  <View style={pdfStyles.col2}>
+                    <Text style={[pdfStyles.textBold, { color: settings.accentColor, fontSize: 9.5, lineHeight: 1.35 }]}>{group.title}</Text>
+                  </View>
                   <Text style={pdfStyles.col3}></Text>
                   <Text style={pdfStyles.col4}></Text>
                   <Text style={pdfStyles.col5}></Text>
@@ -121,7 +123,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                 {group.items.map((item: any) => (
                   <View style={pdfStyles.tableRow} key={item.id} wrap={false}>
                     <Text style={[pdfStyles.col1, { fontSize: 8, color: '#6b7280' }]}>{item.pos}</Text>
-                    <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{item.description}</Text>
+                    <View style={pdfStyles.col2}>
+                      <Text style={[pdfStyles.textBold, { fontSize: 9, lineHeight: 1.35 }]}>{item.description}</Text>
+                    </View>
                     <Text style={pdfStyles.col3}>{item.qty}</Text>
                     <Text style={pdfStyles.col4}>{item.unit}</Text>
                     <Text style={pdfStyles.col5}>{formatCHF(item.unitPrice)}</Text>
@@ -167,7 +171,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                     <React.Fragment key={g.id}>
                       <View style={pdfStyles.groupRow} wrap={false}>
                         <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{g.pos}</Text>
-                        <Text style={[pdfStyles.col2, pdfStyles.textBold, { color: settings.accentColor }]}>{g.title}</Text>
+                        <View style={pdfStyles.col2}>
+                          <Text style={[pdfStyles.textBold, { color: settings.accentColor, fontSize: 9.5, lineHeight: 1.35 }]}>{g.title}</Text>
+                        </View>
                         <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{formatCHF(plan)}</Text>
                         <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: '#ef4444' }]}>{formatCHF(actual)}</Text>
                         <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: diff < 0 ? '#ef4444' : '#10b981' }]}>{(diff >= 0 ? '+' : '')}{formatCHF(diff)}</Text>
@@ -178,7 +184,9 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
                         return (
                           <View style={pdfStyles.tableRow} key={i.id} wrap={false}>
                             <Text style={[pdfStyles.col1, { fontSize: 8, color: '#6b7280' }]}>{i.pos}</Text>
-                            <Text style={[pdfStyles.col2, pdfStyles.textBold]}>{i.description}</Text>
+                            <View style={pdfStyles.col2}>
+                              <Text style={[pdfStyles.textBold, { fontSize: 9, lineHeight: 1.35 }]}>{i.description}</Text>
+                            </View>
                             <Text style={pdfStyles.col5}>{formatCHF(i.total)}</Text>
                             <Text style={[pdfStyles.col6, { color: '#ef4444' }]}>{itemActual > 0 ? formatCHF(itemActual) : '-'}</Text>
                             <Text style={[pdfStyles.col6, pdfStyles.textBold, { color: itemDiff < 0 ? '#ef4444' : '#10b981' }]}>{(itemDiff >= 0 ? '+' : '')}{formatCHF(itemDiff)}</Text>
@@ -232,12 +240,16 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
 
               return (
                 <View style={pdfStyles.tableRow} key={tx.id} wrap={false}>
-                  <Text style={[{ width: '15%', color: '#6b7280' }]}>{tx.date}</Text>
-                  <Text style={[{ width: '35%' }, pdfStyles.textBold]}>{tx.description}</Text>
-                  <Text style={[{ width: '20%', color: '#6b7280' }]}>{bdDetails ? `${bdDetails.phase} - ${bdDetails.item}` : t('free_booking')}</Text>
-                  <Text style={[{ width: '10%', textAlign: 'right' }, pdfStyles.textBold, { color: '#10b981' }]}>{isQuote ? `(${formatCHF(displayAmount)})` : (isRevenue && displayAmount > 0 ? `+${formatCHF(displayAmount)}` : '')}</Text>
-                  <Text style={[{ width: '10%', textAlign: 'right' }, pdfStyles.textBold, { color: '#ef4444' }]}>{!isQuote && !isRevenue && displayAmount > 0 ? `-${formatCHF(displayAmount)}` : ''}</Text>
-                  <Text style={[{ width: '10%', textAlign: 'right' }, pdfStyles.textBold, { color: isQuote ? '#9ca3af' : (isBalanceNegative ? '#ef4444' : '#10b981') }]}>{isQuote ? '-' : formatCHF(tx.balance)}</Text>
+                  <Text style={[{ width: '15%', color: '#6b7280', paddingTop: 1 }]}>{tx.date}</Text>
+                  <View style={{ width: '35%', paddingRight: 10 }}>
+                    <Text style={[pdfStyles.textBold, { fontSize: 9, lineHeight: 1.35 }]}>{tx.description}</Text>
+                  </View>
+                  <View style={{ width: '20%', paddingRight: 5 }}>
+                    <Text style={[{ fontSize: 8.5, color: '#6b7280', lineHeight: 1.3 }]}>{bdDetails ? `${bdDetails.phase} - ${bdDetails.item}` : t('free_booking')}</Text>
+                  </View>
+                  <Text style={[{ width: '10%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold, { color: '#10b981' }]}>{isQuote ? `(${formatCHF(displayAmount)})` : (isRevenue && displayAmount > 0 ? `+${formatCHF(displayAmount)}` : '')}</Text>
+                  <Text style={[{ width: '10%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold, { color: '#ef4444' }]}>{!isQuote && !isRevenue && displayAmount > 0 ? `-${formatCHF(displayAmount)}` : ''}</Text>
+                  <Text style={[{ width: '10%', textAlign: 'right', paddingTop: 1 }, pdfStyles.textBold, { color: isQuote ? '#9ca3af' : (isBalanceNegative ? '#ef4444' : '#10b981') }]}>{isQuote ? '-' : formatCHF(tx.balance)}</Text>
                 </View>
               )
             })}
@@ -1392,7 +1404,7 @@ export default function Finance() {
             <div className="min-w-[1000px] pb-8">
 
               {activeTab === 'budget' && (
-                <table className="w-full text-sm text-left border-collapse">
+                <table className="w-full text-sm text-left border-collapse table-fixed">
                   <thead className="text-xs uppercase tracking-wider text-text-muted border-b border-border/50">
                     <tr>
                       <th className="px-4 py-3 w-16">{t('pos')}</th>
@@ -1401,7 +1413,7 @@ export default function Finance() {
                       <th className="px-4 py-3 w-24">{t('unit')}</th>
                       <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
                       {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
-                      <th className="px-4 py-3 text-right w-36 text-blue-400">{t('total')} (CHF)</th>
+                      <th className="px-4 py-3 text-right w-36 text-blue-400 shrink-0">{t('total')} (CHF)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
@@ -1454,14 +1466,31 @@ export default function Finance() {
                         return (
                           <React.Fragment key={group.id}>
                             <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
-                              <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
-                              <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
-                                <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} />
+                              <td className="px-4 py-3 font-bold text-blue-400 align-top">{group.pos}</td>
+                              <td className="px-4 py-3 font-bold text-blue-400 align-top" colSpan={includeOptions ? 5 : 4}>
+                                <textarea
+                                  className="bg-transparent text-blue-400 border-none outline-none w-full font-bold resize-none overflow-hidden leading-snug break-words block min-h-[28px]"
+                                  rows={1}
+                                  value={group.title}
+                                  onChange={e => {
+                                    setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v));
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = `${e.target.scrollHeight}px`;
+                                  }}
+                                  ref={el => {
+                                    if (el) {
+                                      el.style.height = 'auto';
+                                      el.style.height = `${el.scrollHeight}px`;
+                                    }
+                                  }}
+                                  disabled={activeVersion.status === 'approved'}
+                                  placeholder="Titel der Phase"
+                                />
                               </td>
-                              <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
+                              <td className="px-4 py-3 font-bold text-right text-blue-400 relative align-top">
                                 {formatCHF(groupPlanTotal)}
                                 {!isReadOnly && activeVersion.status !== 'approved' && (
-                                  <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print cursor-pointer">
+                                  <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-3 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print cursor-pointer">
                                     <Trash2 size={16} />
                                   </button>
                                 )}
@@ -1476,14 +1505,31 @@ export default function Finance() {
                             )}
                             {group.items.map(item => (
                               <tr key={item.id} className="hover:bg-white/5 transition-colors group/row">
-                                <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
-                                <td className="px-4 py-2">
-                                  <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                                <td className="px-4 py-2 align-top text-xs text-text-muted font-medium pt-2.5">{item.pos}</td>
+                                <td className="px-4 py-2 align-top">
+                                  <textarea
+                                    value={item.description}
+                                    onChange={e => {
+                                      handleBudgetChange(group.id, item.id, 'description', e.target.value);
+                                      e.target.style.height = 'auto';
+                                      e.target.style.height = `${e.target.scrollHeight}px`;
+                                    }}
+                                    ref={el => {
+                                      if (el) {
+                                        el.style.height = 'auto';
+                                        el.style.height = `${el.scrollHeight}px`;
+                                      }
+                                    }}
+                                    rows={1}
+                                    className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary resize-none overflow-hidden leading-relaxed break-words block min-h-[28px]"
+                                    disabled={activeVersion.status === 'approved'}
+                                    placeholder={t('description')}
+                                  />
                                 </td>
-                                <td className="px-4 py-2 text-right">
+                                <td className="px-4 py-2 align-top text-right pt-2">
                                   <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
                                 </td>
-                                <td className="px-4 py-2 relative">
+                                <td className="px-4 py-2 align-top relative pt-2">
                                   <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="bg-transparent text-text-primary outline-none w-full appearance-none cursor-pointer font-medium" disabled={activeVersion.status === 'approved'}>
                                     <option className="bg-surface">Std.</option>
                                     <option className="bg-surface">Stk.</option>
@@ -1492,18 +1538,18 @@ export default function Finance() {
                                     <option className="bg-surface font-bold text-accent-ai">Option</option>
                                   </select>
                                 </td>
-                                <td className="px-4 py-2 text-right">
+                                <td className="px-4 py-2 align-top text-right pt-2">
                                   <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
                                 </td>
                                 {includeOptions && (
-                                  <td className="px-4 py-2 text-right bg-accent-ai/5">
+                                  <td className="px-4 py-2 align-top text-right bg-accent-ai/5 pt-2.5">
                                     <span className={item.option > 0 ? "text-accent-ai font-bold" : "text-text-muted font-medium"}>{item.option > 0 ? formatCHF(item.option) : '-'}</span>
                                   </td>
                                 )}
-                                <td className="px-4 py-2 text-right font-bold relative text-text-primary">
+                                <td className="px-4 py-2 align-top text-right font-bold relative text-text-primary pt-2.5">
                                   <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
                                   {!isReadOnly && activeVersion.status !== 'approved' && (
-                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print cursor-pointer">
+                                    <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-2.5 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print cursor-pointer">
                                       <X size={14} />
                                     </button>
                                   )}
@@ -2118,7 +2164,24 @@ export default function Finance() {
                             <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="text-text-muted hover:text-red-500 p-1 bg-background rounded-md"><X size={14} /></button>
                           )}
                         </div>
-                        <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-accent-ai/50" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                        <textarea
+                          value={item.description}
+                          onChange={e => {
+                            handleBudgetChange(group.id, item.id, 'description', e.target.value);
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${e.target.scrollHeight}px`;
+                          }}
+                          ref={el => {
+                            if (el) {
+                              el.style.height = 'auto';
+                              el.style.height = `${el.scrollHeight}px`;
+                            }
+                          }}
+                          rows={1}
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none focus:border-accent-ai/50 resize-none overflow-hidden leading-relaxed break-words block min-h-[38px]"
+                          disabled={activeVersion.status === 'approved'}
+                          placeholder={t('description')}
+                        />
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -2215,8 +2278,8 @@ export default function Finance() {
                   </label>
                 </div>
 
-                <div className="w-full">
-                  <table className="w-full text-sm text-left border-collapse bg-surface">
+                <div className="w-full overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-sm text-left border-collapse bg-surface table-fixed">
                     <thead className="text-xs uppercase tracking-wider text-text-muted bg-background border-b border-border/50">
                       <tr>
                         <th className="px-4 py-3 w-16">{t('pos')}</th>
@@ -2225,7 +2288,7 @@ export default function Finance() {
                         <th className="px-4 py-3 w-24">{t('unit')}</th>
                         <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
                         {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
-                        <th className="px-4 py-3 text-right w-36 text-blue-400">{t('total')} (CHF)</th>
+                        <th className="px-4 py-3 text-right w-36 text-blue-400 shrink-0">{t('total')} (CHF)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
@@ -2278,14 +2341,31 @@ export default function Finance() {
                           return (
                             <React.Fragment key={group.id}>
                               <tr className="bg-blue-500/10 border-y border-blue-500/20 group relative">
-                                <td className="px-4 py-3 font-bold text-blue-400">{group.pos}</td>
-                                <td className="px-4 py-3 font-bold text-blue-400" colSpan={includeOptions ? 5 : 4}>
-                                  <input className="bg-transparent text-blue-400 border-none outline-none w-full font-bold" value={group.title} onChange={e => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v))} disabled={activeVersion.status === 'approved'} placeholder="Titel der Phase" />
+                                <td className="px-4 py-3 font-bold text-blue-400 align-top">{group.pos}</td>
+                                <td className="px-4 py-3 font-bold text-blue-400 align-top" colSpan={includeOptions ? 5 : 4}>
+                                  <textarea
+                                    className="bg-transparent text-blue-400 border-none outline-none w-full font-bold resize-none overflow-hidden leading-snug break-words block min-h-[28px]"
+                                    rows={1}
+                                    value={group.title}
+                                    onChange={e => {
+                                      setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, title: e.target.value } : g) } : v));
+                                      e.target.style.height = 'auto';
+                                      e.target.style.height = `${e.target.scrollHeight}px`;
+                                    }}
+                                    ref={el => {
+                                      if (el) {
+                                        el.style.height = 'auto';
+                                        el.style.height = `${el.scrollHeight}px`;
+                                      }
+                                    }}
+                                    disabled={activeVersion.status === 'approved'}
+                                    placeholder="Titel der Phase"
+                                  />
                                 </td>
-                                <td className="px-4 py-3 font-bold text-right text-blue-400 relative">
+                                <td className="px-4 py-3 font-bold text-right text-blue-400 relative align-top">
                                   {formatCHF(groupPlanTotal)}
                                   {!isReadOnly && activeVersion.status !== 'approved' && (
-                                    <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print cursor-pointer">
+                                    <button onClick={() => handleDeleteGroup(group.id)} className="absolute right-2 top-3 text-red-500 opacity-0 group-hover:opacity-100 p-1 no-print cursor-pointer">
                                       <Trash2 size={16} />
                                     </button>
                                   )}
@@ -2300,14 +2380,31 @@ export default function Finance() {
                               )}
                               {group.items.map(item => (
                                 <tr key={item.id} className="hover:bg-white/5 transition-colors group/row">
-                                  <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
-                                  <td className="px-4 py-2">
-                                    <input value={item.description} onChange={e => handleBudgetChange(group.id, item.id, 'description', e.target.value)} className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary" disabled={activeVersion.status === 'approved'} placeholder={t('description')} />
+                                  <td className="px-4 py-2 align-top text-xs text-text-muted font-medium pt-2.5">{item.pos}</td>
+                                  <td className="px-4 py-2 align-top">
+                                    <textarea
+                                      value={item.description}
+                                      onChange={e => {
+                                        handleBudgetChange(group.id, item.id, 'description', e.target.value);
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${e.target.scrollHeight}px`;
+                                      }}
+                                      ref={el => {
+                                        if (el) {
+                                          el.style.height = 'auto';
+                                          el.style.height = `${el.scrollHeight}px`;
+                                        }
+                                      }}
+                                      rows={1}
+                                      className="w-full bg-transparent outline-none focus:border-b focus:border-accent-ai/50 py-1 font-medium text-text-primary resize-none overflow-hidden leading-relaxed break-words block min-h-[28px]"
+                                      disabled={activeVersion.status === 'approved'}
+                                      placeholder={t('description')}
+                                    />
                                   </td>
-                                  <td className="px-4 py-2 text-right">
+                                  <td className="px-4 py-2 align-top text-right pt-2">
                                     <input type="number" value={item.qty || ''} onChange={e => handleBudgetChange(group.id, item.id, 'qty', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
                                   </td>
-                                  <td className="px-4 py-2 relative">
+                                  <td className="px-4 py-2 align-top relative pt-2">
                                     <select value={item.unit} onChange={e => handleBudgetChange(group.id, item.id, 'unit', e.target.value)} className="bg-transparent text-text-primary outline-none w-full appearance-none cursor-pointer font-medium" disabled={activeVersion.status === 'approved'}>
                                       <option className="bg-surface">Std.</option>
                                       <option className="bg-surface">Stk.</option>
@@ -2316,18 +2413,18 @@ export default function Finance() {
                                       <option className="bg-surface font-bold text-accent-ai">Option</option>
                                     </select>
                                   </td>
-                                  <td className="px-4 py-2 text-right">
+                                  <td className="px-4 py-2 align-top text-right pt-2">
                                     <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className={cn(numberInputClass, "font-medium text-text-primary")} disabled={activeVersion.status === 'approved'} />
                                   </td>
                                   {includeOptions && (
-                                    <td className="px-4 py-2 text-right bg-accent-ai/5">
+                                    <td className="px-4 py-2 align-top text-right bg-accent-ai/5 pt-2.5">
                                       <span className={item.option > 0 ? "text-accent-ai font-bold" : "text-text-muted font-medium"}>{item.option > 0 ? formatCHF(item.option) : '-'}</span>
                                     </td>
                                   )}
-                                  <td className="px-4 py-2 text-right font-bold relative text-text-primary">
+                                  <td className="px-4 py-2 align-top text-right font-bold relative text-text-primary pt-2.5">
                                     <span className={item.option > 0 ? "text-accent-ai" : ""}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
                                     {!isReadOnly && activeVersion.status !== 'approved' && (
-                                      <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print cursor-pointer">
+                                      <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: v.groups.map(g => g.id === group.id ? { ...g, items: g.items.filter(i => i.id !== item.id) } : g) } : v))} className="absolute right-1 top-2.5 text-red-500 opacity-0 group-hover/row:opacity-100 p-1 no-print cursor-pointer">
                                         <X size={14} />
                                       </button>
                                     )}
