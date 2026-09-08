@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { safeStorage } from '../utils/safeStorage';
 
 export interface ProposalConfigOption {
   id: string;
@@ -103,17 +104,8 @@ export async function getCompanyProposals(companyId: string): Promise<SmartPropo
   }
 
   // LocalStorage Fallback (Filter by companyId or ownerId)
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const all: SmartProposal[] = JSON.parse(raw);
-      return all.filter(p => p.companyId === companyId || p.ownerId === companyId || !companyId || p.companyId === 'default-company');
-    }
-  } catch (e) {
-    console.error('Error reading local proposals', e);
-  }
-
-  return [];
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  return all.filter(p => p.companyId === companyId || p.ownerId === companyId || !companyId || p.companyId === 'default-company');
 }
 
 /**
@@ -341,23 +333,18 @@ export async function extendProposalExpiry(proposalId: string, days: number = 30
     }
   } catch (e) {}
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const all: SmartProposal[] = JSON.parse(raw);
-      const item = all.find(p => p.id === proposalId);
-      if (item) {
-        item.expiresAt = newDate;
-        item.status = 'active';
-        item.updatedAt = new Date().toISOString();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('proposal_saved', { detail: item }));
-        }
-        return item;
-      }
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  const item = all.find(p => p.id === proposalId);
+  if (item) {
+    item.expiresAt = newDate;
+    item.status = 'active';
+    item.updatedAt = new Date().toISOString();
+    safeStorage.setItem(STORAGE_KEY, all);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('proposal_saved', { detail: item }));
     }
-  } catch (e) {}
+    return item;
+  }
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('proposal_saved', { detail: { id: proposalId, extended: true } }));
@@ -391,24 +378,19 @@ export async function acceptProposalByClient(
     console.warn('Supabase accept error:', e);
   }
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const all: SmartProposal[] = JSON.parse(raw);
-      const item = all.find(p => p.id === proposalId);
-      if (item) {
-        item.status = 'accepted';
-        item.acceptedAt = now;
-        item.acceptedBy = acceptanceData;
-        item.updatedAt = now;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-      }
-    }
-  } catch (e) {}
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  const item = all.find(p => p.id === proposalId);
+  if (item) {
+    item.status = 'accepted';
+    item.acceptedAt = now;
+    item.acceptedBy = acceptanceData;
+    item.updatedAt = now;
+    safeStorage.setItem(STORAGE_KEY, all);
+  }
 
   // Trigger Webhook Event for Outbound CRM & Team Notification
   try {
-    const customWebhookUrl = typeof window !== 'undefined' ? localStorage.getItem('interactv_webhook_url') : null;
+    const customWebhookUrl = safeStorage.getString('interactv_webhook_url', '') || null;
     fetch('/api/webhook/lead', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -457,14 +439,9 @@ export async function deleteProposal(proposalId: string): Promise<boolean> {
     }
   } catch (e) {}
 
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const all: SmartProposal[] = JSON.parse(raw);
-      const filtered = all.filter(p => p.id !== proposalId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    }
-  } catch (e) {}
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  const filtered = all.filter(p => p.id !== proposalId);
+  safeStorage.setItem(STORAGE_KEY, filtered);
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('proposal_saved', { detail: { id: proposalId, deleted: true } }));
@@ -486,17 +463,14 @@ function incrementProposalViews(id: string, currentViews: number) {
 }
 
 function saveProposalLocally(proposal: SmartProposal) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const all: SmartProposal[] = raw ? JSON.parse(raw) : [];
-    const idx = all.findIndex(p => p.id === proposal.id);
-    if (idx >= 0) {
-      all[idx] = proposal;
-    } else {
-      all.unshift(proposal);
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-  } catch (e) {}
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  const idx = all.findIndex(p => p.id === proposal.id);
+  if (idx >= 0) {
+    all[idx] = proposal;
+  } else {
+    all.unshift(proposal);
+  }
+  safeStorage.setItem(STORAGE_KEY, all);
 }
 
 function mapDbToProposal(d: any): SmartProposal {

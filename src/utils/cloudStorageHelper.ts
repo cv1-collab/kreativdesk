@@ -86,3 +86,32 @@ export const uploadFileWithFallback = async (file: File | Blob, fileName: string
   });
 };
 
+/**
+ * Deletes a file from Supabase Storage given its public or signed URL.
+ * Automatically identifies bucket ('documents' or 'avatars') and decoded file path.
+ */
+export const deleteFileFromStorage = async (fileUrl: string | null | undefined): Promise<boolean> => {
+  if (!fileUrl || typeof fileUrl !== 'string') return false;
+  // If it's a data URL, blob URL or non-supabase URL, no cloud bucket cleanup needed
+  if (fileUrl.startsWith('data:') || fileUrl.startsWith('blob:')) return false;
+
+  try {
+    // Matches Supabase storage format: .../storage/v1/object/(public|sign)/<bucket>/<filepath>
+    const match = fileUrl.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+?)(?:\?.*)?$/);
+    if (!match) return false;
+
+    const [, bucket, rawPath] = match;
+    const storagePath = decodeURIComponent(rawPath);
+
+    const { error } = await supabase.storage.from(bucket).remove([storagePath]);
+    if (error) {
+      console.warn(`[deleteFileFromStorage] Failed to delete file from bucket "${bucket}":`, error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn("[deleteFileFromStorage] Unexpected error while deleting file:", err);
+    return false;
+  }
+};
+

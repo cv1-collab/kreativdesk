@@ -4,6 +4,8 @@
  * Handles automatic creation of Contacts, Offers (kb_offer) and 50% Down-Payment Invoices (kb_invoice) with Swiss QR-Bill
  */
 
+import { safeStorage } from '../utils/safeStorage';
+
 export interface BexioContactPayload {
   contact_type_id: 1 | 2; // 1 = Company, 2 = Person
   name_1: string; // Company Name or Last Name
@@ -56,10 +58,10 @@ export function getBexioConfig(): { apiToken: string; autoSync: boolean; qrIban:
     return { apiToken: '', autoSync: true, qrIban: 'CH44 3199 9123 0008 8901 2', enabled: false };
   }
 
-  const token = localStorage.getItem('bexio_api_token') || localStorage.getItem('interactv_bexio_api_token') || '';
-  const autoSync = localStorage.getItem('bexio_auto_sync') !== 'false';
-  const qrIban = localStorage.getItem('bexio_qr_iban') || 'CH44 3199 9123 0008 8901 2';
-  const enabled = localStorage.getItem('bexio_integration_active') === 'true' || Boolean(token);
+  const token = safeStorage.getString('bexio_api_token', '') || safeStorage.getString('interactv_bexio_api_token', '');
+  const autoSync = safeStorage.getString('bexio_auto_sync', 'true') !== 'false';
+  const qrIban = safeStorage.getString('bexio_qr_iban', 'CH44 3199 9123 0008 8901 2');
+  const enabled = safeStorage.getString('bexio_integration_active', '') === 'true' || Boolean(token);
 
   return { apiToken: token, autoSync, qrIban, enabled };
 }
@@ -70,15 +72,13 @@ export function getBexioConfig(): { apiToken: string; autoSync: boolean; qrIban:
 export function saveBexioConfig(config: { apiToken?: string; autoSync?: boolean; qrIban?: string; enabled?: boolean }) {
   if (typeof window === 'undefined') return;
 
-  try {
-    if (config.apiToken !== undefined) {
-      localStorage.setItem('bexio_api_token', config.apiToken);
-      localStorage.setItem('interactv_bexio_api_token', config.apiToken);
-    }
-    if (config.autoSync !== undefined) localStorage.setItem('bexio_auto_sync', String(config.autoSync));
-    if (config.qrIban !== undefined) localStorage.setItem('bexio_qr_iban', config.qrIban);
-    if (config.enabled !== undefined) localStorage.setItem('bexio_integration_active', String(config.enabled));
-  } catch {}
+  if (config.apiToken !== undefined) {
+    safeStorage.setItem('bexio_api_token', config.apiToken);
+    safeStorage.setItem('interactv_bexio_api_token', config.apiToken);
+  }
+  if (config.autoSync !== undefined) safeStorage.setItem('bexio_auto_sync', String(config.autoSync));
+  if (config.qrIban !== undefined) safeStorage.setItem('bexio_qr_iban', config.qrIban);
+  if (config.enabled !== undefined) safeStorage.setItem('bexio_integration_active', String(config.enabled));
 }
 
 /**
@@ -231,21 +231,13 @@ export async function syncLeadsToBexio(leads: any[]): Promise<{ success: boolean
  * Revisions-Log Management
  */
 export function getBexioSyncLogs(): BexioSyncLog[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(BEXIO_LOGS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
+  return safeStorage.getItem<BexioSyncLog[]>(BEXIO_LOGS_STORAGE_KEY, []);
 }
 
 export function saveBexioSyncLog(log: BexioSyncLog) {
   if (typeof window === 'undefined') return;
-  try {
-    const logs = getBexioSyncLogs();
-    logs.unshift(log);
-    // Behalte maximal die letzten 100 Logs
-    localStorage.setItem(BEXIO_LOGS_STORAGE_KEY, JSON.stringify(logs.slice(0, 100)));
-  } catch (e) {}
+  const logs = getBexioSyncLogs();
+  logs.unshift(log);
+  // Behalte maximal die letzten 100 Logs
+  safeStorage.setItem(BEXIO_LOGS_STORAGE_KEY, logs.slice(0, 100));
 }

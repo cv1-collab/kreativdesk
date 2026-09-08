@@ -434,6 +434,87 @@ CREATE POLICY "Strict company isolation goals" ON public.goals
   USING (is_super_admin() OR company_id::text = get_my_company_id())
   WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
 
+-- Y) SLIDES (PitchDeck & Präsentationen)
+ALTER TABLE IF EXISTS public.slides ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.slides TO authenticated, service_role;
+DROP POLICY IF EXISTS "Full Access Slides" ON public.slides;
+DROP POLICY IF EXISTS "Authenticated users access slides" ON public.slides;
+DROP POLICY IF EXISTS "Strict company isolation slides" ON public.slides;
+
+CREATE POLICY "Strict company isolation slides" ON public.slides
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- Z) PROJECT MEMBERS (Projekt-Mitarbeiterzuweisungen)
+ALTER TABLE IF EXISTS public.project_members ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.project_members TO authenticated, service_role;
+DROP POLICY IF EXISTS "Full Access ProjectMembers" ON public.project_members;
+DROP POLICY IF EXISTS "Authenticated users access project_members" ON public.project_members;
+DROP POLICY IF EXISTS "Strict company isolation project_members" ON public.project_members;
+
+CREATE POLICY "Strict company isolation project_members" ON public.project_members
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id() OR user_id::text = auth.uid()::text)
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id() OR user_id::text = auth.uid()::text);
+
+-- AA) PROJECT SCHEDULES (Projekt-Terminpläne & Meilensteine)
+ALTER TABLE IF EXISTS public.project_schedules ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.project_schedules TO authenticated, service_role;
+DROP POLICY IF EXISTS "Full Access Schedules" ON public.project_schedules;
+DROP POLICY IF EXISTS "Authenticated users access project_schedules" ON public.project_schedules;
+DROP POLICY IF EXISTS "Strict company isolation project_schedules" ON public.project_schedules;
+
+CREATE POLICY "Strict company isolation project_schedules" ON public.project_schedules
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- AB) SITE DATA (Baustellen- & Projektdaten)
+ALTER TABLE IF EXISTS public.site_data ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.site_data TO authenticated, service_role;
+DROP POLICY IF EXISTS "Full Access SiteData" ON public.site_data;
+DROP POLICY IF EXISTS "Authenticated users access site_data" ON public.site_data;
+DROP POLICY IF EXISTS "Strict company isolation site_data" ON public.site_data;
+
+CREATE POLICY "Strict company isolation site_data" ON public.site_data
+  FOR ALL TO authenticated
+  USING (is_super_admin() OR company_id::text = get_my_company_id())
+  WITH CHECK (is_super_admin() OR company_id::text = get_my_company_id());
+
+-- AC) VIDEO CALLS (WebRTC Konferenzräume & Meetings)
+ALTER TABLE IF EXISTS public.video_calls ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.video_calls TO authenticated, anon, service_role;
+DROP POLICY IF EXISTS "Full Access Calls" ON public.video_calls;
+DROP POLICY IF EXISTS "Authenticated users access video_calls" ON public.video_calls;
+DROP POLICY IF EXISTS "Allow authenticated full access video_calls" ON public.video_calls;
+DROP POLICY IF EXISTS "Allow anon select video_calls" ON public.video_calls;
+DROP POLICY IF EXISTS "Allow anon insert video_calls" ON public.video_calls;
+DROP POLICY IF EXISTS "Allow anon update video_calls" ON public.video_calls;
+
+CREATE POLICY "Allow authenticated full access video_calls" ON public.video_calls
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Allow anon select video_calls" ON public.video_calls
+  FOR SELECT TO anon USING (true);
+CREATE POLICY "Allow anon insert video_calls" ON public.video_calls
+  FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Allow anon update video_calls" ON public.video_calls
+  FOR UPDATE TO anon USING (true) WITH CHECK (true);
+
+-- AD) SYSTEM CONFIG (Globale System- & Mandanten-Einstellungen)
+ALTER TABLE IF EXISTS public.system_config ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.system_config TO authenticated, service_role;
+GRANT SELECT ON public.system_config TO anon;
+DROP POLICY IF EXISTS "Allow public read system_config" ON public.system_config;
+DROP POLICY IF EXISTS "Strict super_admin write system_config" ON public.system_config;
+
+CREATE POLICY "Allow public read system_config" ON public.system_config
+  FOR SELECT TO PUBLIC USING (true);
+CREATE POLICY "Strict super_admin write system_config" ON public.system_config
+  FOR ALL TO authenticated
+  USING (is_super_admin())
+  WITH CHECK (is_super_admin());
+
 -- ----------------------------------------------------------------------------
 -- 5. PERFORMANCE B-TREE INDIZES (Eliminiert Full-Table-Scans bei RLS)
 -- ----------------------------------------------------------------------------
@@ -458,6 +539,14 @@ CREATE INDEX IF NOT EXISTS idx_profiles_company_id ON public.profiles (company_i
 CREATE INDEX IF NOT EXISTS idx_company_users_company_id ON public.company_users (company_id);
 CREATE INDEX IF NOT EXISTS idx_company_settings_company_id ON public.company_settings (company_id);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_company_id ON public.support_tickets (company_id);
+CREATE INDEX IF NOT EXISTS idx_slides_company_id ON public.slides (company_id);
+CREATE INDEX IF NOT EXISTS idx_slides_project_id ON public.slides (project_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_company_id ON public.project_members (company_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_project_id ON public.project_members (project_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_user_id ON public.project_members (user_id);
+CREATE INDEX IF NOT EXISTS idx_project_schedules_company_id ON public.project_schedules (company_id);
+CREATE INDEX IF NOT EXISTS idx_site_data_company_id ON public.site_data (company_id);
+CREATE INDEX IF NOT EXISTS idx_video_calls_room_name ON public.video_calls (room_name);
 
 -- ----------------------------------------------------------------------------
 -- 7. ATOMARER AUTH-TRIGGER (Automatische Firmenzuweisung ab Registrierung)

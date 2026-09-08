@@ -20,6 +20,7 @@ import TeamCrmTab from './TeamCrmTab';
 import DocumentsTab from './DocumentsTab';
 import { seedDemoProjectToSupabase, ensureDefaultCompanyFolders, getOrCreateRealCompanyId } from '../services/seedService';
 import { fetchNotifications, sendNotification } from '../lib/notifications';
+import { deleteFileFromStorage } from '../utils/cloudStorageHelper';
 import AgendaTab from './AgendaTab';
 import LeadsTab from './LeadsTab';
 import TemplatesTab from './TemplatesTab';
@@ -654,6 +655,18 @@ export default function CompanyDashboard() {
   const handleDeleteDocument = async (id: string, isFolder: boolean) => {
     if (!window.confirm(t('confirm_delete'))) return;
     try {
+      const docToDelete = allDocuments.find(d => d.id === id);
+      if (!isFolder && (docToDelete?.url || docToDelete?.file_url)) {
+        await deleteFileFromStorage(docToDelete.file_url || docToDelete.url);
+      } else if (isFolder) {
+        const subDocs = allDocuments.filter(d => d.folder_id === id);
+        for (const sub of subDocs) {
+          if (sub.url || sub.file_url) {
+            await deleteFileFromStorage(sub.file_url || sub.url);
+          }
+        }
+        await supabase.from('documents').delete().eq('folder_id', id);
+      }
       await supabase.from('documents').delete().eq('id', id);
       if (activeFolderId === id) setActiveFolderId(null);
       addToast(t('delete_completed'), 'success');

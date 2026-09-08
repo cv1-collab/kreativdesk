@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globIgnores: ['**/BIMViewer*.js'],
           maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api/, /^\/assets\//],
@@ -40,6 +41,17 @@ export default defineConfig(({ mode }) => {
             {
               urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
               handler: 'NetworkOnly'
+            },
+            {
+              urlPattern: /\/assets\/.*(BIMViewer|UniversalPDFStudio|vendor-3d).*\.js$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'heavy-studios-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days cache for heavy 3D/PDF engines
+                }
+              }
             }
           ]
         }

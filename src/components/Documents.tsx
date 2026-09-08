@@ -20,7 +20,7 @@ import { ensureDefaultCompanyFolders, seedDemoProjectToSupabase } from '../servi
 import DocumentStudioModal from './DocumentStudioModal';
 import ProposalManagerDashboard from './ProposalManagerDashboard';
 import PitchDeckStudio from './PitchDeckStudio';
-import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
+import { uploadFileWithFallback, deleteFileFromStorage } from '../utils/cloudStorageHelper';
 import { sendNotification } from '../lib/notifications';
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
@@ -654,6 +654,19 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     if (!window.confirm(t('confirm_delete'))) return;
     try {
       const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+
+      // Storage-Bereinigung: Verhindert verwaiste Dateien im Supabase Storage Bucket
+      if (!isFolder && (targetDoc?.url || targetDoc?.file_url)) {
+        await deleteFileFromStorage(targetDoc.file_url || targetDoc.url);
+      } else if (isFolder) {
+        const subDocs = documents.filter(d => d.folder_id === id);
+        for (const sub of subDocs) {
+          if (sub.url || sub.file_url) {
+            await deleteFileFromStorage(sub.file_url || sub.url);
+          }
+        }
+      }
+
       let delQuery = supabase.from('documents').delete().eq('id', id);
       if (safeCompanyId) delQuery = delQuery.eq('company_id', safeCompanyId);
       await delQuery;

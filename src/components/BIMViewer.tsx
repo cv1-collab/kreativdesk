@@ -33,6 +33,7 @@ import { jsPDF } from 'jspdf';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import PremiumFeature from './PremiumFeature';
+import { deleteFileFromStorage } from '../utils/cloudStorageHelper';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import { BIMCanvasViewport } from './bim/BIMCanvasViewport';
 
@@ -949,6 +950,9 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const handleDeleteModel = async (model: any) => {
     if (!window.confirm(t('confirm_delete_model'))) return;
     try {
+      if (model?.url || model?.file_url) {
+        await deleteFileFromStorage(model.file_url || model.url);
+      }
       await supabase.from('documents').delete().eq('id', model.id);
       setCustomModels(prev => prev.filter(m => m.id !== model.id));
       if (activeModelId === model.id) selectModel('default');
