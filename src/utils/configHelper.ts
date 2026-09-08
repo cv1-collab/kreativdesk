@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { safeStorage } from './safeStorage';
 
 export async function fetchSystemConfigJSON<T = any>(configKey: string, companyId: string = 'global'): Promise<T | null> {
   try {
@@ -10,14 +11,15 @@ export async function fetchSystemConfigJSON<T = any>(configKey: string, companyI
       .maybeSingle();
 
     if (doc?.file_url || doc?.url) {
-      return JSON.parse(doc.file_url || doc.url) as T;
+      try {
+        return JSON.parse(doc.file_url || doc.url) as T;
+      } catch (parseErr) {
+        console.warn(`[configHelper] Failed to parse document JSON for ${configKey}:`, parseErr);
+      }
     }
 
     // Fallback check localStorage
-    const local = localStorage.getItem(`sys_cfg_${configKey}`);
-    if (local) return JSON.parse(local) as T;
-
-    return null;
+    return safeStorage.getItem<T | null>(`sys_cfg_${configKey}`, null);
   } catch (e) {
     console.warn(`[configHelper] Error reading config ${configKey}:`, e);
     return null;
@@ -27,7 +29,7 @@ export async function fetchSystemConfigJSON<T = any>(configKey: string, companyI
 export async function saveSystemConfigJSON(configKey: string, payload: any, companyId: string = 'global', ownerId: string = 'global'): Promise<void> {
   try {
     const payloadStr = JSON.stringify(payload);
-    localStorage.setItem(`sys_cfg_${configKey}`, payloadStr);
+    safeStorage.setItem(`sys_cfg_${configKey}`, payloadStr);
 
     const { data: existingDoc } = await supabase
       .from('documents')

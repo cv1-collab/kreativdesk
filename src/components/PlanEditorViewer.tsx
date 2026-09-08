@@ -1718,7 +1718,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                           </div>
                           <div>
                             <label className="text-[10px] font-bold uppercase mb-1 block">Größe</label>
-                            <input type="number" value={(selectedElement as TextMarkup).size} onChange={e => updateElement({...selectedElement, size: Number(e.target.value)} as any)} className="w-full bg-background border border-border rounded-xl px-4 py-1.5 text-sm font-bold focus:border-blue-500 outline-none" />
+                            <input type="number" value={(selectedElement as TextMarkup).size || ''} onChange={e => updateElement({...selectedElement, size: parseFloat(e.target.value) || 12} as any)} className="w-full bg-background border border-border rounded-xl px-4 py-1.5 text-sm font-bold focus:border-blue-500 outline-none" />
                           </div>
                         </div>
                       </>
@@ -1726,11 +1726,11 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
                     {selectedElement.type === 'scalebar' && (
                       <>
-                          <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('length_meters')}</label><input type="number" min="0.1" step="0.1" value={(selectedElement as ScaleBarMarkup).lengthMeters} onChange={(e) => updateElement({ ...selectedElement, lengthMeters: Number(e.target.value) } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold outline-none" /></div>
+                          <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('length_meters')}</label><input type="number" min="0.1" step="0.1" value={(selectedElement as ScaleBarMarkup).lengthMeters || ''} onChange={(e) => updateElement({ ...selectedElement, lengthMeters: parseFloat(e.target.value) || 1 } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold outline-none" /></div>
                           <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('color')}</label><input type="color" value={(selectedElement as ScaleBarMarkup).color || '#000000'} onChange={(e) => updateElement({ ...selectedElement, color: e.target.value } as ScaleBarMarkup)} className="w-full h-8 rounded border border-border cursor-pointer" /></div>
                           <div className="grid grid-cols-2 gap-4">
-                             <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('line_thickness')}</label><input type="number" min="0.5" step="0.5" value={(selectedElement as ScaleBarMarkup).thickness || 1.5} onChange={(e) => updateElement({ ...selectedElement, thickness: Number(e.target.value) } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold outline-none" /></div>
-                             <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('text_size')}</label><input type="number" min="1" step="0.5" value={(selectedElement as ScaleBarMarkup).textSize || 4} onChange={(e) => updateElement({ ...selectedElement, textSize: Number(e.target.value) } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold outline-none" /></div>
+                             <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('line_thickness')}</label><input type="number" min="0.5" step="0.5" value={(selectedElement as ScaleBarMarkup).thickness || 1.5} onChange={(e) => updateElement({ ...selectedElement, thickness: parseFloat(e.target.value) || 1.5 } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold outline-none" /></div>
+                             <div><label className="text-[10px] font-bold uppercase text-text-muted mb-1.5 block">{t('text_size')}</label><input type="number" min="1" step="0.5" value={(selectedElement as ScaleBarMarkup).textSize || 4} onChange={(e) => updateElement({ ...selectedElement, textSize: parseFloat(e.target.value) || 4 } as ScaleBarMarkup)} className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm font-bold outline-none" /></div>
                           </div>
                       </>
                     )}

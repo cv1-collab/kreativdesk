@@ -4033,8 +4033,8 @@ export default function PitchDeckStudio({
                             type="number" 
                             required 
                             min={0}
-                            value={proposalBasePrice}
-                            onChange={e => setProposalBasePrice(Number(e.target.value))}
+                            value={proposalBasePrice || ''}
+                            onChange={e => setProposalBasePrice(parseFloat(e.target.value) || 0)}
                             className="w-full px-3.5 py-2.5 bg-background border border-border rounded-r-xl text-xs font-bold text-text-primary tabular-nums outline-none focus:border-blue-500"
                           />
                         </div>
@@ -4088,7 +4088,7 @@ export default function PitchDeckStudio({
                             type="number" 
                             placeholder={t('price_placeholder')}
                             value={newOptionPrice || ''}
-                            onChange={e => setNewOptionPrice(Number(e.target.value))}
+                            onChange={e => setNewOptionPrice(parseFloat(e.target.value) || 0)}
                             className="w-24 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-semibold text-right tabular-nums outline-none text-text-primary"
                           />
                           <button 

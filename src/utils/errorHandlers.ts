@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+export { formatApiError, getErrorMessage } from './apiErrorHandler';
+export type { FormattedError } from './apiErrorHandler';
 
 export enum OperationType {
   CREATE = 'create',
