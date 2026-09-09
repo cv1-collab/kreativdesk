@@ -1643,7 +1643,7 @@ export default function Finance() {
                                         type="number"
                                         value={itemRest}
                                         onChange={e => setRestKostenPrognose({ ...restKostenPrognose, [item.id]: parseFloat(e.target.value) || 0 })}
-                                        className="w-24 bg-background border border-border/50 rounded px-2 py-1 text-right font-mono text-xs text-accent-ai focus:border-accent-ai outline-none"
+                                        className="w-24 bg-background border border-border/50 rounded px-2 py-1 text-right font-medium text-xs text-accent-ai focus:border-accent-ai outline-none"
                                         placeholder="0.00"
                                       />
                                     </td>

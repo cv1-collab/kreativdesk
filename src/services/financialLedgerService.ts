@@ -97,7 +97,7 @@ export function convertTimeEntriesToTransactions(
       category: 'Interne Stunden',
       description: `${hoursNum}h Rapport: ${t.description || 'Stundenerfassung'}`,
       amount,
-      date: t.date || (t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0]),
+      date: t.date ? (String(t.date).includes('T') ? String(t.date).split('T')[0] : String(t.date)) : (t.created_at ? String(t.created_at).split('T')[0] : new Date().toISOString().split('T')[0]),
       status: 'Gebucht',
       projectId: t.project_id || t.projectId || 'global',
       companyId: t.company_id,

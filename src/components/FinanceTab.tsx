@@ -34,6 +34,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
 const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
 
+const formatDateDisplay = (dateStr?: string) => {
+  if (!dateStr) return '-';
+  let clean = dateStr;
+  if (clean.includes('T')) {
+    clean = clean.split('T')[0];
+  }
+  const parts = clean.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+  }
+  return clean;
+};
+
 interface Transaction { id: string; type?: string; amount: number; client?: string; description: string; date: string; status: string; category?: string; createdAt?: string; receiptUrls?: string[]; url?: string; }
 interface FinanceTabProps { addToast: (msg: string, type: 'success' | 'error' | 'info') => void; setShowExpenseModal: (s: boolean) => void; setShowInvoiceModal: (s: boolean) => void; setShowQuoteModal: (s: boolean) => void; setNewFileAlerts?: any; }
 
@@ -690,10 +703,10 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
                       </span>
                     </td>
                     <td className="p-3 text-xs text-text-muted whitespace-nowrap">
-                      {item.date || item.createdAt || '-'}
+                      {formatDateDisplay(item.date || item.createdAt)}
                     </td>
-                    <td className="p-3 text-right font-bold font-mono text-sm whitespace-nowrap">
-                      CHF {Math.abs(Number(item.amount)).toFixed(2)}
+                    <td className="p-3 text-right font-bold text-sm whitespace-nowrap text-text-primary">
+                      CHF {formatCHF(Math.abs(Number(item.amount)))}
                     </td>
                     <td className="p-3 text-center">
                       <select

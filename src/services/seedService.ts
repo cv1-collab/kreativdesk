@@ -140,7 +140,18 @@ export async function ensureDefaultCompanyFolders(companyId: string, ownerId: st
   }
 }
 
-export async function seedDemoProjectToSupabase(companyId: string, ownerId: string, templateType: string = 'construction') {
+export interface SeedDemoOptions {
+  name?: string;
+  description?: string;
+  forceCreateNew?: boolean;
+}
+
+export async function seedDemoProjectToSupabase(
+  companyId: string, 
+  ownerId: string, 
+  templateType: string = 'construction',
+  options?: SeedDemoOptions
+) {
   if (!ownerId) return null;
   const realCompanyId = await getOrCreateRealCompanyId(companyId, ownerId);
 
@@ -148,27 +159,34 @@ export async function seedDemoProjectToSupabase(companyId: string, ownerId: stri
 
   const template = (demoTemplates as any)[templateType] || demoTemplates.construction;
   const projData = template.project || {};
+  const projectName = options?.name?.trim() || projData.name || 'Demo: Bau & Architektur';
+  const projectDescription = options?.description?.trim() || projData.description || 'Zentrale Bauleitung, Mängelmanagement und Budgetkontrolle für das Wohnquartier.';
 
   // 1. Create or get Demo Project
   let projId: string = '';
-  const { data: existingProjs } = await supabase
-    .from('projects')
-    .select('id, name')
-    .eq('company_id', realCompanyId)
-    .limit(10);
+  
+  if (!options?.forceCreateNew) {
+    const { data: existingProjs } = await supabase
+      .from('projects')
+      .select('id, name')
+      .eq('company_id', realCompanyId)
+      .limit(20);
 
-  const foundProj = (existingProjs || []).find((p: any) => 
-    p.name.includes('Quartier') || p.name.includes('BAU') || p.name.includes('Bau') || p.name === projData.name
-  ) || existingProjs?.[0];
+    const foundProj = (existingProjs || []).find((p: any) => 
+      p.name === projectName || (projData.name && p.name === projData.name)
+    );
 
-  if (foundProj) {
-    projId = foundProj.id;
-  } else {
+    if (foundProj) {
+      projId = foundProj.id;
+    }
+  }
+
+  if (!projId) {
     const { data: newProj, error } = await supabase
       .from('projects')
       .insert({
-        name: projData.name || 'Quartier Neubau Süd',
-        description: projData.description || 'Zentrale Bauleitung, Mängelmanagement und Budgetkontrolle für das Wohnquartier.',
+        name: projectName,
+        description: projectDescription,
         status: 'active',
         company_id: realCompanyId,
         owner_id: ownerId,
@@ -437,7 +455,7 @@ function getDeterministicUUID(str: string): string {
     }
     const demoSchedule = {
       id: `s-${projId}`,
-      name: projData.name || 'Masterplan Bau',
+      name: projectName || projData.name || 'Masterplan Bau',
       targetYear: today.getFullYear(),
       ganttTasks: mappedTasks,
       smartMarkers: mappedMarkers,
@@ -477,7 +495,7 @@ function getDeterministicUUID(str: string): string {
       versions: [demoVersion],
       activeVersionId: demoVersion.id,
       projectHeader: {
-        project: projData.name || 'Quartier Neubau Süd',
+        project: projectName || projData.name || 'Demo: Bau & Architektur',
         client: 'Bauherrschaft AG',
         date: new Date().toISOString().split('T')[0],
         version: 'Originalbudget'

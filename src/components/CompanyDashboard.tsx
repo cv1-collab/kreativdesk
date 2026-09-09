@@ -288,6 +288,7 @@ export default function CompanyDashboard() {
   }, []);
   
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<'blank' | 'construction'>('blank');
   const [newProjectData, setNewProjectData] = useState({ name: '', description: '', status: 'active' as const, role: 'owner' as const });
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -435,22 +436,32 @@ export default function CompanyDashboard() {
     navigate(`/project/${projectId}`);
   };
 
-  const handleCreateDemoProject = async (type: string = 'construction') => {
+  const handleCreateDemoProject = async (type: string = 'construction', customName?: string, customDescription?: string) => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     setIsSubmitting(true);
     addToast(`Erstelle Demo Projekt...`, 'info');
 
     try {
-      const projId = await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, type);
+      const projName = customName?.trim() || newProjectData.name?.trim() || 'Demo: Bau & Architektur';
+      const projDesc = customDescription?.trim() || newProjectData.description?.trim() || 'Beispielprojekt für Bauwesen & Architektur, inklusive Testdaten.';
+
+      const projId = await seedDemoProjectToSupabase(safeCompanyId, currentUser.uid, type, {
+        name: projName,
+        description: projDesc,
+        forceCreateNew: true
+      });
+
+      if (fetchProjects) {
+        await fetchProjects();
+      }
       if (refreshAllData) {
         await refreshAllData();
-      } else if (fetchProjects) {
-        await fetchProjects();
       }
 
       setIsNewProjectModalOpen(false);
       setNewProjectData({ name: '', description: '', status: 'active', role: 'owner' });
+      setSelectedTemplate('blank');
       addToast('Demo Projekt erfolgreich geladen!', 'success');
       if (projId) {
         handleProjectClick(projId);
@@ -493,7 +504,7 @@ export default function CompanyDashboard() {
     // Check Limits BEFORE creation
     if (!checkProjectLimit()) return;
 
-    if (newProjectData.name.startsWith('Demo:')) {
+    if (selectedTemplate === 'construction' || newProjectData.name.startsWith('Demo:')) {
       let type: any = 'construction';
       if (newProjectData.name.includes('Museum')) type = 'museum';
       else if (newProjectData.name.includes('Gastro')) type = 'gastro';
@@ -501,7 +512,7 @@ export default function CompanyDashboard() {
       else if (newProjectData.name.includes('Agentur')) type = 'agency';
       else if (newProjectData.name.includes('Tournee')) type = 'tour';
       
-      return handleCreateDemoProject(type);
+      return handleCreateDemoProject(type, newProjectData.name, newProjectData.description);
     }
     
     setIsSubmitting(true);
@@ -979,16 +990,22 @@ export default function CompanyDashboard() {
                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                    <button 
                      type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: '', description: ''})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === '' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                     onClick={() => {
+                       setSelectedTemplate('blank');
+                       setNewProjectData({...newProjectData, name: '', description: ''});
+                     }}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer", selectedTemplate === 'blank' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
                    >
                      <span className="text-sm font-bold text-text-primary leading-tight">Leeres Projekt</span>
                      <span className="text-xs text-text-muted hidden sm:block">Ohne Test-Daten</span>
                    </button>
                    <button 
                      type="button" 
-                     onClick={() => setNewProjectData({...newProjectData, name: 'Demo: Bau & Architektur', description: 'Beispielprojekt für Bauwesen & Architektur, inklusive Testdaten.'})}
-                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all", newProjectData.name === 'Demo: Bau & Architektur' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
+                     onClick={() => {
+                       setSelectedTemplate('construction');
+                       setNewProjectData({...newProjectData, name: 'Demo: Bau & Architektur', description: 'Beispielprojekt für Bauwesen & Architektur, inklusive Testdaten.'});
+                     }}
+                     className={cn("p-3 sm:p-4 rounded-xl border text-left flex flex-col gap-1 transition-all cursor-pointer", selectedTemplate === 'construction' ? "bg-accent-ai/10 border-accent-ai shadow-sm" : "bg-surface border-border/50 hover:border-text-muted")}
                    >
                      <span className="text-sm font-bold text-text-primary leading-tight">Demo: Bau</span>
                      <span className="text-xs text-text-muted hidden sm:block">Inkl. Test-Daten</span>
