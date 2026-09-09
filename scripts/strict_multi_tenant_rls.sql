@@ -667,10 +667,12 @@ BEGIN
 
   ELSE
     -- Standard: Neuer Firmeninhaber
+    -- 1. Zuerst Firma anlegen mit owner_id = NULL, um den Foreign-Key-Constraint companies_owner_id_fkey auf profiles(id) zu wahren
     INSERT INTO public.companies (name, plan, max_seats, used_seats, owner_id)
-    VALUES (company_name, 'Free Trial', 5, 1, NEW.id)
+    VALUES (company_name, 'Free Trial', 5, 1, NULL)
     RETURNING id INTO new_company_id;
 
+    -- 2. Profil erstellen, das auf die soeben erstellte Firma verweist
     INSERT INTO public.profiles (id, email, name, role, company_id, has_active_subscription)
     VALUES (
       NEW.id,
@@ -683,6 +685,16 @@ BEGIN
     ON CONFLICT (id) DO UPDATE 
       SET company_id = COALESCE(public.profiles.company_id, EXCLUDED.company_id),
           role = COALESCE(public.profiles.role, EXCLUDED.role);
+
+    -- 3. owner_id der Firma nachträglich auf NEW.id setzen (nun existiert das Profil)
+    UPDATE public.companies
+    SET owner_id = NEW.id
+    WHERE id = new_company_id;
+
+    -- 4. Eintrag in company_users anlegen
+    INSERT INTO public.company_users (company_id, name, email, role, status)
+    VALUES (new_company_id, user_full_name, NEW.email, 'owner', 'Aktiv')
+    ON CONFLICT DO NOTHING;
   END IF;
 
   RETURN NEW;
