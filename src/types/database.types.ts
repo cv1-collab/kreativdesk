@@ -490,6 +490,8 @@ export interface Database {
           used_by: string | null;
           created_at: string | null;
           used_at: string | null;
+          invited_by: string | null;
+          expires_at: string | null;
         };
         Insert: {
           id?: string;
@@ -501,6 +503,8 @@ export interface Database {
           used_by?: string | null;
           created_at?: string | null;
           used_at?: string | null;
+          invited_by?: string | null;
+          expires_at?: string | null;
         };
         Update: {
           id?: string;
@@ -512,6 +516,8 @@ export interface Database {
           used_by?: string | null;
           created_at?: string | null;
           used_at?: string | null;
+          invited_by?: string | null;
+          expires_at?: string | null;
         };
         Relationships: [];
       };
@@ -631,6 +637,8 @@ export interface Database {
           has_completed_onboarding: boolean | null;
           created_at: string | null;
           updated_at: string | null;
+          active_mobile_session_id: string | null;
+          active_desktop_session_id: string | null;
         };
         Insert: {
           id: string;
@@ -648,6 +656,8 @@ export interface Database {
           has_completed_onboarding?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+          active_mobile_session_id?: string | null;
+          active_desktop_session_id?: string | null;
         };
         Update: {
           id?: string;
@@ -665,6 +675,8 @@ export interface Database {
           has_completed_onboarding?: boolean | null;
           created_at?: string | null;
           updated_at?: string | null;
+          active_mobile_session_id?: string | null;
+          active_desktop_session_id?: string | null;
         };
         Relationships: [];
       };
