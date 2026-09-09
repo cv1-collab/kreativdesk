@@ -881,7 +881,7 @@ Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.to
         } catch (e) {}
       }
 
-      const webhookUrl = process.env.EMAIL_INVITE_WEBHOOK_URL || process.env.CALENDAR_INVITE_WEBHOOK_URL;
+      const webhookUrl = process.env.EMAIL_INVITE_WEBHOOK_URL || process.env.CALENDAR_INVITE_WEBHOOK_URL || process.env.INVITE_WEBHOOK_URL || process.env.WELCOME_WEBHOOK_URL;
       if (webhookUrl) {
         try {
           await fetch(webhookUrl, {
