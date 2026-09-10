@@ -6,7 +6,8 @@ import Konva from 'konva';
 import { 
   PenTool, Mic, Square, Circle, Type, Image as ImageIcon, Sparkles, Send, Eraser, 
   CheckCircle2, Loader2, Play, Square as StopIcon, FileAudio, FileText, Download, 
-  Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check, RefreshCw
+  Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check, RefreshCw,
+  ChevronDown, Share2, Presentation
 } from 'lucide-react';
 import { cn } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
@@ -182,6 +183,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   // +++ NEU: Loading State für den Medien-Import +++
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showAiMenu, setShowAiMenu] = useState(false);
+  const [showMediaMenu, setShowMediaMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const [imageFilters, setImageFilters] = useState({ brightness: 0, contrast: 0, saturation: 0 });
   const [showFilters, setShowFilters] = useState(false);
@@ -1402,44 +1406,212 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             <p className="text-text-muted text-sm mt-1 hidden sm:block truncate">{t('desc')}</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button onClick={openAiRenderStudio} className="px-3 md:px-4 py-2 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-md text-sm font-bold hover:bg-accent-ai/20 transition-colors flex items-center gap-2 shadow-sm">
-              <Wand2 size={16} /> <span className="hidden md:inline">{t('ai_render')}</span>
-            </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* 1. KI-ASSISTENT DROPDOWN */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => { setShowAiMenu(!showAiMenu); setShowMediaMenu(false); setShowExportMenu(false); }}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  showAiMenu
+                    ? "bg-accent-ai/20 border-accent-ai text-accent-ai"
+                    : "bg-accent-ai/10 text-accent-ai border-accent-ai/20 hover:bg-accent-ai/20"
+                )}
+                title="KI-Funktionen (Concept Rendering & Plan-Audit)"
+              >
+                <Sparkles size={16} />
+                <span className="hidden sm:inline">KI-Werkzeuge</span>
+                <ChevronDown size={14} className={cn("transition-transform duration-150", showAiMenu && "rotate-180")} />
+              </button>
 
-            <button onClick={handleRunAiAudit} className="px-3 md:px-4 py-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-md text-sm font-bold hover:bg-purple-500/20 transition-colors flex items-center gap-2 shadow-sm">
-              <Sparkles size={16} /> <span className="hidden md:inline">KI Audit</span>
-            </button>
+              <AnimatePresence>
+                {showAiMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[1000]" onClick={() => setShowAiMenu(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.96 }}
+                      className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                    >
+                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
+                        KI Zeichen- & Audit-Tools
+                      </div>
 
-            <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
+                      <button
+                        onClick={() => {
+                          setShowAiMenu(false);
+                          openAiRenderStudio();
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors cursor-pointer"
+                      >
+                        <Wand2 size={16} className="text-accent-ai shrink-0" />
+                        <div>
+                          <div className="leading-tight">{t('ai_render')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Skizze in fotorealistisches Design verwandeln</div>
+                        </div>
+                      </button>
 
-            <button onClick={handleSaveToCloud} disabled={isSavingToCloud} className="px-3 md:px-4 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-md text-sm font-bold hover:bg-blue-500/20 transition-colors flex items-center gap-2 disabled:opacity-50">
+                      <button
+                        onClick={() => {
+                          setShowAiMenu(false);
+                          handleRunAiAudit();
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-400 transition-colors border-t border-border/50 cursor-pointer"
+                      >
+                        <Sparkles size={16} className="text-purple-400 shrink-0" />
+                        <div>
+                          <div className="leading-tight">KI Audit & Analyse</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Pläne, Skizzen & Normen prüfen</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 2. MEDIEN & PDF DROPDOWN */}
+            <div className="relative shrink-0">
+              <input type="file" ref={fileInputRef} accept="image/*,application/pdf" onChange={handleImageUpload} className="hidden" />
+              <button
+                onClick={() => { setShowMediaMenu(!showMediaMenu); setShowAiMenu(false); setShowExportMenu(false); }}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  showMediaMenu
+                    ? "bg-surface border-text-primary text-text-primary"
+                    : "bg-surface border-border text-text-primary hover:bg-background"
+                )}
+                title="Pläne, Bilder und PDFs importieren oder im PDF Studio öffnen"
+              >
+                <UploadCloud size={16} />
+                <span className="hidden sm:inline">Import & PDF</span>
+                <ChevronDown size={14} className={cn("transition-transform duration-150", showMediaMenu && "rotate-180")} />
+              </button>
+
+              <AnimatePresence>
+                {showMediaMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[1000]" onClick={() => setShowMediaMenu(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.96 }}
+                      className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                    >
+                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
+                        Medien, Pläne & PDF
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowMediaMenu(false);
+                          fileInputRef.current?.click();
+                        }}
+                        disabled={isUploadingMedia}
+                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {isUploadingMedia ? <Loader2 size={16} className="animate-spin text-text-muted shrink-0" /> : <UploadCloud size={16} className="text-blue-400 shrink-0" />}
+                        <div>
+                          <div className="leading-tight">{isUploadingMedia ? 'Lädt...' : t('import_media')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Bild oder PDF auf Canvas laden</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMediaMenu(false);
+                          executePdfExport();
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors border-t border-border/50 cursor-pointer"
+                      >
+                        <FileDown size={16} className="text-red-400 shrink-0" />
+                        <div>
+                          <div className="leading-tight">PDF Studio</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Plan-Viewer, Annotationen & Export</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 3. DIREKTER 1-KLICK SPEICHER-BUTTON (CLOUD) */}
+            <button
+              onClick={handleSaveToCloud}
+              disabled={isSavingToCloud}
+              className="px-3 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-xl text-sm font-bold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+              title="Whiteboard-Schnappschuss direkt in der Projekt-Bauakte speichern"
+            >
               {isSavingToCloud ? <Loader2 size={16} className="animate-spin" /> : <Cloud size={16} />}
               <span className="hidden md:inline">{isSavingToCloud ? t('saving_cloud') : t('save_cloud')}</span>
             </button>
 
-            <div className="w-px h-6 bg-border mx-1 hidden sm:block"></div>
+            {/* 4. EXPORT & FREIGABE DROPDOWN */}
+            <div className="relative shrink-0">
+              <button
+                onClick={() => { setShowExportMenu(!showExportMenu); setShowAiMenu(false); setShowMediaMenu(false); }}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  showExportMenu
+                    ? "bg-purple-500/20 border-purple-500 text-purple-300"
+                    : "bg-surface border-border text-text-primary hover:bg-background"
+                )}
+                title="Exportieren oder an Pitch Deck senden"
+              >
+                <Share2 size={15} />
+                <span className="hidden sm:inline">Exportieren</span>
+                <ChevronDown size={14} className={cn("transition-transform duration-150", showExportMenu && "rotate-180")} />
+              </button>
 
-            <input type="file" ref={fileInputRef} accept="image/*,application/pdf" onChange={handleImageUpload} className="hidden" />
-            <button onClick={() => fileInputRef.current?.click()} disabled={isUploadingMedia} className="px-3 md:px-4 py-2 bg-surface border border-border rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 disabled:opacity-50">
-              {isUploadingMedia ? <Loader2 size={16} className="animate-spin" /> : <UploadCloud size={16} />} 
-              <span className="hidden md:inline">{isUploadingMedia ? 'Lädt...' : t('import_media')}</span>
-            </button>
-            
-            <button onClick={executePdfExport} className="hidden md:flex px-3 md:px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md text-sm font-bold hover:bg-red-500/20 transition-colors items-center gap-2" title="PDF Studio öffnen (Vorschau & Optionen)">
-              <FileDown size={16} /> <span className="hidden md:inline">PDF Studio</span>
-            </button>
+              <AnimatePresence>
+                {showExportMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[1000]" onClick={() => setShowExportMenu(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 5, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 5, scale: 0.96 }}
+                      className="fixed top-20 right-4 md:right-8 mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                    >
+                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
+                        Export & Weiterleitung
+                      </div>
 
-            <button onClick={handleExportImage} className="hidden md:flex px-3 md:px-4 py-2 bg-surface border border-border rounded-md text-sm font-bold hover:bg-white/5 transition-colors items-center gap-2">
-              <Download size={16} /> <span className="hidden md:inline">{t('export_img')}</span>
-            </button>
-            
-            <div className="w-px h-6 bg-border mx-1 hidden lg:block"></div>
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          handleExportImage();
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-white/10 transition-colors cursor-pointer"
+                      >
+                        <Download size={16} className="text-emerald-400 shrink-0" />
+                        <div>
+                          <div className="leading-tight">{t('export_img')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Zeichenfläche als hochauflösendes PNG herunterladen</div>
+                        </div>
+                      </button>
 
-            <button onClick={handleSendToSlides} disabled={isSending || sendSuccess} className={cn("px-3 md:px-4 py-2 border rounded-md text-sm font-bold transition-colors flex items-center gap-2 disabled:opacity-80", sendSuccess ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-500" : "bg-purple-500/10 border-purple-500/30 text-purple-400 hover:bg-purple-500/20")}>
-              {isSending ? <Loader2 size={16} className="animate-spin" /> : sendSuccess ? <CheckCircle2 size={16} /> : <Sparkles size={16} />}
-              <span className="hidden lg:inline">{isSending ? t('sending') : sendSuccess ? t('sent') : t('send_slides')}</span>
-            </button>
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          handleSendToSlides();
+                        }}
+                        disabled={isSending || sendSuccess}
+                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-300 transition-colors border-t border-border/50 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSending ? <Loader2 size={16} className="animate-spin text-purple-400 shrink-0" /> : sendSuccess ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : <Presentation size={16} className="text-purple-400 shrink-0" />}
+                        <div>
+                          <div className="leading-tight">{isSending ? t('sending') : sendSuccess ? t('sent') : t('send_slides')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Als neue Folie direkt ins Pitch Deck einfügen</div>
+                        </div>
+                      </button>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </header>
 

@@ -16,7 +16,7 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -393,6 +393,7 @@ export default function PitchDeckStudio({
   const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
   const [showExportShareMenu, setShowExportShareMenu] = useState(false);
+  const [showInsertMenu, setShowInsertMenu] = useState(false);
 
   // SMART PROPOSAL & LANDINGPAGE STATES
   const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(initialOpenPublishModal);
@@ -3113,71 +3114,161 @@ export default function PitchDeckStudio({
                     ))}
                   </div>
                   
-                  {/* INDIVIDUELLE SCHRIFTGRÖSSEN: TITEL VS TEXT */}
-                  <div className="flex flex-row items-center gap-1.5 bg-background border border-border rounded-lg p-1 shrink-0">
-                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden xl:inline">{t('title_label')}</span>
-                    <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-1 text-text-muted hover:text-text-primary" title="Titel verkleinern"><Minus size={12} /></button>
-                    <span className="text-xs font-bold font-mono w-5 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
-                    <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-1 text-text-muted hover:text-text-primary" title="Titel vergrössern"><Plus size={12} /></button>
+                  {/* KOMPAKTER SCHRIFTGRÖSSEN-STEPPER: TITEL & TEXT */}
+                  <div className="hidden lg:flex flex-row items-center gap-1 bg-background border border-border rounded-lg px-2 py-1 shrink-0">
+                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden 2xl:inline">{t('title_label')}</span>
+                    <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Titel verkleinern"><Minus size={11} /></button>
+                    <span className="text-xs font-bold font-mono w-4 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
+                    <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Titel vergrössern"><Plus size={11} /></button>
 
-                    <div className="h-4 w-px bg-border mx-0.5"></div>
+                    <div className="h-3.5 w-px bg-border mx-1"></div>
 
-                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden xl:inline">{t('text_label')}</span>
-                    <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-1 text-text-muted hover:text-text-primary" title="Text verkleinern"><Minus size={12} /></button>
-                    <span className="text-xs font-bold font-mono w-5 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
-                    <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-1 text-text-muted hover:text-text-primary" title="Text vergrössern"><Plus size={12} /></button>
+                    <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden 2xl:inline">{t('text_label')}</span>
+                    <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Text verkleinern"><Minus size={11} /></button>
+                    <span className="text-xs font-bold font-mono w-4 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
+                    <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Text vergrössern"><Plus size={11} /></button>
                   </div>
 
-                  {/* KREATIV DESK STEMPEL SELECTOR */}
+                  {/* KONSOLIDIERTES EINFÜGEN / MEDIEN DROPDOWN */}
                   <div className="relative shrink-0">
-                    <button id="btn-pitch-stamp" type="button" onClick={() => setShowStampMenu(!showStampMenu)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer", activeSlide.stamp ? "bg-amber-500/20 border-amber-500/40 text-amber-400" : "bg-background border-border text-text-muted hover:text-text-primary")}>
-                      <Tag size={14} /> <span>{activeSlide.stamp || t('stamp_label')}</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowInsertMenu(!showInsertMenu)}
+                      className={cn(
+                        "px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm",
+                        (showInsertMenu || activeSlide.stamp || activeSlide.notes)
+                          ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
+                          : "bg-background border-border text-text-muted hover:text-text-primary"
+                      )}
+                      title="Elemente, Medien, Notizen & Stempel einfügen"
+                    >
+                      <PlusCircle size={14} className="text-purple-400" />
+                      <span>Einfügen</span>
+                      {activeSlide.stamp && (
+                        <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[9px] font-black uppercase">
+                          {activeSlide.stamp}
+                        </span>
+                      )}
+                      {activeSlide.notes && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                      )}
+                      <ChevronDown size={13} className={cn("transition-transform duration-150", showInsertMenu && "rotate-180")} />
                     </button>
+
                     <AnimatePresence>
-                      {showStampMenu && (
+                      {showInsertMenu && (
                         <>
-                          <div className="fixed inset-0 z-[1000]" onClick={() => setShowStampMenu(false)} />
-                          <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} className="fixed top-16 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-48 py-1.5 overflow-hidden">
-                            <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">{t('select_stamp')}</div>
-                            {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
-                              <button key={st} type="button" onClick={() => handleSetStamp(st)} className={cn("w-full text-left px-3 py-2 text-xs font-bold flex items-center justify-between hover:bg-white/10 transition-colors", activeSlide.stamp === st ? "text-purple-400 bg-purple-500/10" : "text-text-primary")}>
-                                <span>{st}</span>
-                                {activeSlide.stamp === st && <Check size={12} />}
-                              </button>
-                            ))}
-                            {activeSlide.stamp && (
-                              <button type="button" onClick={() => handleSetStamp('')} className="w-full text-left px-3 py-1.5 text-xs font-bold text-red-400 hover:bg-red-500/10 border-t border-border mt-1">
-                                {t('remove_stamp')}
-                              </button>
-                            )}
+                          <div className="fixed inset-0 z-[1000]" onClick={() => setShowInsertMenu(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: 5, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 5, scale: 0.96 }}
+                            className="fixed top-14 left-44 sm:left-64 mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                          >
+                            <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
+                              Folie bearbeiten & Medien
+                            </div>
+
+                            {/* Bild einfügen */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowInsertMenu(false);
+                                openMediaPicker('render', t('choose_image'), 'slide');
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-blue-500/10 hover:text-blue-400 transition-colors cursor-pointer"
+                            >
+                              <ImageIcon size={15} className="text-blue-400 shrink-0" />
+                              <div>
+                                <div className="leading-tight">{t('choose_image')}</div>
+                                <div className="text-[10px] font-normal text-text-muted">Bild aus Galerie, Renderings oder Upload</div>
+                              </div>
+                            </button>
+
+                            {/* Video einbinden */}
+                            <label className="w-full text-left px-3 py-2 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-400 transition-colors cursor-pointer">
+                              {isUploadingVideo ? <Loader2 size={15} className="animate-spin text-purple-400 shrink-0" /> : <VideoIcon size={15} className="text-purple-400 shrink-0" />}
+                              <div>
+                                <div className="leading-tight">Video hochladen</div>
+                                <div className="text-[10px] font-normal text-text-muted">MP4, WebM direkt einbetten</div>
+                              </div>
+                              <input
+                                type="file"
+                                accept="video/mp4,video/webm,video/quicktime"
+                                onChange={(e) => {
+                                  setShowInsertMenu(false);
+                                  handleDirectVideoUpload(e, 'slide', activeSlide.id);
+                                }}
+                                className="hidden"
+                                disabled={isUploadingVideo}
+                              />
+                            </label>
+
+                            <div className="h-px bg-border/60 my-1" />
+
+                            {/* Stempel & Prüfvermerke */}
+                            <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">
+                              {t('stamp_label')} / Prüfvermerk
+                            </div>
+                            <div className="px-2.5 py-1 flex flex-wrap gap-1">
+                              {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={() => {
+                                    handleSetStamp(activeSlide.stamp === st ? '' : st);
+                                  }}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded-md text-[10px] font-bold border transition-colors cursor-pointer",
+                                    activeSlide.stamp === st
+                                      ? "bg-amber-500/20 border-amber-500/50 text-amber-300"
+                                      : "bg-background border-border/60 text-text-muted hover:text-text-primary hover:bg-white/5"
+                                  )}
+                                >
+                                  {st}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="h-px bg-border/60 my-1" />
+
+                            {/* Referentennotizen */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowInsertMenu(false);
+                                setShowNotesDrawer(!showNotesDrawer);
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-300 transition-colors cursor-pointer"
+                            >
+                              <StickyNote size={15} className="text-purple-400 shrink-0" />
+                              <div>
+                                <div className="leading-tight">{t('notes_label')} (Speaker Notes)</div>
+                                <div className="text-[10px] font-normal text-text-muted">
+                                  {activeSlide.notes ? 'Notiz vorhanden' : 'Notiz für Präsentator anzeigen'}
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Duplizieren */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowInsertMenu(false);
+                                handleDuplicateSlide();
+                              }}
+                              className="w-full text-left px-3 py-2 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-white/10 transition-colors border-t border-border/60 cursor-pointer"
+                            >
+                              <Copy size={15} className="text-text-muted shrink-0" />
+                              <div>
+                                <div className="leading-tight">{t('duplicate_slide')}</div>
+                                <div className="text-[10px] font-normal text-text-muted">Aktuelle Folie 1:1 kopieren</div>
+                              </div>
+                            </button>
                           </motion.div>
                         </>
                       )}
                     </AnimatePresence>
-                  </div>
-
-                  {/* KREATIV DESK REFERENTENNOTIZEN TOGGLE */}
-                  <button type="button" onClick={() => setShowNotesDrawer(!showNotesDrawer)} className={cn("px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0", activeSlide.notes ? "bg-purple-500/20 border-purple-500/40 text-purple-300" : "bg-background border-border text-text-muted hover:text-text-primary")}>
-                    <StickyNote size={14} /> <span className="hidden xl:inline">{t('notes_label')}</span>
-                  </button>
-
-                  {/* QUICK SLIDE ACTION BUTTONS */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button type="button" onClick={handleDuplicateSlide} title={t('duplicate_slide')} className="p-2 bg-background border border-border text-text-muted hover:text-text-primary rounded-lg text-xs font-bold transition-colors">
-                      <Copy size={14} />
-                    </button>
-                    {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus') && (
-                      <button type="button" onClick={() => openMediaPicker('render', t('choose_image'), 'slide')} title={t('choose_image')} className="px-2.5 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors">
-                        <ImageIcon size={14} /> <span className="hidden xl:inline">{t('image_label')}</span>
-                      </button>
-                    )}
-                    {(activeSlide.layout === 'split' || activeSlide.layout === 'image-focus' || activeSlide.layout === 'video-focus') && (
-                      <label title="Video hochladen (MP4, WebM)" className="px-2.5 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer">
-                        {isUploadingVideo ? <Loader2 size={14} className="animate-spin" /> : <VideoIcon size={14} />}
-                        <span className="hidden xl:inline">Video</span>
-                        <input type="file" accept="video/mp4,video/webm,video/quicktime" onChange={(e) => handleDirectVideoUpload(e, 'slide', activeSlide.id)} className="hidden" disabled={isUploadingVideo} />
-                      </label>
-                    )}
                   </div>
                 </div>
               )}

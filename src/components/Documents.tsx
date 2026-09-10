@@ -308,17 +308,29 @@ const COMPANY_FOLDER_PRESETS: Record<string, { label: string; desc: string; icon
 };
 
 export default function Documents({ projectId: propProjectId }: { projectId?: string } = {}) {
-  const { id: routeProjectId } = useParams<{ id: string }>();
+  const { projectId: routeParamProjectId, id: routeProjectId } = useParams<{ projectId?: string; id?: string }>();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { projects = [], activeProjectId, isDemoMode } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
   
-  const defaultProjId = propProjectId || routeProjectId || null;
+  const defaultProjId = propProjectId || routeParamProjectId || routeProjectId || null;
+  const isProjectMode = Boolean(defaultProjId);
+  const currentProject = projects.find((p: any) => p.id === defaultProjId);
+
+  // External collaborators (partners, clients, sub-contractors, viewers/guests) only get read-only access
+  const isExternalPartner = Boolean(
+    currentUser?.role === 'client' ||
+    currentUser?.role === 'guest' ||
+    (currentUser as any)?.isExternal ||
+    (currentUser?.role as any) === 'viewer' ||
+    (currentUser?.role as any) === 'partner'
+  );
+
   const isDemo = isDemoMode || defaultProjId === 'demo-1' || defaultProjId?.startsWith('demo-') || activeProjectId === 'demo-1';
-  const canUpload = !isDemo && hasPermission('canUploadFiles');
-  const canDelete = !isDemo && (hasPermission('canDeleteFiles') || currentUser?.role === 'super_admin' || currentUser?.role === 'owner' || !currentUser?.role);
+  const canUpload = !isDemo && !isExternalPartner && hasPermission('canUploadFiles');
+  const canDelete = !isDemo && !isExternalPartner && (hasPermission('canDeleteFiles') || currentUser?.role === 'super_admin' || currentUser?.role === 'owner' || !currentUser?.role);
   const currentLang: 'en' | 'de' | 'fr' = (typeof language === 'string' && language.toLowerCase().startsWith('fr'))
     ? 'fr'
     : ((typeof language === 'string' && language.toLowerCase().includes('de')) ? 'de' : 'en');
@@ -335,15 +347,16 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const docsStorageKey = `docs_state_${defaultProjId || 'global'}`;
 
   const [activeTab, setActiveTabRaw] = useState<'company' | 'projects' | 'proposals'>(() => {
-    if (defaultProjId) return 'projects';
+    if (isProjectMode) return 'projects';
     const saved = safeStorage.getString(`${docsStorageKey}_tab`);
     if (saved && (saved === 'company' || saved === 'projects' || saved === 'proposals')) return saved as any;
     return 'company';
   });
 
   const setActiveTab = (tab: 'company' | 'projects' | 'proposals') => {
-    setActiveTabRaw(tab);
-    safeStorage.setItem(`${docsStorageKey}_tab`, tab);
+    const nextTab = isProjectMode && tab === 'company' ? 'projects' : tab;
+    setActiveTabRaw(nextTab);
+    safeStorage.setItem(`${docsStorageKey}_tab`, nextTab);
   };
 
   const [showPitchModal, setShowPitchModal] = useState(false);
@@ -400,6 +413,12 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(defaultProjId);
 
+  useEffect(() => {
+    if (defaultProjId) {
+      setSelectedProjectId(defaultProjId);
+    }
+  }, [defaultProjId]);
+
   const [sortOption, setSortOption] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc'>('newest');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -418,6 +437,10 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleOpenInStudio = (item: any) => {
+    if (isExternalPartner) {
+      handleDownloadFile(item);
+      return;
+    }
     const fileUrl = item.url || item.file_url;
     const isPdf = item.type === 'application/pdf' || 
                   item.name?.toLowerCase().endsWith('.pdf') || 
@@ -691,7 +714,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     setFolderPath(newPath);
     setCurrentFolderId(newPath[newPath.length - 1].id);
     setSelectedDocIds([]);
-    if (index === 0) {
+    if (index === 0 && !isProjectMode) {
       setSelectedProjectId(null);
     }
   };
@@ -702,7 +725,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     '04_MARKETING': '05_MARKETING',
   };
 
-  // Filter documents by tab and current folder
+  // Filter documents by tab and current folder with strict project-scope protection
   const allFilteredDocs = documents.filter(doc => {
     if (doc.is_folder && legacyFolderMap[doc.name]) {
       const canonicalName = legacyFolderMap[doc.name];
@@ -710,22 +733,29 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       if (hasCanonical) return false;
     }
 
-    if (activeTab === 'company') {
+    if (isProjectMode || activeTab === 'projects') {
+      const currentProj = defaultProjId || selectedProjectId;
+      if (currentProj) {
+        // STRICT PROJECT ISOLATION: Only documents that belong directly to this specific project!
+        // Never leak company-wide documents (project_id === 'global' or category === 'company') into project view.
+        const matchesProject = doc.project_id === currentProj;
+        if (currentFolderId === 'root') {
+          return matchesProject && (doc.folder_id === 'root' || !doc.folder_id);
+        }
+        return matchesProject && doc.folder_id === currentFolderId;
+      }
+      if (currentFolderId === 'root') {
+        const isProjectCategory = doc.category === 'projects' || (doc.project_id && doc.project_id !== 'global');
+        return isProjectCategory && (doc.folder_id === 'root' || !doc.folder_id);
+      }
+      return (doc.category === 'projects' || (doc.project_id && doc.project_id !== 'global')) && doc.folder_id === currentFolderId;
+    } else {
+      // Company Tab (only available in company overview, never in project mode)
       const isCompanyCategory = doc.category === 'company' || !doc.project_id || doc.project_id === 'global';
       if (currentFolderId === 'root') {
         return isCompanyCategory && (doc.folder_id === 'root' || !doc.folder_id);
       }
       return isCompanyCategory && doc.folder_id === currentFolderId;
-    } else {
-      const isProjectCategory = doc.category === 'projects' || (doc.project_id && doc.project_id !== 'global');
-      const currentProj = selectedProjectId || propProjectId || routeProjectId || activeProjectId;
-      if (currentProj) {
-        return isProjectCategory && (doc.project_id === currentProj || doc.project_id === 'global') && (currentFolderId === 'root' ? (doc.folder_id === 'root' || !doc.folder_id) : doc.folder_id === currentFolderId);
-      }
-      if (currentFolderId === 'root') {
-        return isProjectCategory && (doc.folder_id === 'root' || !doc.folder_id);
-      }
-      return isProjectCategory && doc.folder_id === currentFolderId;
     }
   });
 
@@ -878,22 +908,40 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* Top Header Bar */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-border p-4 md:p-6 rounded-3xl shadow-sm gap-4">
         <div>
-          <h3 className="text-lg md:text-xl font-black text-text-primary flex items-center gap-2">
-            <FolderOpen className="text-blue-500" size={22} />
-            {t('document_hub')}
-          </h3>
-          <p className="text-text-muted text-xs md:text-sm font-medium">{t('cloud_storage_desc')}</p>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h3 className="text-lg md:text-xl font-black text-text-primary flex items-center gap-2">
+              <FolderOpen className={isProjectMode ? "text-emerald-500" : "text-blue-500"} size={22} />
+              {isProjectMode ? `Bauakte: ${currentProject?.name || 'Projekt'}` : t('document_hub')}
+            </h3>
+            {isProjectMode && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 uppercase tracking-wider">
+                Projektakte
+              </span>
+            )}
+            {isExternalPartner && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center gap-1">
+                <Eye size={12} /> Nur Lesezugriff
+              </span>
+            )}
+          </div>
+          <p className="text-text-muted text-xs md:text-sm font-medium mt-0.5">
+            {isProjectMode 
+              ? 'Projektspezifische Bauunterlagen, Pläne, Verträge und Protokolle sicher verwalten.' 
+              : t('cloud_storage_desc')}
+          </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
-          <button
-            onClick={handleSeedDemoData}
-            disabled={isSeeding}
-            className="w-full sm:w-auto px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs rounded-xl hover:bg-purple-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-          >
-            {isSeeding ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            {t('seed_demo_btn')}
-          </button>
+          {!isExternalPartner && (
+            <button
+              onClick={handleSeedDemoData}
+              disabled={isSeeding}
+              className="w-full sm:w-auto px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs rounded-xl hover:bg-purple-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+            >
+              {isSeeding ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+              {t('seed_demo_btn')}
+            </button>
+          )}
 
           {activeTab !== 'proposals' ? (
             canUpload && (
@@ -944,30 +992,32 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen vs. Kunden-Offerten & Layout Switcher */}
       <div className="flex flex-row justify-between items-center gap-2 border-b border-border/70 pb-1 overflow-x-auto custom-scrollbar">
         <div className="flex border-b border-transparent gap-1.5 shrink-0">
-          <button
-            onClick={() => {
-              setActiveTab('company');
-              setCurrentFolderId('root');
-              setSelectedProjectId(null);
-              setSelectedDocIds([]);
-              setFolderPath([{ id: 'root', name: 'Root' }]);
-            }}
-            className={cn(
-              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
-              activeTab === 'company'
-                ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 shadow-sm font-extrabold"
-                : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
-            )}
-          >
-            <Building2 size={16} />
-            {t('company_docs')}
-          </button>
+          {!isProjectMode && (
+            <button
+              onClick={() => {
+                setActiveTab('company');
+                setCurrentFolderId('root');
+                setSelectedProjectId(null);
+                setSelectedDocIds([]);
+                setFolderPath([{ id: 'root', name: 'Root' }]);
+              }}
+              className={cn(
+                "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
+                activeTab === 'company'
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 shadow-sm font-extrabold"
+                  : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
+              )}
+            >
+              <Building2 size={16} />
+              {t('company_docs')}
+            </button>
+          )}
 
           <button
             onClick={() => {
               setActiveTab('projects');
               setCurrentFolderId('root');
-              setSelectedProjectId(null);
+              if (!isProjectMode) setSelectedProjectId(null);
               setSelectedDocIds([]);
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
@@ -979,7 +1029,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
             )}
           >
             <Briefcase size={16} />
-            {t('project_docs')}
+            {isProjectMode ? 'Bauakte & Unterlagen' : t('project_docs')}
           </button>
 
           <button
@@ -1377,7 +1427,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* ========================================================= */}
       {/* 2. PROJEKTUNTERLAGEN ROOT VIEW (GRID ODER LISTE) */}
       {/* ========================================================= */}
-      {activeTab === 'projects' && currentFolderId === 'root' && !selectedProjectId && !searchTerm && (
+      {activeTab === 'projects' && currentFolderId === 'root' && !selectedProjectId && !isProjectMode && !searchTerm && (
         <div className="space-y-8">
           <div className="flex justify-between items-center">
             <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
@@ -1469,7 +1519,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* ========================================================= */}
       {/* 3. LOOSE FILES & SUBFOLDER DRILL-DOWN VIEW */}
       {/* ========================================================= */}
-      {activeTab !== 'proposals' && (currentFolderId !== 'root' || selectedProjectId || searchTerm || sortedFiles.length > 0) && (
+      {activeTab !== 'proposals' && (currentFolderId !== 'root' || isProjectMode || selectedProjectId || searchTerm || sortedFiles.length > 0 || sortedFolders.length > 0) && (
         <div className="space-y-4">
           {/* SMART PROPOSALS BANNER INSIDE FINANCE OR SALES FOLDER */}
           {activeTab === 'company' && (folderPath[folderPath.length - 1]?.name === '01_FINANZEN' || folderPath[folderPath.length - 1]?.name === '04_SALES') && (
@@ -1527,22 +1577,24 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
           </div>
 
           <div className="bg-surface border border-border rounded-3xl p-6 shadow-sm">
-            {sortedFiles.length === 0 && (currentFolderId !== 'root' || selectedProjectId) ? (
+            {sortedFiles.length === 0 && sortedFolders.length === 0 && (currentFolderId !== 'root' || selectedProjectId || isProjectMode) ? (
               <div className="text-center py-16 text-text-muted space-y-3">
                 <FolderOpen className="mx-auto text-text-muted opacity-40" size={48} />
                 <p className="font-medium">{t('no_files')}</p>
-                <button
-                  onClick={handleSeedDemoData}
-                  className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all cursor-pointer"
-                >
-                  ✨ {t('seed_demo_btn')}
-                </button>
+                {canUpload && (
+                  <button
+                    onClick={handleSeedDemoData}
+                    className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all cursor-pointer"
+                  >
+                    ✨ {t('seed_demo_btn')}
+                  </button>
+                )}
               </div>
             ) : viewMode === 'grid' ? (
               /* GRID VIEW FOR FILES IN SUBFOLDERS / SEARCH */
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* Render subfolders if inside a folder */}
-                {currentFolderId !== 'root' && sortedFolders.map(item => (
+                {/* Render subfolders if inside a folder or in project mode */}
+                {(currentFolderId !== 'root' || isProjectMode || Boolean(selectedProjectId)) && sortedFolders.map(item => (
                   <div
                     key={item.id}
                     onClick={() => navigateToFolder(item.id, item.name)}
@@ -1636,7 +1688,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                         </div>
                       </div>
 
-                      {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                      {!isExternalPartner && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleOpenInStudio(item); }}
                           className="w-full mt-1 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-lg border border-amber-500/20 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
@@ -1651,7 +1703,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
             ) : (
               /* LIST VIEW FOR FILES IN SUBFOLDERS / SEARCH */
               <div className="divide-y divide-border/50">
-                {currentFolderId !== 'root' && sortedFolders.map(item => (
+                {(currentFolderId !== 'root' || isProjectMode || Boolean(selectedProjectId)) && sortedFolders.map(item => (
                   <div
                     key={item.id}
                     onClick={() => navigateToFolder(item.id, item.name)}
@@ -1720,7 +1772,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
 
                       <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                        {(item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
+                        {!isExternalPartner && (item.type === 'vorlage' || item.name?.endsWith('.txt') || (item.url && item.url.startsWith('data:'))) && (
                           <button 
                             onClick={() => handleOpenInStudio(item)} 
                             className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors rounded-lg border border-amber-500/20 font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
