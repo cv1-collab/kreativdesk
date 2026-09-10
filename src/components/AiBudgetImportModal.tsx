@@ -15,12 +15,15 @@ import {
   Layers, 
   ArrowRight,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { cn } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export interface BudgetItem {
   id: string;
@@ -98,7 +101,9 @@ const translations = {
     ai_error: 'Fehler bei der KI-Analyse. Bitte Bildqualität oder Tabellentext prüfen.',
     entries: 'Einträge',
     phases: 'Phasen',
-    new_position: 'Neue Position'
+    new_position: 'Neue Position',
+    theme_light: 'Heller Modus',
+    theme_dark: 'Dunkler Modus'
   },
   en: {
     modal_title: 'AI Excel & Photo Budget Import',
@@ -149,7 +154,9 @@ const translations = {
     ai_error: 'Error during AI analysis. Please check image quality or table text.',
     entries: 'Items',
     phases: 'Phases',
-    new_position: 'New Item'
+    new_position: 'New Item',
+    theme_light: 'Light Mode',
+    theme_dark: 'Dark Mode'
   }
 };
 
@@ -162,6 +169,8 @@ export default function AiBudgetImportModal({
 }: AiBudgetImportModalProps) {
   const toastContext = useToast();
   const { language } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
   const t = (key: keyof typeof translations['de']) => {
     const lang = (typeof language === 'string' && language.toLowerCase().startsWith('en')) ? 'en' : 'de';
     return translations[lang]?.[key] || translations.de[key] || key;
@@ -470,55 +479,67 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-surface border border-border/80 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden transition-colors">
         
         {/* MODAL HEADER */}
-        <div className="p-5 sm:p-6 border-b border-border/60 flex items-center justify-between bg-surface/80 backdrop-blur-sm shrink-0">
+        <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between bg-slate-50/80 dark:bg-[#18181b]/80 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-purple-500/25 shrink-0">
               <Sparkles size={22} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base sm:text-lg text-text-primary tracking-tight">
+                <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-zinc-100 tracking-tight">
                   {t('modal_title')}
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30">
                   Vision AI
                 </span>
               </div>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
                 {t('modal_subtitle')}
               </p>
             </div>
           </div>
 
-          <button 
-            onClick={onClose}
-            className="p-2 text-text-muted hover:text-text-primary hover:bg-background/80 rounded-xl transition-colors cursor-pointer"
-            title={t('cancel')}
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-200/60 dark:hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer"
+              title={isDark ? t('theme_light') : t('theme_dark')}
+              aria-label="Theme umschalten"
+            >
+              {isDark ? <Sun size={19} className="text-amber-400" /> : <Moon size={19} className="text-slate-600" />}
+            </button>
+
+            <button 
+              onClick={onClose}
+              className="p-2 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-200/60 dark:hover:bg-zinc-800 rounded-xl transition-colors cursor-pointer"
+              title={t('cancel')}
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-6 bg-white dark:bg-[#121214]">
 
           {/* STEP 1: INPUT SCREEN (Shown when no parsed groups yet) */}
           {!parsedGroups ? (
             <div className="space-y-6">
               
               {/* INPUT METHOD SELECTOR TABS */}
-              <div className="flex border-b border-border/60 gap-4">
+              <div className="flex border-b border-slate-200 dark:border-zinc-800 gap-4">
                 <button
                   onClick={() => setActiveTab('upload')}
                   className={cn(
                     "pb-3 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer",
                     activeTab === 'upload' 
                       ? "border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400" 
-                      : "border-transparent text-text-muted hover:text-text-primary"
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
                   )}
                 >
                   <ImageIcon size={16} />
@@ -530,7 +551,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     "pb-3 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer",
                     activeTab === 'text' 
                       ? "border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400" 
-                      : "border-transparent text-text-muted hover:text-text-primary"
+                      : "border-transparent text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100"
                   )}
                 >
                   <FileSpreadsheet size={16} />
@@ -550,7 +571,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       "border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 group",
                       dragOver 
                         ? "border-purple-500 bg-purple-500/10 scale-[1.01]" 
-                        : "border-border/80 hover:border-purple-500/60 bg-background/50 hover:bg-background/80"
+                        : "border-slate-300 dark:border-zinc-700/80 hover:border-purple-500/60 bg-slate-50/70 hover:bg-slate-100/80 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/70"
                     )}
                   >
                     <input 
@@ -563,7 +584,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
 
                     {previewUrl ? (
                       <div className="space-y-3 w-full max-w-sm mx-auto">
-                        <div className="relative rounded-2xl overflow-hidden border border-border/80 shadow-md max-h-56 bg-surface">
+                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 shadow-md max-h-56 bg-white dark:bg-zinc-900">
                           <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
                           <button
                             type="button"
@@ -577,18 +598,18 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                             <Trash2 size={14} />
                           </button>
                         </div>
-                        <div className="text-xs font-bold text-text-primary truncate">
+                        <div className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
                           {file?.name} ({Math.round((file?.size || 0) / 1024)} KB)
                         </div>
-                        <p className="text-[11px] text-text-muted">{t('change_file')}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-zinc-400">{t('change_file')}</p>
                       </div>
                     ) : file ? (
                       <div className="space-y-3">
                         <div className="w-16 h-16 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto border border-purple-500/30">
                           <FileText size={32} />
                         </div>
-                        <div className="font-bold text-sm text-text-primary">{file.name}</div>
-                        <div className="text-xs text-text-muted">{Math.round(file.size / 1024)} KB ({t('pdf_doc')})</div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-zinc-100">{file.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-zinc-400">{Math.round(file.size / 1024)} KB ({t('pdf_doc')})</div>
                       </div>
                     ) : (
                       <>
@@ -596,14 +617,14 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                           <Upload size={28} />
                         </div>
                         <div>
-                          <p className="font-extrabold text-sm sm:text-base text-text-primary">
+                          <p className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-zinc-100">
                             {t('drop_title')}
                           </p>
-                          <p className="text-xs text-text-muted mt-1">
+                          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1">
                             {t('drop_sub')}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-text-muted bg-surface border border-border/60 px-3 py-1.5 rounded-full">
+                        <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700/80 px-3 py-1.5 rounded-full">
                           <Clipboard size={13} className="text-purple-600 dark:text-purple-400" />
                           {t('drop_tip')}
                         </div>
@@ -617,13 +638,13 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               {activeTab === 'text' && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400">
                       {t('text_label')}
                     </label>
                     {pastedText && (
                       <button 
                         onClick={() => setPastedText('')}
-                        className="text-xs text-text-muted hover:text-red-400 font-medium cursor-pointer"
+                        className="text-xs text-slate-500 dark:text-zinc-400 hover:text-red-500 font-medium cursor-pointer"
                       >
                         {t('clear')}
                       </button>
@@ -634,19 +655,19 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     value={pastedText}
                     onChange={(e) => setPastedText(e.target.value)}
                     placeholder={t('text_placeholder')}
-                    className="w-full bg-background/70 border border-border/80 rounded-2xl p-4 text-xs font-sans text-text-primary focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 outline-none resize-y leading-relaxed"
+                    className="w-full bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-700/80 rounded-2xl p-4 text-xs font-sans text-slate-900 dark:text-zinc-100 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 outline-none resize-y leading-relaxed"
                   />
-                  <p className="text-[11px] text-text-muted">
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                     {t('text_hint')}
                   </p>
                 </div>
               )}
 
               {/* INFO BOX */}
-              <div className="bg-purple-500/10 border border-purple-500/25 rounded-2xl p-4 flex items-start gap-3">
+              <div className="bg-purple-50/80 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800/40 rounded-2xl p-4 flex items-start gap-3">
                 <Sparkles size={18} className="text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-text-muted space-y-1">
-                  <div className="font-bold text-text-primary">{t('supported_formats')}</div>
+                <div className="text-xs text-slate-600 dark:text-zinc-400 space-y-1">
+                  <div className="font-bold text-slate-900 dark:text-zinc-100">{t('supported_formats')}</div>
                   <div>{t('fmt_1')}</div>
                   <div>{t('fmt_2')}</div>
                   <div>{t('fmt_3')}</div>
@@ -660,9 +681,9 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               
               {/* SUMMARY STATS BAR */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-background/80 border border-border/70 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className="bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                   <div>
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('step2_title')}</div>
+                    <div className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('step2_title')}</div>
                     <div className="text-xl font-extrabold text-purple-600 dark:text-purple-400 mt-1 tabular-nums font-sans">
                       {parsedGroups.length} {t('phases')}
                     </div>
@@ -672,19 +693,19 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                   </div>
                 </div>
 
-                <div className="bg-background/80 border border-border/70 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                <div className="bg-slate-50 dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                   <div>
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('step2_items_total')}</div>
-                    <div className="text-xl font-extrabold text-blue-500 dark:text-blue-400 mt-1 tabular-nums font-sans">
+                    <div className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('step2_items_total')}</div>
+                    <div className="text-xl font-extrabold text-blue-600 dark:text-blue-400 mt-1 tabular-nums font-sans">
                       {parsedGroups.reduce((sum, g) => sum + g.items.length, 0)} {t('entries')}
                     </div>
                   </div>
-                  <div className="p-3 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-xl">
+                  <div className="p-3 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
                     <FileText size={20} />
                   </div>
                 </div>
 
-                <div className="bg-background/80 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between shadow-sm bg-gradient-to-br from-emerald-500/5 to-transparent">
+                <div className="bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-2xl p-4 flex items-center justify-between shadow-sm bg-gradient-to-br from-emerald-500/5 to-transparent">
                   <div>
                     <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{t('step2_grand_total')}</div>
                     <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums font-sans">
@@ -698,8 +719,8 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               </div>
 
               {/* IMPORT MODE SELECTION */}
-              <div className="bg-surface border border-border/70 rounded-2xl p-4 space-y-3">
-                <div className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <div className="bg-slate-50/60 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 space-y-3">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 flex items-center gap-1.5">
                   <ArrowRight size={14} className="text-purple-600 dark:text-purple-400" />
                   {t('import_mode_label')}
                 </div>
@@ -710,16 +731,16 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       "p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2",
                       importMode === 'new_version' 
                         ? "border-purple-600 dark:border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
-                        : "border-border/70 hover:border-purple-500/40 bg-background/50"
+                        : "border-slate-200 dark:border-zinc-800 hover:border-purple-500/40 bg-white dark:bg-zinc-900/60"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs text-text-primary">{t('mode_new_variant')}</span>
+                      <span className="font-extrabold text-xs text-slate-900 dark:text-zinc-100">{t('mode_new_variant')}</span>
                       <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-500/15 text-purple-600 dark:text-purple-400 rounded">
                         {t('mode_recommended')}
                       </span>
                     </div>
-                    <p className="text-[11px] text-text-muted">
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                       {t('mode_new_variant_desc')}
                     </p>
                   </label>
@@ -730,11 +751,11 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       "p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2",
                       importMode === 'append' 
                         ? "border-purple-600 dark:border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
-                        : "border-border/70 hover:border-purple-500/40 bg-background/50"
+                        : "border-slate-200 dark:border-zinc-800 hover:border-purple-500/40 bg-white dark:bg-zinc-900/60"
                     )}
                   >
-                    <span className="font-extrabold text-xs text-text-primary">{t('mode_append')}</span>
-                    <p className="text-[11px] text-text-muted">
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-zinc-100">{t('mode_append')}</span>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                       {t('mode_append_desc')} ({currentVersionName})
                     </p>
                   </label>
@@ -745,11 +766,11 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       "p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2",
                       importMode === 'replace' 
                         ? "border-purple-600 dark:border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
-                        : "border-border/70 hover:border-purple-500/40 bg-background/50"
+                        : "border-slate-200 dark:border-zinc-800 hover:border-purple-500/40 bg-white dark:bg-zinc-900/60"
                     )}
                   >
-                    <span className="font-extrabold text-xs text-text-primary">{t('mode_replace')}</span>
-                    <p className="text-[11px] text-text-muted">
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-zinc-100">{t('mode_replace')}</span>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
                       {t('mode_replace_desc')} ({currentVersionName})
                     </p>
                   </label>
@@ -759,7 +780,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               {/* RECOGNIZED PHASES ACCORDIONS */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400">
                     {t('step2_sub')}
                   </h4>
                   <button
@@ -769,7 +790,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       setPreviewUrl(null);
                       setPastedText('');
                     }}
-                    className="text-xs font-bold text-text-muted hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1 cursor-pointer"
                   >
                     <RefreshCw size={12} /> {t('other_doc')}
                   </button>
@@ -781,39 +802,39 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     const groupTotal = calculateGroupTotal(group);
 
                     return (
-                      <div key={group.id} className="bg-surface border border-border/80 rounded-2xl overflow-hidden shadow-sm">
+                      <div key={group.id} className="bg-white dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
                         
                         {/* PHASE HEADER BAR */}
                         <div 
                           onClick={() => toggleGroupExpand(group.id)}
-                          className="p-3.5 px-4 bg-background/60 hover:bg-background/90 transition-colors flex items-center justify-between cursor-pointer select-none"
+                          className="p-3.5 px-4 bg-slate-50/90 hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800/90 transition-colors flex items-center justify-between cursor-pointer select-none border-b border-slate-200/60 dark:border-zinc-800"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-text-muted group-hover:text-text-primary">
+                            <span className="text-slate-400 dark:text-zinc-500">
                               {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                             </span>
                             <span className="font-sans text-xs font-bold tabular-nums px-2 py-0.5 rounded bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30">
                               {group.pos}
                             </span>
-                            <span className="font-extrabold text-sm text-text-primary">
+                            <span className="font-extrabold text-sm text-slate-900 dark:text-zinc-100">
                               {group.title}
                             </span>
-                            <span className="text-xs text-text-muted font-medium">
+                            <span className="text-xs text-slate-500 dark:text-zinc-400 font-medium">
                               ({group.items.length} {group.items.length === 1 ? t('entries').slice(0, -1) : t('entries')})
                             </span>
                           </div>
 
-                          <div className="font-extrabold text-sm text-text-primary tabular-nums">
+                          <div className="font-extrabold text-sm text-slate-900 dark:text-zinc-100 tabular-nums">
                             {formatCHF(groupTotal)}
                           </div>
                         </div>
 
                         {/* POSITIONS TABLE */}
                         {isExpanded && (
-                          <div className="p-3 sm:p-4 overflow-x-auto custom-scrollbar">
+                          <div className="p-3 sm:p-4 overflow-x-auto custom-scrollbar bg-white dark:bg-zinc-900/50">
                             <table className="w-full text-left text-xs border-collapse min-w-[620px]">
                               <thead>
-                                <tr className="text-[10px] uppercase font-bold text-text-muted border-b border-border/50 pb-2">
+                                <tr className="text-[10px] uppercase font-bold text-slate-500 dark:text-zinc-400 border-b border-slate-200 dark:border-zinc-800 pb-2">
                                   <th className="pb-2 w-16">{t('pos_col')}</th>
                                   <th className="pb-2">{t('desc_col')}</th>
                                   <th className="pb-2 text-right w-20">{t('qty_col')}</th>
@@ -823,15 +844,15 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                   <th className="pb-2 w-10"></th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-border/30">
+                              <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/80">
                                 {group.items.map((item) => (
-                                  <tr key={item.id} className="hover:bg-background/40 transition-colors">
+                                  <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-zinc-800/50 transition-colors">
                                     <td className="py-2 pr-2">
                                       <input
                                         type="text"
                                         value={item.pos}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'pos', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-sans font-bold tabular-nums text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-xs font-sans font-bold tabular-nums text-slate-900 dark:text-zinc-100 outline-none focus:border-purple-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors"
                                       />
                                     </td>
                                     <td className="py-2 px-2">
@@ -839,7 +860,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="text"
                                         value={item.description}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'description', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-medium text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-xs font-medium text-slate-900 dark:text-zinc-100 outline-none focus:border-purple-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors"
                                       />
                                     </td>
                                     <td className="py-2 px-2">
@@ -847,7 +868,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="number"
                                         value={item.qty}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'qty', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-bold tabular-nums text-right text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-xs font-bold tabular-nums text-right text-slate-900 dark:text-zinc-100 outline-none focus:border-purple-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors"
                                       />
                                     </td>
                                     <td className="py-2 px-2">
@@ -855,7 +876,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="text"
                                         value={item.unit}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'unit', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-medium text-center text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-xs font-medium text-center text-slate-900 dark:text-zinc-100 outline-none focus:border-purple-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors"
                                       />
                                     </td>
                                     <td className="py-2 px-2">
@@ -863,7 +884,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="number"
                                         value={item.unitPrice}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'unitPrice', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-bold tabular-nums text-right text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700/80 rounded-lg px-2 py-1 text-xs font-bold tabular-nums text-right text-slate-900 dark:text-zinc-100 outline-none focus:border-purple-500 focus:bg-white dark:focus:bg-zinc-800 transition-colors"
                                       />
                                     </td>
                                     <td className="py-2 pl-2 text-right font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
@@ -872,7 +893,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                     <td className="py-2 pl-2 text-right">
                                       <button
                                         onClick={() => handleDeleteItem(group.id, item.id)}
-                                        className="p-1 text-text-muted hover:text-red-400 transition-colors cursor-pointer"
+                                        className="p-1 text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                                         title={t('remove_pos')}
                                       >
                                         <Trash2 size={13} />
@@ -885,7 +906,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
 
                             <button
                               onClick={() => handleAddItem(group.id)}
-                              className="mt-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-500 flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-all cursor-pointer"
+                              className="mt-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-all cursor-pointer"
                             >
                               <Plus size={13} /> {t('add_pos')}
                             </button>
@@ -901,10 +922,10 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="p-4 sm:p-5 border-t border-border/60 bg-surface/90 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+        <div className="p-4 sm:p-5 border-t border-slate-200 dark:border-zinc-800 bg-slate-50/90 dark:bg-zinc-900/90 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2.5 bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary font-bold text-xs rounded-xl transition-all cursor-pointer"
+            className="w-full sm:w-auto px-4 py-2.5 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 border border-slate-200 dark:border-zinc-700 text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-sm"
           >
             {t('cancel')}
           </button>
@@ -944,3 +965,4 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
     </div>
   );
 }
+

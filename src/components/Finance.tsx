@@ -2765,7 +2765,7 @@ export default function Finance() {
 
       {/* MODALS */}
       {isMounted && showTimeModal && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
               <h3 className="font-bold flex items-center gap-2 text-text-primary"><Clock className="text-orange-400" size={18} /> {t('book_hours')}</h3>
@@ -2827,7 +2827,7 @@ export default function Finance() {
       )}
 
       {isMounted && showReceiptStudio && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-200">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[95vh] h-full lg:h-auto">
 
             {/* LEFT SIDE: SCAN & UPLOAD */}
@@ -2988,7 +2988,7 @@ export default function Finance() {
       </AnimatePresence>
 
       {isMounted && showCsvImportModal && createPortal(
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
               <h3 className="font-bold flex items-center gap-2 text-text-primary"><Plus className="text-accent-ai" size={18} /> BKP CSV-Import</h3>
