@@ -16,6 +16,7 @@ export interface TimeEntry {
   isBillable?: boolean;
   budgetPosId?: string;
   externalData?: any;
+  internalData?: any;
 }
 
 export function useProjectTimeEntries() {
@@ -93,6 +94,7 @@ export function useProjectTimeEntries() {
       isBillable: entryData.isBillable !== undefined ? entryData.isBillable : true,
       budgetPosId: entryData.budgetPosId || '',
       externalData: entryData.externalData || null,
+      internalData: entryData.internalData || null,
       ownerId: currentUserId,
       companyId: safeCompanyId
     };

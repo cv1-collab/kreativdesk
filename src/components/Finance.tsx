@@ -301,6 +301,7 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
             {isExternal ? (
               <>
                 {incomingData.invoiceNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>Rechnungs-Nr: {incomingData.invoiceNumber}</Text>}
+                {incomingData.vatNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>MWST-Nr: {incomingData.vatNumber}</Text>}
                 {incomingData.contactPerson && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kontakt: {incomingData.contactPerson}</Text>}
                 {incomingData.dueDate && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Fällig bis: {new Date(incomingData.dueDate).toLocaleDateString('de-CH')}</Text>}
                 {incomingData.creditorCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kategorie: {incomingData.creditorCategory}</Text>}
@@ -502,6 +503,7 @@ export default function Finance() {
     company: '',
     contactPerson: '',
     invoiceNumber: '',
+    vatNumber: '',
     dueDate: '',
     skontoRate: 0,
     creditorCategory: 'Kreditorenrechnung (Handwerker / Material)',
@@ -523,11 +525,15 @@ export default function Finance() {
     // Intern
     userId: '',
     isBillable: true,
+    overtimeType: 'normal' as 'normal' | 'overtime' | 'compensation',
+    breakMinutes: 0,
     // Extern
     company: '',
     specialistName: '',
+    orderNumber: '',
     rapportNumber: '',
-    approvalStatus: 'Zur Prüfung eingereicht'
+    approvalStatus: 'Zur Prüfung eingereicht',
+    approvedBy: ''
   });
   const mobileCameraRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1394,7 +1400,8 @@ export default function Finance() {
 
       if (isExternal) {
         const invNum = incomingData.invoiceNumber ? ` [Rechnung: ${incomingData.invoiceNumber}]` : '';
-        descPrefix = `[Kreditor: ${mainName}${invNum}]`;
+        const vatNum = incomingData.vatNumber ? ` [MWST: ${incomingData.vatNumber}]` : '';
+        descPrefix = `[Kreditor: ${mainName}${invNum}${vatNum}]`;
         transactionCategory = incomingData.creditorCategory || 'Kreditorenrechnung';
       } else {
         const beneficiary = projectMembers?.find((m: any) => m.userId === incomingData.beneficiaryUserId);
@@ -1454,6 +1461,7 @@ export default function Finance() {
         company: '',
         contactPerson: '',
         invoiceNumber: '',
+        vatNumber: '',
         dueDate: '',
         skontoRate: 0,
         creditorCategory: 'Kreditorenrechnung (Handwerker / Material)',
@@ -1473,36 +1481,51 @@ export default function Finance() {
     try {
       if (typeof addTimeEntry === 'function') {
         const isExternal = timeData.type === 'external';
+        const netHours = isExternal ? timeData.hours : Math.max(0, timeData.hours - ((timeData.breakMinutes || 0) / 60));
         let descPrefix = '';
         if (isExternal) {
           const comp = timeData.company || 'Partner';
           const rap = timeData.rapportNumber ? ` [Rapport: ${timeData.rapportNumber}]` : '';
+          const ord = timeData.orderNumber ? ` [Bestell-Nr: ${timeData.orderNumber}]` : '';
           const spec = timeData.specialistName ? ` (${timeData.specialistName})` : '';
-          descPrefix = `[Extern: ${comp}${spec}${rap}] `;
+          const appr = timeData.approvedBy ? ` [Freigabe: ${timeData.approvedBy}]` : '';
+          descPrefix = `[Extern: ${comp}${spec}${rap}${ord}${appr}] `;
         } else {
-          descPrefix = '[Intern] ';
+          const otLabel = timeData.overtimeType === 'overtime' ? ': Überstunden' : (timeData.overtimeType === 'compensation' ? ': Kompensation' : '');
+          const brkLabel = timeData.breakMinutes > 0 ? ` (${timeData.breakMinutes}m Pause)` : '';
+          descPrefix = `[Intern${otLabel}${brkLabel}] `;
         }
 
-        const budgetSuffix = timeData.budgetPosId ? ` [BKP: ${timeData.budgetPosId}]` : '';
+        const budgetSuffix = timeData.budgetPosId ? ` [Budget: ${timeData.budgetPosId}]` : '';
         const fullDesc = `${descPrefix}${timeData.description || 'Zeiterfassung'}${budgetSuffix}`;
+        const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
         addTimeEntry({ 
           userId: isExternal ? 'external_partner' : (timeData.userId || currentUser?.uid || 'internal_team'), 
           projectId: currentProjectId, 
           date: timeData.date || new Date().toISOString().split('T')[0], 
-          hours: timeData.hours || 0, 
+          hours: Number(netHours.toFixed(2)) || Number(timeData.hours) || 0, 
           description: fullDesc, 
           hourlyRate: timeData.hourlyRate || (isExternal ? 165 : 120), 
           isBillable: isExternal ? true : (timeData.isBillable !== false),
           budgetPosId: timeData.budgetPosId || '',
+          internalData: !isExternal ? {
+            overtimeType: timeData.overtimeType || 'normal',
+            breakMinutes: timeData.breakMinutes || 0,
+            grossHours: timeData.hours,
+            netHours: Number(netHours.toFixed(2)),
+            budgetPosId: timeData.budgetPosId
+          } : null,
           externalData: isExternal ? { 
             company: timeData.company, 
             specialistName: timeData.specialistName,
+            orderNumber: timeData.orderNumber,
             rapportNumber: timeData.rapportNumber,
             approvalStatus: timeData.approvalStatus || 'Zur Prüfung eingereicht',
+            approvedBy: timeData.approvedBy,
             budgetPosId: timeData.budgetPosId
           } : null 
-        });
+        }, safeCompanyId, currentUser.uid);
 
         addToast(t('hours_booked_success') || 'Erfolgreich verbucht', 'success'); 
         setShowTimeModal(false);
@@ -1511,8 +1534,12 @@ export default function Finance() {
           userId: '', 
           company: '', 
           specialistName: '',
+          orderNumber: '',
           rapportNumber: '',
           approvalStatus: 'Zur Prüfung eingereicht',
+          approvedBy: '',
+          overtimeType: 'normal',
+          breakMinutes: 0,
           hours: 0, 
           hourlyRate: isExternal ? 165 : 120, 
           description: '', 
@@ -2986,28 +3013,81 @@ export default function Finance() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
-                        <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Arbeitszeit brutto (h)</label>
+                        <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 8.5" />
                       </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Pausenregelung</label>
+                        <select 
+                          value={timeData.breakMinutes} 
+                          onChange={(e) => setTimeData({ ...timeData, breakMinutes: Number(e.target.value) || 0 })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer"
+                        >
+                          <option value={0} className="bg-surface">Keine Pause (0 Min)</option>
+                          <option value={15} className="bg-surface">15 Min Kurzpause</option>
+                          <option value={30} className="bg-surface">30 Min Mittagspause</option>
+                          <option value={45} className="bg-surface">45 Min Pause</option>
+                          <option value={60} className="bg-surface">60 Min Mittagspause</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {timeData.breakMinutes > 0 && timeData.hours > 0 && (
+                      <div className="text-[11px] font-medium text-text-muted bg-surface/70 border border-border/40 px-3 py-1.5 rounded-lg flex items-center justify-between">
+                        <span>Pausenabzug: {timeData.breakMinutes} Minuten</span>
+                        <span className="font-bold text-text-primary">Effektive Netto-Zeit: {Math.max(0, timeData.hours - (timeData.breakMinutes / 60)).toFixed(2)} h</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Interner Ansatz (CHF/h)</label>
                         <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Überstunden-Konto</label>
+                        <select 
+                          value={timeData.overtimeType} 
+                          onChange={(e) => setTimeData({ ...timeData, overtimeType: e.target.value as any })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer"
+                        >
+                          <option value="normal" className="bg-surface">Normalarbeitszeit</option>
+                          <option value="overtime" className="bg-surface">Überstunden (+) Gutschrift</option>
+                          <option value="compensation" className="bg-surface">Kompensation (-) Zeitausgleich</option>
+                        </select>
                       </div>
                     </div>
 
                     {timeData.hours > 0 && timeData.hourlyRate > 0 && (
                       <div className="text-xs font-bold text-orange-500 bg-orange-500/10 border border-orange-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                        <span>Aufwand ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
-                        <span>CHF {formatCHF(Number(timeData.hours) * Number(timeData.hourlyRate))}</span>
+                        <div className="flex items-center gap-2">
+                          <span>Aufwand ({Math.max(0, timeData.hours - (timeData.breakMinutes / 60)).toFixed(2)}h × CHF {timeData.hourlyRate}):</span>
+                          {timeData.overtimeType === 'overtime' && (
+                            <span className="text-[10px] font-extrabold bg-orange-500 text-white px-1.5 py-0.5 rounded">+ Überstunden</span>
+                          )}
+                          {timeData.overtimeType === 'compensation' && (
+                            <span className="text-[10px] font-extrabold bg-blue-500 text-white px-1.5 py-0.5 rounded">- Kompensation</span>
+                          )}
+                        </div>
+                        <span>CHF {formatCHF(Math.max(0, timeData.hours - (timeData.breakMinutes / 60)) * Number(timeData.hourlyRate))}</span>
                       </div>
                     )}
 
                     <div>
-                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Phase / Budget-Zuweisung</label>
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Phase / SIA- / Budget-Zuweisung</label>
                       <select value={timeData.budgetPosId} onChange={(e) => setTimeData({ ...timeData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                        <option value="" className="bg-surface">Allgemeine Regiestunden (Nicht zugewiesen)</option>
-                        {budgetGroups.map((group) => (
-                          <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
+                        <option value="" className="bg-surface">Allgemeine Regiestunden (Ohne Phasenzuweisung)</option>
+                        <optgroup label="SIA Phasen (SIA 102 / 108 / 112)" className="bg-surface font-bold text-orange-500">
+                          <option value="sia_31">SIA 31: Vorprojekt</option>
+                          <option value="sia_32">SIA 32: Bauprojekt</option>
+                          <option value="sia_33">SIA 33: Bewilligungsverfahren</option>
+                          <option value="sia_41">SIA 41: Ausschreibung & Vergabe</option>
+                          <option value="sia_51">SIA 51: Ausführungsplanung</option>
+                          <option value="sia_52">SIA 52: Bauleitung / Realisierung</option>
+                          <option value="sia_53">SIA 53: Inbetriebnahme & Abschluss</option>
+                        </optgroup>
+                        {budgetGroups.length > 0 && budgetGroups.map((group) => (
+                          <optgroup key={group.id} label={`BKP ${group.pos} ${group.title}`} className="bg-surface font-bold">
                             <option value={group.id} className="font-medium">{group.pos} {group.title} (Gesamte Phase)</option>
                             {group.items.map((item) => (
                               <option key={item.id} value={item.id} className="font-normal">&nbsp;&nbsp;↳ {item.pos} {item.description}</option>
@@ -3029,7 +3109,7 @@ export default function Finance() {
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('description')}</label>
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Tätigkeitsbeschrieb</label>
                       <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Was wurde gemacht (z.B. Detailpläne Fassade überarbeitet, Bauherrensitzung)..." />
                     </div>
                   </>
@@ -3053,34 +3133,31 @@ export default function Finance() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Auftrags- / Bestellnummer (PO)</label>
+                        <input type="text" placeholder="z.B. PO-2026-084 / Werkvertrag #12" value={timeData.orderNumber} onChange={(e) => setTimeData({ ...timeData, orderNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none" />
+                      </div>
+                      <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Rapport- / Regieschein-Nr.</label>
                         <input type="text" required placeholder="z.B. Rapport #104 / 2026" value={timeData.rapportNumber} onChange={(e) => setTimeData({ ...timeData, rapportNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Rapportdatum</label>
                         <input type="date" required value={timeData.date} onChange={(e) => setTimeData({ ...timeData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
                       </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
                         <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 8.0" />
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ansatz (CHF/h)</label>
                         <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 165" />
                       </div>
-                    </div>
-
-                    {timeData.hours > 0 && timeData.hourlyRate > 0 && (
-                      <div className="text-xs font-bold text-blue-500 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                        <span>Total Fremdleistung ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
-                        <span>CHF {formatCHF(Number(timeData.hours) * Number(timeData.hourlyRate))}</span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">BKP / Vergabe-Position</label>
                         <select required value={timeData.budgetPosId} onChange={(e) => setTimeData({ ...timeData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
@@ -3095,12 +3172,34 @@ export default function Finance() {
                           ))}
                         </select>
                       </div>
+                    </div>
+
+                    {timeData.hours > 0 && timeData.hourlyRate > 0 && (
+                      <div className="text-xs font-bold text-blue-500 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex justify-between items-center">
+                        <span>Total Fremdleistung ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
+                        <span>CHF {formatCHF(Number(timeData.hours) * Number(timeData.hourlyRate))}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Prüf- & Abrechnungsstatus</label>
                         <select value={timeData.approvalStatus} onChange={(e) => setTimeData({ ...timeData, approvalStatus: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
                           <option value="Zur Prüfung eingereicht" className="bg-surface">Zur Prüfung eingereicht</option>
                           <option value="Geprüft & Freigegeben" className="bg-surface">Geprüft & Freigegeben</option>
                           <option value="Bereits verrechnet" className="bg-surface">Bereits verrechnet</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Freigabe durch (Projektleiter)</label>
+                        <select value={timeData.approvedBy} onChange={(e) => setTimeData({ ...timeData, approvedBy: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="" className="bg-surface">Freigabe noch ausstehend...</option>
+                          {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
+                            <option key={member.userId} value={member.userEmail || member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
+                          ))}
+                          {currentUser && (
+                            <option value={currentUser.email || 'Aktueller Projektleiter'} className="bg-surface">{currentUser.email || 'Aktueller Projektleiter'}</option>
+                          )}
                         </select>
                       </div>
                     </div>
@@ -3359,7 +3458,7 @@ export default function Finance() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Kreditoren-Rechnungs-Nr.</label>
                         <input 
@@ -3371,7 +3470,20 @@ export default function Finance() {
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Nr. des Lieferanten</label>
+                        <input 
+                          type="text" 
+                          value={incomingData.vatNumber} 
+                          onChange={e => setIncomingData({ ...incomingData, vatNumber: e.target.value })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" 
+                          placeholder="z.B. CHE-123.456.789 MWST" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Rechnungsdatum</label>
                         <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
