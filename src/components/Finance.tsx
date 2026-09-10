@@ -10,7 +10,7 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
-  Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown
+  Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown, Sparkles
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -29,6 +29,7 @@ import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
+import AiBudgetImportModal from './AiBudgetImportModal';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { demoTemplates } from '../utils/demoTemplates';
@@ -455,6 +456,7 @@ export default function Finance() {
   const [incomingData, setIncomingData] = useState({ type: 'internal', vendor: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', description: '', amount: '', skontoRate: 0, date: new Date().toISOString().split('T')[0], budgetPosId: '', status: 'Offen' });
   const [restKostenPrognose, setRestKostenPrognose] = useState<Record<string, number>>({});
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
+  const [showAiBudgetModal, setShowAiBudgetModal] = useState(false);
   const [showCsvMenu, setShowCsvMenu] = useState(false);
   const csvMenuRef = useRef<HTMLDivElement>(null);
   const [csvImportText, setCsvImportText] = useState('');
@@ -954,6 +956,53 @@ export default function Finance() {
       }
     } catch (err) {
       addToast('Fehler beim Parsen der CSV-Datei.', 'error');
+    }
+  };
+
+  const handleImportAiBudget = (
+    importedGroups: BudgetGroup[],
+    mode: 'new_version' | 'append' | 'replace',
+    suggestedTitle?: string
+  ) => {
+    if (!importedGroups || importedGroups.length === 0) return;
+
+    if (mode === 'new_version') {
+      const newVersionNum = versions.length + 1;
+      const newVerId = `v${Date.now()}`;
+      const cleanTitle = suggestedTitle ? suggestedTitle.trim().slice(0, 24) : '';
+      const newVersionName = cleanTitle 
+        ? `Variante ${newVersionNum} (${cleanTitle})`
+        : `Variante ${newVersionNum} (Excel-Import)`;
+
+      const newVersion: BudgetVersion = {
+        id: newVerId,
+        name: newVersionName,
+        groups: importedGroups,
+        vatRate: activeVersion.vatRate || 8.1,
+        status: 'draft'
+      };
+
+      setVersions(prev => [...prev, newVersion]);
+      setActiveVersionId(newVerId);
+      addToast(`Neue Budget-Variante «${newVersionName}» mit ${importedGroups.length} Phasen erstellt!`, 'success');
+    } else if (mode === 'append') {
+      setVersions(prev => prev.map(v => {
+        if (v.id !== activeVersionId) return v;
+        return {
+          ...v,
+          groups: [...v.groups, ...importedGroups]
+        };
+      }));
+      addToast(`${importedGroups.length} Phasen erfolgreich an «${activeVersion.name}» angehängt!`, 'success');
+    } else if (mode === 'replace') {
+      setVersions(prev => prev.map(v => {
+        if (v.id !== activeVersionId) return v;
+        return {
+          ...v,
+          groups: importedGroups
+        };
+      }));
+      addToast(`Budget «${activeVersion.name}» mit ${importedGroups.length} importierten Phasen aktualisiert!`, 'success');
     }
   };
 
@@ -1845,6 +1894,19 @@ export default function Finance() {
                   </button>
                   <div className="border-t border-border/40 my-1" />
                   <button
+                    onClick={() => { setShowAiBudgetModal(true); setShowCsvMenu(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-purple-400 hover:bg-purple-500/10 transition-colors text-left cursor-pointer"
+                  >
+                    <Sparkles size={15} className="shrink-0 text-purple-400" />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span>✨ KI Excel & Foto Import</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-black uppercase">Neu</span>
+                      </div>
+                      <div className="text-[10px] text-text-muted font-normal">Excel-Screenshot, Foto oder PDF analysieren</div>
+                    </div>
+                  </button>
+                  <button
                     onClick={() => { setShowCsvImportModal(true); setShowCsvMenu(false); }}
                     className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-accent-ai hover:bg-accent-ai/10 transition-colors text-left cursor-pointer"
                   >
@@ -1864,18 +1926,15 @@ export default function Finance() {
           <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
             <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
             <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
-            <button onClick={() => setActiveTab('control')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 relative whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}>
-              <ClipboardList size={16} /> {t('payment_control')}
-              {approvedVersions.length > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_5px_#10b981]"></span>}
-            </button>
-            <button onClick={() => setActiveTab('cashflow')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><DollarSign size={16} />{t('cashflow')}</button>
+            <button onClick={() => setActiveTab('control')} className={cn("tour-finance-control flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Receipt size={16} />{t('payment_control')}</button>
+            <button onClick={() => setActiveTab('cashflow')} className={cn("tour-finance-cashflow flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Clock size={16} />{t('cashflow')}</button>
           </div>
 
-          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto hide-scrollbar pb-1 lg:pb-0">
-            {(activeTab === 'overview' || activeTab === 'cashflow') && (
-              <div className="flex items-center bg-surface border border-border/50 rounded-lg px-3 h-[42px] shrink-0">
-                <CalendarDays size={16} className="text-text-muted mr-2" />
-                <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value as any)} className="bg-transparent text-sm font-bold text-text-primary focus:outline-none cursor-pointer appearance-none outline-none">
+          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+            {activeTab !== 'budget' && (
+              <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
+                <CalendarDays size={16} className="text-text-muted mr-1.5 shrink-0" />
+                <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value as any)} className="bg-transparent text-sm font-bold focus:outline-none py-1 cursor-pointer outline-none w-28 truncate shrink-0">
                   <option value="all" className="bg-surface">{t('all_time')}</option>
                   <option value="year" className="bg-surface">{t('this_year')}</option>
                   <option value="month" className="bg-surface">{t('this_month')}</option>
@@ -1885,38 +1944,51 @@ export default function Finance() {
             )}
 
             {activeTab === 'budget' && (
-              <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
-                <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-32 truncate shrink-0 appearance-none">
-                  {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
-                </select>
-                <div className="w-px h-4 bg-border mx-1"></div>
-                {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
+              <div className="flex items-center gap-2 shrink-0">
+                {!isReadOnly && activeVersion.status !== 'approved' && (
                   <button
-                    onClick={handleToggleApproveVersion}
-                    className={cn(
-                      "p-1 px-2.5 rounded-md text-xs font-bold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm",
-                      activeVersion.status === 'approved'
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
-                    )}
-                    title={activeVersion.status === 'approved' ? 'Freigabe aufheben (Gesperrt – Klicken zum Bearbeiten)' : 'Budget freigeben (Entwurf – Klicken zum Sperren)'}
+                    onClick={() => setShowAiBudgetModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-extrabold transition-all shadow-md shadow-purple-600/20 cursor-pointer h-[42px] active:scale-95 shrink-0"
+                    title="Excel-Screenshot, Foto oder PDF mit KI analysieren & Phasen automatisch importieren"
                   >
-                    {activeVersion.status === 'approved' ? (
-                      <>
-                        <Lock size={12} className="text-emerald-400 shrink-0" />
-                        <span>{t('approved')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Unlock size={12} className="text-amber-400 shrink-0" />
-                        <span>{t('draft')}</span>
-                      </>
-                    )}
+                    <Sparkles size={15} />
+                    <span className="hidden sm:inline">KI Excel / Foto Import</span>
                   </button>
                 )}
-                <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0" title={t('new_variant')}><Plus size={16} /></button>
-                <button onClick={handleDuplicateVersion} className="p-1 hover:text-accent-ai text-text-muted transition-colors shrink-0" title={t('duplicate_variant')}><Copy size={14} /></button>
-                <button onClick={() => handleDeleteVersion(activeVersionId)} className="p-1 hover:text-red-500 text-text-muted transition-colors shrink-0" title={t('delete_variant')}><Trash2 size={14} /></button>
+
+                <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
+                  <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-32 truncate shrink-0 appearance-none">
+                    {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
+                  </select>
+                  <div className="w-px h-4 bg-border mx-1"></div>
+                  {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
+                    <button
+                      onClick={handleToggleApproveVersion}
+                      className={cn(
+                        "p-1 px-2.5 rounded-md text-xs font-bold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm",
+                        activeVersion.status === 'approved'
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
+                      )}
+                      title={activeVersion.status === 'approved' ? 'Freigabe aufheben (Gesperrt – Klicken zum Bearbeiten)' : 'Budget freigeben (Entwurf – Klicken zum Sperren)'}
+                    >
+                      {activeVersion.status === 'approved' ? (
+                        <>
+                          <Lock size={12} className="text-emerald-400 shrink-0" />
+                          <span>{t('approved')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock size={12} className="text-amber-400 shrink-0" />
+                          <span>{t('draft')}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0" title={t('new_variant')}><Plus size={16} /></button>
+                  <button onClick={handleDuplicateVersion} className="p-1 hover:text-accent-ai text-text-muted transition-colors shrink-0" title={t('duplicate_variant')}><Copy size={14} /></button>
+                  <button onClick={() => handleDeleteVersion(activeVersionId)} className="p-1 hover:text-red-500 text-text-muted transition-colors shrink-0" title={t('delete_variant')}><Trash2 size={14} /></button>
+                </div>
               </div>
             )}
           </div>
@@ -2100,15 +2172,23 @@ export default function Finance() {
                       <Unlock size={14} /> Budget entsperren & Phase erstellen
                     </button>
                   ) : (
-                    <button
-                      onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
-                        ...v,
-                        groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
-                      } : v))}
-                      className="px-4 py-2 bg-accent-ai hover:bg-accent-ai/90 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto w-full"
-                    >
-                      <Plus size={14} /> Erste Phase erstellen
-                    </button>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <button
+                        onClick={() => setShowAiBudgetModal(true)}
+                        className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto w-full cursor-pointer shadow-purple-600/20"
+                      >
+                        <Sparkles size={15} /> Mit KI aus Excel / Foto importieren
+                      </button>
+                      <button
+                        onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                          ...v,
+                          groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                        } : v))}
+                        className="px-4 py-2 bg-surface hover:bg-background border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mx-auto w-full cursor-pointer"
+                      >
+                        <Plus size={14} /> Erste Phase manuell erstellen
+                      </button>
+                    </div>
                   )
                 )}
               </div>
@@ -2195,9 +2275,14 @@ export default function Finance() {
             )}
 
             {!isReadOnly && activeVersion.status !== 'approved' && budgetGroups.length > 0 && (
-              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-4 bg-surface border border-dashed border-accent-ai/50 text-accent-ai rounded-xl font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2 shadow-sm">
-                <Plus size={18} /> {t('new_phase')}
-              </button>
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="flex-1 w-full py-3.5 bg-surface border border-dashed border-accent-ai/50 text-accent-ai rounded-xl font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2 shadow-sm cursor-pointer">
+                  <Plus size={18} /> {t('new_phase')}
+                </button>
+                <button onClick={() => setShowAiBudgetModal(true)} className="flex-1 w-full py-3.5 bg-surface border border-dashed border-purple-500/50 text-purple-400 rounded-xl font-bold hover:bg-purple-500/10 flex items-center justify-center gap-2 shadow-sm cursor-pointer">
+                  <Sparkles size={16} /> Mit KI importieren
+                </button>
+              </div>
             )}
 
             {/* Totals Mobile Card */}
@@ -2297,15 +2382,23 @@ export default function Finance() {
                                     <Unlock size={14} /> Budget entsperren & Phase erstellen
                                   </button>
                                 ) : (
-                                  <button
-                                    onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
-                                      ...v,
-                                      groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
-                                    } : v))}
-                                    className="px-4 py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
-                                  >
-                                    <Plus size={14} /> Erste Phase erstellen
-                                  </button>
+                                  <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
+                                    <button
+                                      onClick={() => setShowAiBudgetModal(true)}
+                                      className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95 shadow-purple-600/20"
+                                    >
+                                      <Sparkles size={15} /> Mit KI aus Excel / Foto importieren
+                                    </button>
+                                    <button
+                                      onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
+                                        ...v,
+                                        groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
+                                      } : v))}
+                                      className="px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Plus size={14} /> Erste Phase manuell anlegen
+                                    </button>
+                                  </div>
                                 )
                               )}
                             </div>
@@ -2422,10 +2515,15 @@ export default function Finance() {
                       )}
                       {!isReadOnly && activeVersion.status !== 'approved' && budgetGroups.length > 0 && (
                         <tr className="no-print">
-                          <td colSpan={includeOptions ? 7 : 6} className="px-4 py-6">
-                            <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors cursor-pointer">
-                              <Plus size={18} /> {t('new_phase')}
-                            </button>
+                          <td colSpan={includeOptions ? 7 : 6} className="px-4 py-4">
+                            <div className="flex flex-col sm:flex-row items-center gap-3">
+                              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="flex-1 w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors cursor-pointer">
+                                <Plus size={18} /> {t('new_phase')}
+                              </button>
+                              <button onClick={() => setShowAiBudgetModal(true)} className="flex-1 w-full py-3 border border-dashed border-purple-500/40 text-purple-600 dark:text-purple-400 bg-purple-500/5 hover:bg-purple-500/10 rounded-lg font-bold flex justify-center items-center gap-2 transition-colors cursor-pointer shadow-sm">
+                                <Sparkles size={18} className="text-purple-500" /> {language === 'de' ? 'Mit KI importieren (Excel / Foto)' : 'Import with AI (Excel / Photo)'}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -2913,6 +3011,17 @@ export default function Finance() {
             </div>
           </motion.div>
         </div>, document.body
+      )}
+
+      {isMounted && showAiBudgetModal && createPortal(
+        <AiBudgetImportModal
+          isOpen={showAiBudgetModal}
+          onClose={() => setShowAiBudgetModal(false)}
+          onImport={handleImportAiBudget}
+          addToast={addToast}
+          currentVersionName={activeVersion?.name || 'Aktuelle Variante'}
+        />,
+        document.body
       )}
 
     </motion.div>
