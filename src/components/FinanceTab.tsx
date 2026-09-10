@@ -439,7 +439,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
   const quotes = searchFiltered.filter(tx => tx.category === 'Offerte' || tx.category === 'Quote' || tx.type === 'quote');
   const invoices = searchFiltered.filter(tx => tx.category === 'Debitorenrechnung' || tx.category === 'Outgoing Invoice' || tx.type === 'revenue' || tx.type === 'invoice');
   const expenses = searchFiltered.filter(tx => tx.category === 'Spesen' || tx.type === 'expense');
-  const operatingCosts = searchFiltered.filter(tx => tx.type === 'operating_cost' || tx.category === 'Kreditorenrechnung');
+  const operatingCosts = searchFiltered.filter(tx => tx.type === 'operating_cost' || (typeof tx.category === 'string' && (tx.category.includes('Kreditor') || tx.category.includes('Honorar') || tx.category.includes('Gebühr'))));
   const timeEntriesList = searchFiltered.filter(tx => tx.category === 'Interne Stunden' || tx.type === 'time_entry');
 
   const totalRevenue = invoices.reduce((acc, curr) => acc + Math.abs(Number(curr.amount)), 0);

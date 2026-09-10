@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { demoTemplates } from '../utils/demoTemplates';
+import { demoTemplates, demoSmartProposal } from '../utils/demoTemplates';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
 import { dummySvgPlan } from '../utils/cadDemoPlan';
@@ -234,8 +234,14 @@ function getDeterministicUUID(str: string): string {
             name: m.name,
             role: 'member',
             company_id: realCompanyId,
+            photo_url: m.photoURL || m.avatar || '',
             created_at: new Date().toISOString()
-          });
+          } as any);
+        } else {
+          await supabase.from('profiles').update({
+            photo_url: m.photoURL || m.avatar || '',
+            name: m.name
+          } as any).eq('id', demoUserId);
         }
 
         // Add to project_members
@@ -538,12 +544,23 @@ function getDeterministicUUID(str: string): string {
         company_id: realCompanyId,
         owner_id: ownerId,
         share_token: `demo-bau-${projId.substring(0, 8)}`,
-        title: `${projectName} - Bauleitung & Projekt-Offerte`,
-        client_name: 'Bauherrschaft AG (Herr Dr. T. Keller)',
-        client_company: 'Keller Immobilien Gruppe AG',
-        client_email: 'keller@immobilien-ag.ch',
-        base_price: 185000,
-        currency: 'CHF',
+        title: `${projectName} - Architektur- & Ausführungsplanung`,
+        client_name: demoSmartProposal.clientName,
+        client_company: demoSmartProposal.clientCompany,
+        client_email: demoSmartProposal.clientEmail,
+        client_phone: demoSmartProposal.clientPhone,
+        intro_text: demoSmartProposal.introText,
+        hero_video_url: demoSmartProposal.heroVideoUrl,
+        hero_image_url: demoSmartProposal.heroImageUrl,
+        base_price: demoSmartProposal.basePrice,
+        currency: demoSmartProposal.currency,
+        options: demoSmartProposal.options,
+        attachments: demoSmartProposal.attachments,
+        legal_documents: demoSmartProposal.legalDocuments,
+        payment_milestones: demoSmartProposal.paymentMilestones,
+        slides: demoSmartProposal.slides,
+        theme_style: demoSmartProposal.themeStyle,
+        theme_color: demoSmartProposal.themeColor,
         status: 'active',
         expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         views_count: 5,

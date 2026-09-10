@@ -21,24 +21,27 @@ const PitchDeck = lazy(() => import('./PitchDeck'));
 const Defects = lazy(() => import('./Defects'));
 const API = lazy(() => import('./API'));
 const PlanEditorViewer = lazy(() => import('./PlanEditorViewer'));
+const SmartProposalLandingPage = lazy(() => import('./SmartProposalLandingPage'));
 
 // 🔥 Statischer Provider für maximalen Speed beim Launch
 export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNode }) => {
-  // Wir ziehen uns nur das perfekte Architektur-Projekt für den Launch
+  // Wir ziehen uns das ganzheitliche Schweizer Architektur-Projekt
   const template = demoTemplates.construction;
 
   const activeProject = {
     id: 'demo-1',
-    name: template.project?.name || 'Quartier Neubau Süd',
+    name: template.project?.name || 'Quartier Neubau Süd - Residenz am Park',
     companyId: 'demo-company',
     // Team & Kamera
     memberIds: template.members.map((m: any) => m.email || m.id),
     cam1Url: template.camera?.url || '',
 
-    // 🔥 NEU: Wir injizieren die Finanzen, Timelines und Meilensteine aus dem Template!
+    // Finanzen, Timelines, Meilensteine & Transaktionen
     financeGroups: template.financeGroups || [],
+    transactions: template.transactions || [],
     tasks: template.tasks || [],
     smartMarkers: template.smartMarkers || [],
+    proposal: template.proposal || null,
 
     ...template.project
   };
@@ -47,9 +50,11 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
     id: m.email || m.id,
     name: m.name,
     email: m.email,
-    role: m.role.includes('Intern') ? 'Internal' : 'External Planner',
-    department: m.role,
+    role: m.role || (m.role?.includes('Intern') ? 'Internal' : 'External Planner'),
+    department: m.department || m.role,
     avatar: m.photoURL || m.avatar,
+    photoURL: m.photoURL || m.avatar,
+    phone: m.phone || '',
     ownerId: 'demo',
     companyId: 'demo-company'
   }));
@@ -59,7 +64,8 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
     projectId: 'demo-1',
     userId: m.email || m.id,
     companyId: 'demo-company',
-    role: m.role,
+    role: m.role || 'Member',
+    projectRole: m.projectRole || (m.role?.includes('Lead') || m.role === 'Internal' ? 'Owner' : m.role?.includes('leiter') ? 'Admin' : 'Editor'),
     joinedAt: new Date().toISOString()
   }));
 
@@ -69,8 +75,8 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
       activeProjectId: 'demo-1',
       companyUsers: mockCompanyUsers,
       projectMembers: mockProjectMembers,
-      timeEntries: [],
-      // 🔥 NEU: Auch die Mängel aus dem Template durchreichen
+      timeEntries: template.timeEntries || [],
+      // Mängel aus dem Template durchreichen
       defects: template.defects || [],
 
       setActiveProject: () => { }, addProject: async () => { }, removeProject: async () => { }, updateProjectStatus: async () => { },
@@ -90,7 +96,7 @@ interface DemoAppProps {
 }
 
 export default function DemoApp({ activeTab }: DemoAppProps) {
-  const isFullscreenTab = ['bim', 'plans', 'whiteboard'].includes(activeTab);
+  const isFullscreenTab = ['bim', 'plans', 'whiteboard', 'proposal'].includes(activeTab);
 
   return (
     <LiveDemoProjectProvider>
@@ -105,6 +111,7 @@ export default function DemoApp({ activeTab }: DemoAppProps) {
           </div>
         }>
           {activeTab === 'overview' && <Dashboard />}
+          {activeTab === 'proposal' && <SmartProposalLandingPage />}
           {activeTab === 'team' && <ProjectTeam />}
           {activeTab === 'calendar' && <CalendarComponent />}
           {activeTab === 'finance' && <Finance />}

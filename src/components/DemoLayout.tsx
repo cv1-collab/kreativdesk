@@ -16,14 +16,16 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     smart_calendar: 'Smart Calendar', planung_bim: 'Planning & BIM', '3d_viewer': '3D Viewer (BIM)',
     cad_plans: 'CAD Plans', ausfuehrung_kollaboration: 'Execution & Collaboration', defects: 'Defects & Tickets',
     bau_kamera: 'Site Camera', whiteboard: 'Whiteboard', meet_chat: 'Meet & Chat', datenraum: 'Data Room',
-    bau_akte: 'Document Hub', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Team Access'
+    bau_akte: 'Document Hub', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Team Access',
+    smart_offerte: 'Smart Offerte (30 Tage)'
   },
   de: {
     steuerung: 'Steuerung', project_overview: 'Projektübersicht', finance_budget: 'Finanzen & Budget',
     smart_calendar: 'Smart Calendar', planung_bim: 'Planung & BIM', '3d_viewer': '3D Viewer (BIM)',
     cad_plans: 'CAD Pläne', ausfuehrung_kollaboration: 'Ausführung & Kollaboration', defects: 'Mängel & Tickets',
     bau_kamera: 'Bau-Kamera', whiteboard: 'Whiteboard', meet_chat: 'Meet & Chat', datenraum: 'Datenraum',
-    bau_akte: 'Bauakte', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Projekt-Zugriffe'
+    bau_akte: 'Bauakte', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Projekt-Zugriffe',
+    smart_offerte: 'Smart Offerte (30 Tage)'
   }
 };
 
@@ -46,6 +48,7 @@ export default function DemoLayout({
       title: t('steuerung'),
       items: [
         { id: 'overview', icon: LayoutDashboard, label: t('project_overview') },
+        { id: 'proposal', icon: Sparkles, label: t('smart_offerte') },
         { id: 'finance', icon: DollarSign, label: t('finance_budget') },
         { id: 'calendar', icon: Calendar, label: t('smart_calendar') },
       ]

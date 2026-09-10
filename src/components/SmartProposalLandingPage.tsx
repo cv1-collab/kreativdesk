@@ -17,7 +17,7 @@ import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { cn, sanitizeUrl, copyToClipboard } from '../utils';
-import { demoTemplates } from '../utils/demoTemplates';
+import { demoTemplates, demoSmartProposal } from '../utils/demoTemplates';
 import { generateSwissQRPayload } from '../utils/qrBillGenerator';
 import { audioFeedback } from '../utils/audioFeedback';
 import { getCompanySettings, saveCompanySettings, CompanySettings } from '../services/companySettingsService';
@@ -938,7 +938,7 @@ export default function SmartProposalLandingPage() {
           setIsAcceptedSuccess(true);
         }
       } else {
-        const isSteleProposal = !shareToken || shareToken.includes('stele') || shareToken.includes('CH-') || shareToken.includes('interactv') || shareToken.includes('offer');
+        const isSteleProposal = Boolean(shareToken && (shareToken.includes('stele') || shareToken.includes('messe')));
         
         const demoProposal: SmartProposal = isSteleProposal ? {
           id: 'demo-proposal-stele',
@@ -952,8 +952,8 @@ export default function SmartProposalLandingPage() {
           clientEmail: 'messe@aussteller.ch',
           clientPhone: '+41 79 200 40 80',
           introText: 'Herzlichen Dank für Ihr Interesse an der interacTV Smart Station. Nachfolgend präsentieren wir Ihnen das modulare Konzept für Ihren Messeauftritt – mit Schweizer CAD-Präzisions-Chassis, flexibler Display-Wahl (BYOD oder 4K Touchscreen), interaktiver Lead-Erfassung und verbindlicher Kostenaufstellung.',
-          heroVideoUrl: '/interactv/videos/interactv_product_showcase.mp4',
-          heroImageUrl: '/interactv/renders/interactv_luxury_station_hero.jpg',
+          heroVideoUrl: demoSmartProposal.heroVideoUrl,
+          heroImageUrl: demoSmartProposal.heroImageUrl,
           basePrice: 2140,
           currency: 'CHF',
           options: [
@@ -963,13 +963,12 @@ export default function SmartProposalLandingPage() {
             { id: 'opt-4', title: 'All-Risk Messe- & Transportschutz (Vollkasko)', description: 'Umfassender Versicherungsschutz ohne Selbstbehalt während der gesamten Messe', price: 180, selectedByDefault: true }
           ],
           attachments: [
-            { id: 'att-1', name: 'SIA_Messeofferte_Mietvertrag_2026.pdf', url: '#', size: '1.8 MB', type: 'pdf' },
-            { id: 'att-2', name: 'CAD_Massblatt_Chassis_80cm.pdf', url: '#', size: '3.2 MB', type: 'plan' },
-            { id: 'att-3', name: 'interacTV_Sicherheitsdatenblatt.pdf', url: '#', size: '480 KB', type: 'doc' }
+            { id: 'att-1', name: 'SIA_Messeofferte_Mietvertrag_2026.pdf', url: '/demo-assets/bau_grundriss_eg.pdf', size: '1.8 MB', type: 'pdf' },
+            { id: 'att-2', name: 'CAD_Massblatt_Chassis_80cm.pdf', url: '/demo-assets/bau_grundriss_eg.pdf', size: '3.2 MB', type: 'plan' }
           ],
           legalDocuments: [
-            { id: 'doc-1', name: 'SIA 118 Allgemeine Bedingungen für Messe- & Mietverträge', type: 'werkvertrag', url: '#', isRequired: true, uploadedAt: new Date().toISOString() },
-            { id: 'doc-2', name: 'DSGVO / Schweizer DSG Datenschutzvereinbarung', type: 'agb', url: '#', isRequired: true, uploadedAt: new Date().toISOString() }
+            { id: 'doc-1', name: 'SIA 118 Allgemeine Bedingungen für Messe- & Mietverträge', type: 'werkvertrag', url: '/demo-assets/bau_grundriss_eg.pdf', isRequired: true, uploadedAt: new Date().toISOString() },
+            { id: 'doc-2', name: 'DSGVO / Schweizer DSG Datenschutzvereinbarung', type: 'agb', url: '/demo-assets/bau_grundriss_eg.pdf', isRequired: true, uploadedAt: new Date().toISOString() }
           ],
           paymentMilestones: [
             { id: 'm-1', phase: '1. Reservierung & Chassis-Bereitstellung', percentage: 50, description: 'Nach Auftragsbestätigung und Terminreservierung' },
@@ -983,34 +982,19 @@ export default function SmartProposalLandingPage() {
               title: '1. 60s Flightcase-Unboxing & Werkzeugloser Aufbau', 
               content: 'Echter 60-Sekunden Zeitraffer-Beweis: 1 Person öffnet das Transport-Case und stellt die 4K Smart Station komplett ohne Werkzeug auf. Verdeckte Kabelführung und Schweizer Präzision.', 
               layout: 'video-focus', 
-              videoUrl: '/interactv/videos/interactv_flightcase_unboxing.mp4',
-              imageUrl: '/interactv/renders/interactv_assembly_timeline_60s.jpg' 
+              videoUrl: demoSmartProposal.heroVideoUrl,
+              imageUrl: demoSmartProposal.heroImageUrl 
             },
             { 
               id: 's2', 
               title: '2. Formgefrästes Flightcase & CNC-Schaumstoff-Inlay', 
               content: 'Sicherer Transport im massgeschneiderten CNC-Schaumstoff-Inlay. Maximale Flexibilität: Nutzen Sie Ihre eigenen Bildschirme via Universal VESA 200/400 Halterung oder zertifizierte 4K PCAP Multitouch-Displays (32" bis 98").', 
               layout: 'split', 
-              imageUrl: '/interactv/renders/interactv_flightcase_cnc_inlay_macro.jpg' 
+              imageUrl: demoSmartProposal.heroImageUrl 
             },
             { 
               id: 's3', 
-              title: '3. Messe- & Showroom-Architektur Transitionen', 
-              content: 'Dynamische Raumwirkung: Die modulare interacTV Station fügt sich nahtlos in Messestände, Event-Hallen, Tagungszentren und exklusive Showrooms ein.', 
-              layout: 'video-focus', 
-              videoUrl: '/interactv/videos/interactv_stand_transitions.mp4',
-              imageUrl: '/interactv/renders/interactv_step_by_step_booth_setup.jpg' 
-            },
-            { 
-              id: 's4', 
-              title: '4. 4K Showroom-Erlebnis & Interaktive Sensorik', 
-              content: 'Modernste Medientechnik für internationale Leitmessen und Schweizer Showrooms mit Ambilight-Sockel, NFC Lift & Learn und interaktiver Produktpräsentation.', 
-              layout: 'split', 
-              imageUrl: '/interactv/renders/interactv_showroom_panorama.jpg' 
-            },
-            { 
-              id: 's5', 
-              title: '5. Kostenaufstellung & Schweizer SIA-Konditionen', 
+              title: '3. Kostenaufstellung & Schweizer SIA-Konditionen', 
               layout: 'data-budget', 
               dataPayload: { 
                 totalBudget: 2140, 
@@ -1030,48 +1014,14 @@ export default function SmartProposalLandingPage() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         } : {
-          id: 'demo-proposal',
-          projectId: shareToken,
-          companyId: 'demo-company',
-          ownerId: 'demo-owner',
-          shareToken: shareToken,
-          title: demoTemplates.construction.project?.name || 'Neubau Wohn- & Gewerbepark',
-          clientName: 'Herr Dr. Thomas Keller',
-          clientCompany: 'Keller Immobilien Holding AG',
-          clientEmail: 't.keller@keller-holding.ch',
-          clientPhone: '+41 44 800 90 00',
-          introText: 'Herzlichen Dank für das persönliche Gespräch. Wir freuen uns, Ihnen unser umfassendes Konzept für Architektur, Ausführungsplanung und BIM-Projektsteuerung präsentieren zu dürfen.',
-          heroVideoUrl: '/interactv/videos/interactv_brand_image_video.mp4',
-          heroImageUrl: '/interactv/renders/interactv_showroom_panorama.jpg',
-          basePrice: 42000,
-          currency: 'CHF',
-          options: [
-            { id: 'opt-1', title: '3D-Echtzeit BIM-Visualisierung & VR Begehung', description: 'Interaktiver 3D-Rundgang für Käufer & Bauherren auf Tablet & VR-Brille', price: 4500, selectedByDefault: true },
-            { id: 'opt-2', title: 'Drohnen-Baufortschritts-Dokumentation (4K)', description: 'Monatliche Drohnen-Überflüge mit 3D-Fotogrammetrie', price: 3200, selectedByDefault: false },
-            { id: 'opt-3', title: 'Premium SIA-Termingarantie & 24/7 Bauleiter-Hotline', description: 'Prioritäre Bauleiterbegleitung und erweiterte QS-Protokolle', price: 5800, selectedByDefault: false }
-          ],
-          attachments: [
-            { id: 'att-1', name: 'Offizieller Baubeschrieb SIA 102.pdf', url: '#', size: '2.4 MB', type: 'pdf' },
-            { id: 'att-2', name: 'Grundriss- & Schnittplaene_1_100.pdf', url: '#', size: '8.1 MB', type: 'plan' },
-            { id: 'att-3', name: 'AGB_Planungsvertraege_2026.pdf', url: '#', size: '420 KB', type: 'doc' }
-          ],
-          themeStyle: 'scenography',
-          themeColor: '#3b82f6',
-          slides: [
-            { id: 's1', title: 'Die Projekt-Vision', content: 'Ein zukunftsweisendes Bauwerk mit modernster Holz-Beton-Hybridbauweise, höchster Energieeffizienz (Minergie-P-ECO) und lichtdurchfluteten Gewerbe- & Wohnräumen.', layout: 'split', imageUrl: '/interactv/renders/interactv_environments_triptych.jpg' },
-            { id: 's2', title: '3D BIM-Showreel & Fassadenstudie', content: 'Erleben Sie das Bauvorhaben in fotorealistischer Ausführung vor Baubeginn.', layout: 'video-focus', videoUrl: '/interactv/videos/interactv_brand_image_video.mp4' },
-            { id: 's3', title: 'Baukosten & Honoraraufstellung', layout: 'data-budget', dataPayload: { totalBudget: 68500, budgetGroups: [ { pos: 'BKP 1', title: 'Vorbereitungsarbeiten', total: 8500 }, { pos: 'BKP 2', title: 'Gebäude & Architekturplanung', total: 42000 }, { pos: 'BKP 3', title: 'Betriebseinrichtungen & BIM-Management', total: 18000 } ] } },
-            { id: 's4', title: 'Ihr zuständiges Projekt-Team', layout: 'team-grid', dataPayload: { members: [ { name: 'Carlo F.', role: 'Projektleiter & Senior Architect', photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80' }, { name: 'Sarah Meier', role: 'BIM Koordinatorin & Bauleitung', photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' } ] } }
-          ],
-          status: 'active',
-          expiresAt: new Date(Date.now() + 24 * 24 * 60 * 60 * 1000).toISOString(),
-          viewsCount: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          ...demoSmartProposal,
+          projectId: shareToken || 'demo-1',
+          shareToken: shareToken || 'demo-proposal',
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         };
         setProposal(demoProposal);
         setIsPinUnlocked(true);
-        setSelectedOptionIds(['opt-1', 'opt-4']);
+        setSelectedOptionIds(['opt-1', 'opt-2']);
       }
       setIsLoading(false);
     }
@@ -2539,7 +2489,7 @@ export default function SmartProposalLandingPage() {
               <p className={cn("text-xs mt-1", isLight ? "text-slate-600" : "text-zinc-400")}>{t('inquirySubheading')}</p>
             </div>
             <a 
-              href={`https://wa.me/${(proposal.clientPhone || '41790000000').replace(/[^0-9]/g, '')}?text=Hallo%20Planungsteam,%20ich%20habe%20eine%20Rückfrage%20zur%20Offerte%20${encodeURIComponent(proposal.title)}`}
+              href={`https://wa.me/${(companySettings.contactPhone || '+41442105000').replace(/[^0-9]/g, '')}?text=Hallo%20Planungsteam,%20ich%20habe%20eine%20Rückfrage%20zur%20Offerte%20${encodeURIComponent(proposal.title)}`}
               target="_blank" 
               rel="noreferrer"
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all shrink-0 cursor-pointer"
@@ -2633,10 +2583,10 @@ export default function SmartProposalLandingPage() {
       {/* 7. FOOTER WITH DIRECT CONTACT BUTTONS */}
       <footer className={cn("border-t px-4 sm:px-8 py-12 text-center text-xs space-y-6", isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-zinc-950 border-white/10 text-zinc-500")}>
         <div className="flex flex-wrap justify-center gap-4">
-          <a href={`tel:${proposal.clientPhone || '+41790000000'}`} className={cn("px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all", isLight ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-white/5 hover:bg-white/10 text-zinc-300")}>
+          <a href={`tel:${companySettings.contactPhone || '+41442105000'}`} className={cn("px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all", isLight ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-white/5 hover:bg-white/10 text-zinc-300")}>
             <Phone size={14} className="text-emerald-500" /> {t('phoneInquiry')}
           </a>
-          <a href={`mailto:${proposal.clientEmail || 'kontakt@kreativdesk.ch'}`} className={cn("px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all", isLight ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-white/5 hover:bg-white/10 text-zinc-300")}>
+          <a href={`mailto:${companySettings.contactEmail || 'projekte@kreativdesk.ch'}`} className={cn("px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-all", isLight ? "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-white/5 hover:bg-white/10 text-zinc-300")}>
             <Mail size={14} className="text-blue-500" /> {t('emailInquiry')}
           </a>
         </div>

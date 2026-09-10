@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { safeStorage } from '../utils/safeStorage';
+import { demoSmartProposal } from '../data/demoProjectData';
 
 export interface ProposalConfigOption {
   id: string;
@@ -147,91 +148,13 @@ export async function getProposalByShareToken(shareToken: string): Promise<Smart
     console.warn('Supabase fetch proposal by token error, using local fallback', e);
   }
 
-  // Demo Proposal Preset Fallback for interacTV & General Demos
+  // Demo Proposal Preset Fallback for Architektur & Smart Proposals
   if (shareToken === 'demo-proposal' || shareToken === 'interactv' || shareToken === 'interactv-offerte' || shareToken === 'demo' || !supabase) {
     return {
-      id: 'prop-interactv-2026',
-      projectId: 'proj-interactv-showcase',
-      companyId: 'comp-interactv-swiss',
-      ownerId: 'owner-interactv',
-      shareToken: shareToken || 'interactv',
-      title: 'interacTV 4K Smart Stelen & Spatial Suite 2026',
-      clientName: 'Dr. Martin Keller',
-      clientCompany: 'SwissTech Innovation AG',
-      clientEmail: 'm.keller@swisstech.ch',
-      clientPhone: '+41 44 820 90 00',
-      introText: 'Vielen Dank für Ihr Interesse an der interacTV Smart Display & Wegeleitungs-Suite. Wir freuen uns, Ihnen nachfolgend das massgeschneiderte Gesamtkonzept inklusive 4K-Stelen, KI-Grundrissbereinigung und digitalem Lead-Management zu präsentieren.',
-      heroVideoUrl: '/interactv/videos/interactv_brand_image_video.mp4',
-      heroImageUrl: '/interactv/renders/interactv_luxury_station_hero.jpg',
-      basePrice: 14800,
-      currency: 'CHF',
-      options: [
-        { id: 'opt-1', title: '1x Event Pro 80" 4K Smart Stele (Carbon Edition)', price: 4200, selectedByDefault: true, description: '4K Ultra-HD Touchscreen, Infrarot-Sensorik, Transport & Montage vor Ort' },
-        { id: 'opt-2', title: '1x Slimline 60" 4K Foyer Stele (Obsidian Black)', price: 2900, selectedByDefault: true, description: 'Elegantes Standgehäuse mit 24/7 Samsung/LG Panel für Eingang & Empfang' },
-        { id: 'opt-3', title: 'KI-Gebäude- & 3D Wegeleitung mit Grundriss-Bereinigung', price: 1800, selectedByDefault: true, description: 'Automatische SIA-Wandbereinigung & 90°-Laser-Wegeleitung für Besucher' },
-        { id: 'opt-4', title: 'Visitenkarten-Scanner & KI-OCR Lead-Cockpit', price: 1400, selectedByDefault: true, description: 'Echtzeit-Synchronisation mit Bexio, HubSpot & automatischer E-Mail-Zustellung' },
-        { id: 'opt-5', title: 'Photobooth-Modul mit Thermobondrucker (80mm)', price: 1600, selectedByDefault: false, description: 'Sofortiger Belegdruck & interaktive QR-Code Smartphone Bildübergabe' },
-        { id: 'opt-6', title: 'Custom Flightcase Schutz- & Transportsystem (Plywood)', price: 950, selectedByDefault: false, description: 'Massgefertigte Transportkiste mit Dämpfung und Butterfly-Schlössern' }
-      ],
-      attachments: [
-        { id: 'att-1', name: 'interacTV_Hardware_Spezifikationen_4K.pdf', url: '#', size: '3.4 MB', type: 'pdf' },
-        { id: 'att-2', name: 'Messe_Layout_3D_Architekturplan.pdf', url: '#', size: '6.1 MB', type: 'plan' }
-      ],
-      legalDocuments: [
-        { id: 'doc-1', name: 'SIA 118 Allgemeine Bedingungen für Bau- und Montagearbeiten', type: 'werkvertrag', url: '#', isRequired: true, uploadedAt: new Date().toISOString() },
-        { id: 'doc-2', name: 'interacTV SLA 24/7 Express Vor-Ort-Garantie & Supportvertrag', type: 'kooperation', url: '#', isRequired: true, uploadedAt: new Date().toISOString() },
-        { id: 'doc-3', name: 'Schweizer Datenschutz & DSGVO Konformitätsnachweis (Zürich Host)', type: 'nda', url: '#', isRequired: false, uploadedAt: new Date().toISOString() }
-      ],
-      paymentMilestones: [
-        { id: 'm-1', phase: '1. Phase: Projektierung, 3D Standlayout & Software-Setup', percentage: 30, description: 'Fällig bei digitaler Freigabe (TWINT / Swiss QR Bill)' },
-        { id: 'm-2', phase: '2. Phase: Produktion, Stelen-Konfiguration & Endprüfung', percentage: 40, description: 'Fällig nach Werksprüfung vor Auslieferung' },
-        { id: 'm-3', phase: '3. Phase: Anlieferung, Vor-Ort-Kalibrierung & Messebetrieb', percentage: 30, description: 'Fällig nach erfolgreicher Inbetriebnahme und Einweisung' }
-      ],
-      themeStyle: 'swiss',
-      themeColor: '#00E5FF',
-      slides: [
-        {
-          id: 'slide-1',
-          title: 'interacTV 4K Smart Stelen & Spatial Suite 2026',
-          content: 'Willkommen in der nächsten Generation der Raum- und Messe-Interaktion.\n\n• 4K Ultra-HD Displays mit brillanter Farbwiedergabe\n• Modulare Titan-, Carbon- & Alpine Wood-Gehäuse\n• Nahtlose Anbindung an Gebäudeleitsysteme & CRM',
-          layout: 'split',
-          imageUrl: '/interactv/renders/interactv_luxury_station_hero.jpg'
-        },
-        {
-          id: 'slide-2',
-          title: 'High-End Hardware & Schweizer Ingenieurskunst',
-          content: 'Entwickelt für den 24/7 Dauereinsatz in Hotellerie, Foyers und auf Messen:\n\n• Integrierte Industrie-PCs mit lüfterloser Kühlung\n• Hochpräzise 10-Punkt Infrarot- & Kapazitiv-Touchscreens\n• Thermobondrucker, NFC-Reader & Visitenkarten-Scanner',
-          layout: 'split',
-          imageUrl: '/interactv/renders/interactv_flightcase_open_4k.jpg'
-        },
-        {
-          id: 'slide-3',
-          title: 'KI-Grundrissbereinigung & 90°-Laser Wegeleitung',
-          content: 'Besucher finden ihr Ziel im Gebäude in Sekunden:\n\n• Automatisches Entfernen von Bemassungen & Texten aus alten Plänen\n• Rechtwinklige (90° Ecken) Architektur-Wegführung\n• 5 dynamische Linienstile (Perlen-Punkte, Laser-Dashes, Neon)',
-          layout: 'split',
-          imageUrl: '/interactv/renders/interactv_stand_hero_front.jpg'
-        },
-        {
-          id: 'slide-4',
-          title: 'Live Lead-Management & ERP-Synchronisation',
-          content: 'Maximale Conversion für Ihren Vertrieb:\n\n• Visitenkarten per Kamera in 1.5 Sekunden digitalisiert\n• Automatische Dankes-E-Mails mit persönlichem PDF-Link\n• Direkter Export zu Bexio, HubSpot, Salesforce & Abacus',
-          layout: 'split',
-          imageUrl: '/interactv/renders/interactv_stele_detail_card_reader.jpg'
-        },
-        {
-          id: 'slide-5',
-          title: 'SIA 102/118 Zahlungsplan & Digitale E-Signatur',
-          content: 'Transparenz und Rechtssicherheit auf Schweizer Niveau:\n\n• 30% Anzahlung per TWINT / Swiss QR-Rechnung\n• 40% Zwischenrechnung nach Fertigung\n• 30% Schlusszahlung nach erfolgreicher Abnahme',
-          layout: 'split',
-          imageUrl: '/interactv/renders/interactv_dual_stele_lounge_4k.jpg'
-        }
-      ],
-      status: 'active',
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      viewsCount: 24,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+      ...demoSmartProposal,
+      shareToken: shareToken || 'demo-proposal',
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    } as SmartProposal;
   }
 
   return null;

@@ -886,8 +886,26 @@ export default function Finance() {
   const filteredTimeEntries = getFilteredTimeEntries();
 
   const filteredHoursCost = filteredTimeEntries.reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (e.hourlyRate || 0)), 0);
-  const filteredInvoiced = filteredTransactions.filter(tx => tx.category === 'Debitorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-  const filteredExtSpent = filteredTransactions.filter(tx => tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const isExpenseTx = (tx: any) =>
+    tx.type === 'expense' ||
+    tx.type === 'operating_cost' ||
+    (typeof tx.category === 'string' && (
+      tx.category.includes('Kreditor') ||
+      tx.category.includes('Honorar') ||
+      tx.category.includes('Gebühr') ||
+      tx.category === 'Spesen' ||
+      tx.category === 'Material'
+    )) ||
+    (tx.category !== 'Debitorenrechnung' && tx.category !== 'Outgoing Invoice' && tx.category !== 'Offerte' && tx.category !== 'Quote' && tx.type !== 'income' && Number(tx.amount) < 0);
+
+  const isRevenueTx = (tx: any) =>
+    tx.type === 'income' ||
+    tx.category === 'Debitorenrechnung' ||
+    tx.category === 'Outgoing Invoice' ||
+    (tx.category !== 'Offerte' && tx.category !== 'Quote' && Number(tx.amount) > 0);
+
+  const filteredInvoiced = filteredTransactions.filter(isRevenueTx).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const filteredExtSpent = filteredTransactions.filter(isExpenseTx).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const filteredSpent = filteredExtSpent + filteredHoursCost;
   const filteredProfit = filteredInvoiced - filteredSpent;
 
@@ -895,17 +913,17 @@ export default function Finance() {
   const allTimeHoursCost = allTimeTimeEntries.reduce((sum: number, e: any) => sum + ((Number(e.hours) || 0) * (e.hourlyRate || 0)), 0);
   const allTimeHours = allTimeTimeEntries.reduce((sum: number, e: any) => sum + (Number(e.hours) || 0), 0);
 
-  const getFilteredActualCostForItem = (itemId: string) => filteredTransactions.filter(tx => tx.budgetPosId === itemId && tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const getFilteredActualCostForItem = (itemId: string) => filteredTransactions.filter(tx => tx.budgetPosId === itemId && isExpenseTx(tx)).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const getFilteredActualCostForGroup = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + getFilteredActualCostForItem(item.id), 0);
 
-  const getAllTimeActualCostForItem = (itemId: string) => transactions.filter(tx => tx.budgetPosId === itemId && tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const getAllTimeActualCostForItem = (itemId: string) => transactions.filter(tx => tx.budgetPosId === itemId && isExpenseTx(tx)).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const getAllTimeActualCostForGroup = (group: BudgetGroup) => group.items.reduce((sum, item) => sum + getAllTimeActualCostForItem(item.id), 0);
 
   const overviewTotalBudget = approvedVersions.length > 0
     ? approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + calculateGroupTotal(g), 0), 0)
     : totalBudget;
 
-  const globalExtSpent = transactions.filter(tx => tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const globalExtSpent = transactions.filter(isExpenseTx).reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
   const globalSpent = globalExtSpent + allTimeHoursCost;
   const totalActualCostsIncludingHoursAllTime = approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + getAllTimeActualCostForGroup(g), 0), 0) + allTimeHoursCost;
   const budgetRemaining = Math.max(0, overviewTotalBudget - filteredSpent);
