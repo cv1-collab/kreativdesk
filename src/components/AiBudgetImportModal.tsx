@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { compressImageForAI } from '../utils/imageCompressor';
+import { isExcelFile, parseExcelFile, ParsedExcelResult } from '../utils/excelParser';
 import { cn } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -55,21 +56,22 @@ interface AiBudgetImportModalProps {
 const translations = {
   de: {
     modal_title: 'KI Excel & Foto Budget-Import',
-    modal_subtitle: 'Lade einen Excel-Screenshot, ein Foto oder ein PDF hoch. Die KI extrahiert Phasen, Gewerke & Preise vollautomatisch.',
-    tab_upload: 'Screenshot, Foto oder PDF',
+    modal_subtitle: 'Lade eine Excel-Datei (.xlsx, .xls, .csv), einen Screenshot, ein Foto oder ein PDF hoch. Die KI extrahiert Phasen, Gewerke & Preise vollautomatisch.',
+    tab_upload: 'Excel, Bild oder PDF',
     tab_text: 'Excel-Tabellentext / CSV',
-    drop_title: 'Excel-Screenshot, Foto oder PDF hier ablegen',
-    drop_sub: 'oder klicken zum Auswählen • Unterstützt Cmd+V direkt aus der Zwischenablage',
-    drop_tip: 'Tipp: Mache einen Screenshot (Cmd+Shift+4) und drücke hier einfach Cmd+V!',
+    drop_title: 'Excel-Datei (.xlsx, .csv), Screenshot oder PDF hier ablegen',
+    drop_sub: 'oder klicken zum Auswählen • Unterstützt auch Cmd+V direkt aus der Zwischenablage',
+    drop_tip: 'Tipp: Unterstützt echte Excel-Dateien (.xlsx, .xls, .csv), Screenshots (Cmd+V) und PDF-Offerten!',
     change_file: 'Klicken, um eine andere Datei auszuwählen.',
     pdf_doc: 'PDF Dokument',
+    excel_doc: 'Excel-Tabelle',
     text_label: 'Tabellendaten aus Excel einfügen (Spalten mit Tabulator getrennt)',
     clear: 'Löschen',
     text_placeholder: 'Kopiere Zeilen aus Excel / Numbers und füge sie hier ein...\n\nBeispiel:\n100  Vorbereitung\n101.1  Baustelleneinrichtung  1  Pausch.  4500\n200  Rohbau\n201.1  Aushubarbeiten  120  m3  85',
     text_hint: 'Die KI erkennt Phasenüberschriften, BKP-Codes, Mengen, Einheiten und Beträge automatisch – unabhängig von der exakten Spaltenreihenfolge.',
     supported_formats: 'Unterstützte Formate:',
-    fmt_1: '• Screenshots von Excel, Apple Numbers, Google Sheets oder Bausoftware-Exporten',
-    fmt_2: '• Abfotografierte Kalkulationen, Kostenvoranschläge oder SIA-Leistungsverzeichnisse',
+    fmt_1: '• Microsoft Excel (.xlsx, .xls, .ods) und CSV / TSV-Tabellendokumente',
+    fmt_2: '• Screenshots von Kalkulationen, Kostenvoranschlägen oder SIA-Leistungsverzeichnissen',
     fmt_3: '• PDF-Offerten von Handwerkern und Planern',
     cancel: 'Abbrechen',
     analyze_btn: 'Tabelle jetzt analysieren',
@@ -108,21 +110,22 @@ const translations = {
   },
   en: {
     modal_title: 'AI Excel & Photo Budget Import',
-    modal_subtitle: 'Upload an Excel screenshot, photo or PDF. AI automatically extracts phases, trades, quantities & prices.',
-    tab_upload: 'Screenshot, Photo or PDF',
+    modal_subtitle: 'Upload an Excel file (.xlsx, .csv), screenshot, photo or PDF. AI automatically extracts phases, trades, quantities & prices.',
+    tab_upload: 'Excel, Image or PDF',
     tab_text: 'Excel Table Text / CSV',
-    drop_title: 'Drop Excel screenshot, photo or PDF here',
+    drop_title: 'Drop Excel file (.xlsx, .csv), screenshot or PDF here',
     drop_sub: 'or click to browse • Supports Cmd+V directly from clipboard',
-    drop_tip: 'Tip: Take a screenshot (Cmd+Shift+4) and simply press Cmd+V here!',
+    drop_tip: 'Tip: Supports real Excel files (.xlsx, .xls, .csv), screenshots (Cmd+V) and PDF quotes!',
     change_file: 'Click to select a different file.',
     pdf_doc: 'PDF Document',
+    excel_doc: 'Excel Spreadsheet',
     text_label: 'Paste table data from Excel (columns tab-separated)',
     clear: 'Clear',
     text_placeholder: 'Copy rows from Excel / Numbers and paste them here...\n\nExample:\n100  Preparation\n101.1  Site setup  1  Lump sum  4500\n200  Structural work\n201.1  Excavation  120  m3  85',
     text_hint: 'AI automatically recognizes phase headers, BKP/CSI codes, quantities, units and prices – regardless of exact column order.',
     supported_formats: 'Supported formats:',
-    fmt_1: '• Screenshots from Excel, Apple Numbers, Google Sheets or BIM/construction exports',
-    fmt_2: '• Photos of paper calculations, cost estimates or bill of quantities',
+    fmt_1: '• Microsoft Excel (.xlsx, .xls, .ods) and CSV / TSV spreadsheet files',
+    fmt_2: '• Screenshots of paper calculations, cost estimates or bill of quantities',
     fmt_3: '• PDF quotes from contractors and planners',
     cancel: 'Cancel',
     analyze_btn: 'Analyze Table Now',
@@ -185,6 +188,8 @@ export default function AiBudgetImportModal({
   const [activeTab, setActiveTab] = useState<'upload' | 'text'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [excelData, setExcelData] = useState<ParsedExcelResult | null>(null);
+  const [isParsingExcel, setIsParsingExcel] = useState(false);
   const [optimizedFileInfo, setOptimizedFileInfo] = useState<string | null>(null);
   const [pastedText, setPastedText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -231,11 +236,42 @@ export default function AiBudgetImportModal({
 
   if (!isOpen) return null;
 
-  const handleFileSelected = (selectedFile: File) => {
+  const handleFileSelected = async (selectedFile: File) => {
+    // 1. Direct Excel / CSV document handling
+    if (isExcelFile(selectedFile)) {
+      setFile(selectedFile);
+      setPreviewUrl(null);
+      setOptimizedFileInfo(null);
+      setIsParsingExcel(true);
+      try {
+        const parsed = await parseExcelFile(selectedFile);
+        setExcelData(parsed);
+        notify(
+          language === 'de'
+            ? `Excel-Tabelle geladen: ${parsed.sheetNames.length} ${parsed.sheetNames.length === 1 ? 'Tabellenblatt' : 'Tabellenblätter'} mit ${parsed.totalRows} Zeilen erkannt.`
+            : `Excel sheet loaded: ${parsed.sheetNames.length} sheet(s) with ${parsed.totalRows} rows recognized.`,
+          'success'
+        );
+      } catch (err: any) {
+        notify(err?.message || 'Fehler beim Lesen der Excel-Datei.', 'error');
+        setFile(null);
+        setExcelData(null);
+      } finally {
+        setIsParsingExcel(false);
+      }
+      return;
+    }
+
+    // 2. Clear previous excel data if another format is uploaded
+    setExcelData(null);
+
+    // 3. PDF Handling
     if (selectedFile.type === 'application/pdf' && selectedFile.size > 3.5 * 1024 * 1024) {
       notify('PDF-Datei ist zu gross (über 3.5 MB). Bitte lade einen Screenshot des Tabellenbereichs oder ein kleineres Dokument hoch.', 'error');
       return;
     }
+
+    // 4. Image or PDF
     setFile(selectedFile);
     setOptimizedFileInfo(null);
     if (selectedFile.type.startsWith('image/')) {
@@ -330,7 +366,16 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
 
       let response: any;
 
-      if (file) {
+      if (file && (excelData || isExcelFile(file))) {
+        let currentExcel = excelData;
+        if (!currentExcel) {
+          currentExcel = await parseExcelFile(file);
+          setExcelData(currentExcel);
+        }
+        response = await callGeminiAPI('gemini-2.5-flash', [
+          { text: `${promptInstruction}\n\nHIER SIND DIE EXAKTEN TABELLENDATEN AUS DER EXCEL-DATEI "${file.name}":\n\n${currentExcel.formattedText}` }
+        ]);
+      } else if (file) {
         const comp = await compressImageForAI(file, {
           maxDimension: 2400,
           quality: 0.88,
@@ -594,7 +639,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       type="file" 
                       ref={fileInputRef} 
                       onChange={(e) => e.target.files?.[0] && handleFileSelected(e.target.files[0])}
-                      accept="image/*,application/pdf" 
+                      accept="image/*,application/pdf,.xlsx,.xls,.csv,.tsv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" 
                       className="hidden" 
                     />
 
@@ -608,8 +653,9 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                               e.stopPropagation();
                               setFile(null);
                               setPreviewUrl(null);
+                              setExcelData(null);
                             }}
-                            className="absolute top-2 right-2 p-1.5 bg-black/70 text-white rounded-full hover:bg-black transition-colors"
+                            className="absolute top-2 right-2 p-1.5 bg-black/70 text-white rounded-full hover:bg-black transition-colors cursor-pointer"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -618,6 +664,54 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                           {file?.name} ({optimizedFileInfo || `${Math.round((file?.size || 0) / 1024)} KB`})
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-zinc-400">{t('change_file')}</p>
+                      </div>
+                    ) : isParsingExcel ? (
+                      <div className="space-y-3 py-4">
+                        <Loader2 size={32} className="animate-spin text-purple-600 dark:text-purple-400 mx-auto" />
+                        <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">
+                          {language === 'de' ? 'Excel-Datei wird eingelesen & vorbereitet...' : 'Reading Excel spreadsheet...'}
+                        </p>
+                      </div>
+                    ) : excelData ? (
+                      <div className="space-y-3 w-full max-w-md mx-auto p-4 rounded-2xl bg-surface border border-border shadow-sm">
+                        <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/20">
+                          <FileSpreadsheet size={28} />
+                        </div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-zinc-100 truncate" title={excelData.fileName}>
+                          {excelData.fileName}
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-zinc-400 space-y-0.5">
+                          <p>
+                            {Math.round(excelData.fileSize / 1024)} KB • {excelData.sheetNames.length} {excelData.sheetNames.length === 1 ? 'Tabellenblatt' : 'Tabellenblätter'} • {excelData.totalRows} Zeilen
+                          </p>
+                          <p className="text-[11px] text-text-muted truncate">
+                            {excelData.sheetNames.join(', ')}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-center gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPastedText(excelData.formattedText);
+                              setActiveTab('text');
+                            }}
+                            className="px-3 py-1.5 text-xs bg-surface hover:bg-white/5 border border-border rounded-xl text-text-secondary hover:text-text-primary transition-colors cursor-pointer"
+                          >
+                            Extrahierte Daten ansehen
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFile(null);
+                              setExcelData(null);
+                            }}
+                            className="px-3 py-1.5 text-xs bg-surface hover:bg-red-500/10 border border-border rounded-xl text-red-500 transition-colors cursor-pointer"
+                          >
+                            Entfernen
+                          </button>
+                        </div>
                       </div>
                     ) : file ? (
                       <div className="space-y-3">
@@ -803,6 +897,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     onClick={() => {
                       setParsedGroups(null);
                       setFile(null);
+                      setExcelData(null);
                       setPreviewUrl(null);
                       setPastedText('');
                     }}

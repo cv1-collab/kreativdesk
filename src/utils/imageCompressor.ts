@@ -66,7 +66,20 @@ export async function compressImageForAI(
     };
   }
 
-  // 3. Image Compression via HTML Canvas
+  // 3. Check if file is actually an image before attempting HTML Canvas / Image load
+  const isImage = fileType.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(fileName);
+  if (!isImage) {
+    const b64 = await readBlobAsBase64(file);
+    return {
+      base64: b64,
+      mimeType: fileType || 'application/octet-stream',
+      originalSize: file.size,
+      compressedSize: file.size,
+      isOptimized: false
+    };
+  }
+
+  // 4. Image Compression via HTML Canvas
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
