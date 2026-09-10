@@ -956,14 +956,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
               </div>
             )
           ) : (
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => setShowPitchModal(true)}
-                className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
-              >
-                <Plus size={16} />
-                <span>{t('create_proposal_btn')}</span>
-              </button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <a
                 href="/proposals"
                 target="_blank"

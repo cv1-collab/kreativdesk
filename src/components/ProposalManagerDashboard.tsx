@@ -65,7 +65,10 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     toast_copied: 'Client landing page link copied!',
     toast_extended: 'Validity successfully extended by 30 days!',
     toast_deleted: 'Landing page deleted.',
-    confirm_delete: 'Do you really want to delete this client landing page?'
+    confirm_delete: 'Do you really want to delete this client landing page?',
+    no_filter_results_title: 'No matching proposals found',
+    no_filter_results_desc: 'Try another search query or reset your status filters.',
+    btn_reset_filters: 'Reset filters'
   },
   de: {
     dashboard_title: 'Pitch & Offerten Landingpages',
@@ -89,6 +92,9 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     empty_title: 'Keine Offerten-Landingpages gefunden',
     empty_desc: 'Erstellen Sie im Pitch Deck Studio eine neue Kunden-Landingpage mit Videos, Preisen und Team-Profilen.',
     empty_btn: 'Erste Offerte erstellen',
+    no_filter_results_title: 'Keine passenden Offerten gefunden',
+    no_filter_results_desc: 'Passen Sie den Suchbegriff an oder setzen Sie den Status-Filter zurück.',
+    btn_reset_filters: 'Filter zurücksetzen',
     status_accepted: 'Digital Angenommen',
     status_expired: 'Abgelaufen',
     status_days_left: 'Noch {days} Tage',
@@ -142,6 +148,9 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     empty_title: 'Aucune landing page d’offre trouvée',
     empty_desc: 'Créez dans le Pitch Deck Studio une nouvelle landing page client avec vidéos, tarifs et profils.',
     empty_btn: 'Créer la première offre',
+    no_filter_results_title: 'Aucune offre correspondante trouvée',
+    no_filter_results_desc: 'Modifiez votre recherche ou réinitialisez les filtres.',
+    btn_reset_filters: 'Réinitialiser les filtres',
     status_accepted: 'Acceptée numériquement',
     status_expired: 'Expirée',
     status_days_left: 'Encore {days} jours',
@@ -318,12 +327,14 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
           </div>
         </div>
 
-        <button
-          onClick={handleTriggerCreate}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
-        >
-          <Plus size={16} /> {t('btn_create_new')}
-        </button>
+        {proposals.length > 0 && (
+          <button
+            onClick={handleTriggerCreate}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <Plus size={16} /> {t('btn_create_new')}
+          </button>
+        )}
       </div>
 
       {/* KPI METRICS */}
@@ -420,18 +431,40 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
           <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto">
             <FileText size={28} />
           </div>
-          <h3 className="text-base font-bold text-text-primary">{t('empty_title')}</h3>
-          <p className="text-xs text-text-muted max-w-sm mx-auto">
-            {t('empty_desc')}
-          </p>
-          <div className="pt-2">
-            <button
-              onClick={handleTriggerCreate}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer active:scale-95"
-            >
-              <Plus size={14} /> {t('empty_btn')}
-            </button>
-          </div>
+          {proposals.length === 0 ? (
+            <>
+              <h3 className="text-base font-bold text-text-primary">{t('empty_title')}</h3>
+              <p className="text-xs text-text-muted max-w-sm mx-auto">
+                {t('empty_desc')}
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={handleTriggerCreate}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Plus size={14} /> {t('empty_btn')}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="text-base font-bold text-text-primary">{t('no_filter_results_title')}</h3>
+              <p className="text-xs text-text-muted max-w-sm mx-auto">
+                {t('no_filter_results_desc')}
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('all');
+                  }}
+                  className="px-4 py-2 bg-surface hover:bg-background border border-border text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <RefreshCw size={14} /> {t('btn_reset_filters')}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
