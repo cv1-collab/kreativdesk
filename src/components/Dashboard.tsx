@@ -44,7 +44,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     insight_defects: 'Defect Management', insight_defects_desc: '3 critical defects open. Plumber needs to be notified.',
     team: 'Team', tasks: 'Tasks', defects: 'Defects', hours: 'Hours', documents: 'Documents', open: 'open',
     budget_utilization: 'Budget Utilization', spent: 'Spent', external_costs: 'External Costs', internal_hours: 'Internal Hours',
-    remaining: 'Remaining', no_budget_present: 'No budget available',
+    remaining: 'Remaining', no_budget_present: 'No budget available', total_budget: 'Total Budget', total_costs: 'Total Costs', manage_budget: 'Open Budget',
     create_report: 'Create Report'
   },
   de: {
@@ -56,7 +56,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     insight_defects: 'Mängelmanagement', insight_defects_desc: '3 kritische Mängel offen. Sanitär muss benachrichtigt werden.',
     team: 'Team', tasks: 'Aufgaben', defects: 'Mängel', hours: 'Stunden', documents: 'Dokumente', open: 'offen',
     budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', external_costs: 'Externe Kosten', internal_hours: 'Interne Stunden',
-    remaining: 'Verbleibend', no_budget_present: 'Kein Budget vorhanden',
+    remaining: 'Verbleibend', no_budget_present: 'Kein Budget vorhanden', total_budget: 'Gesamtbudget', total_costs: 'Ist-Kosten', manage_budget: 'Budget erfassen / anpassen',
     create_report: 'Report erstellen'
   }
 };
@@ -143,6 +143,7 @@ export default function Dashboard() {
   const [documentsCount, setDocumentsCount] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [versions, setVersions] = useState<any[]>([]);
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
 
   // === MULTI-TENANT FILTERUNG IN DASHBOARD ===
@@ -209,6 +210,11 @@ export default function Dashboard() {
 
         if (hasValidVersions) {
           setVersions(configData.versions);
+          if (configData.activeVersionId) {
+            setActiveVersionId(configData.activeVersionId);
+          } else if (configData.versions[0]?.id) {
+            setActiveVersionId(configData.versions[0].id);
+          }
         } else {
           const isDemo = isDemoMode || activeProject.id?.startsWith('demo-') || activeProject.id === 'demo-1' || activeProject.id === 'global';
           const initGroups = (isDemo && demoTemplates.construction?.financeGroups)
@@ -222,6 +228,7 @@ export default function Dashboard() {
             groups: initGroups
           };
           setVersions([initVersion]);
+          setActiveVersionId(initVersion.id);
           try {
             await saveSystemConfigJSON(`finance_${activeProject.id}`, {
               versions: [initVersion],
@@ -264,13 +271,21 @@ export default function Dashboard() {
   const totalHoursCost = (timeEntries || []).filter((e:any) => e.projectId === activeProject?.id).reduce((s:number, e:any) => s + (e.hours * (e.hourlyRate || 150)), 0);
 
   const approvedVersions = versions.filter(v => v.status === 'approved');
-  const calculateGroupTotal = (group: any) => group.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0;
+  const calculateGroupTotal = (group: any) => group.items?.reduce((sum: number, item: any) => sum + (Number(item.total) || (Number(item.qty || 0) * Number(item.unitPrice || 0)) || 0), 0) || 0;
   
-  let overviewTotalBudget = 0;
-  if (approvedVersions.length > 0) overviewTotalBudget = approvedVersions.reduce((sum, v) => sum + (v.groups?.reduce((s:number, g:any) => s + calculateGroupTotal(g), 0) || 0), 0);
-  else if (versions.length > 0) overviewTotalBudget = versions[0].groups?.reduce((s:number, g:any) => s + calculateGroupTotal(g), 0) || 0;
+  const activeVersion = versions.find(v => v.id === activeVersionId) || approvedVersions[0] || versions[0];
 
-  const globalExtSpent = transactions.filter(tx => tx.category === 'Kreditorenrechnung').reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  let overviewTotalBudget = 0;
+  if (approvedVersions.length > 0) {
+    overviewTotalBudget = approvedVersions.reduce((sum, v) => sum + (v.groups?.reduce((s:number, g:any) => s + calculateGroupTotal(g), 0) || 0), 0);
+  } else if (activeVersion) {
+    overviewTotalBudget = activeVersion.groups?.reduce((s:number, g:any) => s + calculateGroupTotal(g), 0) || 0;
+  }
+
+  // Include all external costs, creditor invoices, and negative expense transactions
+  const globalExtSpent = transactions
+    .filter(tx => tx.type === 'expense' || Number(tx.amount) < 0 || (tx.category && tx.category !== 'Debitorenrechnung' && tx.category !== 'Interne Stunden'))
+    .reduce((sum, tx) => sum + Math.abs(Number(tx.amount) || 0), 0);
   const globalSpent = globalExtSpent + totalHoursCost;
   const budgetRemaining = Math.max(0, overviewTotalBudget - globalSpent);
   const budgetVariance = overviewTotalBudget - globalSpent;
@@ -345,10 +360,27 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
         <div className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm">
           <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest">{t('team')}</span><Users className="text-accent-ai" size={16} /></div>
           <div className="text-2xl md:text-3xl font-bold text-text-primary">{currentProjectMembers.length}</div>
+        </div>
+        <div 
+          onClick={() => activeProject?.id && navigate(`/project/${activeProject.id}/finance`)}
+          className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm cursor-pointer hover:border-accent-ai/50 transition-colors group"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest group-hover:text-accent-ai transition-colors">{t('total_budget')}</span>
+            <DollarSign className="text-emerald-500" size={16} />
+          </div>
+          <div className="text-2xl md:text-3xl font-bold text-text-primary truncate">
+            {overviewTotalBudget > 0 ? `CHF ${formatCHF(overviewTotalBudget)}` : '0.-'}
+          </div>
+          <p className="text-[11px] text-text-muted mt-1 font-medium truncate">
+            {overviewTotalBudget > 0 
+              ? `${Math.round((globalSpent / overviewTotalBudget) * 100)}% ${t('spent')}`
+              : t('no_budget_present')}
+          </p>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm">
           <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest">{t('defects')}</span><AlertTriangle className={cn("size-4", openDefects > 0 ? "text-red-400" : "text-emerald-400")} /></div>
@@ -365,25 +397,61 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[400px]">
-        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[300px]">
-          <h3 className="font-medium mb-4 flex items-center gap-2"><PieChartIcon size={18} className="text-accent-ai"/> {t('budget_utilization')}</h3>
-          <div className="flex-1 w-full relative min-h-[150px]">
-            {overviewTotalBudget > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius="65%" outerRadius="85%" paddingAngle={5} dataKey="value" stroke="none">
-                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
-                  </Pie>
-                  <RechartsTooltip contentStyle={tooltipContentStyle} formatter={(value: number) => `CHF ${formatCHF(value)}`} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-text-muted text-sm">{t('no_budget_present')}</div>
-            )}
+        <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[320px]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-medium flex items-center gap-2"><PieChartIcon size={18} className="text-accent-ai"/> {t('budget_utilization')}</h3>
             {overviewTotalBudget > 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl md:text-3xl font-bold text-text-primary">{Math.round((globalSpent / overviewTotalBudget) * 100)}%</span>
-                <span className="text-[10px] uppercase tracking-widest text-text-muted">{t('spent')}</span>
+              <span className="text-xs font-bold text-text-muted">
+                CHF {formatCHF(overviewTotalBudget)}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 w-full relative min-h-[150px] flex flex-col justify-center">
+            {overviewTotalBudget > 0 ? (
+              <>
+                <div className="w-full h-40 relative">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={150}>
+                    <PieChart>
+                      <Pie data={pieData} cx="50%" cy="50%" innerRadius="65%" outerRadius="85%" paddingAngle={5} dataKey="value" stroke="none">
+                        {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <RechartsTooltip contentStyle={tooltipContentStyle} formatter={(value: number) => `CHF ${formatCHF(value)}`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-2xl md:text-3xl font-bold text-text-primary">{Math.round((globalSpent / overviewTotalBudget) * 100)}%</span>
+                    <span className="text-[10px] uppercase tracking-widest text-text-muted">{t('spent')}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-border/50 text-center">
+                  <div className="bg-background/50 p-2 rounded-lg">
+                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('total_budget')}</div>
+                    <div className="text-xs font-bold text-text-primary mt-0.5">CHF {formatCHF(overviewTotalBudget)}</div>
+                  </div>
+                  <div className="bg-background/50 p-2 rounded-lg">
+                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('spent')}</div>
+                    <div className="text-xs font-bold text-orange-500 mt-0.5">CHF {formatCHF(globalSpent)}</div>
+                  </div>
+                  <div className="bg-background/50 p-2 rounded-lg">
+                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('remaining')}</div>
+                    <div className={cn("text-xs font-bold mt-0.5", budgetRemaining > 0 ? "text-emerald-500" : "text-red-500")}>
+                      CHF {formatCHF(budgetRemaining)}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-text-muted text-sm py-8 text-center space-y-3">
+                <p>{t('no_budget_present')}</p>
+                {activeProject?.id && (
+                  <button
+                    onClick={() => navigate(`/project/${activeProject.id}/finance`)}
+                    className="px-3 py-1.5 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-lg text-xs font-bold hover:bg-accent-ai/20 transition-colors"
+                  >
+                    {t('manage_budget')}
+                  </button>
+                )}
               </div>
             )}
           </div>

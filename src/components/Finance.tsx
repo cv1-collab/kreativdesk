@@ -591,7 +591,7 @@ export default function Finance() {
             });
           }
         }
-      } catch (err) {}
+      } catch (err) { }
     }, 3000);
 
     return () => {
@@ -668,7 +668,7 @@ export default function Finance() {
       let finConfig: any = null;
       try {
         finConfig = await fetchSystemConfigJSON(`finance_${currentProjectId}`, safeCompanyId);
-      } catch (e) {}
+      } catch (e) { }
 
       const configData = finConfig || cachedData;
       const hasValidVersions = Array.isArray(configData?.versions) && configData.versions.length > 0;
@@ -713,7 +713,7 @@ export default function Finance() {
             companyId: safeCompanyId,
             projectId: currentProjectId
           }, safeCompanyId, currentUser.uid);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       setIsInitialLoad(false);
@@ -751,7 +751,7 @@ export default function Finance() {
     const timeout = setTimeout(async () => {
       try {
         await saveSystemConfigJSON(`finance_${currentProjectId}`, saveData, safeCompanyId, currentUser.uid);
-      } catch (e) {}
+      } catch (e) { }
     }, 1500);
     return () => clearTimeout(timeout);
   }, [versions, activeVersionId, projectHeader, includeOptions, currentProjectId, currentUser, isReadOnly, isDemoMode, isInitialLoad]);
@@ -1044,7 +1044,7 @@ export default function Finance() {
       const newVersionNum = versions.length + 1;
       const newVerId = `v${Date.now()}`;
       const cleanTitle = suggestedTitle ? suggestedTitle.trim().slice(0, 24) : '';
-      const newVersionName = cleanTitle 
+      const newVersionName = cleanTitle
         ? `Variante ${newVersionNum} (${cleanTitle})`
         : `Variante ${newVersionNum} (Excel-Import)`;
 
@@ -1187,7 +1187,7 @@ export default function Finance() {
     }
     const isCurrentlyApproved = activeVersion.status === 'approved';
     const totalItems = (activeVersion.groups || []).reduce((acc, g) => acc + (g.items?.length || 0), 0);
-    
+
     // If approved and empty, immediately unlock without prompt
     if (isCurrentlyApproved && totalItems === 0) {
       setVersions(prev => prev.map(v => v.id === activeVersionId ? { ...v, status: 'draft' } : v));
@@ -1276,11 +1276,11 @@ export default function Finance() {
       } else {
         addToast(t('ai_failed'), 'error');
       }
-    } catch (error) { 
+    } catch (error) {
       console.error("AI receipt error:", error);
-      addToast(t('ai_failed'), 'error'); 
-    } finally { 
-      setIsAnalyzingAI(false); 
+      addToast(t('ai_failed'), 'error');
+    } finally {
+      setIsAnalyzingAI(false);
     }
   };
 
@@ -1340,14 +1340,14 @@ export default function Finance() {
       const displayCategory = category === 'Debitorenrechnung' ? t('invoice') : t('quote');
       await supabase.from('transactions').insert({
         type: category === 'Debitorenrechnung' ? 'income' : 'quote',
-        date: fileData.date || new Date().toISOString().split('T')[0], 
-        description: `${displayCategory}: ${documentName}`, 
-        category: category || 'Dokument', 
-        amount: documentTotal || 0, 
-        status: defaultStatus || 'Offen', 
-        owner_id: currentUser.uid, 
-        company_id: safeCompanyId, 
-        project_id: safeProjectId, 
+        date: fileData.date || new Date().toISOString().split('T')[0],
+        description: `${displayCategory}: ${documentName}`,
+        category: category || 'Dokument',
+        amount: documentTotal || 0,
+        status: defaultStatus || 'Offen',
+        owner_id: currentUser.uid,
+        company_id: safeCompanyId,
+        project_id: safeProjectId,
         receipt_urls: downloadUrl ? [downloadUrl] : []
       });
       await notifyNewDocument(safeCompanyId, documentName, category, safeProjectId);
@@ -1386,7 +1386,7 @@ export default function Finance() {
     setIsSubmitting(true);
     try {
       const isExternal = receiptType === 'external_cost' || incomingData.type === 'external';
-      const mainName = isExternal 
+      const mainName = isExternal
         ? (incomingData.company || incomingData.vendor || 'Kreditor')
         : (incomingData.vendor || 'Spesen');
       const cleanMain = mainName.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1418,12 +1418,12 @@ export default function Finance() {
         type: 'expense',
         date: incomingData.date || new Date().toISOString().split('T')[0],
         description: fullDescription,
-        category: transactionCategory, 
-        amount: -Math.abs(Number(incomingData.amount) || 0), 
-        status: statusValue, 
-        project_id: safeProjectId, 
-        owner_id: currentUser.uid, 
-        company_id: safeCompanyId, 
+        category: transactionCategory,
+        amount: -Math.abs(Number(incomingData.amount) || 0),
+        status: statusValue,
+        project_id: safeProjectId,
+        owner_id: currentUser.uid,
+        company_id: safeCompanyId,
         receipt_urls: uploadedUrls
       });
 
@@ -1441,8 +1441,8 @@ export default function Finance() {
       setTransactions(prev => [newTx, ...prev]);
 
       addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success');
-      setIsReceiptPdfStudioOpen(false); 
-      setShowReceiptStudio(false); 
+      setIsReceiptPdfStudioOpen(false);
+      setShowReceiptStudio(false);
       setIncomingReceipts([]);
       setIncomingData({
         type: isExternal ? 'external' : 'internal',
@@ -1467,15 +1467,15 @@ export default function Finance() {
         creditorCategory: 'Kreditorenrechnung (Handwerker / Material)',
         iban: ''
       });
-    } catch (e) { 
-      addToast('Fehler beim Speichern', 'error'); 
-    } finally { 
-      setIsSubmitting(false); 
+    } catch (e) {
+      addToast('Fehler beim Speichern', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleTimeSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); 
+    e.preventDefault();
     if (timeData.hours <= 0 || !currentProjectId) return;
     setIsSubmitting(true);
     try {
@@ -1500,13 +1500,13 @@ export default function Finance() {
         const fullDesc = `${descPrefix}${timeData.description || 'Zeiterfassung'}${budgetSuffix}`;
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
-        addTimeEntry({ 
-          userId: isExternal ? 'external_partner' : (timeData.userId || currentUser?.uid || 'internal_team'), 
-          projectId: currentProjectId, 
-          date: timeData.date || new Date().toISOString().split('T')[0], 
-          hours: Number(netHours.toFixed(2)) || Number(timeData.hours) || 0, 
-          description: fullDesc, 
-          hourlyRate: timeData.hourlyRate || (isExternal ? 165 : 120), 
+        addTimeEntry({
+          userId: isExternal ? 'external_partner' : (timeData.userId || currentUser?.uid || 'internal_team'),
+          projectId: currentProjectId,
+          date: timeData.date || new Date().toISOString().split('T')[0],
+          hours: Number(netHours.toFixed(2)) || Number(timeData.hours) || 0,
+          description: fullDesc,
+          hourlyRate: timeData.hourlyRate || (isExternal ? 165 : 120),
           isBillable: isExternal ? true : (timeData.isBillable !== false),
           budgetPosId: timeData.budgetPosId || '',
           internalData: !isExternal ? {
@@ -1516,23 +1516,23 @@ export default function Finance() {
             netHours: Number(netHours.toFixed(2)),
             budgetPosId: timeData.budgetPosId
           } : null,
-          externalData: isExternal ? { 
-            company: timeData.company, 
+          externalData: isExternal ? {
+            company: timeData.company,
             specialistName: timeData.specialistName,
             orderNumber: timeData.orderNumber,
             rapportNumber: timeData.rapportNumber,
             approvalStatus: timeData.approvalStatus || 'Zur Prüfung eingereicht',
             approvedBy: timeData.approvedBy,
             budgetPosId: timeData.budgetPosId
-          } : null 
+          } : null
         }, safeCompanyId, currentUser.uid);
 
-        addToast(t('hours_booked_success') || 'Erfolgreich verbucht', 'success'); 
+        addToast(t('hours_booked_success') || 'Erfolgreich verbucht', 'success');
         setShowTimeModal(false);
-        setTimeData({ 
-          type: isExternal ? 'external' : 'internal', 
-          userId: '', 
-          company: '', 
+        setTimeData({
+          type: isExternal ? 'external' : 'internal',
+          userId: '',
+          company: '',
           specialistName: '',
           orderNumber: '',
           rapportNumber: '',
@@ -1540,18 +1540,18 @@ export default function Finance() {
           approvedBy: '',
           overtimeType: 'normal',
           breakMinutes: 0,
-          hours: 0, 
-          hourlyRate: isExternal ? 165 : 120, 
-          description: '', 
+          hours: 0,
+          hourlyRate: isExternal ? 165 : 120,
+          description: '',
           budgetPosId: '',
           isBillable: true,
-          date: new Date().toISOString().split('T')[0] 
+          date: new Date().toISOString().split('T')[0]
         });
-      } else { 
-        addToast('Fehler: Zeiterfassung noch nicht initialisiert.', 'error'); 
+      } else {
+        addToast('Fehler: Zeiterfassung noch nicht initialisiert.', 'error');
       }
-    } finally { 
-      setIsSubmitting(false); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1565,20 +1565,20 @@ export default function Finance() {
             <h2 className="text-xl font-bold mb-2 text-text-primary">Tabellenansicht im Vollbild</h2>
             <p className="text-sm text-text-muted mb-6 font-medium">Drehe dein Smartphone ins Querformat oder öffne die Vollbild-Tabelle direkt.</p>
             <div className="flex flex-col gap-3 w-full">
-              <button 
-                onClick={() => setForceLandscapeView(true)} 
+              <button
+                onClick={() => setForceLandscapeView(true)}
                 className="w-full py-3 bg-accent-ai text-white rounded-xl font-bold transition-all shadow-lg hover:bg-accent-ai/90 flex items-center justify-center gap-2"
               >
                 <Maximize size={18} /> Tabelle jetzt öffnen
               </button>
-              <button 
-                onClick={() => { setForceLandscapeView(true); setIsRotatedCss(true); }} 
+              <button
+                onClick={() => { setForceLandscapeView(true); setIsRotatedCss(true); }}
                 className="w-full py-3 bg-surface border border-border/80 text-text-primary rounded-xl font-bold hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
               >
                 <RotateCw size={18} /> 90° Drehen (CSS)
               </button>
-              <button 
-                onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} 
+              <button
+                onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }}
                 className="w-full py-2.5 text-text-muted hover:text-text-primary font-semibold text-sm transition-colors"
               >
                 Abbrechen
@@ -1591,7 +1591,7 @@ export default function Finance() {
     }
 
     return createPortal(
-      <div 
+      <div
         style={isRotatedCss ? {
           zIndex: 999999,
           width: '100vh',
@@ -1605,7 +1605,7 @@ export default function Finance() {
           zIndex: 999999,
           position: 'fixed',
           inset: 0
-        }} 
+        }}
         className="bg-background text-text-primary p-0 lg:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col"
       >
         <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 p-4 lg:p-6 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
@@ -1613,14 +1613,14 @@ export default function Finance() {
           <div className="flex justify-between items-center mb-4 shrink-0">
             <h2 className="text-xl font-bold flex items-center gap-2 text-accent-ai"><RotateCw size={20} /> Tabellenansicht</h2>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setIsRotatedCss(prev => !prev)} 
+              <button
+                onClick={() => setIsRotatedCss(prev => !prev)}
                 className={cn("px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-surface border-border/50 text-text-primary hover:bg-white/5")}
               >
                 <RotateCw size={14} /> <span>90° Ansicht</span>
               </button>
-              <button 
-                onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }} 
+              <button
+                onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }}
                 className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2 cursor-pointer"
               >
                 <X size={18} /> <span className="hidden sm:inline">Schließen</span>
@@ -2015,8 +2015,8 @@ export default function Finance() {
               </h1>
               <p className="text-sm text-text-muted mt-1 font-medium">{projectHeader.project}</p>
             </div>
-            <button 
-              onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); setIsRotatedCss(true); }} 
+            <button
+              onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); setIsRotatedCss(true); }}
               className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
               title="Tabelle im Querformat (90°) anzeigen"
             >
@@ -2027,32 +2027,32 @@ export default function Finance() {
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
             {/* Primary Action Buttons */}
             <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto shrink-0">
-              <button 
-                onClick={() => setShowTimeModal(true)} 
+              <button
+                onClick={() => setShowTimeModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
               >
                 <Clock size={16} className="text-orange-400 shrink-0" /> <span>{t('book_hours')}</span>
               </button>
-              <button 
-                onClick={() => setShowQuoteModal(true)} 
+              <button
+                onClick={() => setShowQuoteModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
               >
                 <FileSignature size={16} className="text-accent-ai shrink-0" /> <span>{t('quote')}</span>
               </button>
-              <button 
-                onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }} 
+              <button
+                onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }}
                 className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
               >
                 <Receipt size={16} className="text-red-400 shrink-0" /> <span>{t('book_receipt')}</span>
               </button>
-              <button 
-                onClick={() => setShowInvoiceModal(true)} 
+              <button
+                onClick={() => setShowInvoiceModal(true)}
                 className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs sm:text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
               >
                 <Send size={16} className="shrink-0" /> <span>{t('invoice')}</span>
               </button>
-              <button 
-                onClick={() => setIsPdfStudioOpen(true)} 
+              <button
+                onClick={() => setIsPdfStudioOpen(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
               >
                 <FileText size={16} className="text-accent-ai shrink-0" /> <span>PDF Studio</span>
@@ -2063,8 +2063,8 @@ export default function Finance() {
 
             {/* CSV & Export / Import Dropdown */}
             <div className="relative" ref={csvMenuRef}>
-              <button 
-                onClick={() => setShowCsvMenu(prev => !prev)} 
+              <button
+                onClick={() => setShowCsvMenu(prev => !prev)}
                 className="flex items-center justify-center px-3 sm:px-3.5 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-all shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
                 title="CSV Export- & Import-Aktionen"
               >
@@ -2964,16 +2964,16 @@ export default function Finance() {
               <form id="time-form" onSubmit={handleTimeSubmit} className="space-y-4">
 
                 <div className="flex bg-background border border-border/50 rounded-lg p-1">
-                  <button 
-                    type="button" 
-                    onClick={() => setTimeData(prev => ({ ...prev, type: 'internal', hourlyRate: prev.hourlyRate === 165 ? 120 : (prev.hourlyRate || 120) }))} 
+                  <button
+                    type="button"
+                    onClick={() => setTimeData(prev => ({ ...prev, type: 'internal', hourlyRate: prev.hourlyRate === 165 ? 120 : (prev.hourlyRate || 120) }))}
                     className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", timeData.type === 'internal' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
                     <User size={14} /> Einfach (Intern: Eigenleistung)
                   </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setTimeData(prev => ({ ...prev, type: 'external', hourlyRate: prev.hourlyRate === 120 ? 165 : (prev.hourlyRate || 165) }))} 
+                  <button
+                    type="button"
+                    onClick={() => setTimeData(prev => ({ ...prev, type: 'external', hourlyRate: prev.hourlyRate === 120 ? 165 : (prev.hourlyRate || 165) }))}
                     className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", timeData.type === 'external' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
                     <FileSpreadsheet size={14} /> Detailliert (Extern: Partner & Regie)
@@ -2990,10 +2990,10 @@ export default function Finance() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Mitarbeiter</label>
-                        <select 
-                          required 
-                          value={timeData.userId} 
-                          onChange={(e) => setTimeData({ ...timeData, userId: e.target.value })} 
+                        <select
+                          required
+                          value={timeData.userId}
+                          onChange={(e) => setTimeData({ ...timeData, userId: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none"
                         >
                           <option value="" disabled className="bg-surface">Mitarbeiter wählen...</option>
@@ -3018,9 +3018,9 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Pausenregelung</label>
-                        <select 
-                          value={timeData.breakMinutes} 
-                          onChange={(e) => setTimeData({ ...timeData, breakMinutes: Number(e.target.value) || 0 })} 
+                        <select
+                          value={timeData.breakMinutes}
+                          onChange={(e) => setTimeData({ ...timeData, breakMinutes: Number(e.target.value) || 0 })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer"
                         >
                           <option value={0} className="bg-surface">Keine Pause (0 Min)</option>
@@ -3046,9 +3046,9 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Überstunden-Konto</label>
-                        <select 
-                          value={timeData.overtimeType} 
-                          onChange={(e) => setTimeData({ ...timeData, overtimeType: e.target.value as any })} 
+                        <select
+                          value={timeData.overtimeType}
+                          onChange={(e) => setTimeData({ ...timeData, overtimeType: e.target.value as any })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer"
                         >
                           <option value="normal" className="bg-surface">Normalarbeitszeit</option>
@@ -3098,12 +3098,12 @@ export default function Finance() {
                     </div>
 
                     <div className="flex items-center gap-2 pt-1">
-                      <input 
-                        type="checkbox" 
-                        id="time-is-billable" 
-                        checked={timeData.isBillable !== false} 
-                        onChange={(e) => setTimeData({ ...timeData, isBillable: e.target.checked })} 
-                        className="rounded border-border text-orange-500 focus:ring-orange-500 w-4 h-4 cursor-pointer" 
+                      <input
+                        type="checkbox"
+                        id="time-is-billable"
+                        checked={timeData.isBillable !== false}
+                        onChange={(e) => setTimeData({ ...timeData, isBillable: e.target.checked })}
+                        className="rounded border-border text-orange-500 focus:ring-orange-500 w-4 h-4 cursor-pointer"
                       />
                       <label htmlFor="time-is-billable" className="text-xs font-bold text-text-primary cursor-pointer">An Kunden verrechenbar</label>
                     </div>
@@ -3225,10 +3225,10 @@ export default function Finance() {
 
       {isMounted && showReceiptStudio && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-200">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[95vh] h-full lg:h-auto">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[92vh] h-[92vh] lg:h-[820px]">
 
             {/* LEFT SIDE: SCAN & UPLOAD */}
-            <div className="w-full lg:w-5/12 p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar">
+            <div className="w-full lg:w-5/12 p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar min-h-0 h-full">
               <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-text-primary">
                 <Receipt className="text-red-500" /> {t('receipts_photos')}
               </h3>
@@ -3275,38 +3275,38 @@ export default function Finance() {
             </div>
 
             {/* RIGHT SIDE: DATA FORM */}
-            <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface">
+            <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface min-h-0">
               <div className="p-6 border-b border-border/50 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-lg text-text-primary">Buchungsdetails</h3>
                 <button onClick={() => setShowReceiptStudio(false)} className="p-2 bg-background border border-border rounded-lg hover:text-red-500 transition-colors"><X size={18} /></button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0">
                 <div className="flex bg-background border border-border/50 rounded-lg p-1 mb-6">
-                  <button 
-                    type="button" 
-                    onClick={() => { 
-                      setReceiptType('expense'); 
-                      setIncomingData(prev => ({ 
-                        ...prev, 
-                        type: 'internal', 
-                        status: prev.status === 'Bezahlt' ? 'Rückerstattet / Ausbezahlt' : 'Offen (Rückerstattung ausstehend)' 
-                      })); 
-                    }} 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReceiptType('expense');
+                      setIncomingData(prev => ({
+                        ...prev,
+                        type: 'internal',
+                        status: prev.status === 'Bezahlt' ? 'Rückerstattet / Ausbezahlt' : 'Offen (Rückerstattung ausstehend)'
+                      }));
+                    }}
                     className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
                     <User size={14} /> 🔴 Intern (Spesen & Auslagen)
                   </button>
-                  <button 
-                    type="button" 
-                    onClick={() => { 
-                      setReceiptType('external_cost'); 
-                      setIncomingData(prev => ({ 
-                        ...prev, 
-                        type: 'external', 
-                        status: prev.status === 'Rückerstattet / Ausbezahlt' ? 'Bezahlt' : 'Offen zur Prüfung' 
-                      })); 
-                    }} 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReceiptType('external_cost');
+                      setIncomingData(prev => ({
+                        ...prev,
+                        type: 'external',
+                        status: prev.status === 'Rückerstattet / Ausbezahlt' ? 'Bezahlt' : 'Offen zur Prüfung'
+                      }));
+                    }}
                     className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", receiptType === 'external_cost' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
                     <Building2 size={14} /> 🔵 Externer Kreditor (Lieferant / Handwerker)
@@ -3324,17 +3324,17 @@ export default function Finance() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Mitarbeiter / Begünstigter</label>
-                        <select 
-                          required 
-                          value={incomingData.beneficiaryUserId} 
+                        <select
+                          required
+                          value={incomingData.beneficiaryUserId}
                           onChange={e => {
                             const member = projectMembers?.find((m: any) => m.userId === e.target.value);
-                            setIncomingData({ 
-                              ...incomingData, 
-                              beneficiaryUserId: e.target.value, 
-                              beneficiaryName: member?.userEmail || e.target.value 
+                            setIncomingData({
+                              ...incomingData,
+                              beneficiaryUserId: e.target.value,
+                              beneficiaryName: member?.userEmail || e.target.value
                             });
-                          }} 
+                          }}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer"
                         >
                           <option value="" disabled className="bg-surface">Teammitglied wählen...</option>
@@ -3348,13 +3348,13 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Händler / Geschäft (Shop)</label>
-                        <input 
-                          type="text" 
-                          required 
-                          value={incomingData.vendor} 
-                          onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })} 
-                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" 
-                          placeholder="z.B. Jumbo, SBB, Coop, Restaurant" 
+                        <input
+                          type="text"
+                          required
+                          value={incomingData.vendor}
+                          onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })}
+                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          placeholder="z.B. Jumbo, SBB, Coop, Restaurant"
                         />
                       </div>
                     </div>
@@ -3437,23 +3437,23 @@ export default function Finance() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Firma / Kreditor (Lieferant)</label>
-                        <input 
-                          type="text" 
-                          required 
-                          value={incomingData.company || incomingData.vendor} 
-                          onChange={e => setIncomingData({ ...incomingData, company: e.target.value, vendor: e.target.value })} 
-                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" 
-                          placeholder="z.B. Baumeister AG, Sanitär Meier" 
+                        <input
+                          type="text"
+                          required
+                          value={incomingData.company || incomingData.vendor}
+                          onChange={e => setIncomingData({ ...incomingData, company: e.target.value, vendor: e.target.value })}
+                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          placeholder="z.B. Baumeister AG, Sanitär Meier"
                         />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Ansprechperson (optional)</label>
-                        <input 
-                          type="text" 
-                          value={incomingData.contactPerson} 
-                          onChange={e => setIncomingData({ ...incomingData, contactPerson: e.target.value })} 
-                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" 
-                          placeholder="z.B. Herr Keller, Bauleiter" 
+                        <input
+                          type="text"
+                          value={incomingData.contactPerson}
+                          onChange={e => setIncomingData({ ...incomingData, contactPerson: e.target.value })}
+                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          placeholder="z.B. Herr Keller, Bauleiter"
                         />
                       </div>
                     </div>
@@ -3461,22 +3461,22 @@ export default function Finance() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Kreditoren-Rechnungs-Nr.</label>
-                        <input 
-                          type="text" 
-                          value={incomingData.invoiceNumber} 
-                          onChange={e => setIncomingData({ ...incomingData, invoiceNumber: e.target.value })} 
-                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" 
-                          placeholder="z.B. RE-2026-8910" 
+                        <input
+                          type="text"
+                          value={incomingData.invoiceNumber}
+                          onChange={e => setIncomingData({ ...incomingData, invoiceNumber: e.target.value })}
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          placeholder="z.B. RE-2026-8910"
                         />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Nr. des Lieferanten</label>
-                        <input 
-                          type="text" 
-                          value={incomingData.vatNumber} 
-                          onChange={e => setIncomingData({ ...incomingData, vatNumber: e.target.value })} 
-                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" 
-                          placeholder="z.B. CHE-123.456.789 MWST" 
+                        <input
+                          type="text"
+                          value={incomingData.vatNumber}
+                          onChange={e => setIncomingData({ ...incomingData, vatNumber: e.target.value })}
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          placeholder="z.B. CHE-123.456.789 MWST"
                         />
                       </div>
                     </div>

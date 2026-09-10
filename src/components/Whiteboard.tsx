@@ -293,13 +293,19 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       return prev.map(layer => { 
         if (layer.id === effectiveId && layer.items && layer.items.length > 0) { 
           const newItems = [...layer.items]; 
-          let idx = newItems.length - 1;
+          let idx = -1;
           if (explicitItemId) {
-            const foundIdx = newItems.findIndex(i => i.id === explicitItemId);
-            if (foundIdx > -1) idx = foundIdx;
+            idx = newItems.findIndex(i => i.id === explicitItemId);
           }
-          newItems[idx] = updateFn(newItems[idx]); 
-          return { ...layer, items: newItems }; 
+          if (idx === -1) {
+            idx = newItems.length - 1;
+          }
+          if (idx >= 0 && idx < newItems.length) {
+            const updated = updateFn(newItems[idx]);
+            if (updated === newItems[idx]) return layer;
+            newItems[idx] = updated; 
+            return { ...layer, items: newItems }; 
+          }
         } 
         return layer; 
       }); 
@@ -398,13 +404,27 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   useEffect(() => {
-    const checkSize = () => { if (containerRef.current) setStageSize({ width: containerRef.current.offsetWidth, height: containerRef.current.offsetHeight }); };
+    const checkSize = () => { 
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        const height = containerRef.current.offsetHeight;
+        if (width > 0 && height > 0) {
+          setStageSize({ width, height });
+        }
+      }
+    };
     checkSize(); 
-    const timeout = setTimeout(checkSize, 50); 
+    const timeout1 = setTimeout(checkSize, 50); 
+    const timeout2 = setTimeout(checkSize, 250); 
     const observer = new ResizeObserver(checkSize);
     if (containerRef.current) observer.observe(containerRef.current);
     window.addEventListener('resize', checkSize);
-    return () => { window.removeEventListener('resize', checkSize); observer.disconnect(); clearTimeout(timeout); };
+    return () => { 
+      window.removeEventListener('resize', checkSize); 
+      observer.disconnect(); 
+      clearTimeout(timeout1); 
+      clearTimeout(timeout2);
+    };
   }, [mobileTab]);
 
   useEffect(() => { 
@@ -458,7 +478,8 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
 
   const handleTouchStart = (e: any) => {
     if (e.evt.touches && e.evt.touches.length >= 2) {
-      e.evt.preventDefault(); isDrawing.current = false;
+      if (e.evt.cancelable) e.evt.preventDefault();
+      isDrawing.current = false;
       const t1 = e.evt.touches[0]; const t2 = e.evt.touches[1];
       lastDist.current = getDistance(t1, t2); lastCenter.current = getCenter(t1, t2);
       return;
@@ -530,6 +551,10 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
   };
 
   const handleMouseDown = (e: any) => {
+    if (e.evt && e.evt.button !== undefined && e.evt.button !== 0) {
+      return;
+    }
+
     const targetName = typeof e.target?.name === 'function' ? e.target.name() : (typeof e.target?.name === 'string' ? e.target.name : '');
     const isBackgroundClick = e.target === stageRef.current || targetName === 'background-rect';
     if (isBackgroundClick && tool === 'select') {
@@ -768,10 +793,14 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     window.addEventListener('pointerup', handleGlobalMouseUp);
     window.addEventListener('mouseup', handleGlobalMouseUp);
     window.addEventListener('touchend', handleGlobalMouseUp);
+    window.addEventListener('pointercancel', handleGlobalMouseUp);
+    window.addEventListener('blur', handleGlobalMouseUp);
     return () => {
       window.removeEventListener('pointerup', handleGlobalMouseUp);
       window.removeEventListener('mouseup', handleGlobalMouseUp);
       window.removeEventListener('touchend', handleGlobalMouseUp);
+      window.removeEventListener('pointercancel', handleGlobalMouseUp);
+      window.removeEventListener('blur', handleGlobalMouseUp);
     };
   }, [tool]);
 
@@ -784,6 +813,9 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         stroke: item.stroke ? c : (item.type === 'rect' ? c : undefined),
         fill: item.fill ? (item.fill.startsWith('#') && item.fill.length === 9 ? `${c}33` : item.fill) : undefined
       }));
+    } else if (tool === 'select' || tool === 'pan') {
+      // User picks a color to draw: automatically switch back to pen mode
+      setTool('pen');
     }
   };
 
