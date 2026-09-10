@@ -732,6 +732,65 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 {t('cta_secondary')}
               </button>
             </div>
+
+            {/* HERO 4K PORTAL VIDEO SHOWCASE */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.8 }}
+              className="mt-14 sm:mt-16 max-w-5xl mx-auto relative group text-left"
+            >
+              {/* Pulsing Ambient Glow */}
+              <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600/30 via-cyan-500/20 to-indigo-600/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 transition-opacity duration-700 pointer-events-none" />
+              
+              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-white/20 dark:border-white/10 bg-slate-950/90 backdrop-blur-xl shadow-2xl">
+                {/* macOS Style Window Bar */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-white/10 bg-black/40 text-xs font-semibold text-zinc-400">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
+                    <span className="ml-2 font-mono text-[11px] text-zinc-300 hidden sm:inline">kreativ-desk-os-portal.mp4</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
+                      <Sparkles size={11} /> 4K Cinematic Experience
+                    </span>
+                  </div>
+                </div>
+
+                {/* Video Screen Container */}
+                <div className="relative aspect-video w-full overflow-hidden bg-black flex items-center justify-center">
+                  <video 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline 
+                    preload="metadata"
+                    poster="/media/architect_flatlay_blueprints.jpg"
+                    className="w-full h-full object-cover"
+                  >
+                    <source src="/media/portal_expanding.mp4" type="video/mp4" />
+                  </video>
+                  {/* Bottom Gradient Overlay with Description */}
+                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex flex-col sm:flex-row sm:items-end justify-between gap-3 pointer-events-none">
+                    <div>
+                      <div className="text-white font-black text-lg sm:text-2xl tracking-tight mb-1 flex items-center gap-2">
+                        <span>Das Schweizer Betriebssystem für anspruchsvolle Bauten</span>
+                      </div>
+                      <div className="text-zinc-300 text-xs sm:text-sm font-medium max-w-xl">
+                        Handwerkliche Schweizer Präzision, fundierte Architektur-Expertise und intelligentes Echtzeit-Controlling vereint in einer autoritativen Plattform.
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-1.5">
+                        <CheckCircle2 size={14} className="text-emerald-400" /> SIA 102 / 118 konform
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </section>
 
@@ -823,6 +882,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <span className="text-[11px] bg-emerald-100 dark:bg-emerald-500/25 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('ssot_p3_tag')}</span>
                     </div>
                   </div>
+
+                  {/* Dynamic Data Stream Video Absorption Loop */}
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-blue-500/30 bg-slate-950 relative aspect-video shadow-lg group/vid">
+                    <video 
+                      autoPlay 
+                      loop 
+                      muted 
+                      playsInline 
+                      preload="metadata"
+                      className="w-full h-full object-cover"
+                    >
+                      <source src="/media/data_stream.mp4" type="video/mp4" />
+                    </video>
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-blue-600/80 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
+                      <Sparkles size={10} /> Live Data Sync: Plan bis Baustelle
+                    </div>
+                  </div>
                 </div>
 
                 <div className="p-4 sm:p-6 bg-blue-50/90 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 rounded-2xl flex items-center gap-4 sm:gap-5">
@@ -857,39 +933,77 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Säule 1 */}
-              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Calculator size={24} />
+              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm flex flex-col justify-between overflow-hidden">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Calculator size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p1_title')}</h3>
+                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p1_desc')}</p>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p1_title')}</h3>
-                <p className="text-text-muted text-sm sm:text-base leading-relaxed">{t('infra_p1_desc')}</p>
+                <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
+                  <video autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity">
+                    <source src="/media/physical_materials.mp4" type="video/mp4" />
+                  </video>
+                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                    Materialisierung & BKP 100–900
+                  </div>
+                </div>
               </div>
 
               {/* Säule 2 */}
-              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Shield size={24} />
+              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm flex flex-col justify-between overflow-hidden">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Shield size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p2_title')}</h3>
+                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p2_desc')}</p>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p2_title')}</h3>
-                <p className="text-text-muted text-sm sm:text-base leading-relaxed">{t('infra_p2_desc')}</p>
+                <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
+                  <video autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity">
+                    <source src="/media/ink_morphs_code.mp4" type="video/mp4" />
+                  </video>
+                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                    Schweizer Code & Revisionssicherheit
+                  </div>
+                </div>
               </div>
 
               {/* Säule 3 */}
-              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Users size={24} />
+              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm flex flex-col justify-between overflow-hidden">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Users size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p3_title')}</h3>
+                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p3_desc')}</p>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p3_title')}</h3>
-                <p className="text-text-muted text-sm sm:text-base leading-relaxed">{t('infra_p3_desc')}</p>
+                <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
+                  <img src="/media/michael_engineer_workbench.jpg" alt="Team & Onboarding" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                    Rollen, Governance & 1-Klick Onboarding
+                  </div>
+                </div>
               </div>
 
               {/* Säule 4 */}
-              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Box size={24} />
+              <div className="p-8 bg-surface border border-border hover:border-blue-500/40 rounded-3xl transition-all group shadow-sm flex flex-col justify-between overflow-hidden">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Box size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p4_title')}</h3>
+                  <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p4_desc')}</p>
                 </div>
-                <h3 className="text-xl font-bold text-text-primary mb-3">{t('infra_p4_title')}</h3>
-                <p className="text-text-muted text-sm sm:text-base leading-relaxed">{t('infra_p4_desc')}</p>
+                <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
+                  <video autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity">
+                    <source src="/media/ink_transforms_building.mp4" type="video/mp4" />
+                  </video>
+                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                    Von der Skizze zum IFC / 3D-BIM-Modell
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1061,6 +1175,163 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </div>
             </div>
 
+          </div>
+        </section>
+
+        {/* 2.5 AUTHENTISCHE SCHWEIZER ARCHITEKTURPRAXIS */}
+        <section className="py-24 px-6 bg-gradient-to-b from-background via-surface/40 to-background border-t border-border relative z-10">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
+                <Sparkles size={14} /> Reale Architekturpraxis
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
+                Entwickelt für Schweizer Architekten & Generalunternehmer
+              </h2>
+              <p className="text-lg text-text-muted font-medium max-w-3xl mx-auto">
+                Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Zürcher Planerteams, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.
+              </p>
+            </div>
+
+            {/* Editorial Showcase Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              
+              {/* Card 1: Sarah Meier */}
+              <div className="group rounded-3xl overflow-hidden border border-border bg-surface hover:border-blue-500/40 transition-all duration-300 shadow-md flex flex-col">
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <img 
+                    src="/media/sarah_architect_studio.jpg" 
+                    alt="Sarah Meier am Arbeitsplatz mit Kreativ Desk" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                    ETH / SIA Entwurf
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">Farb- & Materialkonzept</h3>
+                    <p className="text-sm text-text-muted leading-relaxed mb-4">
+                      „Kreativ Desk bündelt unsere Entwürfe, Pantone-Fächer und Werkpläne in einer zentralen Quelle. Keine Versionskonflikte mehr bei Bauherrensitzungen.“
+                    </p>
+                  </div>
+                  <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
+                    <span>Sarah Meier, Dipl. Arch. ETH</span>
+                    <span className="text-blue-500">Projektleitung</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Michael Chen */}
+              <div className="group rounded-3xl overflow-hidden border border-border bg-surface hover:border-blue-500/40 transition-all duration-300 shadow-md flex flex-col">
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <img 
+                    src="/media/michael_engineer_workbench.jpg" 
+                    alt="Michael Chen am Stehtisch mit physischem Baumodell" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                    Bauleitung & Devisierung
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">Präzision am physischen Modell</h3>
+                    <p className="text-sm text-text-muted leading-relaxed mb-4">
+                      „Am Werktisch und auf der Baustelle zählen Millimeter und Schweizer Franken. Mit dem Live-Soll-Ist-Controlling behalten wir die BKP-Kosten sicher im Griff.“
+                    </p>
+                  </div>
+                  <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
+                    <span>Michael Chen, MSc ETH</span>
+                    <span className="text-blue-500">Bauleiter SIA</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Flat-Lay Planungsphasen */}
+              <div className="group rounded-3xl overflow-hidden border border-border bg-surface hover:border-blue-500/40 transition-all duration-300 shadow-md flex flex-col">
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <img 
+                    src="/media/architect_flatlay_blueprints.jpg" 
+                    alt="Top-Down Flat-Lay mit Bauplänen, Zirkel, Maßstab und Espresso" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                    SIA 102 Phasen
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">Vom Vorprojekt zur Ausführung</h3>
+                    <p className="text-sm text-text-muted leading-relaxed mb-4">
+                      Strukturierte Steuerung von Baueingabe, Ausführungsplänen und Mängelfreigaben. Zirkel, Maßstab und Software im perfekten Einklang.
+                    </p>
+                  </div>
+                  <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
+                    <span>SIA Phasen 31 bis 53</span>
+                    <span className="text-emerald-500">100% Konform</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Modellbau-Atelier (Breiter 2-Spalten-Teil auf Desktop) */}
+              <div className="md:col-span-2 group rounded-3xl overflow-hidden border border-border bg-surface hover:border-blue-500/40 transition-all duration-300 shadow-md flex flex-col lg:flex-row">
+                <div className="lg:w-1/2 relative aspect-[16/10] lg:aspect-auto overflow-hidden bg-slate-900 min-h-[260px]">
+                  <img 
+                    src="/media/studio_model_workshop.jpg" 
+                    alt="Architekt im Modellbau-Atelier" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                    3D-BIM & Kollision
+                  </div>
+                </div>
+                <div className="lg:w-1/2 p-6 sm:p-8 flex flex-col justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2 block">Kollaborative Ausführung</span>
+                    <h3 className="text-2xl font-bold text-text-primary mb-3">Physisches Modell trifft digitalen Zwilling</h3>
+                    <p className="text-sm text-text-muted leading-relaxed mb-6">
+                      Kollisionsfreie Schnittstellenplanung zwischen Architektur, Statik und HLKS direkt im browserbasierten BIM-Viewer – ohne teure Spezialsoftware auf jedem Rechner.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => scrollTo('systems')} className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all">
+                      Studio OS anfragen
+                    </button>
+                    <button onClick={() => scrollTo('live-demo')} className="px-4 py-2.5 rounded-xl bg-surface border border-border text-xs font-bold hover:bg-white/5 transition-all">
+                      Demo testen
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 5: Beton-Werktisch Close-up */}
+              <div className="group rounded-3xl overflow-hidden border border-border bg-surface hover:border-blue-500/40 transition-all duration-300 shadow-md flex flex-col">
+                <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
+                  <img 
+                    src="/media/architectural_model_closeup.jpg" 
+                    alt="Betontisch mit Holzmodell und Dreikantmaßstab" 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  />
+                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                    Detailgenauigkeit
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">Schweizer Qualitätsstandard</h3>
+                    <p className="text-sm text-text-muted leading-relaxed mb-4">
+                      Souveräne Datenhoheit in Schweizer Rechenzentren, mandantenisoliert und mit vollständigem Audit-Trail für jede Planänderung.
+                    </p>
+                  </div>
+                  <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
+                    <span>Serverstandort Schweiz</span>
+                    <span className="text-emerald-500">ISO 27001</span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
         </section>
 

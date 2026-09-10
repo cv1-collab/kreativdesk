@@ -62,15 +62,24 @@ export const demoTeamMembers: DemoTeamMember[] = [
   }
 ];
 
-// Hochwertige, zuverlässige Architektur-Medien für Showreel & Präsentationen
+// Hochwertige, zuverlässige Architektur-Medien für Showreel & Präsentationen (Lokal & CDN-Ready)
 export const demoMediaAssets = {
-  heroVideo: 'https://assets.mixkit.co/videos/preview/mixkit-modern-building-with-glass-facade-43180-large.mp4',
-  heroPoster: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=85',
-  renderExterior1: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=85',
-  renderInterior1: 'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=1600&q=85',
-  renderDetail: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=1600&q=85',
+  heroVideo: '/media/portal_expanding.mp4',
+  bimVideo: '/media/ink_transforms_building.mp4',
+  materialsVideo: '/media/physical_materials.mp4',
+  codeVideo: '/media/ink_morphs_code.mp4',
+  dataStreamVideo: '/media/data_stream.mp4',
+  heroPoster: '/media/architect_flatlay_blueprints.jpg',
+  flatlayPoster: '/media/architect_flatlay_blueprints.jpg',
+  modelCloseup: '/media/architectural_model_closeup.jpg',
+  sarahStudio: '/media/sarah_architect_studio.jpg',
+  michaelWorkbench: '/media/michael_engineer_workbench.jpg',
+  workshopModel: '/media/studio_model_workshop.jpg',
+  renderExterior1: '/media/architectural_model_closeup.jpg',
+  renderInterior1: '/media/sarah_architect_studio.jpg',
+  renderDetail: '/media/studio_model_workshop.jpg',
   siteConstruction: '/demo-assets/bau_kamera.jpg',
-  sitePitch: '/demo-assets/bau_pitch_render.jpg',
+  sitePitch: '/media/michael_engineer_workbench.jpg',
   siteDefect: '/demo-assets/mangel_betonriss.jpg',
   groundPlanPdf: '/demo-assets/bau_grundriss_eg.pdf'
 };
