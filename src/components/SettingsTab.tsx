@@ -11,7 +11,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../lib/supabase';
-import { checkStorageLimit, incrementStorage, STORAGE_LIMITS } from '../utils/storageGuard';
+import { checkStorageLimit, incrementStorage, STORAGE_LIMITS, parseSizeToBytes } from '../utils/storageGuard';
 import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/stripeClient';
 import { hasFeature } from '../utils/planFeatures';
 import { webhookNotifier } from '../utils/webhookNotifier';
@@ -307,10 +307,82 @@ export default function SettingsTab() {
       }
 
       const safeCompanyId = compId || currentUser.uid;
-      const { count: cuCount } = await supabase.from('company_users').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
-      const { count: pCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', safeCompanyId);
-      const totalSeats = Math.max(1, (cuCount || 0) + (pCount || 0));
-      setUsedSeats(totalSeats);
+
+      // 3. Echte belegte Lizenzen (Seats) ohne doppelte Zählung ermitteln
+      const { data: cuList } = await supabase
+        .from('company_users')
+        .select('id, email')
+        .eq('company_id', safeCompanyId);
+
+      const { data: pList } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('company_id', safeCompanyId);
+
+      const uniqueSeatHolders = new Set<string>();
+      (cuList || []).forEach((u: any) => {
+        const key = (u.email || u.id || '').trim().toLowerCase();
+        if (key) uniqueSeatHolders.add(key);
+      });
+      (pList || []).forEach((p: any) => {
+        const key = (p.email || p.id || '').trim().toLowerCase();
+        if (key) uniqueSeatHolders.add(key);
+      });
+
+      const actualSeats = Math.max(1, uniqueSeatHolders.size);
+      setUsedSeats(actualSeats);
+
+      if (foundComp && foundComp.used_seats !== actualSeats) {
+        supabase.from('companies').update({ used_seats: actualSeats }).eq('id', foundComp.id).then();
+      }
+
+      // 4. Tatsächlich belegten Speicherplatz berechnen (Dokumente + Storage-Buckets)
+      try {
+        let totalStorageBytes = 0;
+
+        // Rekursive Storage-Grössenberechnung (bis zu 4 Ordnerebenen)
+        const listBucketRecursive = async (bucket: string, prefix: string, depth = 0): Promise<number> => {
+          if (depth > 4) return 0;
+          let bytes = 0;
+          try {
+            const { data: items } = await supabase.storage.from(bucket).list(prefix, { limit: 100 });
+            if (items) {
+              for (const item of items) {
+                if (item.id && item.metadata?.size) {
+                  bytes += Number(item.metadata.size);
+                } else if (!item.id && item.name) {
+                  const subPath = prefix ? `${prefix}/${item.name}` : item.name;
+                  bytes += await listBucketRecursive(bucket, subPath, depth + 1);
+                }
+              }
+            }
+          } catch {
+            // Ignorieren falls Prefix nicht existiert
+          }
+          return bytes;
+        };
+
+        const buckets = ['documents', 'avatars', 'defects', 'bim-models'];
+        for (const bucket of buckets) {
+          totalStorageBytes += await listBucketRecursive(bucket, safeCompanyId);
+        }
+
+        // Nicht in Storage-Buckets liegende Dokumente (z.B. Base64-Daten) aus der documents-Tabelle hinzuzählen
+        const { data: companyDocs } = await supabase
+          .from('documents')
+          .select('size, is_folder, file_url, url')
+          .eq('company_id', safeCompanyId);
+
+        if (companyDocs) {
+          totalStorageBytes += companyDocs
+            .filter((d: any) => !d.is_folder && d.size && !d.file_url?.includes('/storage/v1/') && !d.url?.includes('/storage/v1/'))
+            .reduce((acc: number, d: any) => acc + parseSizeToBytes(d.size), 0);
+        }
+
+        setStorageUsed(totalStorageBytes);
+      } catch (storageErr) {
+        console.warn("Storage calculation error:", storageErr);
+      }
     };
     fetchCompany();
   }, [currentUser?.companyId, currentUser?.uid]);
@@ -1015,17 +1087,21 @@ export default function SettingsTab() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-1"><Save size={14}/> {t('storage_space')}</span>
                   <span className="text-sm font-bold text-text-primary">
-                    {(storageUsed / (1024 * 1024 * 1024)).toFixed(2)} GB / {((STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter']) / (1024 * 1024 * 1024)).toFixed(0)} GB
+                    {storageUsed === 0
+                      ? `0.00 GB / ${((STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter']) / (1024 * 1024 * 1024)).toFixed(0)} GB`
+                      : storageUsed < 1024 * 1024 * 1024
+                        ? `${(storageUsed / (1024 * 1024)).toFixed(1)} MB / ${((STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter']) / (1024 * 1024 * 1024)).toFixed(0)} GB`
+                        : `${(storageUsed / (1024 * 1024 * 1024)).toFixed(2)} GB / ${((STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter']) / (1024 * 1024 * 1024)).toFixed(0)} GB`}
                   </span>
                 </div>
                 <div className="w-full bg-surface rounded-full h-2 overflow-hidden border border-border/50">
                   <div 
                     className={cn(
-                      "h-full rounded-full",
+                      "h-full rounded-full transition-all duration-500",
                       (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) > 0.9 ? "bg-red-500" : 
                       (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) > 0.75 ? "bg-amber-500" : "bg-emerald-500"
                     )} 
-                    style={{ width: `${Math.min(100, (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) * 100)}%` }}></div>
+                    style={{ width: `${Math.min(100, Math.max(storageUsed > 0 ? 3 : 0, (storageUsed / (STORAGE_LIMITS[companyPlan as keyof typeof STORAGE_LIMITS] || STORAGE_LIMITS['Starter'])) * 100))}%` }}></div>
                 </div>
               </div>
             </div>
