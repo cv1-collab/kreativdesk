@@ -58,7 +58,11 @@ if ('serviceWorker' in navigator) {
     immediate: true,
     onNeedRefresh() {
       console.log('[PWA SW] Neues Deployment verfügbar, Service Worker aktualisiert Caches...');
-      updateSW(true);
+      updateSW(true).then(() => {
+        window.location.reload();
+      }).catch(() => {
+        window.location.reload();
+      });
     },
     onOfflineReady() {}
   });
