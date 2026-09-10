@@ -62,8 +62,27 @@ export function useProjectTeam() {
       }));
 
       const userMap = new Map<string, CompanyUser>();
-      mappedProfiles.forEach(p => { if (p.id || p.email) userMap.set(p.id || p.email, p); });
-      mappedCrm.forEach(c => { if (c.id || c.email) userMap.set(c.id || c.email, c); });
+      mappedProfiles.forEach(p => { 
+        const key = (p.email || p.id || '').toLowerCase();
+        if (key) userMap.set(key, p); 
+      });
+      mappedCrm.forEach(c => { 
+        const key = (c.email || c.id || '').toLowerCase();
+        if (key) {
+          const existing = userMap.get(key);
+          if (existing) {
+            userMap.set(key, {
+              ...existing,
+              ...c,
+              id: existing.id || c.id,
+              name: existing.name || c.name,
+              avatar: existing.avatar || c.avatar
+            });
+          } else {
+            userMap.set(key, c);
+          }
+        }
+      });
 
       const combinedUsers = Array.from(userMap.values());
       setCompanyUsers(combinedUsers);

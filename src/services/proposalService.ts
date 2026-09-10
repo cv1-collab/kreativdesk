@@ -84,18 +84,30 @@ export interface SmartProposal {
 const STORAGE_KEY = 'kreativdesk_smart_proposals_v1';
 
 /**
- * Holt alle Proposals für ein Unternehmen (Mandantentrennung gewährleistet)
+ * Holt alle Proposals für ein Unternehmen (Mandantentrennung gewährleistet, optional projektspezifisch)
  */
-export async function getCompanyProposals(companyId: string): Promise<SmartProposal[]> {
+export async function getCompanyProposals(companyId: string, projectId?: string): Promise<SmartProposal[]> {
+  // Purge obsolete local dummy proposals like "Siemens History Wall"
+  try {
+    const rawLocal = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+    const cleanLocal = rawLocal.filter(p => !p.title?.toLowerCase().includes('siemens'));
+    if (cleanLocal.length !== rawLocal.length) {
+      safeStorage.setItem(STORAGE_KEY, cleanLocal);
+    }
+  } catch (_) {}
+
   try {
     if (supabase) {
       let query = supabase.from('smart_proposals').select('*');
       if (companyId && companyId !== 'default-company') {
         query = query.or(`company_id.eq.${companyId},owner_id.eq.${companyId}`);
       }
+      if (projectId) {
+        query = query.eq('project_id', projectId);
+      }
       const { data, error } = await query.order('created_at', { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         return data.map(mapDbToProposal);
       }
     }
@@ -103,9 +115,14 @@ export async function getCompanyProposals(companyId: string): Promise<SmartPropo
     console.warn('Supabase fetch proposals error, fallback to local storage', e);
   }
 
-  // LocalStorage Fallback (Filter by companyId or ownerId)
+  // LocalStorage Fallback (Filter by companyId or ownerId and optional projectId)
   const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
-  return all.filter(p => p.companyId === companyId || p.ownerId === companyId || !companyId || p.companyId === 'default-company');
+  return all.filter(p => {
+    const matchComp = p.companyId === companyId || p.ownerId === companyId || !companyId || p.companyId === 'default-company';
+    const matchProj = !projectId || p.projectId === projectId;
+    const isNotSiemens = !p.title?.toLowerCase().includes('siemens');
+    return matchComp && matchProj && isNotSiemens;
+  });
 }
 
 /**

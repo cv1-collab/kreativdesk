@@ -1766,6 +1766,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         <div className="space-y-6 animate-in fade-in duration-200">
           <ProposalManagerDashboard 
             embedded={true} 
+            projectId={selectedProjectId || defaultProjId || undefined}
             onCreateNew={() => {
               setPitchModalInitialPublish(true);
               setShowPitchModal(true);

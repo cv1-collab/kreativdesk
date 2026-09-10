@@ -16,7 +16,7 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -392,6 +392,7 @@ export default function PitchDeckStudio({
   const [aiSlideCount, setAiSlideCount] = useState<number>(5);
   const [isGeneratingAIDeck, setIsGeneratingAIDeck] = useState(false);
   const [isFormatModalOpen, setIsFormatModalOpen] = useState(false);
+  const [showExportShareMenu, setShowExportShareMenu] = useState(false);
 
   // SMART PROPOSAL & LANDINGPAGE STATES
   const [isLandingPageModalOpen, setIsLandingPageModalOpen] = useState(initialOpenPublishModal);
@@ -2664,7 +2665,7 @@ export default function PitchDeckStudio({
           </span>
           <div className="flex items-center gap-3">
             {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-4 lg:h-6 object-contain opacity-80 pointer-events-none" />}
-            <span className="text-[8px] lg:text-[10px] uppercase font-mono font-bold tracking-widest opacity-60" style={{ color: deckSettings.themeColor }}>
+            <span className="text-[8px] lg:text-[10px] uppercase font-sans font-bold tracking-widest opacity-60" style={{ color: deckSettings.themeColor }}>
               {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
             </span>
           </div>
@@ -2703,7 +2704,7 @@ export default function PitchDeckStudio({
             </button>
           </div>
           <div className="flex items-center gap-3">
-             <span className="text-xs font-mono text-text-muted bg-surface border border-border px-2 py-1 rounded">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
+             <span className="text-xs font-sans font-medium text-text-muted bg-surface border border-border px-2 py-1 rounded">{slides.findIndex(s=>s.id===activeSlideId) + 1} / {slides.length}</span>
              <button type="button" onClick={onClose} className="p-2 bg-red-500/20 text-red-500 rounded-lg"><X size={18}/></button>
           </div>
         </header>
@@ -2887,29 +2888,7 @@ export default function PitchDeckStudio({
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest block">Ready-to-Use Master-Decks</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    <button type="button" onClick={() => handleLoadMasterDeckBundle('architecture')} className="w-full p-3 rounded-xl bg-slate-900 text-slate-100 border border-slate-700 font-bold text-xs flex justify-between items-center">
-                      <span>🏗️ Architektur Master-Deck</span>
-                      <span className="text-[10px] opacity-60">5 Folien</span>
-                    </button>
-                    <button type="button" onClick={() => handleLoadMasterDeckBundle('luxury')} className="w-full p-3 rounded-xl bg-indigo-950 text-indigo-200 border border-indigo-500/30 font-bold text-xs flex justify-between items-center">
-                      <span>💎 Luxury Real Estate Pitch</span>
-                      <span className="text-[10px] opacity-60">5 Folien</span>
-                    </button>
-                    <button type="button" onClick={() => handleLoadMasterDeckBundle('eco')} className="w-full p-3 rounded-xl bg-emerald-950 text-emerald-200 border border-emerald-500/30 font-bold text-xs flex justify-between items-center">
-                      <span>🌿 Eco Timber & Holzbau</span>
-                      <span className="text-[10px] opacity-60">4 Folien</span>
-                    </button>
-                    <button type="button" onClick={() => handleLoadMasterDeckBundle('tech')} className="w-full p-3 rounded-xl bg-sky-950 text-sky-200 border border-sky-500/30 font-bold text-xs flex justify-between items-center">
-                      <span>🚀 BIM & Digital Twin</span>
-                      <span className="text-[10px] opacity-60">4 Folien</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 pt-2 border-t border-border">
+                <div className="grid grid-cols-1 gap-3 pt-2">
                   <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
                     <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
@@ -2956,33 +2935,8 @@ export default function PitchDeckStudio({
             
             <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
 
-              {/* 1-KLICK MASTER DECK BUNDLES */}
-              <div>
-                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Sparkles size={14} className="text-amber-400"/> {t('ready_to_use_master_decks')}
-                </h3>
-                <div className="grid grid-cols-1 gap-2">
-                  <button type="button" onClick={() => handleLoadMasterDeckBundle('architecture')} className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-left transition-all text-xs font-bold text-slate-100 flex items-center justify-between group shadow-sm">
-                    <span className="flex items-center gap-2">🏗️ Architektur Master-Deck</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 group-hover:bg-slate-700">5 Folien</span>
-                  </button>
-                  <button type="button" onClick={() => handleLoadMasterDeckBundle('luxury')} className="w-full p-2.5 rounded-xl bg-indigo-950/60 border border-indigo-500/30 hover:border-indigo-400 text-left transition-all text-xs font-bold text-indigo-200 flex items-center justify-between group shadow-sm">
-                    <span className="flex items-center gap-2">💎 Luxury Real Estate</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-900/60 text-indigo-300 group-hover:bg-indigo-800">5 Folien</span>
-                  </button>
-                  <button type="button" onClick={() => handleLoadMasterDeckBundle('eco')} className="w-full p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 hover:border-emerald-400 text-left transition-all text-xs font-bold text-emerald-200 flex items-center justify-between group shadow-sm">
-                    <span className="flex items-center gap-2">🌿 Eco Timber & Holzbau</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-300 group-hover:bg-emerald-800">4 Folien</span>
-                  </button>
-                  <button type="button" onClick={() => handleLoadMasterDeckBundle('tech')} className="w-full p-2.5 rounded-xl bg-sky-950/50 border border-sky-500/30 hover:border-sky-400 text-left transition-all text-xs font-bold text-sky-200 flex items-center justify-between group shadow-sm">
-                    <span className="flex items-center gap-2">🚀 BIM & Digital Twin</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-300 group-hover:bg-sky-800">4 Folien</span>
-                  </button>
-                </div>
-              </div>
-
               {/* MASTER TEMPLATES & ANIMATIONS */}
-              <div className="tour-deck-template pt-4 border-t border-border">
+              <div className="tour-deck-template">
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
                 <div className="grid grid-cols-1 gap-1.5">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
@@ -3236,8 +3190,9 @@ export default function PitchDeckStudio({
                 className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm transition-all flex shrink-0"
                 title="KI Pitch Deck automatisch generieren"
               >
-                <Sparkles size={14}/> <span className="hidden lg:inline">{t('ai_create_deck')}</span><span className="lg:hidden">KI</span>
+                <Sparkles size={14}/> <span className="hidden xl:inline">{t('ai_create_deck')}</span><span className="xl:hidden">KI</span>
               </button>
+              
               <button 
                 type="button" 
                 onClick={() => { 
@@ -3247,41 +3202,80 @@ export default function PitchDeckStudio({
                   setIsPresenterMode(true); 
                 }} 
                 disabled={slides.length === 0} 
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30"
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30 font-sans"
                 title="Vollbild-Präsentationsmodus starten"
               >
-                <Play size={14} className="fill-current"/> <span className="hidden sm:inline">{t('presenter_mode')}</span>
+                <Play size={14} className="fill-current"/> <span>Präsentieren</span>
               </button>
-              {/* KUNDEN-LANDINGPAGE & OFFERTE BUTTON */}
-              <button 
-                type="button" 
-                onClick={() => {
-                  setProposalClientName(activeProject?.name ? `Kunde für ${activeProject.name}` : 'Kunde');
-                  setIsLandingPageModalOpen(true);
-                }}
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
-                title={t('client_link_tooltip')}
-              >
-                <Globe size={14}/> <span>{t('client_link_proposal_btn')}</span>
-              </button>
-              {/* EXPORTIEREN BUTTON (INTEGRIERT: KEYNOTE, POWERPOINT & PDF STUDIO) */}
-              <button 
-                type="button" 
-                onClick={() => setIsFormatModalOpen(true)} 
-                disabled={slides.length === 0} 
-                className="tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md disabled:opacity-50 transition-all flex shrink-0 cursor-pointer"
-                title="Präsentation exportieren (PDF, Apple Keynote, Microsoft PowerPoint)"
-              >
-                <DownloadCloud size={14}/> <span>Exportieren</span>
-              </button>
+
+              {/* UNIFIED FREIGABE & EXPORT DROPDOWN MENU */}
+              <div className="relative shrink-0">
+                <button 
+                  type="button" 
+                  onClick={() => setShowExportShareMenu(!showExportShareMenu)} 
+                  className="tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
+                  title="Freigabe, Kunden-Link & Exportieren"
+                >
+                  <Share2 size={14}/> <span>Freigabe & Export</span>
+                  <ChevronDown size={13} className={cn("transition-transform duration-150", showExportShareMenu && "rotate-180")} />
+                </button>
+                <AnimatePresence>
+                  {showExportShareMenu && (
+                    <>
+                      <div className="fixed inset-0 z-[1000]" onClick={() => setShowExportShareMenu(false)} />
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5, scale: 0.96 }} 
+                        animate={{ opacity: 1, y: 0, scale: 1 }} 
+                        exit={{ opacity: 0, y: 5, scale: 0.96 }} 
+                        className="fixed top-14 right-16 sm:right-28 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                      >
+                        <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
+                          Freigabe & Export
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setShowExportShareMenu(false);
+                            setProposalClientName(activeProject?.name ? `Kunde für ${activeProject.name}` : 'Kunde');
+                            setIsLandingPageModalOpen(true);
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-blue-500/10 hover:text-blue-400 transition-colors cursor-pointer"
+                        >
+                          <Globe size={15} className="text-blue-400 shrink-0" />
+                          <div>
+                            <div className="leading-tight">{t('client_link_proposal_btn')}</div>
+                            <div className="text-[10px] font-normal text-text-muted mt-0.5">3D Web-Link & E-Signatur</div>
+                          </div>
+                        </button>
+                        <button 
+                          type="button"
+                          disabled={slides.length === 0}
+                          onClick={() => {
+                            setShowExportShareMenu(false);
+                            setIsFormatModalOpen(true);
+                          }}
+                          className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-indigo-500/10 hover:text-indigo-400 transition-colors border-t border-border/50 disabled:opacity-50 cursor-pointer"
+                        >
+                          <DownloadCloud size={15} className="text-indigo-400 shrink-0" />
+                          <div>
+                            <div className="leading-tight">Präsentation exportieren</div>
+                            <div className="text-[10px] font-normal text-text-muted mt-0.5">PDF Studio, Keynote & PPTX</div>
+                          </div>
+                        </button>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <div className="h-6 w-px bg-border hidden sm:block"></div>
               <button 
                 type="button" 
                 onClick={onClose} 
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all border border-red-500/40 shadow-sm shrink-0 cursor-pointer" 
+                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all border border-red-500/40 shadow-sm shrink-0 cursor-pointer font-sans" 
                 title="Studio schliessen"
               >
-                <LogOut size={14} /> <span className="hidden lg:inline">{t('close_studio')}</span>
+                <LogOut size={14} /> <span className="hidden xl:inline">{t('close_studio')}</span>
               </button>
             </div>
           </header>
@@ -3465,10 +3459,10 @@ export default function PitchDeckStudio({
 
           <div className="w-full flex items-center justify-between border-b border-white/10 pb-4 shrink-0">
             <div className="flex items-center gap-3">
-              <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-xs font-mono font-bold">
+              <span className="px-3 py-1 bg-white/10 text-white rounded-lg text-xs font-sans font-bold">
                 Folie {presenterIndex + 1} / {slides.length}
               </span>
-              <span className="text-xs text-white/50 flex items-center gap-1.5 font-mono">
+              <span className="text-xs text-white/70 flex items-center gap-1.5 font-sans font-medium">
                 <Clock size={14}/> {Math.floor(presenterSeconds / 60)}m {presenterSeconds % 60}s
               </span>
             </div>
@@ -3883,7 +3877,7 @@ export default function PitchDeckStudio({
                       <input 
                         type="text" 
                         required 
-                        placeholder={activeProject?.name || 'z. B. Siemens History Wall'}
+                        placeholder={activeProject?.name || 'z. B. Neubau Wohn- & Gewerbepark'}
                         value={proposalTitle}
                         onChange={e => setProposalTitle(e.target.value)}
                         className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"

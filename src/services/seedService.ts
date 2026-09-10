@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import { demoTemplates } from '../utils/demoTemplates';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
+import { dummySvgPlan } from '../utils/cadDemoPlan';
 
 export function generateDemoTransactions(financeGroups: any[], projectId: string, companyId: string, ownerId: string) {
   const dummyTxs: any[] = [];
@@ -304,20 +305,31 @@ function getDeterministicUUID(str: string): string {
         project_id: projId,
         company_id: realCompanyId,
         name: 'Grundriss EG - Architektur & Tragwerk',
-        elements: [{
-          id: 'bg-img',
-          type: 'image',
-          url: '/demo-assets/bau_pitch_render.jpg',
-          x: 0,
-          y: 0,
-          scale: 50,
-          paperFormat: 'A3',
-          paperOrientation: 'landscape'
-        }],
-        layers: [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }],
+        elements: [
+          {
+            id: '__plan_meta__',
+            type: '__plan_meta__',
+            plan_image: dummySvgPlan,
+            paper_format: 'A3',
+            paper_orientation: 'landscape',
+            plan_scale: 50
+          },
+          {
+            id: 'el1',
+            type: 'defect',
+            x: 0.22,
+            y: 0.85,
+            title: 'Riss im Sichtbeton',
+            description: 'Mangel vor Abnahme prüfen',
+            status: 'open',
+            priority: 'High',
+            layerId: 'default'
+          }
+        ],
+        layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
         active_layer_id: 'default',
         created_at: new Date().toISOString()
-      });
+      } as any);
     }
   } catch (e) {
     console.warn('CAD plan seed fallback handled:', e);
@@ -509,6 +521,37 @@ function getDeterministicUUID(str: string): string {
     try {
       await saveSystemConfigJSON(financeConfigId, finPayload, realCompanyId, ownerId);
     } catch (e) {}
+  }
+
+  // 9. Seed Demo Proposal for Bau & Architektur
+  try {
+    const { data: existingProp } = await supabase
+      .from('smart_proposals')
+      .select('id')
+      .eq('project_id', projId)
+      .maybeSingle();
+
+    if (!existingProp) {
+      await supabase.from('smart_proposals').insert({
+        id: `prop-${projId}`,
+        project_id: projId,
+        company_id: realCompanyId,
+        owner_id: ownerId,
+        share_token: `demo-bau-${projId.substring(0, 8)}`,
+        title: `${projectName} - Bauleitung & Projekt-Offerte`,
+        client_name: 'Bauherrschaft AG (Herr Dr. T. Keller)',
+        client_company: 'Keller Immobilien Gruppe AG',
+        client_email: 'keller@immobilien-ag.ch',
+        base_price: 185000,
+        currency: 'CHF',
+        status: 'active',
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        views_count: 5,
+        created_at: new Date().toISOString()
+      });
+    }
+  } catch (e) {
+    console.warn('Demo proposal seed fallback handled:', e);
   }
 
   return projId;

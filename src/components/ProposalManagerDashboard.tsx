@@ -175,7 +175,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   }
 };
 
-export default function ProposalManagerDashboard({ onCreateNew, embedded }: { onCreateNew?: () => void; embedded?: boolean }) {
+export default function ProposalManagerDashboard({ onCreateNew, embedded, projectId }: { onCreateNew?: () => void; embedded?: boolean; projectId?: string }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language } = useLanguage();
@@ -197,10 +197,10 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded }: { on
 
   const loadProposals = React.useCallback(async () => {
     setIsLoading(true);
-    const data = await getCompanyProposals(companyId);
+    const data = await getCompanyProposals(companyId, projectId);
     setProposals(data);
     setIsLoading(false);
-  }, [companyId]);
+  }, [companyId, projectId]);
 
   useEffect(() => {
     loadProposals();
