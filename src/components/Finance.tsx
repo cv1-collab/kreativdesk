@@ -1895,14 +1895,11 @@ export default function Finance() {
                   <div className="border-t border-border/40 my-1" />
                   <button
                     onClick={() => { setShowAiBudgetModal(true); setShowCsvMenu(false); }}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-bold text-purple-400 hover:bg-purple-500/10 transition-colors text-left cursor-pointer"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-text-primary hover:bg-white/5 transition-colors text-left cursor-pointer"
                   >
                     <Sparkles size={15} className="shrink-0 text-purple-400" />
                     <div>
-                      <div className="flex items-center gap-1.5">
-                        <span>✨ KI Excel & Foto Import</span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-black uppercase">Neu</span>
-                      </div>
+                      <div>KI Excel & Foto Import</div>
                       <div className="text-[10px] text-text-muted font-normal">Excel-Screenshot, Foto oder PDF analysieren</div>
                     </div>
                   </button>
@@ -1945,17 +1942,6 @@ export default function Finance() {
 
             {activeTab === 'budget' && (
               <div className="flex items-center gap-2 shrink-0">
-                {!isReadOnly && activeVersion.status !== 'approved' && (
-                  <button
-                    onClick={() => setShowAiBudgetModal(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-extrabold transition-all shadow-md shadow-purple-600/20 cursor-pointer h-[42px] active:scale-95 shrink-0"
-                    title="Excel-Screenshot, Foto oder PDF mit KI analysieren & Phasen automatisch importieren"
-                  >
-                    <Sparkles size={15} />
-                    <span className="hidden sm:inline">KI Excel / Foto Import</span>
-                  </button>
-                )}
-
                 <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
                   <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-32 truncate shrink-0 appearance-none">
                     {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
@@ -2175,16 +2161,16 @@ export default function Finance() {
                     <div className="flex flex-col gap-2 pt-2">
                       <button
                         onClick={() => setShowAiBudgetModal(true)}
-                        className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 mx-auto w-full cursor-pointer shadow-purple-600/20"
+                        className="px-4 py-2.5 bg-surface hover:bg-white/5 border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mx-auto w-full cursor-pointer"
                       >
-                        <Sparkles size={15} /> Mit KI aus Excel / Foto importieren
+                        <Sparkles size={15} className="text-purple-400" /> Mit KI importieren (Excel / Foto)
                       </button>
                       <button
                         onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
                           ...v,
                           groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
                         } : v))}
-                        className="px-4 py-2 bg-surface hover:bg-background border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mx-auto w-full cursor-pointer"
+                        className="px-4 py-2 bg-surface hover:bg-white/5 border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mx-auto w-full cursor-pointer"
                       >
                         <Plus size={14} /> Erste Phase manuell erstellen
                       </button>
@@ -2276,11 +2262,11 @@ export default function Finance() {
 
             {!isReadOnly && activeVersion.status !== 'approved' && budgetGroups.length > 0 && (
               <div className="flex flex-col sm:flex-row items-center gap-2">
-                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="flex-1 w-full py-3.5 bg-surface border border-dashed border-accent-ai/50 text-accent-ai rounded-xl font-bold hover:bg-accent-ai/10 flex items-center justify-center gap-2 shadow-sm cursor-pointer">
-                  <Plus size={18} /> {t('new_phase')}
+                <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="flex-1 w-full py-2.5 bg-surface border border-dashed border-border/80 text-text-muted hover:text-text-primary rounded-xl font-bold hover:bg-white/5 flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs">
+                  <Plus size={16} /> {t('new_phase')}
                 </button>
-                <button onClick={() => setShowAiBudgetModal(true)} className="flex-1 w-full py-3.5 bg-surface border border-dashed border-purple-500/50 text-purple-400 rounded-xl font-bold hover:bg-purple-500/10 flex items-center justify-center gap-2 shadow-sm cursor-pointer">
-                  <Sparkles size={16} /> Mit KI importieren
+                <button onClick={() => setShowAiBudgetModal(true)} className="flex-1 w-full py-2.5 bg-surface border border-dashed border-border/80 text-text-muted hover:text-text-primary rounded-xl font-bold hover:bg-white/5 flex items-center justify-center gap-2 shadow-sm cursor-pointer text-xs">
+                  <Sparkles size={15} className="text-purple-400" /> Mit KI importieren
                 </button>
               </div>
             )}
@@ -2385,16 +2371,16 @@ export default function Finance() {
                                   <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2">
                                     <button
                                       onClick={() => setShowAiBudgetModal(true)}
-                                      className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer active:scale-95 shadow-purple-600/20"
+                                      className="px-4 py-2.5 bg-surface hover:bg-white/5 border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
                                     >
-                                      <Sparkles size={15} /> Mit KI aus Excel / Foto importieren
+                                      <Sparkles size={15} className="text-purple-400" /> Mit KI importieren (Excel / Foto)
                                     </button>
                                     <button
                                       onClick={() => setVersions(prev => prev.map(v => v.id === activeVersionId ? {
                                         ...v,
                                         groups: [{ id: `g${Date.now()}`, pos: '100', title: 'Phase 1: Vorbereitung & Konzept', items: [{ id: `i${Date.now()}`, pos: '101', description: 'Planung & Koordination', qty: 1, unit: 'Std.', unitPrice: 0, option: 0, total: 0 }] }]
                                       } : v))}
-                                      className="px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                                      className="px-4 py-2.5 bg-surface hover:bg-white/5 border border-border text-text-primary text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
                                     >
                                       <Plus size={14} /> Erste Phase manuell anlegen
                                     </button>
@@ -2517,11 +2503,11 @@ export default function Finance() {
                         <tr className="no-print">
                           <td colSpan={includeOptions ? 7 : 6} className="px-4 py-4">
                             <div className="flex flex-col sm:flex-row items-center gap-3">
-                              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="flex-1 w-full py-3 border border-dashed border-accent-ai/30 text-accent-ai rounded-lg font-bold hover:bg-accent-ai/5 flex justify-center items-center gap-2 transition-colors cursor-pointer">
-                                <Plus size={18} /> {t('new_phase')}
+                              <button onClick={() => setVersions(versions.map(v => v.id === activeVersionId ? { ...v, groups: [...v.groups, { id: `g${Date.now()}`, pos: `${(v.groups.length + 1)}00`, title: t('new_phase'), items: [] }] } : v))} className="flex-1 w-full py-2.5 border border-dashed border-border/80 text-text-muted hover:text-text-primary rounded-lg font-bold hover:bg-white/5 flex justify-center items-center gap-2 transition-colors cursor-pointer text-xs">
+                                <Plus size={16} /> {t('new_phase')}
                               </button>
-                              <button onClick={() => setShowAiBudgetModal(true)} className="flex-1 w-full py-3 border border-dashed border-purple-500/40 text-purple-600 dark:text-purple-400 bg-purple-500/5 hover:bg-purple-500/10 rounded-lg font-bold flex justify-center items-center gap-2 transition-colors cursor-pointer shadow-sm">
-                                <Sparkles size={18} className="text-purple-500" /> {language === 'de' ? 'Mit KI importieren (Excel / Foto)' : 'Import with AI (Excel / Photo)'}
+                              <button onClick={() => setShowAiBudgetModal(true)} className="flex-1 w-full py-2.5 border border-dashed border-border/80 text-text-muted hover:text-text-primary bg-surface/40 hover:bg-white/5 rounded-lg font-bold flex justify-center items-center gap-2 transition-colors cursor-pointer shadow-sm text-xs">
+                                <Sparkles size={15} className="text-purple-400" /> {language === 'de' ? 'Mit KI importieren' : 'Import with AI'}
                               </button>
                             </div>
                           </td>
