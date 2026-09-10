@@ -149,17 +149,19 @@ export default function AdminSystemTab() {
           <Terminal size={20} className="text-blue-500" />
           {t('live_system_logs')}
         </h3>
-        <div className="bg-background border border-border rounded-xl p-4 font-mono text-xs max-h-96 overflow-y-auto space-y-2">
+        <div className="bg-background border border-border rounded-xl p-4 font-sans text-xs max-h-96 overflow-y-auto space-y-1.5">
           {isLoading ? (
             <div className="text-text-muted text-center py-8">{t('loading_logs')}</div>
           ) : logs.length === 0 ? (
             <div className="text-text-muted text-center py-8">{t('no_logs')}</div>
           ) : (
             logs.map(log => (
-              <div key={log.id} className="flex gap-3 text-text-muted">
-                <span className="text-blue-500 font-bold shrink-0">{new Date(log.created_at || Date.now()).toLocaleTimeString()}</span>
-                <span className="font-bold text-text-primary uppercase shrink-0">[{log.action || 'INFO'}]</span>
-                <span className="truncate">{log.details || log.message}</span>
+              <div key={log.id} className="flex items-center gap-3 text-text-muted py-1.5 border-b border-border/20 last:border-0">
+                <span className="text-blue-500 font-semibold shrink-0 text-xs">{new Date(log.created_at || Date.now()).toLocaleTimeString()}</span>
+                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider shrink-0">
+                  {log.action || 'INFO'}
+                </span>
+                <span className="text-text-primary truncate font-normal">{log.details || log.message}</span>
               </div>
             ))
           )}
