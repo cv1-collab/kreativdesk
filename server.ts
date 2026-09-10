@@ -497,11 +497,28 @@ function isSafeExternalUrl(urlStr: string): boolean {
       if (!apiKey) return res.status(500).json({ error: 'Gemini API key not configured' });
       
       const ai = new GoogleGenAI({ apiKey });
-      const { model, contents, config } = req.body;
+      const { model, contents, config } = req.body || {};
+      const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
+      let safeContents = contents;
+      if (typeof contents === 'string') {
+        safeContents = [{ parts: [{ text: contents }] }];
+      } else if (Array.isArray(contents)) {
+        const isAlreadyContentFormat = contents.every((c: any) => c && Array.isArray(c.parts));
+        if (!isAlreadyContentFormat) {
+          const parts = contents.map((item: any) => {
+            if (typeof item === 'string') return { text: item };
+            if (item?.parts && Array.isArray(item.parts)) return item.parts;
+            if (item?.text) return { text: item.text };
+            if (item?.inlineData) return { inlineData: item.inlineData };
+            return item;
+          }).flat();
+          safeContents = [{ role: 'user', parts }];
+        }
+      }
 
       const response = await ai.models.generateContent({
-        model,
-        contents,
+        model: safeModel,
+        contents: safeContents,
         config
       });
       

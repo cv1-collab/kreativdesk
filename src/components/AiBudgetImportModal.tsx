@@ -20,6 +20,7 @@ import {
   Moon
 } from 'lucide-react';
 import { callGeminiAPI } from '../utils/geminiClient';
+import { compressImageForAI } from '../utils/imageCompressor';
 import { cn } from '../utils';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -184,6 +185,7 @@ export default function AiBudgetImportModal({
   const [activeTab, setActiveTab] = useState<'upload' | 'text'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [optimizedFileInfo, setOptimizedFileInfo] = useState<string | null>(null);
   const [pastedText, setPastedText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [parsedGroups, setParsedGroups] = useState<BudgetGroup[] | null>(null);
@@ -230,7 +232,12 @@ export default function AiBudgetImportModal({
   if (!isOpen) return null;
 
   const handleFileSelected = (selectedFile: File) => {
+    if (selectedFile.type === 'application/pdf' && selectedFile.size > 3.5 * 1024 * 1024) {
+      notify('PDF-Datei ist zu gross (über 3.5 MB). Bitte lade einen Screenshot des Tabellenbereichs oder ein kleineres Dokument hoch.', 'error');
+      return;
+    }
     setFile(selectedFile);
+    setOptimizedFileInfo(null);
     if (selectedFile.type.startsWith('image/')) {
       const url = URL.createObjectURL(selectedFile);
       setPreviewUrl(url);
@@ -324,11 +331,20 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
       let response: any;
 
       if (file) {
-        const b64 = await fileToBase64(file);
-        const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png');
+        const comp = await compressImageForAI(file, {
+          maxDimension: 2400,
+          quality: 0.88,
+          maxPdfSizeBytes: 3.5 * 1024 * 1024
+        });
+
+        if (comp.isOptimized) {
+          const origKb = Math.round(comp.originalSize / 1024);
+          const compKb = Math.round(comp.compressedSize / 1024);
+          setOptimizedFileInfo(`${origKb} KB → KI-optimiert: ${compKb} KB`);
+        }
         
         response = await callGeminiAPI('gemini-2.5-flash', [
-          { inlineData: { data: b64, mimeType } },
+          { inlineData: { data: comp.base64, mimeType: comp.mimeType } },
           { text: promptInstruction }
         ]);
       } else {
@@ -599,7 +615,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                           </button>
                         </div>
                         <div className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
-                          {file?.name} ({Math.round((file?.size || 0) / 1024)} KB)
+                          {file?.name} ({optimizedFileInfo || `${Math.round((file?.size || 0) / 1024)} KB`})
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-zinc-400">{t('change_file')}</p>
                       </div>

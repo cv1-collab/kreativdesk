@@ -1,22 +1,36 @@
 import { supabase } from '../lib/supabase';
+import { compressBase64ImageIfNeeded } from './imageCompressor';
 
-function normalizeContents(contents: any): any {
+async function normalizeContents(contents: any): Promise<any> {
   if (typeof contents === 'string') {
     return [{ parts: [{ text: contents }] }];
   }
   if (Array.isArray(contents)) {
-    return contents.map(item => {
-      if (typeof item === 'string') {
-        return { parts: [{ text: item }] };
-      }
-      if (item && item.text && !item.parts) {
-        return { parts: [{ text: item.text }] };
-      }
-      if (item && item.inlineData && !item.parts) {
-        return { parts: [{ inlineData: item.inlineData }] };
-      }
-      return item;
-    });
+    const normalized = await Promise.all(
+      contents.map(async (item) => {
+        if (typeof item === 'string') {
+          return { parts: [{ text: item }] };
+        }
+        if (item && item.text && !item.parts) {
+          return { parts: [{ text: item.text }] };
+        }
+        if (item && item.inlineData && !item.parts) {
+          // Automatic compression safety shield for large inline image payloads
+          let inlineData = item.inlineData;
+          if (inlineData.data && inlineData.mimeType?.startsWith('image/')) {
+            const compressed = await compressBase64ImageIfNeeded(
+              inlineData.data,
+              inlineData.mimeType,
+              1_200_000 // approx 900KB
+            );
+            inlineData = { data: compressed.data, mimeType: compressed.mimeType };
+          }
+          return { parts: [{ inlineData }] };
+        }
+        return item;
+      })
+    );
+    return normalized;
   }
   return contents;
 }
@@ -26,7 +40,10 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
   const token = session?.access_token || '';
 
   const safeModel = (!model || model.includes('2.0') || model.includes('1.5')) ? 'gemini-2.5-flash' : model;
-  const contents = normalizeContents(rawContents);
+  const contents = await normalizeContents(rawContents);
+
+  let lastHttpStatus: number | null = null;
+  let lastHttpErrorText: string | null = null;
 
   // 1. Try server proxy API endpoint /api/generate
   try {
@@ -41,14 +58,48 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
       body: JSON.stringify({ model: safeModel, contents, config, isPublic: !token })
     });
 
+    lastHttpStatus = response.status;
     const resText = await response.text();
-    let resData: any;
-    try { resData = JSON.parse(resText); } catch (e) { console.warn("Could not parse proxy response JSON:", e); }
+    let resData: any = null;
+    try { 
+      resData = JSON.parse(resText); 
+    } catch {
+      // Non-JSON response (e.g. Vercel 413 or HTML error page)
+    }
 
     if (response.ok && resData && (resData.text || resData.candidates)) {
       return resData;
     }
-  } catch (proxyErr) {
+
+    // Specific HTTP error handling from server proxy
+    if (!response.ok) {
+      if (response.status === 413) {
+        throw new Error('Die Datei ist zu gross für die KI-Analyse (Server-Payload-Limit). Bitte erstelle einen kleineren Bildausschnitt oder ein kleineres Dokument.');
+      }
+      if (response.status === 401) {
+        throw new Error('Nicht autorisiert oder Sitzung abgelaufen. Bitte melde dich erneut an.');
+      }
+      if (response.status === 429) {
+        throw new Error('Zu viele KI-Anfragen in kurzer Zeit. Bitte versuche es in wenigen Sekunden erneut.');
+      }
+      if (response.status !== 404) {
+        const message = resData?.details || resData?.error || resText.slice(0, 120);
+        lastHttpErrorText = message;
+        if (message && !message.toLowerCase().includes('not configured')) {
+          throw new Error(`KI-Serverfehler (${response.status}): ${message}`);
+        }
+      }
+    }
+  } catch (proxyErr: any) {
+    // If it's one of our explicit errors above, re-throw immediately
+    if (proxyErr?.message && (
+      proxyErr.message.includes('Die Datei ist zu gross') ||
+      proxyErr.message.includes('Nicht autorisiert') ||
+      proxyErr.message.includes('Zu viele KI-Anfragen') ||
+      proxyErr.message.includes('KI-Serverfehler')
+    )) {
+      throw proxyErr;
+    }
     console.warn("Server proxy generation failed, falling back to direct client API:", proxyErr);
   }
 
@@ -57,6 +108,9 @@ export async function callGeminiAPI(model: string, rawContents: any, config?: an
                  import.meta.env.VITE_GOOGLE_AI_KEY || 
                  (typeof process !== 'undefined' && (process.env?.GEMINI_API_KEY || process.env?.VITE_GEMINI_API_KEY));
   if (!apiKey) {
+    if (lastHttpStatus && lastHttpStatus !== 404) {
+      throw new Error(`KI-Anfrage fehlgeschlagen (Server Status ${lastHttpStatus}${lastHttpErrorText ? `: ${lastHttpErrorText}` : ''}).`);
+    }
     throw new Error('KI-API-Schlüssel auf dem Server & Client nicht konfiguriert.');
   }
 

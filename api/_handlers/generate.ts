@@ -23,10 +23,18 @@ export default async function handler(req: any, res: any) {
     let safeContents = contents;
     if (typeof contents === 'string') {
       safeContents = [{ parts: [{ text: contents }] }];
-    } else if (Array.isArray(contents) && typeof contents[0] === 'string') {
-      safeContents = [{ parts: contents.map((t: string) => ({ text: t })) }];
-    } else if (Array.isArray(contents) && contents[0] && !contents[0].parts && contents[0].text) {
-      safeContents = [{ parts: [{ text: contents[0].text }] }];
+    } else if (Array.isArray(contents)) {
+      const isAlreadyContentFormat = contents.every((c: any) => c && Array.isArray(c.parts));
+      if (!isAlreadyContentFormat) {
+        const parts = contents.map((item: any) => {
+          if (typeof item === 'string') return { text: item };
+          if (item?.parts && Array.isArray(item.parts)) return item.parts;
+          if (item?.text) return { text: item.text };
+          if (item?.inlineData) return { inlineData: item.inlineData };
+          return item;
+        }).flat();
+        safeContents = [{ role: 'user', parts }];
+      }
     }
 
     const response = await ai.models.generateContent({
