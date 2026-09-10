@@ -385,7 +385,7 @@ export default function Layout() {
         <div className="p-3 border-t border-border/50 shrink-0 bg-surface/50 relative space-y-2">
           <div className="flex items-center justify-between px-3 py-1.5 bg-background/80 border border-border/50 rounded-lg text-xs">
             <span className="text-text-muted font-bold uppercase tracking-wider flex items-center gap-1.5">
-              <Clock size={12} /> {t('booked')}: <strong className="font-mono font-bold text-accent-ai ml-0.5">{projectHours.toFixed(1)}h</strong>
+              <Clock size={12} /> {t('booked')}: <strong className="font-sans font-bold tabular-nums text-accent-ai ml-0.5">{projectHours.toFixed(1)}h</strong>
             </span>
             <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-1", project?.status === 'active' ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400")}>
               <span className="w-1.5 h-1.5 rounded-full bg-current" />

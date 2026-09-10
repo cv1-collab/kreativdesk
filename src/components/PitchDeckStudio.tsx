@@ -1369,6 +1369,82 @@ export default function PitchDeckStudio({
           theme: 'grid', headStyles: { fillColor: deckSettings.themeColor }, styles: { fontSize: 9, cellPadding: 3, fillColor: isDarkTheme ? [40, 40, 40] : [255, 255, 255], textColor: isDarkTheme ? [255, 255, 255] : [20, 20, 20] }
         });
       }
+      else if (slide.layout === 'table-of-contents') {
+        const agenda = (slide.agendaItems && slide.agendaItems.length > 0) 
+          ? slide.agendaItems 
+          : (slide.dataPayload?.agendaItems || []);
+        if (agenda.length > 0) {
+          let itemY = cy + 2;
+          const maxCount = Math.max(agenda.length, 1);
+          const availableH = ph - cy - 25;
+          const itemHeight = Math.min(22, availableH / maxCount);
+          
+          agenda.forEach((item: any, idx: number) => {
+            if (isDarkTheme) {
+              docPdf.setFillColor(26, 26, 32);
+              docPdf.roundedRect(15, itemY, pw - 30, itemHeight - 3, 2, 2, 'F');
+              docPdf.setDrawColor(45, 45, 55);
+              docPdf.roundedRect(15, itemY, pw - 30, itemHeight - 3, 2, 2, 'S');
+            } else {
+              docPdf.setFillColor(248, 249, 251);
+              docPdf.roundedRect(15, itemY, pw - 30, itemHeight - 3, 2, 2, 'F');
+              docPdf.setDrawColor(226, 232, 240);
+              docPdf.roundedRect(15, itemY, pw - 30, itemHeight - 3, 2, 2, 'S');
+            }
+
+            // Number badge (purple fill)
+            docPdf.setFillColor(147, 51, 234);
+            const badgeW = 10;
+            const badgeH = Math.min(10, Math.max(itemHeight - 7, 7));
+            docPdf.roundedRect(18, itemY + (itemHeight - 3 - badgeH) / 2, badgeW, badgeH, 1.5, 1.5, 'F');
+            docPdf.setTextColor(255, 255, 255);
+            docPdf.setFontSize(8);
+            docPdf.setFont("helvetica", "bold");
+            const numText = item.num || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`);
+            docPdf.text(numText, 18 + (badgeW / 2), itemY + (itemHeight - 3) / 2 + 2.5, { align: 'center' });
+
+            // Title
+            docPdf.setTextColor(isDarkTheme ? 255 : 20, isDarkTheme ? 255 : 20, isDarkTheme ? 255 : 20);
+            docPdf.setFontSize(10.5);
+            docPdf.setFont("helvetica", "bold");
+            const titleText = item.title || `Kapitel ${idx + 1}`;
+            const titleY = item.desc ? (itemY + 6) : (itemY + (itemHeight - 3) / 2 + 3);
+            docPdf.text(titleText, 32, titleY);
+
+            // Page badge / text
+            const pageText = item.page || `S. 0${idx + 2}`;
+            docPdf.setFontSize(9.5);
+            docPdf.setFont("helvetica", "bold");
+            docPdf.setTextColor(isDarkTheme ? 190 : 70);
+            docPdf.text(pageText, pw - 20, titleY, { align: 'right' });
+
+            // Dotted leader line between title and page
+            const titleWidth = docPdf.getTextWidth(titleText);
+            const pageWidth = docPdf.getTextWidth(pageText);
+            const dotStartX = 34 + titleWidth;
+            const dotEndX = pw - 22 - pageWidth;
+            if (dotEndX > dotStartX + 10) {
+              docPdf.setFontSize(8);
+              docPdf.setFont("helvetica", "normal");
+              docPdf.setTextColor(isDarkTheme ? 90 : 180);
+              const dots = '. '.repeat(Math.floor((dotEndX - dotStartX) / 3.5));
+              docPdf.text(dots, dotStartX + 2, titleY - 0.5);
+            }
+
+            // Description below title
+            if (item.desc) {
+              docPdf.setFontSize(7.5);
+              docPdf.setFont("helvetica", "normal");
+              docPdf.setTextColor(isDarkTheme ? 160 : 100);
+              const maxDescLength = 85;
+              const truncatedDesc = item.desc.length > maxDescLength ? item.desc.slice(0, maxDescLength - 3) + '...' : item.desc;
+              docPdf.text(truncatedDesc, 32, itemY + 11);
+            }
+
+            itemY += itemHeight;
+          });
+        }
+      }
     }
     return docPdf.output('blob');
   }, [slides, deckSettings, t]);
@@ -1474,7 +1550,8 @@ export default function PitchDeckStudio({
     const newSlide: Slide = {
       id: newId, title, content: t('type_text_here'), order_index: slides.length, 
       ownerId: currentUser.uid, companyId: safeCompanyId, projectId: targetId, 
-      layout, fontSize: 18, titleFontSize: 36, dataPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: ''
+      layout, fontSize: 18, titleFontSize: 36, dataPayload, ...(imageUrl && { imageUrl }), ...(videoUrl && { videoUrl }), notes: '',
+      agendaItems: dataPayload?.agendaItems || undefined
     };
     try {
       const dbPayload = serializeSlideForDb(newSlide);
@@ -1828,15 +1905,119 @@ export default function PitchDeckStudio({
       })
       .filter(item => !item.isAgenda);
 
-    setSlides(prev => prev.map(s => s.id === slideId ? { ...s, agendaItems: autoItems } : s));
-    try {
-      const targetSlide = slides.find(s => s.id === slideId);
-      if (targetSlide) {
-        await supabase.from('slides').update(serializeSlideForDb({ ...targetSlide, agendaItems: autoItems })).eq('id', slideId);
+    if (autoItems.length === 0) {
+      addToast("Keine Inhaltsfolien zum Synchronisieren gefunden.", "info");
+      return;
+    }
+
+    const CHUNK_SIZE = 5;
+    const totalParts = Math.ceil(autoItems.length / CHUNK_SIZE);
+    const targetSlide = slides.find(s => s.id === slideId);
+    if (!targetSlide) return;
+
+    if (totalParts <= 1) {
+      const updatedSlide = { ...targetSlide, title: 'Inhaltsverzeichnis & Agenda', agendaItems: autoItems };
+      setSlides(prev => prev.map(s => s.id === slideId ? updatedSlide : s));
+      try {
+        await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', slideId);
+        addToast(`Inhaltsverzeichnis aus ${autoItems.length} Folien synchronisiert!`, "success");
+      } catch (e) {
+        console.warn("Agenda sync error:", e);
       }
-      addToast(`Inhaltsverzeichnis aus ${autoItems.length} Folien synchronisiert!`, "success");
+    } else {
+      const curIndex = slides.findIndex(s => s.id === slideId);
+      const part1Items = autoItems.slice(0, CHUNK_SIZE);
+      const updatedSlide1 = { ...targetSlide, title: `Inhaltsverzeichnis & Agenda (1/${totalParts})`, agendaItems: part1Items };
+      
+      let newSlides = [...slides];
+      newSlides[curIndex] = updatedSlide1;
+
+      try {
+        await supabase.from('slides').update(serializeSlideForDb(updatedSlide1)).eq('id', slideId);
+
+        for (let p = 1; p < totalParts; p++) {
+          const chunk = autoItems.slice(p * CHUNK_SIZE, (p + 1) * CHUNK_SIZE);
+          const partTitle = `Inhaltsverzeichnis & Agenda (${p + 1}/${totalParts})`;
+          const nextSlide = newSlides[curIndex + p];
+
+          if (nextSlide && nextSlide.layout === 'table-of-contents') {
+            const updatedNext = { ...nextSlide, title: partTitle, agendaItems: chunk };
+            newSlides[curIndex + p] = updatedNext;
+            await supabase.from('slides').update(serializeSlideForDb(updatedNext)).eq('id', nextSlide.id);
+          } else {
+            const newId = `slide-toc-${Date.now()}-${p}`;
+            const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+            const insertedSlide: Slide = {
+              id: newId,
+              title: partTitle,
+              content: '',
+              order_index: curIndex + p,
+              ownerId: currentUser?.uid || '',
+              companyId: safeCompanyId,
+              projectId: targetId,
+              layout: 'table-of-contents',
+              fontSize: 18,
+              titleFontSize: 36,
+              agendaItems: chunk,
+              dataPayload: { agendaItems: chunk },
+              notes: ''
+            };
+            newSlides.splice(curIndex + p, 0, insertedSlide);
+            await supabase.from('slides').insert(serializeSlideForDb(insertedSlide));
+          }
+        }
+        setSlides(newSlides);
+        addToast(`Inhaltsverzeichnis über ${totalParts} Folien aufgeteilt (${autoItems.length} Kapitel)!`, "success");
+      } catch (e) {
+        console.warn("Multi-agenda sync error:", e);
+      }
+    }
+  };
+
+  const handleSplitAgendaSlide = async (slideId: string) => {
+    const curIndex = slides.findIndex(s => s.id === slideId);
+    const curSlide = slides[curIndex];
+    if (!curSlide || !curSlide.agendaItems || curSlide.agendaItems.length <= 5) return;
+
+    const items1 = curSlide.agendaItems.slice(0, 5);
+    const items2 = curSlide.agendaItems.slice(5);
+
+    const baseTitle = curSlide.title.replace(/\s*\(\d+\/\d+\)/, '').replace(/\s*\(Teil \d+\)/, '').trim() || 'Inhaltsverzeichnis';
+    const updatedSlide1: Slide = {
+      ...curSlide,
+      title: `${baseTitle} (1/2)`,
+      agendaItems: items1
+    };
+
+    const newId = `slide-toc-split-${Date.now()}`;
+    const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+    const insertedSlide2: Slide = {
+      id: newId,
+      title: `${baseTitle} (2/2)`,
+      content: '',
+      order_index: curIndex + 1,
+      ownerId: currentUser?.uid || '',
+      companyId: safeCompanyId,
+      projectId: targetId,
+      layout: 'table-of-contents',
+      fontSize: 18,
+      titleFontSize: 36,
+      agendaItems: items2,
+      dataPayload: { agendaItems: items2 },
+      notes: ''
+    };
+
+    let newSlides = [...slides];
+    newSlides[curIndex] = updatedSlide1;
+    newSlides.splice(curIndex + 1, 0, insertedSlide2);
+
+    setSlides(newSlides);
+    try {
+      await supabase.from('slides').update(serializeSlideForDb(updatedSlide1)).eq('id', slideId);
+      await supabase.from('slides').insert(serializeSlideForDb(insertedSlide2));
+      addToast("Inhaltsverzeichnis erfolgreich auf 2 Folien aufgeteilt!", "success");
     } catch (e) {
-      console.warn("Agenda sync error:", e);
+      console.warn("Split error:", e);
     }
   };
 
@@ -1866,8 +2047,20 @@ export default function PitchDeckStudio({
       { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
       { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
     ];
-    await handleAddSlide('table-of-contents', 'Inhaltsverzeichnis & Agenda', { agendaItems });
-    addToast("Inhaltsverzeichnis-Folie hinzugefügt!", "success");
+
+    const CHUNK_SIZE = 5;
+    const totalParts = Math.ceil(agendaItems.length / CHUNK_SIZE);
+
+    if (totalParts <= 1) {
+      await handleAddSlide('table-of-contents', 'Inhaltsverzeichnis & Agenda', { agendaItems });
+      addToast("Inhaltsverzeichnis-Folie hinzugefügt!", "success");
+    } else {
+      for (let p = 0; p < totalParts; p++) {
+        const chunk = agendaItems.slice(p * CHUNK_SIZE, (p + 1) * CHUNK_SIZE);
+        await handleAddSlide('table-of-contents', `Inhaltsverzeichnis & Agenda (${p + 1}/${totalParts})`, { agendaItems: chunk });
+      }
+      addToast(`Inhaltsverzeichnis über ${totalParts} Folien verteilt hinzugefügt!`, "success");
+    }
     setMobileTab('slides');
   };
 
@@ -1954,8 +2147,8 @@ export default function PitchDeckStudio({
     switch(deckSettings.themeStyle) {
       case 'architecture': 
         return isLight
-          ? 'font-mono bg-slate-50 text-slate-900 border-2 border-slate-900 shadow-2xl bg-[linear-gradient(to_right,rgba(0,0,0,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.06)_1px,transparent_1px)] bg-[size:24px_24px]'
-          : 'font-mono bg-[#0f172a] text-slate-100 border-2 border-slate-700 shadow-2xl bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:24px_24px]';
+          ? 'font-sans tracking-tight bg-slate-50 text-slate-900 border-2 border-slate-900 shadow-2xl bg-[linear-gradient(to_right,rgba(0,0,0,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(0,0,0,0.06)_1px,transparent_1px)] bg-[size:24px_24px]'
+          : 'font-sans tracking-tight bg-[#0f172a] text-slate-100 border-2 border-slate-700 shadow-2xl bg-[linear-gradient(to_right,rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:24px_24px]';
       case 'photography': 
         return isLight
           ? 'font-serif bg-[#fbf9f5] text-stone-900 border border-stone-300 shadow-2xl'
@@ -2045,7 +2238,7 @@ export default function PitchDeckStudio({
         {deckSettings.themeStyle === 'neo-brutalism' && <div className="absolute top-0 right-0 w-36 h-36 border-b-[5px] border-l-[5px] border-black pointer-events-none flex items-center justify-center font-black text-xs uppercase" style={{ backgroundColor: deckSettings.themeColor, transform: 'translate(10%, -10%)' }}>SIA 102</div>}
         {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[2px] opacity-70 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
         {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[120px] opacity-25 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
-        {deckSettings.themeStyle === 'architecture' && <div className="absolute top-3 right-4 font-mono text-[9px] text-slate-400 opacity-60 pointer-events-none flex items-center gap-2">[ + ] SCALE 1:100 | SIA ARCHITECTURE</div>}
+        {deckSettings.themeStyle === 'architecture' && <div className="absolute top-3 right-4 font-sans font-semibold tracking-wider text-[9px] text-slate-400 opacity-60 pointer-events-none flex items-center gap-2">[ + ] SCALE 1:100 | SIA ARCHITECTURE</div>}
         {deckSettings.themeStyle === 'swiss' && <div className="absolute top-4 right-6 px-3 py-1 bg-red-600 text-white font-black text-[10px] tracking-widest uppercase pointer-events-none">SWISS GRAPHIC</div>}
 
         {/* KREATIV DESK BADGES / STEMPEL */}
@@ -2135,13 +2328,13 @@ export default function PitchDeckStudio({
                                 <div style={{ fontSize: `${Math.max(11, contentFs - 4)}px` }} className={cn("font-bold truncate", tc)}>{seg.label}</div>
                               )}
                               {!isPreviewMode ? (
-                                <input type="number" value={seg.value} onChange={(e) => handleUpdateChartSegment(slide.id, idx, 'value', e.target.value)} className="text-[11px] opacity-80 font-mono bg-transparent outline-none w-full" />
+                                <input type="number" value={seg.value} onChange={(e) => handleUpdateChartSegment(slide.id, idx, 'value', e.target.value)} className="text-[11px] opacity-80 font-sans font-bold tabular-nums bg-transparent outline-none w-full" />
                               ) : (
-                                <div className="text-[11px] opacity-60 font-mono">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                                <div className="text-[11px] opacity-60 font-sans font-bold tabular-nums">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
                               )}
                             </div>
                           </div>
-                          <div className="text-sm font-black font-mono shrink-0 opacity-80" style={{ color: seg.color }}>{pct}%</div>
+                          <div className="text-sm font-black font-sans tabular-nums shrink-0 opacity-80" style={{ color: seg.color }}>{pct}%</div>
                           {!isPreviewMode && (
                             <button type="button" onClick={() => handleDeleteChartSegment(slide.id, idx)} className="ml-1 p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
                           )}
@@ -2189,13 +2382,13 @@ export default function PitchDeckStudio({
                               <div style={{ fontSize: `${Math.max(12, contentFs - 2)}px` }} className={cn("font-bold truncate", tc)}>{ms.title}</div>
                             )}
                             {!isPreviewMode ? (
-                              <div className="flex gap-1 text-[10px] font-mono opacity-60 mt-1">
+                              <div className="flex gap-1 text-[10px] font-sans font-medium tabular-nums opacity-60 mt-1">
                                 <input type="date" value={ms.start} onChange={(e) => handleUpdateMilestone(slide.id, idx, 'start', e.target.value)} className="bg-transparent outline-none" />
                                 <span>-</span>
                                 <input type="date" value={ms.end} onChange={(e) => handleUpdateMilestone(slide.id, idx, 'end', e.target.value)} className="bg-transparent outline-none" />
                               </div>
                             ) : (
-                              <div className="text-[10px] opacity-50 font-mono mt-0.5">{ms.start} - {ms.end}</div>
+                              <div className="text-[10px] opacity-50 font-sans font-medium tabular-nums mt-0.5">{ms.start} - {ms.end}</div>
                             )}
                           </div>
                           <div className="w-24">
@@ -2246,9 +2439,9 @@ export default function PitchDeckStudio({
                    <div key={i} className="group/grp">
                      <div className={cn("flex flex-row w-full border-b-2 pb-2 mb-2 items-center font-bold", isDarkTheme ? "border-white/20" : "border-black/20", tc)}>
                         {!isPreviewMode ? (
-                          <input type="text" value={g.pos} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'pos', e.target.value)} style={{ fontSize: `${contentFs}px` }} className="w-16 opacity-80 font-mono bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
+                          <input type="text" value={g.pos} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'pos', e.target.value)} style={{ fontSize: `${contentFs}px` }} className="w-16 opacity-80 font-sans font-bold tabular-nums bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
                         ) : (
-                          <div style={{ fontSize: `${contentFs}px` }} className="w-16 opacity-60">{g.pos}</div>
+                          <div style={{ fontSize: `${contentFs}px` }} className="w-16 opacity-60 font-sans font-bold tabular-nums">{g.pos}</div>
                         )}
                         {!isPreviewMode ? (
                           <input type="text" value={g.title} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'title', e.target.value)} style={{ fontSize: `${contentFs}px` }} className="flex-1 pr-2 bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
@@ -2256,17 +2449,17 @@ export default function PitchDeckStudio({
                           <div style={{ fontSize: `${contentFs}px` }} className="flex-1 truncate pr-2">{g.title}</div>
                         )}
                         {!isPreviewMode ? (
-                          <input type="number" value={g.total} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'total', e.target.value)} style={{ fontSize: `${contentFs}px` }} className="w-32 text-right font-mono bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
+                          <input type="number" value={g.total} onChange={(e) => handleUpdateBudgetGroup(slide.id, i, 'total', e.target.value)} style={{ fontSize: `${contentFs}px` }} className="w-32 text-right font-sans font-bold tabular-nums bg-transparent outline-none border-b border-transparent focus:border-purple-500" />
                         ) : (
-                          <div style={{ fontSize: `${contentFs}px` }} className="w-32 text-right">{(g.total || 0).toLocaleString('de-CH')}</div>
+                          <div style={{ fontSize: `${contentFs}px` }} className="w-32 text-right font-sans font-bold tabular-nums">{(g.total || 0).toLocaleString('de-CH')}</div>
                         )}
                      </div>
                      {g.items && g.items.map((item: any, j: number) => (
                        <div key={j} className={cn("flex flex-row w-full border-b py-1.5 items-center opacity-80 group/item", isDarkTheme ? "border-white/5" : "border-black/5")}>
                           {!isPreviewMode ? (
-                            <input type="text" value={item.pos} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'pos', e.target.value)} style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-16 opacity-60 font-mono bg-transparent outline-none" />
+                            <input type="text" value={item.pos} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'pos', e.target.value)} style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-16 opacity-60 font-sans font-medium tabular-nums bg-transparent outline-none" />
                           ) : (
-                            <div style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-16 opacity-50 font-mono">{item.pos}</div>
+                            <div style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-16 opacity-50 font-sans font-medium tabular-nums">{item.pos}</div>
                           )}
                           {!isPreviewMode ? (
                             <input type="text" value={item.title} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'title', e.target.value)} style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="flex-1 pr-2 bg-transparent outline-none" />
@@ -2274,9 +2467,9 @@ export default function PitchDeckStudio({
                             <div style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="flex-1 truncate pr-2">{item.title}</div>
                           )}
                           {!isPreviewMode ? (
-                            <input type="number" value={item.total} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'total', e.target.value)} style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-32 text-right font-mono bg-transparent outline-none" />
+                            <input type="number" value={item.total} onChange={(e) => handleUpdateBudgetItem(slide.id, i, j, 'total', e.target.value)} style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-32 text-right font-sans font-medium tabular-nums bg-transparent outline-none" />
                           ) : (
-                            <div style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-32 text-right font-medium">{(item.total || 0).toLocaleString('de-CH')}</div>
+                            <div style={{ fontSize: `${Math.max(10, contentFs - 4)}px` }} className="w-32 text-right font-sans font-medium tabular-nums">{(item.total || 0).toLocaleString('de-CH')}</div>
                           )}
                        </div>
                       ))}
@@ -2290,7 +2483,7 @@ export default function PitchDeckStudio({
                </div>
                <div className={cn("flex flex-row w-full p-4 shrink-0 justify-between items-center", isDarkTheme ? "bg-zinc-900 text-white" : "bg-zinc-200 text-black")}>
                   <div className="text-xs uppercase tracking-widest font-black opacity-60">{t('total_budget')}</div>
-                  <div className="text-2xl font-bold">CHF {(slide.dataPayload.totalBudget || slide.dataPayload.budgetGroups.reduce((acc:number, grp:any)=>acc+(grp.total||0), 0)).toLocaleString('de-CH')}</div>
+                  <div className="text-2xl font-bold font-sans tabular-nums">CHF {(slide.dataPayload.totalBudget || slide.dataPayload.budgetGroups.reduce((acc:number, grp:any)=>acc+(grp.total||0), 0)).toLocaleString('de-CH')}</div>
                </div>
              </div>
           )}
@@ -2298,98 +2491,115 @@ export default function PitchDeckStudio({
           {/* INHALTSVERZEICHNIS / AGENDA LAYOUT */}
           {slide.layout === 'table-of-contents' && (
              <div className="w-full h-full flex flex-col justify-between col-span-full overflow-hidden p-2">
-               <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-2">
-                 {(() => {
-                   let itemsToRender = slide.agendaItems || [];
-                   if (itemsToRender.length === 0) {
-                     itemsToRender = slides
-                       .map((s, idx) => {
-                         const pageNum = idx + 1;
-                         const formattedPage = pageNum < 10 ? `S. 0${pageNum}` : `S. ${pageNum}`;
-                         const formattedNum = pageNum < 10 ? `0${pageNum}` : `${pageNum}`;
-                         let autoDesc = s.content ? s.content.slice(0, 65).replace(/\n/g, ' ') : '';
-                         if (!autoDesc) {
-                           if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
-                           else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
-                           else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
-                           else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
-                           else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
-                           else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
-                           else autoDesc = 'Projekt-Details & Dokumentation';
-                         }
-                         return { num: formattedNum, title: s.title || `Folie ${pageNum}`, desc: autoDesc, page: formattedPage, isAgenda: s.layout === 'table-of-contents' };
-                       })
-                       .filter(item => !item.isAgenda);
-                   }
+               {(() => {
+                 let itemsToRender = slide.agendaItems || [];
+                 if (itemsToRender.length === 0) {
+                   itemsToRender = slides
+                     .map((s, idx) => {
+                       const pageNum = idx + 1;
+                       const formattedPage = pageNum < 10 ? `S. 0${pageNum}` : `S. ${pageNum}`;
+                       const formattedNum = pageNum < 10 ? `0${pageNum}` : `${pageNum}`;
+                       let autoDesc = s.content ? s.content.slice(0, 65).replace(/\n/g, ' ') : '';
+                       if (!autoDesc) {
+                         if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
+                         else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
+                         else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+                         else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
+                         else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
+                         else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
+                         else autoDesc = 'Projekt-Details & Dokumentation';
+                       }
+                       return { num: formattedNum, title: s.title || `Folie ${pageNum}`, desc: autoDesc, page: formattedPage, isAgenda: s.layout === 'table-of-contents' };
+                     })
+                     .filter(item => !item.isAgenda);
+                 }
 
-                   if (itemsToRender.length === 0) {
-                     itemsToRender = [
-                       { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
-                       { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
-                       { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
-                       { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
-                     ];
-                   }
+                 if (itemsToRender.length === 0) {
+                   itemsToRender = [
+                     { num: '01', title: 'Projekt-Übersicht & Ziele', desc: 'Statusbericht, Baubeschrieb und wesentliche Meilensteine', page: 'S. 03' },
+                     { num: '02', title: 'Baukosten & Budget-Kontrolle', desc: 'BKP Aufschlüsselung, Kennzahlen & Kostenentwicklung', page: 'S. 05' },
+                     { num: '03', title: 'Terminplan & Bauphasen', desc: 'Smart Calendar, Bauetappen & Abnahmetermine', page: 'S. 08' },
+                     { num: '04', title: 'Mängel & Qualitätssicherung', desc: 'Aktuelle Pendenzen, Freigaben & Begehungsprotokolle', page: 'S. 11' }
+                   ];
+                 }
 
-                   return itemsToRender.map((item: any, idx: number) => (
-                     <div key={idx} className={cn("p-4 rounded-xl border flex flex-col justify-center relative group transition-all", isDarkTheme ? "bg-white/5 border-white/10 hover:border-purple-500/30" : "bg-black/5 border-black/10 hover:border-purple-500/30")}>
-                       <div className="flex items-center justify-between w-full gap-4">
-                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                           <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
-                             {item.num || `0${idx + 1}`}
-                           </span>
-                           {!isPreviewMode ? (
-                             <input 
-                               type="text" 
-                               value={item.title} 
-                               onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'title', e.target.value)} 
-                               style={{ fontSize: `${Math.max(14, contentFs)}px` }} 
-                               className={cn("font-bold bg-transparent outline-none flex-1 border-b border-transparent focus:border-purple-500 truncate", tc)} 
-                               placeholder="Kapitel Titel..."
-                             />
-                           ) : (
-                             <span style={{ fontSize: `${Math.max(14, contentFs)}px` }} className={cn("font-bold truncate", tc)}>{item.title}</span>
-                           )}
-                         </div>
-
-                         {/* DOTTED LEADER LINE */}
-                         <div className="flex-1 border-b-2 border-dotted opacity-30 mx-2 hidden sm:block" style={{ borderColor: deckSettings.themeColor }}></div>
-
-                         <div className="flex items-center gap-2 shrink-0">
-                           {!isPreviewMode ? (
-                             <input 
-                               type="text" 
-                               value={item.page || `S. 0${idx + 2}`} 
-                               onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'page', e.target.value)} 
-                               className={cn("font-mono font-bold text-xs bg-transparent outline-none w-16 text-right border-b border-transparent focus:border-purple-500", tc)} 
-                             />
-                           ) : (
-                             <span className={cn("font-mono font-bold text-xs opacity-70", tc)}>{item.page || `S. 0${idx + 2}`}</span>
-                           )}
-                           {!isPreviewMode && (
-                             <button type="button" onClick={() => handleDeleteAgendaItem(slide.id, idx)} className="p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={13}/></button>
-                           )}
-                         </div>
+                 return (
+                   <>
+                     {!isPreviewMode && itemsToRender.length > 5 && (
+                       <div className="mb-2 p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-between text-xs text-amber-300 gap-3 shrink-0">
+                         <span className="font-medium">⚠️ {itemsToRender.length} Kapitel: Auf Folienhöhe passen maximal 5 Einträge ohne Scrollen.</span>
+                         <button 
+                           type="button" 
+                           onClick={() => handleSplitAgendaSlide(slide.id)} 
+                           className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs transition-colors shrink-0 cursor-pointer shadow-sm"
+                         >
+                           Auf 2 Folien aufteilen
+                         </button>
                        </div>
+                     )}
 
-                       {/* SUB-DESCRIPTION */}
-                       <div className="pl-11 mt-1">
-                          {!isPreviewMode ? (
-                            <input 
-                              type="text" 
-                              value={item.desc || ''} 
-                              onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
-                              className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
-                              placeholder="Kurze Beschreibung / Unterpunkte..."
-                            />
-                          ) : (
-                            <p className="text-xs opacity-60 truncate">{item.desc}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                 })()}
-               </div>
+                     <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pr-1">
+                       {itemsToRender.map((item: any, idx: number) => (
+                         <div key={idx} className={cn("p-3.5 rounded-xl border flex flex-col justify-center relative group transition-all", isDarkTheme ? "bg-white/5 border-white/10 hover:border-purple-500/30" : "bg-black/5 border-black/10 hover:border-purple-500/30")}>
+                           <div className="flex items-center justify-between w-full gap-4">
+                             <div className="flex items-center gap-3 flex-1 min-w-0">
+                               <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 font-extrabold flex items-center justify-center text-xs shrink-0 font-sans tabular-nums">
+                                 {item.num || (idx + 1 < 10 ? `0${idx + 1}` : `${idx + 1}`)}
+                               </span>
+                               {!isPreviewMode ? (
+                                 <input 
+                                   type="text" 
+                                   value={item.title} 
+                                   onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'title', e.target.value)} 
+                                   style={{ fontSize: `${Math.max(14, contentFs)}px` }} 
+                                   className={cn("font-bold bg-transparent outline-none flex-1 border-b border-transparent focus:border-purple-500 truncate", tc)} 
+                                   placeholder="Kapitel Titel..."
+                                 />
+                               ) : (
+                                 <span style={{ fontSize: `${Math.max(14, contentFs)}px` }} className={cn("font-bold truncate", tc)}>{item.title}</span>
+                               )}
+                             </div>
+
+                             {/* DOTTED LEADER LINE */}
+                             <div className="flex-1 border-b-2 border-dotted opacity-30 mx-2 hidden sm:block" style={{ borderColor: deckSettings.themeColor }}></div>
+
+                             <div className="flex items-center gap-2 shrink-0">
+                               {!isPreviewMode ? (
+                                 <input 
+                                   type="text" 
+                                   value={item.page || `S. 0${idx + 2}`} 
+                                   onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'page', e.target.value)} 
+                                   className={cn("font-sans font-bold tabular-nums text-xs bg-transparent outline-none w-16 text-right border-b border-transparent focus:border-purple-500", tc)} 
+                                 />
+                               ) : (
+                                 <span className={cn("font-sans font-bold tabular-nums text-xs opacity-70", tc)}>{item.page || `S. 0${idx + 2}`}</span>
+                               )}
+                               {!isPreviewMode && (
+                                 <button type="button" onClick={() => handleDeleteAgendaItem(slide.id, idx)} className="p-1 text-red-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={13}/></button>
+                               )}
+                             </div>
+                           </div>
+
+                           {/* SUB-DESCRIPTION */}
+                           <div className="pl-11 mt-1">
+                              {!isPreviewMode ? (
+                                <input 
+                                  type="text" 
+                                  value={item.desc || ''} 
+                                  onChange={(e) => handleUpdateAgendaItem(slide.id, idx, 'desc', e.target.value)} 
+                                  className="text-xs opacity-60 bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500" 
+                                  placeholder="Kurze Beschreibung / Unterpunkte..."
+                                />
+                              ) : (
+                                <p className="text-xs opacity-60 truncate">{item.desc}</p>
+                              )}
+                            </div>
+                          </div>
+                       ))}
+                     </div>
+                   </>
+                 );
+               })()}
 
                {!isPreviewMode && (
                  <div className="flex items-center gap-3 mt-4 shrink-0 flex-wrap p-2 bg-purple-950/20 border border-purple-500/30 rounded-2xl backdrop-blur-md">
@@ -2892,27 +3102,27 @@ export default function PitchDeckStudio({
                 <div className="grid grid-cols-1 gap-3 pt-2">
                   <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-sans font-bold">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
                   <button type="button" onClick={handleGenerateChartSlide} className="w-full p-4 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><PieChart size={18}/> Baukosten Chart</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 rounded font-mono">Donut</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 rounded font-sans font-bold">Donut</span>
                   </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><CalendarDays size={18}/>{t('generate_roadmap')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-mono">Vorlage</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-sans font-bold">Vorlage</span>
                   </button>
                   <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-4 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><Users size={18}/>{t('load_team')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 rounded font-mono">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 rounded font-sans font-bold">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
                   </button>
                   <button type="button" onClick={handleImportDefects} className="w-full p-4 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><AlertTriangle size={18}/>{t('import_defects')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-red-500/20 rounded font-mono">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-red-500/20 rounded font-sans font-bold">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
                   <button type="button" onClick={handleImportWhiteboard} className="w-full p-4 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><PenTool size={18}/> Whiteboard Skizze</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 rounded font-mono">Import</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 rounded font-sans font-bold">Import</span>
                   </button>
                 </div>
               </div>
@@ -2980,36 +3190,36 @@ export default function PitchDeckStudio({
                 <div className="space-y-2">
                   <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-bold border border-indigo-500/20">
                     <span className="flex items-center gap-2.5"><BookOpen size={15}/> Inhaltsverzeichnis & Agenda</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-indigo-500/20 text-indigo-300">Vorlage</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-indigo-500/20 text-indigo-300">Vorlage</span>
                   </button>
                   <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-bold border border-emerald-500/20">
                     <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-emerald-500/20 text-emerald-300">BKP Plan</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-emerald-500/20 text-emerald-300">BKP Plan</span>
                   </button>
                   <button type="button" onClick={handleGenerateChartSlide} className="w-full p-2.5 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-between hover:bg-purple-500/20 transition-all text-xs font-bold border border-purple-500/20">
                     <span className="flex items-center gap-2.5"><PieChart size={15}/> Baukosten Chart</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-purple-500/20 text-purple-300">Donut</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-purple-500/20 text-purple-300">Donut</span>
                   </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-between hover:bg-orange-500/20 transition-all text-xs font-bold border border-orange-500/20">
                     <span className="flex items-center gap-2.5"><CalendarDays size={15}/>{t('generate_roadmap')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-orange-500/20 text-orange-300">Gantt</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-orange-500/20 text-orange-300">Gantt</span>
                   </button>
                   <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-2.5 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-between hover:bg-blue-500/20 transition-all text-xs font-bold border border-blue-500/20">
                     <span className="flex items-center gap-2.5"><Users size={15}/>{t('load_team')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-blue-500/20 text-blue-300">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-blue-500/20 text-blue-300">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
                   </button>
                   <button type="button" onClick={handleImportDefects} className="w-full p-2.5 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-between hover:bg-red-500/20 transition-all text-xs font-bold border border-red-500/20">
                     <span className="flex items-center gap-2.5"><AlertTriangle size={15}/>{t('import_defects')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
                   <div className="w-full h-px bg-border/50 my-1"></div>
                   <button type="button" onClick={handleImportWhiteboard} className="w-full p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-between hover:bg-cyan-500/20 transition-all text-xs font-bold border border-cyan-500/20">
                     <span className="flex items-center gap-2.5"><PenTool size={15}/> Whiteboard Skizze</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-cyan-500/20 text-cyan-300">Skizze</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-cyan-500/20 text-cyan-300">Skizze</span>
                   </button>
                   <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-between hover:bg-pink-500/20 transition-all text-xs font-bold border border-pink-500/20">
                     <span className="flex items-center gap-2.5"><Box size={15}/>{t('import_renderings')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-pink-500/20 text-pink-300">Medien</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-pink-500/20 text-pink-300">Medien</span>
                   </button>
                 </div>
               </div>
@@ -3069,7 +3279,7 @@ export default function PitchDeckStudio({
         )}
 
         {/* CENTER WORKSPACE */}
-        <div className="flex-1 flex flex-col bg-[#09090b] relative min-w-0">
+        <div className={cn("flex-1 flex flex-col relative min-w-0 transition-colors", deckSettings.colorMode === 'light' ? "bg-slate-100 text-slate-900" : "bg-[#09090b] text-white")}>
           
           {/* RESPONSIVE TOP HEADER TOOLBAR */}
           <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-border bg-surface shadow-sm z-20 shrink-0 gap-2 overflow-x-auto hide-scrollbar">
@@ -3118,14 +3328,14 @@ export default function PitchDeckStudio({
                   <div className="hidden lg:flex flex-row items-center gap-1 bg-background border border-border rounded-lg px-2 py-1 shrink-0">
                     <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden 2xl:inline">{t('title_label')}</span>
                     <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Titel verkleinern"><Minus size={11} /></button>
-                    <span className="text-xs font-bold font-mono w-4 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
+                    <span className="text-xs font-bold font-sans tabular-nums w-4 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
                     <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Titel vergrössern"><Plus size={11} /></button>
 
                     <div className="h-3.5 w-px bg-border mx-1"></div>
 
                     <span className="text-[10px] font-bold text-text-muted uppercase px-1 hidden 2xl:inline">{t('text_label')}</span>
                     <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Text verkleinern"><Minus size={11} /></button>
-                    <span className="text-xs font-bold font-mono w-4 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
+                    <span className="text-xs font-bold font-sans tabular-nums w-4 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
                     <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary" title="Text vergrössern"><Plus size={11} /></button>
                   </div>
 
@@ -3371,7 +3581,7 @@ export default function PitchDeckStudio({
             </div>
           </header>
 
-          <div className="flex-1 overflow-hidden p-8 flex flex-col justify-center items-center bg-background/50 relative">
+          <div className={cn("flex-1 overflow-hidden p-8 flex flex-col justify-center items-center relative transition-colors", deckSettings.colorMode === 'light' ? "bg-slate-200/70" : "bg-background/50")}>
             
             {isPreviewMode && (
               <>

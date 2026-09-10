@@ -20,6 +20,7 @@ import {
 import { callGeminiAPI } from '../utils/geminiClient';
 import { cn } from '../utils';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export interface BudgetItem {
   id: string;
@@ -47,6 +48,111 @@ interface AiBudgetImportModalProps {
   currentVersionName?: string;
 }
 
+const translations = {
+  de: {
+    modal_title: 'KI Excel & Foto Budget-Import',
+    modal_subtitle: 'Lade einen Excel-Screenshot, ein Foto oder ein PDF hoch. Die KI extrahiert Phasen, Gewerke & Preise vollautomatisch.',
+    tab_upload: 'Screenshot, Foto oder PDF',
+    tab_text: 'Excel-Tabellentext / CSV',
+    drop_title: 'Excel-Screenshot, Foto oder PDF hier ablegen',
+    drop_sub: 'oder klicken zum Auswählen • Unterstützt Cmd+V direkt aus der Zwischenablage',
+    drop_tip: 'Tipp: Mache einen Screenshot (Cmd+Shift+4) und drücke hier einfach Cmd+V!',
+    change_file: 'Klicken, um eine andere Datei auszuwählen.',
+    pdf_doc: 'PDF Dokument',
+    text_label: 'Tabellendaten aus Excel einfügen (Spalten mit Tabulator getrennt)',
+    clear: 'Löschen',
+    text_placeholder: 'Kopiere Zeilen aus Excel / Numbers und füge sie hier ein...\n\nBeispiel:\n100  Vorbereitung\n101.1  Baustelleneinrichtung  1  Pausch.  4500\n200  Rohbau\n201.1  Aushubarbeiten  120  m3  85',
+    text_hint: 'Die KI erkennt Phasenüberschriften, BKP-Codes, Mengen, Einheiten und Beträge automatisch – unabhängig von der exakten Spaltenreihenfolge.',
+    supported_formats: 'Unterstützte Formate:',
+    fmt_1: '• Screenshots von Excel, Apple Numbers, Google Sheets oder Bausoftware-Exporten',
+    fmt_2: '• Abfotografierte Kalkulationen, Kostenvoranschläge oder SIA-Leistungsverzeichnisse',
+    fmt_3: '• PDF-Offerten von Handwerkern und Planern',
+    cancel: 'Abbrechen',
+    analyze_btn: 'Tabelle jetzt analysieren',
+    analyzing: 'KI analysiert Dokument...',
+    step2_title: 'Erkannte Phasen',
+    step2_items_total: 'Positionen gesamt',
+    step2_grand_total: 'Gesamttotal (exkl. MWST)',
+    step2_sub: 'Erkannte Phasen & Positionen prüfen:',
+    other_doc: 'Anderes Dokument analysieren',
+    import_mode_label: 'Wie möchtest du das Budget einfügen?',
+    mode_new_variant: 'Als neue Variante anlegen',
+    mode_new_variant_desc: 'Erstellt eine neue Variante (z. B. «Variante 2 - Excel-Import»), bestehende Daten bleiben unberührt.',
+    mode_recommended: 'Empfohlen',
+    mode_append: 'In aktive Variante anhängen',
+    mode_append_desc: 'Fügt die erkannten Phasen an das bestehende Budget hinten an.',
+    mode_replace: 'Aktive Variante ersetzen',
+    mode_replace_desc: 'Überschreibt alle bisherigen Phasen der aktuellen Variante.',
+    add_pos: 'Position hinzufügen',
+    pos_col: 'Pos',
+    desc_col: 'Beschreibung',
+    qty_col: 'Menge',
+    unit_col: 'Einheit',
+    price_col: 'EP (CHF)',
+    total_col: 'Total (CHF)',
+    remove_pos: 'Position entfernen',
+    confirm_btn: 'Budget jetzt übernehmen',
+    clipboard_pasted: 'Screenshot aus der Zwischenablage eingefügt!',
+    please_upload: 'Bitte lade eine Datei hoch oder füge Tabellen-Text ein.',
+    ai_success: 'KI-Erkennung erfolgreich:',
+    ai_error: 'Fehler bei der KI-Analyse. Bitte Bildqualität oder Tabellentext prüfen.',
+    entries: 'Einträge',
+    phases: 'Phasen',
+    new_position: 'Neue Position'
+  },
+  en: {
+    modal_title: 'AI Excel & Photo Budget Import',
+    modal_subtitle: 'Upload an Excel screenshot, photo or PDF. AI automatically extracts phases, trades, quantities & prices.',
+    tab_upload: 'Screenshot, Photo or PDF',
+    tab_text: 'Excel Table Text / CSV',
+    drop_title: 'Drop Excel screenshot, photo or PDF here',
+    drop_sub: 'or click to browse • Supports Cmd+V directly from clipboard',
+    drop_tip: 'Tip: Take a screenshot (Cmd+Shift+4) and simply press Cmd+V here!',
+    change_file: 'Click to select a different file.',
+    pdf_doc: 'PDF Document',
+    text_label: 'Paste table data from Excel (columns tab-separated)',
+    clear: 'Clear',
+    text_placeholder: 'Copy rows from Excel / Numbers and paste them here...\n\nExample:\n100  Preparation\n101.1  Site setup  1  Lump sum  4500\n200  Structural work\n201.1  Excavation  120  m3  85',
+    text_hint: 'AI automatically recognizes phase headers, BKP/CSI codes, quantities, units and prices – regardless of exact column order.',
+    supported_formats: 'Supported formats:',
+    fmt_1: '• Screenshots from Excel, Apple Numbers, Google Sheets or BIM/construction exports',
+    fmt_2: '• Photos of paper calculations, cost estimates or bill of quantities',
+    fmt_3: '• PDF quotes from contractors and planners',
+    cancel: 'Cancel',
+    analyze_btn: 'Analyze Table Now',
+    analyzing: 'AI analyzing document...',
+    step2_title: 'Recognized Phases',
+    step2_items_total: 'Total Positions',
+    step2_grand_total: 'Grand Total (excl. VAT)',
+    step2_sub: 'Review recognized phases & items:',
+    other_doc: 'Analyze different document',
+    import_mode_label: 'How would you like to import this budget?',
+    mode_new_variant: 'Create as new variant',
+    mode_new_variant_desc: 'Creates a new variant (e.g. "Variant 2 - Excel Import"), keeping existing data safe.',
+    mode_recommended: 'Recommended',
+    mode_append: 'Append to active variant',
+    mode_append_desc: 'Appends recognized phases to the currently active variant.',
+    mode_replace: 'Replace active variant',
+    mode_replace_desc: 'Overwrites all existing phases in the active variant.',
+    add_pos: 'Add Position',
+    pos_col: 'Pos',
+    desc_col: 'Description',
+    qty_col: 'Qty',
+    unit_col: 'Unit',
+    price_col: 'Unit Price (CHF)',
+    total_col: 'Total (CHF)',
+    remove_pos: 'Remove position',
+    confirm_btn: 'Apply Budget Now',
+    clipboard_pasted: 'Screenshot pasted from clipboard!',
+    please_upload: 'Please upload a file or paste table text.',
+    ai_success: 'AI recognition successful:',
+    ai_error: 'Error during AI analysis. Please check image quality or table text.',
+    entries: 'Items',
+    phases: 'Phases',
+    new_position: 'New Item'
+  }
+};
+
 export default function AiBudgetImportModal({
   isOpen,
   onClose,
@@ -55,6 +161,12 @@ export default function AiBudgetImportModal({
   currentVersionName = 'Aktive Variante'
 }: AiBudgetImportModalProps) {
   const toastContext = useToast();
+  const { language } = useLanguage();
+  const t = (key: keyof typeof translations['de']) => {
+    const lang = (typeof language === 'string' && language.toLowerCase().startsWith('en')) ? 'en' : 'de';
+    return translations[lang]?.[key] || translations.de[key] || key;
+  };
+
   const notify = (msg: string, type: 'success' | 'error' | 'info' = 'info') => {
     if (addToast) addToast(msg, type);
     else if (toastContext?.addToast) toastContext.addToast(msg, type);
@@ -73,7 +185,7 @@ export default function AiBudgetImportModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Clipboard Paste Listener for Screenshots (Cmd+V)
+  // Listen for Clipboard Paste (Cmd+V) for screenshots
   useEffect(() => {
     if (!isOpen || parsedGroups) return;
 
@@ -87,24 +199,24 @@ export default function AiBudgetImportModal({
           const pastedBlob = item.getAsFile();
           if (pastedBlob) {
             handleFileSelected(pastedBlob);
-            notify('Screenshot aus der Zwischenablage eingefügt!', 'info');
+            notify(t('clipboard_pasted'), 'info');
             return;
           }
         }
       }
 
-      // If text pasted while on text tab or upload tab
-      const text = e.clipboardData?.getData('text');
-      if (text && (text.includes('\t') || text.includes(';') || text.length > 50)) {
-        if (activeTab === 'text') {
-          setPastedText(text);
-        }
+      // If user pasted text and is in text tab, it pastes naturally
+      const text = e.clipboardData?.getData('text/plain');
+      if (text && activeTab === 'upload' && (text.includes('\t') || text.includes('\n'))) {
+        setPastedText(text);
+        setActiveTab('text');
+        notify(t('clipboard_pasted'), 'info');
       }
     };
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [isOpen, activeTab, parsedGroups]);
+  }, [isOpen, parsedGroups, activeTab]);
 
   if (!isOpen) return null;
 
@@ -121,23 +233,22 @@ export default function AiBudgetImportModal({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileSelected(e.dataTransfer.files[0]);
+    const droppedFile = e.dataTransfer.files?.[0];
+    if (droppedFile) {
+      handleFileSelected(droppedFile);
     }
   };
 
-  const formatCHF = (val: number) => {
-    return new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF', minimumFractionDigits: 2 }).format(val || 0);
+  const calculateGroupTotal = (group: BudgetGroup): number => {
+    return group.items.reduce((sum, item) => sum + (Number(item.total) || 0), 0);
   };
 
-  const calculateGrandTotal = (groups: BudgetGroup[]) => {
-    return groups.reduce((sum, g) => {
-      return sum + g.items.reduce((itemSum, item) => itemSum + (Number(item.total) || 0), 0);
-    }, 0);
+  const calculateGrandTotal = (groups: BudgetGroup[]): number => {
+    return groups.reduce((sum, g) => sum + calculateGroupTotal(g), 0);
   };
 
-  const calculateGroupTotal = (group: BudgetGroup) => {
-    return group.items.reduce((itemSum, item) => itemSum + (Number(item.total) || 0), 0);
+  const formatCHF = (val: number): string => {
+    return `CHF ${(val || 0).toLocaleString('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const fileToBase64 = (f: File): Promise<string> => {
@@ -155,7 +266,7 @@ export default function AiBudgetImportModal({
 
   const handleAnalyze = async () => {
     if (!file && !pastedText.trim()) {
-      notify('Bitte lade eine Datei hoch oder füge Tabellen-Text ein.', 'error');
+      notify(t('please_upload'), 'error');
       return;
     }
 
@@ -246,7 +357,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               return {
                 id: `i_ai_${timestamp}_${gIdx}_${itIdx}`,
                 pos: String(it.pos || `${g.pos || gIdx + 1}.${itIdx + 1}`),
-                description: String(it.description || 'Position'),
+                description: String(it.description || t('new_position')),
                 qty,
                 unit: String(it.unit || 'Stk'),
                 unitPrice,
@@ -274,10 +385,10 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
       cleanGroups.forEach(g => { initialExpanded[g.id] = true; });
       setExpandedGroups(initialExpanded);
 
-      notify(`KI-Erkennung erfolgreich: ${cleanGroups.length} Phasen extrahiert!`, 'success');
+      notify(`${t('ai_success')} ${cleanGroups.length} ${t('phases')}!`, 'success');
     } catch (err: any) {
       console.error('AI Budget Import Error:', err);
-      notify(err?.message || 'Fehler bei der KI-Analyse. Bitte Bildqualität oder Tabellentext prüfen.', 'error');
+      notify(err?.message || t('ai_error'), 'error');
     } finally {
       setIsAnalyzing(false);
     }
@@ -335,7 +446,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
             {
               id: newItemId,
               pos: newPos,
-              description: 'Neue Position',
+              description: t('new_position'),
               qty: 1,
               unit: 'Stk',
               unitPrice: 0,
@@ -371,14 +482,14 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base sm:text-lg text-text-primary tracking-tight">
-                  KI Excel & Foto Budget-Import
+                  {t('modal_title')}
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/25">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30">
                   Vision AI
                 </span>
               </div>
               <p className="text-xs text-text-muted mt-0.5">
-                Lade einen Excel-Screenshot, ein Foto oder ein PDF hoch. Die KI extrahiert Phasen, Gewerke & Preise vollautomatisch.
+                {t('modal_subtitle')}
               </p>
             </div>
           </div>
@@ -386,7 +497,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
           <button 
             onClick={onClose}
             className="p-2 text-text-muted hover:text-text-primary hover:bg-background/80 rounded-xl transition-colors cursor-pointer"
-            title="Schliessen"
+            title={t('cancel')}
           >
             <X size={20} />
           </button>
@@ -406,24 +517,24 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                   className={cn(
                     "pb-3 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer",
                     activeTab === 'upload' 
-                      ? "border-purple-500 text-purple-400" 
+                      ? "border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400" 
                       : "border-transparent text-text-muted hover:text-text-primary"
                   )}
                 >
                   <ImageIcon size={16} />
-                  Screenshot, Foto oder PDF
+                  {t('tab_upload')}
                 </button>
                 <button
                   onClick={() => setActiveTab('text')}
                   className={cn(
                     "pb-3 text-xs sm:text-sm font-bold border-b-2 transition-colors flex items-center gap-2 cursor-pointer",
                     activeTab === 'text' 
-                      ? "border-purple-500 text-purple-400" 
+                      ? "border-purple-600 dark:border-purple-500 text-purple-600 dark:text-purple-400" 
                       : "border-transparent text-text-muted hover:text-text-primary"
                   )}
                 >
                   <FileSpreadsheet size={16} />
-                  Excel-Tabellentext / CSV
+                  {t('tab_text')}
                 </button>
               </div>
 
@@ -438,34 +549,30 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     className={cn(
                       "border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 group",
                       dragOver 
-                        ? "border-purple-500 bg-purple-500/10 scale-[0.99]" 
-                        : "border-border/80 hover:border-purple-500/60 hover:bg-surface/60 bg-background/40"
+                        ? "border-purple-500 bg-purple-500/10 scale-[1.01]" 
+                        : "border-border/80 hover:border-purple-500/60 bg-background/50 hover:bg-background/80"
                     )}
                   >
                     <input 
                       type="file" 
                       ref={fileInputRef} 
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files[0]) {
-                          handleFileSelected(e.target.files[0]);
-                        }
-                      }} 
+                      onChange={(e) => e.target.files?.[0] && handleFileSelected(e.target.files[0])}
                       accept="image/*,application/pdf" 
                       className="hidden" 
                     />
 
                     {previewUrl ? (
-                      <div className="space-y-3 max-w-md w-full">
-                        <div className="relative rounded-2xl overflow-hidden border border-border/70 shadow-md max-h-56 bg-black/20">
+                      <div className="space-y-3 w-full max-w-sm mx-auto">
+                        <div className="relative rounded-2xl overflow-hidden border border-border/80 shadow-md max-h-56 bg-surface">
                           <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               setFile(null);
                               setPreviewUrl(null);
                             }}
-                            className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-red-500 text-white rounded-lg transition-colors cursor-pointer"
-                            title="Entfernen"
+                            className="absolute top-2 right-2 p-1.5 bg-black/70 text-white rounded-full hover:bg-black transition-colors"
                           >
                             <Trash2 size={14} />
                           </button>
@@ -473,32 +580,32 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                         <div className="text-xs font-bold text-text-primary truncate">
                           {file?.name} ({Math.round((file?.size || 0) / 1024)} KB)
                         </div>
-                        <p className="text-[11px] text-text-muted">Klicken, um eine andere Datei auszuwählen.</p>
+                        <p className="text-[11px] text-text-muted">{t('change_file')}</p>
                       </div>
                     ) : file ? (
                       <div className="space-y-3">
-                        <div className="w-16 h-16 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center mx-auto border border-purple-500/30">
+                        <div className="w-16 h-16 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto border border-purple-500/30">
                           <FileText size={32} />
                         </div>
                         <div className="font-bold text-sm text-text-primary">{file.name}</div>
-                        <div className="text-xs text-text-muted">{Math.round(file.size / 1024)} KB (PDF Dokument)</div>
+                        <div className="text-xs text-text-muted">{Math.round(file.size / 1024)} KB ({t('pdf_doc')})</div>
                       </div>
                     ) : (
                       <>
-                        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-500/20 transition-all shadow-inner">
+                        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-110 group-hover:bg-purple-500/20 transition-all shadow-inner">
                           <Upload size={28} />
                         </div>
                         <div>
                           <p className="font-extrabold text-sm sm:text-base text-text-primary">
-                            Excel-Screenshot, Foto oder PDF hier ablegen
+                            {t('drop_title')}
                           </p>
                           <p className="text-xs text-text-muted mt-1">
-                            oder klicken zum Auswählen • Unterstützt <span className="text-purple-400 font-bold">Cmd+V</span> direkt aus der Zwischenablage
+                            {t('drop_sub')}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-text-muted bg-surface border border-border/60 px-3 py-1.5 rounded-full">
-                          <Clipboard size={13} className="text-purple-400" />
-                          Tipp: Mache einen Screenshot (Cmd+Shift+4) und drücke hier einfach Cmd+V!
+                          <Clipboard size={13} className="text-purple-600 dark:text-purple-400" />
+                          {t('drop_tip')}
                         </div>
                       </>
                     )}
@@ -511,14 +618,14 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                      Tabellendaten aus Excel einfügen (Spalten mit Tabulator getrennt)
+                      {t('text_label')}
                     </label>
                     {pastedText && (
                       <button 
                         onClick={() => setPastedText('')}
                         className="text-xs text-text-muted hover:text-red-400 font-medium cursor-pointer"
                       >
-                        Löschen
+                        {t('clear')}
                       </button>
                     )}
                   </div>
@@ -526,23 +633,23 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     rows={8}
                     value={pastedText}
                     onChange={(e) => setPastedText(e.target.value)}
-                    placeholder="Kopiere Zeilen aus Excel / Numbers und füge sie hier ein...&#10;&#10;Beispiel:&#10;100  Vorbereitung&#10;101.1  Baustelleneinrichtung  1  Pausch.  4500&#10;200  Rohbau&#10;201.1  Aushubarbeiten  120  m3  85"
-                    className="w-full bg-background/70 border border-border/80 rounded-2xl p-4 text-xs font-mono text-text-primary focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 outline-none resize-y"
+                    placeholder={t('text_placeholder')}
+                    className="w-full bg-background/70 border border-border/80 rounded-2xl p-4 text-xs font-sans text-text-primary focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 outline-none resize-y leading-relaxed"
                   />
                   <p className="text-[11px] text-text-muted">
-                    Die KI erkennt Phasenüberschriften, BKP-Codes, Mengen, Einheiten und Beträge automatisch – unabhängig von der exakten Spaltenreihenfolge.
+                    {t('text_hint')}
                   </p>
                 </div>
               )}
 
               {/* INFO BOX */}
               <div className="bg-purple-500/10 border border-purple-500/25 rounded-2xl p-4 flex items-start gap-3">
-                <Sparkles size={18} className="text-purple-400 shrink-0 mt-0.5" />
+                <Sparkles size={18} className="text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
                 <div className="text-xs text-text-muted space-y-1">
-                  <div className="font-bold text-text-primary">Unterstützte Formate:</div>
-                  <div>• Screenshots von Excel, Apple Numbers, Google Sheets oder Bausoftware-Exporten</div>
-                  <div>• Abfotografierte Kalkulationen, Kostenvoranschläge oder SIA-Leistungsverzeichnisse</div>
-                  <div>• PDF-Offerten von Handwerkern und Planern</div>
+                  <div className="font-bold text-text-primary">{t('supported_formats')}</div>
+                  <div>{t('fmt_1')}</div>
+                  <div>{t('fmt_2')}</div>
+                  <div>{t('fmt_3')}</div>
                 </div>
               </div>
             </div>
@@ -555,34 +662,36 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-background/80 border border-border/70 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                   <div>
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider">Erkannte Phasen</div>
-                    <div className="text-xl font-extrabold text-purple-400 mt-1">{parsedGroups.length} Phasen</div>
+                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('step2_title')}</div>
+                    <div className="text-xl font-extrabold text-purple-600 dark:text-purple-400 mt-1 tabular-nums font-sans">
+                      {parsedGroups.length} {t('phases')}
+                    </div>
                   </div>
-                  <div className="p-3 bg-purple-500/10 text-purple-400 rounded-xl">
+                  <div className="p-3 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-xl">
                     <Layers size={20} />
                   </div>
                 </div>
 
                 <div className="bg-background/80 border border-border/70 rounded-2xl p-4 flex items-center justify-between shadow-sm">
                   <div>
-                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider">Positionen gesamt</div>
-                    <div className="text-xl font-extrabold text-blue-400 mt-1">
-                      {parsedGroups.reduce((sum, g) => sum + g.items.length, 0)} Einträge
+                    <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('step2_items_total')}</div>
+                    <div className="text-xl font-extrabold text-blue-500 dark:text-blue-400 mt-1 tabular-nums font-sans">
+                      {parsedGroups.reduce((sum, g) => sum + g.items.length, 0)} {t('entries')}
                     </div>
                   </div>
-                  <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl">
+                  <div className="p-3 bg-blue-500/10 text-blue-500 dark:text-blue-400 rounded-xl">
                     <FileText size={20} />
                   </div>
                 </div>
 
                 <div className="bg-background/80 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between shadow-sm bg-gradient-to-br from-emerald-500/5 to-transparent">
                   <div>
-                    <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Gesamttotal (exkl. MWST)</div>
-                    <div className="text-xl font-extrabold text-emerald-400 mt-1">
+                    <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">{t('step2_grand_total')}</div>
+                    <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums font-sans">
                       {formatCHF(calculateGrandTotal(parsedGroups))}
                     </div>
                   </div>
-                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                  <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
                     <Check size={20} />
                   </div>
                 </div>
@@ -591,8 +700,8 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               {/* IMPORT MODE SELECTION */}
               <div className="bg-surface border border-border/70 rounded-2xl p-4 space-y-3">
                 <div className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                  <ArrowRight size={14} className="text-purple-400" />
-                  Wie möchtest du das Budget einfügen?
+                  <ArrowRight size={14} className="text-purple-600 dark:text-purple-400" />
+                  {t('import_mode_label')}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <label 
@@ -600,16 +709,18 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     className={cn(
                       "p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2",
                       importMode === 'new_version' 
-                        ? "border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
+                        ? "border-purple-600 dark:border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
                         : "border-border/70 hover:border-purple-500/40 bg-background/50"
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs text-text-primary">Als neue Variante anlegen</span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">Empfohlen</span>
+                      <span className="font-extrabold text-xs text-text-primary">{t('mode_new_variant')}</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-500/15 text-purple-600 dark:text-purple-400 rounded">
+                        {t('mode_recommended')}
+                      </span>
                     </div>
                     <p className="text-[11px] text-text-muted">
-                      Erstellt eine neue Variante (z. B. «Variante 2 - Excel-Import»), bestehende Daten bleiben unberührt.
+                      {t('mode_new_variant_desc')}
                     </p>
                   </label>
 
@@ -618,13 +729,13 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     className={cn(
                       "p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2",
                       importMode === 'append' 
-                        ? "border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
+                        ? "border-purple-600 dark:border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
                         : "border-border/70 hover:border-purple-500/40 bg-background/50"
                     )}
                   >
-                    <span className="font-extrabold text-xs text-text-primary">In aktive Variante anhängen</span>
+                    <span className="font-extrabold text-xs text-text-primary">{t('mode_append')}</span>
                     <p className="text-[11px] text-text-muted">
-                      Fügt die erkannten Phasen an «{currentVersionName}» hinten an.
+                      {t('mode_append_desc')} ({currentVersionName})
                     </p>
                   </label>
 
@@ -633,13 +744,13 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                     className={cn(
                       "p-3.5 rounded-xl border cursor-pointer transition-all flex flex-col justify-between gap-2",
                       importMode === 'replace' 
-                        ? "border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
+                        ? "border-purple-600 dark:border-purple-500 bg-purple-500/10 ring-2 ring-purple-500/20" 
                         : "border-border/70 hover:border-purple-500/40 bg-background/50"
                     )}
                   >
-                    <span className="font-extrabold text-xs text-text-primary">Aktive Variante ersetzen</span>
+                    <span className="font-extrabold text-xs text-text-primary">{t('mode_replace')}</span>
                     <p className="text-[11px] text-text-muted">
-                      Überschreibt alle bisherigen Phasen in «{currentVersionName}».
+                      {t('mode_replace_desc')} ({currentVersionName})
                     </p>
                   </label>
                 </div>
@@ -649,7 +760,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                    Erkannte Phasen & Positionen prüfen:
+                    {t('step2_sub')}
                   </h4>
                   <button
                     onClick={() => {
@@ -658,9 +769,9 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                       setPreviewUrl(null);
                       setPastedText('');
                     }}
-                    className="text-xs font-bold text-text-muted hover:text-purple-400 flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-text-muted hover:text-purple-600 dark:hover:text-purple-400 flex items-center gap-1 cursor-pointer"
                   >
-                    <RefreshCw size={12} /> Anderes Dokument analysieren
+                    <RefreshCw size={12} /> {t('other_doc')}
                   </button>
                 </div>
 
@@ -681,18 +792,18 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                             <span className="text-text-muted group-hover:text-text-primary">
                               {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                             </span>
-                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-500/15 text-purple-400">
+                            <span className="font-sans text-xs font-bold tabular-nums px-2 py-0.5 rounded bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/30">
                               {group.pos}
                             </span>
                             <span className="font-extrabold text-sm text-text-primary">
                               {group.title}
                             </span>
                             <span className="text-xs text-text-muted font-medium">
-                              ({group.items.length} {group.items.length === 1 ? 'Position' : 'Positionen'})
+                              ({group.items.length} {group.items.length === 1 ? t('entries').slice(0, -1) : t('entries')})
                             </span>
                           </div>
 
-                          <div className="font-extrabold text-sm text-text-primary">
+                          <div className="font-extrabold text-sm text-text-primary tabular-nums">
                             {formatCHF(groupTotal)}
                           </div>
                         </div>
@@ -703,12 +814,12 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                             <table className="w-full text-left text-xs border-collapse min-w-[620px]">
                               <thead>
                                 <tr className="text-[10px] uppercase font-bold text-text-muted border-b border-border/50 pb-2">
-                                  <th className="pb-2 w-16">Pos</th>
-                                  <th className="pb-2">Beschreibung</th>
-                                  <th className="pb-2 text-right w-20">Menge</th>
-                                  <th className="pb-2 w-20 text-center">Einheit</th>
-                                  <th className="pb-2 text-right w-28">EP (CHF)</th>
-                                  <th className="pb-2 text-right w-28">Total (CHF)</th>
+                                  <th className="pb-2 w-16">{t('pos_col')}</th>
+                                  <th className="pb-2">{t('desc_col')}</th>
+                                  <th className="pb-2 text-right w-20">{t('qty_col')}</th>
+                                  <th className="pb-2 w-20 text-center">{t('unit_col')}</th>
+                                  <th className="pb-2 text-right w-28">{t('price_col')}</th>
+                                  <th className="pb-2 text-right w-28">{t('total_col')}</th>
                                   <th className="pb-2 w-10"></th>
                                 </tr>
                               </thead>
@@ -720,7 +831,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="text"
                                         value={item.pos}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'pos', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-mono font-bold text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-sans font-bold tabular-nums text-text-primary outline-none focus:border-purple-500"
                                       />
                                     </td>
                                     <td className="py-2 px-2">
@@ -736,7 +847,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="number"
                                         value={item.qty}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'qty', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-bold text-right text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-bold tabular-nums text-right text-text-primary outline-none focus:border-purple-500"
                                       />
                                     </td>
                                     <td className="py-2 px-2">
@@ -752,17 +863,17 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                                         type="number"
                                         value={item.unitPrice}
                                         onChange={(e) => handleUpdateItem(group.id, item.id, 'unitPrice', e.target.value)}
-                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-bold text-right text-text-primary outline-none focus:border-purple-500"
+                                        className="w-full bg-background border border-border/50 rounded-lg px-2 py-1 text-xs font-bold tabular-nums text-right text-text-primary outline-none focus:border-purple-500"
                                       />
                                     </td>
-                                    <td className="py-2 pl-2 text-right font-extrabold text-emerald-400">
+                                    <td className="py-2 pl-2 text-right font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
                                       {formatCHF(item.total)}
                                     </td>
                                     <td className="py-2 pl-2 text-right">
                                       <button
                                         onClick={() => handleDeleteItem(group.id, item.id)}
                                         className="p-1 text-text-muted hover:text-red-400 transition-colors cursor-pointer"
-                                        title="Position entfernen"
+                                        title={t('remove_pos')}
                                       >
                                         <Trash2 size={13} />
                                       </button>
@@ -774,9 +885,9 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
 
                             <button
                               onClick={() => handleAddItem(group.id)}
-                              className="mt-2 text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-all cursor-pointer"
+                              className="mt-2 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-500 flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 transition-all cursor-pointer"
                             >
-                              <Plus size={13} /> Position hinzufügen
+                              <Plus size={13} /> {t('add_pos')}
                             </button>
                           </div>
                         )}
@@ -795,7 +906,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
             onClick={onClose}
             className="w-full sm:w-auto px-4 py-2.5 bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary font-bold text-xs rounded-xl transition-all cursor-pointer"
           >
-            Abbrechen
+            {t('cancel')}
           </button>
 
           {!parsedGroups ? (
@@ -807,12 +918,12 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
               {isAnalyzing ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  <span>KI analysiert Tabelle...</span>
+                  <span>{t('analyzing')}</span>
                 </>
               ) : (
                 <>
                   <Sparkles size={16} />
-                  <span>Tabelle jetzt analysieren</span>
+                  <span>{t('analyze_btn')}</span>
                 </>
               )}
             </button>
@@ -823,7 +934,7 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
                 className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <Check size={16} />
-                <span>Budget jetzt übernehmen ({formatCHF(calculateGrandTotal(parsedGroups))})</span>
+                <span>{t('confirm_btn')} ({formatCHF(calculateGrandTotal(parsedGroups))})</span>
               </button>
             </div>
           )}

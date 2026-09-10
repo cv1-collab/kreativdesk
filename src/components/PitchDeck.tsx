@@ -343,7 +343,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                           <div key={idx} className="flex flex-row items-center relative z-10">
                             <div className="w-1/3 pr-4">
                               <div className={cn("text-lg font-bold truncate", tc)}>{ms.title}</div>
-                              <div className="text-[10px] opacity-50 font-mono mt-1">{ms.start} - {ms.end}</div>
+                              <div className="text-[10px] opacity-60 font-sans font-medium tabular-nums mt-1">{ms.start} - {ms.end}</div>
                             </div>
                             <div className="w-24">
                               <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-black/10 text-black/70">{ms.status || 'Aktiv'}</span>
@@ -381,7 +381,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                      </div>
                      {g.items && g.items.map((item:any, j:number) => (
                        <div key={j} className="flex flex-row w-full border-b border-black/5 py-1.5 text-xs items-center opacity-80">
-                          <div className="w-16 opacity-50 font-mono">{item.pos}</div>
+                          <div className="w-16 opacity-60 font-sans font-semibold tabular-nums">{item.pos}</div>
                           <div className="flex-1 truncate pr-2">{item.title}</div>
                           <div className="w-32 text-right font-medium">{(item.total || 0).toLocaleString('de-CH')}</div>
                        </div>
@@ -436,7 +436,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                       <div key={idx} className="p-4 rounded-xl border border-black/10 bg-black/5 flex flex-col justify-center relative">
                         <div className="flex items-center justify-between w-full gap-4">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-600 font-extrabold flex items-center justify-center text-xs shrink-0 font-mono">
+                            <span className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-600 font-extrabold flex items-center justify-center text-xs shrink-0 font-sans tabular-nums">
                               {item.num || `0${idx + 1}`}
                             </span>
                             <span style={{ fontSize: `${Math.max(14, slide.fontSize || 18)}px` }} className="font-bold truncate text-slate-900">{item.title}</span>
@@ -446,7 +446,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                           <div className="flex-1 border-b-2 border-dotted border-slate-400 opacity-40 mx-2 hidden sm:block"></div>
 
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono font-bold text-xs opacity-70 text-slate-900">{item.page || `S. 0${idx + 2}`}</span>
+                            <span className="font-sans font-bold text-xs opacity-70 text-slate-900 tabular-nums">{item.page || `S. 0${idx + 2}`}</span>
                           </div>
                         </div>
 
@@ -532,7 +532,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           <span className="text-[10px] uppercase font-bold tracking-widest opacity-40" style={{ color: deckSettings.themeColor }}>{deckSettings.footerText}</span>
           <div className="flex items-center gap-4">
             {!!sanitizeUrl(deckSettings.logoUrl) && <img src={sanitizeUrl(deckSettings.logoUrl)} alt="Logo" className="h-6 object-contain opacity-80 pointer-events-none" />}
-            <span className="text-[10px] font-mono font-bold tracking-widest opacity-60" style={{ color: deckSettings.themeColor }}>
+            <span className="text-[10px] font-sans font-bold tracking-widest opacity-60 tabular-nums" style={{ color: deckSettings.themeColor }}>
               {slides.findIndex(s => s.id === slide.id) + 1} / {slides.length}
             </span>
           </div>

@@ -84,6 +84,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const { id: routeProjectId } = useParams<{ id: string }>();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const { language, t: globalT } = useLanguage();
   const { projects, activeProjectId, isDemoMode } = useProject() as any;
   const projectId = propProjectId || routeProjectId || activeProjectId;
@@ -264,7 +266,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     }
   };
 
-  const canvasBgColor = '#ffffff';
+  const canvasBgColor = isDark ? '#121214' : '#ffffff';
 
   const addItemToActiveLayer = (item: any, explicitLayerId?: string) => { 
     setLayers(prev => {
@@ -541,16 +543,20 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     const stage = stageRef.current || (typeof e.target?.getStage === 'function' ? e.target.getStage() : null);
     if (!stage) return;
     let pointer = stage.getPointerPosition();
-    if (!pointer && e.evt) {
+    if (!pointer) {
       try {
-        const containerRect = stage.container().getBoundingClientRect();
-        const clientX = e.evt.clientX ?? (e.evt.touches && e.evt.touches[0]?.clientX);
-        const clientY = e.evt.clientY ?? (e.evt.touches && e.evt.touches[0]?.clientY);
-        if (clientX !== undefined && clientY !== undefined) {
-          pointer = {
-            x: clientX - containerRect.left,
-            y: clientY - containerRect.top
-          };
+        const container = typeof stage.container === 'function' ? stage.container() : containerRef.current;
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          const evt = e.evt || e;
+          const clientX = evt.clientX ?? (evt.touches && evt.touches[0]?.clientX);
+          const clientY = evt.clientY ?? (evt.touches && evt.touches[0]?.clientY);
+          if (clientX !== undefined && clientY !== undefined) {
+            pointer = {
+              x: clientX - containerRect.left,
+              y: clientY - containerRect.top
+            };
+          }
         }
       } catch (err) {}
     }
@@ -631,16 +637,20 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     const stage = stageRef.current || (typeof e.target?.getStage === 'function' ? e.target.getStage() : null);
     if (!stage) return;
     let pointer = stage.getPointerPosition();
-    if (!pointer && e.evt) {
+    if (!pointer) {
       try {
-        const containerRect = stage.container().getBoundingClientRect();
-        const clientX = e.evt.clientX ?? (e.evt.touches && e.evt.touches[0]?.clientX);
-        const clientY = e.evt.clientY ?? (e.evt.touches && e.evt.touches[0]?.clientY);
-        if (clientX !== undefined && clientY !== undefined) {
-          pointer = {
-            x: clientX - containerRect.left,
-            y: clientY - containerRect.top
-          };
+        const container = typeof stage.container === 'function' ? stage.container() : containerRef.current;
+        if (container) {
+          const containerRect = container.getBoundingClientRect();
+          const evt = e.evt || e;
+          const clientX = evt.clientX ?? (evt.touches && evt.touches[0]?.clientX);
+          const clientY = evt.clientY ?? (evt.touches && evt.touches[0]?.clientY);
+          if (clientX !== undefined && clientY !== undefined) {
+            pointer = {
+              x: clientX - containerRect.left,
+              y: clientY - containerRect.top
+            };
+          }
         }
       } catch (err) {}
     }
@@ -1737,20 +1747,19 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                </div>
             )}
 
-            <div className="flex-1 relative w-full h-full overflow-hidden bg-white" style={{ cursor: tool === 'pan' ? 'grab' : tool === 'select' ? 'default' : 'crosshair', touchAction: 'none' }}>
-              <div className="absolute inset-0 bg-[radial-gradient(#e5e5e5_1px,transparent_1px)] bg-[size:30px_30px] opacity-100 pointer-events-none"></div>
+            <div className={cn("flex-1 relative w-full h-full overflow-hidden transition-colors duration-200", isDark ? "bg-[#121214]" : "bg-white")} style={{ cursor: tool === 'pan' ? 'grab' : tool === 'select' ? 'default' : 'crosshair', touchAction: 'none' }}>
+              <div className={cn("absolute inset-0 bg-[size:30px_30px] opacity-100 pointer-events-none", isDark ? "bg-[radial-gradient(#27272a_1px,transparent_1px)]" : "bg-[radial-gradient(#e5e5e5_1px,transparent_1px)]")}></div>
               
               {stageSize.width > 0 && (
                 <Stage 
                   width={stageSize.width} height={stageSize.height} ref={stageRef} 
                   onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} 
-                  onPointerDown={handleMouseDown} onPointerMove={handleMouseMove} onPointerUp={handleMouseUp}
                   onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} 
                   onWheel={handleWheel} scaleX={stageScale} scaleY={stageScale} x={stagePos.x} y={stagePos.y} 
                   draggable={tool === 'pan'} onDragEnd={(e) => { if (e.target === stageRef.current) setStagePos({ x: e.target.x(), y: e.target.y() }); }}
                 >
                   <KonvaLayer>
-                    <Rect className="background-rect" name="background-rect" x={-50000} y={-50000} width={100000} height={100000} fill="#ffffff" listening={true} />
+                    <Rect className="background-rect" name="background-rect" x={-50000} y={-50000} width={100000} height={100000} fill={isDark ? "#121214" : "#ffffff"} listening={true} />
                     {bgImage && (
                       <KonvaImage image={bgImage} ref={imageNodeRef} x={bgImagePos.x} y={bgImagePos.y} draggable={tool === 'select'} listening={tool === 'select'} onDragEnd={(e) => { e.cancelBubble = true; setBgImagePos({ x: e.target.x(), y: e.target.y() }); }} filters={[Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.HSL]} brightness={imageFilters.brightness} contrast={imageFilters.contrast} luminance={imageFilters.saturation} />
                     )}
