@@ -10,7 +10,8 @@ import {
   Search, UserPlus, CheckCircle2, ShieldAlert,
   X, Loader2, FileUp, Camera, Smartphone, Globe, MapPin, FileText, Briefcase,
   Edit2, Trash2, Contact, Download, CheckSquare, ListChecks, PenTool, Image as ImageIcon, ZoomOut, ZoomIn, Cloud,
-  Link as LinkIcon, Send, UserCheck, Copy
+  Link as LinkIcon, Send, UserCheck, Copy,
+  Building2, Hammer, Compass, Package, Landmark, Sparkles, Percent, DollarSign, Award, FolderKanban, ShieldCheck, UserCog, BadgePercent, Clock, Tag, User, Layers
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -52,7 +53,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     export_pdf_title: 'PDF Studio', company_logo: 'Company Logo', upload_logo: 'Click to upload logo', logo_loaded: 'Logo loaded.',
     color: 'Accent Color', format: 'Format', orientation: 'Orientation', portrait: 'Portrait', landscape: 'Landscape',
     scale_preview: 'Scale Preview', saving_cloud: 'Saving to Cloud...', save_cloud: 'Save to Data Room', download_local: 'Download Locally',
-    generating_pdf: 'Generating PDF...', pdf_exported: 'PDF successfully exported!', title: 'Title', project: 'Project'
+    generating_pdf: 'Generating PDF...', pdf_exported: 'PDF successfully exported!', title: 'Title', project: 'Project',
+    internal_team_title: 'Internal Team Member', internal_team_desc: 'Add an employee of your company with workspace permissions & rate.',
+    external_partner_title: 'External Partner & Client', external_partner_desc: 'Add clients, planners, subcontractors, suppliers or authorities.',
+    department: 'Department / Area', position_job: 'Position / Job Title', hourly_rate: 'Internal Hourly Rate (CHF/h)',
+    workload: 'Workload / Pensum', employee_initials: 'Initials', partner_category: 'Partner Category',
+    category_client: 'Client / Owner', category_planner: 'Specialist Planner', category_craftsman: 'Craftsman / Subcontractor',
+    category_supplier: 'Supplier / Vendor', category_authority: 'Authority / Municipality', category_lead: 'Lead / Prospect',
+    trade_field: 'Trade / Specialization', contact_person_function: 'Function of Contact Person', payment_terms: 'Payment Terms',
+    assigned_project: 'Assigned Project', team_photo: 'Employee Photo', company_logo_label: 'Company / Partner Logo',
+    role_employee_desc: 'Tasks, time tracking & site log', role_project_lead_desc: 'Full project management, budget & plans',
+    role_owner_desc: 'Full access incl. company finance & settings', role_viewer_desc: 'Read-only access to assigned projects',
+    no_project_assigned: 'No specific project assigned', workspace_access_hint: 'An invite link can be generated immediately after creation.',
+    workspace_access_title: 'Workspace Access & Invite'
   },
   de: {
     smart_crm: 'CRM & Team', export_csv: 'CSV Export', export_pdf: 'PDF', cancel_selection: 'Abbrechen',
@@ -81,7 +94,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     export_pdf_title: 'PDF Studio', company_logo: 'Firmenlogo für PDF', upload_logo: 'Klicken um Bild hochzuladen', logo_loaded: 'Logo geladen.',
     color: 'Akzentfarbe', format: 'Format', orientation: 'Ausrichtung', portrait: 'Hochformat', landscape: 'Querformat',
     scale_preview: 'Zoom Vorschau', saving_cloud: 'Speichert in Cloud...', save_cloud: 'In Bau-Akte speichern', download_local: 'Lokal herunterladen',
-    generating_pdf: 'Wird erstellt...', pdf_exported: 'PDF erfolgreich exportiert!', title: 'Titel', project: 'Projekt'
+    generating_pdf: 'Wird erstellt...', pdf_exported: 'PDF erfolgreich exportiert!', title: 'Titel', project: 'Projekt',
+    internal_team_title: 'Internes Teammitglied', internal_team_desc: 'Mitarbeiter deines Unternehmens mit Workspace-Zugriffsrechten & Stundensatz erfassen.',
+    external_partner_title: 'Externer Partner & Kunde', external_partner_desc: 'Kunden, Fachplaner, Handwerker, Lieferanten oder Behörden für Projekte erfassen.',
+    department: 'Abteilung / Bereich', position_job: 'Position / Job-Titel', hourly_rate: 'Interner Stundensatz (CHF/h)',
+    workload: 'Beschäftigungsgrad / Pensum', employee_initials: 'Kürzel (Initialen)', partner_category: 'Partner-Kategorie',
+    category_client: 'Kunde / Bauherr', category_planner: 'Fachplaner', category_craftsman: 'Handwerker / Subunternehmer',
+    category_supplier: 'Lieferant / Händler', category_authority: 'Behörde / Gemeinde', category_lead: 'Lead / Interessent',
+    trade_field: 'Gewerk / Spezialisierung', contact_person_function: 'Funktion der Ansprechperson', payment_terms: 'Zahlungskonditionen',
+    assigned_project: 'Zugeordnetes Projekt', team_photo: 'Mitarbeiterfoto', company_logo_label: 'Firmen-Logo / Partner',
+    role_employee_desc: 'Aufgaben, Zeiterfassung & Bautagebuch', role_project_lead_desc: 'Volle Projektleitung, Budget & Pläne',
+    role_owner_desc: 'Vollzugriff inkl. Finanzen & Einstellungen', role_viewer_desc: 'Nur Lesezugriff auf zugewiesene Projekte',
+    no_project_assigned: 'Keinem spezifischen Projekt zugewiesen', workspace_access_hint: 'Nach dem Erfassen kann direkt ein Einladungslink generiert werden.',
+    workspace_access_title: 'Workspace-Zugang & Berechtigungen'
   }
 };
 
@@ -98,7 +123,7 @@ const safeStr = (str: any, maxLen: number) => {
 export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-  const { fetchCompanyUsers, isDemoMode } = useProject() as any;
+  const { fetchCompanyUsers, isDemoMode, projects = [], activeProjectId } = useProject() as any;
   const isDemo = isDemoMode || currentUser?.uid === 'demo-user-id';
   const { language, t: globalT } = useLanguage();
   const { hasPermission } = usePermissions();
@@ -147,6 +172,16 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
             ? fallback.isExternal
             : (u.role === 'partner' || u.role === 'client' || u.role === 'guest' || u.role === 'external' || (u.status && u.status !== 'team')));
 
+      let extraMeta: any = {};
+      let cleanNotes = u.notes || u.description || fallback.description || '';
+      if (cleanNotes && cleanNotes.includes('__CRM_META__:')) {
+        try {
+          const parts = cleanNotes.split('__CRM_META__:');
+          extraMeta = JSON.parse(parts[1]);
+          cleanNotes = parts[0].trim();
+        } catch (_) {}
+      }
+
       return {
         id: u.id,
         firstName: u.first_name || u.firstName || fallback.firstName || fullName.split(' ')[0] || '',
@@ -160,14 +195,24 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         website: u.website || fallback.website || '',
         uid: u.uid_number || u.uid || fallback.uid || '',
         vat: u.vat_number || u.vat || fallback.vat || '',
-        description: u.notes || u.description || fallback.description || '',
+        description: cleanNotes,
         photoURL: u.photo_url || u.photoURL || fallback.photoURL || null,
         status: u.status || fallback.status || (isExternalVal ? 'neu' : 'team'),
         role: u.role || fallback.role || (isExternalVal ? 'partner' : 'employee'),
         isExternal: Boolean(isExternalVal),
         isAppUser: false,
         canViewFinance: u.can_view_finance ?? fallback.canViewFinance ?? false,
-        canApproveBudget: u.can_approve_budget ?? fallback.canApproveBudget ?? false
+        canApproveBudget: u.can_approve_budget ?? fallback.canApproveBudget ?? false,
+        jobTitle: u.job_title || extraMeta.jobTitle || fallback.jobTitle || '',
+        department: u.department || extraMeta.department || fallback.department || '',
+        hourlyRate: u.hourly_rate || extraMeta.hourlyRate || fallback.hourlyRate || '',
+        workload: u.workload || extraMeta.workload || fallback.workload || '100%',
+        initials: u.initials || extraMeta.initials || fallback.initials || '',
+        partnerCategory: u.partner_category || extraMeta.partnerCategory || fallback.partnerCategory || (isExternalVal ? 'partner' : ''),
+        trade: u.trade || extraMeta.trade || fallback.trade || '',
+        contactPersonRole: u.contact_person_role || extraMeta.contactPersonRole || fallback.contactPersonRole || '',
+        paymentTerms: u.payment_terms || extraMeta.paymentTerms || fallback.paymentTerms || '30 Tage netto',
+        assignedProjectId: u.project_id || extraMeta.assignedProjectId || fallback.assignedProjectId || ''
       };
     });
 
@@ -233,7 +278,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [newContact, setNewContact] = useState<any>({
     id: null, firstName: '', lastName: '', email: '', phone: '', company: '',
     street: '', zipCity: '', website: '', uid: '', vat: '', description: '',
-    isExternal: true, status: 'neu'
+    isExternal: true, status: 'neu', role: 'partner',
+    jobTitle: '', department: '', hourlyRate: '', workload: '100%', initials: '',
+    partnerCategory: 'partner', trade: '', contactPersonRole: '', paymentTerms: '30 Tage netto',
+    assignedProjectId: ''
   });
 
   const [vcardSessionId] = useState(() => Math.random().toString(36).substring(2, 15));
@@ -578,7 +626,17 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       description: selectedContact.description || '',
       isExternal: isExt,
       status: selectedContact.status || (isExt ? 'neu' : 'team'),
-      role: selectedContact.role || (isExt ? 'partner' : 'employee')
+      role: selectedContact.role || (isExt ? 'partner' : 'employee'),
+      jobTitle: selectedContact.jobTitle || '',
+      department: selectedContact.department || '',
+      hourlyRate: selectedContact.hourlyRate || '',
+      workload: selectedContact.workload || '100%',
+      initials: selectedContact.initials || '',
+      partnerCategory: selectedContact.partnerCategory || (isExt ? 'partner' : ''),
+      trade: selectedContact.trade || '',
+      contactPersonRole: selectedContact.contactPersonRole || '',
+      paymentTerms: selectedContact.paymentTerms || '30 Tage netto',
+      assignedProjectId: selectedContact.assignedProjectId || ''
     });
     setAvatarPreview(selectedContact.photoURL || null);
     setIsAddModalOpen(true);
@@ -596,8 +654,16 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newContact.lastName && !newContact.company && !newContact.firstName) {
-      addToast(t('name_or_company_required'), 'error'); return;
+    if (!newContact.isExternal) {
+      if (!newContact.firstName && !newContact.lastName && !newContact.email) {
+        addToast(t('first_name') + ', ' + t('last_name') + ' oder ' + t('email') + ' erforderlich.', 'error');
+        return;
+      }
+    } else {
+      if (!newContact.lastName && !newContact.company && !newContact.firstName) {
+        addToast(t('name_or_company_required'), 'error');
+        return;
+      }
     }
     if (!currentUser || !currentUser.uid) return;
     
@@ -616,6 +682,23 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const finalRole = newContact.role || (isExt ? 'partner' : 'employee');
       const finalStatus = newContact.status || (isExt ? 'neu' : 'team');
 
+      const extraMeta = {
+        jobTitle: newContact.jobTitle || null,
+        department: newContact.department || null,
+        hourlyRate: newContact.hourlyRate || null,
+        workload: newContact.workload || null,
+        initials: newContact.initials || null,
+        partnerCategory: newContact.partnerCategory || null,
+        trade: newContact.trade || null,
+        contactPersonRole: newContact.contactPersonRole || null,
+        paymentTerms: newContact.paymentTerms || null,
+        assignedProjectId: newContact.assignedProjectId || null
+      };
+
+      const serializedNotes = newContact.description 
+        ? `${newContact.description}\n\n__CRM_META__:${JSON.stringify(extraMeta)}`
+        : `__CRM_META__:${JSON.stringify(extraMeta)}`;
+
       // Full payload with all CRM fields
       const fullDbPayload: any = {
         company_id: safeCompanyId,
@@ -624,13 +707,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         name: fullName || newContact.company || t('unknown'),
         email: newContact.email || null,
         phone: newContact.phone || null,
-        company: newContact.company || null,
+        company: newContact.company || (!isExt ? ((currentUser as any)?.companyName || (currentUser as any)?.company || 'Kreativ Desk') : null),
         street: newContact.street || null,
         zip_city: newContact.zipCity || null,
         website: newContact.website || null,
         uid_number: newContact.uid || null,
         vat_number: newContact.vat || null,
-        notes: newContact.description || null,
+        notes: serializedNotes,
         photo_url: photoURL || null,
         is_external: isExt,
         role: finalRole,
@@ -645,6 +728,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         name: fullName || newContact.company || t('unknown'),
         email: newContact.email || null,
         phone: newContact.phone || null,
+        notes: serializedNotes,
         role: finalRole,
         status: finalStatus
       };
@@ -652,9 +736,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       const fullContactObject = {
         ...newContact,
         ...fullDbPayload,
+        ...extraMeta,
         firstName: newContact.firstName,
         lastName: newContact.lastName,
-        company: newContact.company,
+        company: newContact.company || (!isExt ? ((currentUser as any)?.companyName || (currentUser as any)?.company || 'Kreativ Desk') : ''),
         street: newContact.street,
         zipCity: newContact.zipCity,
         website: newContact.website,
@@ -742,7 +827,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     setNewContact({
       id: null, firstName: '', lastName: '', email: '', phone: '', company: '',
       street: '', zipCity: '', website: '', uid: '', vat: '', description: '',
-      isExternal: activeFilter !== 'team', status: activeFilter === 'team' ? 'team' : 'neu'
+      isExternal: activeFilter !== 'team', status: activeFilter === 'team' ? 'team' : 'neu',
+      role: activeFilter === 'team' ? 'employee' : 'partner',
+      jobTitle: '', department: '', hourlyRate: '', workload: '100%', initials: '',
+      partnerCategory: 'partner', trade: '', contactPersonRole: '',
+      paymentTerms: '30 Tage netto', assignedProjectId: activeProjectId || ''
     });
   };
 
@@ -1176,7 +1265,43 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           <button onClick={() => vcfInputRef.current?.click()} className="px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><FileUp size={15} /> <span className="hidden sm:inline">{t('vcf_import')}</span></button>
           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("px-3 py-2 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={15} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
           {hasPermission('canManageUsers') && (
-            <button onClick={() => { setNewContact((prev: any) => ({ ...prev, isExternal: true })); setIsAddModalOpen(true); }} className="px-3.5 py-2 bg-accent-ai text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:bg-accent-ai/90 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"><UserPlus size={16} /> <span>{t('new_contact')}</span></button>
+            <button 
+              onClick={() => { 
+                setAvatarFile(null);
+                setAvatarPreview(null);
+                setNewContact({
+                  id: null,
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  phone: '',
+                  company: '',
+                  street: '',
+                  zipCity: '',
+                  website: '',
+                  uid: '',
+                  vat: '',
+                  description: '',
+                  isExternal: activeFilter !== 'team',
+                  status: activeFilter === 'team' ? 'team' : 'neu',
+                  role: activeFilter === 'team' ? 'employee' : 'partner',
+                  jobTitle: '',
+                  department: '',
+                  hourlyRate: '',
+                  workload: '100%',
+                  initials: '',
+                  partnerCategory: 'partner',
+                  trade: '',
+                  contactPersonRole: '',
+                  paymentTerms: '30 Tage netto',
+                  assignedProjectId: activeProjectId || ''
+                });
+                setIsAddModalOpen(true); 
+              }} 
+              className="px-3.5 py-2 bg-accent-ai text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:bg-accent-ai/90 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <UserPlus size={16} /> <span>{t('new_contact')}</span>
+            </button>
           )}
         </div>
       </div>
@@ -1283,9 +1408,73 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 </div>
                 <div className="space-y-2">
                   <h2 className="text-4xl font-bold text-text-primary tracking-tight">{formatName(selectedContact)}</h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {selectedContact.company && <span className="text-blue-500 font-bold bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-sm flex items-center gap-2"><Building size={14} /> {selectedContact.company}</span>}
-                    {selectedContact.jobTitle && <span className="text-text-muted font-bold bg-background border border-border px-3 py-1 rounded-full text-sm flex items-center gap-2"><Briefcase size={14} /> {selectedContact.jobTitle}</span>}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {!selectedContact.isExternal ? (
+                      <>
+                        <span className="text-purple-600 dark:text-purple-400 font-bold bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                          <Users size={13} /> {t('internal_team')}
+                        </span>
+                        {selectedContact.jobTitle && (
+                          <span className="text-text-primary font-bold bg-surface border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <Briefcase size={13} className="text-accent-ai" /> {selectedContact.jobTitle}
+                          </span>
+                        )}
+                        {selectedContact.department && (
+                          <span className="text-text-muted font-bold bg-background border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <Layers size={13} /> {selectedContact.department}
+                          </span>
+                        )}
+                        {selectedContact.workload && (
+                          <span className="text-text-muted font-bold bg-background border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <BadgePercent size={13} /> {selectedContact.workload}
+                          </span>
+                        )}
+                        {selectedContact.hourlyRate && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <DollarSign size={13} /> CHF {selectedContact.hourlyRate}/h
+                          </span>
+                        )}
+                        {selectedContact.initials && (
+                          <span className="text-text-muted font-mono font-bold bg-background border border-border px-2.5 py-1 rounded-full text-xs">
+                            [{selectedContact.initials}]
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        {selectedContact.partnerCategory && (
+                          <span className="text-blue-600 dark:text-blue-400 font-bold bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            {selectedContact.partnerCategory === 'planner' ? <Compass size={13} /> : selectedContact.partnerCategory === 'craftsman' ? <Hammer size={13} /> : selectedContact.partnerCategory === 'client' ? <Building2 size={13} /> : selectedContact.partnerCategory === 'supplier' ? <Package size={13} /> : selectedContact.partnerCategory === 'authority' ? <Landmark size={13} /> : <Contact size={13} />}
+                            {selectedContact.partnerCategory === 'planner' ? t('category_planner') : selectedContact.partnerCategory === 'craftsman' ? t('category_craftsman') : selectedContact.partnerCategory === 'client' ? t('category_client') : selectedContact.partnerCategory === 'supplier' ? t('category_supplier') : selectedContact.partnerCategory === 'authority' ? t('category_authority') : selectedContact.partnerCategory === 'lead' ? t('category_lead') : t('partner')}
+                          </span>
+                        )}
+                        {selectedContact.company && (
+                          <span className="text-blue-500 font-bold bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <Building size={13} /> {selectedContact.company}
+                          </span>
+                        )}
+                        {selectedContact.trade && (
+                          <span className="text-text-primary font-bold bg-surface border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <Tag size={13} className="text-blue-500" /> {selectedContact.trade}
+                          </span>
+                        )}
+                        {selectedContact.contactPersonRole && (
+                          <span className="text-text-muted font-bold bg-background border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <UserCheck size={13} /> {selectedContact.contactPersonRole}
+                          </span>
+                        )}
+                        {selectedContact.paymentTerms && (
+                          <span className="text-text-muted font-bold bg-background border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <Clock size={13} /> {selectedContact.paymentTerms}
+                          </span>
+                        )}
+                        {selectedContact.assignedProjectId && (
+                          <span className="text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <FolderKanban size={13} /> {projects.find((p: any) => p.id === selectedContact.assignedProjectId)?.name || 'Projekt'}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1350,8 +1539,17 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 <div className="space-y-6">
                   <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest border-b border-border pb-2">{t('location_business')}</h3>
                   <div className="space-y-4 text-sm font-medium text-text-primary">
-                    <div className="flex items-start gap-4"><div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center text-text-muted shrink-0"><MapPin size={14}/></div><div className="pt-1.5 leading-relaxed">{selectedContact.street ? <>{selectedContact.street}<br/>{selectedContact.zipCity}</> : <span className="text-text-muted italic">{t('no_address_data')}</span>}</div></div>
-                    {(selectedContact.uid || selectedContact.vat) && <div className="mt-4 pt-4 border-t border-border/50 space-y-2"><div className="flex justify-between"><span className="text-text-muted font-bold">{t('uid_number')}:</span> <span className="font-medium">{selectedContact.uid || '-'}</span></div><div className="flex justify-between"><span className="text-text-muted font-bold">{t('vat_number')}:</span> <span className="font-medium">{selectedContact.vat || '-'}</span></div></div>}
+                    <div className="flex items-start gap-4">
+                      <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center text-text-muted shrink-0"><MapPin size={14}/></div>
+                      <div className="pt-1.5 leading-relaxed">{selectedContact.street ? <>{selectedContact.street}<br/>{selectedContact.zipCity}</> : <span className="text-text-muted italic">{t('no_address_data')}</span>}</div>
+                    </div>
+                    {selectedContact.isExternal && (selectedContact.uid || selectedContact.vat || selectedContact.paymentTerms) && (
+                      <div className="mt-4 pt-4 border-t border-border/50 space-y-2">
+                        {selectedContact.uid && <div className="flex justify-between"><span className="text-text-muted font-bold">{t('uid_number')}:</span> <span className="font-medium">{selectedContact.uid}</span></div>}
+                        {selectedContact.vat && <div className="flex justify-between"><span className="text-text-muted font-bold">{t('vat_number')}:</span> <span className="font-medium">{selectedContact.vat}</span></div>}
+                        {selectedContact.paymentTerms && <div className="flex justify-between"><span className="text-text-muted font-bold">{t('payment_terms')}:</span> <span className="font-medium">{selectedContact.paymentTerms}</span></div>}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1555,66 +1753,449 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         {isAddModalOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-4xl my-auto overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/80 shrink-0">
-                <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><UserPlus className="text-accent-ai" size={20} /> {newContact.id ? t('edit_contact') : t('create_contact')}</h3>
-                <button onClick={closeAddModal} className="text-text-muted hover:text-text-primary transition-colors"><X size={20}/></button>
+              <div className="p-4 sm:p-5 border-b border-border/60 flex items-center justify-between bg-surface/90 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center font-bold shadow-sm transition-colors",
+                    !newContact.isExternal ? "bg-accent-ai/10 text-accent-ai border border-accent-ai/20" : "bg-blue-500/10 text-blue-500 border border-blue-500/20"
+                  )}>
+                    {!newContact.isExternal ? <Users size={20} /> : <Building2 size={20} />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base sm:text-lg text-text-primary leading-tight">
+                      {newContact.id 
+                        ? (!newContact.isExternal ? 'Teammitglied bearbeiten' : 'Partner / Kunde bearbeiten') 
+                        : (!newContact.isExternal ? 'Neues Teammitglied anlegen' : 'Neuen Partner / Kunden erfassen')}
+                    </h3>
+                    <p className="text-xs text-text-muted">
+                      {!newContact.isExternal 
+                        ? t('internal_team_desc') 
+                        : t('external_partner_desc')}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={closeAddModal} className="text-text-muted hover:text-text-primary p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <X size={20}/>
+                </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-6 bg-background custom-scrollbar">
+
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 bg-background custom-scrollbar">
+                {/* 2-WEGE MODUS SCHALTER */}
+                <div className="mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-surface border border-border/70 rounded-2xl p-1.5 shadow-inner">
+                    <button 
+                      type="button" 
+                      onClick={() => setNewContact((prev: any) => ({
+                        ...prev, 
+                        isExternal: false, 
+                        status: 'team', 
+                        role: prev.role === 'partner' ? 'employee' : (prev.role || 'employee')
+                      }))} 
+                      className={cn(
+                        "py-3 px-4 text-sm font-bold rounded-xl transition-all flex items-center gap-3 cursor-pointer text-left", 
+                        !newContact.isExternal 
+                          ? "bg-gradient-to-r from-accent-ai to-indigo-600 text-white shadow-md" 
+                          : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                      )}
+                    >
+                      <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", !newContact.isExternal ? "bg-white/20 text-white" : "bg-surface border border-border text-text-muted")}>
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <div className="font-bold leading-tight text-sm">{t('internal_team_title')}</div>
+                        <div className={cn("text-[11px] font-medium mt-0.5", !newContact.isExternal ? "text-white/80" : "text-text-muted")}>
+                          Mitarbeiter, Zugriffsrechte & Stundensatz
+                        </div>
+                      </div>
+                    </button>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setNewContact((prev: any) => ({
+                        ...prev, 
+                        isExternal: true, 
+                        status: (prev.status === 'team' ? 'partner' : (prev.status || 'neu')), 
+                        role: 'partner'
+                      }))} 
+                      className={cn(
+                        "py-3 px-4 text-sm font-bold rounded-xl transition-all flex items-center gap-3 cursor-pointer text-left", 
+                        newContact.isExternal 
+                          ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md" 
+                          : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                      )}
+                    >
+                      <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", newContact.isExternal ? "bg-white/20 text-white" : "bg-surface border border-border text-text-muted")}>
+                        <Building2 size={18} />
+                      </div>
+                      <div>
+                        <div className="font-bold leading-tight text-sm">{t('external_partner_title')}</div>
+                        <div className={cn("text-[11px] font-medium mt-0.5", newContact.isExternal ? "text-white/80" : "text-text-muted")}>
+                          Kunden, Fachplaner, Handwerker & Firmen
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-surface border border-border/50 rounded-xl p-6 flex flex-col items-center text-center shadow-sm">
-                      <div onClick={() => avatarInputRef.current?.click()} className="relative w-24 h-24 rounded-full bg-background border border-border flex items-center justify-center cursor-pointer group overflow-hidden mb-4 hover:border-accent-ai transition-colors">
+                  {/* LINKE SPALTE: BILD / SCANNER / INFO */}
+                  <div className="lg:col-span-1 space-y-5">
+                    <div className="bg-surface border border-border/60 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm">
+                      <div onClick={() => avatarInputRef.current?.click()} className={cn("relative w-24 h-24 bg-background border border-border flex items-center justify-center cursor-pointer group overflow-hidden mb-4 hover:border-accent-ai transition-colors", !newContact.isExternal ? "rounded-full" : "rounded-2xl")}>
                         {sanitizeUrl(avatarPreview) ? <img src={sanitizeUrl(avatarPreview)} alt="Preview" className="w-full h-full object-cover" /> : <Camera size={32} className="text-text-muted group-hover:text-accent-ai transition-colors" />}
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={20} className="text-white"/></div>
                       </div>
                       <input type="file" accept="image/*" ref={avatarInputRef} onChange={handleAvatarSelect} className="hidden" />
-                      <h4 className="text-sm font-bold text-text-primary">{t('profile_pic_logo')}</h4>
+                      <h4 className="text-sm font-bold text-text-primary">
+                        {!newContact.isExternal ? t('team_photo') : t('company_logo_label')}
+                      </h4>
                       <p className="text-xs text-text-muted mt-1 font-medium">{t('click_to_upload')}</p>
                     </div>
-                    {!newContact.id && (
-                      <div className="bg-surface border border-accent-ai/20 rounded-xl p-6 flex flex-col items-center text-center relative overflow-hidden group shadow-sm">
-                        <div className="absolute inset-0 bg-accent-ai/5 group-hover:bg-accent-ai/10 transition-colors"></div>
-                        <h4 className="text-sm font-bold text-accent-ai mb-2 flex items-center gap-2 relative z-10"><Smartphone size={16}/> {t('live_qr_scanner')}</h4>
-                        <p className="text-xs text-text-muted mb-4 relative z-10 font-medium">{t('qr_scan_desc')}</p>
-                        <div className="bg-white p-2 rounded-lg relative z-10 shadow-lg"><QRCode value={mobileUploadUrl} size={120} /></div>
-                      </div>
+
+                    {!newContact.isExternal ? (
+                      /* INTERNE INFO-BOXEN */
+                      <>
+                        <div className="bg-accent-ai/5 border border-accent-ai/20 rounded-2xl p-4 space-y-2">
+                          <h4 className="text-xs font-bold text-accent-ai flex items-center gap-1.5">
+                            <ShieldCheck size={16}/> {t('workspace_access_title')}
+                          </h4>
+                          <p className="text-[11px] text-text-muted leading-relaxed font-medium">
+                            {t('workspace_access_hint')}
+                          </p>
+                        </div>
+
+                        <div className="bg-surface border border-border/60 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                          <div className="flex items-center gap-2.5">
+                            <Award size={16} className="text-accent-ai" />
+                            <div>
+                              <div className="text-xs font-bold text-text-primary">Kürzel auf Plänen</div>
+                              <div className="text-[11px] text-text-muted">Für Freigaben & Baustellenprotokolle</div>
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-1 bg-background border border-border rounded-lg text-xs font-mono font-bold text-text-primary">
+                            {newContact.initials || (newContact.firstName ? (newContact.firstName.charAt(0) + (newContact.lastName ? newContact.lastName.charAt(0) : '')).toUpperCase() : 'MA')}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      /* EXTERNE INFO-BOXEN & LIVE QR SCANNER */
+                      <>
+                        {!newContact.id && (
+                          <div className="bg-surface border border-blue-500/20 rounded-2xl p-5 flex flex-col items-center text-center relative overflow-hidden group shadow-sm">
+                            <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors"></div>
+                            <h4 className="text-sm font-bold text-blue-500 mb-1 flex items-center gap-2 relative z-10"><Smartphone size={16}/> {t('live_qr_scanner')}</h4>
+                            <p className="text-xs text-text-muted mb-4 relative z-10 font-medium">Scanne Visitenkarten mit dem Handy – KI füllt Firma, Name & Telefon direkt aus!</p>
+                            <div className="bg-white p-2 rounded-xl relative z-10 shadow-lg"><QRCode value={mobileUploadUrl} size={120} /></div>
+                          </div>
+                        )}
+                        <div className="bg-surface border border-border/60 rounded-2xl p-4 space-y-1 text-left shadow-sm">
+                          <div className="text-xs font-bold text-text-primary flex items-center gap-1.5"><Tag size={13} className="text-blue-500" /> Projekt-Verknüpfung</div>
+                          <p className="text-[11px] text-text-muted leading-relaxed font-medium">
+                            Partner können direkt Bauprojekten zugewiesen werden, um Mängel, Aufgaben und Abnahmen zu koordinieren.
+                          </p>
+                        </div>
+                      </>
                     )}
                   </div>
+
+                  {/* RECHTE SPALTE: FORMULAR-FELDER */}
                   <div className="lg:col-span-2">
-                    <form id="contact-form" onSubmit={handleAddContact} className="space-y-6">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('contact_type')}</label>
-                        <div className="flex bg-surface border border-border/50 rounded-lg p-1">
-                          <button type="button" onClick={() => setNewContact((prev: any) => ({...prev, isExternal: false, status: 'team', role: 'employee'}))} className={cn("flex-1 py-2 text-sm font-bold rounded-md transition-all", !newContact.isExternal ? "bg-accent-ai text-white shadow-md" : "text-text-muted hover:text-text-primary")}>{t('internal_team')}</button>
-                          <button type="button" onClick={() => setNewContact((prev: any) => ({...prev, isExternal: true, status: (prev.status === 'team' ? 'partner' : (prev.status || 'neu')), role: 'partner'}))} className={cn("flex-1 py-2 text-sm font-bold rounded-md transition-all", newContact.isExternal ? "bg-blue-500 text-white shadow-md" : "text-text-muted hover:text-text-primary")}>{t('external_client_partner')}</button>
+                    <form id="contact-form" onSubmit={handleAddContact} className="space-y-5">
+                      
+                      {!newContact.isExternal ? (
+                        /* ============================================================ */
+                        /* FORMULAR FÜR INTERNES TEAMMITGLIED                          */
+                        /* ============================================================ */
+                        <div className="space-y-5">
+                          {/* Info Banner */}
+                          <div className="bg-accent-ai/5 border border-accent-ai/20 rounded-xl p-3 flex items-center gap-2.5">
+                            <UserCheck size={16} className="text-accent-ai shrink-0" />
+                            <p className="text-xs font-medium text-text-primary">
+                              Internes Mitarbeiter-Profil. Firmenangaben wie UID und MwSt.-Nummer werden hier nicht benötigt.
+                            </p>
+                          </div>
+
+                          {/* Vorname & Nachname */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('first_name')} *</label>
+                              <input type="text" value={newContact.firstName} onChange={e => setNewContact((prev: any) => ({...prev, firstName: e.target.value}))} placeholder="z. B. Max" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('last_name')} *</label>
+                              <input type="text" value={newContact.lastName} onChange={e => setNewContact((prev: any) => ({...prev, lastName: e.target.value}))} placeholder="z. B. Muster" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                          </div>
+
+                          {/* Position & Abteilung */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Briefcase size={14}/> {t('position_job')}</label>
+                              <input type="text" list="positions-list" value={newContact.jobTitle} onChange={e => setNewContact((prev: any) => ({...prev, jobTitle: e.target.value}))} placeholder="z. B. Projektleiter, Architekt FH" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                              <datalist id="positions-list">
+                                <option value="Projektleiter / Projektleiterin" />
+                                <option value="Architekt FH / ETH" />
+                                <option value="Bauleiter / Bauleiterin" />
+                                <option value="Junior Architekt / Architektin" />
+                                <option value="Zeichner EFZ Architektur" />
+                                <option value="Interior Designer" />
+                                <option value="Geschäftsleitung / Partner" />
+                                <option value="Administration & Finanzen" />
+                              </datalist>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Layers size={14}/> {t('department')}</label>
+                              <input type="text" list="departments-list" value={newContact.department} onChange={e => setNewContact((prev: any) => ({...prev, department: e.target.value}))} placeholder="z. B. Architektur & Planung" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                              <datalist id="departments-list">
+                                <option value="Architektur & Entwurf" />
+                                <option value="Bauleitung & Realisierung" />
+                                <option value="Geschäftsleitung" />
+                                <option value="Projektmanagement" />
+                                <option value="Administration & Finanzen" />
+                              </datalist>
+                            </div>
+                          </div>
+
+                          {/* E-Mail & Telefon */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center justify-between">
+                                <span className="flex items-center gap-1.5"><Mail size={14}/> {t('email')} *</span>
+                                <span className="text-[10px] text-accent-ai font-semibold">Workspace-Login</span>
+                              </label>
+                              <input type="email" value={newContact.email} onChange={e => setNewContact((prev: any) => ({...prev, email: e.target.value}))} placeholder="m.muster@firma.ch" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Phone size={14}/> {t('phone')}</label>
+                              <input type="text" value={newContact.phone} onChange={e => setNewContact((prev: any) => ({...prev, phone: e.target.value}))} placeholder="+41 79 123 45 67" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                          </div>
+
+                          {/* System-Rolle & Zugriffsrechte */}
+                          <div className="space-y-2 pt-1">
+                            <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                              <Shield size={14} className="text-accent-ai" /> {t('system_access_role')}
+                            </label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {[
+                                { id: 'employee', label: t('mitarbeiter'), desc: t('role_employee_desc'), icon: <UserCheck size={16} className="text-accent-ai" /> },
+                                { id: 'project_lead', label: 'Projektleiter', desc: t('role_project_lead_desc'), icon: <Briefcase size={16} className="text-indigo-400" /> },
+                                { id: 'owner', label: t('owner_management'), desc: t('role_owner_desc'), icon: <Award size={16} className="text-amber-400" /> },
+                                { id: 'viewer', label: t('viewer'), desc: t('role_viewer_desc'), icon: <Shield size={16} className="text-emerald-400" /> }
+                              ].map(r => (
+                                <div 
+                                  key={r.id} 
+                                  onClick={() => setNewContact((prev: any) => ({...prev, role: r.id}))} 
+                                  className={cn(
+                                    "p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-3",
+                                    newContact.role === r.id 
+                                      ? "bg-accent-ai/10 border-accent-ai shadow-sm" 
+                                      : "bg-surface border-border/60 hover:bg-white/5"
+                                  )}
+                                >
+                                  <div className="mt-0.5 shrink-0">{r.icon}</div>
+                                  <div>
+                                    <div className="text-xs font-bold text-text-primary">{r.label}</div>
+                                    <div className="text-[11px] text-text-muted leading-tight mt-0.5">{r.desc}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Kalkulation & Anstellung */}
+                          <div className="grid grid-cols-3 gap-3 p-4 rounded-xl border border-border/60 bg-surface/40 shadow-sm">
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1"><DollarSign size={13}/> Stundensatz</label>
+                              <div className="relative">
+                                <input type="number" min="0" step="5" value={newContact.hourlyRate} onChange={e => setNewContact((prev: any) => ({...prev, hourlyRate: e.target.value}))} placeholder="140" className="w-full bg-background border border-border/60 rounded-lg px-3 py-2 text-xs outline-none focus:border-accent-ai text-text-primary font-bold pr-14" />
+                                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-text-muted font-bold">CHF/h</span>
+                              </div>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1"><BadgePercent size={13}/> Pensum</label>
+                              <select value={newContact.workload || '100%'} onChange={e => setNewContact((prev: any) => ({...prev, workload: e.target.value}))} className="w-full bg-background border border-border/60 rounded-lg px-3 py-2 text-xs outline-none focus:border-accent-ai text-text-primary font-bold">
+                                <option value="100%">100% (Vollzeit)</option>
+                                <option value="80%">80%</option>
+                                <option value="60%">60%</option>
+                                <option value="50%">50% (Teilzeit)</option>
+                                <option value="40%">40%</option>
+                                <option value="20%">20%</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1"><Award size={13}/> Kürzel</label>
+                              <input type="text" maxLength={4} value={newContact.initials} onChange={e => setNewContact((prev: any) => ({...prev, initials: e.target.value.toUpperCase()}))} placeholder="z. B. MM" className="w-full bg-background border border-border/60 rounded-lg px-3 py-2 text-xs outline-none focus:border-accent-ai text-text-primary font-mono font-bold uppercase text-center" />
+                            </div>
+                          </div>
+
+                          {/* Interne Notizen */}
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><FileText size={14}/> {t('internal_notes')}</label>
+                            <textarea value={newContact.description} onChange={e => setNewContact((prev: any) => ({...prev, description: e.target.value}))} rows={2} placeholder="Spezialisierungen, Zertifikate, interne Aufgabenbereiche..." className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2 text-sm outline-none focus:border-accent-ai resize-none custom-scrollbar text-text-primary font-medium" />
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('first_name')}</label><input type="text" value={newContact.firstName} onChange={e => setNewContact((prev: any) => ({...prev, firstName: e.target.value}))} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('last_name')}</label><input type="text" value={newContact.lastName} onChange={e => setNewContact((prev: any) => ({...prev, lastName: e.target.value}))} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 col-span-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Building size={14}/> {t('company')}</label><input type="text" value={newContact.company} onChange={e => setNewContact((prev: any) => ({...prev, company: e.target.value}))} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai font-bold text-text-primary" /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Mail size={14}/> {t('email')}</label><input type="email" value={newContact.email} onChange={e => setNewContact((prev: any) => ({...prev, email: e.target.value}))} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Phone size={14}/> {t('phone')}</label><input type="text" value={newContact.phone} onChange={e => setNewContact((prev: any) => ({...prev, phone: e.target.value}))} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-border/50 bg-surface/50 shadow-sm">
-                        <div className="space-y-2 col-span-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><MapPin size={14}/> {t('street_number')}</label><input type="text" value={newContact.street} onChange={e => setNewContact((prev: any) => ({...prev, street: e.target.value}))} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                        <div className="space-y-2 col-span-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('zip_code')} & {t('city')}</label><input type="text" value={newContact.zipCity} onChange={e => setNewContact((prev: any) => ({...prev, zipCity: e.target.value}))} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Globe size={14}/> {t('website')}</label><input type="text" value={newContact.website} onChange={e => setNewContact((prev: any) => ({...prev, website: e.target.value}))} placeholder="www..." className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('uid_number')}</label><input type="text" value={newContact.uid} onChange={e => setNewContact((prev: any) => ({...prev, uid: e.target.value}))} placeholder="CHE-..." className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('vat_number')}</label><input type="text" value={newContact.vat} onChange={e => setNewContact((prev: any) => ({...prev, vat: e.target.value}))} placeholder="..." className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" /></div>
-                      </div>
-                      <div className="space-y-2"><label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><FileText size={14}/> {t('internal_notes')}</label><textarea value={newContact.description} onChange={e => setNewContact((prev: any) => ({...prev, description: e.target.value}))} rows={3} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai resize-none custom-scrollbar text-text-primary font-medium" placeholder="..."></textarea></div>
+                      ) : (
+                        /* ============================================================ */
+                        /* FORMULAR FÜR EXTERNEN PARTNER / KUNDE / FACHPLANER           */
+                        /* ============================================================ */
+                        <div className="space-y-5">
+                          {/* Partner-Kategorie Chips */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                              <Building2 size={14} className="text-blue-500" /> {t('partner_category')} *
+                            </label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {[
+                                { id: 'client', label: t('category_client'), icon: <Building2 size={14} /> },
+                                { id: 'planner', label: t('category_planner'), icon: <Compass size={14} /> },
+                                { id: 'craftsman', label: t('category_craftsman'), icon: <Hammer size={14} /> },
+                                { id: 'supplier', label: t('category_supplier'), icon: <Package size={14} /> },
+                                { id: 'authority', label: t('category_authority'), icon: <Landmark size={14} /> },
+                                { id: 'lead', label: t('category_lead'), icon: <Sparkles size={14} /> },
+                              ].map(cat => (
+                                <button
+                                  type="button"
+                                  key={cat.id}
+                                  onClick={() => setNewContact((prev: any) => ({
+                                    ...prev,
+                                    partnerCategory: cat.id,
+                                    role: cat.id === 'client' ? 'client' : (cat.id === 'lead' ? 'guest' : 'partner'),
+                                    status: cat.id === 'lead' ? 'lead' : (cat.id === 'client' ? 'partner' : 'partner')
+                                  }))}
+                                  className={cn(
+                                    "py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 cursor-pointer",
+                                    newContact.partnerCategory === cat.id 
+                                      ? "bg-blue-500/10 border-blue-500 text-blue-500 shadow-sm" 
+                                      : "bg-surface border-border/60 text-text-muted hover:text-text-primary hover:bg-white/5"
+                                  )}
+                                >
+                                  <span className="shrink-0">{cat.icon}</span>
+                                  <span className="truncate">{cat.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Firma & Gewerk */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Building size={14}/> {t('company')} *</label>
+                              <input type="text" value={newContact.company} onChange={e => setNewContact((prev: any) => ({...prev, company: e.target.value}))} placeholder="z. B. Keller Holzbau AG" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai font-bold text-text-primary" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Tag size={14}/> {t('trade_field')}</label>
+                              <input type="text" list="trades-list" value={newContact.trade} onChange={e => setNewContact((prev: any) => ({...prev, trade: e.target.value}))} placeholder="z. B. Sanitär & Heizung, Holzbau" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                              <datalist id="trades-list">
+                                <option value="Sanitär & Heizung" />
+                                <option value="Elektroinstallation" />
+                                <option value="Holzbau & Zimmerei" />
+                                <option value="Baumeister / Rohbau" />
+                                <option value="Tragwerksplanung / Statik" />
+                                <option value="HLKS Ingenieur" />
+                                <option value="Fassadenbau & Fenster" />
+                                <option value="Gipser & Maler" />
+                                <option value="Landschaftsarchitektur" />
+                                <option value="Bauherrschaft / Kunde" />
+                              </datalist>
+                            </div>
+                          </div>
+
+                          {/* Ansprechperson */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('first_name')}</label>
+                              <input type="text" value={newContact.firstName} onChange={e => setNewContact((prev: any) => ({...prev, firstName: e.target.value}))} placeholder="Vorname Ansprechperson" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('last_name')}</label>
+                              <input type="text" value={newContact.lastName} onChange={e => setNewContact((prev: any) => ({...prev, lastName: e.target.value}))} placeholder="Nachname Ansprechperson" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><UserCheck size={14}/> Funktion</label>
+                              <input type="text" value={newContact.contactPersonRole} onChange={e => setNewContact((prev: any) => ({...prev, contactPersonRole: e.target.value}))} placeholder="z. B. Bauführer, GF" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                          </div>
+
+                          {/* Kommunikation */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Mail size={14}/> {t('email')}</label>
+                              <input type="email" value={newContact.email} onChange={e => setNewContact((prev: any) => ({...prev, email: e.target.value}))} placeholder="info@partner.ch" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Phone size={14}/> {t('phone')}</label>
+                              <input type="text" value={newContact.phone} onChange={e => setNewContact((prev: any) => ({...prev, phone: e.target.value}))} placeholder="+41 44 123 45 67" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Globe size={14}/> {t('website')}</label>
+                              <input type="text" value={newContact.website} onChange={e => setNewContact((prev: any) => ({...prev, website: e.target.value}))} placeholder="www.partner.ch" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                          </div>
+
+                          {/* Adresse */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border/60 bg-surface/40 shadow-sm">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><MapPin size={14}/> {t('street_number')}</label>
+                              <input type="text" value={newContact.street} onChange={e => setNewContact((prev: any) => ({...prev, street: e.target.value}))} placeholder="Gewerbestrasse 10" className="w-full bg-background border border-border/60 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('zip_code')} & {t('city')}</label>
+                              <input type="text" value={newContact.zipCity} onChange={e => setNewContact((prev: any) => ({...prev, zipCity: e.target.value}))} placeholder="8000 Zürich" className="w-full bg-background border border-border/60 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                          </div>
+
+                          {/* Rechtliche & Steuerliche Angaben */}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('uid_number')}</label>
+                              <input type="text" value={newContact.uid} onChange={e => setNewContact((prev: any) => ({...prev, uid: e.target.value}))} placeholder="CHE-123.456.789" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('vat_number')}</label>
+                              <input type="text" value={newContact.vat} onChange={e => setNewContact((prev: any) => ({...prev, vat: e.target.value}))} placeholder="CHE-123.456.789 MWST" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Clock size={14}/> {t('payment_terms')}</label>
+                              <select value={newContact.paymentTerms || '30 Tage netto'} onChange={e => setNewContact((prev: any) => ({...prev, paymentTerms: e.target.value}))} className="w-full bg-surface border border-border/60 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium">
+                                <option value="30 Tage netto">30 Tage netto</option>
+                                <option value="10 Tage 2% Skonto, 30 Tage netto">10 Tage 2% Skonto, 30 netto</option>
+                                <option value="14 Tage netto">14 Tage netto</option>
+                                <option value="Sofort nach Erhalt">Sofort nach Erhalt</option>
+                                <option value="Vorauskasse">Vorauskasse</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Projektzuweisung & Notizen */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><FolderKanban size={14}/> {t('assigned_project')}</label>
+                              <select value={newContact.assignedProjectId || ''} onChange={e => setNewContact((prev: any) => ({...prev, assignedProjectId: e.target.value}))} className="w-full bg-surface border border-border/60 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium">
+                                <option value="">{t('no_project_assigned')}</option>
+                                {projects.map((p: any) => (
+                                  <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><FileText size={14}/> {t('internal_notes')}</label>
+                              <textarea value={newContact.description} onChange={e => setNewContact((prev: any) => ({...prev, description: e.target.value}))} rows={2} placeholder="Konditionen, Notizen, Vereinbarungen..." className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2 text-sm outline-none focus:border-accent-ai resize-none custom-scrollbar text-text-primary font-medium" />
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </form>
                   </div>
                 </div>
               </div>
-              <div className="p-6 border-t border-border/50 bg-surface/80 shrink-0 flex justify-end gap-3">
-                <button type="button" onClick={closeAddModal} className="px-6 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                <button form="contact-form" type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all flex items-center gap-2 disabled:opacity-50">{isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {newContact.id ? t('save_changes') : t('save_contact')}</button>
+
+              <div className="p-4 sm:p-5 border-t border-border/60 bg-surface/90 shrink-0 flex justify-end gap-3">
+                <button type="button" onClick={closeAddModal} className="px-5 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
+                <button form="contact-form" type="submit" disabled={isSubmitting} className={cn("px-7 py-2.5 text-white rounded-xl text-sm font-bold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer", !newContact.isExternal ? "bg-accent-ai hover:bg-accent-ai/90 shadow-accent-ai/20" : "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20")}>
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} 
+                  {newContact.id ? t('save_changes') : t('save_contact')}
+                </button>
               </div>
             </motion.div>
           </div>
