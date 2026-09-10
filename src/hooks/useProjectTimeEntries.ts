@@ -14,6 +14,8 @@ export interface TimeEntry {
   ownerId: string;
   companyId: string;
   isBillable?: boolean;
+  budgetPosId?: string;
+  externalData?: any;
 }
 
 export function useProjectTimeEntries() {
@@ -56,6 +58,8 @@ export function useProjectTimeEntries() {
             description: t.description || 'Zeiterfassung',
             hourlyRate: Number(t.hourlyRate || t.hourly_rate || 120),
             isBillable: t.isBillable !== undefined ? t.isBillable : (t.is_billable !== undefined ? t.is_billable : true),
+            budgetPosId: t.budgetPosId || t.budget_pos_id || '',
+            externalData: t.externalData || t.external_data || null,
             ownerId: t.ownerId || t.owner_id || currentUserId,
             companyId: t.companyId || t.company_id || safeCompanyId
           });
@@ -86,6 +90,9 @@ export function useProjectTimeEntries() {
       hours: Number(entryData.hours || 0),
       description: entryData.description || 'Zeiterfassung',
       hourlyRate: Number(entryData.hourlyRate || entryData.hourly_rate || 120),
+      isBillable: entryData.isBillable !== undefined ? entryData.isBillable : true,
+      budgetPosId: entryData.budgetPosId || '',
+      externalData: entryData.externalData || null,
       ownerId: currentUserId,
       companyId: safeCompanyId
     };

@@ -10,7 +10,8 @@ import {
   DollarSign, ArrowUpRight, ArrowDownRight, PieChart as PieChartIcon,
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
-  Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown, Sparkles
+  Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown, Sparkles,
+  User, Building2, FileSpreadsheet
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -268,14 +269,16 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
 };
 
 const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCHF, projectHeader, budgetDetails, receiptType }: any) => {
-  const isExternal = incomingData.type === 'external';
+  const isExternal = receiptType === 'external_cost' || incomingData.type === 'external';
   return (
     <Document>
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
         <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor }]} fixed>
           <View style={pdfStyles.headerLeft}>
-            <Text style={[pdfStyles.title, { color: settings.accentColor }]}>BUCHUNG</Text>
-            <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' }}>{receiptType === 'external_cost' ? 'EXTERNER BELEG' : 'SPESEN BELEG'}</Text>
+            <Text style={[pdfStyles.title, { color: settings.accentColor }]}>BUCHUNGSBELEG</Text>
+            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' }}>
+              {isExternal ? 'EXTERNER KREDITORENBELEG' : 'INTERNER SPESEN- & AUSLAGENBELEG'}
+            </Text>
           </View>
           <View style={{ textAlign: 'right', alignItems: 'flex-end' }}>
             <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>Datum: <Text style={{ color: '#000', fontWeight: 'bold' }}>{new Date(incomingData.date).toLocaleDateString('de-CH')}</Text></Text>
@@ -285,21 +288,48 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
         </View>
 
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 10 }}>
-          <Text style={{ width: '40%', fontWeight: 'bold' }}>Firma / Kreditor</Text>
-          <Text style={{ width: '40%', fontWeight: 'bold' }}>Beschreibung</Text>
+          <Text style={{ width: '35%', fontWeight: 'bold' }}>{isExternal ? 'Firma / Kreditor' : 'Begünstigter / Händler'}</Text>
+          <Text style={{ width: '45%', fontWeight: 'bold' }}>Beschreibung & Buchungsdetails</Text>
           <Text style={{ width: '20%', fontWeight: 'bold', textAlign: 'right' }}>Betrag (CHF)</Text>
         </View>
 
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 10 }}>
-          <View style={{ width: '40%' }}>
-            <Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontWeight: 'bold', fontSize: 8 }}>{incomingData.vendor || incomingData.company || 'Firma'}</Text>
-            {isExternal && incomingData.firstName && <Text style={{ fontSize: 8, color: '#6b7280', marginTop: 4 }}>{incomingData.firstName} {incomingData.lastName}</Text>}
+          <View style={{ width: '35%' }}>
+            <Text style={{ backgroundColor: '#f3f4f6', color: '#111827', padding: 4, fontWeight: 'bold', fontSize: 9 }}>
+              {isExternal ? (incomingData.company || incomingData.vendor || 'Lieferant') : (incomingData.vendor || 'Auslage')}
+            </Text>
+            {isExternal ? (
+              <>
+                {incomingData.invoiceNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>Rechnungs-Nr: {incomingData.invoiceNumber}</Text>}
+                {incomingData.contactPerson && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kontakt: {incomingData.contactPerson}</Text>}
+                {incomingData.dueDate && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Fällig bis: {new Date(incomingData.dueDate).toLocaleDateString('de-CH')}</Text>}
+                {incomingData.creditorCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kategorie: {incomingData.creditorCategory}</Text>}
+                {incomingData.iban && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>IBAN: {incomingData.iban}</Text>}
+              </>
+            ) : (
+              <>
+                {incomingData.beneficiaryName && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>Mitarbeiter: {incomingData.beneficiaryName}</Text>}
+                {incomingData.expenseCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kategorie: {incomingData.expenseCategory}</Text>}
+                {incomingData.paymentMethod && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Zahlungsart: {incomingData.paymentMethod}</Text>}
+              </>
+            )}
           </View>
-          <View style={{ width: '40%' }}>
-            <Text style={{ fontWeight: 'bold' }}>{incomingData.description || '-'}</Text>
-            {budgetDetails && <Text style={{ fontSize: 8, color: '#6b7280', marginTop: 2 }}>Pos: {budgetDetails.item}</Text>}
+          <View style={{ width: '45%', paddingRight: 10 }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 9 }}>{incomingData.description || '-'}</Text>
+            {budgetDetails && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>BKP / Pos: {budgetDetails.item}</Text>}
+            <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>MWST: {incomingData.vatRate || 8.1}%</Text>
+            {isExternal && incomingData.skontoRate > 0 && (
+              <Text style={{ fontSize: 8, color: '#059669', marginTop: 2, fontWeight: 'bold' }}>
+                Skonto: {incomingData.skontoRate}% (Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))})
+              </Text>
+            )}
           </View>
-          <Text style={{ width: '20%', textAlign: 'right', fontWeight: 'bold', color: settings.accentColor, fontSize: 12 }}>{formatCHF(Number(incomingData.amount))}</Text>
+          <View style={{ width: '20%', alignItems: 'flex-end' }}>
+            <Text style={{ textAlign: 'right', fontWeight: 'bold', color: settings.accentColor, fontSize: 13 }}>
+              {formatCHF(Number(incomingData.amount))}
+            </Text>
+            <Text style={{ fontSize: 8, color: '#6b7280', marginTop: 4 }}>Status: {incomingData.status || 'Offen'}</Text>
+          </View>
         </View>
 
         {incomingReceipts.length > 0 && (
@@ -453,14 +483,52 @@ export default function Finance() {
   const [receiptType, setReceiptType] = useState<'expense' | 'external_cost'>('expense');
   const [incomingReceipts, setIncomingReceipts] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [incomingData, setIncomingData] = useState({ type: 'internal', vendor: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', description: '', amount: '', skontoRate: 0, date: new Date().toISOString().split('T')[0], budgetPosId: '', status: 'Offen' });
+  const [incomingData, setIncomingData] = useState({
+    type: 'internal',
+    date: new Date().toISOString().split('T')[0],
+    amount: '',
+    description: '',
+    budgetPosId: '',
+    vatRate: 8.1,
+    // Intern (Spesen)
+    beneficiaryUserId: '',
+    beneficiaryName: '',
+    vendor: '',
+    receiptNumber: '',
+    expenseCategory: 'Materialkauf & Muster',
+    paymentMethod: 'Privat vorgelegt (Rückerstattung ausstehend)',
+    status: 'Offen (Rückerstattung ausstehend)',
+    // Externer Kreditor
+    company: '',
+    contactPerson: '',
+    invoiceNumber: '',
+    dueDate: '',
+    skontoRate: 0,
+    creditorCategory: 'Kreditorenrechnung (Handwerker / Material)',
+    iban: ''
+  });
   const [restKostenPrognose, setRestKostenPrognose] = useState<Record<string, number>>({});
   const [showCsvImportModal, setShowCsvImportModal] = useState(false);
   const [showAiBudgetModal, setShowAiBudgetModal] = useState(false);
   const [showCsvMenu, setShowCsvMenu] = useState(false);
   const csvMenuRef = useRef<HTMLDivElement>(null);
   const [csvImportText, setCsvImportText] = useState('');
-  const [timeData, setTimeData] = useState({ type: 'internal', userId: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', hours: 0, hourlyRate: 0, description: '', date: new Date().toISOString().split('T')[0] });
+  const [timeData, setTimeData] = useState({
+    type: 'internal',
+    date: new Date().toISOString().split('T')[0],
+    hours: 0,
+    hourlyRate: 120,
+    description: '',
+    budgetPosId: '',
+    // Intern
+    userId: '',
+    isBillable: true,
+    // Extern
+    company: '',
+    specialistName: '',
+    rapportNumber: '',
+    approvalStatus: 'Zur Prüfung eingereicht'
+  });
   const mobileCameraRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1311,45 +1379,153 @@ export default function Finance() {
     const safeProjectId = currentProjectId || 'global';
     setIsSubmitting(true);
     try {
-      const fileName = `Buchung_${incomingData.vendor.replace(/\s/g, '_')}_${Date.now()}.pdf`;
+      const isExternal = receiptType === 'external_cost' || incomingData.type === 'external';
+      const mainName = isExternal 
+        ? (incomingData.company || incomingData.vendor || 'Kreditor')
+        : (incomingData.vendor || 'Spesen');
+      const cleanMain = mainName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `Buchung_${cleanMain}_${Date.now()}.pdf`;
       const finalPdfUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const uploadedUrls = [finalPdfUrl];
 
-      const isExternal = incomingData.type === 'external';
-      const descPrefix = isExternal && incomingData.company ? `${incomingData.company} (${incomingData.firstName} ${incomingData.lastName})` : (incomingData.vendor || 'Firma');
+      let descPrefix = '';
+      let transactionCategory = '';
+
+      if (isExternal) {
+        const invNum = incomingData.invoiceNumber ? ` [Rechnung: ${incomingData.invoiceNumber}]` : '';
+        descPrefix = `[Kreditor: ${mainName}${invNum}]`;
+        transactionCategory = incomingData.creditorCategory || 'Kreditorenrechnung';
+      } else {
+        const beneficiary = projectMembers?.find((m: any) => m.userId === incomingData.beneficiaryUserId);
+        const benName = beneficiary?.userEmail || incomingData.beneficiaryName || currentUser.email || 'Team';
+        descPrefix = `[Spesen: ${benName} - ${incomingData.vendor || 'Auslage'}]`;
+        transactionCategory = incomingData.expenseCategory || 'Spesen';
+      }
+
       const budgetSuffix = incomingData.budgetPosId ? ` [Budget: ${incomingData.budgetPosId}]` : '';
+      const fullDescription = `${descPrefix} ${incomingData.description || (isExternal ? 'Kreditorenrechnung' : 'Spesen')}${budgetSuffix}`.trim();
+      const statusValue = incomingData.status || (isExternal ? 'Offen zur Prüfung' : 'Offen (Rückerstattung ausstehend)');
 
       await supabase.from('transactions').insert({
         type: 'expense',
         date: incomingData.date || new Date().toISOString().split('T')[0],
-        description: `${descPrefix} - ${incomingData.description || 'Beleg'}${budgetSuffix}`,
-        category: 'Kreditorenrechnung', 
+        description: fullDescription,
+        category: transactionCategory, 
         amount: -Math.abs(Number(incomingData.amount) || 0), 
-        status: incomingData.status || 'Offen', 
+        status: statusValue, 
         project_id: safeProjectId, 
         owner_id: currentUser.uid, 
         company_id: safeCompanyId, 
         receipt_urls: uploadedUrls
       });
 
+      const newTx: Transaction = {
+        id: `tx-${Date.now()}`,
+        date: incomingData.date || new Date().toISOString().split('T')[0],
+        description: fullDescription,
+        category: transactionCategory,
+        amount: -Math.abs(Number(incomingData.amount) || 0),
+        status: statusValue,
+        budgetPosId: incomingData.budgetPosId || '',
+        projectId: safeProjectId,
+        ownerId: currentUser.uid
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
       addToast(t('receipt_booked_success') || 'Erfolgreich verbucht', 'success');
-      setIsReceiptPdfStudioOpen(false); setShowReceiptStudio(false); setIncomingReceipts([]);
-    } catch (e) { addToast('Fehler', 'error'); } finally { setIsSubmitting(false); }
+      setIsReceiptPdfStudioOpen(false); 
+      setShowReceiptStudio(false); 
+      setIncomingReceipts([]);
+      setIncomingData({
+        type: isExternal ? 'external' : 'internal',
+        date: new Date().toISOString().split('T')[0],
+        amount: '',
+        description: '',
+        budgetPosId: '',
+        vatRate: 8.1,
+        beneficiaryUserId: '',
+        beneficiaryName: '',
+        vendor: '',
+        receiptNumber: '',
+        expenseCategory: 'Materialkauf & Muster',
+        paymentMethod: 'Privat vorgelegt (Rückerstattung ausstehend)',
+        status: isExternal ? 'Offen zur Prüfung' : 'Offen (Rückerstattung ausstehend)',
+        company: '',
+        contactPerson: '',
+        invoiceNumber: '',
+        dueDate: '',
+        skontoRate: 0,
+        creditorCategory: 'Kreditorenrechnung (Handwerker / Material)',
+        iban: ''
+      });
+    } catch (e) { 
+      addToast('Fehler beim Speichern', 'error'); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleTimeSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); if (timeData.hours <= 0 || !currentProjectId) return;
+    e.preventDefault(); 
+    if (timeData.hours <= 0 || !currentProjectId) return;
     setIsSubmitting(true);
     try {
       if (typeof addTimeEntry === 'function') {
         const isExternal = timeData.type === 'external';
-        const descPrefix = isExternal && timeData.company ? `[Extern: ${timeData.company}] ` : '';
-        addTimeEntry({ userId: isExternal ? 'external_partner' : (timeData.userId || 'internal_team'), projectId: currentProjectId, date: timeData.date || new Date().toISOString().split('T')[0], hours: timeData.hours || 0, description: `${descPrefix}${timeData.description || 'Stunden'}`, hourlyRate: timeData.hourlyRate || 0, externalData: isExternal ? { company: timeData.company, firstName: timeData.firstName, lastName: timeData.lastName, contactPerson: timeData.contactPerson, address: timeData.address, zipCity: timeData.zipCity, phone: timeData.phone, email: timeData.email } : null });
-        addToast(t('hours_booked_success') || 'Erfolgreich', 'success'); setShowTimeModal(false);
-        setTimeData({ type: 'internal', userId: '', company: '', firstName: '', lastName: '', contactPerson: '', address: '', zipCity: '', phone: '', email: '', hours: 0, hourlyRate: 0, description: '', date: new Date().toISOString().split('T')[0] });
-      } else { addToast('Fehler: Zeiterfassung noch nicht initialisiert.', 'error'); }
-    } finally { setIsSubmitting(false); }
+        let descPrefix = '';
+        if (isExternal) {
+          const comp = timeData.company || 'Partner';
+          const rap = timeData.rapportNumber ? ` [Rapport: ${timeData.rapportNumber}]` : '';
+          const spec = timeData.specialistName ? ` (${timeData.specialistName})` : '';
+          descPrefix = `[Extern: ${comp}${spec}${rap}] `;
+        } else {
+          descPrefix = '[Intern] ';
+        }
+
+        const budgetSuffix = timeData.budgetPosId ? ` [BKP: ${timeData.budgetPosId}]` : '';
+        const fullDesc = `${descPrefix}${timeData.description || 'Zeiterfassung'}${budgetSuffix}`;
+
+        addTimeEntry({ 
+          userId: isExternal ? 'external_partner' : (timeData.userId || currentUser?.uid || 'internal_team'), 
+          projectId: currentProjectId, 
+          date: timeData.date || new Date().toISOString().split('T')[0], 
+          hours: timeData.hours || 0, 
+          description: fullDesc, 
+          hourlyRate: timeData.hourlyRate || (isExternal ? 165 : 120), 
+          isBillable: isExternal ? true : (timeData.isBillable !== false),
+          budgetPosId: timeData.budgetPosId || '',
+          externalData: isExternal ? { 
+            company: timeData.company, 
+            specialistName: timeData.specialistName,
+            rapportNumber: timeData.rapportNumber,
+            approvalStatus: timeData.approvalStatus || 'Zur Prüfung eingereicht',
+            budgetPosId: timeData.budgetPosId
+          } : null 
+        });
+
+        addToast(t('hours_booked_success') || 'Erfolgreich verbucht', 'success'); 
+        setShowTimeModal(false);
+        setTimeData({ 
+          type: isExternal ? 'external' : 'internal', 
+          userId: '', 
+          company: '', 
+          specialistName: '',
+          rapportNumber: '',
+          approvalStatus: 'Zur Prüfung eingereicht',
+          hours: 0, 
+          hourlyRate: isExternal ? 165 : 120, 
+          description: '', 
+          budgetPosId: '',
+          isBillable: true,
+          date: new Date().toISOString().split('T')[0] 
+        });
+      } else { 
+        addToast('Fehler: Zeiterfassung noch nicht initialisiert.', 'error'); 
+      }
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   // 🔥 NEU: Der VOLLBILD-LANDSCAPE Handler für Smartphones 🔥
@@ -2752,54 +2928,190 @@ export default function Finance() {
       {/* MODALS */}
       {isMounted && showTimeModal && createPortal(
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
               <h3 className="font-bold flex items-center gap-2 text-text-primary"><Clock className="text-orange-400" size={18} /> {t('book_hours')}</h3>
               <button onClick={() => setShowTimeModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18} /></button>
             </div>
-            <div className="p-6 overflow-y-auto">
+            <div className="p-6 overflow-y-auto max-h-[85vh] custom-scrollbar">
               <form id="time-form" onSubmit={handleTimeSubmit} className="space-y-4">
 
                 <div className="flex bg-background border border-border/50 rounded-lg p-1">
-                  <button type="button" onClick={() => setTimeData({ ...timeData, type: 'internal' })} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", timeData.type === 'internal' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('simple_internal')}</button>
-                  <button type="button" onClick={() => setTimeData({ ...timeData, type: 'external' })} className={cn("flex-1 py-1.5 text-xs font-bold rounded-md transition-all", timeData.type === 'external' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>{t('detailed_external')}</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setTimeData(prev => ({ ...prev, type: 'internal', hourlyRate: prev.hourlyRate === 165 ? 120 : (prev.hourlyRate || 120) }))} 
+                    className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", timeData.type === 'internal' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <User size={14} /> Einfach (Intern: Eigenleistung)
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => setTimeData(prev => ({ ...prev, type: 'external', hourlyRate: prev.hourlyRate === 120 ? 165 : (prev.hourlyRate || 165) }))} 
+                    className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", timeData.type === 'external' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <FileSpreadsheet size={14} /> Detailliert (Extern: Partner & Regie)
+                  </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ressource</label>
-                    {timeData.type === 'internal' ? (
-                      <select required value={timeData.userId} onChange={(e) => setTimeData({ ...timeData, userId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none">
-                        <option value="" disabled className="bg-surface">Mitarbeiter wählen...</option>
-                        {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
-                          <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
+                {timeData.type === 'internal' ? (
+                  <>
+                    <div className="text-xs text-text-muted bg-orange-500/10 border border-orange-500/20 p-2.5 rounded-lg flex items-center gap-2">
+                      <Clock size={15} className="text-orange-500 shrink-0" />
+                      <span>Interne Zeiterfassung für eigene Mitarbeiter, Bauleiter & Projektleitung.</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Mitarbeiter</label>
+                        <select 
+                          required 
+                          value={timeData.userId} 
+                          onChange={(e) => setTimeData({ ...timeData, userId: e.target.value })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none"
+                        >
+                          <option value="" disabled className="bg-surface">Mitarbeiter wählen...</option>
+                          {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
+                            <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
+                          ))}
+                          {(!projectMembers || projectMembers.filter((m: any) => m.projectId === currentProjectId).length === 0) && currentUser && (
+                            <option value={currentUser.uid} className="bg-surface">{currentUser.email || 'Aktueller Benutzer'}</option>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('date')}</label>
+                        <input type="date" required value={timeData.date} onChange={(e) => setTimeData({ ...timeData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
+                        <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Interner Ansatz (CHF/h)</label>
+                        <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
+                      </div>
+                    </div>
+
+                    {timeData.hours > 0 && timeData.hourlyRate > 0 && (
+                      <div className="text-xs font-bold text-orange-500 bg-orange-500/10 border border-orange-500/20 p-2.5 rounded-lg flex justify-between items-center">
+                        <span>Aufwand ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
+                        <span>CHF {formatCHF(Number(timeData.hours) * Number(timeData.hourlyRate))}</span>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Phase / Budget-Zuweisung</label>
+                      <select value={timeData.budgetPosId} onChange={(e) => setTimeData({ ...timeData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <option value="" className="bg-surface">Allgemeine Regiestunden (Nicht zugewiesen)</option>
+                        {budgetGroups.map((group) => (
+                          <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
+                            <option value={group.id} className="font-medium">{group.pos} {group.title} (Gesamte Phase)</option>
+                            {group.items.map((item) => (
+                              <option key={item.id} value={item.id} className="font-normal">&nbsp;&nbsp;↳ {item.pos} {item.description}</option>
+                            ))}
+                          </optgroup>
                         ))}
                       </select>
-                    ) : (
-                      <input type="text" required placeholder="Partner Firma" value={timeData.company} onChange={(e) => setTimeData({ ...timeData, company: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input 
+                        type="checkbox" 
+                        id="time-is-billable" 
+                        checked={timeData.isBillable !== false} 
+                        onChange={(e) => setTimeData({ ...timeData, isBillable: e.target.checked })} 
+                        className="rounded border-border text-orange-500 focus:ring-orange-500 w-4 h-4 cursor-pointer" 
+                      />
+                      <label htmlFor="time-is-billable" className="text-xs font-bold text-text-primary cursor-pointer">An Kunden verrechenbar</label>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('description')}</label>
+                      <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Was wurde gemacht (z.B. Detailpläne Fassade überarbeitet, Bauherrensitzung)..." />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-xs text-text-muted bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex items-center gap-2">
+                      <FileSpreadsheet size={15} className="text-blue-500 shrink-0" />
+                      <span>Nachweisbare Regiestunden & Fremdleistung externer Partner, Ingenieure oder Handwerker.</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Partner-Firma / Planer</label>
+                        <input type="text" required placeholder="z.B. Geotechnik Schweiz AG" value={timeData.company} onChange={(e) => setTimeData({ ...timeData, company: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Fachkraft / Ausführende Person</label>
+                        <input type="text" placeholder="z.B. Peter Keller (Bauleiter)" value={timeData.specialistName} onChange={(e) => setTimeData({ ...timeData, specialistName: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Rapport- / Regieschein-Nr.</label>
+                        <input type="text" required placeholder="z.B. Rapport #104 / 2026" value={timeData.rapportNumber} onChange={(e) => setTimeData({ ...timeData, rapportNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Rapportdatum</label>
+                        <input type="date" required value={timeData.date} onChange={(e) => setTimeData({ ...timeData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
+                        <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 8.0" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ansatz (CHF/h)</label>
+                        <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 165" />
+                      </div>
+                    </div>
+
+                    {timeData.hours > 0 && timeData.hourlyRate > 0 && (
+                      <div className="text-xs font-bold text-blue-500 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex justify-between items-center">
+                        <span>Total Fremdleistung ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
+                        <span>CHF {formatCHF(Number(timeData.hours) * Number(timeData.hourlyRate))}</span>
+                      </div>
                     )}
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Datum</label>
-                    <input type="date" required value={timeData.date} onChange={(e) => setTimeData({ ...timeData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
-                    <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 4.5" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stundensatz (CHF)</label>
-                    <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
-                  </div>
-                </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">BKP / Vergabe-Position</label>
+                        <select required value={timeData.budgetPosId} onChange={(e) => setTimeData({ ...timeData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="" disabled className="bg-surface">BKP-Position wählen...</option>
+                          {budgetGroups.map((group) => (
+                            <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
+                              <option value={group.id} className="font-medium">{group.pos} {group.title} (Gesamte Phase)</option>
+                              {group.items.map((item) => (
+                                <option key={item.id} value={item.id} className="font-normal">&nbsp;&nbsp;↳ {item.pos} {item.description}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Prüf- & Abrechnungsstatus</label>
+                        <select value={timeData.approvalStatus} onChange={(e) => setTimeData({ ...timeData, approvalStatus: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="Zur Prüfung eingereicht" className="bg-surface">Zur Prüfung eingereicht</option>
+                          <option value="Geprüft & Freigegeben" className="bg-surface">Geprüft & Freigegeben</option>
+                          <option value="Bereits verrechnet" className="bg-surface">Bereits verrechnet</option>
+                        </select>
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Beschreibung</label>
-                  <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Was wurde gemacht..." />
-                </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ausgeführte Arbeiten gemäss Rapport</label>
+                      <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Genaue Beschreibung der erbrachten Regiearbeiten gemäss Rapport..." />
+                    </div>
+                  </>
+                )}
+
               </form>
             </div>
             <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
@@ -2872,66 +3184,278 @@ export default function Finance() {
 
               <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                 <div className="flex bg-background border border-border/50 rounded-lg p-1 mb-6">
-                  <button type="button" onClick={() => { setReceiptType('expense'); setIncomingData({ ...incomingData, type: 'internal' }); }} className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all", receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>Intern (Spesen)</button>
-                  <button type="button" onClick={() => { setReceiptType('external_cost'); setIncomingData({ ...incomingData, type: 'external' }); }} className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all", receiptType === 'external_cost' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}>Externer Kreditor</button>
+                  <button 
+                    type="button" 
+                    onClick={() => { 
+                      setReceiptType('expense'); 
+                      setIncomingData(prev => ({ 
+                        ...prev, 
+                        type: 'internal', 
+                        status: prev.status === 'Bezahlt' ? 'Rückerstattet / Ausbezahlt' : 'Offen (Rückerstattung ausstehend)' 
+                      })); 
+                    }} 
+                    className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <User size={14} /> 🔴 Intern (Spesen & Auslagen)
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => { 
+                      setReceiptType('external_cost'); 
+                      setIncomingData(prev => ({ 
+                        ...prev, 
+                        type: 'external', 
+                        status: prev.status === 'Rückerstattet / Ausbezahlt' ? 'Bezahlt' : 'Offen zur Prüfung' 
+                      })); 
+                    }} 
+                    className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", receiptType === 'external_cost' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                  >
+                    <Building2 size={14} /> 🔵 Externer Kreditor (Lieferant / Handwerker)
+                  </button>
                 </div>
 
-                <div className="space-y-5">
-                  <div>
-                    <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vendor_company')}</label>
-                    <input type="text" value={incomingData.vendor} onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="Name des Lieferanten / Shops" />
-                  </div>
+                {receiptType === 'expense' ? (
+                  /* 🔴 INTERN (SPESEN & AUSLAGEN) */
+                  <div className="space-y-4">
+                    <div className="text-xs text-text-muted bg-red-500/10 border border-red-500/20 p-2.5 rounded-lg flex items-center gap-2">
+                      <Receipt size={15} className="text-red-500 shrink-0" />
+                      <span>Spesenabrechnung: Rückerstattung für privat vorgelegte Auslagen oder Firmenkartenbelege.</span>
+                    </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
-                      <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Mitarbeiter / Begünstigter</label>
+                        <select 
+                          required 
+                          value={incomingData.beneficiaryUserId} 
+                          onChange={e => {
+                            const member = projectMembers?.find((m: any) => m.userId === e.target.value);
+                            setIncomingData({ 
+                              ...incomingData, 
+                              beneficiaryUserId: e.target.value, 
+                              beneficiaryName: member?.userEmail || e.target.value 
+                            });
+                          }} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer"
+                        >
+                          <option value="" disabled className="bg-surface">Teammitglied wählen...</option>
+                          {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
+                            <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
+                          ))}
+                          {(!projectMembers || projectMembers.filter((m: any) => m.projectId === currentProjectId).length === 0) && currentUser && (
+                            <option value={currentUser.uid} className="bg-surface">{currentUser.email || 'Aktueller Benutzer'}</option>
+                          )}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Händler / Geschäft (Shop)</label>
+                        <input 
+                          type="text" 
+                          required 
+                          value={incomingData.vendor} 
+                          onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" 
+                          placeholder="z.B. Jumbo, SBB, Coop, Restaurant" 
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
-                      <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
+                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
+                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Satz</label>
+                        <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value={8.1} className="bg-surface">8.1% (Normalsatz)</option>
+                          <option value={2.6} className="bg-surface">2.6% (Verpflegung)</option>
+                          <option value={0} className="bg-surface">0% (Steuerfrei)</option>
+                        </select>
+                      </div>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Spesenkategorie</label>
+                        <select value={incomingData.expenseCategory} onChange={e => setIncomingData({ ...incomingData, expenseCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="Materialkauf & Muster" className="bg-surface">Materialkauf & Muster</option>
+                          <option value="Reise- & Fahrtkosten (ÖV / Auto / Parken)" className="bg-surface">Reise- & Fahrtkosten (ÖV / Auto / Parken)</option>
+                          <option value="Verpflegung & Kundenmeetings" className="bg-surface">Verpflegung & Kundenmeetings</option>
+                          <option value="Werkzeuge, Software & Kleinmaterial" className="bg-surface">Werkzeuge, Software & Kleinmaterial</option>
+                          <option value="Sonstiges" className="bg-surface">Sonstiges</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Zahlungsart (Auslage via)</label>
+                        <select value={incomingData.paymentMethod} onChange={e => setIncomingData({ ...incomingData, paymentMethod: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="Privat vorgelegt (Rückerstattung ausstehend)" className="bg-surface">Privat vorgelegt (Rückerstattung ausstehend)</option>
+                          <option value="Geschäftskarte / Firmenkarte" className="bg-surface">Geschäftskarte / Firmenkarte</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
-                      <select value={incomingData.skontoRate} onChange={e => setIncomingData({ ...incomingData, skontoRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                        <option value={0} className="bg-surface">0% Skonto</option>
-                        <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
-                        <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
-                      </select>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
+                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe (z.B. Musterplatten für Bauherrschaft)..." />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
+                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="" className="bg-surface">{t('free_booking')}</option>
+                          {budgetGroups.map((group) => (
+                            <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
+                              {group.items.map((item) => (
+                                <option key={item.id} value={item.id} className="font-normal">{item.pos} {item.description}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Status Rückerstattung</label>
+                        <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="Offen (Rückerstattung ausstehend)" className="bg-surface">Offen (Rückerstattung ausstehend)</option>
+                          <option value="Rückerstattet / Ausbezahlt" className="bg-surface">Rückerstattet / Ausbezahlt</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-
-                  {incomingData.skontoRate > 0 && incomingData.amount && (
-                    <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                      <span>Skonto Abzug ({incomingData.skontoRate}%):</span>
-                      <span>Effektiv Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))}</span>
+                ) : (
+                  /* 🔵 EXTERNER KREDITOR (LIEFERANT / HANDWERKER) */
+                  <div className="space-y-4">
+                    <div className="text-xs text-text-muted bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex items-center gap-2">
+                      <Building2 size={15} className="text-blue-500 shrink-0" />
+                      <span>Kreditorenrechnung: Offizielle Handwerker-, Material- oder Planerrechnung erfassen.</span>
                     </div>
-                  )}
 
-                  <div>
-                    <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
-                    <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm font-medium text-text-primary outline-none resize-none h-20 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe?" />
-                  </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Firma / Kreditor (Lieferant)</label>
+                        <input 
+                          type="text" 
+                          required 
+                          value={incomingData.company || incomingData.vendor} 
+                          onChange={e => setIncomingData({ ...incomingData, company: e.target.value, vendor: e.target.value })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" 
+                          placeholder="z.B. Baumeister AG, Sanitär Meier" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Ansprechperson (optional)</label>
+                        <input 
+                          type="text" 
+                          value={incomingData.contactPerson} 
+                          onChange={e => setIncomingData({ ...incomingData, contactPerson: e.target.value })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" 
+                          placeholder="z.B. Herr Keller, Bauleiter" 
+                        />
+                      </div>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Kreditoren-Rechnungs-Nr.</label>
+                        <input 
+                          type="text" 
+                          value={incomingData.invoiceNumber} 
+                          onChange={e => setIncomingData({ ...incomingData, invoiceNumber: e.target.value })} 
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" 
+                          placeholder="z.B. RE-2026-8910" 
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
+                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Fälligkeit (Zahlungsziel)</label>
+                        <input type="date" value={incomingData.dueDate} onChange={e => setIncomingData({ ...incomingData, dueDate: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
+                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
+                        <select value={incomingData.skontoRate} onChange={e => setIncomingData({ ...incomingData, skontoRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value={0} className="bg-surface">0% Skonto (Netto)</option>
+                          <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
+                          <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Satz</label>
+                        <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value={8.1} className="bg-surface">8.1% (Normalsatz)</option>
+                          <option value={2.6} className="bg-surface">2.6% (Reduziert)</option>
+                          <option value={0} className="bg-surface">0% (Steuerfrei)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {incomingData.skontoRate > 0 && incomingData.amount && (
+                      <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
+                        <span>Skonto Abzug ({incomingData.skontoRate}%): -CHF {formatCHF(Number(incomingData.amount) * (incomingData.skontoRate / 100))}</span>
+                        <span>Effektiv Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Aufwandskategorie</label>
+                        <select value={incomingData.creditorCategory} onChange={e => setIncomingData({ ...incomingData, creditorCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="Kreditorenrechnung (Handwerker / Material)" className="bg-surface">Kreditorenrechnung (Handwerker / Material)</option>
+                          <option value="Honorar / Planerleistung" className="bg-surface">Honorar / Planerleistung</option>
+                          <option value="Behörden & Gebühren" className="bg-surface">Behörden & Gebühren</option>
+                          <option value="Sonstige Fremdleistung" className="bg-surface">Sonstige Fremdleistung</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">IBAN / QR-IBAN (optional)</label>
+                        <input type="text" value={incomingData.iban} onChange={e => setIncomingData({ ...incomingData, iban: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="CH..." />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
-                      <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                        <option value="" className="bg-surface">{t('free_booking')}</option>
-                        {approvedVersions.flatMap(v => v.groups).flatMap(g => g.items).map((item: any) => (
-                          <option key={item.id} value={item.id} className="bg-surface">{item.pos} {item.description}</option>
-                        ))}
-                      </select>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
+                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Leistungsbeschrieb / Werkvertrag gemäss Rechnung..." />
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('status')}</label>
-                      <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                        <option value="Offen" className="bg-surface">{t('open')}</option>
-                        <option value="Bezahlt" className="bg-surface">{t('paid')}</option>
-                      </select>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
+                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="" className="bg-surface">{t('free_booking')}</option>
+                          {budgetGroups.map((group) => (
+                            <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
+                              {group.items.map((item) => (
+                                <option key={item.id} value={item.id} className="font-normal">{item.pos} {item.description}</option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Status Rechnungsprüfung</label>
+                        <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                          <option value="Offen zur Prüfung" className="bg-surface">Offen zur Prüfung</option>
+                          <option value="Freigegeben zur Zahlung" className="bg-surface">Freigegeben zur Zahlung</option>
+                          <option value="Bezahlt" className="bg-surface">{t('paid')}</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="p-6 border-t border-border/50 bg-background/30 flex justify-end shrink-0">
@@ -2943,7 +3467,7 @@ export default function Finance() {
                       setIsReceiptPdfStudioOpen(true);
                     }
                   }}
-                  disabled={!incomingData.vendor || !incomingData.amount || isSubmitting}
+                  disabled={!(receiptType === 'external_cost' ? (incomingData.company || incomingData.vendor) : (incomingData.vendor)) || !incomingData.amount || isSubmitting}
                   className="w-full sm:w-auto px-8 py-3.5 bg-red-600 text-white rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-500 transition-colors shadow-lg shadow-red-600/20 disabled:opacity-50"
                 >
                   {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={18} />} {t('generate_pdf_book')}
