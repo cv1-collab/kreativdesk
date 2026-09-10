@@ -68,11 +68,11 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// +++ FIX: GLOBALER BUFFER POLYFILL FÜR PDF & WHITEBOARD +++
-// Verhindert Abstürze in Vite, da Node-Module wie "Buffer" im Browser fehlen.
-// Da es hier an der Wurzel steht, funktioniert es ab sofort für ALLE Komponenten der App.
-if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
-  window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
+import { Buffer } from 'buffer';
+// +++ FIX: GLOBALER BUFFER POLYFILL FÜR PDF, WHITEBOARD & XLSX +++
+if (typeof window !== 'undefined') {
+  (window as any).Buffer = Buffer;
+  (globalThis as any).Buffer = Buffer;
 }
 
 import * as Sentry from "@sentry/react";

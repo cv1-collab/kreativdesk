@@ -39,4 +39,16 @@ describe('excelParser', () => {
     expect(result.formattedText).toContain('=== TABELLENBLATT: "Budget 2026" (5 Zeilen) ===');
     expect(result.formattedText).toContain('101.1\tBaustellensicherung\t1\tPausch.\t3500\t3500');
   });
+
+  it('parses a CSV file into structured tabular text', async () => {
+    const csvContent = 'Pos;Beschreibung;Menge;Einheit;Preis\n100;Vorbereitung;;;\n101;Planung;1;Pausch;2500';
+    const file = new File([csvContent], 'offerte.csv', { type: 'text/csv' });
+
+    const result = await parseExcelFile(file);
+
+    expect(result.fileName).toBe('offerte.csv');
+    expect(result.totalRows).toBeGreaterThanOrEqual(2);
+    expect(result.formattedText).toContain('101');
+    expect(result.formattedText).toContain('Planung');
+  });
 });

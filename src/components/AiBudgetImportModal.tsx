@@ -376,6 +376,17 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format (ohne erklärenden Text ausser
           { text: `${promptInstruction}\n\nHIER SIND DIE EXAKTEN TABELLENDATEN AUS DER EXCEL-DATEI "${file.name}":\n\n${currentExcel.formattedText}` }
         ]);
       } else if (file) {
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name);
+        
+        if (!isPdf && !isImage) {
+          throw new Error(
+            language === 'de'
+              ? `Das Dateiformat von "${file.name}" wird nicht direkt unterstützt. Bitte lade eine Excel-Datei (.xlsx, .xls, .csv), ein Bild (PNG, JPG) oder ein PDF hoch.`
+              : `The file format of "${file.name}" is not supported. Please upload an Excel spreadsheet (.xlsx, .xls, .csv), image (PNG, JPG) or PDF.`
+          );
+        }
+
         const comp = await compressImageForAI(file, {
           maxDimension: 2400,
           quality: 0.88,
