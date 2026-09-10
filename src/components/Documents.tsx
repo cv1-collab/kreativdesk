@@ -932,16 +932,6 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
-          {!isExternalPartner && (
-            <button
-              onClick={handleSeedDemoData}
-              disabled={isSeeding}
-              className="w-full sm:w-auto px-4 py-2.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 font-bold text-xs rounded-xl hover:bg-purple-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
-            >
-              {isSeeding ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-              {t('seed_demo_btn')}
-            </button>
-          )}
 
           {activeTab !== 'proposals' ? (
             canUpload && (
@@ -1581,7 +1571,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
               <div className="text-center py-16 text-text-muted space-y-3">
                 <FolderOpen className="mx-auto text-text-muted opacity-40" size={48} />
                 <p className="font-medium">{t('no_files')}</p>
-                {canUpload && (
+                {canUpload && isDemo && currentUser?.role === 'super_admin' && (
                   <button
                     onClick={handleSeedDemoData}
                     className="mt-2 text-xs font-bold text-purple-400 bg-purple-500/10 px-4 py-2 rounded-xl hover:bg-purple-500/20 transition-all cursor-pointer"
