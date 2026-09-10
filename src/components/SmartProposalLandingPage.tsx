@@ -141,6 +141,7 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     drawSignatureLabel: 'Digitale Unterschrift (mit Finger oder Maus zeichnen) *',
     resetSignature: 'Zurücksetzen',
     signHerePlaceholder: 'Hier unterschreiben...',
+    signRequiredError: 'Bitte leisten Sie Ihre digitale Unterschrift im Unterschriften-Feld.',
     legalCheckboxLabel: 'Ich bestätige hiermit die verbindliche Annahme der Offerte sowie die Kenntnisnahme und Akzeptanz der Allgemeinen Geschäftsbedingungen (AGB), des Werkvertrages (SIA 118) und des SIA-Zahlungsplans.',
     cancel: 'Abbrechen',
     signing: 'Wird signiert...',
@@ -305,6 +306,7 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     drawSignatureLabel: 'Digital Signature (draw with finger or mouse) *',
     resetSignature: 'Reset',
     signHerePlaceholder: 'Sign here...',
+    signRequiredError: 'Please provide your digital signature in the signature box.',
     legalCheckboxLabel: 'I hereby confirm the binding acceptance of the proposal as well as the acknowledgment and acceptance of the General Terms and Conditions (GTC), the Works Contract (SIA 118), and the SIA Payment Schedule.',
     cancel: 'Cancel',
     signing: 'Signing...',
@@ -469,6 +471,7 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     drawSignatureLabel: 'Signature numérique (dessiner avec le doigt ou la souris) *',
     resetSignature: 'Réinitialiser',
     signHerePlaceholder: 'Signer ici...',
+    signRequiredError: 'Veuillez apposer votre signature numérique dans le champ réservé.',
     legalCheckboxLabel: 'Je confirme par la présente l\'acceptation ferme de l\'offre ainsi que la prise de connaissance et l\'acceptation des Conditions Générales (CGV), du contrat d\'entreprise (SIA 118) et du plan de paiement SIA.',
     cancel: 'Annuler',
     signing: 'Signature en cours...',
@@ -510,7 +513,6 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     proposalExpiredDesc: 'L\'offre pour {title} était valable 30 jours et a expiré le {date}. Souhaitez-vous demander une prolongation ou une mise à jour ?',
     requestExtension: 'Demander une prolongation',
     loadingPresentation: 'Chargement de la présentation...',
-    protectedPresentation: 'Présentation client protégée',
     pinRequired: 'Ce document est protégé par mot de passe. Veuillez saisir votre code PIN.',
     pinWrong: 'Code PIN erroné. Veuillez réessayer.',
     openPresentation: 'Ouvrir la présentation',
@@ -519,6 +521,19 @@ const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
     switchToLight: 'Passer au mode clair',
     switchToDark: 'Passer au mode sombre',
     shareThemeLabel: 'Thème lors du partage'
+  }
+};
+
+const PROPOSAL_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Architektur- & Ausführungsplanung Neubau Residenz am Park': {
+    de: 'Architektur- & Ausführungsplanung Neubau Residenz am Park',
+    en: 'Architecture & Execution Planning New Construction Residence at the Park',
+    fr: 'Architecture & planification d\'exécution Nouvelle construction Résidence du Parc'
+  },
+  'interacTV Smart Station – 4K Messe- & Event-Paket': {
+    de: 'interacTV Smart Station – 4K Messe- & Event-Paket',
+    en: 'interacTV Smart Station – 4K Trade Fair & Event Package',
+    fr: 'interacTV Smart Station – Pack Salon & Événement 4K'
   }
 };
 
@@ -563,6 +578,31 @@ const SLIDE_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: str
     en: 'Architecture & Concept',
     fr: 'Architecture & concept'
   },
+  'Vision & Architekturkonzept': {
+    de: 'Vision & Architekturkonzept',
+    en: 'Vision & Architectural Concept',
+    fr: 'Vision & concept architectural'
+  },
+  '3D-Showreel & BIM-Modellierung': {
+    de: '3D-Showreel & BIM-Modellierung',
+    en: '3D Showreel & BIM Modeling',
+    fr: 'Showreel 3D & modélisation BIM'
+  },
+  'Materialisierung & Ausbau-Standard': {
+    de: 'Materialisierung & Ausbau-Standard',
+    en: 'Materials & Interior Standards',
+    fr: 'Matérialisation & standard de finition'
+  },
+  'Investitions- & BKP-Gliederung': {
+    de: 'Investitions- & BKP-Gliederung',
+    en: 'Investment Structure & BKP Breakdown',
+    fr: 'Structure des investissements & CFC'
+  },
+  'Ihr interdisziplinäres Planungsteam': {
+    de: 'Ihr interdisziplinäres Planungsteam',
+    en: 'Your Interdisciplinary Planning Team',
+    fr: 'Votre équipe de planification pluridisciplinaire'
+  },
   '3D Modell & Visualisierung': {
     de: '3D Modell & Visualisierung',
     en: '3D Model & Visualization',
@@ -582,6 +622,16 @@ const SLIDE_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: str
     de: '1. 60s Flightcase-Unboxing & Werkzeugloser Aufbau',
     en: '1. 60s Flightcase Unboxing & Toolless Setup',
     fr: '1. Déballage flightcase 60s & montage sans outils'
+  },
+  '2. Formgefrästes Flightcase & CNC-Schaumstoff-Inlay': {
+    de: '2. Formgefrästes Flightcase & CNC-Schaumstoff-Inlay',
+    en: '2. Custom Milled Flightcase & CNC Foam Inlay',
+    fr: '2. Flightcase fraisé & mousse CNC sur mesure'
+  },
+  '3. Kostenaufstellung & Schweizer SIA-Konditionen': {
+    de: '3. Kostenaufstellung & Schweizer SIA-Konditionen',
+    en: '3. Cost Breakdown & Swiss SIA Conditions',
+    fr: '3. Détail des coûts & conditions suisses SIA'
   },
   'Vorher / Nachher Vergleich': {
     de: 'Vorher / Nachher Vergleich',
@@ -611,6 +661,31 @@ const SLIDE_TITLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: str
 };
 
 const SLIDE_CONTENT_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Das Projekt Quartier Neubau Süd verbindet skandinavische Schlichtheit mit Schweizer Präzision:\n\n• Holz-Hybridbauweise mit minimalem CO₂-Footprint\n• Lichtdurchflutete Räume durch bodentiefe Dreifach-Panoramafenster\n• Höchste Schall- und Wärmedämmwerte nach Minergie-P-Standard': {
+    de: 'Das Projekt Quartier Neubau Süd verbindet skandinavische Schlichtheit mit Schweizer Präzision:\n\n• Holz-Hybridbauweise mit minimalem CO₂-Footprint\n• Lichtdurchflutete Räume durch bodentiefe Dreifach-Panoramafenster\n• Höchste Schall- und Wärmedämmwerte nach Minergie-P-Standard',
+    en: 'The Quartier Neubau South project combines Scandinavian simplicity with Swiss precision:\n\n• Wood-hybrid construction with minimal carbon footprint\n• Sun-drenched rooms through floor-to-ceiling triple-glazed panoramic windows\n• Top-tier acoustic and thermal insulation values according to Minergie-P standard',
+    fr: 'Le projet Quartier Neubau Sud allie la sobriété scandinave à la précision suisse :\n\n• Construction hybride en bois à empreinte carbone minimale\n• Espaces baignés de lumière grâce à des triples vitrages panoramiques du sol au plafond\n• Valeurs d’isolation acoustique et thermique optimales selon le standard Minergie-P'
+  },
+  'Vollständige digitale Modellierung aller Gewerke (Architektur, Statik, HLKS):\n\n• Kollisionsfreie Schnittstellenplanung vor Baubeginn\n• Automatische Mengenauszüge für exakte BKP-Kostensicherheit\n• 4K-Walkthrough für Bauherren und Behörden': {
+    de: 'Vollständige digitale Modellierung aller Gewerke (Architektur, Statik, HLKS):\n\n• Kollisionsfreie Schnittstellenplanung vor Baubeginn\n• Automatische Mengenauszüge für exakte BKP-Kostensicherheit\n• 4K-Walkthrough für Bauherren und Behörden',
+    en: 'Complete digital modeling of all trades (architecture, structural engineering, MEP):\n\n• Clash-free interface coordination prior to site groundbreaking\n• Automated quantity takeoffs for exact BKP cost reliability\n• 4K walkthrough for owners and approval authorities',
+    fr: 'Modélisation numérique intégrale de tous les corps d’état (architecture, statique, CVC) :\n\n• Planification d’interfaces sans collision avant le début des travaux\n• Métrés automatisés garantissant la sécurité des coûts CFC\n• Visite immersive 4K pour le maître de l’ouvrage et les autorités'
+  },
+  'Exklusive Materialien mit langlebiger Patina und Werthaltigkeit:\n\n• Handverlesenes Schweizer Eichenparkett (geölt)\n• Fein geglätteter Sichtbeton im Treppenhaus und Entrée\n• Grossformatiges Feinsteinzeug und hochwertige Sanitärapparate': {
+    de: 'Exklusive Materialien mit langlebiger Patina und Werthaltigkeit:\n\n• Handverlesenes Schweizer Eichenparkett (geölt)\n• Fein geglätteter Sichtbeton im Treppenhaus und Entrée\n• Grossformatiges Feinsteinzeug und hochwertige Sanitärapparate',
+    en: 'Exclusive materials with enduring patina and high value retention:\n\n• Hand-selected Swiss oak parquet (oiled)\n• Smooth exposed concrete in staircases and entrance foyer\n• Large-format porcelain stoneware and premium sanitary fittings',
+    fr: 'Matériaux nobles offrant une patine durable et une haute valeur patrimoniale :\n\n• Parquet en chêne suisse trié à la main (huilé)\n• Béton brut soigneusement lissé dans la cage d’escalier et le hall d’entrée\n• Grès cérame grand format et appareils sanitaires haut de gamme'
+  },
+  'Echter 60-Sekunden Zeitraffer-Beweis: 1 Person öffnet das Transport-Case und stellt die 4K Smart Station komplett ohne Werkzeug auf. Verdeckte Kabelführung und Schweizer Präzision.': {
+    de: 'Echter 60-Sekunden Zeitraffer-Beweis: 1 Person öffnet das Transport-Case und stellt die 4K Smart Station komplett ohne Werkzeug auf. Verdeckte Kabelführung und Schweizer Präzision.',
+    en: 'Real 60-second timelapse proof: 1 person opens the transport case and sets up the 4K Smart Station completely tool-free. Concealed cable routing and Swiss precision.',
+    fr: 'Preuve en accéléré de 60 secondes : 1 personne ouvre le flightcase et monte la station 4K sans aucun outil. Passage de câbles invisible et précision suisse.'
+  },
+  'Sicherer Transport im massgeschneiderten CNC-Schaumstoff-Inlay. Maximale Flexibilität: Nutzen Sie Ihre eigenen Bildschirme via Universal VESA 200/400 Halterung oder zertifizierte 4K PCAP Multitouch-Displays (32" bis 98").': {
+    de: 'Sicherer Transport im massgeschneiderten CNC-Schaumstoff-Inlay. Maximale Flexibilität: Nutzen Sie Ihre eigenen Bildschirme via Universal VESA 200/400 Halterung oder zertifizierte 4K PCAP Multitouch-Displays (32" bis 98").',
+    en: 'Safe transport in custom CNC foam inlay. Maximum flexibility: Use your own screens via universal VESA 200/400 mount or certified 4K PCAP multitouch displays (32" to 98").',
+    fr: 'Transport sécurisé dans un calage en mousse usiné par CNC. Flexibilité maximale : utilisez vos propres écrans avec fixation VESA 200/400 universelle ou des écrans tactiles 4K PCAP certifiés (32" à 98").'
+  },
   'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.': {
     de: 'Die Rohbauarbeiten sind zu 80% abgeschlossen. Der Innenausbau startet planmäßig nächste Woche.',
     en: 'Structural work is 80% complete. Interior construction begins as scheduled next week.',
@@ -624,6 +699,11 @@ const SLIDE_CONTENT_TRANSLATIONS: Record<string, { de: string; en: string; fr: s
 };
 
 const INTRO_TEXT_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Sehr geehrter Herr Dr. Keller, herzlichen Dank für das fundierte Vorgespräch. Wir freuen uns, Ihnen nachfolgend unser detailliertes Gesamtangebot für Konzeption, Werkplanung, Devisierung und örtliche Bauleitung (SIA Phasen 31 bis 53) vorzulegen.': {
+    de: 'Sehr geehrter Herr Dr. Keller, herzlichen Dank für das fundierte Vorgespräch. Wir freuen uns, Ihnen nachfolgend unser detailliertes Gesamtangebot für Konzeption, Werkplanung, Devisierung und örtliche Bauleitung (SIA Phasen 31 bis 53) vorzulegen.',
+    en: 'Dear Dr. Keller, thank you very much for our insightful preliminary discussion. We are pleased to present below our detailed comprehensive proposal for conceptual design, execution planning, tendering, and on-site construction management (SIA phases 31 to 53).',
+    fr: 'Cher Dr Keller, nous vous remercions vivement pour cet entretien préliminaire constructif. Nous avons le plaisir de vous soumettre ci-après notre offre globale détaillée pour la conception, les plans d’exécution, les soumissions et la direction des travaux sur place (phases SIA 31 à 53).'
+  },
   'Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.': {
     de: 'Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.',
     en: 'Thank you for placing your trust in our team. Below we present the tailored concept, all project videos, milestones, and the binding cost breakdown.',
@@ -637,12 +717,269 @@ const INTRO_TEXT_TRANSLATIONS: Record<string, { de: string; en: string; fr: stri
   'Herzlichen Dank für das persönliche Gespräch. Wir freuen uns, Ihnen unser umfassendes Konzept für Architektur, Ausführungsplanung und BIM-Projektsteuerung präsentieren zu dürfen.': {
     de: 'Herzlichen Dank für das persönliche Gespräch. Wir freuen uns, Ihnen unser umfassendes Konzept für Architektur, Ausführungsplanung und BIM-Projektsteuerung präsentieren zu dürfen.',
     en: 'Thank you for the personal meeting. We are delighted to present our comprehensive concept for architecture, execution planning, and BIM project management.',
-    fr: 'Merci beaucoup pour cet échange personnel. Nous sommes ravis de vous présenter notre concept global pour l’architecture, les plans d’exécution et le pilotage de projet BIM.'
+    fr: 'Merci beaucoup pour cet échange personnel. Nous sommes ravis de vous présenter notre concept global für l’architecture, les plans d’exécution et le pilotage de projet BIM.'
   },
   'Exklusives Angebot und massgeschneidertes Projektkonzept.': {
     de: 'Exklusives Angebot und massgeschneidertes Projektkonzept.',
     en: 'Exclusive proposal and tailored project concept.',
     fr: 'Offre exclusive et concept de projet sur mesure.'
+  }
+};
+
+const BUDGET_GROUP_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Vorprojekt & Bewilligungsverfahren': {
+    de: 'Vorprojekt & Bewilligungsverfahren',
+    en: 'Preliminary Project & Permitting',
+    fr: 'Avant-projet & mise à l\'enquête'
+  },
+  'Ausschreibung & Ausführungsplanung': {
+    de: 'Ausschreibung & Ausführungsplanung',
+    en: 'Tendering & Detailed Execution Planning',
+    fr: 'Appels d\'offres & plans d\'exécution'
+  },
+  'Bauleitung, QS & Inbetriebnahme': {
+    de: 'Bauleitung, QS & Inbetriebnahme',
+    en: 'Site Supervision, QA & Commissioning',
+    fr: 'Direction des travaux, AQ & mise en service'
+  },
+  'interacTV Event Pro 80 Chassis (Ø 80cm Standfuss)': {
+    de: 'interacTV Event Pro 80 Chassis (Ø 80cm Standfuss)',
+    en: 'interacTV Event Pro 80 Chassis (Ø 80cm Base)',
+    fr: 'Châssis interacTV Event Pro 80 (Socle Ø 80cm)'
+  },
+  'Display-Lösung (4K Touchscreen / BYOD Montage)': {
+    de: 'Display-Lösung (4K Touchscreen / BYOD Montage)',
+    en: 'Display Solution (4K Touchscreen / BYOD Mount)',
+    fr: 'Solution d\'affichage (Écran tactile 4K / Montage BYOD)'
+  },
+  'Lead PRO Software & Gamification-Lizenz': {
+    de: 'Lead PRO Software & Gamification-Lizenz',
+    en: 'Lead PRO Software & Gamification License',
+    fr: 'Logiciel Lead PRO & Licence de gamification'
+  },
+  'Standplatz-Express-Logistik & 5-Minuten Aufbau': {
+    de: 'Standplatz-Express-Logistik & 5-Minuten Aufbau',
+    en: 'Booth Express Logistics & 5-Minute Setup',
+    fr: 'Logistique express sur stand & montage en 5 minutes'
+  },
+  'Bexio / CRM Live-Sync Anbindung': {
+    de: 'Bexio / CRM Live-Sync Anbindung',
+    en: 'Bexio / CRM Live-Sync Integration',
+    fr: 'Connexion Live-Sync Bexio / CRM'
+  }
+};
+
+const TEAM_ROLE_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'Lead Architecture & BIM': {
+    de: 'Lead Architecture & BIM',
+    en: 'Lead Architecture & BIM',
+    fr: 'Direction architecture & BIM'
+  },
+  'Bauleiter SIA / Devisierung': {
+    de: 'Bauleiter SIA / Devisierung',
+    en: 'SIA Site Manager / Tendering',
+    fr: 'Direction des travaux SIA / Soumissions'
+  },
+  'Bauingenieurin & Statik ETH': {
+    de: 'Bauingenieurin & Statik ETH',
+    en: 'Civil & Structural Engineer ETH',
+    fr: 'Ingénieure civile & statique EPF'
+  }
+};
+
+const OPTION_TRANSLATIONS: Record<string, {
+  title: { de: string; en: string; fr: string };
+  desc: { de: string; en: string; fr: string };
+}> = {
+  '3D-Echtzeit BIM-Visualisierung & VR-Begehung': {
+    title: {
+      de: '3D-Echtzeit BIM-Visualisierung & VR-Begehung',
+      en: 'Real-Time 3D BIM Visualization & VR Walkthrough',
+      fr: 'Visualisation BIM temps réel & visite VR'
+    },
+    desc: {
+      de: 'Fotorealistisches 3D-BIM-Modell mit interaktiver Virtual-Reality-Begehung für Bauherren und Käufer auf Tablet & VR-Headset.',
+      en: 'Photorealistic 3D BIM model with interactive virtual reality walkthrough for clients and buyers on tablet & VR headset.',
+      fr: 'Modèle BIM 3D photoréaliste avec visite interactive en réalité virtuelle pour maîtres d\'ouvrage et acquéreurs sur tablette & casque VR.'
+    }
+  },
+  'Monatliche Drohnen-Baufortschrittsdokumentation (4K)': {
+    title: {
+      de: 'Monatliche Drohnen-Baufortschrittsdokumentation (4K)',
+      en: 'Monthly Drone Construction Progress Documentation (4K)',
+      fr: 'Suivi de chantier mensuel par drone (4K)'
+    },
+    desc: {
+      de: 'Hochauflösende Luftbildaufnahmen, 3D-Fotogrammetrie-Messungen und monatliches Zeitraffervideo für die Bauherrschaft.',
+      en: 'High-resolution aerial imagery, 3D photogrammetry surveys, and monthly timelapse videos for the client.',
+      fr: 'Prises de vues aériennes haute résolution, mesures photogrammétriques 3D et vidéo accélérée mensuelle pour le maître d\'ouvrage.'
+    }
+  },
+  'Minergie-P-ECO Fachbegleitung & Nachhaltigkeitsnachweis': {
+    title: {
+      de: 'Minergie-P-ECO Fachbegleitung & Nachhaltigkeitsnachweis',
+      en: 'Minergie-P-ECO Specialist Advisory & Sustainability Verification',
+      fr: 'Accompagnement Minergie-P-ECO & bilan écologique'
+    },
+    desc: {
+      de: 'Zertifizierungsbegleitung, ökologische Baustoffberatung und Energienachweise nach kantonalem MuKEn-Standard.',
+      en: 'Certification consulting, ecological material advisory, and energy certificates according to cantonal MuKEn standards.',
+      fr: 'Suivi de certification, conseil en matériaux écologiques et bilans énergétiques selon les normes MoPEC.'
+    }
+  },
+  'Express-Baubewilligungsverfahren & behördliche Sonderverhandlung': {
+    title: {
+      de: 'Express-Baubewilligungsverfahren & behördliche Sonderverhandlung',
+      en: 'Fast-Track Building Permit Procedure & Authority Coordination',
+      fr: 'Procédure de permis accélérée & négociations administratives'
+    },
+    desc: {
+      de: 'Prioritäre Bearbeitung der Baueingabe mit proaktiver Denkmalpflege- und Umweltämter-Koordination.',
+      en: 'Priority processing of permit applications with proactive heritage preservation and environmental agency coordination.',
+      fr: 'Traitement prioritaire de la demande de permis avec coordination proactive des monuments historiques et services environnementaux.'
+    }
+  },
+  'interacTV 4K PCAP Touchscreen 55"': {
+    title: {
+      de: 'interacTV 4K PCAP Touchscreen 55"',
+      en: '55" 4K PCAP Touchscreen Display',
+      fr: 'Écran tactile 4K PCAP 55"'
+    },
+    desc: {
+      de: 'Ultra HD IPS Commercial Display mit 10-Punkt PCAP Touchscreen betriebsbereit vorinstalliert',
+      en: 'Ultra HD IPS commercial display with 10-point PCAP touchscreen pre-installed and ready to use',
+      fr: 'Écran commercial IPS Ultra HD avec dalle tactile PCAP 10 points préinstallé prêt à l\'emploi'
+    }
+  },
+  'NFC Lift & Learn Sensorik-Kit': {
+    title: {
+      de: 'NFC Lift & Learn Sensorik-Kit',
+      en: 'NFC Lift & Learn Sensor Kit',
+      fr: 'Kit capteurs NFC Lift & Learn'
+    },
+    desc: {
+      de: 'USB-Sensorik mit 10x programmierbaren Produkt-Tags zur interaktiven Produkterklärung',
+      en: 'USB sensors with 10 programmable product tags for interactive product demonstrations',
+      fr: 'Capteurs USB avec 10 tags produits programmables pour explication interactive'
+    }
+  },
+  '3D WebGL Messestand Visualizer & Digital Twin': {
+    title: {
+      de: '3D WebGL Messestand Visualizer & Digital Twin',
+      en: '3D WebGL Booth Visualizer & Digital Twin',
+      fr: 'Visualiseur de stand 3D WebGL & Jumeau numérique'
+    },
+    desc: {
+      de: 'Interaktive Standansicht für Kunden & Web-Showroom vor Messebeginn',
+      en: 'Interactive booth view for clients and virtual showroom before the trade fair starts',
+      fr: 'Aperçu interactif du stand pour clients et showroom virtuel avant le salon'
+    }
+  },
+  'All-Risk Messe- & Transportschutz (Vollkasko)': {
+    title: {
+      de: 'All-Risk Messe- & Transportschutz (Vollkasko)',
+      en: 'All-Risk Trade Fair & Transport Insurance',
+      fr: 'Protection transport & salon tous risques (Tous risques)'
+    },
+    desc: {
+      de: 'Umfassender Versicherungsschutz ohne Selbstbehalt während der gesamten Messe',
+      en: 'Comprehensive insurance coverage without deductible for the entire exhibition duration',
+      fr: 'Couverture d\'assurance intégrale sans franchise pendant toute la durée du salon'
+    }
+  }
+};
+
+const MILESTONE_TRANSLATIONS: Record<string, {
+  phase: { de: string; en: string; fr: string };
+  desc: { de: string; en: string; fr: string };
+}> = {
+  '1. Phase: Projektierung, Vorprojekt & Baubewilligung (30%)': {
+    phase: {
+      de: '1. Phase: Projektierung, Vorprojekt & Baubewilligung (30%)',
+      en: 'Phase 1: Project Design, Preliminary Project & Building Permit (30%)',
+      fr: '1ère Phase : Conception, avant-projet & permis de construire (30%)'
+    },
+    desc: {
+      de: 'Fällig bei digitaler Freigabe und Auftragsbestätigung (Swiss QR-Rechnung).',
+      en: 'Due upon digital approval and order confirmation (Swiss QR-bill).',
+      fr: 'Exigible dès validation numérique et confirmation de commande (facture QR suisse).'
+    }
+  },
+  '2. Phase: Ausführungsplanung, Devisierung & Vergabe (40%)': {
+    phase: {
+      de: '2. Phase: Ausführungsplanung, Devisierung & Vergabe (40%)',
+      en: 'Phase 2: Detailed Execution Planning, Tendering & Awarding (40%)',
+      fr: '2ème Phase : Plans d\'exécution, soumissions & adjudication (40%)'
+    },
+    desc: {
+      de: 'Fällig nach Freigabe der Werkpläne vor Aushub und Baumeisterstart.',
+      en: 'Due after approval of working drawings prior to excavation and structural work.',
+      fr: 'Exigible après approbation des plans d\'exécution avant terrassement et gros œuvre.'
+    }
+  },
+  '3. Phase: Bauleitung, Realisierung & schlüsselfertige Übergabe (30%)': {
+    phase: {
+      de: '3. Phase: Bauleitung, Realisierung & schlüsselfertige Übergabe (30%)',
+      en: 'Phase 3: Site Management, Realization & Turnkey Handover (30%)',
+      fr: '3ème Phase : Direction des travaux, réalisation & remise clés en main (30%)'
+    },
+    desc: {
+      de: 'Fällig nach mängelfreier Bauabnahme und Bezug der Liegenschaft.',
+      en: 'Due after defect-free acceptance and building occupancy.',
+      fr: 'Exigible après réception sans réserves de l\'ouvrage et remise des clés.'
+    }
+  },
+  '1. Reservierung & Chassis-Bereitstellung': {
+    phase: {
+      de: '1. Reservierung & Chassis-Bereitstellung',
+      en: '1. Reservation & Chassis Preparation',
+      fr: '1. Réservation & mise à disposition du châssis'
+    },
+    desc: {
+      de: 'Nach Auftragsbestätigung und Terminreservierung',
+      en: 'Upon order confirmation and reservation',
+      fr: 'Dès confirmation de commande et réservation de date'
+    }
+  },
+  '2. Standanlieferung & Übergabe': {
+    phase: {
+      de: '2. Standanlieferung & Übergabe',
+      en: '2. Booth Delivery & Handover',
+      fr: '2. Livraison sur stand & mise en service'
+    },
+    desc: {
+      de: 'Nach Einweisung und erfolgreichem Probebetrieb vor Ort',
+      en: 'After briefing and successful trial run on-site',
+      fr: 'Après formation et essai réussi sur place'
+    }
+  }
+};
+
+const LEGAL_DOC_TRANSLATIONS: Record<string, { de: string; en: string; fr: string }> = {
+  'SIA 118 Allgemeine Bedingungen für Bauarbeiten': {
+    de: 'SIA 118 Allgemeine Bedingungen für Bauarbeiten',
+    en: 'SIA 118 General Conditions for Construction Works',
+    fr: 'SIA 118 Conditions générales pour l\'exécution des travaux de construction'
+  },
+  'Kreativ Desk AGB Planungsverträge & SIA 102 Honorarordnung': {
+    de: 'Kreativ Desk AGB Planungsverträge & SIA 102 Honorarordnung',
+    en: 'Kreativ Desk GTC Planning Contracts & SIA 102 Fee Regulations',
+    fr: 'Kreativ Desk CGV Contrats de planification & SIA 102 Règlement des honoraires'
+  },
+  'Schweizer DSGVO & Bauherren-Vertraulichkeitsvereinbarung (NDA)': {
+    de: 'Schweizer DSGVO & Bauherren-Vertraulichkeitsvereinbarung (NDA)',
+    en: 'Swiss FADP & Client Non-Disclosure Agreement (NDA)',
+    fr: 'LPD suisse & Accord de confidentialité maître de l\'ouvrage (NDA)'
+  },
+  'SIA 118 Allgemeine Bedingungen für Messe- & Mietverträge': {
+    de: 'SIA 118 Allgemeine Bedingungen für Messe- & Mietverträge',
+    en: 'SIA 118 General Conditions for Exhibition & Rental Contracts',
+    fr: 'SIA 118 Conditions générales pour contrats de salon et de location'
+  },
+  'DSGVO / Schweizer DSG Datenschutzvereinbarung': {
+    de: 'DSGVO / Schweizer DSG Datenschutzvereinbarung',
+    en: 'Data Privacy Agreement according to Swiss FADP / GDPR',
+    fr: 'Accord de protection des données selon la LPD suisse / RGPD'
   }
 };
 
@@ -691,12 +1028,16 @@ export default function SmartProposalLandingPage() {
   const [hasSignature, setHasSignature] = useState(false);
   const [signatureError, setSignatureError] = useState(false);
 
-  // Language Selector (DE, FR, EN) - Initialized from URL param ?lang= or default to 'de'
+  // Language Selector (DE, FR, EN) - Initialized from URL param ?lang= or safeStorage or default to 'de'
   const [proposalLang, setProposalLang] = useState<'de' | 'fr' | 'en'>(() => {
     if (typeof window !== 'undefined') {
       const urlParam = new URLSearchParams(window.location.search).get('lang');
       if (urlParam === 'en' || urlParam === 'fr' || urlParam === 'de') {
         return urlParam;
+      }
+      const saved = safeStorage.getItem('kd_proposal_lang');
+      if (saved === 'en' || saved === 'fr' || saved === 'de') {
+        return saved as 'de' | 'fr' | 'en';
       }
     }
     return 'de';
@@ -710,6 +1051,15 @@ export default function SmartProposalLandingPage() {
       });
     }
     return text;
+  };
+
+  const getTranslatedProposalTitle = (title?: string) => {
+    if (!title) return '';
+    const trimmed = title.trim();
+    if (PROPOSAL_TITLE_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return PROPOSAL_TITLE_TRANSLATIONS[trimmed][proposalLang];
+    }
+    return title;
   };
 
   const getTranslatedSlideTitle = (title?: string) => {
@@ -739,14 +1089,92 @@ export default function SmartProposalLandingPage() {
     return text;
   };
 
+  const getTranslatedBudgetGroup = (title?: string) => {
+    if (!title) return '';
+    const trimmed = title.trim();
+    if (BUDGET_GROUP_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return BUDGET_GROUP_TRANSLATIONS[trimmed][proposalLang];
+    }
+    return title;
+  };
+
+  const getTranslatedMemberRole = (role?: string) => {
+    if (!role) return '';
+    const trimmed = role.trim();
+    if (TEAM_ROLE_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return TEAM_ROLE_TRANSLATIONS[trimmed][proposalLang];
+    }
+    return role;
+  };
+
+  const getTranslatedOptionTitle = (opt: { id?: string; title: string }) => {
+    if (!opt) return '';
+    const trimmed = opt.title?.trim();
+    if (OPTION_TRANSLATIONS[trimmed]?.title?.[proposalLang]) {
+      return OPTION_TRANSLATIONS[trimmed].title[proposalLang];
+    }
+    return opt.title;
+  };
+
+  const getTranslatedOptionDesc = (opt: { id?: string; description?: string; title?: string }) => {
+    if (!opt || !opt.description) return '';
+    const trimmedTitle = opt.title?.trim();
+    if (trimmedTitle && OPTION_TRANSLATIONS[trimmedTitle]?.desc?.[proposalLang]) {
+      return OPTION_TRANSLATIONS[trimmedTitle].desc[proposalLang];
+    }
+    const trimmedDesc = opt.description.trim();
+    for (const entry of Object.values(OPTION_TRANSLATIONS)) {
+      if (entry.desc.de === trimmedDesc || entry.desc.en === trimmedDesc || entry.desc.fr === trimmedDesc) {
+        return entry.desc[proposalLang];
+      }
+    }
+    return opt.description;
+  };
+
+  const getTranslatedMilestonePhase = (ms: { id?: string; phase: string }) => {
+    if (!ms) return '';
+    const trimmed = ms.phase?.trim();
+    if (MILESTONE_TRANSLATIONS[trimmed]?.phase?.[proposalLang]) {
+      return MILESTONE_TRANSLATIONS[trimmed].phase[proposalLang];
+    }
+    return ms.phase;
+  };
+
+  const getTranslatedMilestoneDesc = (ms: { id?: string; description?: string; phase?: string }) => {
+    if (!ms || !ms.description) return '';
+    const trimmedPhase = ms.phase?.trim();
+    if (trimmedPhase && MILESTONE_TRANSLATIONS[trimmedPhase]?.desc?.[proposalLang]) {
+      return MILESTONE_TRANSLATIONS[trimmedPhase].desc[proposalLang];
+    }
+    const trimmedDesc = ms.description.trim();
+    for (const entry of Object.values(MILESTONE_TRANSLATIONS)) {
+      if (entry.desc.de === trimmedDesc || entry.desc.en === trimmedDesc || entry.desc.fr === trimmedDesc) {
+        return entry.desc[proposalLang];
+      }
+    }
+    return ms.description;
+  };
+
+  const getTranslatedDocName = (doc: { id?: string; name: string }) => {
+    if (!doc) return '';
+    const trimmed = doc.name?.trim();
+    if (LEGAL_DOC_TRANSLATIONS[trimmed]?.[proposalLang]) {
+      return LEGAL_DOC_TRANSLATIONS[trimmed][proposalLang];
+    }
+    return doc.name;
+  };
+
   const changeLanguage = (newLang: 'de' | 'fr' | 'en') => {
     audioFeedback.playTouchClick();
     setProposalLang(newLang);
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set('lang', newLang);
-      window.history.replaceState({}, '', url.toString());
-    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      safeStorage.setItem('kd_proposal_lang', newLang);
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', newLang);
+        window.history.replaceState({}, '', url.toString());
+      } catch (e) {}
+    }
   };
 
   // Theme Mode: 'dark' | 'light' - Initialized from URL param ?theme= or ?mode=, or stored in localStorage, or fallback to proposal.colorMode / 'dark'
@@ -1032,15 +1460,16 @@ export default function SmartProposalLandingPage() {
   // Dynamic OpenGraph and Title Updater for Social Sharing
   useEffect(() => {
     if (proposal) {
-      document.title = `${proposal.title} • Smart Proposal (Kreativ Desk & interacTV)`;
+      const translatedTitle = getTranslatedProposalTitle(proposal.title);
+      document.title = `${translatedTitle} • Smart Proposal (Kreativ Desk & interacTV)`;
       const ogTitle = document.querySelector('meta[property="og:title"]');
-      if (ogTitle) ogTitle.setAttribute('content', `${proposal.title} – Interaktives Angebot`);
+      if (ogTitle) ogTitle.setAttribute('content', `${translatedTitle} – Interaktives Angebot`);
       const ogDesc = document.querySelector('meta[property="og:description"]');
       if (ogDesc) ogDesc.setAttribute('content', `Offizielles interaktives Angebot für ${proposal.clientCompany || proposal.clientName || 'Kunde'} • Kreativ Desk`);
       const ogImg = document.querySelector('meta[property="og:image"]');
       if (ogImg) ogImg.setAttribute('content', proposal.heroImageUrl || '/interactv/renders/interactv_luxury_station_hero.jpg');
     }
-  }, [proposal]);
+  }, [proposal, proposalLang]);
 
   // Keyboard Navigation for Deck Mode (Arrow Left, Arrow Right, Space)
   useEffect(() => {
@@ -1103,7 +1532,7 @@ export default function SmartProposalLandingPage() {
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     ctx.lineTo(clientX - rect.left, clientY - rect.top);
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = isLight ? '#1d4ed8' : '#3b82f6';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -1445,21 +1874,25 @@ export default function SmartProposalLandingPage() {
   const defaultProposalSlides = [
     {
       id: 'slide-overview',
-      title: proposal.title || 'Projektangebot',
-      content: proposal.introText || 'Exklusives Angebot und massgeschneidertes Projektkonzept.',
+      title: getTranslatedProposalTitle(proposal.title) || 'Projektangebot',
+      content: getTranslatedIntroText(proposal.introText) || 'Exklusives Angebot und massgeschneidertes Projektkonzept.',
       layout: 'split',
       imageUrl: proposal.heroImageUrl || '/interactv/renders/interactv_luxury_station_hero.jpg'
     },
     {
       id: 'slide-options',
-      title: 'Leistungsumfang & Optionen',
-      content: (proposal.options || []).map(o => `• ${o.title}: ${proposal.currency} ${o.price.toLocaleString('de-CH')}`).join('\n') || 'Individuell zusammengestellte Projektbausteine.',
+      title: proposalLang === 'fr' ? 'Étendue des prestations & options' : proposalLang === 'en' ? 'Scope of Services & Options' : 'Leistungsumfang & Optionen',
+      content: (proposal.options || []).map(o => `• ${getTranslatedOptionTitle(o)}: ${proposal.currency} ${o.price.toLocaleString('de-CH')}`).join('\n') || 'Individuell zusammengestellte Projektbausteine.',
       layout: 'standard'
     },
     {
       id: 'slide-budget',
-      title: 'Investitionsübersicht & Zahlungsplan',
-      content: `Grundinvestition: ${proposal.currency} ${proposal.basePrice.toLocaleString('de-CH')}\nGesamtbetrag (inkl. Optionen): ${proposal.currency} ${calculateTotal().toLocaleString('de-CH')}\n\nZahlungsplan (SIA 102/118):\n• 30% Anzahlung bei Freigabe\n• 40% Zwischenrechnung nach Produktion\n• 30% Schlusszahlung nach Abnahme`,
+      title: proposalLang === 'fr' ? 'Aperçu des investissements & plan de paiement' : proposalLang === 'en' ? 'Investment Overview & Payment Schedule' : 'Investitionsübersicht & Zahlungsplan',
+      content: proposalLang === 'fr' 
+        ? `Investissement de base : ${proposal.currency} ${proposal.basePrice.toLocaleString('de-CH')}\nMontant total (options incluses) : ${proposal.currency} ${calculateTotal().toLocaleString('de-CH')}\n\nPlan de paiement (SIA 102/118) :\n• 30% acompte à la validation\n• 40% facture intermédiaire après production\n• 30% solde après réception`
+        : proposalLang === 'en'
+        ? `Base Investment: ${proposal.currency} ${proposal.basePrice.toLocaleString('de-CH')}\nTotal Amount (incl. options): ${proposal.currency} ${calculateTotal().toLocaleString('de-CH')}\n\nPayment Schedule (SIA 102/118):\n• 30% deposit upon approval\n• 40% interim invoice upon production\n• 30% final balance upon handover`
+        : `Grundinvestition: ${proposal.currency} ${proposal.basePrice.toLocaleString('de-CH')}\nGesamtbetrag (inkl. Optionen): ${proposal.currency} ${calculateTotal().toLocaleString('de-CH')}\n\nZahlungsplan (SIA 102/118):\n• 30% Anzahlung bei Freigabe\n• 40% Zwischenrechnung nach Produktion\n• 30% Schlusszahlung nach Abnahme`,
       layout: 'standard'
     }
   ];
@@ -1500,7 +1933,7 @@ export default function SmartProposalLandingPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             </div>
             <div className={cn("text-xs sm:text-sm font-extrabold truncate max-w-[140px] sm:max-w-md", isLight ? "text-slate-900" : "text-white")}>
-              {proposal.title}
+              {getTranslatedProposalTitle(proposal.title)}
             </div>
           </div>
         </div>
@@ -1651,26 +2084,26 @@ export default function SmartProposalLandingPage() {
             </div>
 
             {/* SWISS QR-BILL DEPOSIT SECTION (30% ANZAHLUNG) */}
-            <div className="p-6 rounded-3xl bg-neutral-900/90 border border-emerald-500/40 shadow-2xl text-white grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div className={cn("p-6 rounded-3xl border shadow-2xl grid grid-cols-1 md:grid-cols-12 gap-6 items-center transition-all", isLight ? "bg-white border-emerald-300 text-slate-900 shadow-slate-200/60" : "bg-neutral-900/90 border-emerald-500/40 text-white")}>
               <div className="md:col-span-8 space-y-3">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
                   <QrCode size={13} /> {t('qrSlipTitle')}
                 </div>
-                <h3 className="text-xl font-extrabold text-white">
+                <h3 className={cn("text-xl font-extrabold", isLight ? "text-slate-900" : "text-white")}>
                   {t('depositHeading', { amount: (calculateTotal() * 0.30).toLocaleString(proposalLang === 'en' ? 'en-US' : 'de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) })}
                 </h3>
-                <p className="text-xs text-neutral-300 leading-relaxed">
+                <p className={cn("text-xs leading-relaxed", isLight ? "text-slate-600" : "text-neutral-300")}>
                   {t('depositDesc')}
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs pt-2">
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                    <span className="text-[10px] text-neutral-400 font-bold block uppercase">{t('accountQrIban', { bank: companySettings.bankName || 'ZKB' })}</span>
-                    <span className="font-sans font-bold text-white block select-all tracking-wide">{companySettings.qrIban || companySettings.iban}</span>
+                  <div className={cn("p-3 rounded-xl border", isLight ? "bg-slate-50 border-slate-200" : "bg-black/40 border-white/10")}>
+                    <span className={cn("text-[10px] font-bold block uppercase", isLight ? "text-slate-500" : "text-neutral-400")}>{t('accountQrIban', { bank: companySettings.bankName || 'ZKB' })}</span>
+                    <span className={cn("font-sans font-bold block select-all tracking-wide", isLight ? "text-slate-900" : "text-white")}>{companySettings.qrIban || companySettings.iban}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/10">
-                    <span className="text-[10px] text-neutral-400 font-bold block uppercase">{t('creditorUid')}</span>
-                    <span className="font-bold text-emerald-400 block truncate">{companySettings.companyName} • {companySettings.uid}</span>
+                  <div className={cn("p-3 rounded-xl border", isLight ? "bg-slate-50 border-slate-200" : "bg-black/40 border-white/10")}>
+                    <span className={cn("text-[10px] font-bold block uppercase", isLight ? "text-slate-500" : "text-neutral-400")}>{t('creditorUid')}</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 block truncate">{companySettings.companyName} • {companySettings.uid}</span>
                   </div>
                 </div>
               </div>
@@ -1692,7 +2125,7 @@ export default function SmartProposalLandingPage() {
                       currency: 'CHF',
                       debtor: { name: proposal.clientName || 'Kunde', postalCode: '8000', city: 'Zürich', country: 'CH' },
                       reference: 'RF18539007547034',
-                      unstructuredMessage: `Anzahlung 30% Offerte ${proposal.title}`
+                      unstructuredMessage: `Anzahlung 30% Offerte ${getTranslatedProposalTitle(proposal.title)}`
                     })}
                     size={140}
                   />
@@ -1725,7 +2158,7 @@ export default function SmartProposalLandingPage() {
               </div>
 
               <h1 className={cn("text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight", isLight ? "text-slate-900" : "text-white")}>
-                {proposal.title}
+                {getTranslatedProposalTitle(proposal.title)}
               </h1>
 
               <div className={cn("flex items-center justify-center gap-2 text-sm", isLight ? "text-slate-600" : "text-zinc-400")}>
@@ -1919,7 +2352,7 @@ export default function SmartProposalLandingPage() {
                         {(slide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
                           <div key={bIdx} className={cn("grid grid-cols-12 text-xs py-2 border-b last:border-0", isLight ? "border-slate-200" : "border-white/5")}>
                             <div className={cn("col-span-2 font-bold font-sans", isLight ? "text-slate-600" : "text-zinc-400")}>{grp.pos}</div>
-                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{grp.title}</div>
+                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{getTranslatedBudgetGroup(grp.title)}</div>
                             <div className={cn("col-span-3 text-right font-bold font-sans", isLight ? "text-slate-900" : "text-white")}>{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
                           </div>
                         ))}
@@ -1934,7 +2367,7 @@ export default function SmartProposalLandingPage() {
                           <img src={member.photoURL || member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'} alt={member.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-500" />
                           <div>
                             <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{member.name}</div>
-                            <div className="text-xs text-blue-500 font-medium">{member.role}</div>
+                            <div className="text-xs text-blue-500 font-medium">{getTranslatedMemberRole(member.role)}</div>
                             <div className="flex items-center gap-2 mt-2">
                               <a href={`https://wa.me/41790000000`} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/30 text-xs font-bold flex items-center gap-1">
                                 <MessageSquare size={12} /> WhatsApp
@@ -2059,7 +2492,7 @@ export default function SmartProposalLandingPage() {
                         {(activeDeckSlide.dataPayload?.budgetGroups || []).map((grp: any, bIdx: number) => (
                           <div key={bIdx} className={cn("grid grid-cols-12 text-xs py-3 px-3 border-b last:border-0 items-center", isLight ? "border-slate-200" : "border-white/5")}>
                             <div className={cn("col-span-2 font-bold tabular-nums", isLight ? "text-blue-600" : "text-cyan-400")}>{grp.pos}</div>
-                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{grp.title}</div>
+                            <div className={cn("col-span-7 font-medium", isLight ? "text-slate-800" : "text-zinc-200")}>{getTranslatedBudgetGroup(grp.title)}</div>
                             <div className={cn("col-span-3 text-right font-bold tabular-nums", isLight ? "text-slate-900" : "text-white")}>{proposal.currency} {(grp.total || 0).toLocaleString('de-CH')}</div>
                           </div>
                         ))}
@@ -2075,7 +2508,7 @@ export default function SmartProposalLandingPage() {
                           <img src={member.photoURL || member.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'} alt={member.name} className="w-14 h-14 rounded-full object-cover border-2 border-blue-500" />
                           <div>
                             <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{member.name}</div>
-                            <div className="text-xs text-blue-500 font-medium">{member.role}</div>
+                            <div className="text-xs text-blue-500 font-medium">{getTranslatedMemberRole(member.role)}</div>
                           </div>
                         </div>
                       ))}
@@ -2337,8 +2770,8 @@ export default function SmartProposalLandingPage() {
                           {isChecked && <Check size={14} />}
                         </div>
                         <div>
-                          <div className={cn("font-bold text-sm", isLight ? "text-slate-900" : "text-white")}>{opt.title}</div>
-                          {opt.description && <div className={cn("text-xs mt-0.5", isLight ? "text-slate-500" : "text-zinc-400")}>{opt.description}</div>}
+                          <div className={cn("font-bold text-sm", isLight ? "text-slate-900" : "text-white")}>{getTranslatedOptionTitle(opt)}</div>
+                          {opt.description && <div className={cn("text-xs mt-0.5", isLight ? "text-slate-500" : "text-zinc-400")}>{getTranslatedOptionDesc(opt)}</div>}
                         </div>
                       </div>
                       <div className="text-sm font-bold text-blue-500 dark:text-blue-400 shrink-0 font-sans tracking-tight">
@@ -2400,8 +2833,8 @@ export default function SmartProposalLandingPage() {
                     {ms.percentage}%
                   </span>
                 </div>
-                <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{ms.phase}</div>
-                <div className={cn("text-xs leading-relaxed", isLight ? "text-slate-600" : "text-zinc-400")}>{ms.description}</div>
+                <div className={cn("font-bold text-base", isLight ? "text-slate-900" : "text-white")}>{getTranslatedMilestonePhase(ms)}</div>
+                <div className={cn("text-xs leading-relaxed", isLight ? "text-slate-600" : "text-zinc-400")}>{getTranslatedMilestoneDesc(ms)}</div>
                 <div className={cn("pt-2 border-t flex items-center justify-between text-xs", isLight ? "border-slate-100" : "border-white/5")}>
                   <span className={cn("font-medium", isLight ? "text-slate-500" : "text-zinc-500")}>{t('dueAmount')}</span>
                   <span className={cn("font-black font-sans text-sm", isLight ? "text-slate-900" : "text-white")}>
@@ -2437,7 +2870,7 @@ export default function SmartProposalLandingPage() {
                   </div>
                   <div>
                     <div className={cn("font-bold text-sm transition-colors truncate max-w-[200px]", isLight ? "text-slate-900 group-hover:text-purple-600" : "text-white group-hover:text-purple-300")}>
-                      {doc.name}
+                      {getTranslatedDocName(doc)}
                     </div>
                     <div className={cn("text-[11px] flex items-center gap-1.5 mt-0.5", isLight ? "text-slate-500" : "text-zinc-500")}>
                       <span className="uppercase text-purple-500 dark:text-purple-400 font-bold">{doc.type || 'PDF'}</span>
@@ -2605,31 +3038,31 @@ export default function SmartProposalLandingPage() {
             onClick={() => setSelectedLegalDocModal(null)}
             className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
           >
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="bg-zinc-900 border border-white/15 rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className={cn("rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col border", isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-zinc-900 border-white/15 text-white")}>
+              <div className={cn("flex items-center justify-between border-b pb-3", isLight ? "border-slate-200" : "border-white/10")}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-lg">📄</div>
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg">📄</div>
                   <div>
-                    <h3 className="text-base font-bold text-white">{selectedLegalDocModal.name}</h3>
-                    <span className="text-xs text-zinc-400 uppercase tracking-widest">{selectedLegalDocModal.type || 'Vertragsdokument'}</span>
+                    <h3 className={cn("text-base font-bold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedDocName(selectedLegalDocModal)}</h3>
+                    <span className={cn("text-xs uppercase tracking-widest", isLight ? "text-slate-500" : "text-zinc-400")}>{selectedLegalDocModal.type || 'Vertragsdokument'}</span>
                   </div>
                 </div>
-                <button type="button" onClick={() => setSelectedLegalDocModal(null)} className="p-2 text-zinc-400 hover:text-white rounded-xl bg-white/5"><X size={18}/></button>
+                <button type="button" onClick={() => setSelectedLegalDocModal(null)} className={cn("p-2 rounded-xl transition-colors cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900" : "bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white")}><X size={18}/></button>
               </div>
 
-              <div className="flex-1 min-h-[350px] bg-zinc-950 rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center p-4">
+              <div className={cn("flex-1 min-h-[350px] rounded-2xl overflow-hidden border flex items-center justify-center p-4", isLight ? "bg-slate-100 border-slate-200" : "bg-zinc-950 border-white/10")}>
                 {selectedLegalDocModal.url ? (
-                  <iframe src={selectedLegalDocModal.url} className="w-full h-full min-h-[400px] border-0" title={selectedLegalDocModal.name} />
+                  <iframe src={selectedLegalDocModal.url} className="w-full h-full min-h-[400px] border-0" title={getTranslatedDocName(selectedLegalDocModal)} />
                 ) : (
                   <div className="text-center space-y-2 p-8">
-                    <p className="text-sm font-bold text-zinc-300">{t('officialLegalDoc')}</p>
-                    <p className="text-xs text-zinc-500 max-w-md">{t('officialLegalDocDesc')}</p>
+                    <p className={cn("text-sm font-bold", isLight ? "text-slate-800" : "text-zinc-300")}>{t('officialLegalDoc')}</p>
+                    <p className={cn("text-xs max-w-md", isLight ? "text-slate-500" : "text-zinc-500")}>{t('officialLegalDocDesc')}</p>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setSelectedLegalDocModal(null)} className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs">
+              <div className={cn("flex justify-end gap-3 pt-2 border-t", isLight ? "border-slate-100" : "border-white/5")}>
+                <button type="button" onClick={() => setSelectedLegalDocModal(null)} className={cn("px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 text-white")}>
                   {t('close')}
                 </button>
               </div>
@@ -2649,79 +3082,92 @@ export default function SmartProposalLandingPage() {
             onClick={() => setIsAcceptModalOpen(false)}
             className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto"
           >
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className="bg-zinc-900 border border-white/15 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-5 my-8">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }} 
+              onClick={(e) => e.stopPropagation()} 
+              className={cn(
+                "border rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-5 my-8 transition-colors",
+                isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-zinc-900 border-white/15 text-white"
+              )}
+            >
+              <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <div className={cn("w-11 h-11 rounded-2xl flex items-center justify-center", isLight ? "bg-emerald-100 text-emerald-700 border border-emerald-200" : "bg-emerald-500/20 text-emerald-400")}>
                     <FileSignature size={24} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">{t('modalTitle')}</h3>
-                    <p className="text-xs text-zinc-400">{t('modalSub')}</p>
+                    <h3 className={cn("text-lg font-bold", isLight ? "text-slate-900" : "text-white")}>{t('modalTitle')}</h3>
+                    <p className={cn("text-xs", isLight ? "text-slate-500" : "text-zinc-400")}>{t('modalSub')}</p>
                   </div>
                 </div>
-                <button type="button" onClick={() => setIsAcceptModalOpen(false)} className="p-2 text-zinc-400 hover:text-white rounded-xl bg-white/5">
+                <button 
+                  type="button" 
+                  onClick={() => setIsAcceptModalOpen(false)} 
+                  className={cn("p-2 rounded-xl transition-colors cursor-pointer", isLight ? "text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200" : "text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10")}
+                >
                   ✕
                 </button>
               </div>
 
               {isAcceptedSuccess ? (
-                <div className="p-8 text-center space-y-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl">
-                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                <div className={cn("p-8 text-center space-y-4 rounded-2xl border", isLight ? "bg-emerald-50/80 border-emerald-300 text-slate-900" : "bg-emerald-950/40 border-emerald-500/30 text-white")}>
+                  <div className={cn("w-16 h-16 rounded-full flex items-center justify-center mx-auto", isLight ? "bg-emerald-200 text-emerald-800" : "bg-emerald-500/20 text-emerald-400")}>
                     <CheckCircle2 size={40} />
                   </div>
-                  <h4 className="text-xl font-bold text-white">{t('orderSuccessTitle')}</h4>
-                  <p className="text-xs text-zinc-300">
+                  <h4 className={cn("text-xl font-bold", isLight ? "text-emerald-950" : "text-white")}>{t('orderSuccessTitle')}</h4>
+                  <p className={cn("text-xs", isLight ? "text-slate-600" : "text-zinc-300")}>
                     {t('orderSuccessDesc')}
                   </p>
                   
                   {/* 4 LIVE-STATUS VERIFICATION BADGES */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-1">
                     {/* Badge 1: SIA 118 E-Signatur */}
-                    <div className="p-3 bg-zinc-900/90 border border-emerald-500/40 rounded-xl flex items-start gap-2.5 shadow-md">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-emerald-300" : "bg-zinc-900/90 border-emerald-500/40 shadow-md")}>
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/20 text-emerald-400")}>
                         <FileCheck size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-emerald-300">{t('sia118BadgeTitle')}</div>
-                        <div className="text-[10px] text-zinc-400">{t('sia118BadgeDesc')}</div>
+                        <div className={cn("text-[11px] font-bold", isLight ? "text-emerald-800" : "text-emerald-300")}>{t('sia118BadgeTitle')}</div>
+                        <div className={cn("text-[10px]", isLight ? "text-slate-600" : "text-zinc-400")}>{t('sia118BadgeDesc')}</div>
                       </div>
                     </div>
 
                     {/* Badge 2: Bexio ERP Sync */}
-                    <div className="p-3 bg-zinc-900/90 border border-blue-500/40 rounded-xl flex items-start gap-2.5 shadow-md">
-                      <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-blue-300" : "bg-zinc-900/90 border-blue-500/40 shadow-md")}>
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", isLight ? "bg-blue-100 text-blue-700" : "bg-blue-500/20 text-blue-400")}>
                         <Building2 size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-blue-300">{t('bexioBadgeTitle')}</div>
-                        <div className="text-[10px] text-zinc-400">
+                        <div className={cn("text-[11px] font-bold", isLight ? "text-blue-800" : "text-blue-300")}>{t('bexioBadgeTitle')}</div>
+                        <div className={cn("text-[10px]", isLight ? "text-slate-600" : "text-zinc-400")}>
                           {bexioSyncResult?.success ? t('bexioSuccess', { num: bexioSyncResult.offerNumber || 'BX-OFF' }) : t('bexioPending')}
                         </div>
                       </div>
                     </div>
 
                     {/* Badge 3: E-Mail Confirmation */}
-                    <div className="p-3 bg-zinc-900/90 border border-purple-500/40 rounded-xl flex items-start gap-2.5 shadow-md">
-                      <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-purple-300" : "bg-zinc-900/90 border-purple-500/40 shadow-md")}>
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", isLight ? "bg-purple-100 text-purple-700" : "bg-purple-500/20 text-purple-400")}>
                         <Mail size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-purple-300">{t('emailBadgeTitle')}</div>
-                        <div className="text-[10px] text-zinc-400 truncate max-w-[200px]">
+                        <div className={cn("text-[11px] font-bold", isLight ? "text-purple-800" : "text-purple-300")}>{t('emailBadgeTitle')}</div>
+                        <div className={cn("text-[10px] truncate max-w-[200px]", isLight ? "text-slate-600" : "text-zinc-400")}>
                           {emailDispatchResult?.success ? t('emailDelivered', { email: acceptEmail || proposal.clientEmail }) : t('emailSentTo', { email: acceptEmail || proposal.clientEmail || 'Kunde' })}
                         </div>
                       </div>
                     </div>
 
                     {/* Badge 4: Swiss QR Bill */}
-                    <div className="p-3 bg-zinc-900/90 border border-cyan-500/40 rounded-xl flex items-start gap-2.5 shadow-md">
-                      <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className={cn("p-3 rounded-xl flex items-start gap-2.5 border shadow-sm", isLight ? "bg-white border-cyan-300" : "bg-zinc-900/90 border-cyan-500/40 shadow-md")}>
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", isLight ? "bg-cyan-100 text-cyan-700" : "bg-cyan-500/20 text-cyan-400")}>
                         <QrCode size={16} />
                       </div>
                       <div>
-                        <div className="text-[11px] font-bold text-cyan-300">{t('qrBadgeTitle')}</div>
-                        <div className="text-[10px] text-zinc-400">{t('qrBadgeDesc', { iban: companySettings.qrIban.substring(0, 14) })}</div>
+                        <div className={cn("text-[11px] font-bold", isLight ? "text-cyan-800" : "text-cyan-300")}>{t('qrBadgeTitle')}</div>
+                        <div className={cn("text-[10px]", isLight ? "text-slate-600" : "text-zinc-400")}>{t('qrBadgeDesc', { iban: companySettings.qrIban.substring(0, 14) })}</div>
                       </div>
                     </div>
                   </div>
@@ -2758,62 +3204,62 @@ export default function SmartProposalLandingPage() {
                 </div>
               ) : (
                 <form onSubmit={handleAcceptProposal} className="space-y-4">
-                  <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                  <div className={cn("p-4 rounded-2xl border flex items-center justify-between", isLight ? "bg-emerald-50/80 border-emerald-200" : "bg-white/5 border-white/10")}>
                     <div>
-                      <div className="text-xs text-zinc-400">{t('confirmedTotalLabel')}</div>
-                      <div className="text-2xl font-black font-sans tracking-tight text-emerald-400">
+                      <div className={cn("text-xs", isLight ? "text-slate-500 font-medium" : "text-zinc-400")}>{t('confirmedTotalLabel')}</div>
+                      <div className={cn("text-2xl font-black font-sans tracking-tight", isLight ? "text-emerald-700" : "text-emerald-400")}>
                         {proposal.currency} {calculateTotal().toLocaleString('de-CH')}
                       </div>
                     </div>
-                    <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs">
+                    <span className={cn("px-3 py-1 rounded-full font-bold text-xs border", isLight ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30")}>
                       {t('siaCompliantBadge')}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('yourName')}</label>
+                      <label className={cn("text-xs font-bold block mb-1", isLight ? "text-slate-700" : "text-zinc-300")}>{t('yourName')}</label>
                       <input 
                         type="text" 
                         required 
                         placeholder={t('yourNamePlaceholder')}
                         value={acceptName}
                         onChange={e => setAcceptName(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                        className={cn("w-full px-3.5 py-2 rounded-xl text-xs outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-600" : "bg-zinc-950 border-white/15 text-white focus:border-blue-500")}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('company')}</label>
+                      <label className={cn("text-xs font-bold block mb-1", isLight ? "text-slate-700" : "text-zinc-300")}>{t('company')}</label>
                       <input 
                         type="text" 
                         placeholder={t('companyPlaceholder')}
                         value={acceptCompany}
                         onChange={e => setAcceptCompany(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                        className={cn("w-full px-3.5 py-2 rounded-xl text-xs outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-600" : "bg-zinc-950 border-white/15 text-white focus:border-blue-500")}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('businessEmail')}</label>
+                      <label className={cn("text-xs font-bold block mb-1", isLight ? "text-slate-700" : "text-zinc-300")}>{t('businessEmail')}</label>
                       <input 
                         type="email" 
                         required 
                         placeholder={t('businessEmailPlaceholder')}
                         value={acceptEmail}
                         onChange={e => setAcceptEmail(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                        className={cn("w-full px-3.5 py-2 rounded-xl text-xs outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-600" : "bg-zinc-950 border-white/15 text-white focus:border-blue-500")}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-zinc-300 block mb-1">{t('phone')}</label>
+                      <label className={cn("text-xs font-bold block mb-1", isLight ? "text-slate-700" : "text-zinc-300")}>{t('phone')}</label>
                       <input 
                         type="text" 
                         placeholder={t('phonePlaceholder')}
                         value={acceptPhone}
                         onChange={e => setAcceptPhone(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-zinc-950 border border-white/15 rounded-xl text-xs text-white outline-none focus:border-blue-500"
+                        className={cn("w-full px-3.5 py-2 rounded-xl text-xs outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-blue-600" : "bg-zinc-950 border-white/15 text-white focus:border-blue-500")}
                       />
                     </div>
                   </div>
@@ -2821,19 +3267,23 @@ export default function SmartProposalLandingPage() {
                   {/* TOUCH / STYLUS / MOUSE E-SIGNATURE CANVAS */}
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                        <PenTool size={14} className="text-blue-400" /> {t('drawSignatureLabel')}
+                      <label className={cn("text-xs font-bold flex items-center gap-1.5", isLight ? "text-slate-700" : "text-zinc-300")}>
+                        <PenTool size={14} className="text-blue-500" /> {t('drawSignatureLabel')}
                       </label>
                       <button 
                         type="button" 
                         onClick={clearSignature}
-                        className="text-[11px] text-zinc-400 hover:text-red-400 flex items-center gap-1 cursor-pointer"
+                        className={cn("text-[11px] flex items-center gap-1 cursor-pointer transition-colors", isLight ? "text-slate-500 hover:text-red-600" : "text-zinc-400 hover:text-red-400")}
                       >
                         <RotateCcw size={11} /> {t('resetSignature')}
                       </button>
                     </div>
 
-                    <div className={cn("rounded-2xl border-2 border-dashed bg-zinc-950 p-1 relative overflow-hidden flex flex-col items-center justify-center transition-all duration-200", signatureError ? "border-amber-500/80 ring-2 ring-amber-500/20" : "border-white/20")}>
+                    <div className={cn("rounded-2xl border-2 border-dashed p-1 relative overflow-hidden flex flex-col items-center justify-center transition-all duration-200", 
+                      signatureError 
+                        ? "border-amber-500/80 ring-2 ring-amber-500/20" 
+                        : (isLight ? "border-slate-300 bg-slate-100" : "border-white/20 bg-zinc-950")
+                    )}>
                       <canvas 
                         ref={signatureCanvasRef}
                         width={500}
@@ -2845,23 +3295,23 @@ export default function SmartProposalLandingPage() {
                         onTouchStart={startDrawing}
                         onTouchMove={draw}
                         onTouchEnd={stopDrawing}
-                        className="w-full h-28 bg-zinc-950 cursor-crosshair touch-none rounded-xl"
+                        className={cn("w-full h-28 cursor-crosshair touch-none rounded-xl", isLight ? "bg-white" : "bg-zinc-950")}
                       />
                       {!hasSignature && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-zinc-600 text-xs font-medium">
+                        <div className={cn("absolute inset-0 flex items-center justify-center pointer-events-none text-xs font-medium", isLight ? "text-slate-400" : "text-zinc-600")}>
                           {t('signHerePlaceholder')}
                         </div>
                       )}
                     </div>
                     {signatureError && (
-                      <p className="text-amber-400 text-xs font-semibold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1">
-                        ⚠️ Bitte leisten Sie Ihre digitale Unterschrift im Unterschriften-Feld.
+                      <p className="text-amber-600 text-xs font-semibold flex items-center gap-1.5 animate-in fade-in slide-in-from-top-1">
+                        ⚠️ {t('signRequiredError')}
                       </p>
                     )}
                   </div>
 
                   {/* MANDATORY LEGAL ACCEPTANCE CHECKBOX */}
-                  <div className="space-y-2 pt-2 border-t border-white/10">
+                  <div className={cn("space-y-2 pt-2 border-t", isLight ? "border-slate-200" : "border-white/10")}>
                     <label className="flex items-start gap-2.5 cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -2870,17 +3320,17 @@ export default function SmartProposalLandingPage() {
                         onChange={e => setAcceptedLegalDocs(e.target.checked)}
                         className="mt-1 accent-blue-600" 
                       />
-                      <span className="text-xs text-zinc-300 leading-relaxed">
+                      <span className={cn("text-xs leading-relaxed", isLight ? "text-slate-600" : "text-zinc-300")}>
                         {t('legalCheckboxLabel')}
                       </span>
                     </label>
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                  <div className={cn("flex items-center justify-end gap-3 pt-3 border-t", isLight ? "border-slate-200" : "border-white/10")}>
                     <button 
                       type="button" 
-                      onClick={() => setIsAcceptModalOpen(false)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white"
+                      onClick={() => setIsAcceptModalOpen(false)} 
+                      className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer", isLight ? "text-slate-500 hover:text-slate-800" : "text-zinc-400 hover:text-white")}
                     >
                       {t('cancel')}
                     </button>
@@ -2921,21 +3371,32 @@ export default function SmartProposalLandingPage() {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-20 right-4 sm:right-6 z-50 w-full max-w-sm sm:max-w-md bg-zinc-950/95 border border-white/20 rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl flex flex-col max-h-[550px]"
+            className={cn(
+              "fixed bottom-20 right-4 sm:right-6 z-50 w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl flex flex-col max-h-[550px] border transition-colors",
+              isLight 
+                ? "bg-white/95 border-slate-200 text-slate-900 shadow-slate-900/20" 
+                : "bg-zinc-950/95 border-white/20 text-white"
+            )}
           >
-            <div className="p-4 border-b border-white/10 bg-gradient-to-r from-blue-950/80 via-zinc-900 to-indigo-950/80 flex items-center justify-between">
+            <div className={cn(
+              "p-4 border-b flex items-center justify-between",
+              isLight 
+                ? "border-slate-200 bg-gradient-to-r from-blue-50 via-slate-50 to-indigo-50" 
+                : "border-white/10 bg-gradient-to-r from-blue-950/80 via-zinc-900 to-indigo-950/80"
+            )}>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black shadow-md">
                   <Bot size={18} />
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-white">{t('aiAdvisorTitle')}</h4>
-                  <p className="text-[10px] text-cyan-300">{t('aiAdvisorSubtitle', { token: proposal.shareToken || 'CH-2026' })}</p>
+                  <h4 className={cn("text-xs font-black", isLight ? "text-slate-900" : "text-white")}>{t('aiAdvisorTitle')}</h4>
+                  <p className={cn("text-[10px]", isLight ? "text-blue-600 font-medium" : "text-cyan-300")}>{t('aiAdvisorSubtitle', { token: proposal.shareToken || 'CH-2026' })}</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsAiChatOpen(false)}
-                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-all"
+                className={cn("w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white")}
               >
                 <X size={15} />
               </button>
@@ -2948,29 +3409,32 @@ export default function SmartProposalLandingPage() {
                   className={cn(
                     "p-3 rounded-2xl max-w-[85%] leading-relaxed",
                     msg.role === 'user'
-                      ? "ml-auto bg-blue-600 text-white rounded-tr-none font-medium"
-                      : "mr-auto bg-zinc-900 border border-white/10 text-zinc-200 rounded-tl-none font-normal"
+                      ? "ml-auto bg-blue-600 text-white rounded-tr-none font-medium shadow-xs"
+                      : (isLight 
+                          ? "mr-auto bg-slate-100 border border-slate-200 text-slate-800 rounded-tl-none font-normal shadow-xs"
+                          : "mr-auto bg-zinc-900 border border-white/10 text-zinc-200 rounded-tl-none font-normal"
+                        )
                   )}
                 >
                   {msg.text}
                 </div>
               ))}
               {isAiChatLoading && (
-                <div className="mr-auto bg-zinc-900 border border-white/10 text-cyan-300 p-3 rounded-2xl rounded-tl-none text-xs flex items-center gap-2">
-                  <Loader2 size={14} className="animate-spin text-cyan-400" />
+                <div className={cn("mr-auto p-3 rounded-2xl rounded-tl-none text-xs flex items-center gap-2 border", isLight ? "bg-slate-100 border-slate-200 text-blue-700" : "bg-zinc-900 border-white/10 text-cyan-300")}>
+                  <Loader2 size={14} className="animate-spin text-blue-500" />
                   <span>{t('aiThinking')}</span>
                 </div>
               )}
             </div>
 
-            <form onSubmit={handleSendAiQuestion} className="p-3 border-t border-white/10 bg-zinc-900/60 flex items-center gap-2">
+            <form onSubmit={handleSendAiQuestion} className={cn("p-3 border-t flex items-center gap-2", isLight ? "border-slate-200 bg-slate-50" : "border-white/10 bg-zinc-900/60")}>
               <input
                 type="text"
                 value={aiQuestionInput}
                 onChange={(e) => setAiQuestionInput(e.target.value)}
                 placeholder={t('aiInputPlaceholder')}
                 disabled={isAiChatLoading}
-                className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-blue-500"
+                className={cn("flex-1 rounded-xl px-3.5 py-2.5 text-xs outline-none transition-colors border", isLight ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-blue-600" : "bg-black/60 border-white/15 text-white placeholder:text-zinc-500 focus:border-blue-500")}
               />
               <button
                 type="submit"
@@ -2993,29 +3457,32 @@ export default function SmartProposalLandingPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsShareModalOpen(false)}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-3xl bg-neutral-900 border border-white/15 shadow-2xl p-6 space-y-5 text-white max-h-[90vh] overflow-y-auto"
+              className={cn(
+                "w-full max-w-lg rounded-3xl border shadow-2xl p-6 space-y-5 max-h-[90vh] overflow-y-auto transition-colors",
+                isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-neutral-900 border-white/15 text-white"
+              )}
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center font-bold">
+                  <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center font-bold border", isLight ? "bg-cyan-100 text-cyan-700 border-cyan-300" : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30")}>
                     <Share2 size={20} />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-base text-white">{t('shareModalTitle')}</h3>
-                    <p className="text-xs text-neutral-400">{t('shareModalSub')}</p>
+                    <h3 className={cn("font-extrabold text-base", isLight ? "text-slate-900" : "text-white")}>{t('shareModalTitle')}</h3>
+                    <p className={cn("text-xs", isLight ? "text-slate-500" : "text-neutral-400")}>{t('shareModalSub')}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsShareModalOpen(false)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                  className={cn("p-2 rounded-xl transition-colors cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700" : "bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white")}
                 >
                   <X size={18} />
                 </button>
@@ -3023,8 +3490,8 @@ export default function SmartProposalLandingPage() {
 
               {/* Theme Mode Selector for Sharing */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-neutral-300 block">{t('shareThemeLabel')}</label>
-                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-2xl border border-white/10">
+                <label className={cn("text-xs font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('shareThemeLabel')}</label>
+                <div className={cn("grid grid-cols-2 gap-2 p-1 rounded-2xl border", isLight ? "bg-slate-100 border-slate-200" : "bg-black/40 border-white/10")}>
                   <button
                     type="button"
                     onClick={() => {
@@ -3034,11 +3501,11 @@ export default function SmartProposalLandingPage() {
                     className={cn(
                       "py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
                       shareTheme === 'light'
-                        ? "bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm"
-                        : "border-transparent text-neutral-400 hover:text-white"
+                        ? (isLight ? "bg-white border-amber-400 text-amber-900 shadow-sm" : "bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm")
+                        : (isLight ? "border-transparent text-slate-500 hover:text-slate-900" : "border-transparent text-neutral-400 hover:text-white")
                     )}
                   >
-                    <Sun size={15} className="text-amber-400" />
+                    <Sun size={15} className="text-amber-500" />
                     <span>{t('lightMode')}</span>
                   </button>
                   <button
@@ -3050,11 +3517,11 @@ export default function SmartProposalLandingPage() {
                     className={cn(
                       "py-2 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer",
                       shareTheme === 'dark'
-                        ? "bg-blue-600/20 border-blue-500/60 text-blue-300 shadow-sm"
-                        : "border-transparent text-neutral-400 hover:text-white"
+                        ? (isLight ? "bg-white border-blue-400 text-blue-900 shadow-sm" : "bg-blue-600/20 border-blue-500/60 text-blue-300 shadow-sm")
+                        : (isLight ? "border-transparent text-slate-500 hover:text-slate-900" : "border-transparent text-neutral-400 hover:text-white")
                     )}
                   >
-                    <Moon size={15} className="text-blue-400" />
+                    <Moon size={15} className="text-blue-500" />
                     <span>{t('darkMode')}</span>
                   </button>
                 </div>
@@ -3074,16 +3541,35 @@ export default function SmartProposalLandingPage() {
                   }
                 })();
 
+                const localizedProposalTitle = getTranslatedProposalTitle(proposal.title);
+                const whatsappShareMsg = proposalLang === 'fr' 
+                  ? `Bonjour, voici l'offre interactive "${localizedProposalTitle}": ${calculatedShareUrl}`
+                  : proposalLang === 'en'
+                  ? `Hello, here is the interactive proposal "${localizedProposalTitle}": ${calculatedShareUrl}`
+                  : `Guten Tag, hier ist das interaktive Angebot "${localizedProposalTitle}": ${calculatedShareUrl}`;
+
+                const emailSubject = proposalLang === 'fr'
+                  ? `Offre : ${localizedProposalTitle}`
+                  : proposalLang === 'en'
+                  ? `Proposal: ${localizedProposalTitle}`
+                  : `Angebot: ${localizedProposalTitle}`;
+
+                const emailBody = proposalLang === 'fr'
+                  ? `Bonjour,\n\nvoici le lien vers votre offre interactive :\n${calculatedShareUrl}\n\nMeilleures salutations,\nKreativ Desk & interacTV`
+                  : proposalLang === 'en'
+                  ? `Hello,\n\nhere is the link to your interactive proposal:\n${calculatedShareUrl}\n\nBest regards,\nKreativ Desk & interacTV`
+                  : `Guten Tag,\n\nhier ist der Link zu Ihrem interaktiven Angebot:\n${calculatedShareUrl}\n\nFreundliche Grüsse,\nKreativ Desk & interacTV`;
+
                 return (
                   <>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-neutral-300 block">{t('directLinkLabel')}</label>
+                      <label className={cn("text-xs font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('directLinkLabel')}</label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           readOnly
                           value={calculatedShareUrl}
-                          className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-cyan-300 font-sans font-medium select-all outline-none"
+                          className={cn("flex-1 rounded-xl px-3.5 py-2.5 text-xs font-sans font-medium select-all outline-none border transition-colors", isLight ? "bg-slate-50 border-slate-300 text-slate-900" : "bg-black/50 border-white/15 text-cyan-300")}
                         />
                         <button
                           type="button"
@@ -3105,10 +3591,10 @@ export default function SmartProposalLandingPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                       {/* WhatsApp */}
                       <a
-                        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Guten Tag, hier ist das interaktive Angebot "${proposal.title}": ${calculatedShareUrl}`)}`}
+                        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareMsg)}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-3 rounded-2xl bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-500/30 text-emerald-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
+                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs", isLight ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800" : "bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/30 text-emerald-300")}
                       >
                         <span className="text-lg">💬</span>
                         <span>WhatsApp</span>
@@ -3119,7 +3605,7 @@ export default function SmartProposalLandingPage() {
                         href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(calculatedShareUrl)}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-3 rounded-2xl bg-blue-950/40 hover:bg-blue-900/50 border border-blue-500/30 text-blue-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
+                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs", isLight ? "bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-800" : "bg-blue-950/40 hover:bg-blue-900/50 border-blue-500/30 text-blue-300")}
                       >
                         <span className="text-lg">💼</span>
                         <span>LinkedIn</span>
@@ -3127,8 +3613,8 @@ export default function SmartProposalLandingPage() {
 
                       {/* E-Mail */}
                       <a
-                        href={`mailto:?subject=${encodeURIComponent(`Angebot: ${proposal.title}`)}&body=${encodeURIComponent(`Guten Tag,\n\nhier ist der Link zu Ihrem interaktiven Angebot:\n${calculatedShareUrl}\n\nFreundliche Grüsse,\nKreativ Desk & interacTV`)}`}
-                        className="p-3 rounded-2xl bg-purple-950/40 hover:bg-purple-900/50 border border-purple-500/30 text-purple-300 flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-sm"
+                        href={`mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs", isLight ? "bg-purple-50 hover:bg-purple-100 border-purple-300 text-purple-800" : "bg-purple-950/40 hover:bg-purple-900/50 border-purple-500/30 text-purple-300")}
                       >
                         <span className="text-lg">✉️</span>
                         <span>E-Mail</span>
@@ -3136,13 +3622,13 @@ export default function SmartProposalLandingPage() {
                     </div>
 
                     {/* QR Code Quick Scan on Smartphone */}
-                    <div className="p-4 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-4">
-                      <div className="p-2 bg-white rounded-xl shrink-0 shadow-md">
+                    <div className={cn("p-4 rounded-2xl border flex items-center gap-4", isLight ? "bg-slate-50 border-slate-200" : "bg-black/40 border-white/10")}>
+                      <div className="p-2 bg-white rounded-xl shrink-0 shadow-md border border-slate-200">
                         <QRCode value={calculatedShareUrl} size={70} />
                       </div>
                       <div className="space-y-1 text-xs">
-                        <span className="font-bold text-white block">{t('smartphoneQrTitle')}</span>
-                        <p className="text-[11px] text-neutral-400 leading-snug">
+                        <span className={cn("font-bold block", isLight ? "text-slate-900" : "text-white")}>{t('smartphoneQrTitle')}</span>
+                        <p className={cn("text-[11px] leading-snug", isLight ? "text-slate-600" : "text-neutral-400")}>
                           {t('smartphoneQrDesc')}
                         </p>
                       </div>
@@ -3164,29 +3650,34 @@ export default function SmartProposalLandingPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsCompanySettingsModalOpen(false)}
-            className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto"
+            className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-2xl rounded-3xl bg-neutral-900 border border-purple-500/30 shadow-2xl p-6 sm:p-8 space-y-6 text-white max-h-[90vh] overflow-y-auto my-8"
+              className={cn(
+                "w-full max-w-2xl rounded-3xl border shadow-2xl p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto overflow-x-hidden my-8 transition-colors",
+                isLight 
+                  ? "bg-white border-purple-200 text-slate-900 shadow-slate-900/15" 
+                  : "bg-neutral-900 border-purple-500/30 text-white"
+              )}
             >
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center font-bold">
+                  <div className={cn("w-11 h-11 rounded-2xl border flex items-center justify-center font-bold", isLight ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-purple-500/20 text-purple-400 border-purple-500/30")}>
                     <Building2 size={22} />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-lg text-white">{t('companyModalTitle')}</h3>
-                    <p className="text-xs text-neutral-400">{t('companyModalSub')}</p>
+                    <h3 className={cn("font-extrabold text-lg", isLight ? "text-slate-900" : "text-white")}>{t('companyModalTitle')}</h3>
+                    <p className={cn("text-xs", isLight ? "text-slate-500" : "text-neutral-400")}>{t('companyModalSub')}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsCompanySettingsModalOpen(false)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white transition-colors cursor-pointer"
+                  className={cn("p-2 rounded-xl transition-colors cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700" : "bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white")}
                 >
                   <X size={18} />
                 </button>
@@ -3205,113 +3696,113 @@ export default function SmartProposalLandingPage() {
                 {/* Firmengrunddaten */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">{t('companyName')}</label>
+                    <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('companyName')}</label>
                     <input
                       type="text"
                       required
                       value={tempCompanySettings.companyName}
                       onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, companyName: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none focus:border-purple-500"
+                      className={cn("w-full px-3.5 py-2.5 rounded-xl outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">{t('legalForm')}</label>
+                    <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('legalForm')}</label>
                     <input
                       type="text"
                       value={tempCompanySettings.legalForm}
                       onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, legalForm: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none focus:border-purple-500"
+                      className={cn("w-full px-3.5 py-2.5 rounded-xl outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                     />
                   </div>
                 </div>
 
-                {/* Adresse */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2 space-y-1">
-                    <label className="font-bold text-neutral-300">{t('streetAndNo')}</label>
+                {/* Adresse - min-w-0 prevents horizontal overflow */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('streetAndNo')}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         placeholder={t('street')}
                         value={tempCompanySettings.street}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, street: e.target.value })}
-                        className="flex-1 px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none focus:border-purple-500"
+                        className={cn("flex-1 min-w-0 px-3.5 py-2.5 rounded-xl outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                       />
                       <input
                         type="text"
                         placeholder={t('number')}
                         value={tempCompanySettings.buildingNumber}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, buildingNumber: e.target.value })}
-                        className="w-16 px-2 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white text-center outline-none focus:border-purple-500"
+                        className={cn("w-16 min-w-0 px-2 py-2.5 rounded-xl text-center outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                       />
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">{t('zipAndCity')}</label>
+                    <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('zipAndCity')}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         placeholder={t('zip')}
                         value={tempCompanySettings.postalCode}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, postalCode: e.target.value })}
-                        className="w-20 px-2 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white text-center outline-none focus:border-purple-500"
+                        className={cn("w-20 min-w-0 px-2 py-2.5 rounded-xl text-center outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                       />
                       <input
                         type="text"
                         placeholder={t('city')}
                         value={tempCompanySettings.city}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, city: e.target.value })}
-                        className="flex-1 px-3 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none focus:border-purple-500"
+                        className={cn("flex-1 min-w-0 px-3 py-2.5 rounded-xl outline-none transition-colors border", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Banking & Swiss QR-IBAN */}
-                <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-3">
-                  <div className="flex items-center gap-2 text-purple-300 font-bold">
+                <div className={cn("p-4 rounded-2xl border space-y-3", isLight ? "bg-purple-50/70 border-purple-200" : "bg-black/40 border-purple-500/20")}>
+                  <div className={cn("flex items-center gap-2 font-bold", isLight ? "text-purple-900" : "text-purple-300")}>
                     <QrCode size={16} /> <span>{t('bankingQrSection')}</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">{t('qrIban')}</label>
+                      <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('qrIban')}</label>
                       <input
                         type="text"
                         required
                         value={tempCompanySettings.qrIban}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, qrIban: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/80 border border-purple-500/40 rounded-xl text-emerald-400 font-sans font-bold tracking-wide outline-none"
+                        className={cn("w-full px-3.5 py-2.5 rounded-xl font-sans font-bold tracking-wide outline-none border transition-colors", isLight ? "bg-white border-purple-400 text-emerald-700 focus:border-purple-600" : "bg-black/80 border-purple-500/40 text-emerald-400 focus:border-purple-400")}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">{t('bankName')}</label>
+                      <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('bankName')}</label>
                       <input
                         type="text"
                         value={tempCompanySettings.bankName}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, bankName: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none"
+                        className={cn("w-full px-3.5 py-2.5 rounded-xl outline-none border transition-colors", isLight ? "bg-white border-slate-300 text-slate-900 focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">{t('uidNumber')}</label>
+                      <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('uidNumber')}</label>
                       <input
                         type="text"
                         value={tempCompanySettings.uid}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, uid: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-cyan-300 font-sans font-semibold tracking-wide outline-none"
+                        className={cn("w-full px-3.5 py-2.5 rounded-xl font-sans font-semibold tracking-wide outline-none border transition-colors", isLight ? "bg-white border-slate-300 text-indigo-700 focus:border-purple-600" : "bg-black/60 border-white/15 text-cyan-300 focus:border-purple-500")}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="font-bold text-neutral-300">{t('regularIban')}</label>
+                      <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('regularIban')}</label>
                       <input
                         type="text"
                         value={tempCompanySettings.iban}
                         onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, iban: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-zinc-300 font-sans font-semibold tracking-wide outline-none"
+                        className={cn("w-full px-3.5 py-2.5 rounded-xl font-sans font-semibold tracking-wide outline-none border transition-colors", isLight ? "bg-white border-slate-300 text-slate-800 focus:border-purple-600" : "bg-black/60 border-white/15 text-zinc-300 focus:border-purple-500")}
                       />
                     </div>
                   </div>
@@ -3320,30 +3811,30 @@ export default function SmartProposalLandingPage() {
                 {/* Kontakt */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">{t('officialEmail')}</label>
+                    <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('officialEmail')}</label>
                     <input
                       type="email"
                       value={tempCompanySettings.contactEmail}
                       onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, contactEmail: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none"
+                      className={cn("w-full px-3.5 py-2.5 rounded-xl outline-none border transition-colors", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-bold text-neutral-300">{t('phone')}</label>
+                    <label className={cn("font-bold block", isLight ? "text-slate-700" : "text-neutral-300")}>{t('phone')}</label>
                     <input
                       type="text"
                       value={tempCompanySettings.contactPhone}
                       onChange={(e) => setTempCompanySettings({ ...tempCompanySettings, contactPhone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-black/60 border border-white/15 rounded-xl text-white outline-none"
+                      className={cn("w-full px-3.5 py-2.5 rounded-xl outline-none border transition-colors", isLight ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-purple-600" : "bg-black/60 border-white/15 text-white focus:border-purple-500")}
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className={cn("flex items-center justify-end gap-3 pt-3 border-t", isLight ? "border-slate-200" : "border-white/10")}>
                   <button
                     type="button"
                     onClick={() => setIsCompanySettingsModalOpen(false)}
-                    className="px-4 py-2.5 rounded-xl text-zinc-400 hover:text-white font-bold cursor-pointer"
+                    className={cn("px-4 py-2.5 rounded-xl font-bold cursor-pointer transition-colors", isLight ? "text-slate-500 hover:text-slate-800" : "text-zinc-400 hover:text-white")}
                   >
                     {t('cancel')}
                   </button>
