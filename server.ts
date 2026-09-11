@@ -34,9 +34,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 async function startServer() {
   const app = express();
   
-  // Wichtig für den Stripe Webhook (braucht raw body)
+  // Wichtig für den Stripe Webhook & Sentry Tunnel (brauchen raw body)
   app.use((req, res, next) => {
-    if (req.originalUrl === '/api/webhook') {
+    if (req.originalUrl === '/api/webhook' || req.originalUrl.startsWith('/api/sentry-tunnel')) {
       next();
     } else {
       express.json()(req, res, next);
@@ -922,6 +922,17 @@ Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.to
       return handler(req, res);
     } catch (err: any) {
       console.error('register-company route error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // --- SENTRY TUNNEL (Bypasses adblockers/Firefox tracking protection) ---
+  app.all(['/api/sentry-tunnel', '/api/sentry/tunnel'], express.raw({ type: '*/*', limit: '10mb' }), async (req, res) => {
+    try {
+      const handler = (await import('./api/_handlers/sentry-tunnel.js')).default;
+      return handler(req, res);
+    } catch (err: any) {
+      console.error('sentry-tunnel route error:', err);
       return res.status(500).json({ error: err.message });
     }
   });

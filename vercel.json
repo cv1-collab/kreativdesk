@@ -5,6 +5,10 @@
       "destination": "/api/webhook"
     },
     {
+      "source": "/api/sentry-tunnel",
+      "destination": "/api/sentry-tunnel"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/[...route]?route=$1"
     },

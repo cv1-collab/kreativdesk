@@ -26,6 +26,7 @@ import bexioTestConnection from './_handlers/bexio-test-connection.js';
 import bexioSyncLeads from './_handlers/bexio-sync-leads.js';
 import financialLedger from './_handlers/financial-ledger.js';
 import submitPublicLead from './_handlers/submit-public-lead.js';
+import sentryTunnel from './_handlers/sentry-tunnel.js';
 
 type RouteHandler = (req: VercelRequest | any, res: VercelResponse | any) => Promise<any> | any;
 
@@ -68,6 +69,8 @@ const handlers: Record<string, RouteHandler> = {
   'public/lead': submitPublicLead,
   'public-lead': submitPublicLead,
   'submit-lead': submitPublicLead,
+  'sentry-tunnel': sentryTunnel,
+  'sentry/tunnel': sentryTunnel,
 };
 
 function extractRoute(req: VercelRequest): string {
