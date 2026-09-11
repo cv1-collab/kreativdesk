@@ -6,6 +6,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
+
+  const DEFAULT_SUPABASE_URL = 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
+  const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp0Z2Zyb2dicmtybGx6ZHd6ZHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODMzOTcsImV4cCI6MjEwMTA1OTM5N30.WHFlicuJoJ2xSevb2-HvWgPml8Rwz28fTOFppQkvlYE';
+
+  const rawUrl = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  const rawKey = env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+  const cleanUrl = typeof rawUrl === 'string' ? rawUrl.replace(/^["']|["']$/g, '').trim() : '';
+  const cleanKey = typeof rawKey === 'string' ? rawKey.replace(/^["']|["']$/g, '').trim() : '';
+  const resolvedUrl = cleanUrl && cleanUrl.startsWith('http') ? cleanUrl : DEFAULT_SUPABASE_URL;
+  const resolvedKey = cleanKey && cleanKey.length > 20 ? cleanKey : DEFAULT_SUPABASE_ANON_KEY;
+
   return {
     plugins: [
       react(),
@@ -58,6 +69,10 @@ export default defineConfig(({ mode }) => {
       })
     ],
     define: {
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(resolvedUrl),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(resolvedKey),
+      'process.env.VITE_SUPABASE_URL': JSON.stringify(resolvedUrl),
+      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(resolvedKey),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY || ''),
       global: 'window',
       'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
