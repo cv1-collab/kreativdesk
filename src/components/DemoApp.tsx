@@ -82,7 +82,7 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
       setActiveProject: () => { }, addProject: async () => { }, removeProject: async () => { }, updateProjectStatus: async () => { },
       addCompanyUser: async () => { }, updateCompanyUser: async () => { }, removeCompanyUser: async () => { }, fetchCompanyUsers: async () => { },
       fetchProjects: async () => { }, fetchProjectDetails: async () => { }, refreshAllData: async () => { },
-      addProjectMember: async () => { }, removeProjectMember: async () => { }, addTimeEntry: async () => { },
+      addProjectMember: async () => { }, updateProjectMemberRole: async () => { }, removeProjectMember: async () => { }, addTimeEntry: async () => { },
       isDemoMode: true,
       demoData: template
     }}>

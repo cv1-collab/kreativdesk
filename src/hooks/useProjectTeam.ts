@@ -96,18 +96,33 @@ export function useProjectTeam() {
   const fetchProjectMembers = useCallback(async (safeCompanyId: string) => {
     if (!safeCompanyId) return [];
     try {
-      const { data: mems } = await supabase
-        .from('project_members')
-        .select('*')
-        .eq('company_id', safeCompanyId);
+      const [{ data: mems }, { data: crmUsers }] = await Promise.all([
+        supabase.from('project_members').select('*').eq('company_id', safeCompanyId),
+        supabase.from('company_users').select('id, notes, role').eq('company_id', safeCompanyId)
+      ]);
 
       if (mems) {
-        const mapped: ProjectMember[] = mems.map(m => ({
-          id: m.id,
-          projectId: m.project_id,
-          userId: m.user_id,
-          companyId: m.company_id
-        }));
+        const mapped: ProjectMember[] = mems.map(m => {
+          let role = (m as any).project_role || (m as any).role;
+          if (!role && crmUsers) {
+            const u = crmUsers.find((cu: any) => cu.id === m.user_id);
+            if (u?.notes && u.notes.startsWith('__CRM_META__:')) {
+              try {
+                const meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
+                if (meta.projectRoles && meta.projectRoles[m.project_id]) {
+                  role = meta.projectRoles[m.project_id];
+                }
+              } catch (e) {}
+            }
+          }
+          return {
+            id: m.id,
+            projectId: m.project_id,
+            userId: m.user_id,
+            companyId: m.company_id,
+            projectRole: role || 'Viewer'
+          };
+        });
         setProjectMembers(mapped);
         return mapped;
       }
@@ -138,12 +153,13 @@ export function useProjectTeam() {
 
   const addProjectMember = useCallback(async (projectId: string, memberData: any, safeCompanyId: string) => {
     if (!projectId || !memberData?.userId) return;
+    const initialRole = memberData.projectRole || 'Viewer';
     const newMember: ProjectMember = {
       id: `pm-${Date.now()}`,
       projectId,
       userId: memberData.userId,
       userEmail: memberData.userEmail || '',
-      projectRole: memberData.projectRole || 'Viewer',
+      projectRole: initialRole,
       companyRole: memberData.companyRole || 'External Partner',
       companyId: safeCompanyId
     };
@@ -159,8 +175,76 @@ export function useProjectTeam() {
     } catch (err) {
       console.warn('addProjectMember error:', err);
     }
+
+    try {
+      const { data: u } = await supabase.from('company_users')
+        .select('id, notes')
+        .eq('id', memberData.userId)
+        .maybeSingle();
+
+      if (u) {
+        let meta: any = {};
+        if (u.notes && u.notes.startsWith('__CRM_META__:')) {
+          try {
+            meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
+          } catch (e) {}
+        }
+        if (!meta.projectRoles) meta.projectRoles = {};
+        meta.projectRoles[projectId] = initialRole;
+        await supabase.from('company_users')
+          .update({ notes: `__CRM_META__:${JSON.stringify(meta)}` })
+          .eq('id', u.id);
+      }
+    } catch (e) {}
+
     await fetchProjectMembers(safeCompanyId);
   }, [fetchProjectMembers]);
+
+  const updateProjectMemberRole = useCallback(async (projectId: string, userId: string, newRole: string, safeCompanyId: string) => {
+    if (!projectId || !userId) return;
+
+    // 1. Instant optimistic state update in memory
+    setProjectMembers(prev => prev.map(m => {
+      if (m.projectId === projectId && (m.userId === userId || m.id === userId)) {
+        return { ...m, projectRole: newRole };
+      }
+      return m;
+    }));
+
+    // 2. Try native column update if column exists
+    try {
+      await supabase.from('project_members')
+        .update({ project_role: newRole } as any)
+        .eq('project_id', projectId)
+        .eq('user_id', userId);
+    } catch (err) {
+      // Column might not exist yet
+    }
+
+    // 3. Persist in company_users CRM_META
+    try {
+      const { data: u } = await supabase.from('company_users')
+        .select('id, notes')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (u) {
+        let meta: any = {};
+        if (u.notes && u.notes.startsWith('__CRM_META__:')) {
+          try {
+            meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
+          } catch (e) {}
+        }
+        if (!meta.projectRoles) meta.projectRoles = {};
+        meta.projectRoles[projectId] = newRole;
+        await supabase.from('company_users')
+          .update({ notes: `__CRM_META__:${JSON.stringify(meta)}` })
+          .eq('id', u.id);
+      }
+    } catch (e) {
+      console.error('Error persisting project role in company_users:', e);
+    }
+  }, []);
 
   const removeProjectMember = useCallback(async (projectId: string, userId: string, safeCompanyId: string) => {
     if (!projectId || !userId) return;
@@ -185,6 +269,7 @@ export function useProjectTeam() {
     updateCompanyUser,
     removeCompanyUser,
     addProjectMember,
+    updateProjectMemberRole,
     removeProjectMember,
     loadingTeam,
     setLoadingTeam

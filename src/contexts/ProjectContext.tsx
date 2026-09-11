@@ -55,6 +55,7 @@ interface ProjectContextType {
   updateCompanyUser: (id: string, user: any) => Promise<void>;
   removeCompanyUser: (id: string) => Promise<void>;
   addProjectMember: (projectId: string, memberData: any) => Promise<void>;
+  updateProjectMemberRole: (projectId: string, userId: string, newRole: string) => Promise<void>;
   removeProjectMember: (projectId: string, userId: string) => Promise<void>;
   addTimeEntry: (entry: any) => Promise<void>;
   isDemoMode: boolean;
@@ -80,6 +81,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     updateCompanyUser: updateTeamUser,
     removeCompanyUser: removeTeamUser,
     addProjectMember: addTeamMember,
+    updateProjectMemberRole: updateTeamMemberRole,
     removeProjectMember: removeTeamMember
   } = useProjectTeam();
   const { timeEntries, fetchTimeEntries, addTimeEntry: addTimeEntryInternal } = useProjectTimeEntries();
@@ -322,6 +324,11 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     await addTeamMember(projectId, memberData, safeCompanyId);
   };
 
+  const updateProjectMemberRole = async (projectId: string, userId: string, newRole: string) => {
+    const safeCompanyId = getSafeCompanyId();
+    await updateTeamMemberRole(projectId, userId, newRole, safeCompanyId);
+  };
+
   const removeProjectMember = async (projectId: string, userId: string) => {
     const safeCompanyId = getSafeCompanyId();
     await removeTeamMember(projectId, userId, safeCompanyId);
@@ -338,7 +345,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects, 
       setActiveProject: setActiveProjectId, addProject, removeProject, updateProjectStatus, 
       fetchCompanyUsers, fetchProjects, fetchProjectDetails, refreshAllData,
-      addCompanyUser, updateCompanyUser, removeCompanyUser, addProjectMember, removeProjectMember, 
+      addCompanyUser, updateCompanyUser, removeCompanyUser, addProjectMember, updateProjectMemberRole, removeProjectMember, 
       addTimeEntry,
       isDemoMode: false,
       demoData: demoTemplates.construction

@@ -25,6 +25,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     hero_subtitle: 'Plan, budget, and execute demanding projects with clear structure, AI-driven control, and one central workspace.',
     hero_beta_disclaimer: 'We are currently in the Public Beta phase. Join now to shape the future of project management and secure early-adopter conditions.',
     cta_primary: 'Get Started', cta_secondary: 'Request Setup',
+    hero_video_window_title: 'Kreativ Desk OS — Live Portal',
+    hero_video_experience: '4K Cinematic Experience',
+    hero_video_title: 'The Swiss Operating System for Demanding Architecture',
+    hero_video_desc: 'Artisanal Swiss precision, profound architectural expertise, and intelligent real-time controlling united in one authoritative platform.',
+    hero_video_badge: 'SIA 102 / 118 Compliant',
+    chaos_video_tag: 'Status Quo: Tool Sprawl & Margin Loss',
+    ssot_kpi_badge: 'Audit-Proof',
+    ssot_video_tag: 'Live Data Sync: Blueprint to Job Site',
     
     // Status Quo vs Single Source of Truth
     chaos_badge: 'Tool Chaos & Margin Loss',
@@ -199,6 +207,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     hero_subtitle: 'Plane, budgetiere und realisiere anspruchsvolle Projekte mit klarer Struktur, KI-gestützter Kontrolle und einem zentralen Workspace.',
     hero_beta_disclaimer: 'Wir befinden uns aktuell in der Public Beta. Sei von Anfang an dabei, gestalte die Zukunft der Projektsteuerung mit und sichere dir exklusive Early-Adopter Konditionen.',
     cta_primary: 'Jetzt starten', cta_secondary: 'Setup anfragen',
+    hero_video_window_title: 'Kreativ Desk OS — Live Portal',
+    hero_video_experience: '4K Cinematic Experience',
+    hero_video_title: 'Das Schweizer Betriebssystem für anspruchsvolle Bauten',
+    hero_video_desc: 'Handwerkliche Schweizer Präzision, fundierte Architektur-Expertise und intelligentes Echtzeit-Controlling vereint in einer autoritativen Plattform.',
+    hero_video_badge: 'SIA 102 / 118 konform',
+    chaos_video_tag: 'Status Quo: Tool-Wildwuchs & Margenverlust',
+    ssot_kpi_badge: 'Revisionssicher',
+    ssot_video_tag: 'Live Data Sync: Plan bis Baustelle',
 
     // Status Quo vs Single Source of Truth
     chaos_badge: 'Tool-Chaos & Margenverlust',
@@ -750,11 +766,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
                     <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
                     <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                    <span className="ml-2 font-mono text-[11px] text-zinc-300 hidden sm:inline">kreativ-desk-os-portal.mp4</span>
+                    <span className="ml-2 font-medium text-xs text-zinc-300 hidden sm:inline tracking-tight">{t('hero_video_window_title')}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                      <Sparkles size={11} /> 4K Cinematic Experience
+                      <Sparkles size={11} /> {t('hero_video_experience')}
                     </span>
                   </div>
                 </div>
@@ -776,15 +792,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex flex-col sm:flex-row sm:items-end justify-between gap-3 pointer-events-none">
                     <div>
                       <div className="text-white font-black text-lg sm:text-2xl tracking-tight mb-1 flex items-center gap-2">
-                        <span>Das Schweizer Betriebssystem für anspruchsvolle Bauten</span>
+                        <span>{t('hero_video_title')}</span>
                       </div>
                       <div className="text-zinc-300 text-xs sm:text-sm font-medium max-w-xl">
-                        Handwerkliche Schweizer Präzision, fundierte Architektur-Expertise und intelligentes Echtzeit-Controlling vereint in einer autoritativen Plattform.
+                        {t('hero_video_desc')}
                       </div>
                     </div>
                     <div className="shrink-0 flex items-center gap-2">
                       <span className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-1.5">
-                        <CheckCircle2 size={14} className="text-emerald-400" /> SIA 102 / 118 konform
+                        <CheckCircle2 size={14} className="text-emerald-400" /> {t('hero_video_badge')}
                       </span>
                     </div>
                   </div>
@@ -839,6 +855,25 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <span className="text-[11px] bg-purple-100 dark:bg-purple-500/20 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 px-2.5 py-1 rounded-lg font-extrabold shrink-0 self-start sm:self-auto">{t('chaos_b3_tag')}</span>
                     </div>
                   </div>
+
+                  {/* Status Quo Chaos Video Loop */}
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-red-500/30 bg-slate-950 relative aspect-video shadow-lg group/vid">
+                    <video 
+                      autoPlay 
+                      loop 
+                      muted 
+                      playsInline 
+                      preload="metadata"
+                      poster="/media/architect_flatlay_blueprints.jpg"
+                      className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
+                    >
+                      <source src="/media/status_quo_chaos.mp4" type="video/mp4" />
+                      <source src="/media/portal_expanding.mp4" type="video/mp4" />
+                    </video>
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600/85 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
+                      <AlertTriangle size={10} /> {t('chaos_video_tag')}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -847,7 +882,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div>
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider mb-6">
-                    <Database size={14} /> Revisionssicher
+                    <Database size={14} /> {t('ssot_kpi_badge')}
                   </div>
                   <h3 className="text-2xl sm:text-3xl font-black text-text-primary mb-4 tracking-tight">
                     {t('ssot_title')}
@@ -896,7 +931,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <source src="/media/data_stream.mp4" type="video/mp4" />
                     </video>
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-blue-600/80 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
-                      <Sparkles size={10} /> Live Data Sync: Plan bis Baustelle
+                      <Sparkles size={10} /> {t('ssot_video_tag')}
                     </div>
                   </div>
                 </div>

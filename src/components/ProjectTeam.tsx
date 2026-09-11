@@ -20,7 +20,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     search_contacts: 'Search contacts...', select_person: '-- Select Person --', email: 'Email', company_role_label: 'Company Role',
     cancel: 'Cancel', processing: 'Processing...', invite_and_add: 'Invite & Add', save: 'Save', upload_success: 'Successfully added!',
     upload_failed: 'Action failed.', remove_failed: 'Failed to remove member.', role_update_failed: 'Failed to update role.', delete_confirm: 'Are you sure?', completed: 'completed', role_external: 'External Partner',
-    role_client: 'Client / Owner', role_internal: 'Internal Employee'
+    role_client: 'Client / Owner', role_internal: 'Internal Employee', status_updated: 'Project role updated successfully'
   },
   de: {
     project_team: 'Projekt Team', team_desc: 'Verwalte Projektzugriffe und Rollen.', add_person: 'Person hinzufügen', name: 'Name',
@@ -30,14 +30,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     search_contacts: 'Kontakte suchen...', select_person: '-- Person auswählen --', email: 'E-Mail', company_role_label: 'Firma Rolle',
     cancel: 'Abbrechen', processing: 'Verarbeite...', invite_and_add: 'Einladen & Hinzufügen', save: 'Speichern', upload_success: 'Erfolgreich hinzugefügt!',
     upload_failed: 'Aktion fehlgeschlagen.', remove_failed: 'Fehler beim Entfernen des Mitglieds.', role_update_failed: 'Fehler beim Aktualisieren der Rolle.', delete_confirm: 'Bist du sicher?', completed: 'abgeschlossen', role_external: 'Externer Partner',
-    role_client: 'Bauherr / Kunde', role_internal: 'Interner Mitarbeiter'
+    role_client: 'Bauherr / Kunde', role_internal: 'Interner Mitarbeiter', status_updated: 'Projekt-Rolle erfolgreich aktualisiert'
   }
 };
 
 // 🔥 FIX: Prop ID bevorzugen (für die Demo-App)
 export default function ProjectTeam({ projectId: propProjectId }: { projectId?: string }) {
   const { projectId } = useParams();
-  const { companyUsers = [], projectMembers = [], activeProjectId, addProjectMember, removeProjectMember, isDemoMode } = useProject() as any;
+  const { companyUsers = [], projectMembers = [], activeProjectId, addProjectMember, updateProjectMemberRole, removeProjectMember, isDemoMode } = useProject() as any;
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
@@ -176,8 +176,15 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
       return;
     }
     try {
+      const member = currentMembers.find((m: any) => m.id === memberId || m.userId === memberId);
+      const targetUserId = member?.userId || memberId;
+      if (!currentProjectId || !targetUserId) return;
+      if (typeof updateProjectMemberRole === 'function') {
+        await updateProjectMemberRole(currentProjectId, targetUserId, newRole);
+      }
       addToast(t('status_updated'), 'success');
     } catch (e) {
+      console.error('Role update error:', e);
       addToast(t('role_update_failed'), 'error');
     }
   };
