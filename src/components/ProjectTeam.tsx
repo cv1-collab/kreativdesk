@@ -139,7 +139,24 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
         companyRole: newUserCompanyRole
       });
       
-      addToast(t('upload_success'), 'success'); 
+      // Auto-generate invite token and copy link
+      try {
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        await supabase.from('invites').insert({
+          token,
+          company_id: safeCompanyId,
+          email: newUserEmail,
+          role: newUserCompanyRole,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+        const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
+        await navigator.clipboard.writeText(inviteUrl);
+        addToast(currentLang === 'de' ? `✅ ${newUserName} hinzugefügt & Einladungslink in Zwischenablage kopiert!` : `✅ ${newUserName} added & invite link copied to clipboard!`, 'success');
+      } catch (_) {
+        addToast(t('upload_success'), 'success');
+      }
+
       setIsAddMemberModalOpen(false); 
       setNewUserName(''); 
       setNewUserEmail('');

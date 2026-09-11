@@ -87,6 +87,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     infra_p3_desc: 'Employee turnover poses zero risk. Data and knowledge remain with the company; permissions can be revoked or reassigned with a single click.',
     infra_p4_title: 'Native 3D & BIM Pipelines (In-House)',
     infra_p4_desc: 'Direct browser-based IFC and CAD processing. Run collision tests and design checks without slow third-party viewers.',
+    infra_p1_badge: 'Materialization & BKP 100–900',
+    infra_p2_badge: 'Swiss Code & Compliance Security',
+    infra_p3_badge: 'Roles, Governance & 1-Click Onboarding',
+    infra_p4_badge: 'From Sketch to IFC / 3D BIM Model',
 
     // B2B Project Systems
     b2b_badge: 'Strategic Corporate Architecture',
@@ -269,6 +273,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     infra_p3_desc: 'Mitarbeiterwechsel stellen kein Risiko dar. Daten und Know-how verbleiben im Unternehmen; Zugriffe sind mit 1 Klick entzogen.',
     infra_p4_title: 'Native 3D- & BIM-Pipelines (In-House)',
     infra_p4_desc: 'Direkte browserbasierte IFC- und CAD-Verarbeitung. Kollisionsprüfungen und Planabgleiche laufen ohne langsame Fremd-Viewer.',
+    infra_p1_badge: 'Materialisierung & BKP 100–900',
+    infra_p2_badge: 'Schweizer Code & Revisionssicherheit',
+    infra_p3_badge: 'Rollen, Governance & 1-Klick Onboarding',
+    infra_p4_badge: 'Von der Skizze zum IFC / 3D-BIM-Modell',
 
     // B2B Projekt-Systeme
     b2b_badge: 'Strategische Unternehmens-Architektur',
@@ -981,7 +989,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <source src="/media/physical_materials.mp4" type="video/mp4" />
                   </video>
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
-                    Materialisierung & BKP 100–900
+                    {t('infra_p1_badge')}
                   </div>
                 </div>
               </div>
@@ -1000,7 +1008,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <source src="/media/ink_morphs_code.mp4" type="video/mp4" />
                   </video>
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
-                    Schweizer Code & Revisionssicherheit
+                    {t('infra_p2_badge')}
                   </div>
                 </div>
               </div>
@@ -1017,7 +1025,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
                   <img src="/media/michael_engineer_workbench.jpg" alt="Team & Onboarding" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
-                    Rollen, Governance & 1-Klick Onboarding
+                    {t('infra_p3_badge')}
                   </div>
                 </div>
               </div>
@@ -1036,7 +1044,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <source src="/media/ink_transforms_building.mp4" type="video/mp4" />
                   </video>
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
-                    Von der Skizze zum IFC / 3D-BIM-Modell
+                    {t('infra_p4_badge')}
                   </div>
                 </div>
               </div>

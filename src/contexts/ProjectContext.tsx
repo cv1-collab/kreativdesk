@@ -171,6 +171,14 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
         fetchProjects();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_users' }, () => {
+        fetchCompanyUsers();
+        fetchProjectDetails();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+        fetchCompanyUsers();
+        fetchProjectDetails();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_members' }, () => {
         fetchProjectDetails();
       })
