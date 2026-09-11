@@ -2170,7 +2170,11 @@ export default function Finance() {
                     {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
                   </select>
                   <div className="w-px h-4 bg-border mx-1"></div>
-                  {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
+                  {!isReadOnly && (() => {
+                    const normUserRole = (currentUser?.role || '').toLowerCase().trim();
+                    const isOwnerOrAdmin = normUserRole === 'owner' || normUserRole === 'super_admin' || normUserRole === 'admin' || normUserRole === 'management';
+                    return isOwnerOrAdmin || currentUser?.canApproveBudget;
+                  })() && (
                     <button
                       onClick={handleToggleApproveVersion}
                       className={cn(
@@ -2217,7 +2221,11 @@ export default function Finance() {
                 <div className="text-[11px] text-text-muted mt-0.5">Positionen und Preise sind gesperrt, um Abweichungen in der Zahlungskontrolle zu vermeiden.</div>
               </div>
             </div>
-            {!isReadOnly && (currentUser?.role === 'owner' || currentUser?.canApproveBudget) && (
+            {!isReadOnly && (() => {
+              const normUserRole = (currentUser?.role || '').toLowerCase().trim();
+              const isOwnerOrAdmin = normUserRole === 'owner' || normUserRole === 'super_admin' || normUserRole === 'admin' || normUserRole === 'management';
+              return isOwnerOrAdmin || currentUser?.canApproveBudget;
+            })() && (
               <button
                 onClick={handleToggleApproveVersion}
                 className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"

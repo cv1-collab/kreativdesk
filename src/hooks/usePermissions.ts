@@ -1,12 +1,15 @@
 import { useAuth } from '../contexts/AuthContext';
-import { hasPermission as checkPermission, Permission, Role } from '../config/permissions';
+import { hasPermission as checkPermission, normalizeRole, Permission, Role } from '../config/permissions';
 
 export function usePermissions() {
   const { currentUser, userRole } = useAuth() || {};
   
+  const rawRole = (currentUser?.role as string) || (userRole as string) || '';
+  const effectiveRole = normalizeRole(rawRole);
+
   const hasPermission = (permission: Permission): boolean => {
     // Super admins, owners, management and Admin roles always have full permissions
-    const normRole = (((currentUser?.role as string) || (userRole as string) || '')).toLowerCase();
+    const normRole = rawRole.toLowerCase().trim();
     const isOwnerOrAdmin = normRole === 'super_admin' || normRole === 'owner' || normRole === 'admin' || normRole === 'management';
     
     if (isOwnerOrAdmin) return true;
@@ -18,9 +21,10 @@ export function usePermissions() {
       }
     }
     
-    return checkPermission(userRole as Role, permission);
+    return checkPermission(effectiveRole, permission);
   };
 
-  return { hasPermission, role: userRole as Role };
+  return { hasPermission, role: effectiveRole };
 }
+
 

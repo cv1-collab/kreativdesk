@@ -857,11 +857,12 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       };
 
       if (newContact.id) {
-        let updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', newContact.id);
+        let updateRes = await supabase.from('company_users').update(fullDbPayload).eq('id', newContact.id).eq('company_id', safeCompanyId);
         if (updateRes.error) {
           console.warn("Full update failed, trying base update:", updateRes.error);
-          updateRes = await supabase.from('company_users').update(baseDbPayload).eq('id', newContact.id);
+          updateRes = await supabase.from('company_users').update(baseDbPayload).eq('id', newContact.id).eq('company_id', safeCompanyId);
         }
+
         
         updateLocalCache(newContact.id);
         const updatedContact = { ...selectedContact, ...fullContactObject };

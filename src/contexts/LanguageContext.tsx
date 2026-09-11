@@ -72,7 +72,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       overview: 'Übersicht',
       details: 'Details',
       warning: 'Warnung',
-      info: 'Information'
+      info: 'Information',
+      error_loading_ifc: 'Fehler beim Laden des IFC-Modells',
+      defect: 'Mangel'
     },
     en: {
       save: 'Save',
@@ -117,9 +119,12 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       overview: 'Overview',
       details: 'Details',
       warning: 'Warning',
-      info: 'Information'
+      info: 'Information',
+      error_loading_ifc: 'Error loading IFC model',
+      defect: 'Defect'
     }
   };
+
 
   // Fungiert als verlässlicher globaler Fallback für alle Komponenten
   const t = (key: string): string => {

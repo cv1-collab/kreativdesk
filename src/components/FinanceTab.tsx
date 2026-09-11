@@ -380,7 +380,12 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
     if (selectedIds.length === 0) return;
     if (window.confirm(`Möchtest du wirklich ${selectedIds.length} ausgewählte Einträge unwiderruflich löschen?`)) {
       try {
-        await supabase.from('transactions').delete().in('id', selectedIds);
+        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+        let query = supabase.from('transactions').delete().in('id', selectedIds);
+        if (safeCompanyId) {
+          query = query.eq('company_id', safeCompanyId);
+        }
+        await query;
         setTransactions(prev => prev.filter(tx => !selectedIds.includes(tx.id)));
         setSelectedIds([]);
         addToast(`${selectedIds.length} Einträge erfolgreich gelöscht!`, 'success');
@@ -393,13 +398,19 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
   const handleBulkStatus = async (newStatus: string) => {
     if (selectedIds.length === 0) return;
     try {
-      await supabase.from('transactions').update({ status: newStatus }).in('id', selectedIds);
+      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+      let query = supabase.from('transactions').update({ status: newStatus }).in('id', selectedIds);
+      if (safeCompanyId) {
+        query = query.eq('company_id', safeCompanyId);
+      }
+      await query;
       setTransactions(prev => prev.map(tx => selectedIds.includes(tx.id) ? { ...tx, status: newStatus } : tx));
       addToast(`Status für ${selectedIds.length} Einträge auf "${newStatus}" aktualisiert`, 'success');
     } catch (e) {
       addToast(t('update_error'), 'error');
     }
   };
+
 
   const handleExportCSV = (itemsToExport: Transaction[]) => {
     if (itemsToExport.length === 0) return;

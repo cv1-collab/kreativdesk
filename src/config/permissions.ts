@@ -56,12 +56,26 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ]
 };
 
+export function normalizeRole(rawRole?: string | null): Role {
+  if (!rawRole) return 'guest';
+  const r = rawRole.toLowerCase().trim();
+  if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
+  if (r === 'owner') return 'owner';
+  if (r === 'management' || r === 'manager' || r === 'admin') return 'management';
+  if (r === 'employee' || r === 'internal' || r === 'editor' || r === 'member' || r === 'user' || r === 'team') return 'employee';
+  if (r === 'client' || r === 'external') return 'client';
+  if (r === 'guest' || r === 'viewer') return 'guest';
+  return 'employee';
+}
+
 /**
  * Helper to check if a role has a specific permission
  */
-export const hasPermission = (role: Role | undefined | null, permission: Permission): boolean => {
+export const hasPermission = (role: Role | string | undefined | null, permission: Permission): boolean => {
   if (!role) return false;
-  const permissions = ROLE_PERMISSIONS[role];
+  const norm = normalizeRole(role);
+  const permissions = ROLE_PERMISSIONS[norm];
   if (!permissions) return false;
   return permissions.includes(permission);
 };
+

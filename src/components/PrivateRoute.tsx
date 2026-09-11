@@ -15,8 +15,11 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
   // 2. Abfrage: Hat der User ein aktives Abo / Trial?
   if (currentUser.hasActiveSubscription === false) {
     
-    // Ist es der FIRMEN-INHABER (Owner)?
-    if (currentUser.role === 'owner') {
+    // Ist es der FIRMEN-INHABER / ADMINISTRATOR (Owner / Admin / Super Admin)?
+    const normRole = (currentUser.role || '').toLowerCase().trim();
+    const isOwnerOrAdmin = normRole === 'owner' || normRole === 'super_admin' || normRole === 'admin' || normRole === 'management';
+
+    if (isOwnerOrAdmin) {
       // Verhindere Loop, falls er schon auf /pricing oder /settings ist
       if (location.pathname === '/pricing' || location.pathname.startsWith('/settings')) {
         return <>{children}</>;
@@ -24,6 +27,7 @@ export default function PrivateRoute({ children }: { children: React.ReactNode }
       // Ansonsten: Zwinge ihn zum Pricing
       return <Navigate to="/pricing" replace />;
     } 
+
     
     // Ist es ein MITARBEITER (Employee / Internal)? -> STATISCHER SCREEN, KEIN REDIRECT!
     else {

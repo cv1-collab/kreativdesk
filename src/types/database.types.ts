@@ -277,6 +277,7 @@ export interface Database {
           photo_url: string | null;
           can_view_finance: boolean | null;
           can_approve_budget: boolean | null;
+          user_id: string | null;
         };
         Insert: {
           id?: string;
@@ -300,6 +301,7 @@ export interface Database {
           photo_url?: string | null;
           can_view_finance?: boolean | null;
           can_approve_budget?: boolean | null;
+          user_id?: string | null;
         };
         Update: {
           id?: string;
@@ -323,6 +325,8 @@ export interface Database {
           photo_url?: string | null;
           can_view_finance?: boolean | null;
           can_approve_budget?: boolean | null;
+          user_id?: string | null;
+
         };
         Relationships: [];
       };
@@ -686,21 +690,25 @@ export interface Database {
           project_id: string | null;
           user_id: string | null;
           company_id: string | null;
+          project_role: string | null;
         };
         Insert: {
           id?: string;
           project_id?: string | null;
           user_id?: string | null;
           company_id?: string | null;
+          project_role?: string | null;
         };
         Update: {
           id?: string;
           project_id?: string | null;
           user_id?: string | null;
           company_id?: string | null;
+          project_role?: string | null;
         };
         Relationships: [];
       };
+
       project_schedules: {
         Row: {
           id: string;

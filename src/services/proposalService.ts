@@ -97,16 +97,22 @@ export async function getCompanyProposals(companyId: string, projectId?: string)
     }
   } catch (_) {}
 
+  if (!companyId || companyId === 'default-company') {
+    return [];
+  }
+
   try {
     if (supabase) {
-      let query = supabase.from('smart_proposals').select('*');
-      if (companyId && companyId !== 'default-company') {
-        query = query.or(`company_id.eq.${companyId},owner_id.eq.${companyId}`);
-      }
+      let query = supabase
+        .from('smart_proposals')
+        .select('*')
+        .or(`company_id.eq.${companyId},owner_id.eq.${companyId}`);
+
       if (projectId) {
         query = query.eq('project_id', projectId);
       }
       const { data, error } = await query.order('created_at', { ascending: false });
+
 
       if (!error && data) {
         return data.map(mapDbToProposal);

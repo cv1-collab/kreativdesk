@@ -86,7 +86,8 @@ export default function MaintenanceGuard({ children }: { children: React.ReactNo
     }
   };
 
-  const isAdmin = checkIsSuperAdmin(currentUser?.email) || currentUser?.role === 'super_admin' || currentUser?.role === 'owner' || currentUser?.role === 'management' || bypassUnlocked;
+  const normRole = (currentUser?.role || '').toLowerCase().trim();
+  const isAdmin = checkIsSuperAdmin(currentUser?.email) || normRole === 'super_admin' || normRole === 'owner' || normRole === 'admin' || normRole === 'management' || bypassUnlocked;
   
   const isPublicRoute = 
     location.pathname === '/login' || 

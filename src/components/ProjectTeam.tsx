@@ -255,9 +255,16 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Shield size={14} className="text-text-muted" />
-                        <span className={cn("px-2 py-0.5 rounded text-xs font-bold border tracking-wide uppercase", user.role === 'Internal' ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : user.role === 'Client' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
-                          {user.role === 'Internal' ? t('role_internal') : user.role === 'Client' ? t('role_client') : t('role_external')}
-                        </span>
+                        {(() => {
+                          const norm = (user.role || '').toLowerCase().trim();
+                          const isInternal = norm === 'internal' || norm === 'owner' || norm === 'super_admin' || norm === 'admin' || norm === 'management' || norm === 'employee' || norm === 'team';
+                          const isClient = norm === 'client' || norm === 'kunde';
+                          return (
+                            <span className={cn("px-2 py-0.5 rounded text-xs font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
+                              {isInternal ? t('role_internal') : isClient ? t('role_client') : t('role_external')}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -280,6 +287,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
             {currentMembers.map((member: any) => {
               const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
               if (!user) return null;
+              const norm = (user.role || '').toLowerCase().trim();
+              const isInternal = norm === 'internal' || norm === 'owner' || norm === 'super_admin' || norm === 'admin' || norm === 'management' || norm === 'employee' || norm === 'team';
+              const isClient = norm === 'client' || norm === 'kunde';
               return (
                 <div key={member.id} className="bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm relative overflow-hidden">
                   <div className="flex items-start justify-between">
@@ -298,10 +308,23 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                     </div>
                     <button onClick={() => handleRemoveMember(member.userId)} className="text-text-muted hover:text-red-500 p-2 bg-background rounded-xl border border-border/50 transition-colors shrink-0"><Trash2 size={18} /></button>
                   </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-1.5">
+                      <Shield size={13} className="text-text-muted" />
+                      <span className={cn("px-2 py-0.5 rounded text-[11px] font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
+                        {isInternal ? t('role_internal') : isClient ? t('role_client') : t('role_external')}
+                      </span>
+                    </div>
+                    <select value={member.projectRole} onChange={(e) => handleRoleChange(member.id, e.target.value)} className="bg-background border border-border/50 rounded-lg px-2.5 py-1 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer">
+                      <option value="Viewer">{t('viewer_role')}</option><option value="Editor">{t('editor_role')}</option><option value="Admin">{t('admin_role')}</option><option value="Owner">{t('owner_role')}</option>
+                    </select>
+                  </div>
                 </div>
               );
             })}
           </div>
+
         </div>
       </div>
 

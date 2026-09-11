@@ -98,14 +98,18 @@ export function useProjectTeam() {
     try {
       const [{ data: mems }, { data: crmUsers }] = await Promise.all([
         supabase.from('project_members').select('*').eq('company_id', safeCompanyId),
-        supabase.from('company_users').select('id, notes, role').eq('company_id', safeCompanyId)
+        supabase.from('company_users').select('id, user_id, email, notes, role').eq('company_id', safeCompanyId)
       ]);
 
       if (mems) {
         const mapped: ProjectMember[] = mems.map(m => {
           let role = (m as any).project_role || (m as any).role;
           if (!role && crmUsers) {
-            const u = crmUsers.find((cu: any) => cu.id === m.user_id);
+            const u = crmUsers.find((cu: any) => 
+              cu.id === m.user_id || 
+              cu.user_id === m.user_id || 
+              (cu.email && (m as any).user_email && cu.email.toLowerCase() === (m as any).user_email.toLowerCase())
+            );
             if (u?.notes && u.notes.startsWith('__CRM_META__:')) {
               try {
                 const meta = JSON.parse(u.notes.replace('__CRM_META__:', ''));
@@ -170,17 +174,29 @@ export function useProjectTeam() {
       await supabase.from('project_members').insert({
         project_id: projectId,
         user_id: memberData.userId,
-        company_id: safeCompanyId
-      });
+        company_id: safeCompanyId,
+        project_role: initialRole
+      } as any);
     } catch (err) {
       console.warn('addProjectMember error:', err);
     }
 
     try {
-      const { data: u } = await supabase.from('company_users')
+      let u: any = null;
+      const { data: byId } = await supabase.from('company_users')
         .select('id, notes')
         .eq('id', memberData.userId)
         .maybeSingle();
+      u = byId;
+
+      if (!u && memberData.userEmail) {
+        const { data: byEmail } = await supabase.from('company_users')
+          .select('id, notes')
+          .eq('company_id', safeCompanyId)
+          .ilike('email', memberData.userEmail)
+          .maybeSingle();
+        u = byEmail;
+      }
 
       if (u) {
         let meta: any = {};
@@ -211,22 +227,37 @@ export function useProjectTeam() {
       return m;
     }));
 
-    // 2. Try native column update if column exists
+    // 2. Native database column update in project_members
     try {
       await supabase.from('project_members')
         .update({ project_role: newRole } as any)
         .eq('project_id', projectId)
         .eq('user_id', userId);
     } catch (err) {
-      // Column might not exist yet
+      console.warn('Native project_members update error:', err);
     }
 
-    // 3. Persist in company_users CRM_META
+    // 3. Persist in company_users CRM_META (matching by ID or email)
     try {
-      const { data: u } = await supabase.from('company_users')
+      let u: any = null;
+      const { data: byId } = await supabase.from('company_users')
         .select('id, notes')
         .eq('id', userId)
         .maybeSingle();
+      u = byId;
+
+      if (!u) {
+        // Look up by profile or email
+        const { data: prof } = await supabase.from('profiles').select('email').eq('id', userId).maybeSingle();
+        if (prof?.email) {
+          const { data: byEmail } = await supabase.from('company_users')
+            .select('id, notes')
+            .eq('company_id', safeCompanyId)
+            .ilike('email', prof.email)
+            .maybeSingle();
+          u = byEmail;
+        }
+      }
 
       if (u) {
         let meta: any = {};
@@ -245,6 +276,7 @@ export function useProjectTeam() {
       console.error('Error persisting project role in company_users:', e);
     }
   }, []);
+
 
   const removeProjectMember = useCallback(async (projectId: string, userId: string, safeCompanyId: string) => {
     if (!projectId || !userId) return;

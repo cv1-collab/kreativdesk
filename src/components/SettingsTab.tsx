@@ -1452,19 +1452,26 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
         await supabase.from('profiles').update({ [colName]: newValue } as any).eq('email', member.email);
       }
 
+      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
+
       // Update company_users
       try {
-        await supabase.from('company_users').update({ [colName]: newValue } as any).eq('id', userId);
+        let cuQuery = supabase.from('company_users').update({ [colName]: newValue } as any).eq('id', userId);
+        if (safeCompanyId) cuQuery = cuQuery.eq('company_id', safeCompanyId);
+        await cuQuery;
+
         if (member?.email) {
-          await supabase.from('company_users').update({ [colName]: newValue } as any).eq('email', member.email);
+          let cuEmailQuery = supabase.from('company_users').update({ [colName]: newValue } as any).eq('email', member.email);
+          if (safeCompanyId) cuEmailQuery = cuEmailQuery.eq('company_id', safeCompanyId);
+          await cuEmailQuery;
         }
       } catch (cuErr) {
         console.warn("company_users permission update fallback:", cuErr);
       }
 
       // Update local storage fallback
-      const safeCompanyId = currentUser?.companyId || currentUser?.uid;
       if (safeCompanyId) {
+
         try {
           const cacheKey = `crm_metadata_${safeCompanyId}`;
           const currentCache = safeStorage.getItem<Record<string, any>>(cacheKey, {});
