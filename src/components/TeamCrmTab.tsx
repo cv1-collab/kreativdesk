@@ -2638,7 +2638,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                       <label className="text-xs font-bold text-text-muted uppercase tracking-wider block mb-1">
                         Nachrichtentext / Body
                       </label>
-                      <div className="p-4 bg-background border border-border/60 rounded-xl text-xs font-mono leading-relaxed text-text-primary max-h-56 overflow-y-auto custom-scrollbar whitespace-pre-wrap select-all">
+                      <div className="p-4 bg-background border border-border/60 rounded-xl text-[13px] sm:text-sm font-sans font-normal leading-relaxed text-text-primary max-h-56 overflow-y-auto custom-scrollbar whitespace-pre-wrap select-all">
                         {body}
                       </div>
                     </div>

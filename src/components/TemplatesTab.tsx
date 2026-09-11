@@ -342,7 +342,7 @@ Muster AG
                     </span>
                     <span className="text-[10px] text-text-muted font-mono">{generatedTemplate.length} Zeichen</span>
                   </div>
-                  <div className="p-4 bg-background border border-border/80 rounded-2xl max-h-48 overflow-y-auto font-mono text-xs whitespace-pre-wrap text-text-primary leading-relaxed custom-scrollbar shadow-inner">
+                  <div className="p-4 bg-background border border-border/80 rounded-2xl max-h-48 overflow-y-auto font-sans text-[13px] whitespace-pre-wrap text-text-primary leading-relaxed custom-scrollbar shadow-inner">
                     {generatedTemplate}
                   </div>
                 </div>
