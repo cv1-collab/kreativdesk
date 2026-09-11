@@ -14,7 +14,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     city: 'City', iban: 'Master IBAN / Bank Account', design: 'Design & Visual Identity', upload_desc: 'Enter image URL or upload your official company logo.',
     accent_color: 'Primary Accent Color', save_branding: 'Save Branding Settings', branding_saved: 'Branding settings saved successfully!',
     email: 'Support / Master Email', phone: 'Phone Number', website: 'Official Website URL', uid: 'UID / Tax Registration No.',
-    preset_colors: 'Color Presets', logo_preview: 'Logo Preview', no_logo: 'No logo set'
+    preset_colors: 'Color Presets', logo_preview: 'Logo Preview', no_logo: 'No logo set',
+    upload_success: 'Brand asset successfully uploaded!'
   },
   de: {
     global_branding: 'Globales Branding & White-Labeling', branding_desc: 'Konfiguriere das offizielle Firmen-Branding, Stammdaten, Ankündigungs-Banner und Akzentfarben deiner Instanz.',
@@ -22,7 +23,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     city: 'Ort', iban: 'IBAN / Bankverbindung (Master)', design: 'Design & Visuelle Identität', upload_desc: 'Bild-URL eingeben oder offizietes Firmen-Logo hochladen.',
     accent_color: 'Primäre Akzentfarbe', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding-Einstellungen erfolgreich gespeichert!',
     email: 'Support / Master E-Mail', phone: 'Telefonnummer', website: 'Offizielle Webseite (URL)', uid: 'UID-Nummer / MWST-Nr.',
-    preset_colors: 'Farb-Presets', logo_preview: 'Logo-Vorschau', no_logo: 'Kein Logo hinterlegt'
+    preset_colors: 'Farb-Presets', logo_preview: 'Logo-Vorschau', no_logo: 'Kein Logo hinterlegt',
+    upload_success: 'Marken-Asset erfolgreich hochgeladen!'
   }
 };
 
@@ -217,7 +219,7 @@ export default function AdminBrandTab() {
                   type="text"
                   value={config.accentColor || '#ef4444'}
                   onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
-                  className="w-32 px-3 py-2 bg-background border border-border/50 rounded-xl text-sm font-mono font-bold text-text-primary uppercase"
+                  className="w-32 px-3 py-2 bg-background border border-border/50 rounded-xl text-sm font-sans font-bold text-text-primary uppercase tracking-wider"
                 />
               </div>
 
@@ -356,7 +358,7 @@ export default function AdminBrandTab() {
                   placeholder="CH93 0000 0000 0000 0000 0"
                   value={config.iban}
                   onChange={(e) => setConfig({ ...config, iban: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-mono font-bold text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-sans font-semibold text-text-primary focus:outline-none focus:border-blue-500 transition-colors tracking-wide"
                 />
               </div>
             </div>

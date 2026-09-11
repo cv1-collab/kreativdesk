@@ -2068,7 +2068,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={(e) => handleDeleteNote(e, note.id)} className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-md transition-colors opacity-0 group-hover:opacity-100" title={t('delete_note')}><Trash2 size={14} /></button>
-                      <span className="text-xs font-mono font-bold text-accent-ai bg-accent-ai/10 px-2 py-1 rounded-md border border-accent-ai/20">{note.duration}</span>
+                      <span className="text-xs font-sans font-bold text-accent-ai bg-accent-ai/10 px-2.5 py-1 rounded-lg border border-accent-ai/20">{note.duration}</span>
                     </div>
                   </div>
                   {note.audioData && <div className="mb-3" onClick={(e) => e.stopPropagation()}><audio controls src={`data:audio/webm;base64,${note.audioData}`} className="w-full h-8 outline-none grayscale" /></div>}

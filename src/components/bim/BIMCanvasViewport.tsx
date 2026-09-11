@@ -289,7 +289,7 @@ function DwgModel({ onClick, t }: { onClick: (e: any) => void; t: (k: string) =>
         <meshStandardMaterial color="#1e293b" wireframe />
       </DreiBox>
       <Html position={[0, 1, 0]} center>
-        <div className="bg-surface/90 backdrop-blur-md p-3 border border-border rounded shadow text-xs font-mono text-text-primary text-center">
+        <div className="bg-surface/95 backdrop-blur-md p-3 border border-border rounded-xl shadow-xl text-xs font-sans font-semibold text-text-primary text-center">
           DWG 2D/3D Vector Overlay Active
         </div>
       </Html>
@@ -617,7 +617,7 @@ function BIMCanvasViewportComponent({
           <>
             <Line points={[measurePoints[0], measurePoints[1]]} color="#fcd34d" lineWidth={3} />
             <Html position={measurePoints[0].clone().lerp(measurePoints[1], 0.5)} center zIndexRange={[10, 0]}>
-              <div className="bg-surface text-text-primary px-2 py-1 rounded border border-border font-mono text-xs whitespace-nowrap shadow-lg">
+              <div className="bg-surface text-text-primary px-3 py-1.5 rounded-lg border border-border font-sans font-bold text-xs whitespace-nowrap shadow-xl">
                 {measurePoints[0].distanceTo(measurePoints[1]).toFixed(2)} m
               </div>
             </Html>
@@ -644,7 +644,7 @@ function BIMCanvasViewportComponent({
               </mesh>
               {!isMobile && (
                 <Html position={[0, 0.8, 0]} center zIndexRange={[10, 0]}>
-                  <div className="bg-red-500 text-white px-2 py-1 rounded border border-red-700 font-mono text-xs whitespace-nowrap shadow-lg cursor-pointer hover:bg-red-600 transition-colors flex flex-col items-center">
+                  <div className="bg-red-500 text-white px-3 py-1.5 rounded-lg border border-red-600 font-sans text-xs whitespace-nowrap shadow-xl cursor-pointer hover:bg-red-600 transition-colors flex flex-col items-center">
                     <span className="font-bold">{t('defect') || 'Mangel'} #{i + 1}</span>
                     <span className="text-[10px] opacity-90">{pin.description}</span>
                   </div>

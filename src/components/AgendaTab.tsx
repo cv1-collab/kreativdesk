@@ -50,7 +50,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     date: 'Date', time: 'Time', invite_participants: 'Invite Participants (CRM & Team)', cancel: 'Cancel', pdf_studio: 'PDF Studio',
     project: 'Project', participants: 'Participants', no_appointments: 'No appointments scheduled.', resource: 'Resource',
     activity: 'Activity', status: 'Status', amount: 'Amount', total: 'Total', billable: 'Billable', own_contribution: 'Own Contribution',
-    details: 'Edit Appointment', join_call: 'Join Call', copy_link: 'Copy Invite Link', link_copied: 'Link copied!'
+    details: 'Edit Appointment', join_call: 'Join Call', copy_link: 'Copy Invite Link', link_copied: 'Link copied!',
+    pdf_exported: 'Agenda PDF successfully exported!'
   },
   de: {
     agenda_rapport: 'Agenda & Rapport', agenda_desc: 'Das operative Dashboard für Termine, Calls und Ressourcen.',
@@ -69,7 +70,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     date: 'Datum', time: 'Zeit', invite_participants: 'Teilnehmer einladen (CRM & Team)', cancel: 'Abbrechen', pdf_studio: 'PDF Studio',
     project: 'Projekt', participants: 'Teilnehmer', no_appointments: 'Keine Termine geplant.', resource: 'Ressource',
     activity: 'Tätigkeit', status: 'Status', amount: 'Betrag', total: 'Total', billable: 'Verrechenbar', own_contribution: 'Eigenleistung',
-    details: 'Termin bearbeiten', join_call: 'Call beitreten', copy_link: 'Einladungs-Link kopieren', link_copied: 'Link kopiert!'
+    details: 'Termin bearbeiten', join_call: 'Call beitreten', copy_link: 'Einladungs-Link kopieren', link_copied: 'Link kopiert!',
+    pdf_exported: 'Agenda-PDF erfolgreich exportiert!'
   }
 };
 
@@ -1816,7 +1818,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
                                 type="text"
                                 readOnly
                                 value={`${window.location.origin}/guest-meet/${generatedMeetingId || 'auto-room'}`}
-                                className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-xs font-mono font-bold text-text-primary select-all"
+                                className="flex-1 bg-background border border-border/50 rounded-lg px-3 py-2 text-xs font-sans font-medium text-text-primary select-all"
                               />
                               <button
                                 type="button"

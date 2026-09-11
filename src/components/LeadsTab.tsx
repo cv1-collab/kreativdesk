@@ -99,7 +99,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     status_rejected: 'Rejected',
     take_photo: 'Take Photo of Business Card',
     upload_file: 'Upload Card / Image File',
-    analyzing: 'Analyzing card...'
+    analyzing: 'Analyzing card...',
+    save: 'Save',
+    cancel: 'Cancel'
   },
   de: {
     lead_generation: 'Lead Generierung',
@@ -172,7 +174,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     status_pending: 'Pendent',
     status_contacted: 'Kontaktiert',
     status_converted: 'Umgewandelt',
-    status_rejected: 'Abgesagt'
+    status_rejected: 'Abgesagt',
+    save: 'Speichern',
+    cancel: 'Abbrechen'
   }
 };
 

@@ -447,7 +447,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                     <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-red-500 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 z-20 shadow-md animate-pulse pointer-events-none">
                       <div className="w-1.5 h-1.5 rounded-full bg-white"></div> {t('live')}
                     </div>
-                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/50 backdrop-blur-md text-white text-[10px] md:text-xs font-mono px-2 py-1 rounded z-20 border border-white/10 flex items-center gap-2 md:gap-3">
+                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/50 backdrop-blur-md text-white text-[10px] md:text-xs font-sans font-medium px-2.5 py-1 rounded-lg z-20 border border-white/10 flex items-center gap-2 md:gap-3">
                       <span className="hidden sm:inline">{t('cam_01_desc')}</span>
                       <span className="sm:hidden">Cam 1</span>
                       <button onClick={(e) => handleOpenLinkModal(e, 'cam1Url', activeProject.cam1Url)} className="text-white/60 hover:text-white transition-colors"><Settings size={14}/></button>
@@ -498,7 +498,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                     <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-red-500 text-white text-[9px] md:text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider flex items-center gap-1 z-20 shadow-md animate-pulse pointer-events-none">
                       <div className="w-1.5 h-1.5 rounded-full bg-white"></div> {t('live')}
                     </div>
-                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/50 backdrop-blur-md text-white text-[10px] md:text-xs font-mono px-2 py-1 rounded z-20 border border-white/10 flex items-center gap-2 md:gap-3">
+                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-black/50 backdrop-blur-md text-white text-[10px] md:text-xs font-sans font-medium px-2.5 py-1 rounded-lg z-20 border border-white/10 flex items-center gap-2 md:gap-3">
                       <span className="hidden sm:inline">{t('cam_02_desc')}</span>
                       <span className="sm:hidden">Cam 2</span>
                       <button onClick={(e) => handleOpenLinkModal(e, 'cam2Url', activeProject.cam2Url)} className="text-white/60 hover:text-white transition-colors"><Settings size={14}/></button>
@@ -533,7 +533,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                   <h4 className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
                     <Radio size={14} className="text-accent-ai" /> {t('supported_providers')}
                   </h4>
-                  <span className="text-[10px] font-mono text-text-muted">HLS (.m3u8), RTSP, MJPEG, JPEG</span>
+                  <span className="text-[10px] font-sans font-medium text-text-muted">HLS (.m3u8), RTSP, MJPEG, JPEG</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {PROVIDER_CATALOG.cam1Url.map((prov) => (
@@ -582,7 +582,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                        
                        <div className="absolute bottom-2 left-2 md:bottom-4 md:left-4 z-20 flex items-center gap-2">
                          <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                         <span className="text-[8px] md:text-[10px] text-emerald-400 font-mono font-bold">AI VISION ACTIVE</span>
+                         <span className="text-[8px] md:text-[10px] text-emerald-400 font-sans font-bold">AI VISION ACTIVE</span>
                        </div>
                      </div>
                      
@@ -782,7 +782,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                     </div>
 
                     <div className="p-3 bg-background border border-border/60 rounded-xl flex items-center justify-between gap-3">
-                      <div className="font-mono text-xs text-text-primary font-bold truncate">
+                      <div className="font-sans text-xs text-text-primary font-bold truncate">
                         https://api.kreativdesk.ch/v1/projects/{currentProjectId || 'demo-project'}/access-events
                       </div>
                       <button
@@ -904,7 +904,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
                   <div className="bg-red-500 text-white text-[9px] md:text-[10px] font-bold px-3 py-1.5 rounded uppercase tracking-wider flex items-center gap-2 shadow-lg animate-pulse">
                      <div className="w-2 h-2 rounded-full bg-white"></div> {t('live')}
                   </div>
-                  <div className="bg-black/50 backdrop-blur-md text-white text-xs md:text-sm font-mono px-3 py-1.5 rounded border border-white/10">
+                  <div className="bg-black/50 backdrop-blur-md text-white text-xs md:text-sm font-sans font-medium px-3 py-1.5 rounded-lg border border-white/10">
                      {t('site_monitoring_title')}
                   </div>
                 </div>

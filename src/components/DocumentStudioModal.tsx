@@ -62,7 +62,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     place_date_line: 'Place, Date:',
     signature_client: 'Legally binding signature - Client',
     signature_architect: 'Legally binding signature - Contractor',
-    close: 'Close'
+    close: 'Close',
+    logo_uploaded: 'Logo uploaded',
+    footer_details: 'Footer Details',
+    footer_info: 'IBAN, VAT ID, Company Registry...'
   },
   de: {
     studio_title: 'KI Brief- & Dokumenten-Studio',
@@ -101,7 +104,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     place_date_line: 'Ort, Datum:',
     signature_client: 'Rechtsgültige Unterschrift Auftraggeber',
     signature_architect: 'Rechtsgültige Unterschrift Auftragnehmer',
-    close: 'Schliessen'
+    close: 'Schliessen',
+    logo_uploaded: 'Logo hochgeladen',
+    footer_details: 'Fusszeilen-Details',
+    footer_info: 'IBAN, MWST-Nr., Handelsregister...'
   }
 };
 
@@ -843,7 +849,7 @@ ${footerText}
 
                 <div className="text-right space-y-1 self-end">
                   <div className="font-bold text-slate-900 text-xs">{docPlaceDate}</div>
-                  <div className="text-slate-500 font-mono text-[11px]">{docReference}</div>
+                  <div className="text-slate-500 font-sans font-medium text-[11px]">{docReference}</div>
                 </div>
               </div>
 
@@ -893,7 +899,7 @@ ${footerText}
 
               {/* Customizable DIN-A4 Footer */}
               {footerText && (
-                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-mono tracking-tight">
+                <div className="pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 font-sans tracking-tight">
                   {footerText}
                 </div>
               )}

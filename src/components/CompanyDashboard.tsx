@@ -64,7 +64,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     finance: 'Finance', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Proposals & Links',
     delete_project: 'Delete Project', active_projects: 'Active Projects',
     archive: 'Archive', archive_project: 'Archive Project', unarchive_project: 'Restore Project',
-    install_app: 'Install App', start_tour: 'Start Tour', admin: 'Admin'
+    install_app: 'Install App', start_tour: 'Start Tour', admin: 'Admin',
+    create_folder: 'Create Folder', folder_name: 'Folder Name'
   },
   de: {
     folder_finance: '01_FINANZEN', folder_legal: '02_RECHTLICHES', folder_hr: '03_HR_MITARBEITER', folder_sales: '04_SALES',
@@ -82,7 +83,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     finance: 'Finanzen', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Offerten & Links',
     delete_project: 'Projekt löschen', active_projects: 'Aktive Projekte',
     archive: 'Archiv', archive_project: 'Projekt archivieren', unarchive_project: 'Wiederherstellen',
-    install_app: 'App installieren', start_tour: 'Tour starten', admin: 'Admin'
+    install_app: 'App installieren', start_tour: 'Tour starten', admin: 'Admin',
+    create_folder: 'Ordner erstellen', folder_name: 'Ordnername'
   }
 };
 

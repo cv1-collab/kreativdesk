@@ -53,7 +53,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     pdf_exported: 'PDF exported!', export_error: 'Error exporting.', saved_cloud: 'Saved to Data Room.',
     saving_cloud: 'Saving...', generating_pdf: 'Generating...', download_local: 'Download Local', save_cloud: 'Save Cloud',
     upload_logo: 'Upload Logo', report_color: 'Accent Color', format: 'Format', orientation: 'Orientation',
-    portrait: 'Portrait', landscape: 'Landscape', scale_preview: 'Zoom Preview', export_pdf_title: 'PDF Studio', logo_loaded: 'Logo loaded.'
+    portrait: 'Portrait', landscape: 'Landscape', scale_preview: 'Zoom Preview', export_pdf_title: 'PDF Studio', logo_loaded: 'Logo loaded.',
+    pdf_saved: 'Calendar PDF successfully saved.', upload_failed: 'Upload failed. Please try again.'
   },
   de: {
     master_plan: 'Masterplan', milestone: 'Meilenstein', project_phases: 'Projektphasen', pdf_export: 'Report Studio',
@@ -69,7 +70,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     pdf_exported: 'PDF erfolgreich exportiert!', export_error: 'Fehler beim Export.', saved_cloud: 'In Datenraum gespeichert.',
     saving_cloud: 'Speichert...', generating_pdf: 'Generiert...', download_local: 'Lokal herunterladen', save_cloud: 'In Cloud speichern',
     upload_logo: 'Logo hochladen', report_color: 'Akzentfarbe', format: 'Format', orientation: 'Ausrichtung',
-    portrait: 'Hochformat', landscape: 'Querformat', scale_preview: 'Zoom Vorschau', export_pdf_title: 'PDF Studio', logo_loaded: 'Logo geladen.'
+    portrait: 'Hochformat', landscape: 'Querformat', scale_preview: 'Zoom Vorschau', export_pdf_title: 'PDF Studio', logo_loaded: 'Logo geladen.',
+    pdf_saved: 'Kalender-PDF erfolgreich gespeichert.', upload_failed: 'Upload fehlgeschlagen. Bitte erneut versuchen.'
   }
 };
 

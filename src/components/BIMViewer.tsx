@@ -1149,10 +1149,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
               {measurePoints.length >= 2 && (
                 <div className="mt-3 p-3 bg-surface border border-accent-ai/30 rounded-xl space-y-1 w-full">
                   <div className="text-xs text-text-muted font-medium">Berechnete 3D-Distanz:</div>
-                  <div className="text-xl font-mono font-black text-accent-ai">
+                  <div className="text-xl font-sans font-black text-accent-ai tracking-tight">
                     {measurePoints[0].distanceTo(measurePoints[1]).toFixed(2)} m
                   </div>
-                  <div className="text-xs font-mono text-text-muted font-bold">
+                  <div className="text-xs font-sans text-text-muted font-semibold">
                     ({(measurePoints[0].distanceTo(measurePoints[1]) * 1000).toFixed(0)} mm)
                   </div>
                 </div>
@@ -1167,7 +1167,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
             <div className="space-y-3 animate-in fade-in mt-1 flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0 pb-4">
               <div className="bg-background border border-border rounded-lg p-3"><p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-1">{t('type')}</p><p className="text-sm font-medium text-text-primary">{selectedDetails.type}</p></div>
               <div className="bg-background border border-border rounded-lg p-3"><p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-1">{t('material')}</p><p className="text-sm font-medium text-text-primary">{selectedDetails.material}</p></div>
-              <div className="grid grid-cols-2 gap-3"><div className="bg-background border border-border rounded-lg p-3"><p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-1">{t('cost')}</p><p className="text-sm font-mono text-text-primary">{selectedDetails.cost}</p></div><div className="bg-background border border-border rounded-lg p-3"><p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-1">{t('status')}</p><p className="text-sm font-medium text-emerald-500">{selectedDetails.status}</p></div></div>
+              <div className="grid grid-cols-2 gap-3"><div className="bg-background border border-border rounded-lg p-3"><p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-1">{t('cost')}</p><p className="text-sm font-sans font-semibold text-text-primary">{selectedDetails.cost}</p></div><div className="bg-background border border-border rounded-lg p-3"><p className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-1">{t('status')}</p><p className="text-sm font-medium text-emerald-500">{selectedDetails.status}</p></div></div>
             </div>
           ) : (
             <div className="py-8 mt-2 flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl bg-background/50 text-center flex-1 min-h-0">

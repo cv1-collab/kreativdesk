@@ -45,7 +45,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     team: 'Team', tasks: 'Tasks', defects: 'Defects', hours: 'Hours', documents: 'Documents', open: 'open',
     budget_utilization: 'Budget Utilization', spent: 'Spent', external_costs: 'External Costs', internal_hours: 'Internal Hours',
     remaining: 'Remaining', no_budget_present: 'No budget available', total_budget: 'Total Budget', total_costs: 'Total Costs', manage_budget: 'Open Budget',
-    create_report: 'Create Report'
+    create_report: 'Create Report', saved_cloud: 'Saved to cloud successfully'
   },
   de: {
     project_overview: 'Projektübersicht', generate_ai_briefing: 'AI Briefing generieren', ai_generating: 'Projektdaten werden analysiert...',
@@ -57,7 +57,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     team: 'Team', tasks: 'Aufgaben', defects: 'Mängel', hours: 'Stunden', documents: 'Dokumente', open: 'offen',
     budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', external_costs: 'Externe Kosten', internal_hours: 'Interne Stunden',
     remaining: 'Verbleibend', no_budget_present: 'Kein Budget vorhanden', total_budget: 'Gesamtbudget', total_costs: 'Ist-Kosten', manage_budget: 'Budget erfassen / anpassen',
-    create_report: 'Report erstellen'
+    create_report: 'Report erstellen', saved_cloud: 'Erfolgreich in der Cloud gespeichert'
   }
 };
 

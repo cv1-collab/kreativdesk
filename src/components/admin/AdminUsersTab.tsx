@@ -528,7 +528,7 @@ export default function AdminUsersTab() {
                       type="text" 
                       readOnly 
                       value={createdVipLink} 
-                      className="bg-transparent text-xs text-blue-600 dark:text-blue-400 flex-1 outline-none font-mono"
+                      className="bg-transparent text-xs text-blue-600 dark:text-blue-400 flex-1 outline-none font-sans font-medium"
                     />
                     <button 
                       onClick={() => {
@@ -647,7 +647,7 @@ export default function AdminUsersTab() {
                     placeholder="mitarbeiter1@muster.ch, mitarbeiter2@muster.ch" 
                     value={employeeEmailsStr} 
                     onChange={e => setEmployeeEmailsStr(e.target.value)} 
-                    className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-blue-500 text-xs font-mono" 
+                    className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:border-blue-500 font-sans" 
                   />
                 </div>
 

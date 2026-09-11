@@ -65,7 +65,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     role_employee_desc: 'Tasks, time tracking & site log', role_project_lead_desc: 'Full project management, budget & plans',
     role_owner_desc: 'Full access incl. company finance & settings', role_viewer_desc: 'Read-only access to assigned projects',
     no_project_assigned: 'No specific project assigned', workspace_access_hint: 'An invite link can be generated immediately after creation.',
-    workspace_access_title: 'Workspace Access & Invite'
+    workspace_access_title: 'Workspace Access & Invite',
+    date: 'Date',
+    system_access_role: 'System Access Role'
   },
   de: {
     smart_crm: 'CRM & Team', export_csv: 'CSV Export', export_pdf: 'PDF', cancel_selection: 'Abbrechen',
@@ -106,7 +108,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     role_employee_desc: 'Aufgaben, Zeiterfassung & Bautagebuch', role_project_lead_desc: 'Volle Projektleitung, Budget & Pläne',
     role_owner_desc: 'Vollzugriff inkl. Finanzen & Einstellungen', role_viewer_desc: 'Nur Lesezugriff auf zugewiesene Projekte',
     no_project_assigned: 'Keinem spezifischen Projekt zugewiesen', workspace_access_hint: 'Nach dem Erfassen kann direkt ein Einladungslink generiert werden.',
-    workspace_access_title: 'Workspace-Zugang & Berechtigungen'
+    workspace_access_title: 'Workspace-Zugang & Berechtigungen',
+    date: 'Datum',
+    system_access_role: 'System-Zugriffsrolle'
   }
 };
 
@@ -1523,7 +1527,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                           </span>
                         )}
                         {selectedContact.initials && (
-                          <span className="text-text-muted font-mono font-bold bg-background border border-border px-2.5 py-1 rounded-full text-xs">
+                          <span className="text-text-muted font-sans font-bold bg-background border border-border px-2.5 py-1 rounded-full text-xs">
                             [{selectedContact.initials}]
                           </span>
                         )}
@@ -1960,7 +1964,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                               <div className="text-[11px] text-text-muted">Für Freigaben & Baustellenprotokolle</div>
                             </div>
                           </div>
-                          <span className="px-2.5 py-1 bg-background border border-border rounded-lg text-xs font-mono font-bold text-text-primary">
+                          <span className="px-2.5 py-1 bg-background border border-border rounded-lg text-xs font-sans font-bold text-text-primary">
                             {newContact.initials || (newContact.firstName ? (newContact.firstName.charAt(0) + (newContact.lastName ? newContact.lastName.charAt(0) : '')).toUpperCase() : 'MA')}
                           </span>
                         </div>
@@ -2113,7 +2117,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                             </div>
                             <div className="space-y-1.5">
                               <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider flex items-center gap-1"><Award size={13}/> Kürzel</label>
-                              <input type="text" maxLength={4} value={newContact.initials} onChange={e => setNewContact((prev: any) => ({...prev, initials: e.target.value.toUpperCase()}))} placeholder="z. B. MM" className="w-full bg-background border border-border/60 rounded-lg px-3 py-2 text-xs outline-none focus:border-accent-ai text-text-primary font-mono font-bold uppercase text-center" />
+                              <input type="text" maxLength={4} value={newContact.initials} onChange={e => setNewContact((prev: any) => ({...prev, initials: e.target.value.toUpperCase()}))} placeholder="z. B. MM" className="w-full bg-background border border-border/60 rounded-lg px-3 py-2 text-xs outline-none focus:border-accent-ai text-text-primary font-sans font-bold uppercase text-center" />
                             </div>
                           </div>
 

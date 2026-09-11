@@ -111,7 +111,7 @@ export default function AgendaRapport() {
                   <tr key={entry.id} className="hover:bg-background/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{new Date(entry.date).toLocaleDateString(currentLang === 'de' ? 'de-CH' : 'en-US')}</td>
                     <td className="px-6 py-4 font-bold">{isInternal ? internalProjectsMap[targetProjId] : (proj?.name || entry.projectName || entry.project_name || 'Unbekannt')}</td>
-                    <td className="px-6 py-4 font-mono font-bold text-accent-ai">{parseFloat(entry.hours || 0).toFixed(1)}h</td>
+                    <td className="px-6 py-4 font-sans font-bold text-accent-ai">{parseFloat(entry.hours || 0).toFixed(1)}h</td>
                     <td className="px-6 py-4 text-text-muted">{entry.description}</td>
                   </tr>
                 )
