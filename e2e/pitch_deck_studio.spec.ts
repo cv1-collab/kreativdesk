@@ -54,7 +54,7 @@ test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
     console.log('✅ Slide Transition Effects (Fade, Slide, Zoom) verified successfully!');
 
     // 5. Test Stempel button & popover
-    const stempelButton = page.locator('#btn-pitch-stamp, button:has-text("Stempel"), button:has-text("VERTRAULICH"), button:has-text("GENEHMIGT"), button:has-text("ENTWURF")').first();
+    const stempelButton = page.locator('button:has-text("Einfügen"), #btn-pitch-stamp, button:has-text("Stempel"), button:has-text("VERTRAULICH"), button:has-text("GENEHMIGT"), button:has-text("ENTWURF")').first();
     await expect(stempelButton).toBeVisible({ timeout: 25000 });
     await stempelButton.click();
     await page.waitForTimeout(500);
@@ -62,6 +62,13 @@ test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
     const vertraulichOption = page.locator('button:has-text("VERTRAULICH")').first();
     await vertraulichOption.click();
     await page.waitForTimeout(500);
+
+    // Dismiss insert menu backdrop if still mounted
+    const backdrop = page.locator('.fixed.inset-0.z-\\[1000\\]').first();
+    if (await backdrop.isVisible()) {
+      await backdrop.click({ force: true });
+      await page.waitForTimeout(300);
+    }
 
     const stampBadge = page.locator('text="[ VERTRAULICH ]"').locator('visible=true').first();
     await expect(stampBadge).toBeVisible({ timeout: 10000 });
@@ -76,7 +83,7 @@ test.describe('Pitch Deck Studio - Complete E2E Suite', () => {
     }
 
     // 7. Test Green Präsentationsmodus Fullscreen Portal Overlay
-    const presenterButton = page.locator('button:has-text("Präsentationsmodus")').first();
+    const presenterButton = page.locator('button[title="Vollbild-Präsentationsmodus starten"], .z-\\[100000\\] button:has-text("Präsentieren"), button:has-text("Präsentationsmodus")').first();
     await expect(presenterButton).toBeVisible();
     await presenterButton.click();
     await page.waitForTimeout(1000);

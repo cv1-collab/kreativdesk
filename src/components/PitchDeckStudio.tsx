@@ -522,6 +522,7 @@ export default function PitchDeckStudio({
     const updatedSlide = { ...activeSlide, stamp: nextStamp };
     setSlides(prev => prev.map(s => s.id === activeSlide.id ? updatedSlide : s));
     setShowStampMenu(false);
+    setShowInsertMenu(false);
     try {
       await supabase.from('slides').update(serializeSlideForDb(updatedSlide)).eq('id', activeSlide.id);
       addToast(nextStamp ? `Stempel "${nextStamp}" gesetzt` : 'Stempel entfernt', 'info');
@@ -3346,6 +3347,7 @@ export default function PitchDeckStudio({
                   <div className="relative shrink-0">
                     <button
                       type="button"
+                      id="btn-pitch-stamp"
                       onClick={() => setShowInsertMenu(!showInsertMenu)}
                       className={cn(
                         "px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm",
