@@ -13,45 +13,20 @@ Dieser Leitfaden dokumentiert alle erforderlichen Schritte für die Umstellung v
 
 ---
 
-## 2. Supabase Auth & E-Mail-Provider (Go-Live Konfiguration)
-Im Produktivbetrieb dürfen System-Mails (Einladungen, Passwort-Resets) nicht über das standardmässige Supabase-Ratelimit laufen, sondern über einen eigenen SMTP-Dienst:
-
-1. **E-Mail-Provider anbinden:**
-   - Gehe ins Supabase Dashboard -> **Authentication** -> **SMTP Settings**.
-   - Wähle z. B. **Resend**, **SendGrid** oder den Firmen-Mailserver.
-   - Absender-Adresse: `noreply@kreativdesk.ch` bzw. `support@kreativdesk.ch`.
-   - Absender-Name: `Kreativ Desk Team`.
-2. **Redirect URLs überprüfen:**
-   - Supabase Dashboard -> **Authentication** -> **URL Configuration**.
-   - **Site URL:** `https://www.kreativdesk.ch`
-   - **Redirect URLs (Allowlist):**
-     - `https://www.kreativdesk.ch/**`
-     - `https://kreativdesk.ch/**`
-     - `http://localhost:5173/**` (Nur für lokale Entwicklung)
-3. **E-Mail-Templates anpassen:**
-   - Bestätigungs-Mail, Passwort-Wiederherstellung und Magic Link im Firmen-Design mit deutschem Text hinterlegen.
+## 2. E-Mail-Versand & Benachrichtigungen (Bereits Aktiv via Make.com ✅)
+Der Versand von System-E-Mails läuft nicht über das Standard-Supabase-Ratelimit, sondern ist vollständig über **Make.com Webhooks** automatisiert:
+- **Passwort-Reset:** `/api/send-reset-webhook` generiert den sicheren Wiederherstellungs-Link via Supabase Admin API und triggert den Make.com Webhook (`RESET_WEBHOOK_URL`), welcher die gebrandete E-Mail versendet.
+- **Willkommens- & Onboarding-Mails:** `/api/send-welcome-webhook` übergibt Neuregistrierungen direkt an Make.com (`WELCOME_WEBHOOK_URL`).
+- **Videocall-Einladungen:** `/api/send-invite-webhook` sendet Einladungen über Make.com (`INVITE_WEBHOOK_URL`).
+- **Kein Supabase-Ratelimit:** Da Supabase die Mails nicht selbst versendet, sondern Make.com die Auslieferung übernimmt, besteht keine 3-Mails/Stunde-Begrenzung.
 
 ---
 
-## 3. Stripe Zahlungsabwicklung (Test -> Live)
-Wenn echte Abonnements über Schweizer Franken (CHF) oder Euro (€) abgerechnet werden:
-
-1. **API-Schlüssel austauschen:**
-   - In den Vercel Environment Variables (`Vercel Dashboard -> Settings -> Environment Variables`):
-     - `STRIPE_SECRET_KEY`: Von `sk_test_...` auf `sk_live_...` umstellen.
-     - `VITE_STRIPE_PUBLISHABLE_KEY`: Von `pk_test_...` auf `pk_live_...` umstellen.
-2. **Stripe Webhook anlegen:**
-   - Im Stripe Live-Dashboard -> **Entwickler** -> **Webhooks**:
-   - Endpunkt-URL hinzufügen: `https://www.kreativdesk.ch/api/stripe/webhook`
-   - Abonnierte Events:
-     - `checkout.session.completed`
-     - `customer.subscription.updated`
-     - `customer.subscription.deleted`
-     - `invoice.payment_succeeded`
-     - `invoice.payment_failed`
-   - Webhook-Secret (`whsec_...`) als `STRIPE_WEBHOOK_SECRET` in Vercel hinterlegen.
-3. **Preis-IDs (Price IDs):**
-   - Sicherstellen, dass die Tarif-Preise (`starter`, `pro`, `enterprise`) im Stripe Live-Katalog den IDs in `src/config/planFeatures.ts` entsprechen.
+## 3. Stripe Zahlungsabwicklung (Bereits Aktiv im Live-Modus ✅)
+Echte Zahlungen in Schweizer Franken (CHF) und Euro (€) sind bereits live:
+- **Live-Schlüssel aktiv:** `STRIPE_SECRET_KEY` (`sk_live_...`) und `VITE_STRIPE_PUBLISHABLE_KEY` (`pk_live_...`) sind in der Produktionsumgebung hinterlegt.
+- **Webhook-Verbindung:** `/api/webhook` verarbeitet `checkout.session.completed`, `customer.subscription.updated` und `customer.subscription.deleted`.
+- **Tarif-IDs:** Entsprechen den Live-Produkt-IDs in `src/config/planFeatures.ts`.
 
 ---
 
