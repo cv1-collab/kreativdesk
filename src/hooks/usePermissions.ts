@@ -6,8 +6,8 @@ export function usePermissions() {
   
   const hasPermission = (permission: Permission): boolean => {
     // Super admins, owners, management and Admin roles always have full permissions
-    const rawRole = (currentUser?.role as string) || (userRole as string);
-    const isOwnerOrAdmin = userRole === 'super_admin' || userRole === 'owner' || rawRole === 'Admin' || rawRole === 'owner' || rawRole === 'management';
+    const normRole = (((currentUser?.role as string) || (userRole as string) || '')).toLowerCase();
+    const isOwnerOrAdmin = normRole === 'super_admin' || normRole === 'owner' || normRole === 'admin' || normRole === 'management';
     
     if (isOwnerOrAdmin) return true;
 

@@ -10,6 +10,7 @@ import { cn, sanitizeUrl } from '../utils';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { checkIsSuperAdmin } from '../config/admins';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -71,6 +72,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
   const checkSeatLimit = (): boolean => {
     if (!currentUser) return true;
+    if (checkIsSuperAdmin(currentUser.email)) return true;
     const plan = currentUser.plan || 'Starter';
     if (plan.includes('Trial') || plan === 'Expert' || plan === 'Enterprise' || plan === 'Studio' || plan === 'Agency') return true;
     const maxSeats = plan === 'Starter' ? 3 : 10;

@@ -72,6 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (inv) pendingInvite = inv;
       }
 
+      let targetCompanyId: string | null = null;
+      let targetRole: Role = 'owner';
+      let isInvitedUser = false;
+
       // Check also by user email if not found by token
       if (!pendingInvite && user.email) {
         const { data: inv } = await supabase
@@ -85,9 +89,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (inv) pendingInvite = inv;
       }
 
-      let targetCompanyId: string | null = null;
-      let targetRole: Role = 'owner';
-      let isInvitedUser = false;
+      // Check fallback in company_users by email if no pending invite token found
+      if (!pendingInvite && user.email) {
+        const { data: cuRecord } = await supabase
+          .from('company_users')
+          .select('*')
+          .ilike('email', user.email)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cuRecord && cuRecord.company_id) {
+          targetCompanyId = cuRecord.company_id;
+          targetRole = (cuRecord.role as Role) || 'employee';
+          isInvitedUser = true;
+        }
+      }
 
       if (pendingInvite) {
         targetCompanyId = pendingInvite.company_id;
@@ -122,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let effectiveCompanyId = profile?.company_id || null;
       let effectiveRole = (profile?.role as Role) || 'owner';
 
-      // If user had a pending invite, associate them with the inviting company
+      // If user had a pending invite or exists in company_users, associate them with the inviting company
       if (isInvitedUser && targetCompanyId) {
         effectiveCompanyId = targetCompanyId;
         effectiveRole = targetRole;
@@ -131,33 +147,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await supabase.from('profiles').update({ company_id: targetCompanyId, role: targetRole }).eq('id', user.id);
         }
 
-        // Add to company_users if not present
+        // Add or update company_users record and migrate pre-assigned project_members
         try {
           const { data: existingCu } = await supabase
             .from('company_users')
-            .select('id')
+            .select('*')
             .eq('company_id', targetCompanyId)
-            .eq('email', user.email)
+            .ilike('email', user.email)
             .maybeSingle();
+
           if (!existingCu) {
             await supabase.from('company_users').insert({
+              id: user.id,
               company_id: targetCompanyId,
               name: userName,
               email: user.email || '',
               role: targetRole,
               status: 'Aktiv'
             });
-          }
-          const { data: compData } = await supabase
-            .from('companies')
-            .select('used_seats')
-            .eq('id', targetCompanyId)
-            .maybeSingle();
-          if (compData) {
-            await supabase
+
+            const { data: compData } = await supabase
               .from('companies')
-              .update({ used_seats: (compData.used_seats || 1) + 1 })
-              .eq('id', targetCompanyId);
+              .select('used_seats')
+              .eq('id', targetCompanyId)
+              .maybeSingle();
+            if (compData) {
+              await supabase
+                .from('companies')
+                .update({ used_seats: (compData.used_seats || 1) + 1 })
+                .eq('id', targetCompanyId);
+            }
+          } else {
+            // Update existing company_users entry with active status
+            await supabase
+              .from('company_users')
+              .update({
+                status: 'Aktiv',
+                name: userName || existingCu.name,
+                role: targetRole || existingCu.role
+              })
+              .eq('id', existingCu.id);
+
+            // Re-assign any project_members referencing the old temporary ID to the real user.id!
+            if (existingCu.id !== user.id) {
+              await supabase
+                .from('project_members')
+                .update({ user_id: user.id })
+                .eq('user_id', existingCu.id);
+            }
           }
         } catch (cuErr) {
           console.warn("Could not sync company_users record:", cuErr);

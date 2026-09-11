@@ -66,12 +66,22 @@ export default function CompanySettings() {
 
         if (data) setCompany(data);
 
-        const { count } = await supabase
-          .from('profiles')
-          .select('id', { count: 'exact' })
-          .eq('company_id', currentUser.companyId);
+        const [{ data: pList }, { data: cuList }] = await Promise.all([
+          supabase.from('profiles').select('id, email').eq('company_id', currentUser.companyId),
+          supabase.from('company_users').select('id, email').eq('company_id', currentUser.companyId)
+        ]);
 
-        if (count !== null) setMemberCount(count);
+        const uniqueSeatHolders = new Set<string>();
+        (cuList || []).forEach((u: any) => {
+          const key = (u.email || u.id || '').trim().toLowerCase();
+          if (key) uniqueSeatHolders.add(key);
+        });
+        (pList || []).forEach((p: any) => {
+          const key = (p.email || p.id || '').trim().toLowerCase();
+          if (key) uniqueSeatHolders.add(key);
+        });
+        if (currentUser?.email) uniqueSeatHolders.add(currentUser.email.trim().toLowerCase());
+        setMemberCount(Math.max(1, uniqueSeatHolders.size));
       } catch (err) {
         console.error(err);
       }
@@ -82,7 +92,8 @@ export default function CompanySettings() {
   const maxSeats = company?.max_seats || company?.maxSeats || 5;
 
   const handleGenerateLink = async () => {
-    if (memberCount >= maxSeats) {
+    const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
+    if (!isSuperAdmin && memberCount >= maxSeats) {
       addToast(t('error_limit'), 'error');
       return;
     }

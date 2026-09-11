@@ -1490,7 +1490,8 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
           .eq('id', safeCompanyId)
           .maybeSingle();
 
-        if (comp && comp.max_seats && (comp.used_seats || 1) >= comp.max_seats) {
+        const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
+        if (!isSuperAdmin && comp && comp.max_seats && (comp.used_seats || 1) >= comp.max_seats) {
           addToast('Lizenzlimit erreicht. Bitte erweitere deine Plätze in den Firmen-Einstellungen.', 'error');
           return;
         }
