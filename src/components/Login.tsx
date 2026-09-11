@@ -297,7 +297,7 @@ export default function Login() {
                   autoComplete="current-password"
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                  className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all"
                   placeholder={t('password_placeholder')}
                 />
                 <button

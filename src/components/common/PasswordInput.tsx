@@ -105,7 +105,7 @@ export default function PasswordInput({
             error
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
               : 'border-slate-200 dark:border-[#27272a] focus:border-blue-500 focus:ring-blue-500/20'
-          } placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 sm:text-sm sm:leading-6 transition-all font-mono selection:bg-blue-500/30`}
+          } placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 sm:text-sm sm:leading-6 transition-all selection:bg-blue-500/30`}
         />
 
         <button
