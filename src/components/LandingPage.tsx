@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
-    nav_systems: 'Project Systems', nav_selfservice: 'Pricing', nav_roi: 'ROI Calculator', nav_faq: 'FAQ', nav_help: 'Help Center', nav_login: 'Login', nav_start: 'Get Started',
+    nav_infra: 'Infrastructure', nav_systems: 'Project Systems', nav_selfservice: 'Pricing', nav_roi: 'ROI Calculator', nav_faq: 'FAQ', nav_help: 'Help Center', nav_login: 'Login', nav_start: 'Get Started',
     hero_badge: 'Real Software. No Fake Images.', 
     beta_badge: 'Public Beta / Early Access',
     hero_title1: 'The Operating System', hero_title2: 'for complex projects.',
@@ -201,10 +201,50 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ai_copied: 'Copied!',
     ai_clear: 'Clear',
 
+    // 2.5 Real Architectural Practice (Editorial Showcase)
+    practice_badge: 'Real Architectural Practice',
+    practice_title: 'Engineered for Swiss Architects & General Contractors',
+    practice_subtitle: 'No anonymous stock photos or fake mockups: How Zurich planning teams, site managers, and owner representatives work with Kreativ Desk every day.',
+    practice_c1_alt: 'Sarah Meier at workstation with Kreativ Desk',
+    practice_c1_tag: 'ETH / SIA Design',
+    practice_c1_title: 'Color & Material Concept',
+    practice_c1_desc: '“Kreativ Desk consolidates our designs, Pantone swatches, and working drawings into a single source of truth. No more version clashes in client meetings.”',
+    practice_c1_author: 'Sarah Meier, Dipl. Arch. ETH',
+    practice_c1_role: 'Project Management',
+    practice_c2_alt: 'Michael Chen at standing workbench with physical architectural model',
+    practice_c2_tag: 'Site Management & Tendering',
+    practice_c2_title: 'Precision at the Physical Model',
+    practice_c2_desc: '“At the workbench and on the construction site, millimeters and Swiss Francs count. With live target vs. actual controlling, we keep BKP costs firmly under control.”',
+    practice_c2_author: 'Michael Chen, MSc ETH',
+    practice_c2_role: 'Site Manager SIA',
+    practice_c3_alt: 'Top-Down Flat-Lay with blueprints, compass, scale ruler, and espresso',
+    practice_c3_tag: 'SIA 102 Phases',
+    practice_c3_title: 'From Preliminary Design to Execution',
+    practice_c3_desc: 'Structured coordination of building permit submissions, execution drawings, and defect sign-offs. Compass, scale ruler, and software in perfect harmony.',
+    practice_c3_footer_left: 'SIA Phases 31 to 53',
+    practice_c3_footer_right: '100% Compliant',
+    practice_c4_alt: 'Architect in model making workshop',
+    practice_c4_tag: '3D-BIM & Collision',
+    practice_c4_category: 'Collaborative Execution',
+    practice_c4_title: 'Physical Model Meets Digital Twin',
+    practice_c4_desc: 'Clash-free interface coordination between architecture, structural, and MEP engineering directly in the browser-based BIM viewer – without expensive specialized software on every workstation.',
+    practice_c4_btn_request: 'Request Studio OS',
+    practice_c4_btn_demo: 'Test Demo',
+    practice_c5_alt: 'Concrete table with wooden model and triangular scale ruler',
+    practice_c5_tag: 'Precision to Detail',
+    practice_c5_title: 'Swiss Quality Standard',
+    practice_c5_desc: 'Sovereign data residency in Swiss data centers, tenant-isolated and with a comprehensive audit trail for every plan revision.',
+    practice_c5_footer_left: 'Server Location Switzerland',
+    practice_c5_footer_right: 'ISO 27001',
+    popular_badge: 'Popular',
+    floating_ai_btn: 'AI Concierge',
+    floating_ai_title: 'Ask Kreativ-Desk AI Concierge',
+    nav_open_menu: 'Open menu',
+
     footer_desc: 'The operating system for projects that must succeed.', footer_made: 'Designed in Switzerland.', footer_product: 'Product', footer_legal: 'Legal', footer_privacy: 'Privacy', footer_imprint: 'Imprint', footer_tos: 'Terms of Service'
   },
   de: {
-    nav_systems: 'Projekt-Systeme', nav_selfservice: 'Preise', nav_roi: 'ROI Rechner', nav_faq: 'FAQ', nav_help: 'Hilfe-Center', nav_login: 'Login', nav_start: 'Kostenlos starten',
+    nav_infra: 'Infrastruktur', nav_systems: 'Projekt-Systeme', nav_selfservice: 'Preise', nav_roi: 'ROI Rechner', nav_faq: 'FAQ', nav_help: 'Hilfe-Center', nav_login: 'Login', nav_start: 'Kostenlos starten',
     hero_badge: 'Real Software. Keine Fake-Bilder.', 
     beta_badge: 'Public Beta / Early Access',
     hero_title1: 'Das Operating System', hero_title2: 'für komplexe Projekte.',
@@ -386,6 +426,46 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ai_copy: 'Kopieren',
     ai_copied: 'Kopiert!',
     ai_clear: 'Schliessen',
+
+    // 2.5 Reale Architekturpraxis (Editorial Showcase)
+    practice_badge: 'Reale Architekturpraxis',
+    practice_title: 'Entwickelt für Schweizer Architekten & Generalunternehmer',
+    practice_subtitle: 'Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Zürcher Planerteams, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.',
+    practice_c1_alt: 'Sarah Meier am Arbeitsplatz mit Kreativ Desk',
+    practice_c1_tag: 'ETH / SIA Entwurf',
+    practice_c1_title: 'Farb- & Materialkonzept',
+    practice_c1_desc: '„Kreativ Desk bündelt unsere Entwürfe, Pantone-Fächer und Werkpläne in einer zentralen Quelle. Keine Versionskonflikte mehr bei Bauherrensitzungen.“',
+    practice_c1_author: 'Sarah Meier, Dipl. Arch. ETH',
+    practice_c1_role: 'Projektleitung',
+    practice_c2_alt: 'Michael Chen am Stehtisch mit physischem Baumodell',
+    practice_c2_tag: 'Bauleitung & Devisierung',
+    practice_c2_title: 'Präzision am physischen Modell',
+    practice_c2_desc: '„Am Werktisch und auf der Baustelle zählen Millimeter und Schweizer Franken. Mit dem Live-Soll-Ist-Controlling behalten wir die BKP-Kosten sicher im Griff.“',
+    practice_c2_author: 'Michael Chen, MSc ETH',
+    practice_c2_role: 'Bauleiter SIA',
+    practice_c3_alt: 'Top-Down Flat-Lay mit Bauplänen, Zirkel, Maßstab und Espresso',
+    practice_c3_tag: 'SIA 102 Phasen',
+    practice_c3_title: 'Vom Vorprojekt zur Ausführung',
+    practice_c3_desc: 'Strukturierte Steuerung von Baueingabe, Ausführungsplänen und Mängelfreigaben. Zirkel, Maßstab und Software im perfekten Einklang.',
+    practice_c3_footer_left: 'SIA Phasen 31 bis 53',
+    practice_c3_footer_right: '100% Konform',
+    practice_c4_alt: 'Architekt im Modellbau-Atelier',
+    practice_c4_tag: '3D-BIM & Kollision',
+    practice_c4_category: 'Kollaborative Ausführung',
+    practice_c4_title: 'Physisches Modell trifft digitalen Zwilling',
+    practice_c4_desc: 'Kollisionsfreie Schnittstellenplanung zwischen Architektur, Statik und HLKS direkt im browserbasierten BIM-Viewer – ohne teure Spezialsoftware auf jedem Rechner.',
+    practice_c4_btn_request: 'Studio OS anfragen',
+    practice_c4_btn_demo: 'Demo testen',
+    practice_c5_alt: 'Betontisch mit Holzmodell und Dreikantmaßstab',
+    practice_c5_tag: 'Detailgenauigkeit',
+    practice_c5_title: 'Schweizer Qualitätsstandard',
+    practice_c5_desc: 'Souveräne Datenhoheit in Schweizer Rechenzentren, mandantenisoliert und mit vollständigem Audit-Trail für jede Planänderung.',
+    practice_c5_footer_left: 'Serverstandort Schweiz',
+    practice_c5_footer_right: 'ISO 27001',
+    popular_badge: 'Beliebt',
+    floating_ai_btn: 'KI-Concierge',
+    floating_ai_title: 'Kreativ-Desk KI-Concierge fragen',
+    nav_open_menu: 'Menü öffnen',
 
     footer_desc: 'Das Betriebssystem für Projekte, die funktionieren müssen.', footer_made: 'Entwickelt in der Schweiz.', footer_product: 'Produkt', footer_legal: 'Rechtliches', footer_privacy: 'Datenschutz', footer_imprint: 'Impressum', footer_tos: 'AGB'
   }
@@ -641,7 +721,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-text-muted">
-            <button onClick={() => scrollTo('infrastructure')} className="hover:text-blue-500 transition-colors">Infrastruktur</button>
+            <button onClick={() => scrollTo('infrastructure')} className="hover:text-blue-500 transition-colors">{t('nav_infra')}</button>
             <button onClick={() => scrollTo('systems')} className="hover:text-blue-500 transition-colors">{t('nav_systems')}</button>
             <button onClick={() => scrollTo('pricing')} className="hover:text-blue-500 transition-colors">{t('nav_selfservice')}</button>
             <button onClick={() => scrollTo('roi')} className="hover:text-blue-500 transition-colors">{t('nav_roi')}</button>
@@ -685,7 +765,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)} 
               className="md:hidden p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-lg border border-border sm:border-transparent hover:bg-surface transition-colors"
-              aria-label="Menü öffnen"
+              aria-label={t('nav_open_menu')}
             >
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -704,7 +784,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             className="fixed inset-x-0 top-[56px] sm:top-[68px] bg-surface/98 backdrop-blur-xl border-b border-border p-5 sm:p-6 z-40 md:hidden shadow-2xl max-h-[calc(100dvh-56px)] overflow-y-auto"
           >
              <div className="flex flex-col gap-3 text-base font-semibold">
-                <button onClick={() => scrollTo('infrastructure')} className="text-left py-2 hover:text-blue-500 transition-colors">Infrastruktur</button>
+                <button onClick={() => scrollTo('infrastructure')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_infra')}</button>
                 <button onClick={() => scrollTo('systems')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_systems')}</button>
                 <button onClick={() => scrollTo('pricing')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_selfservice')}</button>
                 <button onClick={() => scrollTo('roi')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_roi')}</button>
@@ -1226,13 +1306,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-16">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
-                <Sparkles size={14} /> Reale Architekturpraxis
+                <Sparkles size={14} /> {t('practice_badge')}
               </div>
               <h2 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-                Entwickelt für Schweizer Architekten & Generalunternehmer
+                {t('practice_title')}
               </h2>
               <p className="text-lg text-text-muted font-medium max-w-3xl mx-auto">
-                Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Zürcher Planerteams, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.
+                {t('practice_subtitle')}
               </p>
             </div>
 
@@ -1244,23 +1324,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
                   <img 
                     src="/media/sarah_architect_studio.jpg" 
-                    alt="Sarah Meier am Arbeitsplatz mit Kreativ Desk" 
+                    alt={t('practice_c1_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
-                    ETH / SIA Entwurf
+                    {t('practice_c1_tag')}
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xl font-bold text-text-primary mb-2">Farb- & Materialkonzept</h3>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">{t('practice_c1_title')}</h3>
                     <p className="text-sm text-text-muted leading-relaxed mb-4">
-                      „Kreativ Desk bündelt unsere Entwürfe, Pantone-Fächer und Werkpläne in einer zentralen Quelle. Keine Versionskonflikte mehr bei Bauherrensitzungen.“
+                      {t('practice_c1_desc')}
                     </p>
                   </div>
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
-                    <span>Sarah Meier, Dipl. Arch. ETH</span>
-                    <span className="text-blue-500">Projektleitung</span>
+                    <span>{t('practice_c1_author')}</span>
+                    <span className="text-blue-500">{t('practice_c1_role')}</span>
                   </div>
                 </div>
               </div>
@@ -1270,23 +1350,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
                   <img 
                     src="/media/michael_engineer_workbench.jpg" 
-                    alt="Michael Chen am Stehtisch mit physischem Baumodell" 
+                    alt={t('practice_c2_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
-                    Bauleitung & Devisierung
+                    {t('practice_c2_tag')}
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xl font-bold text-text-primary mb-2">Präzision am physischen Modell</h3>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">{t('practice_c2_title')}</h3>
                     <p className="text-sm text-text-muted leading-relaxed mb-4">
-                      „Am Werktisch und auf der Baustelle zählen Millimeter und Schweizer Franken. Mit dem Live-Soll-Ist-Controlling behalten wir die BKP-Kosten sicher im Griff.“
+                      {t('practice_c2_desc')}
                     </p>
                   </div>
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
-                    <span>Michael Chen, MSc ETH</span>
-                    <span className="text-blue-500">Bauleiter SIA</span>
+                    <span>{t('practice_c2_author')}</span>
+                    <span className="text-blue-500">{t('practice_c2_role')}</span>
                   </div>
                 </div>
               </div>
@@ -1296,23 +1376,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
                   <img 
                     src="/media/architect_flatlay_blueprints.jpg" 
-                    alt="Top-Down Flat-Lay mit Bauplänen, Zirkel, Maßstab und Espresso" 
+                    alt={t('practice_c3_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
-                    SIA 102 Phasen
+                    {t('practice_c3_tag')}
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xl font-bold text-text-primary mb-2">Vom Vorprojekt zur Ausführung</h3>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">{t('practice_c3_title')}</h3>
                     <p className="text-sm text-text-muted leading-relaxed mb-4">
-                      Strukturierte Steuerung von Baueingabe, Ausführungsplänen und Mängelfreigaben. Zirkel, Maßstab und Software im perfekten Einklang.
+                      {t('practice_c3_desc')}
                     </p>
                   </div>
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
-                    <span>SIA Phasen 31 bis 53</span>
-                    <span className="text-emerald-500">100% Konform</span>
+                    <span>{t('practice_c3_footer_left')}</span>
+                    <span className="text-emerald-500">{t('practice_c3_footer_right')}</span>
                   </div>
                 </div>
               </div>
@@ -1322,27 +1402,27 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="lg:w-1/2 relative aspect-[16/10] lg:aspect-auto overflow-hidden bg-slate-900 min-h-[260px]">
                   <img 
                     src="/media/studio_model_workshop.jpg" 
-                    alt="Architekt im Modellbau-Atelier" 
+                    alt={t('practice_c4_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
-                    3D-BIM & Kollision
+                    {t('practice_c4_tag')}
                   </div>
                 </div>
                 <div className="lg:w-1/2 p-6 sm:p-8 flex flex-col justify-between">
                   <div>
-                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2 block">Kollaborative Ausführung</span>
-                    <h3 className="text-2xl font-bold text-text-primary mb-3">Physisches Modell trifft digitalen Zwilling</h3>
+                    <span className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-2 block">{t('practice_c4_category')}</span>
+                    <h3 className="text-2xl font-bold text-text-primary mb-3">{t('practice_c4_title')}</h3>
                     <p className="text-sm text-text-muted leading-relaxed mb-6">
-                      Kollisionsfreie Schnittstellenplanung zwischen Architektur, Statik und HLKS direkt im browserbasierten BIM-Viewer – ohne teure Spezialsoftware auf jedem Rechner.
+                      {t('practice_c4_desc')}
                     </p>
                   </div>
                   <div className="flex items-center gap-4">
                     <button onClick={() => scrollTo('systems')} className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all">
-                      Studio OS anfragen
+                      {t('practice_c4_btn_request')}
                     </button>
                     <button onClick={() => scrollTo('live-demo')} className="px-4 py-2.5 rounded-xl bg-surface border border-border text-xs font-bold hover:bg-white/5 transition-all">
-                      Demo testen
+                      {t('practice_c4_btn_demo')}
                     </button>
                   </div>
                 </div>
@@ -1353,23 +1433,23 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="relative aspect-[16/10] overflow-hidden bg-slate-900">
                   <img 
                     src="/media/architectural_model_closeup.jpg" 
-                    alt="Betontisch mit Holzmodell und Dreikantmaßstab" 
+                    alt={t('practice_c5_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
-                    Detailgenauigkeit
+                    {t('practice_c5_tag')}
                   </div>
                 </div>
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
-                    <h3 className="text-xl font-bold text-text-primary mb-2">Schweizer Qualitätsstandard</h3>
+                    <h3 className="text-xl font-bold text-text-primary mb-2">{t('practice_c5_title')}</h3>
                     <p className="text-sm text-text-muted leading-relaxed mb-4">
-                      Souveräne Datenhoheit in Schweizer Rechenzentren, mandantenisoliert und mit vollständigem Audit-Trail für jede Planänderung.
+                      {t('practice_c5_desc')}
                     </p>
                   </div>
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs font-bold text-text-muted">
-                    <span>Serverstandort Schweiz</span>
-                    <span className="text-emerald-500">ISO 27001</span>
+                    <span>{t('practice_c5_footer_left')}</span>
+                    <span className="text-emerald-500">{t('practice_c5_footer_right')}</span>
                   </div>
                 </div>
               </div>
@@ -1504,7 +1584,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       plan.popular ? "bg-surface border-2 border-blue-500 shadow-[0_0_40px_rgba(59,130,246,0.15)] scale-105 z-10" : "bg-background border border-border hover:border-border/80"
                     )}>
                       {plan.popular && (
-                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase rounded-full shadow-md shadow-blue-500/20">Popular</div>
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase rounded-full shadow-md shadow-blue-500/20">{t('popular_badge')}</div>
                       )}
                       <div className="flex items-center gap-3 mb-4 font-bold text-text-primary">
                         {plan.icon} {plan.name}
@@ -1758,17 +1838,17 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       {/* FLOATING AI CONCIERGE BUTTON */}
       <button 
         data-testid="floating-ai-concierge"
-        aria-label="KI-Concierge"
+        aria-label={t('floating_ai_btn')}
         onClick={() => {
           scrollTo('help-center');
           const input = document.querySelector('#help-center input') as HTMLInputElement;
           if (input) input.focus();
         }}
         className="fixed bottom-6 right-6 z-40 px-4 py-2.5 sm:px-5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl shadow-blue-600/30 flex items-center gap-2.5 font-bold text-xs sm:text-sm border border-blue-400/30 transition-all hover:scale-105 active:scale-95 group backdrop-blur-md cursor-pointer"
-        title="Kreativ-Desk KI-Concierge fragen"
+        title={t('floating_ai_title')}
       >
         <Sparkles size={16} className="text-yellow-300 animate-pulse shrink-0" />
-        <span>KI-Concierge</span>
+        <span>{t('floating_ai_btn')}</span>
         <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
       </button>
 
