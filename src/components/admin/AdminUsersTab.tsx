@@ -202,6 +202,9 @@ export default function AdminUsersTab() {
         await supabase.from('company_users').delete().or(`id.eq.${user.id},email.eq.${user.email}`);
         await supabase.from('project_members').delete().eq('user_id', user.id);
       }
+      if (user.email) {
+        await supabase.from('invites').delete().ilike('email', user.email);
+      }
       addToast(t('user_saved'), 'success');
       await fetchUsers();
     } catch (error) { 
@@ -281,13 +284,44 @@ export default function AdminUsersTab() {
 
   const handleCleanupTestUsers = async () => {
     if (!window.confirm('Möchtest du alle Demo- und Test-Nutzer löschen?')) return;
-    const testEmails = [
-      'kreativdesk999@yopmail.com', 'kreativdesk999@mailinator.com', 'kreativdesk12345@mailnesia.com',
-      'test3@example.com', 'unique_user_12345@mailto.plus', 'faxpad@mailto.plus', 'test@example.com', 'tester@kreativdesk.ch'
-    ];
     try {
-      await supabase.from('profiles').delete().in('email', testEmails);
-      addToast('Test-Nutzer erfolgreich gelöscht!', 'success');
+      const protectedEmails = ['cv1@gmx.ch', 'carlo@vesciodesign.ch', 'glassphilipp@gmail.com'];
+      const staticTestEmails = [
+        'kreativdesk999@yopmail.com', 'kreativdesk999@mailinator.com', 'kreativdesk12345@mailnesia.com',
+        'test3@example.com', 'unique_user_12345@mailto.plus', 'faxpad@mailto.plus', 'test@example.com', 'tester@kreativdesk.ch'
+      ];
+
+      const testCandidates = users.filter(u => {
+        const mail = (u.email || '').toLowerCase().trim();
+        if (!mail || protectedEmails.includes(mail)) return false;
+        return (
+          staticTestEmails.includes(mail) ||
+          mail.startsWith('test_') ||
+          mail.startsWith('signup_probe_') ||
+          mail.startsWith('probe_') ||
+          mail.includes('agent.test') ||
+          mail.includes('example.com') ||
+          mail.includes('mailinator') ||
+          mail.includes('yopmail') ||
+          mail.includes('mailto.plus')
+        );
+      });
+
+      for (const u of testCandidates) {
+        if (u.isPendingCompanyUser || u.isPending) {
+          await supabase.from('company_users').delete().eq('id', u.id);
+        } else {
+          await supabase.from('profiles').delete().eq('id', u.id);
+        }
+        if (u.email) {
+          await supabase.from('company_users').delete().ilike('email', u.email);
+          await supabase.from('invites').delete().ilike('email', u.email);
+          await supabase.from('project_members').delete().eq('user_id', u.id);
+        }
+      }
+
+      await supabase.from('profiles').delete().in('email', staticTestEmails);
+      addToast(testCandidates.length > 0 ? `${testCandidates.length} Test-Nutzer gelöscht!` : 'Keine weiteren Test-Nutzer gefunden.', 'success');
       await fetchUsers();
     } catch (err) {
       console.error(err);
