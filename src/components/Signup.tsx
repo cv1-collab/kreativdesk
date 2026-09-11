@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { Layers, ArrowLeft, Sun, Moon } from 'lucide-react';
+import { Layers, ArrowLeft, Sun, Moon, Mail, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
 import PasswordInput from './common/PasswordInput';
@@ -58,6 +58,8 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
   const [inviteAlreadyUsed, setInviteAlreadyUsed] = useState(false);
+  const [confirmationSentEmail, setConfirmationSentEmail] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<{ companyName?: string; role?: string; email?: string } | null>(null);
   const navigate = useNavigate();
@@ -203,8 +205,8 @@ export default function Signup() {
         addToast(currentLang === 'de' ? 'Account erfolgreich erstellt! Du wirst weitergeleitet...' : 'Account successfully created! Redirecting...', 'success');
         navigate('/app');
       } else {
+        setConfirmationSentEmail(cleanEmail);
         addToast(currentLang === 'de' ? 'Bestätigungs-E-Mail gesendet! Bitte prüfe dein Postfach.' : 'Confirmation email sent! Please check your inbox.', 'info');
-        navigate(`/login?email=${encodeURIComponent(cleanEmail)}`);
       }
     } catch (err: any) {
       console.error("Signup error detail:", err);
@@ -272,130 +274,199 @@ export default function Signup() {
             <p className="mt-2 text-sm text-slate-500 dark:text-[#a1a1aa]">{t('start_journey')}</p>
           </div>
 
-          <div className="mt-8 bg-white dark:bg-[#18181b] p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-[#27272a] shadow-xl dark:shadow-2xl transition-colors duration-200">
-            {inviteInfo && (
-              <div className="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs flex items-center gap-2 font-medium">
-                <span className="text-base">🏢</span>
-                <span>
-                  {currentLang === 'de' ? 'Einladung zu: ' : 'Invited to: '}
-                  <strong>{inviteInfo.companyName || 'Team Workspace'}</strong>
-                  {inviteInfo.role ? ` (${inviteInfo.role})` : ''}
-                </span>
+          {confirmationSentEmail ? (
+            <div className="mt-8 bg-white dark:bg-[#18181b] p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-[#27272a] shadow-xl dark:shadow-2xl transition-colors duration-200 text-center space-y-5">
+              <div className="w-16 h-16 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mx-auto border border-blue-500/20 shadow-sm">
+                <Mail size={32} />
               </div>
-            )}
-            {inviteAlreadyUsed && (
-              <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex flex-col gap-2 font-medium">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">ℹ️</span>
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-[#fafafa]">
+                  {currentLang === 'de' ? 'Bestätigungs-E-Mail gesendet!' : 'Confirmation email sent!'}
+                </h3>
+                <p className="mt-2 text-xs text-slate-600 dark:text-[#a1a1aa] leading-relaxed">
+                  {currentLang === 'de' ? (
+                    <>Wir haben einen Bestätigungslink an <strong className="text-blue-600 dark:text-blue-400 font-semibold">{confirmationSentEmail}</strong> gesendet.</>
+                  ) : (
+                    <>We sent a confirmation link to <strong className="text-blue-600 dark:text-blue-400 font-semibold">{confirmationSentEmail}</strong>.</>
+                  )}
+                </p>
+              </div>
+
+              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 rounded-2xl p-4 text-xs text-blue-900 dark:text-blue-200 text-left space-y-2">
+                <p className="font-bold flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
+                  <Sparkles size={14} />
+                  {currentLang === 'de' ? 'Nächste Schritte:' : 'Next steps:'}
+                </p>
+                <ol className="list-decimal list-inside space-y-1.5 text-[11px] leading-relaxed opacity-90">
+                  <li>{currentLang === 'de' ? 'E-Mail-Postfach öffnen & Bestätigungslink anklicken.' : 'Open your inbox & click the confirmation link.'}</li>
+                  <li>{currentLang === 'de' ? 'Du wirst automatisch eingeloggt und weitergeleitet.' : 'You will be logged in automatically and redirected.'}</li>
+                  <li>{currentLang === 'de' ? 'Das Willkommens-Setup & die geführte Tour starten direkt!' : 'Welcome onboarding & the tour guide will launch automatically!'}</li>
+                </ol>
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <Link
+                  to={`/login?email=${encodeURIComponent(confirmationSentEmail)}&registered=true`}
+                  className="flex items-center justify-center w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all shadow-md shadow-blue-500/20 text-sm"
+                >
+                  {currentLang === 'de' ? 'Weiter zum Login' : 'Proceed to Login'}
+                </Link>
+
+                <button
+                  type="button"
+                  disabled={isResending}
+                  onClick={async () => {
+                    try {
+                      setIsResending(true);
+                      const { error: resendErr } = await supabase.auth.resend({
+                        type: 'signup',
+                        email: confirmationSentEmail,
+                        options: {
+                          emailRedirectTo: `${window.location.origin}/app`
+                        }
+                      });
+                      if (resendErr) throw resendErr;
+                      addToast(currentLang === 'de' ? 'Bestätigungs-E-Mail erneut gesendet! Bitte prüfe auch deinen Spam-Ordner.' : 'Confirmation email resent! Please check spam folder too.', 'success');
+                    } catch (e: any) {
+                      addToast(mapAuthErrorMessage(e, currentLang), 'error');
+                    } finally {
+                      setIsResending(false);
+                    }
+                  }}
+                  className="text-xs text-slate-500 hover:text-slate-800 dark:text-[#a1a1aa] dark:hover:text-[#fafafa] font-medium transition-colors cursor-pointer py-1"
+                >
+                  {isResending 
+                    ? (currentLang === 'de' ? 'Wird gesendet...' : 'Resending...') 
+                    : (currentLang === 'de' ? 'Keine E-Mail erhalten? Erneut senden' : 'Didn\'t receive an email? Resend')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-8 bg-white dark:bg-[#18181b] p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-[#27272a] shadow-xl dark:shadow-2xl transition-colors duration-200">
+              {inviteInfo && (
+                <div className="mb-4 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs flex items-center gap-2 font-medium">
+                  <span className="text-base">🏢</span>
                   <span>
-                    {currentLang === 'de'
-                      ? 'Diese Einladung wurde bereits aktiviert. Wenn dein Account bereits eingerichtet ist, melde dich bitte direkt an:'
-                      : 'This invitation has already been activated. If your account is set up, please sign in directly:'}
+                    {currentLang === 'de' ? 'Einladung zu: ' : 'Invited to: '}
+                    <strong>{inviteInfo.companyName || 'Team Workspace'}</strong>
+                    {inviteInfo.role ? ` (${inviteInfo.role})` : ''}
                   </span>
                 </div>
-                <Link
-                  to={`/login?email=${encodeURIComponent(email)}`}
-                  className="inline-flex items-center justify-center font-bold px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-colors shadow-xs w-full text-center"
-                >
-                  {currentLang === 'de' ? '👉 Jetzt direkt anmelden (Login)' : '👉 Sign in directly now'}
-                </Link>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="rounded-xl bg-red-500/10 p-3.5 border border-red-500/20 space-y-2">
-                  <div className="text-sm font-medium text-red-600 dark:text-red-400">{error}</div>
-                  {isAlreadyRegistered && (
-                    <Link
-                      to={`/login?email=${encodeURIComponent(email)}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline pt-0.5"
-                    >
-                      <span>{currentLang === 'de' ? '👉 Jetzt direkt anmelden (Login)' : '👉 Sign in directly now'}</span>
-                    </Link>
-                  )}
+              )}
+              {inviteAlreadyUsed && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex flex-col gap-2 font-medium">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">ℹ️</span>
+                    <span>
+                      {currentLang === 'de'
+                        ? 'Diese Einladung wurde bereits aktiviert. Wenn dein Account bereits eingerichtet ist, melde dich bitte direkt an:'
+                        : 'This invitation has already been activated. If your account is set up, please sign in directly:'}
+                    </span>
+                  </div>
+                  <Link
+                    to={`/login?email=${encodeURIComponent(email)}`}
+                    className="inline-flex items-center justify-center font-bold px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-colors shadow-xs w-full text-center"
+                  >
+                    {currentLang === 'de' ? '👉 Jetzt direkt anmelden (Login)' : '👉 Sign in directly now'}
+                  </Link>
                 </div>
               )}
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-semibold leading-6 text-slate-700 dark:text-[#fafafa] mb-1">{t('email')}</label>
-                <input 
-                  id="email"
-                  name="email"
-                  type="email" 
-                  required 
-                  autoComplete="username email"
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  className="block w-full rounded-xl bg-slate-50 dark:bg-[#09090b] py-2.5 text-slate-900 dark:text-[#fafafa] shadow-sm border border-slate-200 dark:border-[#27272a] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 sm:text-sm sm:leading-6 px-4 transition-all" 
-                  placeholder={t('email_placeholder')} 
-                />
-              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="rounded-xl bg-red-500/10 p-3.5 border border-red-500/20 space-y-2">
+                    <div className="text-sm font-medium text-red-600 dark:text-red-400">{error}</div>
+                    {isAlreadyRegistered && (
+                      <Link
+                        to={`/login?email=${encodeURIComponent(email)}`}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline pt-0.5"
+                      >
+                        <span>{currentLang === 'de' ? '👉 Jetzt direkt anmelden (Login)' : '👉 Sign in directly now'}</span>
+                      </Link>
+                    )}
+                  </div>
+                )}
 
-              <PasswordInput
-                id="password"
-                name="new-password"
-                label={t('password')}
-                value={password}
-                onChange={setPassword}
-                placeholder={t('password_placeholder')}
-                autoComplete="new-password"
-                showStrengthMeter={true}
-                showGenerator={true}
-                onGeneratePassword={(newPwd) => {
-                  setPassword(newPwd);
-                  setPasswordConfirm(newPwd);
-                  addToast(currentLang === 'de' ? 'Sicheres Passwort generiert und kopiert!' : 'Secure password generated and copied!', 'success');
-                }}
-                emailForValidation={email}
-                lang={currentLang}
-                disabled={loading}
-              />
-
-              <PasswordInput
-                id="confirm-password"
-                name="confirm-password"
-                label={t('confirm_password')}
-                value={passwordConfirm}
-                onChange={setPasswordConfirm}
-                placeholder={t('confirm_password_placeholder')}
-                autoComplete="new-password"
-                showStrengthMeter={false}
-                showGenerator={false}
-                lang={currentLang}
-                disabled={loading}
-                error={passwordConfirm && password !== passwordConfirm ? t('password_mismatch') : undefined}
-              />
-
-              <div className="flex items-start gap-3 pt-2">
-                <div className="flex h-6 items-center">
-                  <input
-                    id="terms" name="terms" type="checkbox"
-                    checked={agreedToTerms}
-                    onChange={(e) => setAgreedToTerms(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 dark:border-[#27272a] bg-slate-50 dark:bg-[#09090b] text-blue-600 focus:ring-blue-600 focus:ring-offset-white dark:focus:ring-offset-[#09090b] cursor-pointer"
+                <div>
+                  <label htmlFor="email" className="block text-sm font-semibold leading-6 text-slate-700 dark:text-[#fafafa] mb-1">{t('email')}</label>
+                  <input 
+                    id="email"
+                    name="email"
+                    type="email" 
+                    required 
+                    autoComplete="username email"
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    className="block w-full rounded-xl bg-slate-50 dark:bg-[#09090b] py-2.5 text-slate-900 dark:text-[#fafafa] shadow-sm border border-slate-200 dark:border-[#27272a] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 sm:text-sm sm:leading-6 px-4 transition-all" 
+                    placeholder={t('email_placeholder')} 
                   />
                 </div>
-                <div className="text-xs leading-5">
-                  <label htmlFor="terms" className="text-slate-500 dark:text-[#a1a1aa] cursor-pointer">
-                    {t('agree_terms')} <Link to="/terms" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">{t('terms_of_service')}</Link> {t('and')} <Link to="/privacy" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">{t('privacy_policy')}</Link>.
-                  </label>
+
+                <PasswordInput
+                  id="password"
+                  name="new-password"
+                  label={t('password')}
+                  value={password}
+                  onChange={setPassword}
+                  placeholder={t('password_placeholder')}
+                  autoComplete="new-password"
+                  showStrengthMeter={true}
+                  showGenerator={true}
+                  onGeneratePassword={(newPwd) => {
+                    setPassword(newPwd);
+                    setPasswordConfirm(newPwd);
+                    addToast(currentLang === 'de' ? 'Sicheres Passwort generiert und kopiert!' : 'Secure password generated and copied!', 'success');
+                  }}
+                  emailForValidation={email}
+                  lang={currentLang}
+                  disabled={loading}
+                />
+
+                <PasswordInput
+                  id="confirm-password"
+                  name="confirm-password"
+                  label={t('confirm_password')}
+                  value={passwordConfirm}
+                  onChange={setPasswordConfirm}
+                  placeholder={t('confirm_password_placeholder')}
+                  autoComplete="new-password"
+                  showStrengthMeter={false}
+                  showGenerator={false}
+                  lang={currentLang}
+                  disabled={loading}
+                  error={passwordConfirm && password !== passwordConfirm ? t('password_mismatch') : undefined}
+                />
+
+                <div className="flex items-start gap-3 pt-2">
+                  <div className="flex h-6 items-center">
+                    <input
+                      id="terms" name="terms" type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 dark:border-[#27272a] bg-slate-50 dark:bg-[#09090b] text-blue-600 focus:ring-blue-600 focus:ring-offset-white dark:focus:ring-offset-[#09090b] cursor-pointer"
+                    />
+                  </div>
+                  <div className="text-xs leading-5">
+                    <label htmlFor="terms" className="text-slate-500 dark:text-[#a1a1aa] cursor-pointer">
+                      {t('agree_terms')} <Link to="/terms" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">{t('terms_of_service')}</Link> {t('and')} <Link to="/privacy" className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">{t('privacy_policy')}</Link>.
+                    </label>
+                  </div>
                 </div>
-              </div>
 
-              <button 
-                type="submit" 
-                disabled={loading || !agreedToTerms} 
-                className="flex w-full justify-center mt-3 rounded-xl bg-blue-600 px-3 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 transition-all cursor-pointer active:scale-[0.99]"
-              >
-                {t('create_account')}
-              </button>
-            </form>
+                <button 
+                  type="submit" 
+                  disabled={loading || !agreedToTerms} 
+                  className="flex w-full justify-center mt-3 rounded-xl bg-blue-600 px-3 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 transition-all cursor-pointer active:scale-[0.99]"
+                >
+                  {t('create_account')}
+                </button>
+              </form>
 
-            <p className="mt-6 text-center text-sm text-slate-500 dark:text-[#a1a1aa] font-medium">
-              {t('already_have_account')} <Link to="/login" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_in')}</Link>
-            </p>
-          </div>
+              <p className="mt-6 text-center text-sm text-slate-500 dark:text-[#a1a1aa] font-medium">
+                {t('already_have_account')} <Link to="/login" className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">{t('sign_in')}</Link>
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

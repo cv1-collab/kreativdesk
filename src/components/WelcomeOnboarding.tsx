@@ -3,11 +3,14 @@ import { supabase } from '../lib/supabase';
 import { Camera, Check, Loader2, Sparkles } from 'lucide-react';
 import { useTour } from '../contexts/TourContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
 
 export default function WelcomeOnboarding({ currentUser, onComplete }: { currentUser: any, onComplete: () => void }) {
   const { stopTour } = useTour();
   const { updateCurrentUser } = useAuth();
+  const { language } = useLanguage();
+  const isGerman = typeof language === 'string' ? language.toLowerCase().includes('de') : true;
   const [name, setName] = useState(currentUser?.name || '');
   const [avatar, setAvatar] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string>(currentUser?.photoURL || '');
@@ -91,15 +94,19 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
               <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
                 <Sparkles size={32} />
               </div>
-              <h2 className="text-2xl font-black text-text-primary mb-2">Willkommen im Team!</h2>
-              <p className="text-text-muted text-sm mb-6">
-                Wir freuen uns, dass du da bist. Bevor du startest, richte kurz dein Profil ein, damit deine Kollegen dich sofort erkennen.
+              <h2 className="text-2xl font-black text-text-primary mb-2">
+                {isGerman ? 'Willkommen im Team!' : 'Welcome to the team!'}
+              </h2>
+              <p className="text-text-muted text-sm mb-6 leading-relaxed">
+                {isGerman
+                  ? 'Wir freuen uns, dass du da bist. Bevor du startest, richte kurz dein Profil ein, damit deine Kollegen dich sofort erkennen.'
+                  : 'We are glad to have you! Before you start, set up your profile so your colleagues can easily recognize you.'}
               </p>
               <button
                 onClick={() => setStep(2)}
-                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors shadow-lg shadow-blue-500/20"
               >
-                Profil einrichten
+                {isGerman ? 'Profil einrichten' : 'Set up profile'}
               </button>
             </div>
           )}
@@ -107,8 +114,12 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
           {step === 2 && (
             <form onSubmit={handleSubmit} className="space-y-6 text-left">
               <div className="text-center">
-                <h3 className="text-xl font-bold text-text-primary mb-1">Dein Profil</h3>
-                <p className="text-text-muted text-xs">Lade ein Foto hoch und überprüfe deinen Namen.</p>
+                <h3 className="text-xl font-bold text-text-primary mb-1">
+                  {isGerman ? 'Dein Profil' : 'Your Profile'}
+                </h3>
+                <p className="text-text-muted text-xs">
+                  {isGerman ? 'Lade ein Foto hoch und überprüfe deinen Namen.' : 'Upload a photo and verify your name.'}
+                </p>
               </div>
 
               <div className="flex flex-col items-center justify-center gap-3">
@@ -129,14 +140,14 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
 
               <div>
                 <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">
-                  Vollständiger Name
+                  {isGerman ? 'Vollständiger Name' : 'Full Name'}
                 </label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="z.B. Anna Muster"
+                  placeholder={isGerman ? 'z.B. Anna Muster' : 'e.g. John Doe'}
                   className="w-full px-4 py-2.5 bg-surface-hover border border-border rounded-xl text-text-primary focus:outline-none focus:border-blue-500 transition-colors text-sm"
                 />
               </div>
@@ -149,10 +160,10 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
                 {isSubmitting ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>Speichere...</span>
+                    <span>{isGerman ? 'Speichere...' : 'Saving...'}</span>
                   </>
                 ) : (
-                  <span>Profil speichern & Starten</span>
+                  <span>{isGerman ? 'Profil speichern & Starten' : 'Save Profile & Start'}</span>
                 )}
               </button>
             </form>
@@ -163,8 +174,14 @@ export default function WelcomeOnboarding({ currentUser, onComplete }: { current
               <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20 animate-bounce">
                 <Check size={32} />
               </div>
-              <h3 className="text-xl font-bold text-text-primary mb-2">Alles bereit!</h3>
-              <p className="text-text-muted text-sm">Dein Profil wurde erfolgreich eingerichtet. Viel Spaß mit Kreativ Desk!</p>
+              <h3 className="text-xl font-bold text-text-primary mb-2">
+                {isGerman ? 'Alles bereit!' : 'All set!'}
+              </h3>
+              <p className="text-text-muted text-sm">
+                {isGerman
+                  ? 'Dein Profil wurde erfolgreich eingerichtet. Viel Spaß mit Kreativ Desk!'
+                  : 'Your profile has been set up successfully. Enjoy Kreativ Desk!'}
+              </p>
             </div>
           )}
         </div>

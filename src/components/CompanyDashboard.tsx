@@ -717,21 +717,6 @@ export default function CompanyDashboard() {
 
   return (
     <div className="flex h-[100dvh] bg-background text-text-primary relative w-full overflow-hidden">
-      {showOnboarding && currentUser && userRole !== 'super_admin' && (
-        <WelcomeOnboarding 
-          currentUser={currentUser} 
-          onComplete={() => {
-            if (currentUser?.uid) {
-              safeStorage.setItem(`onboarding_completed_${currentUser.uid}`, 'true');
-            }
-            setShowOnboarding(false);
-            setTimeout(() => {
-              startTour();
-            }, 600);
-          }} 
-        />
-      )}
-
       <NotificationCenter isOpen={isNotificationOpen} onClose={() => setIsNotificationOpen(false)} />
 
       <aside className="w-64 border-r border-border bg-surface hidden md:flex flex-col z-20 shrink-0">
@@ -1061,7 +1046,7 @@ export default function CompanyDashboard() {
       )}
 
       {/* MODALE POPUPS */}
-      {isMounted && showOnboarding && createPortal(
+      {isMounted && showOnboarding && currentUser && userRole !== 'super_admin' && createPortal(
         <WelcomeOnboarding 
           currentUser={currentUser} 
           onComplete={() => {

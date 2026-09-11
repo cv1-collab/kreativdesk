@@ -4,7 +4,7 @@ import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Command, Loader2, X, ArrowLeft, Sun, Moon, Eye, EyeOff } from 'lucide-react';
+import { Command, Loader2, X, ArrowLeft, Sun, Moon, Eye, EyeOff, Mail } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
 import { mapAuthErrorMessage } from '../utils/passwordValidation';
@@ -56,6 +56,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [bootStep, setBootStep] = useState(-1);
   
@@ -95,13 +96,20 @@ export default function Login() {
         setEmail(emailParam);
       }
 
+      const registeredParam = urlParams.get('registered');
+      if (registeredParam === 'true') {
+        setInfoMessage(currentLang === 'de'
+          ? 'Bestätigungs-E-Mail gesendet! Bitte prüfe dein Postfach und klicke auf den Bestätigungslink, bevor du dich anmeldest.'
+          : 'Confirmation email sent! Please verify your email before logging in.');
+      }
+
       const conflictReason = sessionStorage.getItem('auth_conflict_reason');
       if (conflictReason) {
         setError(conflictReason);
         sessionStorage.removeItem('auth_conflict_reason');
       }
     } catch (e) {}
-  }, []);
+  }, [currentLang]);
 
   const [customBg, setCustomBg] = useState<string | null>(null);
 
@@ -263,6 +271,13 @@ export default function Login() {
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-sm p-3.5 rounded-xl flex items-center gap-2 font-medium">
                 <X size={16} className="shrink-0" /> <span>{error}</span>
+              </div>
+            )}
+
+            {infoMessage && !error && (
+              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-sm p-3.5 rounded-xl flex items-start gap-2.5 font-medium">
+                <Mail size={18} className="shrink-0 text-blue-500 mt-0.5" />
+                <span className="text-xs leading-relaxed">{infoMessage}</span>
               </div>
             )}
 
