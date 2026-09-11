@@ -11,7 +11,7 @@ import {
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
   Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown, Sparkles,
-  User, Building2, FileSpreadsheet
+  User, Building2, FileSpreadsheet, ArrowLeftRight, Coins, Settings2
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -34,6 +34,18 @@ import AiBudgetImportModal from './AiBudgetImportModal';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { demoTemplates } from '../utils/demoTemplates';
+import {
+  Currency,
+  CurrencyMode,
+  formatCurrency,
+  convertCurrencyAmount,
+  getCurrencySymbol,
+  getStoredExchangeRates,
+  saveStoredExchangeRates,
+  getCurrencyPreference,
+  saveCurrencyPreference,
+  DEFAULT_EXCHANGE_RATES
+} from '../utils/currencyManager';
 
 if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
@@ -84,7 +96,7 @@ const pdfStyles = StyleSheet.create({
   footerText: { fontSize: 8, color: '#9ca3af' },
 });
 
-const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroups, approvedVersions, allTimeHours, allTimeHoursCost, displayLedger, getBudgetDetails, overviewTotalBudget, totalActualCostsIncludingHoursAllTime, totalBudget, vatRate, formatCHF, calculateGroupTotal, getAllTimeActualCostForGroup, getAllTimeActualCostForItem }: any) => {
+const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroups, approvedVersions, allTimeHours, allTimeHoursCost, displayLedger, getBudgetDetails, overviewTotalBudget, totalActualCostsIncludingHoursAllTime, totalBudget, vatRate, formatCHF, calculateGroupTotal, getAllTimeActualCostForGroup, getAllTimeActualCostForItem, currency = 'CHF' }: any) => {
   const title = activeTab === 'budget' ? t('budget_plan') : activeTab === 'control' ? t('payment_control') : t('cashflow');
   return (
     <Document>
@@ -96,6 +108,7 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
               <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{projectHeader.project}</Text></View>
               <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Version:</Text><Text style={pdfStyles.metaValue}>{projectHeader.version}</Text></View>
               <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{new Date(projectHeader.date).toLocaleDateString('de-CH')}</Text></View>
+              <View style={pdfStyles.metaBlock}><Text style={pdfStyles.metaLabel}>Währung:</Text><Text style={pdfStyles.metaValue}>{currency}</Text></View>
             </View>
           </View>
           {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
@@ -268,7 +281,7 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
   );
 };
 
-const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCHF, projectHeader, budgetDetails, receiptType }: any) => {
+const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCHF, projectHeader, budgetDetails, receiptType, currency = 'CHF' }: any) => {
   const isExternal = receiptType === 'external_cost' || incomingData.type === 'external';
   return (
     <Document>
@@ -290,7 +303,7 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 10 }}>
           <Text style={{ width: '35%', fontWeight: 'bold' }}>{isExternal ? 'Firma / Kreditor' : 'Begünstigter / Händler'}</Text>
           <Text style={{ width: '45%', fontWeight: 'bold' }}>Beschreibung & Buchungsdetails</Text>
-          <Text style={{ width: '20%', fontWeight: 'bold', textAlign: 'right' }}>Betrag (CHF)</Text>
+          <Text style={{ width: '20%', fontWeight: 'bold', textAlign: 'right' }}>Betrag ({currency})</Text>
         </View>
 
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 10 }}>
@@ -321,7 +334,7 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
             <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>MWST: {incomingData.vatRate || 8.1}%</Text>
             {isExternal && incomingData.skontoRate > 0 && (
               <Text style={{ fontSize: 8, color: '#059669', marginTop: 2, fontWeight: 'bold' }}>
-                Skonto: {incomingData.skontoRate}% (Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))})
+                Skonto: {incomingData.skontoRate}% (Netto: {currency} {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))})
               </Text>
             )}
           </View>
@@ -471,6 +484,25 @@ export default function Finance() {
   const approvedVersions = versions.filter(v => v.status === 'approved');
   const budgetGroups = activeVersion.groups;
   const vatRate = activeVersion.vatRate;
+
+  // Multi-Currency & FX Engine State
+  const [currency, setCurrency] = useState<Currency>(() => getCurrencyPreference().currency);
+  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>(() => getCurrencyPreference().mode);
+  const [exchangeRates, setExchangeRates] = useState<Record<Currency, number>>(() => getStoredExchangeRates());
+  const [showFxSettingsModal, setShowFxSettingsModal] = useState(false);
+  const [tempRates, setTempRates] = useState<Record<Currency, number>>(() => getStoredExchangeRates());
+
+  const handleCurrencyChange = (newCurrency: Currency) => {
+    setCurrency(newCurrency);
+    saveCurrencyPreference(newCurrency, currencyMode);
+    addToast(`Währung auf ${newCurrency} umgestellt`, 'info');
+  };
+
+  const handleCurrencyModeChange = (newMode: CurrencyMode) => {
+    setCurrencyMode(newMode);
+    saveCurrencyPreference(currency, newMode);
+    addToast(newMode === 'fx' ? 'Multi-Currency Live-Umrechnung aktiviert' : '1:1 Basis-Währung aktiviert', 'info');
+  };
 
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
@@ -928,7 +960,7 @@ export default function Finance() {
   const totalActualCostsIncludingHoursAllTime = approvedVersions.reduce((sum, v) => sum + v.groups.reduce((s, g) => s + getAllTimeActualCostForGroup(g), 0), 0) + allTimeHoursCost;
   const budgetRemaining = Math.max(0, overviewTotalBudget - filteredSpent);
 
-  const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+  const formatCHF = (val: number) => formatCurrency(val, currency, currencyMode, 'CHF', exchangeRates);
 
   const pieData = [
     { name: t('external_costs'), value: filteredExtSpent },
@@ -977,14 +1009,15 @@ export default function Finance() {
   })).filter(x => x.isOver);
 
   const exportLedgerCSV = () => {
-    const headers = ['Datum', 'Kategorie', 'Beschreibung', 'Soll (Kosten CHF)', 'Haben (Umsatz CHF)', 'Saldo (CHF)', 'Status'];
+    const headers = ['Datum', 'Kategorie', 'Beschreibung', `Soll (Kosten ${currency})`, `Haben (Umsatz ${currency})`, `Saldo (${currency})`, 'Status'];
+    const conv = (val: number) => currencyMode === 'fx' ? convertCurrencyAmount(val, 'CHF', currency, exchangeRates) : val;
     const rows = displayLedger.map(tx => [
       tx.date,
       tx.category,
       tx.description,
-      tx.amount < 0 ? Math.abs(tx.amount).toFixed(2) : '0.00',
-      tx.amount > 0 ? tx.amount.toFixed(2) : '0.00',
-      tx.balance ? tx.balance.toFixed(2) : '0.00',
+      tx.amount < 0 ? conv(Math.abs(tx.amount)).toFixed(2) : '0.00',
+      tx.amount > 0 ? conv(tx.amount).toFixed(2) : '0.00',
+      tx.balance ? conv(tx.balance).toFixed(2) : '0.00',
       tx.status || 'Gebucht'
     ]);
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))].join('\n');
@@ -992,20 +1025,23 @@ export default function Finance() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Hauptbuch_${projectHeader.project.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Hauptbuch_${currency}_${projectHeader.project.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    addToast('Hauptbuch als CSV exportiert!', 'success');
+    addToast(`Hauptbuch als CSV (${currency}) exportiert!`, 'success');
   };
 
   const exportBudgetCSV = () => {
-    const headers = ['BKP/Pos', 'Phase/Gruppe', 'Bezeichnung', 'Menge', 'Einheit', 'Einheitspreis (CHF)', 'Total Netto (CHF)', 'Ist-Kosten (CHF)', 'Abweichung (CHF)'];
+    const headers = ['BKP/Pos', 'Phase/Gruppe', 'Bezeichnung', 'Menge', 'Einheit', `Einheitspreis (${currency})`, `Total Netto (${currency})`, `Ist-Kosten (${currency})`, `Abweichung (${currency})`];
+    const conv = (val: number) => currencyMode === 'fx' ? convertCurrencyAmount(val, 'CHF', currency, exchangeRates) : val;
     const rows: (string | number)[][] = [];
     budgetGroups.forEach(g => {
-      rows.push([g.pos, g.title, '--- Gruppe Total ---', '', '', '', calculateGroupTotal(g).toFixed(2), getAllTimeActualCostForGroup(g).toFixed(2), (getAllTimeActualCostForGroup(g) - calculateGroupTotal(g)).toFixed(2)]);
+      const gPlanned = calculateGroupTotal(g);
+      const gActual = getAllTimeActualCostForGroup(g);
+      rows.push([g.pos, g.title, '--- Gruppe Total ---', '', '', '', conv(gPlanned).toFixed(2), conv(gActual).toFixed(2), conv(gActual - gPlanned).toFixed(2)]);
       g.items.forEach(i => {
         const planned = i.total || ((i.qty || 0) * (i.unitPrice || 0));
         const actual = getAllTimeActualCostForItem(i.id);
-        rows.push([i.pos, g.title, i.description, i.qty, i.unit, i.unitPrice.toFixed(2), planned.toFixed(2), actual.toFixed(2), (actual - planned).toFixed(2)]);
+        rows.push([i.pos, g.title, i.description, i.qty, i.unit, conv(i.unitPrice).toFixed(2), conv(planned).toFixed(2), conv(actual).toFixed(2), conv(actual - planned).toFixed(2)]);
       });
     });
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';'))].join('\n');
@@ -1013,9 +1049,9 @@ export default function Finance() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Budgetplan_BKP_${projectHeader.project.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `Budgetplan_BKP_${currency}_${projectHeader.project.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
-    addToast('Budgetplan als CSV exportiert!', 'success');
+    addToast(`Budgetplan als CSV (${currency}) exportiert!`, 'success');
   };
 
   const handleImportCSV = () => {
@@ -1661,7 +1697,7 @@ export default function Finance() {
                       <th className="px-4 py-3 w-24">{t('unit')}</th>
                       <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
                       {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
-                      <th className="px-4 py-3 text-right w-36 text-blue-400 shrink-0">{t('total')} (CHF)</th>
+                      <th className="px-4 py-3 text-right w-36 text-blue-400 shrink-0">{t('total')} ({currency})</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/30">
@@ -1906,7 +1942,7 @@ export default function Finance() {
                                     <td className="px-4 py-2 text-xs text-text-muted font-medium">{item.pos}</td>
                                     <td className="px-4 py-2 text-text-primary font-medium flex items-center gap-2">
                                       {item.description}
-                                      {isItemOver && <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">+CHF {formatCHF(itemActual - item.total)}</span>}
+                                      {isItemOver && <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">+{currency} {formatCHF(itemActual - item.total)}</span>}
                                     </td>
                                     <td className="px-4 py-2 text-right text-text-primary">{formatCHF(item.total)}</td>
                                     <td className="px-4 py-2 text-right text-red-500 font-bold">{itemActual > 0 ? formatCHF(itemActual) : '-'}</td>
@@ -2139,6 +2175,58 @@ export default function Finance() {
                 </div>
               )}
             </div>
+
+            {/* Currency Selector & FX Switcher */}
+            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-[42px] shrink-0">
+              {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
+                <button
+                  key={c}
+                  onClick={() => handleCurrencyChange(c)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer",
+                    currency === c
+                      ? "bg-accent-ai text-white shadow-sm font-black"
+                      : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                  )}
+                  title={`Währung auf ${c} umstellen`}
+                >
+                  {c}
+                </button>
+              ))}
+
+              <div className="w-px h-4 bg-border/50 mx-0.5" />
+
+              {/* Mode Toggle: Live FX vs 1:1 Basis */}
+              <button
+                onClick={() => handleCurrencyModeChange(currencyMode === 'fx' ? 'display' : 'fx')}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer border",
+                  currencyMode === 'fx'
+                    ? "bg-purple-500/15 text-purple-300 border-purple-500/30 hover:bg-purple-500/25"
+                    : "bg-background/80 text-text-muted border-border/40 hover:text-text-primary"
+                )}
+                title={
+                  currencyMode === 'fx'
+                    ? `Live FX-Umrechnung aktiv (1 CHF = ${exchangeRates[currency]} ${currency}). Klicken für 1:1 Basis-Währung`
+                    : '1:1 Basis-Währung aktiv (keine Kursumrechnung). Klicken für Live FX-Umrechnung'
+                }
+              >
+                <ArrowLeftRight size={12} className={currencyMode === 'fx' ? "text-purple-400" : "text-text-muted"} />
+                <span className="hidden sm:inline">{currencyMode === 'fx' ? 'Live FX' : '1:1'}</span>
+              </button>
+
+              {/* FX Settings Button */}
+              <button
+                onClick={() => {
+                  setTempRates({ ...exchangeRates });
+                  setShowFxSettingsModal(true);
+                }}
+                className="p-1.5 rounded-md text-text-muted hover:text-accent-ai hover:bg-white/5 transition-colors cursor-pointer"
+                title="Wechselkurse (FX) anpassen"
+              >
+                <Settings2 size={14} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2151,6 +2239,19 @@ export default function Finance() {
           </div>
 
           <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+            {currency !== 'CHF' && currencyMode === 'fx' && (
+              <div
+                onClick={() => {
+                  setTempRates({ ...exchangeRates });
+                  setShowFxSettingsModal(true);
+                }}
+                className="hidden sm:flex items-center gap-1.5 px-3 h-[42px] bg-purple-500/10 border border-purple-500/25 hover:border-purple-500/40 rounded-lg text-xs font-semibold text-purple-300 shrink-0 cursor-pointer transition-colors"
+                title="Klicken, um den Wechselkurs zu ändern"
+              >
+                <Coins size={14} className="text-purple-400" />
+                <span>1 CHF = {exchangeRates[currency]} {currency}</span>
+              </div>
+            )}
             {activeTab !== 'budget' && (
               <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
                 <CalendarDays size={16} className="text-text-muted mr-1.5 shrink-0" />
@@ -2475,7 +2576,7 @@ export default function Finance() {
                             <input type="number" value={item.unitPrice || ''} onChange={e => handleBudgetChange(group.id, item.id, 'unitPrice', e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium outline-none text-right" disabled={activeVersion.status === 'approved'} />
                           </div>
                           <div className="text-right">
-                            <span className="text-[10px] text-text-muted font-bold uppercase block mb-1">Total (CHF)</span>
+                            <span className="text-[10px] text-text-muted font-bold uppercase block mb-1">Total ({currency})</span>
                             <span className={cn("text-lg font-bold", item.option > 0 ? "text-accent-ai" : "text-text-primary")}>{formatCHF(item.total + (includeOptions ? item.option : 0))}</span>
                           </div>
                         </div>
@@ -2566,7 +2667,7 @@ export default function Finance() {
                         <th className="px-4 py-3 w-24">{t('unit')}</th>
                         <th className="px-4 py-3 text-right w-24">{t('unit_price')}</th>
                         {includeOptions && <th className="px-4 py-3 text-right w-24 text-accent-ai">Option</th>}
-                        <th className="px-4 py-3 text-right w-36 text-blue-400 shrink-0">{t('total')} (CHF)</th>
+                        <th className="px-4 py-3 text-right w-36 text-blue-400 shrink-0">{t('total')} ({currency})</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
@@ -2955,6 +3056,7 @@ export default function Finance() {
             calculateGroupTotal={calculateGroupTotal}
             getAllTimeActualCostForGroup={getAllTimeActualCostForGroup}
             getAllTimeActualCostForItem={getAllTimeActualCostForItem}
+            currency={currency}
           />
         )}
       </UniversalPDFStudio>
@@ -2976,6 +3078,7 @@ export default function Finance() {
             projectHeader={projectHeader}
             budgetDetails={getBudgetDetails(incomingData.budgetPosId)}
             receiptType={receiptType}
+            currency={currency}
           />
         )}
       </UniversalPDFStudio>
@@ -3393,7 +3496,7 @@ export default function Finance() {
                         <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf').replace('CHF', currency)}</label>
                         <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
                       </div>
                       <div>
@@ -3522,7 +3625,7 @@ export default function Finance() {
 
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf')}</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf').replace('CHF', currency)}</label>
                         <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
                       </div>
                       <div>
@@ -3671,6 +3774,158 @@ export default function Finance() {
           addToast={addToast}
           currentVersionName={activeVersion?.name || 'Aktuelle Variante'}
         />,
+        document.body
+      )}
+
+      {/* FX & Currency Settings Modal */}
+      {isMounted && showFxSettingsModal && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/50 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                  <Coins size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-text-primary">Währung & Wechselkurse (FX)</h3>
+                  <p className="text-[11px] text-text-muted">Multi-Currency Einstellungen für dieses Projekt</p>
+                </div>
+              </div>
+              <button onClick={() => setShowFxSettingsModal(false)} className="text-text-muted hover:text-text-primary p-1.5 rounded-lg bg-background/80 hover:bg-background transition-colors cursor-pointer">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Mode Selection */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-wider block">Umrechnungs-Modus</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrencyMode('fx')}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                      currencyMode === 'fx'
+                        ? "border-purple-500 bg-purple-500/10 text-text-primary shadow-sm"
+                        : "border-border/60 bg-background/60 text-text-muted hover:text-text-primary"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs">Live FX-Kurs</span>
+                      <ArrowLeftRight size={13} className={currencyMode === 'fx' ? "text-purple-400" : "text-text-muted"} />
+                    </div>
+                    <p className="text-[10px] text-text-muted leading-relaxed">
+                      Rechnet Beträge dynamisch mit dem Kurs um (z.B. 100k CHF = 105k EUR).
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrencyMode('display')}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                      currencyMode === 'display'
+                        ? "border-accent-ai bg-accent-ai/10 text-text-primary shadow-sm"
+                        : "border-border/60 bg-background/60 text-text-muted hover:text-text-primary"
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs">1:1 Basis-Währung</span>
+                      <Coins size={13} className={currencyMode === 'display' ? "text-accent-ai" : "text-text-muted"} />
+                    </div>
+                    <p className="text-[10px] text-text-muted leading-relaxed">
+                      Zahlenwerte bleiben 1:1 identisch, nur das Währungssymbol wird gewechselt.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Exchange Rate Inputs */}
+              <div className="space-y-3 bg-background/60 border border-border/50 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Wechselkurse (Basis: 1 CHF)</label>
+                  <button
+                    type="button"
+                    onClick={() => setTempRates({ ...DEFAULT_EXCHANGE_RATES })}
+                    className="text-[11px] text-accent-ai hover:underline font-semibold cursor-pointer"
+                  >
+                    Standard-Kurse
+                  </button>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-3 bg-surface border border-border/60 rounded-lg p-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20">EUR</span>
+                      <span className="text-xs text-text-muted">1 CHF =</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={tempRates.EUR}
+                        onChange={e => setTempRates({ ...tempRates, EUR: parseFloat(e.target.value) || 1 })}
+                        className="w-24 bg-background border border-border/80 focus:border-accent-ai rounded-lg px-2.5 py-1 text-right text-xs font-bold text-text-primary outline-none"
+                      />
+                      <span className="text-xs font-semibold text-text-muted">€</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 bg-surface border border-border/60 rounded-lg p-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">USD</span>
+                      <span className="text-xs text-text-muted">1 CHF =</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={tempRates.USD}
+                        onChange={e => setTempRates({ ...tempRates, USD: parseFloat(e.target.value) || 1 })}
+                        className="w-24 bg-background border border-border/80 focus:border-accent-ai rounded-lg px-2.5 py-1 text-right text-xs font-bold text-text-primary outline-none"
+                      />
+                      <span className="text-xs font-semibold text-text-muted">$</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="text-[11px] text-text-muted bg-purple-500/5 border border-purple-500/15 rounded-xl p-3 flex items-start gap-2">
+                <Sparkles size={14} className="text-purple-400 shrink-0 mt-0.5" />
+                <span>
+                  Die Wechselkurse werden lokal im Browser gespeichert und gelten für alle Tabellen, Budgets, Hauptbuch-Exporte und PDF-Zusammenstellungen.
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-border bg-surface flex justify-end gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowFxSettingsModal(false)}
+                className="px-4 py-2 text-xs font-bold text-text-muted border border-border rounded-xl hover:text-text-primary hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExchangeRates({ ...tempRates });
+                  saveStoredExchangeRates(tempRates);
+                  saveCurrencyPreference(currency, currencyMode);
+                  setShowFxSettingsModal(false);
+                  addToast('Wechselkurse erfolgreich gespeichert!', 'success');
+                }}
+                className="px-4 py-2 bg-accent-ai text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity shadow-md cursor-pointer"
+              >
+                Speichern & Anwenden
+              </button>
+            </div>
+          </motion.div>
+        </div>,
         document.body
       )}
 
