@@ -7,6 +7,8 @@ import { useToast } from '../contexts/ToastContext';
 import { Layers, ArrowLeft, Sun, Moon } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
+import PasswordInput from './common/PasswordInput';
+import { calculatePasswordStrength, mapAuthErrorMessage } from '../utils/passwordValidation';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -123,11 +125,30 @@ export default function Signup() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (loading) return;
-    if (password.length < 6) {
-      return setError(currentLang === 'de' ? 'Das Passwort muss mindestens 6 Zeichen lang sein.' : 'Password must be at least 6 characters long.');
+
+    if (password.length < 8) {
+      return setError(currentLang === 'de' 
+        ? 'Das Passwort muss mindestens 8 Zeichen lang sein.' 
+        : 'Password must be at least 8 characters long.');
     }
+
+    const strength = calculatePasswordStrength(password, email, currentLang);
+    if (!strength.criteria.notCommonOrName) {
+      return setError(currentLang === 'de'
+        ? 'Das Passwort enthält deinen Namen oder leicht erratbare Wörter. Bitte wähle ein sichereres Passwort oder klicke auf "Sicheres Passwort generieren".'
+        : 'Password contains your name or common words. Please choose a stronger password or click "Generate secure password".');
+    }
+
+    if (strength.score < 2) {
+      return setError(currentLang === 'de'
+        ? 'Das Passwort ist zu einfach. Bitte kombiniere Groß-/Kleinbuchstaben, Zahlen oder Sonderzeichen – oder klicke auf "Sicheres Passwort generieren".'
+        : 'Password is too weak. Please combine upper/lowercase, numbers or symbols – or click "Generate secure password".');
+    }
+
     if (password !== passwordConfirm) return setError(t('password_mismatch'));
-    if (!agreedToTerms) return setError('Bitte akzeptiere die AGB und Datenschutzrichtlinien.');
+    if (!agreedToTerms) {
+      return setError(currentLang === 'de' ? 'Bitte akzeptiere die AGB und Datenschutzrichtlinien.' : 'Please agree to the Terms of Service and Privacy Policy.');
+    }
 
     try {
       setError(''); setLoading(true);
@@ -136,8 +157,9 @@ export default function Signup() {
         safeStorage.setItem('pending_invite_token', effectiveInviteToken);
       }
 
+      const cleanEmail = email.trim();
       const { error } = await supabase.auth.signUp({
-        email,
+        email: cleanEmail,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/app`,
@@ -149,11 +171,11 @@ export default function Signup() {
 
       if (error) throw error;
 
-      addToast('Account erfolgreich erstellt! Du wirst weitergeleitet...', 'success');
+      addToast(currentLang === 'de' ? 'Account erfolgreich erstellt! Du wirst weitergeleitet...' : 'Account successfully created! Redirecting...', 'success');
       navigate('/app');
     } catch (err: any) {
       console.error("Signup error detail:", err);
-      const errMsg = typeof err?.message === 'string' ? err.message : (typeof err === 'string' ? err : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.');
+      const errMsg = mapAuthErrorMessage(err, currentLang);
       setError(errMsg);
     } finally {
       setLoading(false);
@@ -229,31 +251,54 @@ export default function Signup() {
               )}
 
               <div>
-                <label className="block text-sm font-semibold leading-6 text-slate-700 dark:text-[#fafafa] mb-1">{t('email')}</label>
+                <label htmlFor="email" className="block text-sm font-semibold leading-6 text-slate-700 dark:text-[#fafafa] mb-1">{t('email')}</label>
                 <input 
-                  type="email" required value={email} onChange={(e) => setEmail(e.target.value)} 
+                  id="email"
+                  name="email"
+                  type="email" 
+                  required 
+                  autoComplete="username email"
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
                   className="block w-full rounded-xl bg-slate-50 dark:bg-[#09090b] py-2.5 text-slate-900 dark:text-[#fafafa] shadow-sm border border-slate-200 dark:border-[#27272a] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 sm:text-sm sm:leading-6 px-4 transition-all" 
                   placeholder={t('email_placeholder')} 
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold leading-6 text-slate-700 dark:text-[#fafafa] mb-1">{t('password')}</label>
-                <input 
-                  type="password" required value={password} onChange={(e) => setPassword(e.target.value)} 
-                  className="block w-full rounded-xl bg-slate-50 dark:bg-[#09090b] py-2.5 text-slate-900 dark:text-[#fafafa] shadow-sm border border-slate-200 dark:border-[#27272a] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 sm:text-sm sm:leading-6 px-4 transition-all" 
-                  placeholder={t('password_placeholder')} 
-                />
-              </div>
+              <PasswordInput
+                id="password"
+                name="new-password"
+                label={t('password')}
+                value={password}
+                onChange={setPassword}
+                placeholder={t('password_placeholder')}
+                autoComplete="new-password"
+                showStrengthMeter={true}
+                showGenerator={true}
+                onGeneratePassword={(newPwd) => {
+                  setPassword(newPwd);
+                  setPasswordConfirm(newPwd);
+                  addToast(currentLang === 'de' ? 'Sicheres Passwort generiert und kopiert!' : 'Secure password generated and copied!', 'success');
+                }}
+                emailForValidation={email}
+                lang={currentLang}
+                disabled={loading}
+              />
 
-              <div>
-                <label className="block text-sm font-semibold leading-6 text-slate-700 dark:text-[#fafafa] mb-1">{t('confirm_password')}</label>
-                <input 
-                  type="password" required value={passwordConfirm} onChange={(e) => setPasswordConfirm(e.target.value)} 
-                  className="block w-full rounded-xl bg-slate-50 dark:bg-[#09090b] py-2.5 text-slate-900 dark:text-[#fafafa] shadow-sm border border-slate-200 dark:border-[#27272a] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 sm:text-sm sm:leading-6 px-4 transition-all" 
-                  placeholder={t('confirm_password_placeholder')} 
-                />
-              </div>
+              <PasswordInput
+                id="confirm-password"
+                name="confirm-password"
+                label={t('confirm_password')}
+                value={passwordConfirm}
+                onChange={setPasswordConfirm}
+                placeholder={t('confirm_password_placeholder')}
+                autoComplete="new-password"
+                showStrengthMeter={false}
+                showGenerator={false}
+                lang={currentLang}
+                disabled={loading}
+                error={passwordConfirm && password !== passwordConfirm ? t('password_mismatch') : undefined}
+              />
 
               <div className="flex items-start gap-3 pt-2">
                 <div className="flex h-6 items-center">

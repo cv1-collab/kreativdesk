@@ -4,9 +4,10 @@ import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Command, Loader2, X, ArrowLeft, Sun, Moon } from 'lucide-react';
+import { Command, Loader2, X, ArrowLeft, Sun, Moon, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { safeStorage } from '../utils/safeStorage';
+import { mapAuthErrorMessage } from '../utils/passwordValidation';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -53,6 +54,7 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [bootStep, setBootStep] = useState(-1);
@@ -167,7 +169,7 @@ export default function Login() {
       });
     } catch (err: any) {
       console.error("Login error:", err);
-      setError(t('login_error')); 
+      setError(mapAuthErrorMessage(err, currentLang)); 
       setLoading(false);
     }
   }
@@ -260,9 +262,15 @@ export default function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa] mb-1.5">{t('email')}</label>
+              <label htmlFor="login-email" className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa] mb-1.5">{t('email')}</label>
               <input 
-                type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                id="login-email"
+                name="email"
+                type="email" 
+                required 
+                autoComplete="username email"
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all"
                 placeholder={t('email_placeholder')}
               />
@@ -270,16 +278,34 @@ export default function Login() {
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa]">{t('password')}</label>
+                <label htmlFor="login-password" className="block text-sm font-semibold text-slate-700 dark:text-[#fafafa]">{t('password')}</label>
                 <button type="button" onClick={() => setIsResetModalOpen(true)} className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer">
                   {t('forgot_password')}
                 </button>
               </div>
-              <input 
-                type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all"
-                placeholder={t('password_placeholder')}
-              />
+              <div className="relative">
+                <input 
+                  id="login-password"
+                  name="current-password"
+                  type={showPassword ? 'text' : 'password'} 
+                  required 
+                  autoComplete="current-password"
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-[#09090b] border border-slate-200 dark:border-[#27272a] rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#09090b] focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                  placeholder={t('password_placeholder')}
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-[#fafafa] transition-colors cursor-pointer"
+                  title={showPassword ? (currentLang === 'de' ? 'Passwort verbergen' : 'Hide password') : (currentLang === 'de' ? 'Passwort anzeigen' : 'Show password')}
+                  aria-label={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <button 

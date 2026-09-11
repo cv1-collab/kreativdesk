@@ -5,6 +5,8 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Lock, ArrowLeft, CheckCircle2, Loader2, Layers, Sun, Moon } from 'lucide-react';
+import PasswordInput from './common/PasswordInput';
+import { calculatePasswordStrength, mapAuthErrorMessage } from '../utils/passwordValidation';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
@@ -38,11 +40,27 @@ export default function ResetPassword() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (loading) return;
+
+    if (password.length < 8) {
+      return setError(isGerman ? 'Das Passwort muss mindestens 8 Zeichen lang sein.' : 'Password must be at least 8 characters.');
+    }
+
+    const strength = calculatePasswordStrength(password, undefined, isGerman ? 'de' : 'en');
+    if (!strength.criteria.notCommonOrName) {
+      return setError(isGerman
+        ? 'Das Passwort enthält leicht erratbare Wörter. Bitte wähle ein sichereres Passwort oder klicke auf "Sicheres Passwort generieren".'
+        : 'Password contains common words. Please choose a stronger password or click "Generate secure password".');
+    }
+
+    if (strength.score < 2) {
+      return setError(isGerman
+        ? 'Das Passwort ist zu einfach. Bitte kombiniere Groß-/Kleinbuchstaben, Zahlen oder Sonderzeichen.'
+        : 'Password is too weak. Please combine uppercase, lowercase, numbers or symbols.');
+    }
+
     if (password !== passwordConfirm) {
       return setError(isGerman ? 'Die Passwörter stimmen nicht überein.' : 'Passwords do not match.');
-    }
-    if (password.length < 6) {
-      return setError(isGerman ? 'Das Passwort muss mindestens 6 Zeichen lang sein.' : 'Password must be at least 6 characters.');
     }
 
     try {
@@ -63,7 +81,7 @@ export default function ResetPassword() {
         navigate('/app');
       }, 2000);
     } catch (err: any) {
-      setError(err.message || (isGerman ? 'Fehler beim Zurücksetzen des Passworts.' : 'Error updating password.'));
+      setError(mapAuthErrorMessage(err, isGerman ? 'de' : 'en'));
     } finally {
       setLoading(false);
     }
@@ -134,37 +152,39 @@ export default function ResetPassword() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-[#a1a1aa] uppercase tracking-wider mb-2">
-                  {isGerman ? 'Neues Passwort' : 'New Password'}
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#18181b] focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                </div>
-              </div>
+              <PasswordInput
+                id="reset-new-password"
+                name="new-password"
+                label={isGerman ? 'Neues Passwort' : 'New Password'}
+                value={password}
+                onChange={setPassword}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                showStrengthMeter={true}
+                showGenerator={true}
+                onGeneratePassword={(newPwd) => {
+                  setPassword(newPwd);
+                  setPasswordConfirm(newPwd);
+                  addToast(isGerman ? 'Sicheres Passwort generiert und kopiert!' : 'Secure password generated and copied!', 'success');
+                }}
+                lang={isGerman ? 'de' : 'en'}
+                disabled={loading}
+              />
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-[#a1a1aa] uppercase tracking-wider mb-2">
-                  {isGerman ? 'Passwort bestätigen' : 'Confirm Password'}
-                </label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    required
-                    value={passwordConfirm}
-                    onChange={(e) => setPasswordConfirm(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-slate-50 dark:bg-[#18181b] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-[#fafafa] placeholder:text-slate-400 dark:placeholder:text-[#52525b] focus:outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-[#18181b] focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                </div>
-              </div>
+              <PasswordInput
+                id="reset-confirm-password"
+                name="confirm-password"
+                label={isGerman ? 'Passwort bestätigen' : 'Confirm Password'}
+                value={passwordConfirm}
+                onChange={setPasswordConfirm}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                showStrengthMeter={false}
+                showGenerator={false}
+                lang={isGerman ? 'de' : 'en'}
+                disabled={loading}
+                error={passwordConfirm && password !== passwordConfirm ? (isGerman ? 'Die Passwörter stimmen nicht überein.' : 'Passwords do not match.') : undefined}
+              />
 
               <button
                 type="submit"
