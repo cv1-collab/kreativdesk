@@ -202,9 +202,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ai_clear: 'Clear',
 
     // 2.5 Real Architectural Practice (Editorial Showcase)
-    practice_badge: 'Real Architectural Practice',
-    practice_title: 'Engineered for Swiss Architects & General Contractors',
-    practice_subtitle: 'No anonymous stock photos or fake mockups: How Zurich planning teams, site managers, and owner representatives work with Kreativ Desk every day.',
+    practice_badge: 'Real Architecture & Design Practice',
+    practice_title: 'Engineered for Swiss Architects, General Contractors, Scenographers & Design Agencies',
+    practice_subtitle: 'No anonymous stock photos or fake mockups: How Zurich planning teams, scenographers, design agencies, site managers, and owner representatives work with Kreativ Desk every day.',
     practice_c1_alt: 'Sarah Meier at workstation with Kreativ Desk',
     practice_c1_tag: 'ETH / SIA Design',
     practice_c1_title: 'Color & Material Concept',
@@ -428,9 +428,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ai_clear: 'Schliessen',
 
     // 2.5 Reale Architekturpraxis (Editorial Showcase)
-    practice_badge: 'Reale Architekturpraxis',
-    practice_title: 'Entwickelt für Schweizer Architekten & Generalunternehmer',
-    practice_subtitle: 'Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Zürcher Planerteams, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.',
+    practice_badge: 'Reale Architektur- & Designpraxis',
+    practice_title: 'Entwickelt für Schweizer Architekten, Generalunternehmer, Szenografen & Design-Agenturen',
+    practice_subtitle: 'Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Zürcher Planerteams, Szenografen, Design-Agenturen, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.',
     practice_c1_alt: 'Sarah Meier am Arbeitsplatz mit Kreativ Desk',
     practice_c1_tag: 'ETH / SIA Entwurf',
     practice_c1_title: 'Farb- & Materialkonzept',
