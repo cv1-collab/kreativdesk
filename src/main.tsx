@@ -17,7 +17,9 @@ if (typeof window !== 'undefined') {
            s.includes('importing a module script failed') ||
            s.includes('is not a valid javascript mime type') ||
            s.includes('mime type') ||
-           s.includes('text/html');
+           s.includes('text/html') ||
+           s.includes('supabaseurl is required') ||
+           s.includes('supabase url');
   };
 
   const attemptReload = () => {

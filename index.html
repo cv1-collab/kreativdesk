@@ -23,6 +23,32 @@
     <meta name="twitter:title" content="Kreativ Desk OS – Das Operating System für komplexe Projekte" />
     <meta name="twitter:description" content="Schweizer OS für Bau- & Kreativprojekte. 3D BIM, Baurapporte, Finanzen & KI-Studio." />
     <meta name="twitter:image" content="https://www.kreativdesk.ch/pwa-512x512.png" />
+
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <!-- Automatische Bereinigung veralteter Service-Worker & Caches früherer Deployments -->
+    <script>
+      (function() {
+        var APP_CACHE_VERSION = 'kd_v2_2026_09_11_fix';
+        if (typeof window !== 'undefined') {
+          if (localStorage.getItem('kd_pwa_version') !== APP_CACHE_VERSION) {
+            localStorage.setItem('kd_pwa_version', APP_CACHE_VERSION);
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                names.forEach(function(name) { caches.delete(name); });
+              });
+            }
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                registrations.forEach(function(r) { r.unregister(); });
+              });
+            }
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

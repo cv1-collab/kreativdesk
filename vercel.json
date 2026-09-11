@@ -9,8 +9,37 @@
       "destination": "/api/[...route]?route=$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/|sw\\.js|workbox-.*|manifest\\.webmanifest|favicon\\.ico|pwa-.*|masked-icon\\.svg|apple-touch-icon\\.png).*)",
       "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     }
   ]
 }
