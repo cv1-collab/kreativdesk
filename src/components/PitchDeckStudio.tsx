@@ -1932,7 +1932,7 @@ export default function PitchDeckStudio({
       const part1Items = autoItems.slice(0, CHUNK_SIZE);
       const updatedSlide1 = { ...targetSlide, title: `Inhaltsverzeichnis & Agenda (1/${totalParts})`, agendaItems: part1Items };
       
-      let newSlides = [...slides];
+      const newSlides = [...slides];
       newSlides[curIndex] = updatedSlide1;
 
       try {
@@ -2010,7 +2010,7 @@ export default function PitchDeckStudio({
       notes: ''
     };
 
-    let newSlides = [...slides];
+    const newSlides = [...slides];
     newSlides[curIndex] = updatedSlide1;
     newSlides.splice(curIndex + 1, 0, insertedSlide2);
 
