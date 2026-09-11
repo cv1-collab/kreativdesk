@@ -141,8 +141,9 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { 
     setTimeout(() => setIsMounted(true), 0);
-    if (!currentUser?.companyId) return;
-    getCompanyProfileConfig(currentUser.companyId).then(cfg => {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
+    getCompanyProfileConfig(safeCompanyId).then(cfg => {
       const senderLines = [cfg.agencyName, cfg.address, `${cfg.zipCode || ''} ${cfg.city || ''}`.trim()].filter(Boolean).join('\n');
       setFormData(prev => ({
         ...prev,
@@ -153,7 +154,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           : `Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: ${cfg.paymentTermsDays || 30} Tage`
       }));
     });
-  }, [currentUser?.companyId, type]);
+  }, [currentUser, type]);
 
   const [activeProjectId, setActiveProjectId] = useState<string>('global');
   const [formData, setFormData] = useState(() => ({ 

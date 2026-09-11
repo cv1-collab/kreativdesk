@@ -904,7 +904,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          finalFileName = finalFileToUpload.name;
       }
 
-      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, currentUser?.companyId || 'global', 'cad_plans');
+      const url = await uploadFileWithFallback(finalFileToUpload, finalFileName, safeCompId || 'global', 'cad_plans');
       
       const reader = new FileReader();
       reader.onloadend = () => { sessionImageCache[url] = reader.result as string; };
@@ -1397,13 +1397,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     
     if (currentUser) {
       try {
+        const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
         const payload: any = {
           prompt: newPin.description || 'CAD Mangel',
           description: `Erfasst im 2D Plan Editor (${planName || 'Unbenannt'}).`,
           status: 'To Do',
           severity: 'High',
           project_id: currentProjectId || 'global',
-          company_id: currentUser.companyId || null,
+          company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           position: { x: newPin.x, y: newPin.y, z: 0 },
           created_at: new Date().toISOString()

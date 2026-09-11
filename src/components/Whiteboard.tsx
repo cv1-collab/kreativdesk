@@ -447,12 +447,13 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       return;
     }
     const file = e.target.files?.[0];
-    if (!file || !currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!file || !currentUser || !safeCompanyId) return;
 
     setIsUploadingMedia(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const filePath = `${currentUser.companyId}/whiteboardBackgrounds/${currentUser.uid}/${Date.now()}.${fileExt}`;
+      const filePath = `${safeCompanyId}/whiteboardBackgrounds/${currentUser.uid}/${Date.now()}.${fileExt}`;
       const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
       let downloadUrl = '';
       if (!uploadErr) {
@@ -970,9 +971,10 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       
       if (sketchDataUrl && currentUser) {
         try {
+          const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
           const fetchRes = await fetch(sketchDataUrl);
           const blob = await fetchRes.blob();
-          const fileName = `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/tmp_${Date.now()}.png`;
+          const fileName = `${safeCompanyId}/whiteboardExports/${currentUser.uid}/tmp_${Date.now()}.png`;
           const { error: upErr } = await supabase.storage.from('avatars').upload(fileName, blob, { upsert: true });
           if (!upErr) {
             const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
@@ -1097,25 +1099,27 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   };
 
   const ensureFolder = async (folderName: string, docCategory: string) => {
-    if (!currentUser || !currentUser.companyId) return '';
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId) return '';
     const currentProjectId = activeProject?.id || 'global';
     const { data: existingFolder } = await supabase
       .from('documents')
       .select('id')
-      .eq('company_id', currentUser.companyId)
+      .eq('company_id', safeCompanyId)
       .eq('name', folderName)
       .eq('is_folder', true)
       .maybeSingle();
     if (existingFolder) return existingFolder.id;
-    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().maybeSingle();
+    const { data: newF } = await supabase.from('documents').insert({ name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: currentProjectId, created_at: new Date().toISOString() }).select().maybeSingle();
     return newF ? newF.id : '';
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId) return;
     try {
       const fileName = `Whiteboard_${(activeProject?.name || 'Unbenannt').replace(/\.[^/.]+$/, "")}_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`;
+      const filePath = `${safeCompanyId}/documents/${currentUser.uid}/${fileName}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -1124,14 +1128,15 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
       const docCategory = activeProject?.id === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("Whiteboards", docCategory);
       await supabase.from('documents').insert({
-        name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: activeProject?.id || null, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
+        name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: activeProject?.id || null, folder_id: targetFolderId, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, uploaded_by: currentUser.uid, type: 'application/pdf', size: formatBytes(blob.size), is_folder: false, created_at: new Date().toISOString(), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH')
       });
       addToast(t('saved_cloud'), 'success'); setIsPdfStudioOpen(false);
     } catch (error) { console.error(error); addToast('Fehler beim Speichern in der Cloud.', 'error'); }
   };
 
   const handleSaveToCloud = async () => {
-    if (!stageRef.current || !currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!stageRef.current || !currentUser || !safeCompanyId) return;
     setIsSavingToCloud(true); 
     setSelectedShapeId(null); 
     
@@ -1142,7 +1147,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           if (!dataUrl) throw new Error("Konnte Bild nicht erstellen");
           
           const fileName = `Whiteboard_Skizze_${new Date().getTime()}.png`;
-          const filePath = `${currentUser.companyId}/documents/${currentUser.uid}/${fileName}`;
+          const filePath = `${safeCompanyId}/documents/${currentUser.uid}/${fileName}`;
           
           const fetchRes = await fetch(dataUrl); 
           const blob = await fetchRes.blob();
@@ -1154,7 +1159,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           
           let targetFolderId = '';
           if (projectId) {
-            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', currentUser.companyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).maybeSingle();
+            const { data: existingF } = await supabase.from('documents').select('id').eq('company_id', safeCompanyId).eq('name', `Projekt: ${activeProject?.name || 'Unbenannt'}`).eq('is_folder', true).maybeSingle();
             if (existingF) targetFolderId = existingF.id;
           }
           
@@ -1165,7 +1170,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             size: formatBytes(blob.size), 
             type: 'image/png', 
             owner_id: currentUser.uid, 
-            company_id: currentUser.companyId, 
+            company_id: safeCompanyId, 
             created_at: new Date().toISOString(), 
             uploaded_at: new Date().toISOString(), 
             is_folder: false, 
@@ -1216,7 +1221,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
 
   const handleSendToSlides = async () => {
-    if (!stageRef.current || !currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!stageRef.current || !currentUser || !safeCompanyId) return;
     setIsSending(true); setSendSuccess(false); setSelectedShapeId(null);
     try {
       setTimeout(async () => {
@@ -1224,7 +1230,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
         if (!uri) return;
         
         const fileName = `PitchDeck_Slide_${Date.now()}.jpg`;
-        const filePath = `${currentUser.companyId}/whiteboardExports/${currentUser.uid}/${fileName}`;
+        const filePath = `${safeCompanyId}/whiteboardExports/${currentUser.uid}/${fileName}`;
         const fetchRes = await fetch(uri); 
         const blob = await fetchRes.blob();
         await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
@@ -1237,7 +1243,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             id, 
             image_url: downloadUrl, 
             project_id: activeProjectId || 'global', 
-            company_id: currentUser.companyId, 
+            company_id: safeCompanyId, 
             created_at: new Date().toISOString() 
           });
         } catch (wbErr) {}
@@ -1250,7 +1256,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             file_url: downloadUrl,
             project_id: activeProjectId || 'global',
             owner_id: currentUser.uid,
-            company_id: currentUser.companyId,
+            company_id: safeCompanyId,
             category: 'whiteboard',
             folder_id: 'root',
             is_folder: false,
@@ -1306,7 +1312,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   };
 
   const stopRecording = async () => {
-    if (!mediaRecorderRef.current || !currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!mediaRecorderRef.current || !currentUser || !safeCompanyId) return;
     return new Promise<void>((resolve) => {
       mediaRecorderRef.current!.onstop = async () => {
         setIsRecording(false); 
@@ -1380,14 +1387,14 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               const newNoteRecord = {
                 id,
                 ...payload,
-                company_id: currentUser.companyId,
+                company_id: safeCompanyId,
                 project_id: activeProjectId || 'global',
                 created_at: new Date().toISOString()
               };
 
               await supabase.from('audio_notes').insert({
                 id,
-                company_id: currentUser.companyId,
+                company_id: safeCompanyId,
                 project_id: activeProjectId || 'global',
                 transcript: transcription,
                 audio_url: JSON.stringify(payload),

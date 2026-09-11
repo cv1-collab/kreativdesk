@@ -1645,7 +1645,8 @@ export default function PitchDeckStudio({
 
     if (targetId && !targetId.startsWith('demo-')) {
       try {
-        const data = await fetchSystemConfigJSON(`finance_${targetId}`, currentUser?.companyId);
+        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+        const data = await fetchSystemConfigJSON(`finance_${targetId}`, safeCompanyId);
         if (data) {
           const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
           if (activeVersion && activeVersion.groups) {
@@ -1727,7 +1728,8 @@ export default function PitchDeckStudio({
       if (targetId && !targetId.startsWith('demo-')) {
         let finConfig: any = null;
         try {
-          finConfig = await fetchSystemConfigJSON(`finance_${targetId}`, currentUser?.companyId);
+          const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+          finConfig = await fetchSystemConfigJSON(`finance_${targetId}`, safeCompanyId);
         } catch (e) {}
         const data = (finConfig as any)?.data || finConfig;
         if (data) {
@@ -1791,7 +1793,8 @@ export default function PitchDeckStudio({
           const localCache = safeStorage.getItem<any>(`schedule_cache_${targetId}`, null);
           let tasks: any[] = localCache ? (localCache.ganttTasks || []) : [];
           if (tasks.length === 0) {
-            const data = await fetchSystemConfigJSON(`schedule_${targetId}`, currentUser?.companyId);
+            const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+            const data = await fetchSystemConfigJSON(`schedule_${targetId}`, safeCompanyId);
             tasks = data?.ganttTasks || data?.schedules?.[0]?.ganttTasks || [];
           }
           if (tasks.length > 0) {

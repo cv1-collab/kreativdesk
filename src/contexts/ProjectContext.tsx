@@ -89,7 +89,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const getSafeCompanyId = useCallback(() => {
     if (!currentUser) return '';
     const previewCompanyId = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('admin_preview_company_id') : null;
-    return previewCompanyId || currentUser.companyId || currentUser.uid || '';
+    return previewCompanyId || currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid || '';
   }, [currentUser]);
 
   const fetchProjects = useCallback(async () => {

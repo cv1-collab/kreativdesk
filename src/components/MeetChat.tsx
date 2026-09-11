@@ -877,8 +877,9 @@ export default function MeetChat() {
         setIsAITyping(true);
         let knowledgeContext = '';
         try {
-          if (currentUser?.companyId) {
-            const { data: docs } = await supabase.from('documents').select('*').eq('company_id', currentUser.companyId);
+          const safeCompId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+          if (safeCompId) {
+            const { data: docs } = await supabase.from('documents').select('*').eq('company_id', safeCompId);
             if (docs && docs.length > 0) {
               knowledgeContext = `\n\nRelevant Knowledge Base Excerpts:\n${docs.slice(0, 3).map(c => `--- Document: ${c.name} ---\n${c.url}\n`).join('\n')}`;
             }
@@ -937,7 +938,8 @@ export default function MeetChat() {
       setIsScheduleModalOpen(false);
       return;
     }
-    if (!newCallEvent.title || !newCallEvent.date || !currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!newCallEvent.title || !newCallEvent.date || !currentUser || !safeCompanyId) return;
     try {
       const eventId = `evt-${Date.now()}`;
       const targetProjectId = projectId || activeProjectId || 'internal';
@@ -974,7 +976,7 @@ export default function MeetChat() {
         meeting_link: meetingLink,
         projectId: targetProjectId,
         project_id: targetProjectId,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         owner_id: currentUser.uid,
         participants: allParticipants
       };
@@ -982,19 +984,19 @@ export default function MeetChat() {
       setUpcomingCalls(prev => [newCallObj, ...prev]);
 
       // Save to safe storage cache for Agenda tab
-      const agendaCacheKey = `agenda_cache_${currentUser.companyId}`;
+      const agendaCacheKey = `agenda_cache_${safeCompanyId}`;
       const existingAgendaCache = safeStorage.getJSON<any[]>(agendaCacheKey, []);
       safeStorage.setJSON(agendaCacheKey, [newCallObj, ...existingAgendaCache]);
 
       // 2. Backup to documents (both calls and agenda events)
       try {
-        const existingConfig = await fetchSystemConfigJSON<{ calls?: any[] }>(`schedule_calls_${currentUser.companyId}`, currentUser.companyId);
+        const existingConfig = await fetchSystemConfigJSON<{ calls?: any[] }>(`schedule_calls_${safeCompanyId}`, safeCompanyId);
         const cCalls = existingConfig?.calls || [];
-        await saveSystemConfigJSON(`schedule_calls_${currentUser.companyId}`, { calls: [newCallObj, ...cCalls], companyId: currentUser.companyId }, currentUser.companyId, currentUser.uid);
+        await saveSystemConfigJSON(`schedule_calls_${safeCompanyId}`, { calls: [newCallObj, ...cCalls], companyId: safeCompanyId }, safeCompanyId, currentUser.uid);
 
-        const agendaConfig = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${currentUser.companyId}`, currentUser.companyId);
+        const agendaConfig = await fetchSystemConfigJSON<{ events?: any[] }>(`agenda_events_${safeCompanyId}`, safeCompanyId);
         const cEvents = agendaConfig?.events || [];
-        await saveSystemConfigJSON(`agenda_events_${currentUser.companyId}`, { events: [newCallObj, ...cEvents], companyId: currentUser.companyId }, currentUser.companyId, currentUser.uid);
+        await saveSystemConfigJSON(`agenda_events_${safeCompanyId}`, { events: [newCallObj, ...cEvents], companyId: safeCompanyId }, safeCompanyId, currentUser.uid);
       } catch (backupErr) { }
 
       // 3. Insert into calendar_events with standard DB schema
@@ -1013,7 +1015,7 @@ export default function MeetChat() {
           start_date: newCallEvent.date || new Date().toISOString().split('T')[0],
           end_date: newCallEvent.date || new Date().toISOString().split('T')[0],
           location: meetingLink || '',
-          company_id: currentUser.companyId,
+          company_id: safeCompanyId,
           project_id: targetProjectId,
           created_at: new Date().toISOString()
         };
@@ -1023,7 +1025,7 @@ export default function MeetChat() {
           await supabase.from('calendar_events').insert({
             title: newCallEvent.title,
             description: descParts,
-            company_id: currentUser.companyId,
+            company_id: safeCompanyId,
             created_at: new Date().toISOString()
           });
         }
@@ -1033,7 +1035,7 @@ export default function MeetChat() {
 
       // Trigger notification bell
       await sendNotification({
-        companyId: currentUser.companyId,
+        companyId: safeCompanyId,
         title: 'Neuer Video Call geplant',
         message: `Video Call "${newCallEvent.title}" am ${newCallEvent.date} um ${newCallEvent.time} Uhr angesetzt.`,
         type: 'call',

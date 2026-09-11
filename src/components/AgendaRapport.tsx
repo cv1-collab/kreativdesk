@@ -63,20 +63,21 @@ export default function AgendaRapport() {
 
   // === MULTI-TENANT FILTERUNG ===
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
 
     const fetchEntries = async () => {
       const { data } = await supabase
         .from('time_entries')
         .select('*')
-        .eq('company_id', currentUser.companyId)
+        .eq('company_id', safeCompanyId)
         .order('date', { ascending: false });
       if (data) setTimeEntries(data);
       setLoading(false);
     };
 
     fetchEntries();
-  }, [currentUser?.companyId]);
+  }, [currentUser]);
 
   if (loading) return <div className="flex items-center justify-center p-12"><Loader2 className="animate-spin text-accent-ai" /></div>;
 

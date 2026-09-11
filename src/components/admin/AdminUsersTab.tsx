@@ -144,7 +144,7 @@ export default function AdminUsersTab() {
 
         const activeList = profs.map(u => {
           if (checkIsSuperAdmin(u.email)) {
-            return { ...u, role: 'Super_admin', plan: 'Enterprise', isPending: false };
+            return { ...u, role: 'super_admin', plan: 'Enterprise', isPending: false };
           }
           return { ...u, isPending: false };
         });
@@ -437,14 +437,16 @@ export default function AdminUsersTab() {
               <div>
                 <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('role')}</label>
                 <select 
-                  value={editingUser.role || 'member'}
+                  value={editingUser.role?.toLowerCase() || 'employee'}
                   onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 capitalize"
                 >
-                  <option value="owner">Owner (Admin)</option>
+                  <option value="super_admin">Super Admin</option>
+                  <option value="owner">Owner / Admin</option>
                   <option value="management">Management</option>
-                  <option value="employee">Mitarbeiter</option>
+                  <option value="employee">Mitarbeiter (Internal)</option>
                   <option value="external">Externer Planer</option>
+                  <option value="client">Kunde / Bauherr</option>
                 </select>
               </div>
 

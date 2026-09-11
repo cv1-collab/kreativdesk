@@ -72,7 +72,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
   const checkSeatLimit = (): boolean => {
     if (!currentUser) return true;
-    if (checkIsSuperAdmin(currentUser.email)) return true;
+    if (checkIsSuperAdmin(currentUser.email) || currentUser?.role?.toLowerCase() === 'super_admin' || currentUser?.role?.toLowerCase() === 'admin') return true;
     const plan = currentUser.plan || 'Starter';
     if (plan.includes('Trial') || plan === 'Expert' || plan === 'Enterprise' || plan === 'Studio' || plan === 'Agency') return true;
     const maxSeats = plan === 'Starter' ? 3 : 10;

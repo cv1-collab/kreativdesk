@@ -49,12 +49,13 @@ export default function API() {
       ]);
       return;
     }
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
     try {
       const { data } = await supabase
         .from('api_keys')
         .select('*')
-        .eq('company_id', currentUser.companyId)
+        .eq('company_id', safeCompanyId)
         .order('created_at', { ascending: false });
 
       if (data) {
@@ -86,7 +87,7 @@ export default function API() {
       setSecretKey('whsec_demo_9847291048123abcdef');
       return;
     }
-    const companyId = currentUser?.companyId;
+    const companyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const epList = webhookNotifier.getWebhooks(companyId);
     setEndpoints(epList);
     const sec = webhookNotifier.getSecretKey(companyId);
@@ -110,13 +111,14 @@ export default function API() {
       addToast(isDe ? 'API-Key Erstellung ist in der Demo deaktiviert.' : 'API Key creation is disabled in demo.', 'info');
       return;
     }
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
     try {
       const newKey = `kd_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
       await supabase.from('api_keys').insert({
         name: `API Key ${keys.length + 1}`,
         key: newKey,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         created_at: new Date().toISOString()
       });
       addToast(isDe ? 'Neuer API Key erstellt!' : 'New API Key generated!', 'success');
@@ -145,7 +147,8 @@ export default function API() {
       addToast(isDe ? 'In der Demo-Vorschau geschützt.' : 'Protected in demo.', 'info');
       return;
     }
-    const newSec = webhookNotifier.regenerateSecretKey(currentUser?.companyId);
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const newSec = webhookNotifier.regenerateSecretKey(safeCompanyId);
     setSecretKey(newSec);
     addToast(isDe ? 'Neuer Webhook Secret Key generiert!' : 'New Webhook Secret Key generated!', 'success');
   };
@@ -155,9 +158,10 @@ export default function API() {
       addToast(isDe ? 'In der Demo-Vorschau geschützt.' : 'Protected in demo.', 'info');
       return;
     }
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const updated = endpoints.map(ep => ep.id === id ? { ...ep, active: !ep.active } : ep);
     setEndpoints(updated);
-    webhookNotifier.saveWebhooks(updated, currentUser?.companyId);
+    webhookNotifier.saveWebhooks(updated, safeCompanyId);
     addToast(isDe ? 'Webhook-Status aktualisiert' : 'Webhook status updated', 'success');
   };
 
@@ -166,9 +170,10 @@ export default function API() {
       addToast(isDe ? 'Demo-Webhooks können nicht gelöscht werden.' : 'Demo webhooks cannot be deleted.', 'info');
       return;
     }
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const updated = endpoints.filter(ep => ep.id !== id);
     setEndpoints(updated);
-    webhookNotifier.saveWebhooks(updated, currentUser?.companyId);
+    webhookNotifier.saveWebhooks(updated, safeCompanyId);
     addToast(isDe ? 'Webhook gelöscht' : 'Webhook deleted', 'info');
   };
 
@@ -207,9 +212,10 @@ export default function API() {
       created_at: new Date().toISOString()
     };
 
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const updated = [...endpoints, newEp];
     setEndpoints(updated);
-    webhookNotifier.saveWebhooks(updated, currentUser?.companyId);
+    webhookNotifier.saveWebhooks(updated, safeCompanyId);
 
     setNewEndpointName('');
     setNewEndpointUrl('');

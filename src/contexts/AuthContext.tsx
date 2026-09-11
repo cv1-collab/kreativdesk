@@ -18,6 +18,7 @@ export interface AppUser {
   stripeCustomerId?: string;
   plan?: string;
   companyId?: string;
+  company_id?: string;
   trialEndsAt?: string;
   canViewFinance?: boolean;
   canApproveBudget?: boolean;
@@ -247,7 +248,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           hasActiveSubscription: profile.has_active_subscription ?? true,
           stripeCustomerId: profile.stripe_customer_id,
           plan: profile.plan || 'Free Trial',
-          companyId: effectiveCompanyId || undefined,
+          companyId: effectiveCompanyId || user.id,
+          company_id: effectiveCompanyId || user.id,
           trialEndsAt: profile.trial_ends_at,
           canViewFinance: profile.can_view_finance ?? true,
           canApproveBudget: profile.can_approve_budget ?? true,
@@ -334,7 +336,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           photoURL: '',
           emailVerified: true,
           role: isInvitedUser ? targetRole : 'owner',
-          companyId: effectiveCompanyId || undefined,
+          companyId: effectiveCompanyId || user.id,
+          company_id: effectiveCompanyId || user.id,
           hasActiveSubscription: true,
           trialEndsAt: newProfile.trial_ends_at || undefined,
           canViewFinance: true,
@@ -419,7 +422,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser?.id]);
 
   const updateCurrentUser = (updates: Partial<AppUser>) => {
-    setCurrentUser(prev => prev ? { ...prev, ...updates } : null);
+    setCurrentUser(prev => prev ? { ...prev, ...updates, company_id: updates.companyId || updates.company_id || prev.company_id || prev.companyId } : null);
   };
 
   const refreshUserProfile = async () => {

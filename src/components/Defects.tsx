@@ -357,7 +357,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
        return;
     }
 
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !currentProjectId) return;
     setIsSubmitting(true);
 
     if (!offlineSyncManager.isOnline()) {
@@ -365,7 +366,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       offlineSyncManager.saveOfflineDefect({
         id: offlineId,
         project_id: currentProjectId,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         owner_id: currentUser.uid,
         prompt: currentDefect.title || 'Mangel Baustelle',
         description: currentDefect.description || '',
@@ -393,7 +394,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       } else { 
         const payload: any = { 
           project_id: currentProjectId, 
-          company_id: currentUser.companyId || null,
+          company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           prompt: currentDefect.title || 'Neuer Mangel',
           description: currentDefect.description || '',
@@ -569,10 +570,11 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
       return;
     }
 
-    if (!currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId) return;
     try {
       const fileName = `Maengelliste_${activeProject?.name || 'Projekt'}_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -583,7 +585,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         const { data: existingFolder } = await supabase
           .from('documents')
           .select('id')
-          .eq('company_id', currentUser.companyId)
+          .eq('company_id', safeCompanyId)
           .eq('name', 'Mängel & Tickets')
           .eq('project_id', currentProjectId)
           .maybeSingle();
@@ -597,7 +599,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
             category: 'projects',
             project_id: currentProjectId,
             owner_id: currentUser.uid,
-            company_id: currentUser.companyId,
+            company_id: safeCompanyId,
             created_at: new Date().toISOString()
           }).select().maybeSingle();
           if (newF) targetFolderId = newF.id;
@@ -611,7 +613,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
         size: `${Math.round(blob.size / 1024)} KB`, 
         type: 'application/pdf', 
         owner_id: currentUser.uid, 
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         uploaded_by: currentUser.uid, 
         created_at: new Date().toISOString(), 
         uploaded_at: new Date().toISOString(), 

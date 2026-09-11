@@ -428,7 +428,8 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   const mainInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!projectId || !activeModelId || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!projectId || !activeModelId || !safeCompanyId) return;
 
     if (activeModelId === 'default') {
       const cached = sessionStorage.getItem(`bim_cache_${projectId}_default`);
@@ -465,7 +466,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     if (isDemoMode) return;
 
     const fetchDefects = async () => {
-      const { data } = await supabase.from('defects').select('*').eq('company_id', currentUser.companyId).eq('project_id', projectId);
+      const { data } = await supabase.from('defects').select('*').eq('company_id', safeCompanyId).eq('project_id', projectId);
       if (data) {
         const loadedPins: any[] = [];
         data.forEach((d: any) => {
@@ -640,13 +641,14 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
     if (currentUser) {
       try {
+        const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
         const payload: any = {
           prompt: desc || 'Neuer 3D Mangel',
           description: `Erfasst im 3D-Viewer (${activeProject?.name || 'Modell'}).`,
           status: 'To Do',
           severity: 'High',
           project_id: projectId || 'global',
-          company_id: currentUser.companyId || null,
+          company_id: safeCompanyId || null,
           owner_id: currentUser.uid || null,
           model_id: activeModelId,
           position: { x: point.x, y: point.y, z: point.z },
@@ -858,13 +860,14 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
   };
 
   const handleSaveRenderToCloud = async () => {
-    if (!generatedImage || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!generatedImage || !safeCompanyId) return;
     setIsUploading(true);
     try {
       const res = await fetch(generatedImage);
       const blob = await res.blob();
       const fileName = `AI_Render_${activeStyle}_${Date.now()}.png`;
-      const filePath = `${currentUser.companyId}/ai_renders/${fileName}`;
+      const filePath = `${safeCompanyId}/ai_renders/${fileName}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -872,7 +875,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
       const docCategory = projectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolder("KI Renderings", docCategory);
-      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: projectId, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: currentUser.companyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
+      await supabase.from('documents').insert({ name: fileName, url: downloadUrl, file_url: downloadUrl, project_id: projectId, folder_id: targetFolderId, owner_id: currentUser.uid, uploaded_by: currentUser.uid, company_id: safeCompanyId, type: 'image/png', size: formatBytes(blob.size), uploaded_at: new Date().toISOString(), date: new Date().toLocaleDateString('de-CH') });
       addToast(t('render_saved'), 'success'); setShowRenderModal(false); setGeneratedImage(null);
     } catch (err) { addToast(t('error_saving_cloud'), 'error'); } finally { setIsUploading(false); }
   };
@@ -899,9 +902,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
   const handleSavePdfToCloud = async (blob: Blob) => {
     try {
-      if (!currentUser || !currentUser.companyId) return;
+      const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+      if (!currentUser || !safeCompanyId) return;
       const fileName = `BIM_Report_${Date.now()}.pdf`;
-      const filePath = `${currentUser.companyId}/pdf_exports/${fileName}`;
+      const filePath = `${safeCompanyId}/pdf_exports/${fileName}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, blob, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -919,7 +923,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         category: docCategory, 
         owner_id: currentUser.uid,
         uploaded_by: currentUser.uid,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         type: 'application/pdf',
         size: formatBytes(blob.size), 
         is_folder: false,

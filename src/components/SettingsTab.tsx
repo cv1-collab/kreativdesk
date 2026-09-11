@@ -239,10 +239,9 @@ export default function SettingsTab() {
 
   // Profildaten laden
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!compId) return;
     const fetchCompany = async () => {
-      const compId = currentUser.companyId;
-      
       // 1. Fetch Company row
       const { data: comp } = await supabase.from('companies').select('*').eq('id', compId).maybeSingle();
       let foundComp = comp;
@@ -439,15 +438,14 @@ export default function SettingsTab() {
   // Einstellungen speichern
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser?.companyId) return;
+    const compId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!compId) return;
     setIsSaving(true);
     try {
       let formattedWebsite = website.trim();
       if (formattedWebsite && !/^https?:\/\//i.test(formattedWebsite)) {
         formattedWebsite = `https://${formattedWebsite}`;
       }
-
-      const compId = currentUser.companyId;
 
       // Complete Company Config Payload
       const profileConfig = {
@@ -502,10 +500,11 @@ export default function SettingsTab() {
   // Logo hochladen
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!file || !safeCompanyId) return;
     setIsUploadingLogo(true);
     try {
-      const filePath = `${currentUser.companyId}/company_assets/logo_${Date.now()}`;
+      const filePath = `${safeCompanyId}/company_assets/logo_${Date.now()}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -524,10 +523,11 @@ export default function SettingsTab() {
 
   const handleTermsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!file || !safeCompanyId) return;
     setIsUploadingTerms(true);
     try {
-      const filePath = `${currentUser.companyId}/company_assets/terms_${Date.now()}.pdf`;
+      const filePath = `${safeCompanyId}/company_assets/terms_${Date.now()}.pdf`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -547,10 +547,11 @@ export default function SettingsTab() {
 
   const handlePrivacyUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!file || !safeCompanyId) return;
     setIsUploadingPrivacy(true);
     try {
-      const filePath = `${currentUser.companyId}/privacy_policies/${Date.now()}_${file.name}`;
+      const filePath = `${safeCompanyId}/privacy_policies/${Date.now()}_${file.name}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -1196,9 +1197,10 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   ];
 
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
     const fetchSettings = async () => {
-      const { data: d } = await supabase.from('company_settings').select('*').eq('company_id', currentUser.companyId).maybeSingle();
+      const { data: d } = await supabase.from('company_settings').select('*').eq('company_id', safeCompanyId).maybeSingle();
       if (d) {
         setActive(d.screensaver_active ?? false);
         setTimeoutVal(d.screensaver_timeout ?? 5);
@@ -1215,10 +1217,11 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   }, [currentUser]);
 
   const handleSave = async () => {
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
     try {
       await supabase.from('company_settings').upsert({
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         screensaver_active: active,
         screensaver_timeout: Number(timeout),
         screensaver_image: image
@@ -1231,10 +1234,11 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!file || !safeCompanyId) return;
     setIsUploading(true);
     try {
-      const filePath = `screensaver/${currentUser.companyId}_${Date.now()}`;
+      const filePath = `screensaver/${safeCompanyId}_${Date.now()}`;
       const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
       if (upErr) throw upErr;
       const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
@@ -1242,7 +1246,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       setImage(url);
       safeStorage.setItem('ws_screensaver_bg', url);
       window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
-      await supabase.from('company_settings').upsert({ company_id: currentUser.companyId, screensaver_image: url });
+      await supabase.from('company_settings').upsert({ company_id: safeCompanyId, screensaver_image: url });
       addToast(currentLang === 'de' ? 'Hintergrundbild erfolgreich hochgeladen!' : 'Background image uploaded!', 'success');
     } catch (err) { addToast('Upload failed', 'error'); } 
     finally { setIsUploading(false); }

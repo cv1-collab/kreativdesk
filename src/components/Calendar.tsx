@@ -826,9 +826,10 @@ export default function Calendar() {
     }
 
     // --- REGULÄRER SUPABASE FETCH FÜR ECHTE USER ---
-    if (!currentProjectId || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentProjectId || !safeCompanyId) return;
     hasLoadedInitial.current = false;
-    const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
+    const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
 
     const fetchSchedule = async () => {
       try {
@@ -855,7 +856,7 @@ export default function Calendar() {
         let rawData: any = null;
         if (!dbScheduleData) {
           try {
-            rawData = await fetchSystemConfigJSON(`schedule_${scheduleDocId}`, currentUser.companyId);
+            rawData = await fetchSystemConfigJSON(`schedule_${scheduleDocId}`, safeCompanyId);
           } catch (e) {}
         }
 
@@ -899,7 +900,7 @@ export default function Calendar() {
           setSchedules([initialSchedule]);
           setActiveScheduleId(initialSchedule.id);
           
-          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId };
+          const schedPayload = { schedules: [initialSchedule], activeScheduleId: initialSchedule.id, companyId: safeCompanyId, projectId: currentProjectId };
           safeStorage.setItem(localCacheKey, schedPayload);
 
           try {
@@ -907,9 +908,9 @@ export default function Calendar() {
               id: scheduleDocId,
               schedules: [initialSchedule],
               active_schedule_id: initialSchedule.id,
-              company_id: currentUser.companyId
+              company_id: safeCompanyId
             });
-            await saveSystemConfigJSON(`schedule_${scheduleDocId}`, schedPayload, currentUser.companyId, currentUser.uid);
+            await saveSystemConfigJSON(`schedule_${scheduleDocId}`, schedPayload, safeCompanyId, currentUser.uid);
           } catch (e) {}
         }
       } catch (err) {
@@ -924,15 +925,16 @@ export default function Calendar() {
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    if (isDemoMode || isInitialLoad || !activeScheduleId || !currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (isDemoMode || isInitialLoad || !activeScheduleId || !safeCompanyId) return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     
     autoSaveTimeout.current = setTimeout(async () => {
       try {
-        const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
+        const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
         const updated = schedules.map(s => s.id === activeScheduleId ? { ...s, ganttTasks, smartMarkers, shapes, targetYear } : s);
-        safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: updated, activeScheduleId, companyId: currentUser.companyId, projectId: currentProjectId });
-        await supabase.from('project_schedules').upsert({ id: scheduleDocId, schedules: updated, active_schedule_id: activeScheduleId, company_id: currentUser.companyId });
+        safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: updated, activeScheduleId, companyId: safeCompanyId, projectId: currentProjectId });
+        await supabase.from('project_schedules').upsert({ id: scheduleDocId, schedules: updated, active_schedule_id: activeScheduleId, company_id: safeCompanyId });
       } catch (err) {
         console.warn("Auto-save schedule error:", err);
       }
@@ -958,19 +960,20 @@ export default function Calendar() {
   };
 
   const handleCreateSchedule = async () => {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const name = window.prompt("Name des Zeitplans:", "Neuer Plan");
-    if (!name || !currentUser?.companyId) return;
+    if (!name || !safeCompanyId) return;
     const newSchedule: Schedule = { id: `s-${Date.now()}`, name, targetYear: new Date().getFullYear(), ganttTasks: [], smartMarkers: [], shapes: [] };
     const updatedSchedules = [...schedules, newSchedule];
     setSchedules(updatedSchedules);
-    const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-    safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: updatedSchedules, activeScheduleId: newSchedule.id, companyId: currentUser.companyId, projectId: currentProjectId });
+    const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
+    safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: updatedSchedules, activeScheduleId: newSchedule.id, companyId: safeCompanyId, projectId: currentProjectId });
     try {
       await supabase.from('project_schedules').upsert({ 
         id: scheduleDocId,
         schedules: updatedSchedules, 
         active_schedule_id: newSchedule.id,
-        company_id: currentUser.companyId
+        company_id: safeCompanyId
       });
     } catch (err) {
       console.warn("Create schedule save warning:", err);
@@ -980,19 +983,20 @@ export default function Calendar() {
   };
 
   const handleRenameSchedule = async (id: string, currentName: string) => {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const newName = window.prompt(t('rename'), currentName);
-    if (newName && newName !== currentName && currentUser?.companyId) {
+    if (newName && newName !== currentName && safeCompanyId) {
       const newSchedules = schedules.map(s => s.id === id ? { ...s, name: newName } : s);
       setSchedules(newSchedules);
       if (id === activeScheduleId) setDocHeader(prev => ({ ...prev, title: newName }));
-      const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-      safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: newSchedules, activeScheduleId, companyId: currentUser.companyId, projectId: currentProjectId });
+      const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
+      safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: newSchedules, activeScheduleId, companyId: safeCompanyId, projectId: currentProjectId });
       try {
         await supabase.from('project_schedules').upsert({ 
           id: scheduleDocId,
           schedules: newSchedules, 
           active_schedule_id: activeScheduleId,
-          company_id: currentUser.companyId
+          company_id: safeCompanyId
         });
       } catch (err) {
         console.warn("Rename schedule save warning:", err);
@@ -1002,18 +1006,19 @@ export default function Calendar() {
 
   const handleDeleteSchedule = async (id: string) => {
     if (schedules.length <= 1) return addToast("Mindestens ein Plan muss bestehen bleiben.", "error");
-    if (window.confirm(t('confirm_delete')) && currentUser?.companyId) {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (window.confirm(t('confirm_delete')) && safeCompanyId) {
       const newSchedules = schedules.filter(s => s.id !== id);
       const newActive = activeScheduleId === id ? newSchedules[0].id : activeScheduleId;
       setSchedules(newSchedules);
-      const scheduleDocId = currentProjectId === 'global' ? `global_${currentUser.companyId}` : currentProjectId;
-      safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: newSchedules, activeScheduleId: newActive, companyId: currentUser.companyId, projectId: currentProjectId });
+      const scheduleDocId = currentProjectId === 'global' ? `global_${safeCompanyId}` : currentProjectId;
+      safeStorage.setItem(`schedule_cache_${scheduleDocId}`, { schedules: newSchedules, activeScheduleId: newActive, companyId: safeCompanyId, projectId: currentProjectId });
       try {
         await supabase.from('project_schedules').upsert({ 
           id: scheduleDocId,
           schedules: newSchedules, 
           active_schedule_id: newActive,
-          company_id: currentUser.companyId
+          company_id: safeCompanyId
         });
         addToast("Terminplan gelöscht", "info");
       } catch (err) {
@@ -1072,17 +1077,18 @@ export default function Calendar() {
   };
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return 'root';
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId || !currentProjectId) return 'root';
     const { data: existing } = await supabase
       .from('documents')
       .select('id')
       .eq('name', folderName)
       .eq('project_id', currentProjectId)
-      .eq('company_id', currentUser.companyId)
+      .eq('company_id', safeCompanyId)
       .maybeSingle();
     if (existing) return existing.id;
     const { data: newF } = await supabase.from('documents').insert({
-      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, project_id: currentProjectId, company_id: currentUser.companyId, created_at: new Date().toISOString()
+      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, project_id: currentProjectId, company_id: safeCompanyId, created_at: new Date().toISOString()
     }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };
@@ -1097,10 +1103,11 @@ export default function Calendar() {
   };
 
   const handleSavePdfToCloud = async (blob: Blob) => {
-    if (!currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId) return;
     try {
       const fileName = `Projektplan_${Date.now()}.pdf`;
-      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, currentUser.companyId);
+      const downloadUrl = await uploadPdfBlobWithFallback(blob, fileName, safeCompanyId);
 
       const docCategory = currentProjectId === 'global' ? 'company' : 'projects';
       const targetFolderId = await ensureFolderLocal("Kalender & Zeitpläne", docCategory);
@@ -1113,7 +1120,7 @@ export default function Calendar() {
         folder_id: targetFolderId, 
         category: docCategory, 
         owner_id: currentUser.uid,
-        company_id: currentUser.companyId,
+        company_id: safeCompanyId,
         uploaded_by: currentUser.uid,
         type: 'application/pdf',
         size: `${Math.round(blob.size / 1024)} KB`, 

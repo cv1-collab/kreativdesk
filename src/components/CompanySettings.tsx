@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../utils';
+import { checkIsSuperAdmin } from '../config/admins';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -55,20 +56,21 @@ export default function CompanySettings() {
   const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
     const fetchCompany = async () => {
       try {
         const { data } = await supabase
           .from('companies')
           .select('*')
-          .eq('id', currentUser.companyId)
+          .eq('id', safeCompanyId)
           .maybeSingle();
 
         if (data) setCompany(data);
 
         const [{ data: pList }, { data: cuList }] = await Promise.all([
-          supabase.from('profiles').select('id, email').eq('company_id', currentUser.companyId),
-          supabase.from('company_users').select('id, email').eq('company_id', currentUser.companyId)
+          supabase.from('profiles').select('id, email').eq('company_id', safeCompanyId),
+          supabase.from('company_users').select('id, email').eq('company_id', safeCompanyId)
         ]);
 
         const uniqueSeatHolders = new Set<string>();
@@ -92,13 +94,13 @@ export default function CompanySettings() {
   const maxSeats = company?.max_seats || company?.maxSeats || 5;
 
   const handleGenerateLink = async () => {
-    const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
+    const isSuperAdmin = checkIsSuperAdmin(currentUser?.email) || currentUser?.role?.toLowerCase() === 'super_admin' || currentUser?.role?.toLowerCase() === 'admin';
     if (!isSuperAdmin && memberCount >= maxSeats) {
       addToast(t('error_limit'), 'error');
       return;
     }
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    const safeCompanyId = currentUser?.companyId;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safeCompanyId || '');
 
     if (safeCompanyId && isUuid) {

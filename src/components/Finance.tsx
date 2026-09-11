@@ -1099,11 +1099,12 @@ export default function Finance() {
   };
 
   const handleExportCSV = async () => {
-    if (!currentUser || !currentUser.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId) return;
     try {
       addToast('Bereite Export vor...', 'info');
       let projectDefects: any[] = [];
-      const queryB = supabase.from('defects').select('*').eq('company_id', currentUser.companyId);
+      const queryB = supabase.from('defects').select('*').eq('company_id', safeCompanyId);
       if (currentProjectId) queryB.eq('project_id', currentProjectId);
       const { data: defectsData } = await queryB;
       if (defectsData) projectDefects = defectsData;
@@ -1322,18 +1323,19 @@ export default function Finance() {
   };
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
-    if (!currentUser || !currentUser.companyId || !currentProjectId) return 'root';
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!currentUser || !safeCompanyId || !currentProjectId) return 'root';
     const { data: existing } = await supabase
       .from('documents')
       .select('id')
-      .eq('company_id', currentUser.companyId)
+      .eq('company_id', safeCompanyId)
       .eq('name', folderName)
       .eq('project_id', currentProjectId)
       .maybeSingle();
     if (existing) return existing.id;
 
     const { data: newF } = await supabase.from('documents').insert({
-      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: currentUser.companyId, project_id: currentProjectId, created_at: new Date().toISOString()
+      name: folderName, is_folder: true, category: docCategory, owner_id: currentUser.uid, company_id: safeCompanyId, project_id: currentProjectId, created_at: new Date().toISOString()
     }).select().maybeSingle();
     return newF ? newF.id : 'root';
   };

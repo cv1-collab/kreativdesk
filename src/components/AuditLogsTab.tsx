@@ -13,11 +13,11 @@ export default function AuditLogsTab() {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    if (!currentUser?.companyId) return;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (!safeCompanyId) return;
     
     const fetchLogs = async () => {
       try {
-        const safeCompanyId = currentUser.companyId || currentUser.uid;
         const { data } = await supabase
           .from('audit_logs')
           .select('*')
