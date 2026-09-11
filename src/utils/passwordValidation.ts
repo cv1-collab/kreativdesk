@@ -174,16 +174,45 @@ export function generateSecurePassword(length = 16): string {
 
 /**
  * Übersetzt Supabase Auth Fehler in verständliche, handlungsorientierte deutsche bzw. englische Fehlermeldungen.
+ * Garantiert, dass niemals rohe technische JSON-Fragmente wie "{}" oder leere Strings gerendert werden.
  */
 export function mapAuthErrorMessage(err: any, lang: 'de' | 'en' = 'de'): string {
   const isDe = lang === 'de';
-  if (!err) return isDe ? 'Ein unbekannter Fehler ist aufgetreten.' : 'An unknown error occurred.';
+  if (!err) {
+    return isDe ? 'Ein unbekannter Fehler ist aufgetreten.' : 'An unknown error occurred.';
+  }
 
-  const rawMsg = (typeof err === 'string' ? err : err?.message || err?.error_description || '').toLowerCase();
-  const code = (err?.code || '').toLowerCase();
-  const name = (err?.name || '').toLowerCase();
+  const rawMsg = (typeof err === 'string' ? err : err?.message || err?.error_description || '').toLowerCase().trim();
+  const code = (err?.code || '').toLowerCase().trim();
+  const name = (err?.name || '').toLowerCase().trim();
+  const status = Number(err?.status || 0);
 
-  // Supabase AuthWeakPasswordError
+  // 1. Abfangen von leeren Fehlern oder rohen JSON-Klammern "{}"
+  if (!rawMsg || rawMsg === '{}' || rawMsg === '{ }' || rawMsg === '[object object]' || rawMsg.startsWith('{')) {
+    if (name.includes('retryable') || name.includes('fetch') || status === 500) {
+      return isDe
+        ? 'Verbindung zum Server unterbrochen oder Server ausgelastet. Bitte versuche es in wenigen Sekunden erneut.'
+        : 'Connection to server interrupted. Please try again in a few seconds.';
+    }
+    return isDe
+      ? 'Die Anfrage konnte nicht verarbeitet werden. Bitte prüfe deine Internetverbindung und versuche es erneut.'
+      : 'The request could not be processed. Please check your connection and try again.';
+  }
+
+  // 2. Netzwerk- und Verbindungsabbrüche
+  if (
+    name.includes('retryable') ||
+    name.includes('fetch') ||
+    rawMsg.includes('failed to fetch') ||
+    rawMsg.includes('network') ||
+    rawMsg.includes('timeout')
+  ) {
+    return isDe
+      ? 'Verbindung zum Server konnte nicht hergestellt werden. Bitte überprüfe deine Internetverbindung und versuche es erneut.'
+      : 'Could not connect to server. Please check your internet connection and try again.';
+  }
+
+  // 3. Supabase AuthWeakPasswordError & zu schwache Passwörter
   if (
     code === 'weak_password' ||
     name === 'authweakpassworderror' ||
@@ -193,33 +222,64 @@ export function mapAuthErrorMessage(err: any, lang: 'de' | 'en' = 'de'): string 
     rawMsg.includes('leaked')
   ) {
     return isDe
-      ? 'Das eingegebene Passwort gilt als zu schwach oder leicht erratbar. Bitte wähle ein Passwort mit mind. 8 Zeichen, Groß- und Kleinbuchstaben, Zahlen und einem Sonderzeichen – oder klicke auf "Sicheres Passwort generieren".'
+      ? 'Das eingegebene Passwort gilt als zu schwach oder leicht erratbar. Bitte wähle ein Passwort mit mind. 8 Zeichen, Groß- und Kleinbuchstaben, Zahlen und einem Sonderzeichen – oder klicke oben auf "Sicheres Passwort generieren".'
       : 'Password is known to be weak or easy to guess. Please choose a stronger password with at least 8 characters, uppercase, lowercase, numbers, and symbols – or click "Generate secure password".';
   }
 
-  if (rawMsg.includes('user already registered') || code === 'user_already_exists') {
+  // 4. Benutzer existiert bereits
+  if (
+    rawMsg.includes('already registered') ||
+    rawMsg.includes('already exists') ||
+    code === 'user_already_exists' ||
+    code === 'identity_already_exists'
+  ) {
     return isDe
       ? 'Ein Account mit dieser E-Mail-Adresse existiert bereits. Bitte melde dich an oder setze dein Passwort zurück.'
       : 'An account with this email address already exists. Please log in or reset your password.';
   }
 
-  if (rawMsg.includes('invalid login credentials') || rawMsg.includes('invalid_grant')) {
+  // 5. Ungültige Zugangsdaten
+  if (
+    rawMsg.includes('invalid login credentials') ||
+    rawMsg.includes('invalid_grant') ||
+    rawMsg.includes('invalid credentials')
+  ) {
     return isDe
       ? 'E-Mail-Adresse oder Passwort ist ungültig. Bitte überprüfe deine Eingabe.'
       : 'Invalid email address or password. Please check your credentials.';
   }
 
+  // 6. E-Mail nicht bestätigt
   if (rawMsg.includes('email not confirmed')) {
     return isDe
       ? 'Deine E-Mail-Adresse wurde noch nicht bestätigt. Bitte überprüfe dein Postfach.'
       : 'Email not confirmed. Please check your inbox.';
   }
 
-  if (rawMsg.includes('rate limit') || rawMsg.includes('too many requests')) {
+  // 7. Rate Limiting
+  if (rawMsg.includes('rate limit') || rawMsg.includes('too many requests') || status === 429) {
     return isDe
-      ? 'Zu viele Versuche in kurzer Zeit. Bitte warte kurz und versuche es erneut.'
+      ? 'Zu viele Anfragen in kurzer Zeit. Bitte warte einen Moment und versuche es erneut.'
       : 'Too many requests. Please wait a moment and try again.';
   }
 
-  return typeof err?.message === 'string' ? err.message : (isDe ? 'Registrierung fehlgeschlagen. Bitte versuche es erneut.' : 'Registration failed. Please try again.');
+  // 8. Server- und Datenbankfehler (500)
+  if (
+    status >= 500 ||
+    rawMsg.includes('database error') ||
+    rawMsg.includes('foreign key') ||
+    rawMsg.includes('trigger') ||
+    rawMsg.includes('internal server error')
+  ) {
+    return isDe
+      ? 'Ein temporärer Serverfehler ist aufgetreten. Bitte versuche es in Kürze erneut oder melde dich direkt an.'
+      : 'A temporary server error occurred. Please try again shortly or sign in directly.';
+  }
+
+  // 9. Fallback mit Übersetzung gängiger Fehlermeldungen
+  if (typeof err?.message === 'string' && err.message.length > 2 && !err.message.includes('{')) {
+    return err.message;
+  }
+
+  return isDe ? 'Vorgang fehlgeschlagen. Bitte versuche es erneut.' : 'Operation failed. Please try again.';
 }

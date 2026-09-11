@@ -56,6 +56,8 @@ export default function Signup() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
+  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
+  const [inviteAlreadyUsed, setInviteAlreadyUsed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inviteInfo, setInviteInfo] = useState<{ companyName?: string; role?: string; email?: string } | null>(null);
   const navigate = useNavigate();
@@ -91,6 +93,21 @@ export default function Signup() {
           });
           if (!isPlaceholder && inv.email && !email) {
             setEmail(inv.email);
+          }
+        } else {
+          // Prüfen, ob der Einladungslink bereits aktiviert wurde
+          const { data: usedInv } = await supabase
+            .from('invites')
+            .select('*')
+            .eq('token', token)
+            .eq('status', 'used')
+            .maybeSingle();
+
+          if (usedInv) {
+            setInviteAlreadyUsed(true);
+            if (usedInv.email && !email) {
+              setEmail(usedInv.email);
+            }
           }
         }
       } catch (e) {}
@@ -151,14 +168,16 @@ export default function Signup() {
     }
 
     try {
-      setError(''); setLoading(true);
+      setError('');
+      setIsAlreadyRegistered(false);
+      setLoading(true);
       const effectiveInviteToken = inviteToken || safeStorage.getString('pending_invite_token') || null;
       if (effectiveInviteToken) {
         safeStorage.setItem('pending_invite_token', effectiveInviteToken);
       }
 
       const cleanEmail = email.trim();
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
@@ -171,11 +190,32 @@ export default function Signup() {
 
       if (error) throw error;
 
-      addToast(currentLang === 'de' ? 'Account erfolgreich erstellt! Du wirst weitergeleitet...' : 'Account successfully created! Redirecting...', 'success');
-      navigate('/app');
+      // Supabase signalisiert existierende Accounts durch ein leeres identities-Array
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setIsAlreadyRegistered(true);
+        setError(currentLang === 'de'
+          ? 'Ein Account mit dieser E-Mail-Adresse existiert bereits. Bitte melde dich an.'
+          : 'An account with this email address already exists. Please log in.');
+        return;
+      }
+
+      if (data?.session) {
+        addToast(currentLang === 'de' ? 'Account erfolgreich erstellt! Du wirst weitergeleitet...' : 'Account successfully created! Redirecting...', 'success');
+        navigate('/app');
+      } else {
+        addToast(currentLang === 'de' ? 'Bestätigungs-E-Mail gesendet! Bitte prüfe dein Postfach.' : 'Confirmation email sent! Please check your inbox.', 'info');
+        navigate(`/login?email=${encodeURIComponent(cleanEmail)}`);
+      }
     } catch (err: any) {
       console.error("Signup error detail:", err);
       const errMsg = mapAuthErrorMessage(err, currentLang);
+      if (
+        errMsg.includes('existiert bereits') ||
+        errMsg.includes('already exists') ||
+        err?.code === 'user_already_exists'
+      ) {
+        setIsAlreadyRegistered(true);
+      }
       setError(errMsg);
     } finally {
       setLoading(false);
@@ -243,10 +283,37 @@ export default function Signup() {
                 </span>
               </div>
             )}
+            {inviteAlreadyUsed && (
+              <div className="mb-4 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex flex-col gap-2 font-medium">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">ℹ️</span>
+                  <span>
+                    {currentLang === 'de'
+                      ? 'Diese Einladung wurde bereits aktiviert. Wenn dein Account bereits eingerichtet ist, melde dich bitte direkt an:'
+                      : 'This invitation has already been activated. If your account is set up, please sign in directly:'}
+                  </span>
+                </div>
+                <Link
+                  to={`/login?email=${encodeURIComponent(email)}`}
+                  className="inline-flex items-center justify-center font-bold px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition-colors shadow-xs w-full text-center"
+                >
+                  {currentLang === 'de' ? '👉 Jetzt direkt anmelden (Login)' : '👉 Sign in directly now'}
+                </Link>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="rounded-xl bg-red-500/10 p-3.5 border border-red-500/20">
+                <div className="rounded-xl bg-red-500/10 p-3.5 border border-red-500/20 space-y-2">
                   <div className="text-sm font-medium text-red-600 dark:text-red-400">{error}</div>
+                  {isAlreadyRegistered && (
+                    <Link
+                      to={`/login?email=${encodeURIComponent(email)}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline pt-0.5"
+                    >
+                      <span>{currentLang === 'de' ? '👉 Jetzt direkt anmelden (Login)' : '👉 Sign in directly now'}</span>
+                    </Link>
+                  )}
                 </div>
               )}
 

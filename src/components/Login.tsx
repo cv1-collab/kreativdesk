@@ -90,6 +90,11 @@ export default function Login() {
         safeStorage.setItem('pending_invite_token', inv);
       }
 
+      const emailParam = urlParams.get('email');
+      if (emailParam) {
+        setEmail(emailParam);
+      }
+
       const conflictReason = sessionStorage.getItem('auth_conflict_reason');
       if (conflictReason) {
         setError(conflictReason);

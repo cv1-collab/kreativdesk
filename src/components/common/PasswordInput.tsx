@@ -45,7 +45,11 @@ export default function PasswordInput({
 
   const strength = calculatePasswordStrength(value, emailForValidation, lang);
 
-  const handleGenerate = () => {
+  const handleGenerate = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const newPwd = generateSecurePassword(16);
     onChange(newPwd);
     setShowPassword(true); // Automatically reveal so user can see what was generated
@@ -54,7 +58,7 @@ export default function PasswordInput({
       onGeneratePassword(newPwd);
     }
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(newPwd).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 3000);
@@ -72,10 +76,11 @@ export default function PasswordInput({
         {showGenerator && (
           <button
             type="button"
+            data-testid="generate-password-btn"
             onClick={handleGenerate}
             disabled={disabled}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors cursor-pointer group py-0.5 px-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30"
-            title={isDe ? 'Generiert ein starkes 16-stelliges Passwort' : 'Generates a strong 16-character password'}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-all cursor-pointer group py-1 px-2.5 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/40 hover:bg-blue-100/80 dark:hover:bg-blue-900/50 shadow-xs"
+            title={isDe ? 'Generiert ein starkes, sicheres 16-stelliges Passwort' : 'Generates a strong, secure 16-character password'}
           >
             <Wand2 size={13} className="text-blue-500 group-hover:rotate-12 transition-transform" />
             <span>{copied ? (isDe ? 'Kopiert!' : 'Copied!') : (isDe ? 'Sicheres Passwort generieren' : 'Generate secure password')}</span>
