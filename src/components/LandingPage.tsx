@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { 
-  Moon, Sun, Video, CheckCircle2, Calendar, Sparkles, 
+  Moon, Sun, Video, Calendar, Sparkles, 
   ArrowRight, Shield, Menu, X, Briefcase, Zap, Building2, 
   Rocket, Layers, Check, ChevronDown, ChevronUp, Lock,
   Calculator, Box, ShieldAlert, Presentation, Play, Loader2, MonitorPlay,
@@ -876,8 +876,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   >
                     <source src="/media/portal_expanding.mp4" type="video/mp4" />
                   </video>
-                  {/* Bottom Gradient Overlay with Description */}
-                  <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex flex-col sm:flex-row sm:items-end justify-between gap-3 pointer-events-none">
+                  {/* Bottom Gradient Overlay with Description (Hidden on mobile smartphones to not obscure video, visible on sm+) */}
+                  <div className="hidden sm:flex absolute inset-x-0 bottom-0 p-5 sm:p-7 bg-gradient-to-t from-black/95 via-black/50 to-transparent flex-col sm:flex-row sm:items-end justify-between gap-3 pointer-events-none">
                     <div>
                       <div className="text-white font-black text-lg sm:text-2xl tracking-tight mb-1 flex items-center gap-2">
                         <span>{t('hero_video_title')}</span>
@@ -885,11 +885,6 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <div className="text-zinc-300 text-xs sm:text-sm font-medium max-w-xl">
                         {t('hero_video_desc')}
                       </div>
-                    </div>
-                    <div className="shrink-0 flex items-center gap-2">
-                      <span className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-1.5">
-                        <CheckCircle2 size={14} className="text-emerald-400" /> {t('hero_video_badge')}
-                      </span>
                     </div>
                   </div>
                 </div>
