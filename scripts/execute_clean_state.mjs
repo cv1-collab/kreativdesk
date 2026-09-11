@@ -9,13 +9,15 @@ if (!supabaseUrl || !serviceKey) {
   process.exit(1);
 }
 
-const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
+  auth: { autoRefreshToken: false, persistSession: false }
+});
 
 const ADMIN_EMAILS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
 
 async function executeCleanState() {
   console.log("==================================================");
-  console.log("STARTING SUPABASE CLEAN STATE & ORGANIZATION SETUP");
+  console.log("STARTING CLEAN STATE: KEEP ONLY CV1 & CARLO");
   console.log("==================================================");
 
   // 1. Fetch all Auth users
@@ -26,21 +28,22 @@ async function executeCleanState() {
   }
 
   const adminUsersMap = {};
-  const userIdsToDelete = [];
+  const usersToDelete = [];
 
   for (const u of users) {
     const emailLower = u.email?.toLowerCase();
     if (ADMIN_EMAILS.includes(emailLower)) {
       adminUsersMap[emailLower] = u;
-      console.log(`✅ Keeping Admin Auth User: ${u.email} (${u.id})`);
+      console.log(`👑 KEEPING Admin User: ${u.email} (${u.id})`);
     } else {
-      userIdsToDelete.push(u);
+      usersToDelete.push(u);
+      console.log(`🗑️ MARKED FOR DELETION: ${u.email} (${u.id})`);
     }
   }
 
   // Ensure both admin auth users exist
   if (!adminUsersMap['cv1@gmx.ch'] || !adminUsersMap['carlo@vesciodesign.ch']) {
-    console.error("CRITICAL: One or both admin accounts missing in Auth! Aborting to prevent accidental data loss.");
+    console.error("CRITICAL: One or both admin accounts missing in Auth! Aborting.");
     process.exit(1);
   }
 
@@ -48,7 +51,7 @@ async function executeCleanState() {
   const carloUser = adminUsersMap['carlo@vesciodesign.ch'];
 
   // 2. Setup/Ensure Companies
-  // A) Kreativ Desk Company
+  // A) Kreativ Desk OS
   let kreativCompanyId = null;
   const { data: existingKreativ } = await supabaseAdmin
     .from('companies')
@@ -77,7 +80,7 @@ async function executeCleanState() {
     kreativCompanyId = newComp.id;
   }
 
-  // B) Vescio Design GmbH Company
+  // B) Vescio Design GmbH
   let vescioCompanyId = null;
   const { data: existingVescio } = await supabaseAdmin
     .from('companies')
@@ -106,12 +109,95 @@ async function executeCleanState() {
     vescioCompanyId = newComp.id;
   }
 
-  console.log(`🏢 Kreativ Desk Company ID: ${kreativCompanyId} (Seats: 10)`);
-  console.log(`🏢 Vescio Design GmbH Company ID: ${vescioCompanyId} (Seats: 10)`);
+  console.log(`🏢 Kreativ Desk OS Company ID: ${kreativCompanyId} (used_seats: 1)`);
+  console.log(`🏢 Vescio Design GmbH Company ID: ${vescioCompanyId} (used_seats: 1)`);
 
   const allowedCompanyIds = [kreativCompanyId, vescioCompanyId];
 
-  // 3. Update Profiles for the 2 Administrators
+  // 3. Clean up company_users
+  console.log("\n🧹 Cleaning company_users...");
+  const { data: allCompanyUsers } = await supabaseAdmin.from('company_users').select('*');
+  for (const cu of allCompanyUsers || []) {
+    const emailLower = cu.email?.toLowerCase();
+    const isCv1 = emailLower === 'cv1@gmx.ch' || cu.user_id === cv1User.id;
+    const isCarlo = emailLower === 'carlo@vesciodesign.ch' || cu.user_id === carloUser.id;
+    
+    if (!isCv1 && !isCarlo) {
+      console.log(`  🗑️ Removing company_user: ${cu.name || cu.email} (${cu.id})`);
+      await supabaseAdmin.from('company_users').delete().eq('id', cu.id);
+    }
+  }
+
+  // Ensure cv1 is registered in company_users for Kreativ Desk OS
+  const { data: cv1Cu } = await supabaseAdmin
+    .from('company_users')
+    .select('id')
+    .eq('company_id', kreativCompanyId)
+    .or(`email.eq.cv1@gmx.ch,user_id.eq.${cv1User.id}`)
+    .maybeSingle();
+
+  if (!cv1Cu) {
+    await supabaseAdmin.from('company_users').insert({
+      company_id: kreativCompanyId,
+      name: 'Carlo Vescio',
+      email: 'cv1@gmx.ch',
+      role: 'owner',
+      status: 'Aktiv',
+      can_view_finance: true,
+      can_approve_budget: true,
+      user_id: cv1User.id,
+      is_external: false
+    });
+  } else {
+    await supabaseAdmin.from('company_users').update({
+      company_id: kreativCompanyId,
+      name: 'Carlo Vescio',
+      email: 'cv1@gmx.ch',
+      role: 'owner',
+      status: 'Aktiv',
+      can_view_finance: true,
+      can_approve_budget: true,
+      user_id: cv1User.id,
+      is_external: false
+    }).eq('id', cv1Cu.id);
+  }
+
+  // Ensure carlo is registered in company_users for Vescio Design GmbH
+  const { data: carloCu } = await supabaseAdmin
+    .from('company_users')
+    .select('id')
+    .eq('company_id', vescioCompanyId)
+    .or(`email.eq.carlo@vesciodesign.ch,user_id.eq.${carloUser.id}`)
+    .maybeSingle();
+
+  if (!carloCu) {
+    await supabaseAdmin.from('company_users').insert({
+      company_id: vescioCompanyId,
+      name: 'Carlo Vescio',
+      email: 'carlo@vesciodesign.ch',
+      role: 'owner',
+      status: 'Aktiv',
+      can_view_finance: true,
+      can_approve_budget: true,
+      user_id: carloUser.id,
+      is_external: false
+    });
+  } else {
+    await supabaseAdmin.from('company_users').update({
+      company_id: vescioCompanyId,
+      name: 'Carlo Vescio',
+      email: 'carlo@vesciodesign.ch',
+      role: 'owner',
+      status: 'Aktiv',
+      can_view_finance: true,
+      can_approve_budget: true,
+      user_id: carloUser.id,
+      is_external: false
+    }).eq('id', carloCu.id);
+  }
+
+  // 4. Update Admin Profiles
+  console.log("\n👤 Updating Admin Profiles...");
   await supabaseAdmin.from('profiles').upsert([
     {
       id: cv1User.id,
@@ -143,39 +229,64 @@ async function executeCleanState() {
     }
   ]);
 
-  console.log("👤 Admin Profiles updated.");
+  // 5. Clean up presentations/slides mentioning Philipp Glass
+  console.log("\n📽️ Cleaning up presentation slides...");
+  const { data: allSlides } = await supabaseAdmin.from('slides').select('*');
+  for (const s of allSlides || []) {
+    const contentStr = typeof s.content === 'string' ? s.content : JSON.stringify(s.content);
+    if (contentStr.toLowerCase().includes('glass') || contentStr.toLowerCase().includes('philipp')) {
+      console.log(`  Updating slide: ${s.title} (${s.id})`);
+      const updatedContent = contentStr
+        .replace(/Philipp Glass \(Kreativ Desk OS\)/gi, 'Carlo Vescio')
+        .replace(/Philipp Glass/gi, 'Carlo Vescio')
+        .replace(/glassphilipp@gmail\.com/gi, 'cv1@gmx.ch');
+      
+      await supabaseAdmin.from('slides').update({
+        content: updatedContent
+      }).eq('id', s.id);
+    }
+  }
 
-  // 4. Delete non-admin auth users and their related data
-  for (const u of userIdsToDelete) {
-    console.log(`🗑️ Deleting test user & data for: ${u.email} (${u.id})`);
+  // 6. Delete non-admin auth users, profiles, and associated test companies
+  console.log("\n🗑️ Deleting non-admin users & orphaned data...");
+  for (const u of usersToDelete) {
+    console.log(`\nDeleting: ${u.email} (${u.id})`);
     
     // Find profile company_id if any
     const { data: p } = await supabaseAdmin.from('profiles').select('company_id').eq('id', u.id).maybeSingle();
     const compId = p?.company_id;
 
     if (compId && !allowedCompanyIds.includes(compId)) {
-      const tables = ['projects', 'time_entries', 'defects', 'documents', 'leads', 'invites', 'goals', 'transactions', 'project_tasks', 'slides', 'cad_plans'];
+      console.log(`  Deleting test company data for company ${compId}...`);
+      const tables = ['projects', 'time_entries', 'defects', 'documents', 'leads', 'invites', 'goals', 'transactions', 'project_tasks', 'slides', 'cad_plans', 'company_users'];
       for (const t of tables) {
         await supabaseAdmin.from(t).delete().eq('company_id', compId);
       }
       await supabaseAdmin.from('companies').delete().eq('id', compId);
     }
 
+    // Delete any documents owned or uploaded by this user
+    await supabaseAdmin.from('documents').delete().eq('owner_id', u.id);
+    await supabaseAdmin.from('documents').delete().eq('uploaded_by', u.id);
+
+    // Delete profile
     await supabaseAdmin.from('profiles').delete().eq('id', u.id);
+
+    // Delete user from auth
     const { error: delErr } = await supabaseAdmin.auth.admin.deleteUser(u.id);
     if (delErr) {
       console.error(`  Warning: failed to delete auth user ${u.id}:`, delErr.message);
     } else {
-      console.log(`  Successfully deleted Auth user ${u.email}`);
+      console.log(`  ✅ Successfully deleted Auth user ${u.email}`);
     }
   }
 
-  // 5. Clean up any remaining orphaned companies
+  // 7. Clean up any remaining orphaned companies
   const { data: allComps } = await supabaseAdmin.from('companies').select('id, name');
   for (const comp of allComps || []) {
     if (!allowedCompanyIds.includes(comp.id)) {
       console.log(`🗑️ Deleting orphaned company: ${comp.name} (${comp.id})`);
-      const tables = ['projects', 'time_entries', 'defects', 'documents', 'leads', 'invites', 'goals', 'transactions', 'project_tasks', 'slides', 'cad_plans'];
+      const tables = ['projects', 'time_entries', 'defects', 'documents', 'leads', 'invites', 'goals', 'transactions', 'project_tasks', 'slides', 'cad_plans', 'company_users'];
       for (const t of tables) {
         await supabaseAdmin.from(t).delete().eq('company_id', comp.id);
       }
@@ -183,7 +294,7 @@ async function executeCleanState() {
     }
   }
 
-  // 6. Ensure default folders for both companies
+  // 8. Ensure default folders for both companies
   const defaultFolderNames = [
     '01_FINANZEN', '02_RECHTLICHES', '03_HR_MITARBEITER', '04_SALES',
     '05_MARKETING', '06_OPERATIONS', '07_ASSETS', '08_PLÄNE',
@@ -221,31 +332,10 @@ async function executeCleanState() {
     if (foldersToInsert.length > 0) {
       await supabaseAdmin.from('documents').insert(foldersToInsert);
     }
-
-    // Ensure Demo Project ("Quartier Neubau Süd") exists for company
-    const { data: existingProj } = await supabaseAdmin
-      .from('projects')
-      .select('id')
-      .eq('company_id', companyId)
-      .limit(1)
-      .maybeSingle();
-
-    if (!existingProj) {
-      console.log(`🔨 Creating Demo Project for company ${companyId}...`);
-      await supabaseAdmin.from('projects').insert({
-        name: 'Quartier Neubau Süd',
-        description: 'Zentrale Bauleitung, Mängelmanagement und Budgetkontrolle für das Wohnquartier. Fokus auf Termin- und Kostentreue.',
-        status: 'active',
-        company_id: companyId,
-        owner_id: ownerId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-    }
   }
 
   console.log("\n==================================================");
-  console.log("CLEAN STATE & ORGANIZATION SETUP COMPLETE");
+  console.log("CLEAN STATE COMPLETE!");
   console.log("==================================================");
 }
 

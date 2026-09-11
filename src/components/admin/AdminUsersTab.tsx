@@ -285,7 +285,7 @@ export default function AdminUsersTab() {
   const handleCleanupTestUsers = async () => {
     if (!window.confirm('Möchtest du alle Demo- und Test-Nutzer löschen?')) return;
     try {
-      const protectedEmails = ['cv1@gmx.ch', 'carlo@vesciodesign.ch', 'glassphilipp@gmail.com'];
+      const protectedEmails = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
       const staticTestEmails = [
         'kreativdesk999@yopmail.com', 'kreativdesk999@mailinator.com', 'kreativdesk12345@mailnesia.com',
         'test3@example.com', 'unique_user_12345@mailto.plus', 'faxpad@mailto.plus', 'test@example.com', 'tester@kreativdesk.ch'
