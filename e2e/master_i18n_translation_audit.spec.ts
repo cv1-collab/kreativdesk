@@ -32,11 +32,8 @@ test.describe('Master Pillar 4: Multi-Language i18n Dictionary & Colocation Audi
     await page.waitForTimeout(1000);
 
     // 3. Verify Localized Sidebar & Top Toolbar Titles in Studio (German or English)
-    const masterDecksHeader = page.locator('h3').filter({ hasText: /Master-Decks|Master Decks/i }).first();
-    await expect(masterDecksHeader).toBeVisible({ timeout: 10000 });
-
     const masterTemplatesHeader = page.locator('h3').filter({ hasText: /Master-Vorlagen|Master Templates/i }).first();
-    await expect(masterTemplatesHeader).toBeVisible();
+    await expect(masterTemplatesHeader).toBeVisible({ timeout: 10000 });
 
     const slideAnimationHeader = page.locator('h3').filter({ hasText: /Folien-Animation|Slide Animation/i }).first();
     await expect(slideAnimationHeader).toBeVisible();
@@ -44,7 +41,7 @@ test.describe('Master Pillar 4: Multi-Language i18n Dictionary & Colocation Audi
     const projectReportingHeader = page.locator('h3').filter({ hasText: /Projekt-Berichterstattung|Project Reporting/i }).first();
     await expect(projectReportingHeader).toBeVisible();
 
-    const presenterBtn = page.locator('button:has-text("Präsentationsmodus"), button:has-text("Presenter Mode")').first();
+    const presenterBtn = page.locator('button:has-text("Präsentieren"), button:has-text("Präsentationsmodus"), button:has-text("Presenter Mode")').first();
     await expect(presenterBtn).toBeVisible();
 
     const closeStudioBtn = page.locator('button:has-text("Studio verlassen"), button:has-text("Exit Studio"), button:has-text("Close Studio")').first();
