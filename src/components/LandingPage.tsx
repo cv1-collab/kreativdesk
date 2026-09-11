@@ -939,20 +939,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     </div>
                   </div>
 
-                  {/* Status Quo Chaos Video Loop */}
-                  <div className="mb-6 rounded-2xl overflow-hidden border border-red-500/30 bg-slate-950 relative aspect-video shadow-lg group/vid">
-                    <video 
-                      autoPlay 
-                      loop 
-                      muted 
-                      playsInline 
-                      preload="metadata"
-                      poster="/media/architect_flatlay_blueprints.jpg"
-                      className="w-full h-full object-cover opacity-85 group-hover/vid:opacity-100 transition-opacity"
-                    >
-                      <source src="/media/status_quo_chaos.mp4" type="video/mp4" />
-                      <source src="/media/portal_expanding.mp4" type="video/mp4" />
-                    </video>
+                  {/* Status Quo Chaos Visual */}
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-red-500/30 bg-slate-950 relative aspect-video shadow-lg group/img">
+                    <img 
+                      src="/media/shattered_ui_panels_chaos.jpg" 
+                      alt="Status Quo Tool-Chaos & Margenverlust"
+                      className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
+                    />
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600/85 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
                       <AlertTriangle size={10} /> {t('chaos_video_tag')}
                     </div>
@@ -1001,18 +994,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     </div>
                   </div>
 
-                  {/* Dynamic Data Stream Video Absorption Loop */}
-                  <div className="mb-6 rounded-2xl overflow-hidden border border-blue-500/30 bg-slate-950 relative aspect-video shadow-lg group/vid">
-                    <video 
-                      autoPlay 
-                      loop 
-                      muted 
-                      playsInline 
-                      preload="metadata"
-                      className="w-full h-full object-cover"
-                    >
-                      <source src="/media/data_stream.mp4" type="video/mp4" />
-                    </video>
+                  {/* Single Source of Truth Visual */}
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-blue-500/30 bg-slate-950 relative aspect-video shadow-lg group/img">
+                    <img 
+                      src="/media/macbook_single_source_of_truth.jpg" 
+                      alt="Single Source of Truth Live-Dashboard"
+                      className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
+                    />
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-blue-600/80 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
                       <Sparkles size={10} /> {t('ssot_video_tag')}
                     </div>
@@ -1098,7 +1086,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p3_desc')}</p>
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
-                  <img src="/media/michael_engineer_workbench.jpg" alt="Team & Onboarding" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+                  <img src="/media/creatives_team_onboarding.jpg" alt="Team & Onboarding" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p3_badge')}
                   </div>
