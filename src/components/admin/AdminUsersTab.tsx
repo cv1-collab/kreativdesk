@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Shield, UserCheck, Trash2, Loader2, Mail, X, CheckCircle2, Copy, ExternalLink, Building2, Sparkles, Eye } from 'lucide-react';
+import { Search, Shield, UserCheck, Trash2, Loader2, Mail, X, CheckCircle2, Copy, ExternalLink, Building2, Sparkles, Eye, Clock } from 'lucide-react';
 import { cn } from '../../utils';
 import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -19,6 +19,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     preview_workspace_tooltip: 'Test workspace from customer view',
     preview: 'Preview',
     edit: 'Edit',
+    pending: 'Pending (Invited)',
     cleanup_confirm: 'Do you want to delete all demo and test users?',
     cleanup_success: 'Test users successfully deleted!',
     cleanup_error: 'Error cleaning up test users'
@@ -34,6 +35,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     preview_workspace_tooltip: 'Workspace aus Kundensicht testen',
     preview: 'Vorschau',
     edit: 'Bearbeiten',
+    pending: 'Ausstehend (Einladung)',
     cleanup_confirm: 'Möchtest du alle Demo- und Test-Nutzer löschen?',
     cleanup_success: 'Test-Nutzer erfolgreich gelöscht!',
     cleanup_error: 'Fehler beim Bereinigen'
@@ -122,28 +124,51 @@ export default function AdminUsersTab() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [{ data: profs, error: profErr }, { data: companyUsers }] = await Promise.all([
+        supabase.from('profiles').select('*').order('created_at', { ascending: false }),
+        supabase.from('company_users').select('*').order('created_at', { ascending: false })
+      ]);
 
-      if (error) throw error;
-      if (data) {
+      if (profErr) throw profErr;
+
+      const registeredEmails = new Set((profs || []).map(p => (p.email || '').toLowerCase()));
+      const registeredIds = new Set((profs || []).map(p => p.id));
+
+      if (profs) {
         // Auto-sync super_admin status in Database and state
-        data.forEach(async (u) => {
+        profs.forEach(async (u) => {
           if (checkIsSuperAdmin(u.email) && (u.role !== 'super_admin' || u.plan !== 'Enterprise')) {
             await supabase.from('profiles').update({ role: 'super_admin', plan: 'Enterprise' }).eq('id', u.id);
           }
         });
 
-        const mapped = data.map(u => {
+        const activeList = profs.map(u => {
           if (checkIsSuperAdmin(u.email)) {
-            return { ...u, role: 'Super_admin', plan: 'Enterprise' };
+            return { ...u, role: 'Super_admin', plan: 'Enterprise', isPending: false };
           }
-          return u;
+          return { ...u, isPending: false };
         });
 
-        setUsers(mapped);
+        // Merge in pending invited team members from company_users who are not registered in auth yet
+        const pendingList: any[] = [];
+        (companyUsers || []).forEach(cu => {
+          const emailLower = (cu.email || '').toLowerCase();
+          if (emailLower && !registeredEmails.has(emailLower) && !registeredIds.has(cu.id)) {
+            pendingList.push({
+              id: cu.id,
+              email: cu.email,
+              name: cu.name || [cu.first_name, cu.last_name].filter(Boolean).join(' ') || cu.email,
+              role: cu.role || 'Internal',
+              plan: 'Workspace Member',
+              company_id: cu.company_id,
+              created_at: cu.created_at,
+              isPending: true,
+              isPendingCompanyUser: true
+            });
+          }
+        });
+
+        setUsers([...activeList, ...pendingList]);
       }
     } catch (err) {
       console.error("Error fetching users for admin:", err);
@@ -158,6 +183,7 @@ export default function AdminUsersTab() {
     const channel = supabase
       .channel('admin-users-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchUsers)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_users' }, fetchUsers)
       .subscribe();
 
     return () => {
@@ -168,7 +194,14 @@ export default function AdminUsersTab() {
   const handleDeleteUser = async (user: any) => {
     if (!window.confirm(t('delete_user_confirm'))) return;
     try {
-      await supabase.from('profiles').delete().eq('id', user.id);
+      if (user.isPendingCompanyUser) {
+        await supabase.from('company_users').delete().eq('id', user.id);
+        await supabase.from('project_members').delete().eq('user_id', user.id);
+      } else {
+        await supabase.from('profiles').delete().eq('id', user.id);
+        await supabase.from('company_users').delete().or(`id.eq.${user.id},email.eq.${user.email}`);
+        await supabase.from('project_members').delete().eq('user_id', user.id);
+      }
       addToast(t('user_saved'), 'success');
       await fetchUsers();
     } catch (error) { 
@@ -196,33 +229,43 @@ export default function AdminUsersTab() {
     if (!editingUser) return;
     setIsSubmitting(true);
     try {
-      await supabase
-        .from('profiles')
-        .update({
-          role: editingUser.role,
-          name: editingUser.name,
-          plan: editingUser.plan || 'Pro',
-          has_active_subscription: editingUser.plan ? editingUser.plan !== 'Free Trial' : true
-        })
-        .eq('id', editingUser.id);
-
-      const seatsToSave = parseInt(editingUser.maxSeats) || 1;
-      if (editingUser.company_id) {
-         await supabase
-           .from('companies')
-           .update({
-             max_seats: seatsToSave,
-             plan: editingUser.plan || 'Enterprise'
-           })
-           .eq('id', editingUser.company_id);
+      if (editingUser.isPendingCompanyUser) {
+        await supabase
+          .from('company_users')
+          .update({
+            name: editingUser.name,
+            role: editingUser.role
+          })
+          .eq('id', editingUser.id);
       } else {
-         await supabase
-           .from('companies')
-           .update({
-             max_seats: seatsToSave,
-             plan: editingUser.plan || 'Enterprise'
-           })
-           .or(`owner_id.eq.${editingUser.id},id.eq.${editingUser.id}`);
+        await supabase
+          .from('profiles')
+          .update({
+            role: editingUser.role,
+            name: editingUser.name,
+            plan: editingUser.plan || 'Pro',
+            has_active_subscription: editingUser.plan ? editingUser.plan !== 'Free Trial' : true
+          })
+          .eq('id', editingUser.id);
+
+        const seatsToSave = parseInt(editingUser.maxSeats) || 1;
+        if (editingUser.company_id) {
+           await supabase
+             .from('companies')
+             .update({
+               max_seats: seatsToSave,
+               plan: editingUser.plan || 'Enterprise'
+             })
+             .eq('id', editingUser.company_id);
+        } else {
+           await supabase
+             .from('companies')
+             .update({
+               max_seats: seatsToSave,
+               plan: editingUser.plan || 'Enterprise'
+             })
+             .or(`owner_id.eq.${editingUser.id},id.eq.${editingUser.id}`);
+        }
       }
 
       addToast(t('user_saved'), 'success');
@@ -332,9 +375,15 @@ export default function AdminUsersTab() {
                       <div className="text-xs text-text-muted">{user.plan || 'Free Trial'}</div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                        <CheckCircle2 size={12} /> {t('active')}
-                      </span>
+                      {user.isPending ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20" title="Benutzer erfasst, Einladung noch ausstehend">
+                          <Clock size={12} /> {t('pending')}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          <CheckCircle2 size={12} /> {t('active')}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">

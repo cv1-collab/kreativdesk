@@ -140,6 +140,13 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
   const [realUsers, setRealUsers] = useState<any[]>([]);
   const [crmUsers, setCrmUsers] = useState<any[]>([]);
 
+  // Email Invite Modal States (DE & EN, Internal & External)
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [inviteModalContact, setInviteModalContact] = useState<any>(null);
+  const [inviteModalUrl, setInviteModalUrl] = useState('');
+  const [inviteModalLang, setInviteModalLang] = useState<'de' | 'en'>('de');
+  const [inviteModalType, setInviteModalType] = useState<'internal' | 'external'>('internal');
+
   const fetchAllContacts = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
     let profilesData: any[] = [];
@@ -593,19 +600,100 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     }
   };
 
+  const getInviteEmailTemplate = (contact: any, inviteUrl: string, lang: 'de' | 'en', type: 'internal' | 'external') => {
+    const name = formatName(contact);
+    const host = currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0] || 'Carlo Vescio';
+    const companyName = (currentUser as any)?.companyName || (currentUser as any)?.company || 'Kreativ Desk';
+    const roleTitle = contact?.jobTitle || (contact?.role === 'Internal' || contact?.role === 'employee' ? 'Interner Mitarbeiter' : contact?.role || 'Projektpartner');
+
+    if (lang === 'de') {
+      if (type === 'external') {
+        const subject = `📐 Einladung zur Projekt-Kollaboration | Kreativ Desk OS`;
+        const body = 
+          `Guten Tag ${name},\n\n` +
+          `${host} lädt Sie zur digitalen Projekt-Zusammenarbeit auf Kreativ Desk OS ein.\n\n` +
+          `🏢 PROJEKT- & KOLLABORATIONS-DETAILS:\n` +
+          `• Organisation: ${companyName}\n` +
+          `• Funktion: Externer Fachplaner / Projektpartner\n` +
+          `• Direkter Zugangs-Link: ${inviteUrl}\n\n` +
+          `✨ HINWEIS FÜR EXTERNE PARTNER:\n` +
+          `1. Über den Link oben gelangen Sie direkt in unsere gemeinsame Projektumgebung.\n` +
+          `2. Sie können aktuelle CAD- und 3D-BIM-Pläne einsehen, Mängelprotokolle bearbeiten und Freigaben ohne Medienbrüche austauschen.\n` +
+          `3. Es ist keine Software-Installation erforderlich – der Zugriff erfolgt direkt und sicher im Browser.\n\n` +
+          `Freundliche Grüsse,\n` +
+          `${host}\n` +
+          `Kreativ Desk OS\n` +
+          `https://www.kreativdesk.ch`;
+        return { subject, body };
+      } else {
+        const subject = `🚀 Einladung zu Kreativ-Desk OS | Dein Workspace-Zugang`;
+        const body = 
+          `Hallo ${name},\n\n` +
+          `${host} lädt dich ein, unserem Workspace auf Kreativ Desk OS beizutreten!\n\n` +
+          `🏢 WORKSPACE & ZUGANGS-DETAILS:\n` +
+          `• Plattform: Kreativ Desk OS (Schweizer Architektur- & Projekt-Betriebssystem)\n` +
+          `• Workspace: ${companyName}\n` +
+          `• Rolle / Funktion: ${roleTitle}\n` +
+          `• Direkter Einladungs-Link: ${inviteUrl}\n\n` +
+          `✨ NÄCHSTE SCHRITTE:\n` +
+          `1. Klicke einfach auf den Link oben, um dein Konto zu erstellen und dein persönliches Passwort festzulegen.\n` +
+          `2. Nach der Aktivierung hast du sofortigen Zugriff auf deine Projekte, Bautagebücher, 3D-BIM-Modelle und Aufgaben.\n\n` +
+          `Freundliche Grüsse,\n` +
+          `${host}\n` +
+          `Kreativ Desk OS\n` +
+          `https://www.kreativdesk.ch`;
+        return { subject, body };
+      }
+    } else {
+      if (type === 'external') {
+        const subject = `📐 Invitation to Project Collaboration | Kreativ Desk OS`;
+        const body = 
+          `Hello ${name},\n\n` +
+          `${host} invites you to collaborate on Kreativ Desk OS.\n\n` +
+          `🏢 PROJECT & COLLABORATION DETAILS:\n` +
+          `• Organization: ${companyName}\n` +
+          `• Role: External Planner / Project Partner\n` +
+          `• Direct Access Link: ${inviteUrl}\n\n` +
+          `✨ NOTE FOR EXTERNAL PARTNERS:\n` +
+          `1. Click the link above to access our shared project workspace.\n` +
+          `2. View current CAD and 3D BIM plans, track defects, and exchange approvals with zero media friction.\n` +
+          `3. No software installation required – access is instant and secure directly in your browser.\n\n` +
+          `Best regards,\n` +
+          `${host}\n` +
+          `Kreativ Desk OS\n` +
+          `https://www.kreativdesk.ch`;
+        return { subject, body };
+      } else {
+        const subject = `🚀 Invitation to Kreativ Desk OS | Your Workspace Access`;
+        const body = 
+          `Hello ${name},\n\n` +
+          `${host} invites you to join our workspace on Kreativ Desk OS!\n\n` +
+          `🏢 WORKSPACE & ACCESS DETAILS:\n` +
+          `• Platform: Kreativ Desk OS (Swiss Architecture & Project Operating System)\n` +
+          `• Workspace: ${companyName}\n` +
+          `• Role / Title: ${roleTitle}\n` +
+          `• Direct Invitation Link: ${inviteUrl}\n\n` +
+          `✨ NEXT STEPS:\n` +
+          `1. Simply click the link above to create your account and set your secure password.\n` +
+          `2. Once activated, you have immediate access to your projects, site diaries, 3D BIM models, and tasks.\n\n` +
+          `Best regards,\n` +
+          `${host}\n` +
+          `Kreativ Desk OS\n` +
+          `https://www.kreativdesk.ch`;
+        return { subject, body };
+      }
+    }
+  };
+
   const handleSendInviteEmail = async (contact: any) => {
     const inviteUrl = await handleGenerateInvite(contact);
     if (!inviteUrl) return;
-    const name = formatName(contact);
-    const subject = encodeURIComponent(`Einladung zu Kreativ-Desk OS`);
-    const body = encodeURIComponent(
-      `Hallo ${name},\n\n` +
-      `Du wurdest eingeladen, unserem Workspace auf Kreativ-Desk OS beizutreten.\n\n` +
-      `Klicke auf den folgenden Link, um dein Konto zu erstellen, dein Passwort festzulegen und dich einzuloggen:\n` +
-      `${inviteUrl}\n\n` +
-      `Beste Grüsse,\n${currentUser?.displayName || currentUser?.email || 'Dein Team'}`
-    );
-    window.open(`mailto:${contact.email}?subject=${subject}&body=${body}`, '_blank');
+    const isExt = contact.isExternal || contact.role === 'partner' || contact.role === 'External Planner' || (contact.status && contact.status !== 'team');
+    setInviteModalContact(contact);
+    setInviteModalUrl(inviteUrl);
+    setInviteModalType(isExt ? 'external' : 'internal');
+    setInviteModalLang(currentLang === 'de' ? 'de' : 'en');
+    setIsInviteModalOpen(true);
   };
 
   const openEditModal = () => {
@@ -2438,6 +2526,176 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 </div>
               </form>
             </div>
+          </motion.div>
+        </div>,
+        document.body
+      )}
+
+      {/* EINLADUNGS-E-MAIL VORLAGE MODAL (DE & EN, INTERN & EXTERN) */}
+      {isInviteModalOpen && inviteModalContact && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto animate-in fade-in duration-200">
+          <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/60 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-border/50 flex items-center justify-between bg-surface/60">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent-ai/10 border border-accent-ai/20 text-accent-ai flex items-center justify-center">
+                  <Mail size={20} />
+                </div>
+                <div>
+                  <h3 className="font-black text-base sm:text-lg text-text-primary flex items-center gap-2">
+                    E-Mail-Einladung vorbereiten
+                  </h3>
+                  <p className="text-xs text-text-muted font-medium">
+                    Für {formatName(inviteModalContact)} ({inviteModalContact.email})
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsInviteModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 rounded-xl hover:bg-white/5 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-5 flex-1 text-left">
+              
+              {/* Sprache & Vorlagen-Typ Steuerung */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-background/60 border border-border/50 rounded-2xl">
+                {/* Sprache Umschalten */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1.5">
+                    Sprache / Language
+                  </label>
+                  <div className="flex gap-1.5 p-1 bg-surface border border-border/40 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalLang('de')}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                        inviteModalLang === 'de' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                      )}
+                    >
+                      🇩🇪 Deutsch
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalLang('en')}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                        inviteModalLang === 'en' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                      )}
+                    >
+                      🇬🇧 English
+                    </button>
+                  </div>
+                </div>
+
+                {/* Vorlagen-Typ Umschalten */}
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted block mb-1.5">
+                    Empfänger-Typ / Rolle
+                  </label>
+                  <div className="flex gap-1.5 p-1 bg-surface border border-border/40 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalType('internal')}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                        inviteModalType === 'internal' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                      )}
+                    >
+                      🏢 Internes Team
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInviteModalType('external')}
+                      className={cn(
+                        "flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5",
+                        inviteModalType === 'external' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                      )}
+                    >
+                      📐 Externer Planer
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview Box */}
+              {(() => {
+                const { subject, body } = getInviteEmailTemplate(inviteModalContact, inviteModalUrl, inviteModalLang, inviteModalType);
+                return (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-wider block mb-1">
+                        Betreffzeile / Subject
+                      </label>
+                      <div className="p-3 bg-background border border-border/60 rounded-xl text-xs sm:text-sm font-bold text-text-primary select-all">
+                        {subject}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-text-muted uppercase tracking-wider block mb-1">
+                        Nachrichtentext / Body
+                      </label>
+                      <div className="p-4 bg-background border border-border/60 rounded-xl text-xs font-mono leading-relaxed text-text-primary max-h-56 overflow-y-auto custom-scrollbar whitespace-pre-wrap select-all">
+                        {body}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 sm:p-5 border-t border-border/50 bg-surface/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { body } = getInviteEmailTemplate(inviteModalContact, inviteModalUrl, inviteModalLang, inviteModalType);
+                    navigator.clipboard.writeText(body);
+                    addToast('📋 Einladungstext in Zwischenablage kopiert!', 'success');
+                  }}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-surface border border-border/60 hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                >
+                  <Copy size={14} /> Text kopieren
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(inviteModalUrl);
+                    addToast('🔗 Einladungslink in Zwischenablage kopiert!', 'success');
+                  }}
+                  className="flex-1 sm:flex-initial px-4 py-2.5 bg-surface border border-border/60 hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                >
+                  <LinkIcon size={14} /> Nur Link
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-text-muted hover:text-text-primary transition-colors"
+                >
+                  Schliessen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { subject, body } = getInviteEmailTemplate(inviteModalContact, inviteModalUrl, inviteModalLang, inviteModalType);
+                    window.open(`mailto:${inviteModalContact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank');
+                    addToast('✉️ E-Mail-Programm geöffnet!', 'success');
+                    setIsInviteModalOpen(false);
+                  }}
+                  className="flex-1 sm:flex-initial px-5 py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-lg shadow-accent-ai/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Send size={14} /> In Mailprogramm öffnen
+                </button>
+              </div>
+            </div>
+
           </motion.div>
         </div>,
         document.body
