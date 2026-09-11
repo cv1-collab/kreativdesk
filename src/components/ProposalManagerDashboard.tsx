@@ -602,105 +602,117 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
         <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 backdrop-blur-md p-2 sm:p-6 animate-in fade-in duration-200" onClick={() => setPreviewProposal(null)}>
           <div className="bg-surface border border-border rounded-3xl w-full max-w-6xl h-[94vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
             {/* Modal Header Bar */}
-            <div className="p-4 sm:px-6 border-b border-border flex items-center justify-between gap-4 bg-surface/90 backdrop-blur-md shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                  <Eye size={20} />
+            <div className="p-3 sm:px-5 sm:py-3.5 border-b border-border flex items-center justify-between gap-3 bg-surface/90 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+                  <Eye size={18} />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="font-black text-sm sm:text-base text-text-primary truncate">
                       {t('preview_title')} {previewProposal.title}
                     </h3>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                       <ShieldCheck size={11} /> {t('preview_tenant_badge')}
                     </span>
                   </div>
                   <p className="text-[11px] text-text-muted truncate">
-                    {t('preview_client')} <strong className="text-text-primary">{previewProposal.clientName}</strong> {previewProposal.clientCompany && `(${previewProposal.clientCompany})`} · {t('preview_valid_until')} {new Date(previewProposal.expiresAt).toLocaleDateString(currentLang === 'en' ? 'en-US' : (currentLang === 'fr' ? 'fr-CH' : 'de-CH'))}
+                    {t('preview_client')} <strong className="text-text-primary font-semibold">{previewProposal.clientName}</strong> {previewProposal.clientCompany && `(${previewProposal.clientCompany})`} · {t('preview_valid_until')} {new Date(previewProposal.expiresAt).toLocaleDateString(currentLang === 'en' ? 'en-US' : (currentLang === 'fr' ? 'fr-CH' : 'de-CH'))}
                   </p>
                 </div>
               </div>
 
-              {/* Viewport & Theme Switchers */}
-              <div className="hidden md:flex items-center gap-2">
-                {/* Theme Mode Switcher (Hell / Dunkel) */}
-                <div className="flex items-center bg-background border border-border rounded-xl p-1 gap-1">
+              {/* Viewport & Action Controls - Compact & Unified Layout */}
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Theme Mode Segmented Switcher (Sun / Moon) */}
+                <div className="flex items-center bg-background border border-border rounded-xl p-0.5 gap-0.5 shadow-sm">
                   <button
                     type="button"
                     onClick={() => setPreviewTheme('light')}
                     className={cn(
-                      "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      "p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       previewTheme === 'light' ? "bg-amber-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
                     title={t('preview_light_mode')}
+                    aria-label={t('preview_light_mode')}
                   >
-                    <Sun size={14} /> {t('preview_light_mode')}
+                    <Sun size={14} />
+                    <span className="hidden xl:inline text-[11px]">{t('preview_light_mode')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setPreviewTheme('dark')}
                     className={cn(
-                      "px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      "p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       previewTheme === 'dark' ? "bg-zinc-800 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
                     title={t('preview_dark_mode')}
+                    aria-label={t('preview_dark_mode')}
                   >
-                    <Moon size={14} /> {t('preview_dark_mode')}
+                    <Moon size={14} />
+                    <span className="hidden xl:inline text-[11px]">{t('preview_dark_mode')}</span>
                   </button>
                 </div>
 
-                {/* Device Switcher (Desktop / Mobile) */}
-                <div className="flex items-center bg-background border border-border rounded-xl p-1 gap-1">
+                {/* Device Viewport Switcher (Desktop / Mobile) */}
+                <div className="hidden md:flex items-center bg-background border border-border rounded-xl p-0.5 gap-0.5 shadow-sm">
                   <button
+                    type="button"
                     onClick={() => setPreviewDevice('desktop')}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       previewDevice === 'desktop' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
+                    title={t('preview_desktop')}
                   >
-                    <Monitor size={14} /> {t('preview_desktop')}
+                    <Monitor size={14} />
+                    <span className="text-[11px]">Desktop</span>
                   </button>
                   <button
+                    type="button"
                     onClick={() => setPreviewDevice('mobile')}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                      "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
                       previewDevice === 'mobile' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
+                    title={t('preview_mobile')}
                   >
-                    <Smartphone size={14} /> {t('preview_mobile')}
+                    <Smartphone size={14} />
+                    <span className="text-[11px]">Mobile</span>
                   </button>
                 </div>
-              </div>
 
-              {/* Header Action Buttons */}
-              <div className="flex items-center gap-2">
+                {/* Header Action Buttons */}
                 <button
+                  type="button"
                   onClick={() => handleCopyLink(previewProposal, previewTheme)}
-                  className="px-3 py-2 bg-background hover:bg-surface border border-border text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-                  title={t('preview_copy_btn')}
+                  className="px-2.5 py-1.5 bg-background hover:bg-surface border border-border text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title={`${t('preview_copy_btn')} (${previewTheme === 'light' ? t('preview_light_mode') : t('preview_dark_mode')})`}
                 >
                   {copiedId === previewProposal.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                  <span className="hidden sm:inline">{t('preview_copy_btn')} ({previewTheme === 'light' ? t('preview_light_mode') : t('preview_dark_mode')})</span>
+                  <span className="hidden sm:inline text-[11px]">
+                    {copiedId === previewProposal.id ? 'Kopiert' : t('preview_copy_btn')}
+                  </span>
                 </button>
 
                 <a
                   href={`/p/${previewProposal.shareToken}?theme=${previewTheme}&lang=${currentLang}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
                   title={t('preview_tab_btn')}
                 >
                   <ExternalLink size={14} />
-                  <span className="hidden sm:inline">{t('preview_tab_btn')}</span>
+                  <span className="hidden sm:inline text-[11px]">{t('preview_tab_btn')}</span>
                 </a>
 
                 <button
+                  type="button"
                   onClick={() => setPreviewProposal(null)}
-                  className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all cursor-pointer"
+                  className="p-1.5 sm:p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all cursor-pointer shadow-sm ml-1"
                   title={t('close')}
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
             </div>

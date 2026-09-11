@@ -100,10 +100,15 @@ const GlobalSuspenseFallback = () => (
 );
 
 import { scrubLocalStorageFileUrls } from './utils';
+import { initBrandColor } from './utils/brandColorManager';
+
+// Immediate synchronous cache initialization to eliminate color flash
+initBrandColor();
 
 function RecoveryRedirectGuard({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     scrubLocalStorageFileUrls();
+    initBrandColor();
     const fullUrl = window.location.href;
     const isRecovery = fullUrl.includes('type=recovery') || fullUrl.includes('type%3Drecovery') || sessionStorage.getItem('is_password_recovery') === 'true';
 

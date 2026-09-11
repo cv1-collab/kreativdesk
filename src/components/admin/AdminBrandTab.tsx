@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../../utils/configHelper';
-import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert } from 'lucide-react';
+import { applyBrandColor, resetBrandColor, DEFAULT_BRAND_COLOR, calculateBrandShades } from '../../utils/brandColorManager';
+import { Palette, Upload, Loader2, Image as ImageIcon, Building2, PaintBucket, Globe, Mail, Phone, MapPin, CreditCard, Hash, CheckCircle2, Megaphone, Lock, Sparkles, Link as LinkIcon, AlertTriangle, Info, ShieldAlert, RotateCcw, Eye } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { supabase } from '../../lib/supabase';
@@ -15,7 +16,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     accent_color: 'Primary Accent Color', save_branding: 'Save Branding Settings', branding_saved: 'Branding settings saved successfully!',
     email: 'Support / Master Email', phone: 'Phone Number', website: 'Official Website URL', uid: 'UID / Tax Registration No.',
     preset_colors: 'Color Presets', logo_preview: 'Logo Preview', no_logo: 'No logo set',
-    upload_success: 'Brand asset successfully uploaded!'
+    upload_success: 'Brand asset successfully uploaded!',
+    live_preview: 'Live Accent Color Preview',
+    live_preview_desc: 'See how your brand color looks across interactive elements, buttons, and badges in real-time.',
+    sample_button: 'Primary Action',
+    sample_badge: 'Status: Active',
+    sample_tab: 'Selected View',
+    reset_color: 'Reset to Default Blue',
+    branding_scope_info: 'This color controls primary buttons, active navigation states, badges, and document exports (Universal PDF Studio, Invoices, SIA reports).'
   },
   de: {
     global_branding: 'Globales Branding & White-Labeling', branding_desc: 'Konfiguriere das offizielle Firmen-Branding, Stammdaten, Ankündigungs-Banner und Akzentfarben deiner Instanz.',
@@ -24,18 +32,26 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     accent_color: 'Primäre Akzentfarbe', save_branding: 'Branding Einstellungen speichern', branding_saved: 'Branding-Einstellungen erfolgreich gespeichert!',
     email: 'Support / Master E-Mail', phone: 'Telefonnummer', website: 'Offizielle Webseite (URL)', uid: 'UID-Nummer / MWST-Nr.',
     preset_colors: 'Farb-Presets', logo_preview: 'Logo-Vorschau', no_logo: 'Kein Logo hinterlegt',
-    upload_success: 'Marken-Asset erfolgreich hochgeladen!'
+    upload_success: 'Marken-Asset erfolgreich hochgeladen!',
+    live_preview: 'Live-Vorschau der Akzentfarbe',
+    live_preview_desc: 'So wirken deine primären Schaltflächen, Badges und aktiven Tabs in Echtzeit.',
+    sample_button: 'Haupt-Aktion',
+    sample_badge: 'Status: Aktiv',
+    sample_tab: 'Aktiver Reiter',
+    reset_color: 'Standard-Blau wiederherstellen',
+    branding_scope_info: 'Diese Farbe steuert alle primären Buttons, aktive Navigationspunkte, Fokus-Ringe sowie PDF-Exporte (Offerten, Rechnungen & SIA-Berichte).'
   }
 };
 
 const COLOR_PRESETS = [
-  { name: 'Red', hex: '#ef4444' },
-  { name: 'Blue', hex: '#3b82f6' },
-  { name: 'Emerald', hex: '#10b981' },
-  { name: 'Purple', hex: '#8b5cf6' },
-  { name: 'Amber', hex: '#f59e0b' },
-  { name: 'Pink', hex: '#ec4899' },
-  { name: 'Cyan', hex: '#06b6d4' }
+  { name: 'Kreativ Blue', hex: '#3b82f6' },
+  { name: 'Swiss Red', hex: '#ef4444' },
+  { name: 'Emerald Green', hex: '#10b981' },
+  { name: 'Indigo Violet', hex: '#6366f1' },
+  { name: 'Deep Purple', hex: '#8b5cf6' },
+  { name: 'Amber Gold', hex: '#f59e0b' },
+  { name: 'Rose Pink', hex: '#ec4899' },
+  { name: 'Cyan Modern', hex: '#06b6d4' }
 ];
 
 export default function AdminBrandTab() {
@@ -46,7 +62,7 @@ export default function AdminBrandTab() {
   const { addToast } = useToast();
 
   const [config, setConfig] = useState({
-    masterLogo: '', accentColor: '#ef4444',
+    masterLogo: '', accentColor: '#3b82f6',
     companyName: 'Kreativ-Desk OS', uid: '', address: '', zipCode: '', city: '', phone: '', website: '', email: '', iban: '',
     screensaverActive: false,
     screensaverImage: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop',
@@ -60,21 +76,49 @@ export default function AdminBrandTab() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Active shades calculation for live previews
+  const currentShades = calculateBrandShades(config.accentColor || DEFAULT_BRAND_COLOR);
+
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase
-          .from('system_config')
-          .select('*')
-          .eq('id', 'global_master')
-          .maybeSingle();
+        const docConfig = await fetchSystemConfigJSON<any>('global_master');
+        if (docConfig) {
+          setConfig(prev => ({ ...prev, ...docConfig }));
+          if (docConfig.accentColor) {
+            applyBrandColor(docConfig.accentColor, false);
+          }
+        } else {
+          const { data } = await supabase
+            .from('system_config')
+            .select('*')
+            .eq('id', 'global_master')
+            .maybeSingle();
 
-        const config = (data as any)?.data || data;
-        if (config) setConfig(prev => ({ ...prev, ...config }));
-      } catch (e) { }
+          const tableConfig = (data as any)?.data || data;
+          if (tableConfig) {
+            setConfig(prev => ({ ...prev, ...tableConfig }));
+            if (tableConfig.accentColor) {
+              applyBrandColor(tableConfig.accentColor, false);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load branding config:', e);
+      }
     };
     fetchConfig();
   }, []);
+
+  const handleColorChange = (newHex: string) => {
+    setConfig(prev => ({ ...prev, accentColor: newHex }));
+    applyBrandColor(newHex, true);
+  };
+
+  const handleResetColor = () => {
+    handleColorChange(DEFAULT_BRAND_COLOR);
+    addToast(t('reset_color'), 'info');
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, targetField: 'screensaverImage' | 'loginBgImage' | 'masterLogo') => {
     const file = e.target.files?.[0];
@@ -125,6 +169,7 @@ export default function AdminBrandTab() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      applyBrandColor(config.accentColor || DEFAULT_BRAND_COLOR, true);
       await saveSystemConfigJSON('global_master', config);
       await supabase.from('system_config').upsert({
         id: 'global_master',
@@ -207,19 +252,35 @@ export default function AdminBrandTab() {
 
             {/* Accent Color Picker */}
             <div className="space-y-3 pt-4 border-t border-border/50">
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('accent_color')}</label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('accent_color')}</label>
+                {config.accentColor !== DEFAULT_BRAND_COLOR && (
+                  <button
+                    type="button"
+                    onClick={handleResetColor}
+                    className="text-[11px] font-bold text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors cursor-pointer"
+                    title={t('reset_color')}
+                  >
+                    <RotateCcw size={12} />
+                    <span>{t('reset_color')}</span>
+                  </button>
+                )}
+              </div>
+
               <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={config.accentColor || '#ef4444'}
-                  onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
-                  className="w-10 h-10 rounded-xl border border-border bg-background cursor-pointer p-1"
-                />
+                <div className="relative">
+                  <input
+                    type="color"
+                    value={config.accentColor || DEFAULT_BRAND_COLOR}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="w-11 h-11 rounded-xl border border-border bg-background cursor-pointer p-1 shadow-sm"
+                  />
+                </div>
                 <input
                   type="text"
-                  value={config.accentColor || '#ef4444'}
-                  onChange={(e) => setConfig({ ...config, accentColor: e.target.value })}
-                  className="w-32 px-3 py-2 bg-background border border-border/50 rounded-xl text-sm font-sans font-bold text-text-primary uppercase tracking-wider"
+                  value={config.accentColor || DEFAULT_BRAND_COLOR}
+                  onChange={(e) => handleColorChange(e.target.value)}
+                  className="w-32 px-3 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-sans font-bold text-text-primary uppercase tracking-wider focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
 
@@ -230,15 +291,80 @@ export default function AdminBrandTab() {
                     <button
                       key={preset.hex}
                       type="button"
-                      onClick={() => setConfig({ ...config, accentColor: preset.hex })}
+                      onClick={() => handleColorChange(preset.hex)}
                       className={cn(
-                        "w-7 h-7 rounded-lg transition-transform hover:scale-110 border border-white/20 shadow-sm",
-                        config.accentColor === preset.hex && "ring-2 ring-blue-500 ring-offset-2 ring-offset-surface"
+                        "w-8 h-8 rounded-xl transition-all hover:scale-110 border border-white/20 shadow-sm cursor-pointer relative",
+                        config.accentColor.toLowerCase() === preset.hex.toLowerCase() && "ring-2 ring-white ring-offset-2 ring-offset-surface scale-105"
                       )}
                       style={{ backgroundColor: preset.hex }}
                       title={preset.name}
-                    />
+                    >
+                      {config.accentColor.toLowerCase() === preset.hex.toLowerCase() && (
+                        <span className="absolute inset-0 flex items-center justify-center text-white text-[10px] drop-shadow-md">
+                          ✓
+                        </span>
+                      )}
+                    </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Live Interactive Accent Color Preview Card */}
+              <div className="mt-4 p-4 rounded-2xl bg-background/80 border border-border space-y-3 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary">
+                    <Eye size={14} style={{ color: config.accentColor || DEFAULT_BRAND_COLOR }} />
+                    <span>{t('live_preview')}</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface text-text-muted font-bold border border-border">
+                    {config.accentColor || DEFAULT_BRAND_COLOR}
+                  </span>
+                </div>
+                <p className="text-[11px] text-text-muted leading-relaxed">
+                  {t('live_preview_desc')}
+                </p>
+
+                {/* Interactive Samples */}
+                <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                  {/* Sample Primary Button */}
+                  <button
+                    type="button"
+                    className="px-3.5 py-1.5 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    style={{ backgroundColor: config.accentColor || DEFAULT_BRAND_COLOR }}
+                  >
+                    <Sparkles size={13} />
+                    <span>{t('sample_button')}</span>
+                  </button>
+
+                  {/* Sample Active Badge */}
+                  <span
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border"
+                    style={{
+                      backgroundColor: currentShades.tint,
+                      borderColor: currentShades.borderTint,
+                      color: config.accentColor || DEFAULT_BRAND_COLOR
+                    }}
+                  >
+                    <CheckCircle2 size={13} />
+                    <span>{t('sample_badge')}</span>
+                  </span>
+
+                  {/* Sample Tab Indicator */}
+                  <div
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold border-b-2 flex items-center gap-1 bg-surface/50"
+                    style={{
+                      borderColor: config.accentColor || DEFAULT_BRAND_COLOR,
+                      color: config.accentColor || DEFAULT_BRAND_COLOR
+                    }}
+                  >
+                    <span>{t('sample_tab')}</span>
+                  </div>
+                </div>
+
+                {/* Scope Notice */}
+                <div className="p-2.5 rounded-xl bg-surface border border-border/60 text-[11px] text-text-muted flex items-start gap-2">
+                  <Info size={14} className="shrink-0 mt-0.5" style={{ color: config.accentColor || DEFAULT_BRAND_COLOR }} />
+                  <span>{t('branding_scope_info')}</span>
                 </div>
               </div>
             </div>
