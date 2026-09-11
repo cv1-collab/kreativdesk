@@ -77,7 +77,7 @@ BEGIN
     ELSE
       -- Standard: Neuer Firmeninhaber
       INSERT INTO public.companies (name, plan, max_seats, used_seats, owner_id)
-      VALUES (company_name, 'Free Trial', 5, 1, NULL)
+      VALUES (company_name, 'Free Trial', 1, 1, NULL)
       RETURNING id INTO new_company_id;
 
       INSERT INTO public.profiles (id, email, name, role, company_id, has_active_subscription, plan)

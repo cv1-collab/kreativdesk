@@ -219,7 +219,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .insert({
                 name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
                 plan: 'Free Trial',
-                max_seats: 5,
+                max_seats: 1,
                 used_seats: 1,
                 owner_id: user.id
               })
@@ -301,7 +301,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .insert({
                 name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
                 plan: 'Free Trial',
-                max_seats: 5,
+                max_seats: 1,
                 used_seats: 1,
                 owner_id: user.id
               })

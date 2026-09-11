@@ -91,7 +91,7 @@ export default function CompanySettings() {
     fetchCompany();
   }, [currentUser]);
 
-  const maxSeats = company?.max_seats || company?.maxSeats || 5;
+  const maxSeats = company?.max_seats || company?.maxSeats || 1;
 
   const handleGenerateLink = async () => {
     const isSuperAdmin = checkIsSuperAdmin(currentUser?.email) || currentUser?.role?.toLowerCase() === 'super_admin' || currentUser?.role?.toLowerCase() === 'admin';

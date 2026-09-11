@@ -68,7 +68,7 @@ BEGIN
     -- Standard: Neuer Firmeninhaber
     -- 1. Zuerst Firma anlegen mit owner_id = NULL, um den Foreign-Key-Constraint companies_owner_id_fkey auf profiles(id) zu wahren
     INSERT INTO public.companies (name, plan, max_seats, used_seats, owner_id)
-    VALUES (company_name, 'Free Trial', 5, 1, NULL)
+    VALUES (company_name, 'Free Trial', 1, 1, NULL)
     RETURNING id INTO new_company_id;
 
     -- 2. Profil erstellen, das auf die soeben erstellte Firma verweist
