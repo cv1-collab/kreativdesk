@@ -8,6 +8,7 @@ import QRCode from 'react-qr-code';
 import { Receipt, Plus, Trash2, X, Loader2, Image as ImageIcon, Smartphone, Camera, FileText } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import UniversalPDFStudio from './UniversalPDFStudio';
+import { cn } from '../utils';
 
 import { supabase } from '../lib/supabase';
 import { callGeminiAPI } from '../utils/geminiClient';
@@ -17,12 +18,14 @@ import { notifyNewDocument } from '../utils/documentNotificationHelper';
 
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
+import { Currency, getCurrencyPreference, formatCurrency } from '../utils/currencyManager';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { expense_studio: 'Expense Studio', employee: 'Employee', date: 'Date', project_assignment: 'Project Assignment', global_expenses: 'Global Expenses (No Project)', category: 'Category', purpose_merchant: 'Purpose / Merchant', amount: 'Amount', add_position: 'Add Position', receipts_photos: 'Receipts / Photos', attached: 'attached', upload_document: 'Upload Document', live_scan: 'Live Scan', total: 'Total', save_book: 'Save & Book', cancel: 'Cancel', analyzing_ai: 'AI is analyzing...', take_photo: 'Take Photo', select: 'Select...', description: 'Description', generate_pdf: 'Generate PDF & Book', save_error: 'Error saving', ai_failed: 'AI receipt analysis failed', ext_costs_booked: 'Expenses successfully booked' },
   de: { expense_studio: 'Spesen Studio', employee: 'Mitarbeiter', date: 'Datum', project_assignment: 'Projekt-Zuweisung', global_expenses: 'Globale Spesen (Kein Projekt)', category: 'Kategorie', purpose_merchant: 'Zweck / Merchant', amount: 'Betrag', add_position: 'Position hinzufügen', receipts_photos: 'Belege / Fotos', attached: 'angehängt', upload_document: 'Beleg hochladen', live_scan: 'Live Scan', total: 'Total', save_book: 'Speichern & Verbuchen', cancel: 'Abbrechen', analyzing_ai: 'KI analysiert Beleg...', take_photo: 'Foto aufnehmen', select: 'Wählen...', description: 'Beschreibung', generate_pdf: 'PDF generieren & Verbuchen', save_error: 'Fehler beim Speichern', ai_failed: 'KI-Beleganalyse fehlgeschlagen', ext_costs_booked: 'Spesen erfolgreich verbucht' }
 };
 
-const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+const formatAmount = (val: number, cur: Currency = 'CHF') => formatCurrency(val, cur, 'display', cur);
 
 const pdfStyles = StyleSheet.create({
   page: { padding: 40, fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
@@ -44,7 +47,7 @@ const pdfStyles = StyleSheet.create({
   receiptImage: { width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }
 });
 
-const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, receipts, formatCHF, t, companyUsers, projects }: any) => {
+const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, receipts, currency = 'CHF', t, companyUsers, projects }: any) => {
   const user = Array.isArray(companyUsers) ? companyUsers.find((u:any) => u.id === headerData.userId) : null;
   const project = Array.isArray(projects) ? projects.find((p:any) => p.id === headerData.projectId) : null;
   return (
@@ -59,19 +62,19 @@ const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, rece
           </View>
         </View>
         <View style={pdfStyles.tableHeader} fixed>
-          <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('category')}</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('description')}</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>{t('amount')} (CHF)</Text>
+          <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{t('category')}</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>{t('description')}</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>{t('amount')} ({currency})</Text>
         </View>
         {positions.map((pos: any, idx: number) => (
           <View key={idx} style={pdfStyles.tableRow} wrap={false}>
             <View style={pdfStyles.col1}><Text style={{ backgroundColor: '#f3f4f6', color: '#4b5563', padding: 4, fontSize: 8, fontWeight: 'bold' }}>{pos.category}</Text></View>
             <View style={pdfStyles.col2}><Text style={[pdfStyles.textBold, { lineHeight: 1.35 }]}>{pos.description || '-'}</Text></View>
-            <Text style={[pdfStyles.col3, pdfStyles.textBold]}>{formatCHF(Number(pos.amount))}</Text>
+            <Text style={[pdfStyles.col3, pdfStyles.textBold]}>{formatAmount(Number(pos.amount), currency)}</Text>
           </View>
         ))}
         <View style={{ alignItems: 'flex-end', marginTop: 15 }} wrap={false}>
           <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#f97316', paddingBottom: 5 }}>
             <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>{t('total').toUpperCase()}</Text>
-            <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>CHF {formatCHF(totalAmount)}</Text>
+            <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>{currency} {formatAmount(totalAmount, currency)}</Text>
           </View>
         </View>
         {receipts.length > 0 && (
@@ -86,9 +89,9 @@ const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, rece
   );
 };
 
-interface ExpenseReportProps { onClose: () => void; onSave: () => void; }
+interface ExpenseReportProps { onClose: () => void; onSave: () => void; initialCurrency?: Currency; }
 
-export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
+export default function ExpenseReport({ onClose, onSave, initialCurrency }: ExpenseReportProps) {
   const { currentUser } = useAuth();
   const { projects = [], companyUsers = [] } = useProject() as any;
   const { addToast } = useToast();
@@ -96,6 +99,8 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   
+  const [currency, setCurrency] = useState<Currency>(() => initialCurrency || getCurrencyPreference().currency || 'CHF');
+  const [showLiveScanModal, setShowLiveScanModal] = useState(false);
   const [headerData, setHeaderData] = useState({ userId: currentUser?.uid || '', date: new Date().toISOString().split('T')[0], projectId: '' });
   const [positions, setPositions] = useState<any[]>([{ id: '1', category: 'Verpflegung', description: '', amount: '' }]);
   const [receipts, setReceipts] = useState<string[]>([]);
@@ -353,7 +358,27 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
         
         <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0 sticky top-0 z-30">
           <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><Receipt className="text-orange-500"/> {t('expense_studio')}</h3>
-          <button onClick={onClose} className="text-text-muted hover:text-text-primary p-2 bg-background rounded-lg border border-border"><X size={20}/></button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-9">
+              {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+                  className={cn(
+                    "px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer",
+                    currency === c
+                      ? "bg-orange-500 text-white shadow-sm font-black"
+                      : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                  )}
+                  title={`Währung auf ${c} umstellen`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <button onClick={onClose} className="text-text-muted hover:text-text-primary p-2 bg-background rounded-lg border border-border transition-colors"><X size={20}/></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto bg-background/50 custom-scrollbar relative">
@@ -366,7 +391,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
 
             <div className="bg-surface border border-border/50 rounded-xl shadow-sm overflow-hidden">
               <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-border/50 bg-background/50 text-xs font-bold text-text-muted uppercase tracking-widest">
-                <div className="col-span-3">{t('category')}</div><div className="col-span-6">{t('purpose_merchant')}</div><div className="col-span-2 text-right">{t('amount')}</div><div className="col-span-1"></div>
+                <div className="col-span-3">{t('category')}</div><div className="col-span-6">{t('purpose_merchant')}</div><div className="col-span-2 text-right">{t('amount')} ({currency})</div><div className="col-span-1"></div>
               </div>
               <div className="divide-y divide-border/30">
                 {positions.map((pos, index) => (
@@ -376,7 +401,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
                       <option value="Verpflegung">Verpflegung</option><option value="Reisespesen">Reisespesen</option><option value="Übernachtung">Übernachtung</option><option value="Material & Werkzeug">Material & Werkzeug</option><option value="Repräsentation">Repräsentation</option><option value="Diverses">Sonstiges</option>
                     </select></div>
                     <div className="col-span-1 md:col-span-6 space-y-1.5 md:space-y-0 w-full pr-12 md:pr-0"><label className="md:hidden text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('purpose_merchant')}</label><input type="text" value={pos.description} onChange={e => updatePosition(pos.id, 'description', e.target.value)} placeholder="Z.B. SBB Ticket Zürich-Bern" className="w-full bg-surface border border-border/50 rounded-lg px-3 py-3 md:py-2.5 text-sm outline-none text-text-primary" /></div>
-                    <div className="col-span-1 md:col-span-2 space-y-1.5 md:space-y-0 w-full"><label className="md:hidden text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('amount')} (CHF)</label><input type="number" step="0.05" value={pos.amount} onChange={e => updatePosition(pos.id, 'amount', e.target.value)} placeholder="0.00" className="w-full bg-surface border border-border/50 rounded-lg px-3 py-3 md:py-2.5 text-sm md:text-right font-bold text-orange-500 outline-none" /></div>
+                    <div className="col-span-1 md:col-span-2 space-y-1.5 md:space-y-0 w-full"><label className="md:hidden text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('amount')} ({currency})</label><input type="number" step="0.05" value={pos.amount} onChange={e => updatePosition(pos.id, 'amount', e.target.value)} placeholder="0.00" className="w-full bg-surface border border-border/50 rounded-lg px-3 py-3 md:py-2.5 text-sm md:text-right font-bold text-orange-500 outline-none" /></div>
                     <div className="hidden md:flex col-span-1 justify-end"><button onClick={() => removePosition(pos.id)} className="p-2 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg"><Trash2 size={16} /></button></div>
                   </div>
                 ))}
@@ -386,48 +411,128 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
               </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-4"><h3 className="text-sm font-bold uppercase tracking-widest text-text-muted flex items-center gap-2"><Receipt size={16} className="text-orange-500"/> {t('receipts_photos')}</h3><span className="text-xs font-bold bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full">{receipts.length} {t('attached')}</span></div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
-                {receipts.map((src, index) => (
-                  <div key={index} className="aspect-square rounded-xl border border-border bg-surface relative group overflow-hidden shadow-sm">
-                    <img src={src} alt="Beleg" className="w-full h-full object-cover opacity-80 group-hover:opacity-40 transition-opacity" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setReceipts(receipts.filter((_, i) => i !== index))} className="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"><Trash2 size={20}/></button></div>
+            {/* UNIFIED BELEGE & SCANNER HUB */}
+            <div className="bg-surface border border-border/50 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <Receipt size={16} className="text-orange-500" />
+                  <span className="text-xs font-bold text-text-primary uppercase tracking-wider">{t('receipts_photos')}</span>
+                  <span className="text-[11px] font-bold bg-orange-500/10 text-orange-500 px-2.5 py-0.5 rounded-full">{receipts.length} {t('attached')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isAnalyzingAI}
+                    className="px-3 py-1.5 bg-background hover:bg-white/5 border border-border/60 rounded-lg text-xs font-bold text-text-primary flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <ImageIcon size={14} className="text-emerald-500" />
+                    <span>{t('upload_document')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => mobileFileInputRef.current?.click()}
+                    disabled={isAnalyzingAI}
+                    className="px-3 py-1.5 bg-background hover:bg-white/5 border border-border/60 rounded-lg text-xs font-bold text-text-primary flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <Camera size={14} className="text-blue-500" />
+                    <span>{t('take_photo')}</span>
+                  </button>
+                  {!isMobileOrTablet && (
+                    <button
+                      type="button"
+                      onClick={() => setShowLiveScanModal(!showLiveScanModal)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer",
+                        showLiveScanModal
+                          ? "bg-orange-500 text-white border-orange-500 shadow-sm"
+                          : "bg-orange-500/10 text-orange-500 border-orange-500/25 hover:bg-orange-500/20"
+                      )}
+                    >
+                      <Smartphone size={14} />
+                      <span>{showLiveScanModal ? 'QR-Scan schliessen' : t('live_scan')}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Dropzone & Live QR Code */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "border-2 border-dashed border-border/60 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer hover:border-orange-500/50 hover:bg-orange-500/[0.02] transition-all relative overflow-hidden group",
+                    showLiveScanModal ? "md:col-span-8" : "md:col-span-12"
+                  )}
+                >
+                  {isAnalyzingAI && (
+                    <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+                      <Loader2 size={24} className="text-orange-500 animate-spin mb-2" />
+                      <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{t('analyzing_ai')}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform">
+                      <ImageIcon size={20} />
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 group-hover:scale-110 transition-transform">
+                      <Camera size={20} />
+                    </div>
                   </div>
-                ))}
-                
-                {/* Camera / Photo Option */}
-                <div className="aspect-square flex flex-col gap-2">
-                  <button onClick={() => mobileFileInputRef.current?.click()} disabled={isAnalyzingAI} className="w-full h-full rounded-xl border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
-                    {isAnalyzingAI ? <Loader2 className="animate-spin text-orange-500 mb-2" size={24} /> : <Camera size={24} className="text-orange-500 mb-2 group-hover:scale-110 transition-transform" />}
-                    <span className="text-[10px] font-bold text-text-muted group-hover:text-orange-500">{isAnalyzingAI ? t('analyzing_ai') : t('take_photo')}</span>
-                  </button>
-                  <input type="file" accept="image/*" capture="environment" ref={mobileFileInputRef} onChange={handleMobileCardScan} className="hidden" />
+                  <p className="text-xs font-bold text-text-primary mb-0.5">Beleg hier ablegen oder Datei / Foto auswählen</p>
+                  <p className="text-[10px] text-text-muted">PDF, PNG oder JPG • Automatische Erkennung mit KI</p>
                 </div>
 
-                {/* File / Gallery Option */}
-                <div className="aspect-square flex flex-col gap-2">
-                  <button onClick={() => fileInputRef.current?.click()} disabled={isAnalyzingAI} className="w-full h-full rounded-xl border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
-                    {isAnalyzingAI ? <Loader2 className="animate-spin text-orange-500 mb-2" size={24} /> : <ImageIcon size={24} className="text-text-muted group-hover:text-orange-500 mb-2 transition-colors" />}
-                    <span className="text-[10px] font-bold text-text-muted group-hover:text-orange-500">{isAnalyzingAI ? t('analyzing_ai') : t('upload_document')}</span>
-                  </button>
-                  <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
-                </div>
-
-                {/* Desktop QR Code Live Scan */}
-                {!isMobileOrTablet && (
-                  <div className="aspect-square rounded-xl border border-orange-500/30 bg-orange-500/10 flex flex-col items-center justify-center p-3 text-center group relative overflow-hidden" title="Scanne diesen Code mit dem Handy">
-                    <div className="bg-white p-1.5 rounded-lg mb-2 shadow-sm"><QRCode value={mobileUploadUrl} size={64} /></div>
-                    <span className="text-[10px] font-bold text-orange-500 flex items-center gap-1.5"><Smartphone size={12}/> {t('live_scan')}</span>
+                {showLiveScanModal && !isMobileOrTablet && (
+                  <div className="md:col-span-4 bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 flex flex-col items-center justify-center text-center animate-in fade-in">
+                    <div className="bg-white p-2 rounded-lg shadow-md mb-2">
+                      <QRCode value={mobileUploadUrl} size={90} />
+                    </div>
+                    <p className="text-xs font-bold text-orange-500 mb-0.5 flex items-center gap-1.5">
+                      <Smartphone size={13} /> {t('live_scan')}
+                    </p>
+                    <p className="text-[10px] text-text-muted leading-tight max-w-[170px]">
+                      Scanne diesen Code mit der Smartphone-Kamera zum Sofort-Upload
+                    </p>
                   </div>
                 )}
               </div>
+
+              {/* Hidden file inputs */}
+              <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
+              <input type="file" accept="image/*" capture="environment" ref={mobileFileInputRef} onChange={handleMobileCardScan} className="hidden" />
+
+              {/* Attached receipts gallery */}
+              {receipts.length > 0 && (
+                <div className="pt-2 border-t border-border/30">
+                  <div className="text-[11px] font-bold text-text-muted uppercase tracking-wider mb-2">
+                    Angehängte Belege ({receipts.length})
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                    {receipts.map((src, index) => (
+                      <div key={index} className="aspect-square rounded-xl border border-border bg-background relative group overflow-hidden shadow-sm">
+                        <img src={src} alt="Beleg" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setReceipts(receipts.filter((_, i) => i !== index))}
+                            className="p-2 bg-red-500 text-white rounded-lg hover:scale-110 transition-transform shadow-md"
+                            title="Beleg entfernen"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             
           </div>
           
           <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4 sticky bottom-0 z-30">
-            <div className="font-bold text-lg md:text-xl text-text-primary flex justify-between w-full sm:w-auto">{t('total')}: <span className="text-orange-500 ml-2">CHF {formatCHF(totalAmount)}</span></div>
+            <div className="font-bold text-lg md:text-xl text-text-primary flex justify-between w-full sm:w-auto">{t('total')}: <span className="text-orange-500 ml-2">{currency} {formatAmount(totalAmount, currency)}</span></div>
             <div className="flex gap-3 w-full sm:w-auto">
               <button type="button" onClick={onClose} className="flex-1 sm:flex-none px-6 py-3 border border-border text-text-primary rounded-lg text-sm font-bold">{t('cancel')}</button>
               <button onClick={() => setIsPdfStudioOpen(true)} disabled={totalAmount <= 0} className="flex-1 sm:flex-none px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-accent-ai/90 transition-all">
@@ -439,7 +544,7 @@ export default function ExpenseReport({ onClose, onSave }: ExpenseReportProps) {
       </div>
 
       <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title="Spesenabrechnung" fileName={`Spesen_${Date.now()}`} onSaveCloud={handleSaveToCloud}>
-        {(settings) => <ExpensePDFDocument settings={settings} headerData={headerData} positions={positions} totalAmount={totalAmount} receipts={receipts} formatCHF={formatCHF} t={t} companyUsers={companyUsers} projects={projects} />}
+        {(settings) => <ExpensePDFDocument settings={settings} headerData={headerData} positions={positions} totalAmount={totalAmount} receipts={receipts} currency={currency} t={t} companyUsers={companyUsers} projects={projects} />}
       </UniversalPDFStudio>
     </div>
   );

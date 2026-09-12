@@ -11,7 +11,8 @@ import {
   FileText, AlertCircle, CalendarDays, FileSignature,
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
   Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown, Sparkles,
-  User, Building2, FileSpreadsheet, ArrowLeftRight, Coins, Settings2
+  User, Building2, FileSpreadsheet, ArrowLeftRight, Coins, Settings2,
+  UploadCloud, QrCode
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -512,6 +513,7 @@ export default function Finance() {
   const [isReceiptPdfStudioOpen, setIsReceiptPdfStudioOpen] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isAnalyzingAI, setIsAnalyzingAI] = useState(false);
+  const [showMobileQrCode, setShowMobileQrCode] = useState(false);
 
   const [receiptType, setReceiptType] = useState<'expense' | 'external_cost'>('expense');
   const [incomingReceipts, setIncomingReceipts] = useState<string[]>([]);
@@ -1339,8 +1341,7 @@ export default function Finance() {
     }
   };
 
-  const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const filesList = Array.from(e.target.files || []);
+  const processReceiptFiles = async (filesList: File[]) => {
     if (!filesList.length || !currentUser) return;
     for (const file of filesList) {
       const reader = new FileReader();
@@ -1354,8 +1355,22 @@ export default function Finance() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const filesList = Array.from(e.target.files || []);
+    await processReceiptFiles(filesList);
     if (mobileCameraRef.current) mobileCameraRef.current.value = '';
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDropReceipts = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const filesList = Array.from(e.dataTransfer.files);
+      await processReceiptFiles(filesList);
+    }
   };
 
   const ensureFolderLocal = async (folderName: string, docCategory: string) => {
@@ -2175,58 +2190,6 @@ export default function Finance() {
                 </div>
               )}
             </div>
-
-            {/* Currency Selector & FX Switcher */}
-            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-[42px] shrink-0">
-              {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
-                <button
-                  key={c}
-                  onClick={() => handleCurrencyChange(c)}
-                  className={cn(
-                    "px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer",
-                    currency === c
-                      ? "bg-accent-ai text-white shadow-sm font-black"
-                      : "text-text-muted hover:text-text-primary hover:bg-white/5"
-                  )}
-                  title={`Währung auf ${c} umstellen`}
-                >
-                  {c}
-                </button>
-              ))}
-
-              <div className="w-px h-4 bg-border/50 mx-0.5" />
-
-              {/* Mode Toggle: Live FX vs 1:1 Basis */}
-              <button
-                onClick={() => handleCurrencyModeChange(currencyMode === 'fx' ? 'display' : 'fx')}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer border",
-                  currencyMode === 'fx'
-                    ? "bg-purple-500/15 text-purple-300 border-purple-500/30 hover:bg-purple-500/25"
-                    : "bg-background/80 text-text-muted border-border/40 hover:text-text-primary"
-                )}
-                title={
-                  currencyMode === 'fx'
-                    ? `Live FX-Umrechnung aktiv (1 CHF = ${exchangeRates[currency]} ${currency}). Klicken für 1:1 Basis-Währung`
-                    : '1:1 Basis-Währung aktiv (keine Kursumrechnung). Klicken für Live FX-Umrechnung'
-                }
-              >
-                <ArrowLeftRight size={12} className={currencyMode === 'fx' ? "text-purple-400" : "text-text-muted"} />
-                <span className="hidden sm:inline">{currencyMode === 'fx' ? 'Live FX' : '1:1'}</span>
-              </button>
-
-              {/* FX Settings Button */}
-              <button
-                onClick={() => {
-                  setTempRates({ ...exchangeRates });
-                  setShowFxSettingsModal(true);
-                }}
-                className="p-1.5 rounded-md text-text-muted hover:text-accent-ai hover:bg-white/5 transition-colors cursor-pointer"
-                title="Wechselkurse (FX) anpassen"
-              >
-                <Settings2 size={14} />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -2305,6 +2268,58 @@ export default function Finance() {
                 </div>
               </div>
             )}
+
+            {/* Currency Selector & FX Switcher - Placed directly to the right of Papierkorb (Budget) / Date filter (Other tabs) */}
+            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-[42px] shrink-0">
+              {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
+                <button
+                  key={c}
+                  onClick={() => handleCurrencyChange(c)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer",
+                    currency === c
+                      ? "bg-accent-ai text-white shadow-sm font-black"
+                      : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                  )}
+                  title={`Währung auf ${c} umstellen`}
+                >
+                  {c}
+                </button>
+              ))}
+
+              <div className="w-px h-4 bg-border/50 mx-0.5" />
+
+              {/* Mode Toggle: Live FX vs 1:1 Basis */}
+              <button
+                onClick={() => handleCurrencyModeChange(currencyMode === 'fx' ? 'display' : 'fx')}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer border",
+                  currencyMode === 'fx'
+                    ? "bg-purple-500/15 text-purple-300 border-purple-500/30 hover:bg-purple-500/25"
+                    : "bg-background/80 text-text-muted border-border/40 hover:text-text-primary"
+                )}
+                title={
+                  currencyMode === 'fx'
+                    ? `Live FX-Umrechnung aktiv (1 CHF = ${exchangeRates[currency]} ${currency}). Klicken für 1:1 Basis-Währung`
+                    : '1:1 Basis-Währung aktiv (keine Kursumrechnung). Klicken für Live FX-Umrechnung'
+                }
+              >
+                <ArrowLeftRight size={12} className={currencyMode === 'fx' ? "text-purple-400" : "text-text-muted"} />
+                <span className="hidden sm:inline">{currencyMode === 'fx' ? 'Live FX' : '1:1'}</span>
+              </button>
+
+              {/* FX Settings Button */}
+              <button
+                onClick={() => {
+                  setTempRates({ ...exchangeRates });
+                  setShowFxSettingsModal(true);
+                }}
+                className="p-1.5 rounded-md text-text-muted hover:text-accent-ai hover:bg-white/5 transition-colors cursor-pointer"
+                title="Wechselkurse (FX) anpassen"
+              >
+                <Settings2 size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -3358,46 +3373,135 @@ export default function Finance() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-200">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl flex flex-col lg:flex-row overflow-hidden max-h-[92vh] h-[92vh] lg:h-[820px]">
 
-            {/* LEFT SIDE: SCAN & UPLOAD */}
-            <div className="w-full lg:w-5/12 p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar min-h-0 h-full">
-              <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-text-primary">
-                <Receipt className="text-red-500" /> {t('receipts_photos')}
-              </h3>
-
-              <div className="grid grid-cols-2 gap-3 mb-6 shrink-0">
-                <label className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors shadow-sm relative overflow-hidden group">
-                  {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-red-500 animate-spin mb-2" /><span className="text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
-                  <Camera size={24} className="text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-bold text-center">{t('take_photo')}</span>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleLocalImageUpload} />
-                </label>
-                <label className="flex flex-col items-center justify-center bg-surface border border-border rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors shadow-sm relative overflow-hidden group">
-                  {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={24} className="text-red-500 animate-spin mb-2" /><span className="text-[10px] font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
-                  <ImageIcon size={24} className="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-bold text-center">Datei wählen</span>
-                  <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleLocalImageUpload} multiple />
-                </label>
+            {/* LEFT SIDE: UNIFIED BELEG- & SCANNER-HUB */}
+            <div className="w-full lg:w-5/12 p-5 sm:p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar min-h-0 h-full">
+              <div className="flex items-center justify-between gap-2 mb-4 shrink-0">
+                <h3 className="font-bold text-base sm:text-lg flex items-center gap-2 text-text-primary">
+                  <Receipt className="text-red-500 shrink-0" size={20} /> {t('receipts_photos')}
+                </h3>
+                <span className="text-[11px] font-bold bg-red-500/10 text-red-500 px-2.5 py-0.5 rounded-full shrink-0">
+                  {incomingReceipts.length} {incomingReceipts.length === 1 ? 'Beleg' : 'Belege'}
+                </span>
               </div>
 
-              <div className="bg-surface border border-border rounded-xl p-6 flex flex-col items-center justify-center text-center shrink-0 mb-6 relative overflow-hidden">
-                {isAnalyzingAI && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center z-10"><Loader2 size={32} className="text-red-500 animate-spin mb-2" /><span className="text-xs font-bold text-red-500 uppercase tracking-widest text-center">{t('analyzing_ai')}</span></div>}
-                <div className="bg-white p-3 rounded-xl shadow-lg mb-4">
-                  <QRCode value={mobileUploadUrl} size={120} />
+              {/* Quick-Action Bar */}
+              <div className="grid grid-cols-3 gap-2 mb-3.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => mobileCameraRef.current?.click()}
+                  disabled={isAnalyzingAI}
+                  className="p-2.5 bg-surface hover:bg-white/5 border border-border/60 hover:border-blue-500/50 rounded-xl text-xs font-bold text-text-primary flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50 group"
+                  title="Foto mit Kamera aufnehmen"
+                >
+                  <Camera size={18} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] text-center">{t('take_photo')}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isAnalyzingAI}
+                  className="p-2.5 bg-surface hover:bg-white/5 border border-border/60 hover:border-emerald-500/50 rounded-xl text-xs font-bold text-text-primary flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50 group"
+                  title="PDF oder Belegbild auswählen"
+                >
+                  <UploadCloud size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] text-center">Datei wählen</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowMobileQrCode(!showMobileQrCode)}
+                  className={cn(
+                    "p-2.5 border rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm group",
+                    showMobileQrCode
+                      ? "bg-purple-500 text-white border-purple-500"
+                      : "bg-surface hover:bg-white/5 text-text-primary border-border/60 hover:border-purple-500/50"
+                  )}
+                  title="Smartphone QR-Code für Direkt-Scan anzeigen"
+                >
+                  <Smartphone size={18} className={cn(showMobileQrCode ? "text-white" : "text-purple-400 group-hover:scale-110 transition-transform")} />
+                  <span className="text-[11px] text-center">{showMobileQrCode ? 'Schliessen' : 'Handy-Scan'}</span>
+                </button>
+              </div>
+
+              {/* Hidden File Inputs */}
+              <input ref={mobileCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleLocalImageUpload} />
+              <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleLocalImageUpload} multiple />
+
+              {/* Collapsible Smartphone QR-Scan Box */}
+              <AnimatePresence>
+                {showMobileQrCode && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-surface border border-purple-500/30 rounded-xl p-4 flex flex-col items-center justify-center text-center shrink-0 mb-3.5 relative overflow-hidden bg-purple-500/5 shadow-inner"
+                  >
+                    <div className="flex items-center justify-between w-full mb-2">
+                      <span className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
+                        <Smartphone size={14} /> Smartphone Scanner
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowMobileQrCode(false)}
+                        className="text-text-muted hover:text-text-primary p-1 rounded-md hover:bg-white/10 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-xl shadow-lg mb-2">
+                      <QRCode value={mobileUploadUrl} size={110} />
+                    </div>
+                    <p className="text-[11px] text-text-muted leading-relaxed max-w-[240px]">
+                      QR-Code mit Smartphone scannen, um Belege direkt von der Kamera hierher zu senden.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Unified Dropzone & AI Processing Zone */}
+              <div
+                onDragOver={e => e.preventDefault()}
+                onDrop={handleDropReceipts}
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-border/70 hover:border-red-500/50 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-white/[0.02] transition-colors relative overflow-hidden mb-4 shrink-0 group"
+              >
+                {isAnalyzingAI && (
+                  <div className="absolute inset-0 bg-surface/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+                    <Loader2 size={28} className="text-red-500 animate-spin mb-2" />
+                    <span className="text-xs font-bold text-red-500 uppercase tracking-widest">{t('analyzing_ai')}</span>
+                    <span className="text-[11px] text-text-muted mt-0.5">Beleg wird ausgelesen...</span>
+                  </div>
+                )}
+                <div className="p-2.5 rounded-full bg-red-500/10 text-red-500 mb-2 group-hover:scale-110 transition-transform">
+                  <UploadCloud size={22} />
                 </div>
-                <p className="text-xs font-bold text-text-primary mb-1">Smartphone Scanner</p>
-                <p className="text-[10px] text-text-muted leading-relaxed max-w-[200px]">QR Code scannen, um Belege per Handy-Kamera direkt hierher zu senden.</p>
+                <div className="text-xs font-bold text-text-primary mb-0.5">Belege hier ablegen oder klicken</div>
+                <div className="text-[10px] text-text-muted">JPG, PNG oder PDF • Automatische KI-Erkennung</div>
               </div>
 
+              {/* Scanned Receipts Grid */}
               <div className="flex-1 min-h-0 flex flex-col">
-                <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3 shrink-0">Gescannte Belege</h4>
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2.5 shrink-0">Gescannte Belege</h4>
                 {incomingReceipts.length === 0 ? (
-                  <div className="flex-1 border-2 border-dashed border-border/50 rounded-xl flex items-center justify-center text-text-muted text-xs p-6 text-center">Noch keine Belege hochgeladen.</div>
+                  <div className="flex-1 border border-dashed border-border/50 rounded-xl flex items-center justify-center text-text-muted text-xs p-6 text-center bg-background/30">
+                    Noch keine Belege hochgeladen.
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5 overflow-y-auto custom-scrollbar pr-1 pb-2">
                     {incomingReceipts.map((src, i) => (
                       <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-border shadow-sm group">
                         <img src={sanitizeUrl(src)} className="w-full h-full object-cover" alt="Beleg" />
-                        <button onClick={() => setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"><Trash2 size={14} /></button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIncomingReceipts(incomingReceipts.filter((_, idx) => idx !== i));
+                          }}
+                          className="absolute top-1.5 right-1.5 p-1.5 bg-black/70 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -3407,13 +3511,13 @@ export default function Finance() {
 
             {/* RIGHT SIDE: DATA FORM */}
             <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface min-h-0">
-              <div className="p-6 border-b border-border/50 flex justify-between items-center shrink-0">
+              <div className="p-5 sm:p-6 border-b border-border/50 flex justify-between items-center shrink-0">
                 <h3 className="font-bold text-lg text-text-primary">Buchungsdetails</h3>
                 <button onClick={() => setShowReceiptStudio(false)} className="p-2 bg-background border border-border rounded-lg hover:text-red-500 transition-colors"><X size={18} /></button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar min-h-0">
-                <div className="flex bg-background border border-border/50 rounded-lg p-1 mb-6">
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar min-h-0">
+                <div className="flex bg-background border border-border/50 rounded-lg p-1 mb-5">
                   <button
                     type="button"
                     onClick={() => {
@@ -3424,9 +3528,13 @@ export default function Finance() {
                         status: prev.status === 'Bezahlt' ? 'Rückerstattet / Ausbezahlt' : 'Offen (Rückerstattung ausstehend)'
                       }));
                     }}
-                    className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                    className={cn(
+                      "flex-1 py-2 px-3 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer truncate",
+                      receiptType === 'expense' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                    )}
                   >
-                    <User size={14} /> 🔴 Intern (Spesen & Auslagen)
+                    <User size={14} className="shrink-0" />
+                    <span className="truncate">Intern (Spesen & Auslagen)</span>
                   </button>
                   <button
                     type="button"
@@ -3438,21 +3546,25 @@ export default function Finance() {
                         status: prev.status === 'Rückerstattet / Ausbezahlt' ? 'Bezahlt' : 'Offen zur Prüfung'
                       }));
                     }}
-                    className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", receiptType === 'external_cost' ? "bg-red-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+                    className={cn(
+                      "flex-1 py-2 px-3 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-2 cursor-pointer truncate",
+                      receiptType === 'external_cost' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                    )}
                   >
-                    <Building2 size={14} /> 🔵 Externer Kreditor (Lieferant / Handwerker)
+                    <Building2 size={14} className="shrink-0" />
+                    <span className="truncate">Externer Kreditor (Lieferant)</span>
                   </button>
                 </div>
 
                 {receiptType === 'expense' ? (
-                  /* 🔴 INTERN (SPESEN & AUSLAGEN) */
+                  /* INTERN (SPESEN & AUSLAGEN) */
                   <div className="space-y-4">
                     <div className="text-xs text-text-muted bg-red-500/10 border border-red-500/20 p-2.5 rounded-lg flex items-center gap-2">
                       <Receipt size={15} className="text-red-500 shrink-0" />
                       <span>Spesenabrechnung: Rückerstattung für privat vorgelegte Auslagen oder Firmenkartenbelege.</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Mitarbeiter / Begünstigter</label>
                         <select
@@ -3466,7 +3578,7 @@ export default function Finance() {
                               beneficiaryName: member?.userEmail || e.target.value
                             });
                           }}
-                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer"
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate"
                         >
                           <option value="" disabled className="bg-surface">Teammitglied wählen...</option>
                           {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
@@ -3484,7 +3596,7 @@ export default function Finance() {
                           required
                           value={incomingData.vendor}
                           onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })}
-                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
                           placeholder="z.B. Jumbo, SBB, Coop, Restaurant"
                         />
                       </div>
@@ -3493,15 +3605,15 @@ export default function Finance() {
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('date')}</label>
-                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-2.5 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf').replace('CHF', currency)}</label>
-                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">Betrag ({currency})</label>
+                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-2.5 py-2.5 text-xs sm:text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Satz</label>
-                        <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value={8.1} className="bg-surface">8.1% (Normalsatz)</option>
                           <option value={2.6} className="bg-surface">2.6% (Verpflegung)</option>
                           <option value={0} className="bg-surface">0% (Steuerfrei)</option>
@@ -3509,35 +3621,35 @@ export default function Finance() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Spesenkategorie</label>
-                        <select value={incomingData.expenseCategory} onChange={e => setIncomingData({ ...incomingData, expenseCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.expenseCategory} onChange={e => setIncomingData({ ...incomingData, expenseCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value="Materialkauf & Muster" className="bg-surface">Materialkauf & Muster</option>
-                          <option value="Reise- & Fahrtkosten (ÖV / Auto / Parken)" className="bg-surface">Reise- & Fahrtkosten (ÖV / Auto / Parken)</option>
+                          <option value="Reise- & Fahrtkosten (ÖV / Auto / Parken)" className="bg-surface">Reise- & Fahrtkosten (ÖV / Auto)</option>
                           <option value="Verpflegung & Kundenmeetings" className="bg-surface">Verpflegung & Kundenmeetings</option>
-                          <option value="Werkzeuge, Software & Kleinmaterial" className="bg-surface">Werkzeuge, Software & Kleinmaterial</option>
+                          <option value="Werkzeuge, Software & Kleinmaterial" className="bg-surface">Werkzeuge & Kleinmaterial</option>
                           <option value="Sonstiges" className="bg-surface">Sonstiges</option>
                         </select>
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Zahlungsart (Auslage via)</label>
-                        <select value={incomingData.paymentMethod} onChange={e => setIncomingData({ ...incomingData, paymentMethod: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value="Privat vorgelegt (Rückerstattung ausstehend)" className="bg-surface">Privat vorgelegt (Rückerstattung ausstehend)</option>
-                          <option value="Geschäftskarte / Firmenkarte" className="bg-surface">Geschäftskarte / Firmenkarte</option>
+                        <select value={incomingData.paymentMethod} onChange={e => setIncomingData({ ...incomingData, paymentMethod: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
+                          <option value="Privat vorgelegt (Rückerstattung ausstehend)" className="bg-surface">Privat vorgelegt (Rückerstattung)</option>
+                          <option value="Geschäftskarte / Firmenkarte" className="bg-surface">Firmenkarte / Geschäftskarte</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
-                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe (z.B. Musterplatten für Bauherrschaft)..." />
+                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe (z.B. Musterplatten für Bauherrschaft)..." />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
-                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value="" className="bg-surface">{t('free_booking')}</option>
                           {budgetGroups.map((group) => (
                             <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
@@ -3550,7 +3662,7 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Status Rückerstattung</label>
-                        <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value="Offen (Rückerstattung ausstehend)" className="bg-surface">Offen (Rückerstattung ausstehend)</option>
                           <option value="Rückerstattet / Ausbezahlt" className="bg-surface">Rückerstattet / Ausbezahlt</option>
                         </select>
@@ -3558,14 +3670,14 @@ export default function Finance() {
                     </div>
                   </div>
                 ) : (
-                  /* 🔵 EXTERNER KREDITOR (LIEFERANT / HANDWERKER) */
+                  /* EXTERNER KREDITOR (LIEFERANT / HANDWERKER) */
                   <div className="space-y-4">
                     <div className="text-xs text-text-muted bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex items-center gap-2">
                       <Building2 size={15} className="text-blue-500 shrink-0" />
                       <span>Kreditorenrechnung: Offizielle Handwerker-, Material- oder Planerrechnung erfassen.</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Firma / Kreditor (Lieferant)</label>
                         <input
@@ -3573,7 +3685,7 @@ export default function Finance() {
                           required
                           value={incomingData.company || incomingData.vendor}
                           onChange={e => setIncomingData({ ...incomingData, company: e.target.value, vendor: e.target.value })}
-                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
                           placeholder="z.B. Baumeister AG, Sanitär Meier"
                         />
                       </div>
@@ -3583,20 +3695,20 @@ export default function Finance() {
                           type="text"
                           value={incomingData.contactPerson}
                           onChange={e => setIncomingData({ ...incomingData, contactPerson: e.target.value })}
-                          className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
                           placeholder="z.B. Herr Keller, Bauleiter"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Kreditoren-Rechnungs-Nr.</label>
                         <input
                           type="text"
                           value={incomingData.invoiceNumber}
                           onChange={e => setIncomingData({ ...incomingData, invoiceNumber: e.target.value })}
-                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
                           placeholder="z.B. RE-2026-8910"
                         />
                       </div>
@@ -3606,31 +3718,31 @@ export default function Finance() {
                           type="text"
                           value={incomingData.vatNumber}
                           onChange={e => setIncomingData({ ...incomingData, vatNumber: e.target.value })}
-                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
+                          className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
                           placeholder="z.B. CHE-123.456.789 MWST"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Rechnungsdatum</label>
-                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                        <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Fälligkeit (Zahlungsziel)</label>
-                        <input type="date" value={incomingData.dueDate} onChange={e => setIncomingData({ ...incomingData, dueDate: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" />
+                        <input type="date" value={incomingData.dueDate} onChange={e => setIncomingData({ ...incomingData, dueDate: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{t('amount_chf').replace('CHF', currency)}</label>
-                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2.5 text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">Betrag ({currency})</label>
+                        <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-2.5 py-2.5 text-xs sm:text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
-                        <select value={incomingData.skontoRate} onChange={e => setIncomingData({ ...incomingData, skontoRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.skontoRate} onChange={e => setIncomingData({ ...incomingData, skontoRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value={0} className="bg-surface">0% Skonto (Netto)</option>
                           <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
                           <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
@@ -3638,7 +3750,7 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Satz</label>
-                        <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value={8.1} className="bg-surface">8.1% (Normalsatz)</option>
                           <option value={2.6} className="bg-surface">2.6% (Reduziert)</option>
                           <option value={0} className="bg-surface">0% (Steuerfrei)</option>
@@ -3648,15 +3760,15 @@ export default function Finance() {
 
                     {incomingData.skontoRate > 0 && incomingData.amount && (
                       <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                        <span>Skonto Abzug ({incomingData.skontoRate}%): -CHF {formatCHF(Number(incomingData.amount) * (incomingData.skontoRate / 100))}</span>
-                        <span>Effektiv Netto: CHF {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))}</span>
+                        <span>Skonto Abzug ({incomingData.skontoRate}%): -{currency} {formatCurrency(Number(incomingData.amount) * (incomingData.skontoRate / 100), currency)}</span>
+                        <span>Effektiv Netto: {currency} {formatCurrency(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100), currency)}</span>
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Aufwandskategorie</label>
-                        <select value={incomingData.creditorCategory} onChange={e => setIncomingData({ ...incomingData, creditorCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.creditorCategory} onChange={e => setIncomingData({ ...incomingData, creditorCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value="Kreditorenrechnung (Handwerker / Material)" className="bg-surface">Kreditorenrechnung (Handwerker / Material)</option>
                           <option value="Honorar / Planerleistung" className="bg-surface">Honorar / Planerleistung</option>
                           <option value="Behörden & Gebühren" className="bg-surface">Behörden & Gebühren</option>
@@ -3665,19 +3777,19 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">IBAN / QR-IBAN (optional)</label>
-                        <input type="text" value={incomingData.iban} onChange={e => setIncomingData({ ...incomingData, iban: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="CH..." />
+                        <input type="text" value={incomingData.iban} onChange={e => setIncomingData({ ...incomingData, iban: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="CH..." />
                       </div>
                     </div>
 
                     <div>
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
-                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Leistungsbeschrieb / Werkvertrag gemäss Rechnung..." />
+                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Leistungsbeschrieb / Werkvertrag gemäss Rechnung..." />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('budget_assignment')}</label>
-                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.budgetPosId} onChange={e => setIncomingData({ ...incomingData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value="" className="bg-surface">{t('free_booking')}</option>
                           {budgetGroups.map((group) => (
                             <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
@@ -3690,7 +3802,7 @@ export default function Finance() {
                       </div>
                       <div>
                         <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Status Rechnungsprüfung</label>
-                        <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-sm font-bold text-text-primary outline-none cursor-pointer">
+                        <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
                           <option value="Offen zur Prüfung" className="bg-surface">Offen zur Prüfung</option>
                           <option value="Freigegeben zur Zahlung" className="bg-surface">Freigegeben zur Zahlung</option>
                           <option value="Bezahlt" className="bg-surface">{t('paid')}</option>
@@ -3701,7 +3813,7 @@ export default function Finance() {
                 )}
               </div>
 
-              <div className="p-6 border-t border-border/50 bg-background/30 flex justify-end shrink-0">
+              <div className="p-5 sm:p-6 border-t border-border/50 bg-background/30 flex justify-end shrink-0">
                 <button
                   onClick={() => {
                     if (!hasFeature(currentUser, 'invoice_studio')) {
@@ -3725,6 +3837,7 @@ export default function Finance() {
         {showInvoiceModal && (
           <InvoiceStudio
             type="invoice"
+            currency={currency}
             onClose={() => setShowInvoiceModal(false)}
             onSave={handleSaveGeneratedInvoice}
             budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []}
@@ -3733,6 +3846,7 @@ export default function Finance() {
         {showQuoteModal && (
           <InvoiceStudio
             type="quote"
+            currency={currency}
             onClose={() => setShowQuoteModal(false)}
             onSave={handleSaveGeneratedQuote}
             budgetGroups={versions.find(v => v.id === activeVersionId)?.groups || []}

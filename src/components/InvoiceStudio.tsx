@@ -17,6 +17,8 @@ import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import { generateSwissQRPayload, getSwissQRCodeUrl } from '../utils/qrBillGenerator';
 
+import { Currency, getCurrencyPreference, formatCurrency, getCurrencySymbol } from '../utils/currencyManager';
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   de: {
     new_invoice: 'Neue Rechnung', new_quote: 'Neue Offerte',
@@ -38,7 +40,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-const formatCHF = (val: number) => new Intl.NumberFormat('de-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+const formatAmount = (val: number, cur: Currency = 'CHF') => formatCurrency(val, cur, 'display', cur);
 
 const pdfStyles = StyleSheet.create({
   page: { padding: '15mm', fontFamily: 'Helvetica', fontSize: 10, color: '#374151', backgroundColor: '#ffffff' },
@@ -62,81 +64,98 @@ const pdfStyles = StyleSheet.create({
   logo: { width: 120, height: 40, objectFit: 'contain', position: 'absolute', top: 0, right: 0 }
 });
 
-const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vatAmount, total, formatCHF, t }: any) => (
-  <Document>
-    <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
-      <View style={pdfStyles.headerRow} fixed>
-        <View>
-          <Text style={pdfStyles.senderText}>{formData.sender.replace(/\n/g, ' • ')}</Text>
-          <Text style={pdfStyles.recipientText}>{formData.recipient}</Text>
-        </View>
-        <View style={pdfStyles.metaTable}>
-          {settings.logo && <PDFImage src={settings.logo} style={[pdfStyles.logo, { position: 'relative', marginBottom: 15, alignSelf: 'flex-end' }]} />}
-          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{type === 'invoice' ? 'Rechnungs-Nr:' : 'Offerten-Nr:'}</Text><Text style={pdfStyles.metaValue}>{formData.invoiceNumber}</Text></View>
-          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{new Date(formData.date).toLocaleDateString('de-CH')}</Text></View>
-          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Ort:</Text><Text style={pdfStyles.metaValue}>{formData.location}</Text></View>
-          <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{formData.projectName}</Text></View>
-        </View>
-      </View>
-      <Text style={[pdfStyles.title, { color: settings.accentColor }]}>{type === 'invoice' ? 'RECHNUNG' : 'OFFERTE'}</Text>
-      <View style={pdfStyles.tableHeader} fixed>
-        <Text style={[pdfStyles.col1, pdfStyles.textBold]}>Pos</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>Bezeichnung</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>Menge</Text><Text style={[pdfStyles.col4, pdfStyles.textBold]}>Preis</Text><Text style={[pdfStyles.col5, pdfStyles.textBold]}>Total (CHF)</Text>
-      </View>
-      {positions.map((item: any, idx: number) => (
-        <View key={idx} style={pdfStyles.tableRow} wrap={false}>
-          <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{item.pos}</Text>
-          <View style={pdfStyles.col2}><Text style={pdfStyles.textBold}>{item.title}</Text>{item.description && <Text style={pdfStyles.textMuted}>{item.description}</Text>}</View>
-          <Text style={[pdfStyles.col3, { color: '#000000' }]}>{item.qty} {item.unit}</Text>
-          <Text style={[pdfStyles.col4, { color: '#000000' }]}>{formatCHF(item.unitPrice)}</Text>
-          <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{formatCHF(item.qty * item.unitPrice)}</Text>
-        </View>
-      ))}
-      <View style={pdfStyles.totalsContainer} wrap={false}>
-        <View style={pdfStyles.totalsRow}><Text style={pdfStyles.totalsText}>{t('subtotal')}</Text><Text style={pdfStyles.textBold}>{formatCHF(subtotal)}</Text></View>
-        <View style={pdfStyles.totalsRow}><Text style={pdfStyles.totalsText}>{t('vat')} {formData.vatRate}%</Text><Text style={pdfStyles.textBold}>{formatCHF(vatAmount)}</Text></View>
-        <View style={pdfStyles.totalsTotalRow}><Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{t('total').toUpperCase()}</Text><Text style={[pdfStyles.textBold, { fontSize: 12, color: settings.accentColor }]}>{formatCHF(total)}</Text></View>
-      </View>
-      <View style={pdfStyles.paymentInfo} wrap={false}><Text>{formData.paymentInfo}</Text></View>
-      
-      {/* SWISS QR-BILL SECTION */}
-      {type === 'invoice' && (
-        <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#000000', paddingTop: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} wrap={false}>
-          <View style={{ width: '60%' }}>
-            <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000', marginBottom: 4 }}>Zahlteil / Section paiement (Swiss QR-Bill)</Text>
-            <Text style={{ fontSize: 8, color: '#4b5563', lineHeight: 1.4 }}>
-              Konto / IBAN: CH93 0076 2011 6238 5295 7{'\n'}
-              Währung / Currency: CHF • Betrag / Amount: CHF {formatCHF(total)}{'\n'}
-              Zahlbar durch / Payable by: {formData.recipient.split('\n')[0] || 'Kunde'}
-            </Text>
+const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vatAmount, total, currency = 'CHF', t }: any) => {
+  const formatVal = (v: number) => formatAmount(v, currency);
+  const isSwissQRSupported = currency === 'CHF' || currency === 'EUR';
+
+  return (
+    <Document>
+      <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
+        <View style={pdfStyles.headerRow} fixed>
+          <View>
+            <Text style={pdfStyles.senderText}>{formData.sender.replace(/\n/g, ' • ')}</Text>
+            <Text style={pdfStyles.recipientText}>{formData.recipient}</Text>
           </View>
-          <PDFImage 
-            src={getSwissQRCodeUrl(generateSwissQRPayload({
-              iban: 'CH9300762011623852957',
-              creditor: { name: 'Kreativ-Desk Studio', postalCode: '8001', city: 'Zürich', country: 'CH' },
-              amount: total,
-              currency: 'CHF',
-              debtor: { name: formData.recipient.split('\n')[0] || 'Kunde', postalCode: '8000', city: 'Zürich', country: 'CH' },
-              unstructuredMessage: `Rechnung ${formData.invoiceNumber}`
-            }))} 
-            style={{ width: 85, height: 85, borderRadius: 4 }} 
-          />
+          <View style={pdfStyles.metaTable}>
+            {settings.logo && <PDFImage src={settings.logo} style={[pdfStyles.logo, { position: 'relative', marginBottom: 15, alignSelf: 'flex-end' }]} />}
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{type === 'invoice' ? 'Rechnungs-Nr:' : 'Offerten-Nr:'}</Text><Text style={pdfStyles.metaValue}>{formData.invoiceNumber}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{new Date(formData.date).toLocaleDateString('de-CH')}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Ort:</Text><Text style={pdfStyles.metaValue}>{formData.location}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{formData.projectName}</Text></View>
+          </View>
         </View>
-      )}
+        <Text style={[pdfStyles.title, { color: settings.accentColor }]}>{type === 'invoice' ? 'RECHNUNG' : 'OFFERTE'}</Text>
+        <View style={pdfStyles.tableHeader} fixed>
+          <Text style={[pdfStyles.col1, pdfStyles.textBold]}>Pos</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>Bezeichnung</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>Menge</Text><Text style={[pdfStyles.col4, pdfStyles.textBold]}>Preis ({currency})</Text><Text style={[pdfStyles.col5, pdfStyles.textBold]}>Total ({currency})</Text>
+        </View>
+        {positions.map((item: any, idx: number) => (
+          <View key={idx} style={pdfStyles.tableRow} wrap={false}>
+            <Text style={[pdfStyles.col1, pdfStyles.textBold, { color: settings.accentColor }]}>{item.pos}</Text>
+            <View style={pdfStyles.col2}><Text style={pdfStyles.textBold}>{item.title}</Text>{item.description && <Text style={pdfStyles.textMuted}>{item.description}</Text>}</View>
+            <Text style={[pdfStyles.col3, { color: '#000000' }]}>{item.qty} {item.unit}</Text>
+            <Text style={[pdfStyles.col4, { color: '#000000' }]}>{formatVal(item.unitPrice)}</Text>
+            <Text style={[pdfStyles.col5, pdfStyles.textBold]}>{formatVal(item.qty * item.unitPrice)}</Text>
+          </View>
+        ))}
+        <View style={pdfStyles.totalsContainer} wrap={false}>
+          <View style={pdfStyles.totalsRow}><Text style={pdfStyles.totalsText}>{t('subtotal')}</Text><Text style={pdfStyles.textBold}>{currency} {formatVal(subtotal)}</Text></View>
+          <View style={pdfStyles.totalsRow}><Text style={pdfStyles.totalsText}>{t('vat')} {formData.vatRate}%</Text><Text style={pdfStyles.textBold}>{currency} {formatVal(vatAmount)}</Text></View>
+          <View style={pdfStyles.totalsTotalRow}><Text style={[pdfStyles.textBold, { fontSize: 12 }]}>{t('total').toUpperCase()}</Text><Text style={[pdfStyles.textBold, { fontSize: 12, color: settings.accentColor }]}>{currency} {formatVal(total)}</Text></View>
+        </View>
+        <View style={pdfStyles.paymentInfo} wrap={false}><Text>{formData.paymentInfo}</Text></View>
+        
+        {/* PAYMENT / SWISS QR-BILL SECTION */}
+        {type === 'invoice' && (
+          <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#000000', paddingTop: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} wrap={false}>
+            <View style={{ width: isSwissQRSupported ? '60%' : '100%' }}>
+              <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000', marginBottom: 4 }}>
+                {isSwissQRSupported ? 'Zahlteil / Section paiement (Swiss QR-Bill)' : 'Zahlungsinformationen (Banküberweisung)'}
+              </Text>
+              <Text style={{ fontSize: 8, color: '#4b5563', lineHeight: 1.4 }}>
+                Konto / IBAN: CH93 0076 2011 6238 5295 7{'\n'}
+                Währung / Currency: {currency} • Betrag / Amount: {currency} {formatVal(total)}{'\n'}
+                Zahlbar durch / Payable by: {formData.recipient.split('\n')[0] || 'Kunde'}
+              </Text>
+            </View>
+            {isSwissQRSupported && (
+              <PDFImage 
+                src={getSwissQRCodeUrl(generateSwissQRPayload({
+                  iban: 'CH9300762011623852957',
+                  creditor: { name: 'Kreativ-Desk Studio', postalCode: '8001', city: 'Zürich', country: 'CH' },
+                  amount: total,
+                  currency: currency as ('CHF' | 'EUR'),
+                  debtor: { name: formData.recipient.split('\n')[0] || 'Kunde', postalCode: '8000', city: 'Zürich', country: 'CH' },
+                  unstructuredMessage: `Rechnung ${formData.invoiceNumber}`
+                }))} 
+                style={{ width: 85, height: 85, borderRadius: 4 }} 
+              />
+            )}
+          </View>
+        )}
 
-      <View style={{ position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 5 }} fixed><Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text></View>
-    </Page>
-  </Document>
-);
+        <View style={{ position: 'absolute', bottom: '10mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 5 }} fixed><Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text></View>
+      </Page>
+    </Document>
+  );
+};
 
-interface InvoiceStudioProps { onClose: () => void; onSave?: (fileData: any) => void; budgetGroups?: any[]; type?: 'invoice' | 'quote'; }
+interface InvoiceStudioProps {
+  onClose: () => void;
+  onSave?: (fileData: any) => void;
+  budgetGroups?: any[];
+  type?: 'invoice' | 'quote';
+  currency?: Currency;
+}
 
-export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type = 'invoice' }: InvoiceStudioProps) {
+export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type = 'invoice', currency: propCurrency }: InvoiceStudioProps) {
   const { currentUser } = useAuth();
   const { projects = [] } = useProject() as any; 
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
+  const [currency, setCurrency] = useState<Currency>(() => propCurrency || getCurrencyPreference().currency || 'CHF');
 
   const [isMounted, setIsMounted] = useState(false);
   useEffect(() => { 
@@ -266,7 +285,27 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         <div className="bg-background w-full h-[100dvh] md:h-[95vh] md:max-h-[900px] md:rounded-2xl shadow-2xl max-w-4xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
           <div className="p-4 md:p-6 border-b border-border/50 bg-surface/90 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center shrink-0">
             <h2 className="text-xl font-bold tracking-tight text-text-primary flex items-center gap-2">{type === 'invoice' ? <Send className="text-emerald-500" /> : <FileSignature className="text-blue-500" />}{type === 'invoice' ? t('new_invoice') : t('new_quote')}</h2>
-            <button onClick={onClose} className="p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg transition-colors"><X size={20} /></button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-9">
+                {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCurrency(c)}
+                    className={cn(
+                      "px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer",
+                      currency === c
+                        ? "bg-accent-ai text-white shadow-sm font-black"
+                        : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                    )}
+                    title={`Währung auf ${c} umstellen`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <button onClick={onClose} className="p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg transition-colors"><X size={20} /></button>
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 custom-scrollbar pb-32">
             <div className="bg-surface border border-border/50 rounded-xl p-4 space-y-4 shadow-sm">
@@ -287,7 +326,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
                     <button onClick={() => setPositions(positions.filter((_, i) => i !== index))} className="absolute top-3 right-3 text-text-muted hover:text-red-500 bg-background p-1.5 rounded border border-border/50 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
                     <div className="grid grid-cols-4 md:grid-cols-12 gap-3 pr-8"><div className="col-span-1 md:col-span-2"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Pos</label><input value={pos.pos} onChange={e => { const newP = [...positions]; newP[index].pos = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div><div className="col-span-3 md:col-span-10"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Titel</label><input value={pos.title} onChange={e => { const newP = [...positions]; newP[index].title = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div></div>
                     <div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Beschreibung</label><input value={pos.description} onChange={e => { const newP = [...positions]; newP[index].description = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-medium text-text-primary focus:border-accent-ai transition-colors" /></div>
-                    <div className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3 mt-1"><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Menge</label><input type="number" value={pos.qty === 0 ? '0' : (pos.qty || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].qty = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Einh.</label><input value={pos.unit} onChange={e => { const newP = [...positions]; newP[index].unit = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Preis (CHF)</label><input type="number" value={pos.unitPrice === 0 ? '0' : (pos.unitPrice || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].unitPrice = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-blue-500 text-right focus:border-accent-ai transition-colors" /></div></div>
+                    <div className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3 mt-1"><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Menge</label><input type="number" value={pos.qty === 0 ? '0' : (pos.qty || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].qty = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Einh.</label><input value={pos.unit} onChange={e => { const newP = [...positions]; newP[index].unit = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Preis ({currency})</label><input type="number" value={pos.unitPrice === 0 ? '0' : (pos.unitPrice || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].unitPrice = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-blue-500 text-right focus:border-accent-ai transition-colors" /></div></div>
                   </div>
                 ))}
               </div>
@@ -296,7 +335,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
             <div className="w-full h-px bg-border/50"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
               <div className="space-y-2"><label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">{t('payment_info')}</label><textarea value={formData.paymentInfo} onChange={e => setFormData({...formData, paymentInfo: e.target.value})} rows={3} className="w-full bg-surface border border-border/50 rounded-xl px-4 py-3 outline-none focus:border-accent-ai transition-colors text-sm font-medium text-text-primary resize-none shadow-sm custom-scrollbar" /></div>
-              <div className="bg-surface border border-border/50 rounded-xl p-4 space-y-3 shadow-sm"><div className="flex justify-between items-center text-sm"><span className="text-text-muted font-bold uppercase">{t('subtotal')}</span><span className="font-bold text-text-primary">CHF {formatCHF(subtotal)}</span></div><div className="flex justify-between items-center text-sm border-t border-border/50 pt-2"><span className="text-text-muted font-bold uppercase flex items-center gap-2">{t('vat')} <input type="number" value={formData.vatRate} onChange={e => setFormData({...formData, vatRate: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0)})} className="w-16 bg-background border border-border/50 rounded px-2 py-1 text-center outline-none text-text-primary focus:border-accent-ai transition-colors" />%</span><span className="font-medium text-text-muted">CHF {formatCHF(vatAmount)}</span></div><div className="flex justify-between items-center text-lg border-t-2 border-border pt-2"><span className="font-bold uppercase text-text-primary">{t('total')}</span><span className="font-bold text-blue-500">CHF {formatCHF(total)}</span></div></div>
+              <div className="bg-surface border border-border/50 rounded-xl p-4 space-y-3 shadow-sm"><div className="flex justify-between items-center text-sm"><span className="text-text-muted font-bold uppercase">{t('subtotal')}</span><span className="font-bold text-text-primary">{currency} {formatAmount(subtotal, currency)}</span></div><div className="flex justify-between items-center text-sm border-t border-border/50 pt-2"><span className="text-text-muted font-bold uppercase flex items-center gap-2">{t('vat')} <input type="number" value={formData.vatRate} onChange={e => setFormData({...formData, vatRate: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0)})} className="w-16 bg-background border border-border/50 rounded px-2 py-1 text-center outline-none text-text-primary focus:border-accent-ai transition-colors" />%</span><span className="font-medium text-text-muted">{currency} {formatAmount(vatAmount, currency)}</span></div><div className="flex justify-between items-center text-lg border-t-2 border-border pt-2"><span className="font-bold uppercase text-text-primary">{t('total')}</span><span className="font-bold text-blue-500">{currency} {formatAmount(total, currency)}</span></div></div>
             </div>
           </div>
           <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col md:flex-row justify-end gap-3 sticky bottom-0 z-30 shrink-0">
@@ -311,7 +350,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
             <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-full">
               <div className="p-5 border-b border-border/50 flex justify-between items-center bg-surface/90"><h3 className="font-bold text-lg text-text-primary flex items-center gap-2"><Cloud className="text-blue-500"/> {t('import_budget')}</h3><button onClick={() => setShowBudgetImport(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg transition-colors"><X size={20}/></button></div>
               <div className="p-5 overflow-y-auto space-y-3 custom-scrollbar">
-                {budgetGroups.length === 0 ? (<div className="text-center py-8 text-text-muted font-medium">{t('budget_not_found')}</div>) : (budgetGroups.map(g => { const groupTotal = g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0; return (<label key={g.id} className={cn("flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors", selectedBudgetIds.includes(g.id) ? "bg-blue-500/10 border-blue-500/30" : "bg-background border-border/50 hover:border-blue-500/30")}><input type="checkbox" checked={selectedBudgetIds.includes(g.id)} onChange={(e) => { if (e.target.checked) setSelectedBudgetIds([...selectedBudgetIds, g.id]); else setSelectedBudgetIds(selectedBudgetIds.filter(id => id !== g.id)); }} className="w-5 h-5 rounded border-border text-blue-500 focus:ring-blue-500 bg-background cursor-pointer" /><div className="flex-1 flex justify-between items-center"><div className="font-bold text-text-primary text-sm">{g.pos} {g.title}</div><div className="font-bold text-blue-500 text-lg">CHF {formatCHF(groupTotal)}</div></div></label>);}))}
+                {budgetGroups.length === 0 ? (<div className="text-center py-8 text-text-muted font-medium">{t('budget_not_found')}</div>) : (budgetGroups.map(g => { const groupTotal = g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0; return (<label key={g.id} className={cn("flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors", selectedBudgetIds.includes(g.id) ? "bg-blue-500/10 border-blue-500/30" : "bg-background border-border/50 hover:border-blue-500/30")}><input type="checkbox" checked={selectedBudgetIds.includes(g.id)} onChange={(e) => { if (e.target.checked) setSelectedBudgetIds([...selectedBudgetIds, g.id]); else setSelectedBudgetIds(selectedBudgetIds.filter(id => id !== g.id)); }} className="w-5 h-5 rounded border-border text-blue-500 focus:ring-blue-500 bg-background cursor-pointer" /><div className="flex-1 flex justify-between items-center"><div className="font-bold text-text-primary text-sm">{g.pos} {g.title}</div><div className="font-bold text-blue-500 text-lg">{currency} {formatAmount(groupTotal, currency)}</div></div></label>);}))}
               </div>
               <div className="p-5 border-t border-border/50 flex justify-between items-center bg-surface/80"><button onClick={() => setSelectedBudgetIds(budgetGroups.map((g:any)=>g.id))} className="text-sm font-bold text-blue-500 flex items-center gap-2 hover:underline"><CheckSquare size={18}/> {t('select_all')}</button><button onClick={executeBudgetImport} disabled={selectedBudgetIds.length === 0} className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50">{t('take_over_as_flat_rate')}</button></div>
             </div>
@@ -319,7 +358,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         )}
       </AnimatePresence>
       <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title={type === 'invoice' ? 'Rechnung' : 'Offerte'} fileName={formData.invoiceNumber} onSaveCloud={handleSaveToCloud}>
-        {(settings) => <InvoicePDFDocument settings={settings} type={type} formData={formData} positions={positions} subtotal={subtotal} vatAmount={vatAmount} total={total} formatCHF={formatCHF} t={t} />}
+        {(settings) => <InvoicePDFDocument settings={settings} type={type} formData={formData} positions={positions} subtotal={subtotal} vatAmount={vatAmount} total={total} currency={currency} t={t} />}
       </UniversalPDFStudio>
     </>,
     document.body
