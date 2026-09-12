@@ -64,4 +64,30 @@ test.describe('Automated E2E Smoke Tests', () => {
     }
     expect(consoleErrors).toEqual([]);
   });
+
+  test('Hero Brand Canvas and OS header branding render and respond to interaction', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    
+    // Header OS badge & subtitle
+    await expect(page.getByText('Swiss Architecture OS')).toBeVisible();
+    await expect(page.getByText('OS', { exact: true })).toBeVisible();
+
+    // Hero Zone and Canvas
+    const heroZone = page.locator('.hero-zone');
+    await expect(heroZone).toBeVisible();
+    const canvas = heroZone.locator('canvas');
+    await expect(canvas).toBeVisible();
+
+    // Hover / move mouse over hero canvas
+    await heroZone.hover({ position: { x: 200, y: 150 } });
+    await page.mouse.move(250, 180);
+    await page.waitForTimeout(300);
+
+    // Verify touch action is pan-y
+    const touchAction = await heroZone.evaluate((el) => window.getComputedStyle(el).touchAction);
+    expect(touchAction).toContain('pan-y');
+
+    expect(consoleErrors).toEqual([]);
+  });
 });

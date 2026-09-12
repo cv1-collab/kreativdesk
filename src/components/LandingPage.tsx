@@ -15,6 +15,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 const DemoLayout = lazy(() => import('../components/DemoLayout'));
 import { cn } from '../utils';
 import { motion, AnimatePresence } from 'motion/react';
+import HeroBrandCanvas from './HeroBrandCanvas';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -712,12 +713,24 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       )}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white text-base sm:text-lg shadow-lg shadow-blue-500/20 shrink-0">
-              K
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center font-black text-white text-base sm:text-lg shadow-lg shadow-blue-500/20 shrink-0 relative overflow-hidden group">
+              <span className="relative z-10">K</span>
+              <span className="absolute inset-0 bg-gradient-to-tr from-cyan-400/30 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
-              Kreativ Desk
-            </span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
+                  Kreativ Desk
+                </span>
+                <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                  OS
+                </span>
+              </div>
+              <span className="hidden sm:block text-[9px] tracking-widest uppercase font-semibold text-text-muted/70 -mt-0.5">
+                Swiss Architecture OS
+              </span>
+            </div>
           </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-text-muted">
@@ -800,8 +813,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
       <main>
         {/* HERO */}
-        <section className="pt-48 pb-20 px-6 text-center relative z-10">
-          <div className="max-w-5xl mx-auto">
+        <section className="hero-zone pt-48 pb-20 px-6 text-center relative z-10 overflow-hidden" style={{ touchAction: 'pan-y' }}>
+          {/* Interactive Retina Canvas Background with Blueprint Grid & Blooming Architecture Symbols */}
+          <HeroBrandCanvas isDark={theme === 'dark'} />
+
+          <div className="max-w-5xl mx-auto relative z-10 pointer-events-auto">
             <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-[10px] font-bold uppercase tracking-[0.2em]">
                 <Sparkles size={12} /> {t('hero_badge')}
@@ -816,8 +832,14 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </motion.div>
             </div>
             
-            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1] text-slate-900 dark:text-white">
-              {t('hero_title1')}<br/>{t('hero_title2')}
+            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.1] select-none">
+              <span className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
+                {t('hero_title1')}
+              </span>
+              <br/>
+              <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 dark:from-blue-400 dark:via-cyan-300 dark:to-blue-500 bg-clip-text text-transparent drop-shadow-sm">
+                {t('hero_title2')}
+              </span>
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-4 max-w-3xl mx-auto leading-relaxed">
