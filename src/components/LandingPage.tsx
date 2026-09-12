@@ -533,18 +533,18 @@ export default function LandingPage() {
 
   // Typewriter state for Hero Interactive Typography
   const typewriterFields = currentLang === 'en' ? [
+    'General Contractors.',
+    'Architects & Builders.',
     'complex projects.',
     'Scenography & Events.',
-    'General Contractors.',
-    'Architecture & Construction.',
     'Design Agencies.',
     'Trade Fairs & Exhibitions.',
     'Interior Design.'
   ] : [
+    'Generalplaner & GU.',
+    'Architekten & Bau.',
     'komplexe Projekte.',
     'Szenografie & Events.',
-    'Generalplaner & GU.',
-    'Architektur & Bau.',
     'Design-Agenturen.',
     'Messe- & Ausstellungsbau.',
     'Innenarchitektur.'
@@ -856,9 +856,9 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
         {/* HERO */}
         <section className="hero-zone pt-48 pb-20 px-6 text-center relative z-10 overflow-hidden" style={{ touchAction: 'pan-y' }}>
           {/* Interactive Retina Canvas Background with Blueprint Grid & Blooming Architecture Symbols */}
-          <HeroBrandCanvas isDark={theme === 'dark'} />
+          <HeroBrandCanvas isDark={theme === 'dark'} language={currentLang} />
 
-          <div className="max-w-5xl mx-auto relative z-10 pointer-events-auto">
+          <div className="max-w-6xl mx-auto relative z-10 pointer-events-auto">
             {/* Integrated Public Beta / Early Access Announcement Banner */}
             <div className="flex items-center justify-center mb-8">
               <motion.div 
@@ -879,21 +879,27 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             </div>
             
             {/* Interactive Typewriter Headline with Precision Cursor */}
-            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.12] select-none text-slate-900 dark:text-white min-h-[2.3em]">
-              <span className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
+            <motion.h1 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: 0.1 }} 
+              className="text-3xl sm:text-5xl md:text-6xl lg:text-[4rem] xl:text-[4.6rem] font-black tracking-tighter mb-8 leading-[1.12] select-none text-slate-900 dark:text-white min-h-[2.35em]"
+            >
+              <span className="block bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
                 {currentLang === 'en' ? 'The Operating System' : 'Das Operating System'}
               </span>
-              <br/>
-              <span className="text-slate-900 dark:text-white">
-                {currentLang === 'en' ? 'for ' : 'für '}
+              <span className="inline-flex items-baseline justify-center whitespace-nowrap">
+                <span className="text-slate-900 dark:text-white mr-2 sm:mr-3">
+                  {currentLang === 'en' ? 'for ' : 'für '}
+                </span>
+                <span className="text-blue-600 dark:text-blue-500 font-black tracking-tight">
+                  {typedText}
+                </span>
+                <span 
+                  className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse shrink-0" 
+                  aria-hidden="true"
+                />
               </span>
-              <span className="text-blue-600 dark:text-blue-500 font-mono tracking-tight">
-                {typedText}
-              </span>
-              <span 
-                className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse" 
-                aria-hidden="true"
-              />
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-8 max-w-3xl mx-auto leading-relaxed">
