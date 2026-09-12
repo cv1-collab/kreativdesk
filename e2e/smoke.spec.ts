@@ -76,6 +76,9 @@ test.describe('Automated E2E Smoke Tests', () => {
     // Hero Zone and Canvas
     const heroZone = page.locator('.hero-zone');
     await expect(heroZone).toBeVisible();
+    await expect(heroZone.locator('h1')).toContainText('Das Operating System');
+    await expect(heroZone.locator('h1')).toContainText('für');
+    
     const canvas = heroZone.locator('canvas');
     await expect(canvas).toBeVisible();
 

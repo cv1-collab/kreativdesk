@@ -5,70 +5,18 @@ interface HeroBrandCanvasProps {
   isDark?: boolean;
 }
 
-interface SymbolNode {
+interface ModuleItem {
   id: string;
   label: string;
-  badge: string;
-  icon: string;
-  baseAngle: number;
-  currentAngle: number;
-  scale: number;
-  targetScale: number;
-  x: number;
-  y: number;
+  rx: number;
+  ry: number;
+  baseX: number;
+  baseY: number;
+  currentX: number;
+  currentY: number;
   vx: number;
   vy: number;
-}
-
-class EndNode {
-  x: number;
-  y: number;
-  originX: number;
-  originY: number;
-  vx: number;
-  vy: number;
-  depth: number;
-  i: number;
-  j: number;
-
-  constructor(x: number, y: number, depth: number, i: number, j: number) {
-    this.x = x;
-    this.y = y;
-    this.originX = x;
-    this.originY = y;
-    this.vx = 0;
-    this.vy = 0;
-    this.depth = depth;
-    this.i = i;
-    this.j = j;
-  }
-
-  update(mouseX: number, mouseY: number, radius: number) {
-    const dx = mouseX - this.x;
-    const dy = mouseY - this.y;
-    const dist = Math.hypot(dx, dy);
-
-    // Spring tension towards origin
-    const springK = 0.05 * this.depth;
-    const damping = 0.84;
-
-    const ax = (this.originX - this.x) * springK;
-    const ay = (this.originY - this.y) * springK;
-
-    this.vx = (this.vx + ax) * damping;
-    this.vy = (this.vy + ay) * damping;
-
-    // Interaction displacement
-    if (dist < radius && dist > 0) {
-      const force = (1 - dist / radius) * (20 * this.depth);
-      const angle = Math.atan2(dy, dx);
-      this.vx -= Math.cos(angle) * force * 0.22;
-      this.vy -= Math.sin(angle) * force * 0.22;
-    }
-
-    this.x += this.vx;
-    this.y += this.vy;
-  }
+  caught: number; // 0 = resting, 1 = fully caught
 }
 
 export default function HeroBrandCanvas({ className = '', isDark = true }: HeroBrandCanvasProps) {
@@ -87,47 +35,47 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
     let width = 0;
     let height = 0;
     let dpr = 1;
-    let nodes: EndNode[] = [];
 
-    // Interaction states
+    // Mouse & Touch interaction state
     const mouse = {
       x: -2000,
       y: -2000,
       targetX: -2000,
       targetY: -2000,
       isActive: false,
-      isTouch: false,
-      auraPulse: 0
+      speed: 0
     };
+    let lastMouse = { x: 0, y: 0 };
 
-    let currentHue = 195;
-    let targetHue = 195;
+    // Dynamic Hue: starts at 221 (Royal Blue), shifts between 185 (Cyan) and 270 (Indigo/Violet)
+    let currentHue = 221;
+    let targetHue = 221;
 
-    // Branded Swiss Architecture & OS Symbols
-    const symbolsData = [
-      { id: 'arch', label: 'Architektur', badge: 'SIA 102', icon: '🏢' },
-      { id: 'budget', label: 'BKP Budget', badge: 'CHF Live', icon: '💰' },
-      { id: 'calendar', label: 'Terminplan', badge: 'Phasen 31-53', icon: '📅' },
-      { id: 'bim', label: '3D BIM', badge: 'IFC Model', icon: '📐' },
-      { id: 'kdesk', label: 'Kreativ Desk', badge: 'OS Engine', icon: '⚡' }
+    // Catch radius of the K-Logo Spider
+    const CATCH_RADIUS = 230;
+
+    // Engmaschiges Raster spacing
+    const gridSpacing = 24;
+
+    // 12 Authentic Kreativ Desk OS Modules scattered across the hero space
+    const moduleDefs = [
+      { id: 'cube', label: '3D Viewer (IFC)', rx: 0.12, ry: 0.20 },
+      { id: 'ledger', label: 'Finanzen & BKP', rx: 0.88, ry: 0.18 },
+      { id: 'calendar', label: 'Smart Calendar', rx: 0.08, ry: 0.50 },
+      { id: 'tickets', label: 'Mängel & Tickets', rx: 0.92, ry: 0.46 },
+      { id: 'cad', label: 'CAD Pläne', rx: 0.14, ry: 0.80 },
+      { id: 'camera', label: 'Baukamera', rx: 0.86, ry: 0.76 },
+      { id: 'offerte', label: 'Smart Offerte', rx: 0.28, ry: 0.24 },
+      { id: 'deck', label: 'Pitch Deck Studio', rx: 0.72, ry: 0.22 },
+      { id: 'chat', label: 'Meet & Chat', rx: 0.22, ry: 0.64 },
+      { id: 'whiteboard', label: 'Whiteboard', rx: 0.78, ry: 0.62 },
+      { id: 'bauakte', label: 'Bauakte', rx: 0.35, ry: 0.88 },
+      { id: 'rbac', label: 'Rollen & RBAC', rx: 0.65, ry: 0.90 }
     ];
 
-    const symbols: SymbolNode[] = symbolsData.map((s, idx) => {
-      const angle = (idx / symbolsData.length) * Math.PI * 2;
-      return {
-        ...s,
-        baseAngle: angle,
-        currentAngle: angle,
-        scale: 0,
-        targetScale: 0,
-        x: -2000,
-        y: -2000,
-        vx: 0,
-        vy: 0
-      };
-    });
+    let modules: ModuleItem[] = [];
 
-    // 1. Retina-Sharp Canvas Initialization
+    // 1. Retina Canvas Init & Snap Modules to Grid
     const initCanvas = () => {
       dpr = window.devicePixelRatio || 1;
       width = container.clientWidth;
@@ -140,24 +88,24 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transforms
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
-      // Adaptive grid spacing
-      const isMobile = width < 768;
-      const spacing = isMobile ? 42 : 36;
-
-      nodes = [];
-      let i = 0;
-      for (let x = spacing / 2; x < width; x += spacing) {
-        let j = 0;
-        for (let y = spacing / 2; y < height; y += spacing) {
-          const depth = (i + j) % 3 === 0 ? 0.75 : 1.0;
-          nodes.push(new EndNode(x, y, depth, i, j));
-          j++;
-        }
-        i++;
-      }
+      // Snap modules to the fine grid
+      modules = moduleDefs.map((m) => {
+        const snapX = Math.round((m.rx * width) / gridSpacing) * gridSpacing;
+        const snapY = Math.round((m.ry * height) / gridSpacing) * gridSpacing;
+        return {
+          ...m,
+          baseX: snapX,
+          baseY: snapY,
+          currentX: snapX,
+          currentY: snapY,
+          vx: 0,
+          vy: 0,
+          caught: 0
+        };
+      });
     };
 
     initCanvas();
@@ -167,7 +115,136 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
     });
     resizeObserver.observe(container);
 
-    // 2. Touch Interaction for iPad & iPhone
+    // 2. Vector Icon Rendering for all 12 modules
+    const drawModuleIcon = (type: string, s: number) => {
+      ctx.lineWidth = 1.15;
+      if (type === 'cube') {
+        // 3D IFC Kubus
+        ctx.beginPath();
+        ctx.moveTo(0, -s);
+        ctx.lineTo(s, -s * 0.5);
+        ctx.lineTo(s, s * 0.5);
+        ctx.lineTo(0, s);
+        ctx.lineTo(-s, s * 0.5);
+        ctx.lineTo(-s, -s * 0.5);
+        ctx.closePath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, s);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(s, -s * 0.5);
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-s, -s * 0.5);
+        ctx.stroke();
+      } else if (type === 'ledger') {
+        // Finanzen / Münzen
+        ctx.beginPath();
+        ctx.ellipse(0, -s * 0.4, s, s * 0.4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, s * 0.35, s, s * 0.4, 0, 0, Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-s, -s * 0.4);
+        ctx.lineTo(-s, s * 0.35);
+        ctx.moveTo(s, -s * 0.4);
+        ctx.lineTo(s, s * 0.35);
+        ctx.stroke();
+      } else if (type === 'calendar') {
+        // Smart Calendar
+        ctx.strokeRect(-s, -s * 0.8, s * 2, s * 1.6);
+        ctx.beginPath();
+        ctx.moveTo(-s, -s * 0.25);
+        ctx.lineTo(s, -s * 0.25);
+        ctx.moveTo(-s * 0.45, -s * 1.1);
+        ctx.lineTo(-s * 0.45, -s * 0.5);
+        ctx.moveTo(s * 0.45, -s * 1.1);
+        ctx.lineTo(s * 0.45, -s * 0.5);
+        ctx.stroke();
+      } else if (type === 'tickets') {
+        // Mängel & Tickets
+        ctx.strokeRect(-s * 0.85, -s * 0.85, s * 1.7, s * 1.7);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.4, -s * 0.1);
+        ctx.lineTo(-s * 0.1, s * 0.3);
+        ctx.lineTo(s * 0.45, -s * 0.35);
+        ctx.stroke();
+      } else if (type === 'cad') {
+        // CAD Pläne
+        ctx.beginPath();
+        ctx.moveTo(0, -s);
+        ctx.lineTo(-s * 0.8, s * 0.8);
+        ctx.lineTo(s * 0.8, s * 0.8);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (type === 'camera') {
+        // Baukamera
+        ctx.strokeRect(-s, -s * 0.6, s * 2, s * 1.4);
+        ctx.beginPath();
+        ctx.arc(0, 0.1 * s, s * 0.4, 0, Math.PI * 2);
+        ctx.moveTo(-s * 0.5, -s * 0.6);
+        ctx.lineTo(-s * 0.2, -s * 0.9);
+        ctx.lineTo(s * 0.2, -s * 0.9);
+        ctx.lineTo(s * 0.5, -s * 0.6);
+        ctx.stroke();
+      } else if (type === 'offerte') {
+        // Smart Offerte
+        ctx.strokeRect(-s * 0.7, -s, s * 1.4, s * 2);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.35, -s * 0.4);
+        ctx.lineTo(s * 0.35, -s * 0.4);
+        ctx.moveTo(-s * 0.35, 0);
+        ctx.lineTo(s * 0.35, 0);
+        ctx.stroke();
+      } else if (type === 'deck') {
+        // Pitch Deck
+        ctx.strokeRect(-s, -s * 0.7, s * 2, s * 1.3);
+        ctx.beginPath();
+        ctx.moveTo(0, s * 0.6);
+        ctx.lineTo(0, s);
+        ctx.moveTo(-s * 0.5, s);
+        ctx.lineTo(s * 0.5, s);
+        ctx.stroke();
+      } else if (type === 'chat') {
+        // Meet & Chat Bubble
+        ctx.beginPath();
+        ctx.arc(0, -s * 0.2, s * 0.75, 0, Math.PI * 2);
+        ctx.moveTo(-s * 0.3, s * 0.4);
+        ctx.lineTo(-s * 0.6, s * 0.9);
+        ctx.lineTo(0.1 * s, s * 0.5);
+        ctx.stroke();
+      } else if (type === 'whiteboard') {
+        // Whiteboard
+        ctx.strokeRect(-s, -s * 0.8, s * 2, s * 1.6);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.55, s * 0.3);
+        ctx.lineTo(s * 0.55, -s * 0.3);
+        ctx.stroke();
+      } else if (type === 'bauakte') {
+        // Bauakte Ordner
+        ctx.beginPath();
+        ctx.moveTo(-s, -s * 0.5);
+        ctx.lineTo(-s * 0.3, -s * 0.5);
+        ctx.lineTo(0, -s * 0.8);
+        ctx.lineTo(s, -s * 0.8);
+        ctx.lineTo(s, s * 0.8);
+        ctx.lineTo(-s, s * 0.8);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (type === 'rbac') {
+        // Rollen & RBAC Schild
+        ctx.beginPath();
+        ctx.moveTo(0, -s);
+        ctx.lineTo(s * 0.8, -s * 0.5);
+        ctx.lineTo(s * 0.8, s * 0.2);
+        ctx.quadraticCurveTo(0, s, 0, s);
+        ctx.quadraticCurveTo(-s * 0.8, s * 0.2, -s * 0.8, s * 0.2);
+        ctx.lineTo(-s * 0.8, -s * 0.5);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    };
+
+    // 3. Event Listeners for Touch and Mouse
     const handleTouch = (e: TouchEvent) => {
       if (e.touches.length > 0) {
         const touch = e.touches[0];
@@ -175,35 +252,37 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
         mouse.targetX = touch.clientX - rect.left;
         mouse.targetY = touch.clientY - rect.top;
         mouse.isActive = true;
-        mouse.isTouch = true;
 
-        // Dynamic Hue Modulation when swiping
+        const mdx = mouse.targetX - lastMouse.x;
+        const mdy = mouse.targetY - lastMouse.y;
+        mouse.speed = Math.sqrt(mdx * mdx + mdy * mdy);
+        lastMouse.x = mouse.targetX;
+        lastMouse.y = mouse.targetY;
+
         targetHue = 185 + (touch.clientX / Math.max(window.innerWidth, 1)) * 85;
       }
     };
 
-    const onTouchStart = (e: TouchEvent) => {
-      handleTouch(e);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      handleTouch(e);
-    };
-
+    const onTouchStart = (e: TouchEvent) => handleTouch(e);
+    const onTouchMove = (e: TouchEvent) => handleTouch(e);
     const onTouchEnd = () => {
-      // Smooth damped springback on touch release
       mouse.targetX = -2000;
       mouse.targetY = -2000;
       mouse.isActive = false;
+      mouse.speed = 0;
     };
 
-    // 3. Desktop Mouse Handlers
     const onMouseMove = (e: MouseEvent) => {
       const rect = container.getBoundingClientRect();
       mouse.targetX = e.clientX - rect.left;
       mouse.targetY = e.clientY - rect.top;
       mouse.isActive = true;
-      mouse.isTouch = false;
+
+      const mdx = mouse.targetX - lastMouse.x;
+      const mdy = mouse.targetY - lastMouse.y;
+      mouse.speed = Math.sqrt(mdx * mdx + mdy * mdy);
+      lastMouse.x = mouse.targetX;
+      lastMouse.y = mouse.targetY;
 
       targetHue = 185 + (e.clientX / Math.max(window.innerWidth, 1)) * 85;
     };
@@ -212,6 +291,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
       mouse.targetX = -2000;
       mouse.targetY = -2000;
       mouse.isActive = false;
+      mouse.speed = 0;
     };
 
     container.addEventListener('touchstart', onTouchStart, { passive: true });
@@ -222,177 +302,157 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
     container.addEventListener('mousemove', onMouseMove, { passive: true });
     container.addEventListener('mouseleave', onMouseLeave, { passive: true });
 
-    // 4. Main Render Loop
+    // 4. Main Animation Loop
     let lastTime = performance.now();
 
     const render = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
-      // Color lerp
-      currentHue += (targetHue - currentHue) * 0.08;
-
-      // Mouse position smoothing
-      if (mouse.targetX > -1000) {
-        mouse.x += (mouse.targetX - mouse.x) * 0.16;
-        mouse.y += (mouse.targetY - mouse.y) * 0.16;
-      } else {
-        mouse.x += (mouse.targetX - mouse.x) * 0.08;
-        mouse.y += (mouse.targetY - mouse.y) * 0.08;
-      }
-
-      mouse.auraPulse += dt * 2.5;
-
       ctx.clearRect(0, 0, width, height);
 
-      const interactionRadius = width < 768 ? 130 : 160;
-      const isInteractionActive = mouse.x > -500 && mouse.y > -500;
+      // Mouse interpolation
+      mouse.x += (mouse.targetX - mouse.x) * 0.24;
+      mouse.y += (mouse.targetY - mouse.y) * 0.24;
 
-      // Draw Aura Glow under pointer / finger
-      if (isInteractionActive) {
-        const auraRadius = (width < 768 ? 75 : 95) + Math.sin(mouse.auraPulse) * 8;
-        const auraGrad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, auraRadius);
-        auraGrad.addColorStop(0, `hsla(${currentHue}, 85%, 65%, ${isDark ? 0.22 : 0.18})`);
-        auraGrad.addColorStop(0.5, `hsla(${currentHue + 15}, 80%, 60%, ${isDark ? 0.08 : 0.06})`);
+      // Smooth Hue interpolation
+      currentHue += (targetHue - currentHue) * 0.08;
+      if (mouse.speed < 0.5) {
+        targetHue += (221 - targetHue) * 0.03;
+      }
+
+      // 1. Engmaschiges, ultrafeines CAD-Raster im Hintergrund
+      const dotAlpha = isDark ? 0.18 : 0.14;
+      ctx.fillStyle = isDark ? `rgba(148, 163, 184, ${dotAlpha})` : `rgba(100, 116, 139, ${dotAlpha})`;
+      for (let x = gridSpacing / 2; x < width; x += gridSpacing) {
+        for (let y = gridSpacing / 2; y < height; y += gridSpacing) {
+          ctx.beginPath();
+          ctx.arc(x, y, 0.75, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      const isPointerActive = mouse.x > -500 && mouse.y > -500;
+
+      // 2. Spider-Interaktion mit allen verstreuten Modulen
+      modules.forEach((m, idx) => {
+        const dx = mouse.x - m.baseX;
+        const dy = mouse.y - m.baseY;
+        const dist = isPointerActive ? Math.hypot(dx, dy) : 9999;
+
+        if (dist < CATCH_RADIUS) {
+          m.caught = Math.min(1, m.caught + 0.18);
+          // Elastischer Zug zum K-Spider hin
+          const pull = (1 - dist / CATCH_RADIUS) * 26;
+          const angle = Math.atan2(dy, dx);
+          const targetPullX = m.baseX + Math.cos(angle) * pull;
+          const targetPullY = m.baseY + Math.sin(angle) * pull;
+          m.vx += (targetPullX - m.currentX) * 0.14;
+          m.vy += (targetPullY - m.currentY) * 0.14;
+        } else {
+          m.caught *= 0.90;
+          m.vx += (m.baseX - m.currentX) * 0.1;
+          m.vy += (m.baseY - m.currentY) * 0.1;
+        }
+
+        m.vx *= 0.72;
+        m.vy *= 0.72;
+        m.currentX += m.vx;
+        m.currentY += m.vy;
+
+        // Faden spinnen, wenn eingefangen
+        if (m.caught > 0.04 && isPointerActive) {
+          const threadColor = `hsla(${currentHue}, 95%, ${isDark ? '60%' : '48%'}, ${m.caught * 0.85})`;
+          ctx.strokeStyle = threadColor;
+          ctx.lineWidth = 1 + m.caught * 0.4;
+
+          const midX = mouse.x + (m.currentX - mouse.x) * 0.5 + Math.sin(idx + time * 0.003) * (14 * m.caught);
+          const midY = mouse.y + (m.currentY - mouse.y) * 0.5 + Math.cos(idx + time * 0.003) * (14 * m.caught);
+
+          ctx.beginPath();
+          ctx.moveTo(mouse.x, mouse.y);
+          ctx.quadraticCurveTo(midX, midY, m.currentX, m.currentY);
+          ctx.stroke();
+
+          // Kleiner Lichtknoten auf der Fadenmitte
+          ctx.fillStyle = threadColor;
+          ctx.beginPath();
+          ctx.arc(midX, midY, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Modul zeichnen
+        ctx.save();
+        ctx.translate(m.currentX, m.currentY);
+
+        if (m.caught <= 0.04) {
+          // Ruhender Zustand im Raster
+          ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(100, 116, 139, 0.4)';
+          drawModuleIcon(m.id, 6.5);
+
+          ctx.font = '500 8.5px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.45)' : 'rgba(100, 116, 139, 0.55)';
+          ctx.fillText(m.label, 0, 16);
+        } else {
+          // Aktiviert & erleuchtet durch das K
+          const strokeColor = `hsla(${currentHue}, 90%, ${isDark ? '65%' : '48%'}, ${0.4 + m.caught * 0.6})`;
+          ctx.strokeStyle = strokeColor;
+
+          // Haloring bei Aktivierung
+          ctx.beginPath();
+          ctx.arc(0, 0, 15, 0, Math.PI * 2);
+          ctx.stroke();
+
+          drawModuleIcon(m.id, 7.5);
+
+          ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+          ctx.fillText(m.label, 0, 18);
+        }
+
+        ctx.restore();
+      });
+
+      // 3. K-Spider Cursor an der Maus-/Touch-Spitze
+      if (isPointerActive) {
+        ctx.save();
+        ctx.translate(mouse.x, mouse.y);
+
+        // Sanfter bläulicher Aura-Glow hinter dem K
+        const auraGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, 38);
+        auraGrad.addColorStop(0, `hsla(${currentHue}, 90%, 60%, ${isDark ? 0.35 : 0.28})`);
         auraGrad.addColorStop(1, 'transparent');
-
         ctx.fillStyle = auraGrad;
         ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, auraRadius, 0, Math.PI * 2);
+        ctx.arc(0, 0, 38, 0, Math.PI * 2);
         ctx.fill();
 
-        // Delicate Central Core Ring
-        ctx.strokeStyle = `hsla(${currentHue}, 90%, 65%, ${isDark ? 0.45 : 0.35})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 14 + Math.sin(mouse.auraPulse * 1.5) * 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Update & Render Grid Nodes
-      const activeNodes: EndNode[] = [];
-
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        node.update(mouse.x, mouse.y, interactionRadius);
-
-        const distToMouse = isInteractionActive ? Math.hypot(mouse.x - node.x, mouse.y - node.y) : 999;
-        const isNear = distToMouse < interactionRadius;
-
-        if (isNear) {
-          activeNodes.push(node);
-        }
-
-        // Draw Crosshair Node (+)
-        const crossSize = (node.depth === 1.0 ? 3.5 : 2.5);
-        let alpha = isDark ? 0.12 : 0.09;
-        let strokeColor = isDark ? 'rgba(148, 163, 184, ' : 'rgba(71, 85, 105, ';
-
-        if (isNear) {
-          const proximityFactor = 1 - distToMouse / interactionRadius;
-          alpha = (isDark ? 0.25 : 0.2) + proximityFactor * 0.6;
-          ctx.strokeStyle = `hsla(${currentHue}, 80%, ${isDark ? '68%' : '48%'}, ${alpha})`;
-          ctx.lineWidth = 1.2;
-        } else {
-          ctx.strokeStyle = `${strokeColor}${alpha})`;
-          ctx.lineWidth = 0.8;
-        }
+        // K-Logo Badge (24x24 px)
+        const size = 24;
+        const r = 6;
+        ctx.fillStyle = '#2563eb'; // Royal Blue
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1.2;
 
         ctx.beginPath();
-        ctx.moveTo(node.x - crossSize, node.y);
-        ctx.lineTo(node.x + crossSize, node.y);
-        ctx.moveTo(node.x, node.y - crossSize);
-        ctx.lineTo(node.x, node.y + crossSize);
-        ctx.stroke();
-      }
-
-      // Draw Synapse Lines between nearby active nodes
-      if (activeNodes.length > 1) {
-        ctx.lineWidth = 0.9;
-        for (let i = 0; i < activeNodes.length; i++) {
-          for (let j = i + 1; j < activeNodes.length; j++) {
-            const na = activeNodes[i];
-            const nb = activeNodes[j];
-            const d = Math.hypot(na.x - nb.x, na.y - nb.y);
-
-            if (d < 54) {
-              const lineAlpha = (1 - d / 54) * 0.35;
-              ctx.strokeStyle = `hsla(${currentHue}, 85%, 62%, ${lineAlpha})`;
-              ctx.beginPath();
-              ctx.moveTo(na.x, na.y);
-              ctx.lineTo(nb.x, nb.y);
-              ctx.stroke();
-            }
-          }
-        }
-      }
-
-      // 5. Orbiting & Blooming Brand Symbols
-      const symbolOrbitRadius = width < 768 ? 68 : 96;
-
-      for (let sIdx = 0; sIdx < symbols.length; sIdx++) {
-        const sym = symbols[sIdx];
-
-        if (isInteractionActive) {
-          sym.targetScale = 1;
-          sym.currentAngle += 0.007;
-
-          const targetSymX = mouse.x + Math.cos(sym.currentAngle) * symbolOrbitRadius;
-          const targetSymY = mouse.y + Math.sin(sym.currentAngle) * symbolOrbitRadius;
-
-          sym.x += (targetSymX - sym.x) * 0.18;
-          sym.y += (targetSymY - sym.y) * 0.18;
+        if (typeof (ctx as any).roundRect === 'function') {
+          (ctx as any).roundRect(-size / 2, -size / 2, size, size, r);
         } else {
-          sym.targetScale = 0;
-          sym.x += (sym.x - mouse.x) * 0.05;
+          ctx.rect(-size / 2, -size / 2, size, size);
         }
+        ctx.fill();
+        ctx.stroke();
 
-        // Spring scale animation
-        sym.scale += (sym.targetScale - sym.scale) * 0.14;
+        // Weißes "K" im Zentrum
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('K', 0, 0);
 
-        if (sym.scale > 0.02) {
-          ctx.save();
-          ctx.translate(sym.x, sym.y);
-          ctx.scale(sym.scale, sym.scale);
-
-          // Subtle connection synapse from center
-          ctx.strokeStyle = `hsla(${currentHue}, 85%, 65%, 0.22)`;
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo((mouse.x - sym.x) * 0.4, (mouse.y - sym.y) * 0.4);
-          ctx.stroke();
-
-          // Glassmorphic Badge Pill
-          const pillW = 86;
-          const pillH = 26;
-          const r = 13;
-
-          ctx.fillStyle = isDark ? 'rgba(15, 23, 42, 0.88)' : 'rgba(255, 255, 255, 0.94)';
-          ctx.strokeStyle = `hsla(${currentHue}, 80%, 60%, 0.45)`;
-          ctx.lineWidth = 1.2;
-
-          ctx.beginPath();
-          if (typeof (ctx as any).roundRect === 'function') {
-            (ctx as any).roundRect(-pillW / 2, -pillH / 2, pillW, pillH, r);
-          } else {
-            ctx.rect(-pillW / 2, -pillH / 2, pillW, pillH);
-          }
-          ctx.fill();
-          ctx.stroke();
-
-          // Icon and Text
-          ctx.font = '11px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(sym.icon, -pillW / 2 + 7, 1);
-
-          ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
-          ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
-          ctx.fillText(sym.badge, -pillW / 2 + 24, 0);
-
-          ctx.restore();
-        }
+        ctx.restore();
       }
 
       animFrameId = requestAnimationFrame(render);
@@ -400,7 +460,6 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
 
     animFrameId = requestAnimationFrame(render);
 
-    // Pause when page is hidden to save battery
     const onVisibilityChange = () => {
       if (document.hidden) {
         cancelAnimationFrame(animFrameId);
@@ -430,7 +489,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
   return (
     <div
       ref={containerRef}
-      className={`hero-canvas-container absolute inset-0 w-full h-full overflow-hidden select-none touch-pan-y ${className}`}
+      className={`hero-canvas-container absolute inset-0 w-full h-full overflow-hidden select-none ${className}`}
       style={{ touchAction: 'pan-y' }}
     >
       <canvas
