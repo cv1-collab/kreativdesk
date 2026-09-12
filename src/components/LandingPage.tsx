@@ -203,8 +203,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
     // 2.5 Real Architectural Practice (Editorial Showcase)
     practice_badge: 'Real Architecture & Design Practice',
-    practice_title: 'Engineered for Swiss Architects, General Contractors, Scenographers & Design Agencies',
-    practice_subtitle: 'No anonymous stock photos or fake mockups: How Zurich planning teams, scenographers, design agencies, site managers, and owner representatives work with Kreativ Desk every day.',
+    practice_title: 'Engineered for Architects, General Contractors, Scenographers & Design Agencies',
+    practice_subtitle: 'No anonymous stock photos or fake mockups: How planning teams, scenographers, design agencies, site managers, and owner representatives work with Kreativ Desk every day.',
     practice_c1_alt: 'Sarah Meier at workstation with Kreativ Desk',
     practice_c1_tag: 'ETH / SIA Design',
     practice_c1_title: 'Color & Material Concept',
@@ -429,8 +429,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
     // 2.5 Reale Architekturpraxis (Editorial Showcase)
     practice_badge: 'Reale Architektur- & Designpraxis',
-    practice_title: 'Entwickelt für Schweizer Architekten, Generalunternehmer, Szenografen & Design-Agenturen',
-    practice_subtitle: 'Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Zürcher Planerteams, Szenografen, Design-Agenturen, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.',
+    practice_title: 'Entwickelt für Architekten, Generalunternehmer, Szenografen & Design-Agenturen',
+    practice_subtitle: 'Keine anonymen Stockfotos oder Fake-Mockups: So arbeiten Planerteams, Szenografen, Design-Agenturen, Bauleiter und Eigentümervertreter tagtäglich mit Kreativ Desk.',
     practice_c1_alt: 'Sarah Meier am Arbeitsplatz mit Kreativ Desk',
     practice_c1_tag: 'ETH / SIA Entwurf',
     practice_c1_title: 'Farb- & Materialkonzept',
@@ -1048,9 +1048,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p1_desc')}</p>
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
-                  <video autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity">
-                    <source src="/media/physical_materials.mp4" type="video/mp4" />
-                  </video>
+                  <img src="/media/macbook_macro_controlling.jpg" alt={t('infra_p1_title')} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p1_badge')}
                   </div>
@@ -1067,9 +1065,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p2_desc')}</p>
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
-                  <video autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity">
-                    <source src="/media/ink_morphs_code.mp4" type="video/mp4" />
-                  </video>
+                  <img src="/media/devices_access_management_rbac.jpg" alt={t('infra_p2_title')} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p2_badge')}
                   </div>
@@ -1103,9 +1099,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   <p className="text-text-muted text-sm sm:text-base leading-relaxed mb-6">{t('infra_p4_desc')}</p>
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
-                  <video autoPlay loop muted playsInline preload="metadata" className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity">
-                    <source src="/media/ink_transforms_building.mp4" type="video/mp4" />
-                  </video>
+                  <img src="/media/macbook_bim_pipelines.jpg" alt={t('infra_p4_title')} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p4_badge')}
                   </div>
