@@ -69,9 +69,8 @@ test.describe('Automated E2E Smoke Tests', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     
-    // Header OS badge & subtitle
-    await expect(page.getByText('Swiss Architecture OS')).toBeVisible();
-    await expect(page.getByText('OS', { exact: true })).toBeVisible();
+    // Header branding
+    await expect(page.getByText('Kreativ Desk').first()).toBeVisible();
 
     // Hero Zone and Canvas
     const heroZone = page.locator('.hero-zone');

@@ -28,8 +28,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cta_primary: 'Get Started', cta_secondary: 'Request Setup',
     hero_video_window_title: 'Kreativ Desk OS — Live Portal',
     hero_video_experience: '4K Cinematic Experience',
-    hero_video_title: 'The Swiss Operating System for Demanding Architecture',
-    hero_video_desc: 'Artisanal Swiss precision, profound architectural expertise, and intelligent real-time controlling united in one authoritative platform.',
+    hero_video_title: 'The Operating System for Demanding Architecture',
+    hero_video_desc: 'Maximum planning precision, profound architectural expertise, and intelligent real-time controlling united in one authoritative platform.',
     hero_video_badge: 'SIA 102 / 118 Compliant',
     chaos_video_tag: 'Status Quo: Tool Sprawl & Margin Loss',
     ssot_kpi_badge: 'Audit-Proof',
@@ -254,8 +254,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     cta_primary: 'Jetzt starten', cta_secondary: 'Setup anfragen',
     hero_video_window_title: 'Kreativ Desk OS — Live Portal',
     hero_video_experience: '4K Cinematic Experience',
-    hero_video_title: 'Das Schweizer Betriebssystem für anspruchsvolle Bauten',
-    hero_video_desc: 'Handwerkliche Schweizer Präzision, fundierte Architektur-Expertise und intelligentes Echtzeit-Controlling vereint in einer autoritativen Plattform.',
+    hero_video_title: 'Das Betriebssystem für anspruchsvolle Bauten',
+    hero_video_desc: 'Höchste planerische Präzision, fundierte Architektur-Expertise und intelligentes Echtzeit-Controlling vereint in einer autoritativen Plattform.',
     hero_video_badge: 'SIA 102 / 118 konform',
     chaos_video_tag: 'Status Quo: Tool-Wildwuchs & Margenverlust',
     ssot_kpi_badge: 'Revisionssicher',
@@ -887,11 +887,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <span className="text-slate-900 dark:text-white">
                 {currentLang === 'en' ? 'for ' : 'für '}
               </span>
-              <span className="text-blue-600 dark:text-blue-400 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 dark:from-blue-400 dark:via-cyan-300 dark:to-blue-500 bg-clip-text text-transparent">
+              <span className="text-blue-600 dark:text-blue-500 font-mono tracking-tight">
                 {typedText}
               </span>
               <span 
-                className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-400 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse" 
+                className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse" 
                 aria-hidden="true"
               />
             </motion.h1>
