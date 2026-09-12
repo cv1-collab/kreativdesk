@@ -531,56 +531,6 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Typewriter state for Hero Interactive Typography
-  const typewriterFields = currentLang === 'en' ? [
-    'complex projects.',
-    'Scenography & Events.',
-    'Architecture & Construction.',
-    'Interior Design.',
-    'Exhibitions & Trade Fairs.',
-    'General Contractors.'
-  ] : [
-    'komplexe Projekte.',
-    'Szenografie & Events.',
-    'Architektur & Bau.',
-    'Interior Design.',
-    'Messe- & Ausstellungsbau.',
-    'Generalunternehmer.'
-  ];
-
-  const [typedText, setTypedText] = useState('');
-  const [fieldIdx, setFieldIdx] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  useEffect(() => {
-    const currentWord = typewriterFields[fieldIdx % typewriterFields.length];
-    let timeout: ReturnType<typeof setTimeout>;
-
-    if (isDeleting) {
-      if (typedText.length > 0) {
-        timeout = setTimeout(() => {
-          setTypedText(currentWord.substring(0, typedText.length - 1));
-        }, 30);
-      } else {
-        setIsDeleting(false);
-        setFieldIdx((prev) => (prev + 1) % typewriterFields.length);
-        timeout = setTimeout(() => {}, 200);
-      }
-    } else {
-      if (typedText.length < currentWord.length) {
-        timeout = setTimeout(() => {
-          setTypedText(currentWord.substring(0, typedText.length + 1));
-        }, 55);
-      } else {
-        timeout = setTimeout(() => {
-          setIsDeleting(true);
-        }, 2200);
-      }
-    }
-
-    return () => clearTimeout(timeout);
-  }, [typedText, isDeleting, fieldIdx, currentLang]);
-
   // ROI Rechner States
   const [projectsCount, setProjectsCount] = useState(2);
   const [hoursLost, setHoursLost] = useState(1); 
@@ -881,22 +831,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </motion.div>
             </div>
             
-            {/* Interactive Typewriter Headline with Precision Cursor */}
-            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.12] select-none text-slate-900 dark:text-white min-h-[2.3em]">
+            {/* Stable, Authoritative Swiss Architectural Headline */}
+            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.12] select-none text-slate-900 dark:text-white">
               <span className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
-                {currentLang === 'en' ? 'The Operating System' : 'Das Operating System'}
+                {t('hero_title1')}
               </span>
               <br/>
-              <span className="text-slate-900 dark:text-white">
-                {currentLang === 'en' ? 'for ' : 'für '}
+              <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 dark:from-blue-400 dark:via-cyan-300 dark:to-blue-500 bg-clip-text text-transparent drop-shadow-sm">
+                {t('hero_title2')}
               </span>
-              <span className="text-blue-600 dark:text-blue-400 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 dark:from-blue-400 dark:via-cyan-300 dark:to-blue-500 bg-clip-text text-transparent">
-                {typedText}
-              </span>
-              <span 
-                className="inline-block w-[0.24em] h-[0.72em] bg-blue-600 dark:bg-blue-400 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse" 
-                aria-hidden="true"
-              />
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-4 max-w-3xl mx-auto leading-relaxed">
