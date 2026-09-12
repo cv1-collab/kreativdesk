@@ -478,12 +478,12 @@ export default function Layout() {
               📱 <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
 
-            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}>
-              <HelpCircle size={18} />
+            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer">
+              <Globe size={14} className="text-accent-ai" /> <span className="hidden sm:inline">{language}</span>
             </button>
 
-            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm">
-              <Globe size={14} className="text-accent-ai" /> <span className="hidden sm:inline">{language}</span>
+            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}>
+              <HelpCircle size={18} />
             </button>
 
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">
