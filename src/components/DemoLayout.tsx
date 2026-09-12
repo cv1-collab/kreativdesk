@@ -84,8 +84,8 @@ export default function DemoLayout({
   const showDemoBlockedToast = () => {
     addToast(
       currentLang === 'de' 
-        ? "Aktion in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!" 
-        : "Action blocked in demo. Create a free account to use this feature!",
+        ? "In der Live-Demo gesperrt. Erstelle einen kostenlosen Account für den vollen Zugriff!" 
+        : "Locked in live demo. Create a free account to unlock full access!",
       "info"
     );
   };
@@ -112,12 +112,26 @@ export default function DemoLayout({
       return;
     }
 
+    // 2. Externe Links (WhatsApp, Mail, Telefon, Download) sofort abfangen
+    const link = target.closest('a');
+    if (link) {
+      const href = (link.getAttribute('href') || '').toLowerCase();
+      const isAnchorOnly = href === '#' || href === '' || href.startsWith('#');
+      if (!isAnchorOnly || href.includes('wa.me') || href.includes('whatsapp') || link.getAttribute('target') === '_blank' || link.hasAttribute('download')) {
+        e.stopPropagation();
+        e.preventDefault();
+        showDemoBlockedToast();
+        return;
+      }
+    }
+
     const actionable = target.closest('button, a, input[type="submit"], input[type="file"], [role="button"]');
 
     if (actionable) {
       const text = (actionable.textContent || actionable.getAttribute('title') || actionable.getAttribute('aria-label') || '').toLowerCase();
       const isSubmit = (actionable as HTMLButtonElement).type === 'submit';
       const isFileInput = (actionable as HTMLInputElement).type === 'file' || !!actionable.querySelector('input[type="file"]');
+      const isExternalTarget = actionable.getAttribute('target') === '_blank' || actionable.hasAttribute('download');
 
       // Die "Rote Liste": Wenn ein Button diese Wörter enthält, blockieren wir ihn in der Demo!
       const forbiddenWords = [
@@ -126,10 +140,11 @@ export default function DemoLayout({
         'export', 'download', 'lösch', 'delete', 'hochladen', 'upload', 'cloud',
         'anrufen', 'call', 'rundruf', 'planen', 'schedule', 'diktier', 'record',
         'import', 'neu', 'new', 'einladen', 'invite', 'hinzufügen', 'add', 'scan',
-        'trueScale', 'kalibrier', 'rendern', 'render'
+        'trueScale', 'kalibrier', 'rendern', 'render', 'whatsapp', 'wa.me', 'teilen',
+        'share', 'unterzeichnen', 'sign', 'unterschreib', 'unterlagen', 'datei'
       ];
 
-      if (isSubmit || isFileInput || forbiddenWords.some(word => text.includes(word.toLowerCase()))) {
+      if (isSubmit || isFileInput || isExternalTarget || forbiddenWords.some(word => text.includes(word.toLowerCase()))) {
         // Tab-Navigation nicht blockieren!
         const isNavTab = actionable.closest('nav') || actionable.closest('.hide-scrollbar') || actionable.closest('.md\\:hidden');
         if (isNavTab) return;

@@ -45,7 +45,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     team: 'Team', tasks: 'Tasks', defects: 'Defects', hours: 'Hours', documents: 'Documents', open: 'open',
     budget_utilization: 'Budget Utilization', spent: 'Spent', external_costs: 'External Costs', internal_hours: 'Internal Hours',
     remaining: 'Remaining', no_budget_present: 'No budget available', total_budget: 'Total Budget', total_costs: 'Total Costs', manage_budget: 'Open Budget',
-    create_report: 'Create Report', saved_cloud: 'Saved to cloud successfully'
+    create_report: 'Create Report', saved_cloud: 'Saved to cloud successfully',
+    budget_short: 'Budget', spent_short: 'Spent', remaining_short: 'Remaining'
   },
   de: {
     project_overview: 'Projektübersicht', generate_ai_briefing: 'AI Briefing generieren', ai_generating: 'Projektdaten werden analysiert...',
@@ -57,7 +58,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     team: 'Team', tasks: 'Aufgaben', defects: 'Mängel', hours: 'Stunden', documents: 'Dokumente', open: 'offen',
     budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', external_costs: 'Externe Kosten', internal_hours: 'Interne Stunden',
     remaining: 'Verbleibend', no_budget_present: 'Kein Budget vorhanden', total_budget: 'Gesamtbudget', total_costs: 'Ist-Kosten', manage_budget: 'Budget erfassen / anpassen',
-    create_report: 'Report erstellen', saved_cloud: 'Erfolgreich in der Cloud gespeichert'
+    create_report: 'Report erstellen', saved_cloud: 'Erfolgreich in der Cloud gespeichert',
+    budget_short: 'Budget', spent_short: 'Ausgaben', remaining_short: 'Rest'
   }
 };
 
@@ -373,7 +375,7 @@ export default function Dashboard() {
             <span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest group-hover:text-accent-ai transition-colors">{t('total_budget')}</span>
             <DollarSign className="text-emerald-500" size={16} />
           </div>
-          <div className="text-2xl md:text-3xl font-bold text-text-primary truncate">
+          <div className="text-lg sm:text-xl lg:text-lg xl:text-2xl font-bold text-text-primary tracking-tight truncate" title={overviewTotalBudget > 0 ? `CHF ${formatCHF(overviewTotalBudget)}` : '0.-'}>
             {overviewTotalBudget > 0 ? `CHF ${formatCHF(overviewTotalBudget)}` : '0.-'}
           </div>
           <p className="text-[11px] text-text-muted mt-1 font-medium truncate">
@@ -425,17 +427,27 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-border/50 text-center">
-                  <div className="bg-background/50 p-2 rounded-lg">
-                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('total_budget')}</div>
-                    <div className="text-xs font-bold text-text-primary mt-0.5">CHF {formatCHF(overviewTotalBudget)}</div>
+                  <div className="bg-background/50 p-2 rounded-lg min-w-0">
+                    <div className="text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate" title={t('total_budget')}>
+                      {t('budget_short')}
+                    </div>
+                    <div className="text-[11px] sm:text-xs font-bold text-text-primary mt-0.5 truncate" title={`CHF ${formatCHF(overviewTotalBudget)}`}>
+                      CHF {formatCHF(overviewTotalBudget)}
+                    </div>
                   </div>
-                  <div className="bg-background/50 p-2 rounded-lg">
-                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('spent')}</div>
-                    <div className="text-xs font-bold text-orange-500 mt-0.5">CHF {formatCHF(globalSpent)}</div>
+                  <div className="bg-background/50 p-2 rounded-lg min-w-0">
+                    <div className="text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate" title={t('spent')}>
+                      {t('spent_short')}
+                    </div>
+                    <div className="text-[11px] sm:text-xs font-bold text-orange-500 mt-0.5 truncate" title={`CHF ${formatCHF(globalSpent)}`}>
+                      CHF {formatCHF(globalSpent)}
+                    </div>
                   </div>
-                  <div className="bg-background/50 p-2 rounded-lg">
-                    <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider">{t('remaining')}</div>
-                    <div className={cn("text-xs font-bold mt-0.5", budgetRemaining > 0 ? "text-emerald-500" : "text-red-500")}>
+                  <div className="bg-background/50 p-2 rounded-lg min-w-0">
+                    <div className="text-[9px] sm:text-[10px] font-bold text-text-muted uppercase tracking-wider truncate" title={t('remaining')}>
+                      {t('remaining_short')}
+                    </div>
+                    <div className={cn("text-[11px] sm:text-xs font-bold mt-0.5 truncate", budgetRemaining > 0 ? "text-emerald-500" : "text-red-500")} title={`CHF ${formatCHF(budgetRemaining)}`}>
                       CHF {formatCHF(budgetRemaining)}
                     </div>
                   </div>

@@ -531,6 +531,58 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Typewriter state for Hero Interactive Typography
+  const typewriterFields = currentLang === 'en' ? [
+    'complex projects.',
+    'Scenography & Events.',
+    'General Contractors.',
+    'Architecture & Construction.',
+    'Design Agencies.',
+    'Trade Fairs & Exhibitions.',
+    'Interior Design.'
+  ] : [
+    'komplexe Projekte.',
+    'Szenografie & Events.',
+    'Generalplaner & GU.',
+    'Architektur & Bau.',
+    'Design-Agenturen.',
+    'Messe- & Ausstellungsbau.',
+    'Innenarchitektur.'
+  ];
+
+  const [typedText, setTypedText] = useState('');
+  const [fieldIdx, setFieldIdx] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const currentWord = typewriterFields[fieldIdx % typewriterFields.length];
+    let timeout: ReturnType<typeof setTimeout>;
+
+    if (isDeleting) {
+      if (typedText.length > 0) {
+        timeout = setTimeout(() => {
+          setTypedText(currentWord.substring(0, typedText.length - 1));
+        }, 28);
+      } else {
+        setIsDeleting(false);
+        setFieldIdx((prev) => (prev + 1) % typewriterFields.length);
+        timeout = setTimeout(() => {}, 220);
+      }
+    } else {
+      if (typedText.length < currentWord.length) {
+        timeout = setTimeout(() => {
+          setTypedText(currentWord.substring(0, typedText.length + 1));
+        }, 50);
+      } else {
+        timeout = setTimeout(() => {
+          setIsDeleting(true);
+        }, 2200);
+      }
+    }
+
+    return () => clearTimeout(timeout);
+  }, [typedText, isDeleting, fieldIdx, currentLang]);
+
   // ROI Rechner States
   const [projectsCount, setProjectsCount] = useState(2);
   const [hoursLost, setHoursLost] = useState(1); 
@@ -717,20 +769,9 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <span className="relative z-10">K</span>
               <span className="absolute inset-0 bg-gradient-to-tr from-cyan-400/30 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
-                  Kreativ Desk
-                </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-                  OS
-                </span>
-              </div>
-              <span className="hidden sm:block text-[9px] tracking-widest uppercase font-semibold text-text-muted/70 -mt-0.5">
-                Swiss Architecture OS
-              </span>
-            </div>
+            <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
+              Kreativ Desk
+            </span>
           </div>
 
           <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-text-muted">
@@ -818,36 +859,45 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           <HeroBrandCanvas isDark={theme === 'dark'} />
 
           <div className="max-w-5xl mx-auto relative z-10 pointer-events-auto">
-            {/* Clean Single Public Beta Status Badge */}
-            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-500 text-xs font-semibold shadow-sm backdrop-blur-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                </span>
-                <span className="tracking-wide uppercase text-[10px] font-bold text-blue-600 dark:text-blue-400">
+            {/* Integrated Public Beta / Early Access Announcement Banner */}
+            <div className="flex items-center justify-center mb-8">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md max-w-3xl"
+              >
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>
                   {t('beta_badge')}
+                </span>
+                <span className="text-xs font-medium text-slate-700 dark:text-zinc-200">
+                  {currentLang === 'de' 
+                    ? 'Wir befinden uns aktuell in der Public Beta. Sichere dir jetzt exklusive Early-Adopter Konditionen!' 
+                    : 'We are currently in Public Beta. Secure exclusive early-adopter conditions now!'}
                 </span>
               </motion.div>
             </div>
             
-            {/* Stable, Authoritative Swiss Architectural Headline */}
-            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.12] select-none text-slate-900 dark:text-white">
+            {/* Interactive Typewriter Headline with Precision Cursor */}
+            <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[1.12] select-none text-slate-900 dark:text-white min-h-[2.3em]">
               <span className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
-                {t('hero_title1')}
+                {currentLang === 'en' ? 'The Operating System' : 'Das Operating System'}
               </span>
               <br/>
-              <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 dark:from-blue-400 dark:via-cyan-300 dark:to-blue-500 bg-clip-text text-transparent drop-shadow-sm">
-                {t('hero_title2')}
+              <span className="text-slate-900 dark:text-white">
+                {currentLang === 'en' ? 'for ' : 'für '}
               </span>
+              <span className="text-blue-600 dark:text-blue-400 bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 dark:from-blue-400 dark:via-cyan-300 dark:to-blue-500 bg-clip-text text-transparent">
+                {typedText}
+              </span>
+              <span 
+                className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-400 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse" 
+                aria-hidden="true"
+              />
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-4 max-w-3xl mx-auto leading-relaxed">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-8 max-w-3xl mx-auto leading-relaxed">
               {t('hero_subtitle')}
-            </motion.p>
-            
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="text-sm font-semibold text-amber-700 dark:text-orange-400 mb-12 max-w-2xl mx-auto border border-amber-500/30 dark:border-orange-500/20 bg-amber-500/10 dark:bg-orange-500/5 px-4 py-3 rounded-xl">
-              {t('hero_beta_disclaimer')}
             </motion.p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

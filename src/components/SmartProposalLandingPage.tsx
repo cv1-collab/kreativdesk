@@ -26,6 +26,7 @@ import UniversalPDFStudio from './UniversalPDFStudio';
 import { MesseOffertePDFDocument } from './interactv/pdf/MesseOffertePDFDocument';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import { useToast } from '../contexts/ToastContext';
 
 const localTranslations: Record<'de' | 'en' | 'fr', Record<string, string>> = {
   de: {
@@ -983,9 +984,23 @@ const LEGAL_DOC_TRANSLATIONS: Record<string, { de: string; en: string; fr: strin
   }
 };
 
-export default function SmartProposalLandingPage() {
+interface SmartProposalLandingPageProps {
+  isDemo?: boolean;
+}
+
+export default function SmartProposalLandingPage({ isDemo = false }: SmartProposalLandingPageProps = {}) {
+  const { addToast } = useToast();
   const { shareToken } = useParams<{ shareToken: string }>();
   const navigate = useNavigate();
+
+  const showDemoBlockedToast = () => {
+    addToast(
+      proposalLang === 'de'
+        ? "In der Live-Demo gesperrt. Erstelle einen kostenlosen Account für den vollen Funktionsumfang!"
+        : "Locked in live demo. Create a free account to unlock full features!",
+      "info"
+    );
+  };
   const [proposal, setProposal] = useState<SmartProposal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [bexioSyncResult, setBexioSyncResult] = useState<BexioSyncResult | null>(null);
@@ -1904,51 +1919,53 @@ export default function SmartProposalLandingPage() {
     <div className={cn("min-h-screen font-sans selection:bg-blue-500 selection:text-white transition-colors duration-300", isLight ? "bg-[#f8fafc] text-slate-900 light" : "bg-[#09090b] text-zinc-100 dark")}>
       
       {/* 1. TOP ANNOUNCEMENT & BRAND HEADER */}
-      <header className={cn("sticky top-0 z-50 backdrop-blur-xl border-b px-3 sm:px-8 py-3 flex items-center justify-between gap-2 transition-colors", isLight ? "bg-white/90 border-slate-200 text-slate-900 shadow-xs" : "bg-[#09090b]/85 border-white/10 text-zinc-100")}>
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* ZURÜCK ZUR APP / STUDIO BUTTON */}
-          <button 
-            type="button"
-            onClick={() => {
-              if (window.history.length > 1) {
-                window.history.back();
-              } else {
-                navigate('/app');
-              }
-            }}
-            className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0", isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white")}
-            title={t('backTooltip')}
-          >
-            <ChevronLeft size={16} />
-            <span className="hidden sm:inline">{t('backToApp')}</span>
-            <span className="sm:hidden">{t('back')}</span>
-          </button>
+      <header className={cn("sticky top-0 z-50 backdrop-blur-xl border-b px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 transition-colors", isLight ? "bg-white/90 border-slate-200 text-slate-900 shadow-xs" : "bg-[#09090b]/85 border-white/10 text-zinc-100")}>
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* ZURÜCK ZUR APP / STUDIO BUTTON (Nur wenn nicht in Demo) */}
+          {!isDemo && (
+            <button 
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  navigate('/app');
+                }
+              }}
+              className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0", isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white")}
+              title={t('backTooltip')}
+            >
+              <ChevronLeft size={16} />
+              <span className="hidden sm:inline">{t('backToApp')}</span>
+              <span className="sm:hidden">{t('back')}</span>
+            </button>
+          )}
 
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 text-white font-black text-xs sm:text-sm shrink-0">
             KD
           </div>
-          <div>
+          <div className="min-w-0">
             <div className={cn("text-[10px] sm:text-xs font-bold uppercase tracking-widest flex items-center gap-1.5", isLight ? "text-slate-500" : "text-zinc-400")}>
               <span>Kreativ Desk</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             </div>
-            <div className={cn("text-xs sm:text-sm font-extrabold truncate max-w-[140px] sm:max-w-md", isLight ? "text-slate-900" : "text-white")}>
+            <div className={cn("text-xs sm:text-sm font-extrabold truncate max-w-[120px] sm:max-w-md", isLight ? "text-slate-900" : "text-white")}>
               {getTranslatedProposalTitle(proposal.title)}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Expiry Badge */}
-          <div className={cn("hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border", isLight ? "bg-slate-100 border-slate-200 text-slate-700" : "bg-white/5 border-white/10 text-zinc-300")}>
-            <Clock size={13} className="text-amber-400" />
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Expiry Badge: Einzeilig mit whitespace-nowrap */}
+          <div className={cn("hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 whitespace-nowrap", isLight ? "bg-slate-100 border-slate-200 text-slate-700" : "bg-white/5 border-white/10 text-zinc-300")}>
+            <Clock size={13} className="text-amber-400 shrink-0" />
             <span>
               {t('daysLeft', { days: daysLeft })}
             </span>
           </div>
 
           {/* Trilingual Language Switcher */}
-          <div className={cn("flex items-center border rounded-xl p-0.5 text-[11px] font-bold", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
+          <div className={cn("flex items-center border rounded-xl p-0.5 text-[11px] font-bold shrink-0", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
             <button 
               type="button"
               onClick={() => changeLanguage('de')}
@@ -1977,7 +1994,7 @@ export default function SmartProposalLandingPage() {
             type="button"
             onClick={toggleThemeMode}
             className={cn(
-              "p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm",
+              "p-1.5 sm:px-2 sm:py-1 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0",
               isLight 
                 ? "bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700" 
                 : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white"
@@ -1985,17 +2002,21 @@ export default function SmartProposalLandingPage() {
             title={isLight ? t('switchToDark') : t('switchToLight')}
           >
             {isLight ? <Sun size={14} className="text-amber-500" /> : <Moon size={14} className="text-blue-400" />}
-            <span className="hidden xl:inline">{isLight ? t('lightMode') : t('darkMode')}</span>
+            <span className="hidden 2xl:inline">{isLight ? t('lightMode') : t('darkMode')}</span>
           </button>
 
           {/* Share Button (WhatsApp, LinkedIn, Link) */}
           <button 
             type="button"
             onClick={() => {
+              if (isDemo) {
+                showDemoBlockedToast();
+                return;
+              }
               audioFeedback.playTouchClick();
               setIsShareModalOpen(true);
             }}
-            className={cn("p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm", isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white")}
+            className={cn("p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0", isLight ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 border-white/15 text-zinc-200 hover:text-white")}
             title={t('shareTooltip')}
           >
             <Share2 size={14} className="text-cyan-400" />
@@ -2004,20 +2025,22 @@ export default function SmartProposalLandingPage() {
             </span>
           </button>
 
-          {/* Company & Swiss QR Settings Modal Trigger */}
-          <button 
-            type="button"
-            onClick={() => {
-              audioFeedback.playTouchClick();
-              setTempCompanySettings(companySettings);
-              setIsCompanySettingsModalOpen(true);
-            }}
-            className={cn("p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm", isLight ? "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700" : "bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/30 text-purple-300 hover:text-white")}
-            title={t('companyAndQRTooltip')}
-          >
-            <Building2 size={14} className="text-purple-400" />
-            <span className="hidden md:inline">{t('companyAndQR')}</span>
-          </button>
+          {/* Company & Swiss QR Settings Modal Trigger (In Demo ausgeblendet für sauberes Layout) */}
+          {!isDemo && (
+            <button 
+              type="button"
+              onClick={() => {
+                audioFeedback.playTouchClick();
+                setTempCompanySettings(companySettings);
+                setIsCompanySettingsModalOpen(true);
+              }}
+              className={cn("p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shrink-0", isLight ? "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-700" : "bg-purple-600/20 hover:bg-purple-600/30 border-purple-500/30 text-purple-300 hover:text-white")}
+              title={t('companyAndQRTooltip')}
+            >
+              <Building2 size={14} className="text-purple-400" />
+              <span className="hidden md:inline">{t('companyAndQR')}</span>
+            </button>
+          )}
 
           {/* Mode Switcher */}
           <div className={cn("flex items-center border rounded-xl p-1", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
@@ -2047,13 +2070,19 @@ export default function SmartProposalLandingPage() {
 
           {/* Quick Accept CTA Button */}
           {isAcceptedSuccess ? (
-            <div className="px-3.5 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5">
+            <div className="px-3.5 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0">
               <CheckCircle2 size={15} /> <span>{t('approved')}</span>
             </div>
           ) : (
             <button 
-              onClick={() => setIsAcceptModalOpen(true)}
-              className="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 cursor-pointer"
+              onClick={() => {
+                if (isDemo) {
+                  showDemoBlockedToast();
+                  return;
+                }
+                setIsAcceptModalOpen(true);
+              }}
+              className="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <FileCheck size={15} /> <span>{t('accept')}</span>
             </button>
@@ -2925,6 +2954,12 @@ export default function SmartProposalLandingPage() {
               href={`https://wa.me/${(companySettings.contactPhone || '+41442105000').replace(/[^0-9]/g, '')}?text=Hallo%20Planungsteam,%20ich%20habe%20eine%20Rückfrage%20zur%20Offerte%20${encodeURIComponent(proposal.title)}`}
               target="_blank" 
               rel="noreferrer"
+              onClick={(e) => {
+                if (isDemo) {
+                  e.preventDefault();
+                  showDemoBlockedToast();
+                }
+              }}
               className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/30 transition-all shrink-0 cursor-pointer"
             >
               <MessageSquare size={16} /> <span>{t('askViaWhatsapp')}</span>
@@ -3350,19 +3385,21 @@ export default function SmartProposalLandingPage() {
         )}
       </AnimatePresence>
 
-      {/* FLOATING AI PROPOSAL CONCIERGE BUTTON */}
-      <div className="fixed bottom-6 right-6 z-40">
-        <button
-          onClick={() => {
-            audioFeedback.playTouchClick();
-            setIsAiChatOpen(!isAiChatOpen);
-          }}
-          className="px-4 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-2xl shadow-2xl shadow-blue-600/50 text-xs font-extrabold flex items-center gap-2.5 transition-all hover:scale-105 border border-white/20 cursor-pointer"
-        >
-          <Bot size={18} className="text-cyan-200 animate-pulse" />
-          <span>{t('floatingAiBtn')}</span>
-        </button>
-      </div>
+      {/* FLOATING AI PROPOSAL CONCIERGE BUTTON (In Demo ausblenden, um Doppel-Button unten rechts zu verhindern) */}
+      {!isDemo && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            onClick={() => {
+              audioFeedback.playTouchClick();
+              setIsAiChatOpen(!isAiChatOpen);
+            }}
+            className="px-4 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-2xl shadow-2xl shadow-blue-600/50 text-xs font-extrabold flex items-center gap-2.5 transition-all hover:scale-105 border border-white/20 cursor-pointer"
+          >
+            <Bot size={18} className="text-cyan-200 animate-pulse" />
+            <span>{t('floatingAiBtn')}</span>
+          </button>
+        </div>
+      )}
 
       {/* AI PROPOSAL CONCIERGE CHAT MODAL */}
       <AnimatePresence>
@@ -3574,6 +3611,10 @@ export default function SmartProposalLandingPage() {
                         <button
                           type="button"
                           onClick={async () => {
+                            if (isDemo) {
+                              showDemoBlockedToast();
+                              return;
+                            }
                             audioFeedback.playSuccessChime();
                             await copyToClipboard(calculatedShareUrl);
                             setCopiedShareToast(true);
@@ -3591,10 +3632,16 @@ export default function SmartProposalLandingPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                       {/* WhatsApp */}
                       <a
-                        href={`https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareMsg)}`}
-                        target="_blank"
+                        href={isDemo ? "#" : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappShareMsg)}`}
+                        target={isDemo ? "_self" : "_blank"}
                         rel="noreferrer"
-                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs", isLight ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800" : "bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/30 text-emerald-300")}
+                        onClick={(e) => {
+                          if (isDemo) {
+                            e.preventDefault();
+                            showDemoBlockedToast();
+                          }
+                        }}
+                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs cursor-pointer", isLight ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 text-emerald-800" : "bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/30 text-emerald-300")}
                       >
                         <span className="text-lg">💬</span>
                         <span>WhatsApp</span>
@@ -3602,10 +3649,16 @@ export default function SmartProposalLandingPage() {
 
                       {/* LinkedIn */}
                       <a
-                        href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(calculatedShareUrl)}`}
-                        target="_blank"
+                        href={isDemo ? "#" : `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(calculatedShareUrl)}`}
+                        target={isDemo ? "_self" : "_blank"}
                         rel="noreferrer"
-                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs", isLight ? "bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-800" : "bg-blue-950/40 hover:bg-blue-900/50 border-blue-500/30 text-blue-300")}
+                        onClick={(e) => {
+                          if (isDemo) {
+                            e.preventDefault();
+                            showDemoBlockedToast();
+                          }
+                        }}
+                        className={cn("p-3 rounded-2xl border flex flex-col items-center justify-center gap-1.5 text-xs font-bold transition-all shadow-xs cursor-pointer", isLight ? "bg-blue-50 hover:bg-blue-100 border-blue-300 text-blue-800" : "bg-blue-950/40 hover:bg-blue-900/50 border-blue-500/30 text-blue-300")}
                       >
                         <span className="text-lg">💼</span>
                         <span>LinkedIn</span>

@@ -5,8 +5,22 @@ interface HeroBrandCanvasProps {
   isDark?: boolean;
 }
 
+interface ModuleNode {
+  id: string;
+  label: string;
+  rx: number;
+  ry: number;
+  baseX: number;
+  baseY: number;
+  currentX: number;
+  currentY: number;
+  vx: number;
+  vy: number;
+  caught: number;
+}
+
 /**
- * EndNode: Grid unit with spring tension, damping, and elastic repulsion physics.
+ * EndNode: Grid unit with spring tension and interaction physics.
  */
 class EndNode {
   x: number;
@@ -16,10 +30,8 @@ class EndNode {
   vx: number;
   vy: number;
   depth: number;
-  i: number;
-  j: number;
 
-  constructor(x: number, y: number, depth: number, i: number, j: number) {
+  constructor(x: number, y: number, depth: number) {
     this.x = x;
     this.y = y;
     this.originX = x;
@@ -27,8 +39,6 @@ class EndNode {
     this.vx = 0;
     this.vy = 0;
     this.depth = depth;
-    this.i = i;
-    this.j = j;
   }
 
   update(mouseX: number, mouseY: number, radius: number) {
@@ -38,7 +48,7 @@ class EndNode {
 
     // Spring tension towards origin
     const springK = 0.05 * this.depth;
-    const damping = 0.84;
+    const damping = 0.85;
 
     const ax = (this.originX - this.x) * springK;
     const ay = (this.originY - this.y) * springK;
@@ -46,12 +56,12 @@ class EndNode {
     this.vx = (this.vx + ax) * damping;
     this.vy = (this.vy + ay) * damping;
 
-    // Interaction displacement: pushes nodes elastically away from finger/pointer
+    // Interaction displacement
     if (dist < radius && dist > 0) {
-      const force = (1 - dist / radius) * (20 * this.depth);
+      const force = (1 - dist / radius) * (18 * this.depth);
       const angle = Math.atan2(dy, dx);
-      this.vx -= Math.cos(angle) * force * 0.22;
-      this.vy -= Math.sin(angle) * force * 0.22;
+      this.vx -= Math.cos(angle) * force * 0.2;
+      this.vy -= Math.sin(angle) * force * 0.2;
     }
 
     this.x += this.vx;
@@ -82,6 +92,24 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
     let nodes: EndNode[] = [];
     let currentSpacing = 36;
 
+    // 12 Authentic Kreativ Desk OS Module Nodes
+    const moduleDefs = [
+      { id: 'cube', label: '3D BIM (IFC)', rx: 0.12, ry: 0.18 },
+      { id: 'ledger', label: 'Finanzen & BKP', rx: 0.88, ry: 0.16 },
+      { id: 'calendar', label: 'Smart Calendar', rx: 0.08, ry: 0.48 },
+      { id: 'tickets', label: 'Mängel & Tickets', rx: 0.92, ry: 0.44 },
+      { id: 'cad', label: 'CAD Pläne', rx: 0.14, ry: 0.78 },
+      { id: 'camera', label: 'Baukamera', rx: 0.86, ry: 0.74 },
+      { id: 'offerte', label: 'Smart Offerte', rx: 0.26, ry: 0.22 },
+      { id: 'deck', label: 'Pitch Deck Studio', rx: 0.74, ry: 0.20 },
+      { id: 'chat', label: 'Meet & Chat', rx: 0.20, ry: 0.62 },
+      { id: 'whiteboard', label: 'Whiteboard', rx: 0.80, ry: 0.60 },
+      { id: 'bauakte', label: 'Bauakte', rx: 0.32, ry: 0.86 },
+      { id: 'rbac', label: 'Rollen & RBAC', rx: 0.68, ry: 0.88 }
+    ];
+
+    let modules: ModuleNode[] = [];
+
     // Mouse & Touch interaction state
     const mouse = {
       x: -2000,
@@ -91,19 +119,72 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
       auraPulse: 0
     };
 
-    let currentHue = 195;
-    let targetHue = 195;
+    let currentHue = 215;
+    let targetHue = 215;
 
-    // 1. Retina-Scharfe Canvas-Initialisierung für iPhone & iPad
+    // Fast vector icon drawer for module nodes
+    const drawModuleIcon = (type: string, s: number) => {
+      ctx.lineWidth = 1.1;
+      if (type === 'cube') {
+        // 3D IFC Kubus
+        ctx.beginPath();
+        ctx.moveTo(0, -s);
+        ctx.lineTo(s, -s * 0.5);
+        ctx.lineTo(s, s * 0.5);
+        ctx.lineTo(0, s);
+        ctx.lineTo(-s, s * 0.5);
+        ctx.lineTo(-s, -s * 0.5);
+        ctx.closePath();
+        ctx.moveTo(0, 0); ctx.lineTo(0, s);
+        ctx.moveTo(0, 0); ctx.lineTo(s, -s * 0.5);
+        ctx.moveTo(0, 0); ctx.lineTo(-s, -s * 0.5);
+        ctx.stroke();
+      } else if (type === 'ledger') {
+        // Finanzen
+        ctx.beginPath();
+        ctx.ellipse(0, -s * 0.35, s, s * 0.35, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, s * 0.35, s, s * 0.35, 0, 0, Math.PI);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-s, -s * 0.35); ctx.lineTo(-s, s * 0.35);
+        ctx.moveTo(s, -s * 0.35); ctx.lineTo(s, s * 0.35);
+        ctx.stroke();
+      } else if (type === 'calendar') {
+        // Kalender
+        ctx.strokeRect(-s, -s, s * 2, s * 2);
+        ctx.beginPath();
+        ctx.moveTo(-s, -s * 0.3); ctx.lineTo(s, -s * 0.3);
+        ctx.stroke();
+      } else if (type === 'camera') {
+        // Kamera
+        ctx.strokeRect(-s, -s * 0.7, s * 2, s * 1.4);
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (type === 'offerte' || type === 'deck') {
+        // Dokument / Präsentation
+        ctx.strokeRect(-s * 0.75, -s, s * 1.5, s * 2);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.4, -s * 0.4); ctx.lineTo(s * 0.4, -s * 0.4);
+        ctx.moveTo(-s * 0.4, 0); ctx.lineTo(s * 0.4, 0);
+        ctx.stroke();
+      } else {
+        // Standard Synapsen-Knoten
+        ctx.beginPath();
+        ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    };
+
     function initCanvas() {
       dpr = window.devicePixelRatio || 1;
-
       width = heroZone.clientWidth;
       height = heroZone.clientHeight;
 
       if (width === 0 || height === 0) return;
 
-      // Interne Auflösung für Retina hochskalieren
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = width + 'px';
@@ -112,9 +193,8 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
-      // Raster-Dichte mobil optimieren (auf kleinen Screens etwas luftiger)
       const isMobile = width < 768;
-      currentSpacing = isMobile ? 42 : 36;
+      currentSpacing = isMobile ? 48 : 38;
 
       nodes = [];
       let i = 0;
@@ -122,11 +202,27 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
         let j = 0;
         for (let y = currentSpacing / 2; y < height; y += currentSpacing) {
           const depth = ((i + j) % 3 === 0) ? 0.75 : 1.0;
-          nodes.push(new EndNode(x, y, depth, i, j));
+          nodes.push(new EndNode(x, y, depth));
           j++;
         }
         i++;
       }
+
+      // Initialize module nodes
+      modules = moduleDefs.map((m) => {
+        const snapX = Math.round((m.rx * width) / currentSpacing) * currentSpacing;
+        const snapY = Math.round((m.ry * height) / currentSpacing) * currentSpacing;
+        return {
+          ...m,
+          baseX: snapX,
+          baseY: snapY,
+          currentX: snapX,
+          currentY: snapY,
+          vx: 0,
+          vy: 0,
+          caught: 0
+        };
+      });
     }
 
     initCanvas();
@@ -136,41 +232,30 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
     });
     resizeObserver.observe(heroZone);
 
-    // 2. Touch-Interaktion für iPad / iPhone
+    // Touch Handlers
     function handleTouch(e: TouchEvent) {
       if (e.touches.length > 0) {
         const touch = e.touches[0];
         const rect = heroZone.getBoundingClientRect();
-
         mouse.targetX = touch.clientX - rect.left;
         mouse.targetY = touch.clientY - rect.top;
-
-        // Sanfte Farbmodulation beim Streichen über das Display
-        targetHue = 185 + (touch.clientX / Math.max(window.innerWidth, 1)) * 85;
+        targetHue = 195 + (touch.clientX / Math.max(window.innerWidth, 1)) * 65;
       }
     }
 
-    const onTouchStart = (e: TouchEvent) => {
-      handleTouch(e);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      handleTouch(e);
-    };
-
+    const onTouchStart = (e: TouchEvent) => handleTouch(e);
+    const onTouchMove = (e: TouchEvent) => handleTouch(e);
     const onTouchEnd = () => {
-      // Beim Loslassen federn die Synapsen geschmeidig zurück
       mouse.targetX = -2000;
       mouse.targetY = -2000;
     };
 
-    // Desktop Mouse Handlers
+    // Desktop Mouse Handlers - fluid and responsive
     const onMouseMove = (e: MouseEvent) => {
       const rect = heroZone.getBoundingClientRect();
       mouse.targetX = e.clientX - rect.left;
       mouse.targetY = e.clientY - rect.top;
-
-      targetHue = 185 + (e.clientX / Math.max(window.innerWidth, 1)) * 85;
+      targetHue = 195 + (e.clientX / Math.max(window.innerWidth, 1)) * 65;
     };
 
     const onMouseLeave = () => {
@@ -186,23 +271,21 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
     heroZone.addEventListener('mousemove', onMouseMove, { passive: true });
     heroZone.addEventListener('mouseleave', onMouseLeave, { passive: true });
 
-    // 3. Ultra-Smooth 60/120fps Render Loop
     let lastTime = performance.now();
 
     const render = (time: number) => {
       const dt = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
-      // Smooth Hue Transition
       currentHue += (targetHue - currentHue) * 0.1;
 
-      // Mouse / Touch Follow Interpolation
+      // Snappy, silky smooth mouse tracking
       if (mouse.targetX > -1000) {
-        mouse.x += (mouse.targetX - mouse.x) * 0.26;
-        mouse.y += (mouse.targetY - mouse.y) * 0.26;
+        mouse.x += (mouse.targetX - mouse.x) * 0.45;
+        mouse.y += (mouse.targetY - mouse.y) * 0.45;
       } else {
-        mouse.x += (mouse.targetX - mouse.x) * 0.10;
-        mouse.y += (mouse.targetY - mouse.y) * 0.10;
+        mouse.x += (mouse.targetX - mouse.x) * 0.15;
+        mouse.y += (mouse.targetY - mouse.y) * 0.15;
       }
 
       mouse.auraPulse += dt * 3.0;
@@ -210,21 +293,17 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
       ctx.clearRect(0, 0, width, height);
 
       const isMobile = width < 768;
-      const interactionRadius = isMobile ? 120 : 155;
+      const interactionRadius = isMobile ? 120 : 160;
       const isInteractionActive = mouse.x > -500 && mouse.y > -500;
 
-      // A. Ambient Architectural Depth Lighting
+      // 1. Ambient architectural gradient
       const centerX = width / 2;
       const centerY = height * 0.44;
       const ambientGrad = ctx.createRadialGradient(
-        centerX,
-        centerY,
-        0,
-        centerX,
-        centerY,
-        Math.min(width * 0.55, 480)
+        centerX, centerY, 0,
+        centerX, centerY, Math.min(width * 0.55, 480)
       );
-      ambientGrad.addColorStop(0, isDark ? 'rgba(37, 99, 235, 0.11)' : 'rgba(37, 99, 235, 0.07)');
+      ambientGrad.addColorStop(0, isDark ? 'rgba(37, 99, 235, 0.10)' : 'rgba(37, 99, 235, 0.06)');
       ambientGrad.addColorStop(0.5, isDark ? 'rgba(56, 189, 248, 0.03)' : 'rgba(56, 189, 248, 0.02)');
       ambientGrad.addColorStop(1, 'transparent');
 
@@ -233,102 +312,142 @@ export default function HeroBrandCanvas({ className = '', isDark = true }: HeroB
       ctx.arc(centerX, centerY, Math.min(width * 0.55, 480), 0, Math.PI * 2);
       ctx.fill();
 
-      // B. Synaptic Field Aura directly under Finger / Pointer
-      if (isInteractionActive) {
-        const auraRadius = (isMobile ? 80 : 105) + Math.sin(mouse.auraPulse) * 6;
-        const auraGrad = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, auraRadius);
-        auraGrad.addColorStop(0, `hsla(${currentHue}, 85%, 65%, ${isDark ? 0.20 : 0.16})`);
-        auraGrad.addColorStop(0.5, `hsla(${currentHue + 15}, 80%, 60%, ${isDark ? 0.07 : 0.05})`);
-        auraGrad.addColorStop(1, 'transparent');
-
-        ctx.fillStyle = auraGrad;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, auraRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Delicate Core Synapse Ring
-        ctx.strokeStyle = `hsla(${currentHue}, 90%, 65%, ${isDark ? 0.40 : 0.30})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(mouse.x, mouse.y, 14 + Math.sin(mouse.auraPulse * 1.5) * 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // C. Update & Collect Active Nodes
-      const activeNodes: { node: EndNode; dist: number; prox: number }[] = [];
+      // 2. Efficient Grid Rendering (Batched crosshairs)
+      const crossSize = 2.5;
+      ctx.beginPath();
+      ctx.lineWidth = 0.75;
+      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(71, 85, 105, 0.08)';
 
       for (let idx = 0; idx < nodes.length; idx++) {
         const node = nodes[idx];
         node.update(mouse.x, mouse.y, interactionRadius);
 
-        const distToMouse = isInteractionActive ? Math.hypot(mouse.x - node.x, mouse.y - node.y) : 999;
-        const isNear = distToMouse < interactionRadius;
-
-        if (isNear) {
-          activeNodes.push({
-            node,
-            dist: distToMouse,
-            prox: 1 - distToMouse / interactionRadius
-          });
-
-          // Filament ray from touch center to nearby node
-          if (distToMouse < interactionRadius * 0.70) {
-            const filamentAlpha = (1 - distToMouse / (interactionRadius * 0.70)) * (isDark ? 0.32 : 0.22);
-            ctx.strokeStyle = `hsla(${currentHue}, 90%, 65%, ${filamentAlpha})`;
-            ctx.lineWidth = 0.85;
-            ctx.beginPath();
-            ctx.moveTo(mouse.x, mouse.y);
-            ctx.lineTo(node.x, node.y);
-            ctx.stroke();
-          }
-        }
-
-        // Render Retina Crosshairs (+)
-        const crossSize = node.depth === 1.0 ? 3.5 : 2.5;
-        let alpha = isDark ? 0.12 : 0.08;
-        const strokeColor = isDark ? 'rgba(148, 163, 184, ' : 'rgba(71, 85, 105, ';
-
-        if (isNear) {
-          const prox = 1 - distToMouse / interactionRadius;
-          alpha = (isDark ? 0.25 : 0.18) + prox * 0.65;
-          ctx.strokeStyle = `hsla(${currentHue}, 80%, ${isDark ? '68%' : '46%'}, ${alpha})`;
-          ctx.lineWidth = 1.2;
-        } else {
-          ctx.strokeStyle = `${strokeColor}${alpha})`;
-          ctx.lineWidth = 0.8;
-        }
-
-        ctx.beginPath();
         ctx.moveTo(node.x - crossSize, node.y);
         ctx.lineTo(node.x + crossSize, node.y);
         ctx.moveTo(node.x, node.y - crossSize);
         ctx.lineTo(node.x, node.y + crossSize);
-        ctx.stroke();
       }
+      ctx.stroke();
 
-      // D. Draw Synaptic Connection Lines between Neighboring Active Nodes
-      if (activeNodes.length > 1) {
-        const maxSynapseDist = currentSpacing * 1.55;
-        ctx.lineWidth = 0.95;
+      // 3. 12 Modules Matrix Interaction & Elastic Threads
+      const CATCH_RADIUS = isMobile ? 150 : 210;
 
-        for (let a = 0; a < activeNodes.length; a++) {
-          for (let b = a + 1; b < activeNodes.length; b++) {
-            const itemA = activeNodes[a];
-            const itemB = activeNodes[b];
-            const d = Math.hypot(itemA.node.x - itemB.node.x, itemA.node.y - itemB.node.y);
+      modules.forEach((m, idx) => {
+        const dx = mouse.x - m.baseX;
+        const dy = mouse.y - m.baseY;
+        const dist = isInteractionActive ? Math.hypot(dx, dy) : 9999;
 
-            if (d < maxSynapseDist) {
-              const avgProx = (itemA.prox + itemB.prox) * 0.5;
-              const lineAlpha = (1 - d / maxSynapseDist) * (0.12 + avgProx * 0.48);
-
-              ctx.strokeStyle = `hsla(${currentHue}, 85%, ${isDark ? '66%' : '46%'}, ${lineAlpha})`;
-              ctx.beginPath();
-              ctx.moveTo(itemA.node.x, itemA.node.y);
-              ctx.lineTo(itemB.node.x, itemB.node.y);
-              ctx.stroke();
-            }
-          }
+        if (dist < CATCH_RADIUS) {
+          m.caught = Math.min(1, m.caught + 0.15);
+          const pull = (1 - dist / CATCH_RADIUS) * 22;
+          const angle = Math.atan2(dy, dx);
+          const targetX = m.baseX + Math.cos(angle) * pull;
+          const targetY = m.baseY + Math.sin(angle) * pull;
+          m.vx += (targetX - m.currentX) * 0.16;
+          m.vy += (targetY - m.currentY) * 0.16;
+        } else {
+          m.caught *= 0.90;
+          m.vx += (m.baseX - m.currentX) * 0.12;
+          m.vy += (m.baseY - m.currentY) * 0.12;
         }
+
+        m.vx *= 0.78;
+        m.vy *= 0.78;
+        m.currentX += m.vx;
+        m.currentY += m.vy;
+
+        // Draw elastic synaptic filament
+        if (m.caught > 0.04 && isInteractionActive) {
+          const threadColor = `hsla(${currentHue}, 90%, ${isDark ? '62%' : '48%'}, ${m.caught * 0.75})`;
+          ctx.strokeStyle = threadColor;
+          ctx.lineWidth = 0.9 + m.caught * 0.5;
+
+          const midX = mouse.x + (m.currentX - mouse.x) * 0.5 + Math.sin(idx + time * 0.003) * (10 * m.caught);
+          const midY = mouse.y + (m.currentY - mouse.y) * 0.5 + Math.cos(idx + time * 0.003) * (10 * m.caught);
+
+          ctx.beginPath();
+          ctx.moveTo(mouse.x, mouse.y);
+          ctx.quadraticCurveTo(midX, midY, m.currentX, m.currentY);
+          ctx.stroke();
+
+          // Small light node on the thread
+          ctx.fillStyle = threadColor;
+          ctx.beginPath();
+          ctx.arc(midX, midY, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Draw Module Icon and Label
+        ctx.save();
+        ctx.translate(m.currentX, m.currentY);
+
+        if (m.caught <= 0.04) {
+          ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.28)' : 'rgba(100, 116, 139, 0.35)';
+          drawModuleIcon(m.id, 6);
+
+          ctx.font = '500 8.5px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.38)' : 'rgba(100, 116, 139, 0.48)';
+          ctx.fillText(m.label, 0, 15);
+        } else {
+          const strokeColor = `hsla(${currentHue}, 90%, ${isDark ? '68%' : '48%'}, ${0.4 + m.caught * 0.6})`;
+          ctx.strokeStyle = strokeColor;
+
+          // Glowing halo on activation
+          ctx.beginPath();
+          ctx.arc(0, 0, 14, 0, Math.PI * 2);
+          ctx.stroke();
+
+          drawModuleIcon(m.id, 7);
+
+          ctx.font = '600 9px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = isDark ? '#ffffff' : '#0f172a';
+          ctx.fillText(m.label, 0, 17);
+        }
+
+        ctx.restore();
+      });
+
+      // 4. K-Logo Custom Cursor at Pointer Tip
+      if (isInteractionActive) {
+        ctx.save();
+        ctx.translate(mouse.x, mouse.y);
+
+        // Subtle aura behind the K cursor
+        const auraRadius = (isMobile ? 28 : 34) + Math.sin(mouse.auraPulse) * 3;
+        const auraGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, auraRadius);
+        auraGrad.addColorStop(0, `hsla(${currentHue}, 90%, 60%, ${isDark ? 0.30 : 0.22})`);
+        auraGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, auraRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // K-Logo Badge (22x22 px)
+        const size = 22;
+        const r = 5.5;
+        ctx.fillStyle = '#2563eb'; // Royal Blue
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = 1.2;
+
+        ctx.beginPath();
+        if (typeof (ctx as any).roundRect === 'function') {
+          (ctx as any).roundRect(-size / 2, -size / 2, size, size, r);
+        } else {
+          ctx.rect(-size / 2, -size / 2, size, size);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        // White "K" in center
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 11px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('K', 0, 0.5);
+
+        ctx.restore();
       }
 
       animFrameId = requestAnimationFrame(render);

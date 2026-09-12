@@ -1283,8 +1283,19 @@ export default function MeetChat() {
   };
 
   const handleQuickInvite = async (mode: 'copy' | 'whatsapp' | 'email') => {
-    const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
     const isDe = currentLang === 'de';
+
+    if (isDemoMode) {
+      addToast(
+        isDe
+          ? 'In der Live-Demo gesperrt. Erstelle einen kostenlosen Account für Video-Calls & WhatsApp-Invites!'
+          : 'Locked in live demo. Create a free account for video calls & WhatsApp invites!',
+        'info'
+      );
+      return;
+    }
+
+    const inviteUrl = `${window.location.origin}/guest-meet/${activeCallRoomId}`;
 
     await ensureCallRegistered(activeCallRoomId);
 

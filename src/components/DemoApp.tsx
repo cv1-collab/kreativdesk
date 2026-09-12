@@ -111,7 +111,7 @@ export default function DemoApp({ activeTab }: DemoAppProps) {
           </div>
         }>
           {activeTab === 'overview' && <Dashboard />}
-          {activeTab === 'proposal' && <SmartProposalLandingPage />}
+          {activeTab === 'proposal' && <SmartProposalLandingPage isDemo={true} />}
           {activeTab === 'team' && <ProjectTeam />}
           {activeTab === 'calendar' && <CalendarComponent />}
           {activeTab === 'finance' && <Finance />}
