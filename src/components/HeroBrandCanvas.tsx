@@ -98,27 +98,27 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
     let currentSpacing = 36;
     const isDe = (language || 'de').toLowerCase().startsWith('de');
 
-    // 14 Module Nodes placed exactly according to the user's red-dot synapse map in Photoshop
+    // 14 Module Nodes placed cleanly in clear background zones away from the central video
     const moduleDefs = [
-      // Top Arch above headline
-      { id: 'cad', labelDe: 'CAD Pläne', labelEn: 'CAD Plans', codeDe: 'CAD.1:50', codeEn: 'CAD.1:50', rx: 0.28, ry: 0.17, align: 'left' as const },
-      { id: 'cube', labelDe: '3D BIM (IFC)', labelEn: '3D BIM (IFC)', codeDe: 'IFC4::01', codeEn: 'IFC4::01', rx: 0.42, ry: 0.13, align: 'center' as const },
-      { id: 'deck', labelDe: 'Pitch Deck Studio', labelEn: 'Pitch Deck Studio', codeDe: 'PDF.VEKTOR', codeEn: 'PDF.VECTOR', rx: 0.58, ry: 0.13, align: 'center' as const },
-      { id: 'ledger', labelDe: 'Finanzen & BKP', labelEn: 'Finance & Cost Plans', codeDe: 'BKP.100-900', codeEn: 'CFC.100-900', rx: 0.72, ry: 0.17, align: 'right' as const },
+      // Top Arch above headline (in the clear upper matrix zone)
+      { id: 'cad', labelDe: 'CAD Pläne', labelEn: 'CAD Plans', codeDe: 'CAD.1:50', codeEn: 'CAD.1:50', rx: 0.25, ry: 0.15, align: 'left' as const },
+      { id: 'cube', labelDe: '3D BIM (IFC)', labelEn: '3D BIM (IFC)', codeDe: 'IFC4::01', codeEn: 'IFC4::01', rx: 0.42, ry: 0.11, align: 'center' as const },
+      { id: 'deck', labelDe: 'Pitch Deck Studio', labelEn: 'Pitch Deck Studio', codeDe: 'PDF.VEKTOR', codeEn: 'PDF.VECTOR', rx: 0.58, ry: 0.11, align: 'center' as const },
+      { id: 'ledger', labelDe: 'Finanzen & BKP', labelEn: 'Finance & Cost Plans', codeDe: 'BKP.100-900', codeEn: 'CFC.100-900', rx: 0.75, ry: 0.15, align: 'right' as const },
 
-      // Left Flank & Inner Synapses (encircling headline & left cta)
-      { id: 'offerte', labelDe: 'Smart Offerte', labelEn: 'Smart Proposals', codeDe: 'OFF.SIA102', codeEn: 'PROP.SIA102', rx: 0.13, ry: 0.34, align: 'left' as const },
-      { id: 'calendar', labelDe: 'Smart Calendar', labelEn: 'Smart Calendar', codeDe: 'SIA.TERM', codeEn: 'SCHED.SIA', rx: 0.24, ry: 0.44, align: 'left' as const },
-      { id: 'chat', labelDe: 'Meet & Chat', labelEn: 'Meet & Chat', codeDe: 'P2P.VOIP', codeEn: 'P2P.VOIP', rx: 0.25, ry: 0.58, align: 'left' as const },
-      { id: 'bauakte', labelDe: 'Bauakte', labelEn: 'Project Archive', codeDe: 'DOC.VAULT', codeEn: 'DOC.VAULT', rx: 0.20, ry: 0.76, align: 'left' as const },
-      { id: 'rbac', labelDe: 'Rollen & RBAC', labelEn: 'Roles & RBAC', codeDe: 'AUTH.RBAC', codeEn: 'AUTH.RBAC', rx: 0.34, ry: 0.85, align: 'left' as const },
+      // Left Flank (strictly on the open white background to the left of the central video)
+      { id: 'offerte', labelDe: 'Smart Offerte', labelEn: 'Smart Proposals', codeDe: 'OFF.SIA102', codeEn: 'PROP.SIA102', rx: 0.08, ry: 0.32, align: 'left' as const },
+      { id: 'calendar', labelDe: 'Smart Calendar', labelEn: 'Smart Calendar', codeDe: 'SIA.TERM', codeEn: 'SCHED.SIA', rx: 0.10, ry: 0.44, align: 'left' as const },
+      { id: 'chat', labelDe: 'Meet & Chat', labelEn: 'Meet & Chat', codeDe: 'P2P.VOIP', codeEn: 'P2P.VOIP', rx: 0.07, ry: 0.56, align: 'left' as const },
+      { id: 'bauakte', labelDe: 'Bauakte', labelEn: 'Project Archive', codeDe: 'DOC.VAULT', codeEn: 'DOC.VAULT', rx: 0.09, ry: 0.69, align: 'left' as const },
+      { id: 'rbac', labelDe: 'Rollen & RBAC', labelEn: 'Roles & RBAC', codeDe: 'AUTH.RBAC', codeEn: 'AUTH.RBAC', rx: 0.07, ry: 0.82, align: 'left' as const },
 
-      // Right Flank & Inner Synapses (encircling headline & right cta)
-      { id: 'tickets', labelDe: 'Mängel & Tickets', labelEn: 'Defects & Tickets', codeDe: 'ISSUE.SYNC', codeEn: 'ISSUE.SYNC', rx: 0.86, ry: 0.34, align: 'right' as const },
-      { id: 'camera', labelDe: 'Baukamera', labelEn: 'Site Camera', codeDe: 'CAM.LIVE', codeEn: 'CAM.LIVE', rx: 0.90, ry: 0.50, align: 'right' as const },
-      { id: 'whiteboard', labelDe: 'Whiteboard', labelEn: 'Whiteboard', codeDe: 'CANVAS.2D', codeEn: 'CANVAS.2D', rx: 0.76, ry: 0.58, align: 'right' as const },
-      { id: 'ai', labelDe: 'KI-Concierge', labelEn: 'AI Concierge', codeDe: 'AI.NEURAL', codeEn: 'AI.NEURAL', rx: 0.88, ry: 0.70, align: 'right' as const },
-      { id: 'cloud', labelDe: 'Colocation & Cloud', labelEn: 'Colocation & Cloud', codeDe: 'CH.HOSTING', codeEn: 'CH.HOSTING', rx: 0.75, ry: 0.84, align: 'right' as const }
+      // Right Flank (strictly on the open white background to the right of the central video)
+      { id: 'tickets', labelDe: 'Mängel & Tickets', labelEn: 'Defects & Tickets', codeDe: 'ISSUE.SYNC', codeEn: 'ISSUE.SYNC', rx: 0.92, ry: 0.32, align: 'right' as const },
+      { id: 'camera', labelDe: 'Baukamera', labelEn: 'Site Camera', codeDe: 'CAM.LIVE', codeEn: 'CAM.LIVE', rx: 0.90, ry: 0.44, align: 'right' as const },
+      { id: 'whiteboard', labelDe: 'Whiteboard', labelEn: 'Whiteboard', codeDe: 'CANVAS.2D', codeEn: 'CANVAS.2D', rx: 0.93, ry: 0.56, align: 'right' as const },
+      { id: 'ai', labelDe: 'KI-Concierge', labelEn: 'AI Concierge', codeDe: 'AI.NEURAL', codeEn: 'AI.NEURAL', rx: 0.91, ry: 0.69, align: 'right' as const },
+      { id: 'cloud', labelDe: 'Colocation & Cloud', labelEn: 'Colocation & Cloud', codeDe: 'CH.HOSTING', codeEn: 'CH.HOSTING', rx: 0.93, ry: 0.82, align: 'right' as const }
     ];
 
     // Synapse network connections linking nodes into a technical blueprint matrix
@@ -320,14 +320,36 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
         i++;
       }
 
+      // Dynamic Video Exclusion Zone:
+      // The central video is max-w-5xl (1024px) centered. Compute its boundaries on screen:
+      const maxVideoWidth = 1024;
+      const horizontalGutter = Math.max(16, (width - maxVideoWidth) / 2);
+      const videoLeftEdge = horizontalGutter;
+      const videoRightEdge = width - horizontalGutter;
+
       // Initialize 14 module nodes mapped onto proportional positions
       modules = moduleDefs.map((m) => {
         let computedX = m.rx * width;
         let computedY = m.ry * height;
 
-        // Ensure nodes maintain safe margin on desktop and tablet
-        if (m.rx < 0.3) computedX = Math.max(38, computedX);
-        if (m.rx > 0.7) computedX = Math.min(width - 38, computedX);
+        // If node is in the vertical range of the central video (ry > 0.46)
+        if (m.ry > 0.46) {
+          if (m.rx < 0.4) {
+            // Keep strictly to the left of the video frame in the open white space
+            computedX = Math.min(videoLeftEdge - 34, computedX);
+          } else if (m.rx > 0.6) {
+            // Keep strictly to the right of the video frame in the open white space
+            computedX = Math.max(videoRightEdge + 34, computedX);
+          }
+        }
+
+        // Ensure nodes maintain safe margin from viewport edges so text is never clipped
+        if (m.rx < 0.3) {
+          computedX = Math.max(28, Math.min(videoLeftEdge - 28, computedX));
+        }
+        if (m.rx > 0.7) {
+          computedX = Math.min(width - 28, Math.max(videoRightEdge + 28, computedX));
+        }
 
         const snapX = Math.round(computedX / currentSpacing) * currentSpacing;
         const snapY = Math.round(computedY / currentSpacing) * currentSpacing;
@@ -347,8 +369,17 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
 
     initCanvas();
 
+    let lastW = heroZone.clientWidth;
+    let lastH = heroZone.clientHeight;
     const resizeObserver = new ResizeObserver(() => {
-      initCanvas();
+      const newW = heroZone.clientWidth;
+      const newH = heroZone.clientHeight;
+      if (Math.abs(newW - lastW) >= 4 || Math.abs(newH - lastH) >= 4) {
+        lastW = newW;
+        lastH = newH;
+        initCanvas();
+        render(performance.now());
+      }
     });
     resizeObserver.observe(heroZone);
 
@@ -422,25 +453,25 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
 
       // 1. Ambient Blueprint Radial Gradient
       const centerX = width / 2;
-      const centerY = height * 0.42;
+      const centerY = height * 0.38;
       const ambientGrad = ctx.createRadialGradient(
         centerX, centerY, 0,
-        centerX, centerY, Math.min(width * 0.58, 520)
+        centerX, centerY, Math.min(width * 0.58, 560)
       );
-      ambientGrad.addColorStop(0, isDark ? 'rgba(37, 99, 235, 0.08)' : 'rgba(37, 99, 235, 0.05)');
-      ambientGrad.addColorStop(0.5, isDark ? 'rgba(56, 189, 248, 0.03)' : 'rgba(56, 189, 248, 0.02)');
+      ambientGrad.addColorStop(0, isDark ? 'rgba(37, 99, 235, 0.08)' : 'rgba(37, 99, 235, 0.08)');
+      ambientGrad.addColorStop(0.5, isDark ? 'rgba(56, 189, 248, 0.03)' : 'rgba(56, 189, 248, 0.04)');
       ambientGrad.addColorStop(1, 'transparent');
 
       ctx.fillStyle = ambientGrad;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, Math.min(width * 0.58, 520), 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, Math.min(width * 0.58, 560), 0, Math.PI * 2);
       ctx.fill();
 
       // 2. Blueprint Raster Grid (Major subdivision lines every 144px)
       const majorStep = currentSpacing * 4; // 144px
       ctx.save();
-      ctx.lineWidth = 0.6;
-      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.045)' : 'rgba(71, 85, 105, 0.035)';
+      ctx.lineWidth = 0.65;
+      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.05)' : 'rgba(37, 99, 235, 0.09)';
       ctx.beginPath();
       for (let x = majorStep / 2; x < width; x += majorStep) {
         ctx.moveTo(x, 0);
@@ -452,18 +483,18 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       }
       ctx.stroke();
 
-      // Faint coordinate stamps in corners
-      ctx.font = '500 6.5px "JetBrains Mono", ui-monospace, monospace';
-      ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(100, 116, 139, 0.20)';
-      ctx.fillText('REF.SIA416::CH-LV95', 18, 22);
-      ctx.fillText(`CANVAS.${Math.round(width)}x${Math.round(height)}`, width - 110, 22);
+      // Technical coordinate stamps in corners
+      ctx.font = '500 7px "JetBrains Mono", ui-monospace, monospace';
+      ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.22)' : 'rgba(37, 99, 235, 0.35)';
+      ctx.fillText('REF.SIA416::CH-LV95', 20, 24);
+      ctx.fillText(`CANVAS.${Math.round(width)}x${Math.round(height)}`, width - 118, 24);
       ctx.restore();
 
       // 3. Grid Crosshairs with Spring Physics
-      const crossSize = 2.4;
+      const crossSize = 2.5;
       ctx.beginPath();
-      ctx.lineWidth = 0.75;
-      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.11)' : 'rgba(71, 85, 105, 0.07)';
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.12)' : 'rgba(37, 99, 235, 0.18)';
 
       for (let idx = 0; idx < nodes.length; idx++) {
         const node = nodes[idx];
@@ -478,7 +509,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
 
       // 4. Blueprint Synapse Network (Connecting curves & traveling data packets)
       ctx.save();
-      ctx.lineWidth = 0.8;
+      ctx.lineWidth = 0.85;
       ctx.setLineDash([3, 4]);
 
       for (let i = 0; i < synapseConnections.length; i++) {
@@ -487,7 +518,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
         const n2 = modules[idxB];
         if (!n1 || !n2) continue;
 
-        ctx.strokeStyle = isDark ? 'rgba(59, 130, 246, 0.18)' : 'rgba(37, 99, 235, 0.13)';
+        ctx.strokeStyle = isDark ? 'rgba(59, 130, 246, 0.20)' : 'rgba(37, 99, 235, 0.18)';
         ctx.beginPath();
         ctx.moveTo(n1.currentX, n1.currentY);
         
@@ -502,8 +533,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
         const px = (1 - packetT) * (1 - packetT) * n1.currentX + 2 * (1 - packetT) * packetT * midX + packetT * packetT * n2.currentX;
         const py = (1 - packetT) * (1 - packetT) * n1.currentY + 2 * (1 - packetT) * packetT * midY + packetT * packetT * n2.currentY;
         
-        ctx.fillStyle = isDark ? 'rgba(96, 165, 250, 0.55)' : 'rgba(37, 99, 235, 0.40)';
-        ctx.fillRect(px - 1.2, py - 1.2, 2.4, 2.4);
+        ctx.fillStyle = isDark ? 'rgba(96, 165, 250, 0.65)' : 'rgba(37, 99, 235, 0.50)';
       }
       ctx.restore();
 
@@ -596,7 +626,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
         }
 
         if (m.caught <= 0.04) {
-          ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.32)' : 'rgba(100, 116, 139, 0.38)';
+          ctx.strokeStyle = isDark ? 'rgba(148, 163, 184, 0.35)' : 'rgba(37, 99, 235, 0.45)';
           drawModuleIcon(m.id, 6.5);
 
           // Technical CAD Crosshairs at node anchor
@@ -605,14 +635,14 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
           ctx.moveTo(7, 0); ctx.lineTo(10, 0);
           ctx.stroke();
 
-          ctx.font = '500 8.5px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
+          ctx.font = '600 8.5px -apple-system, BlinkMacSystemFont, "Inter", sans-serif';
           ctx.textAlign = textAlignMode;
-          ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.48)' : 'rgba(100, 116, 139, 0.58)';
+          ctx.fillStyle = isDark ? 'rgba(148, 163, 184, 0.60)' : 'rgba(51, 65, 85, 0.75)';
           ctx.fillText(nodeLabel, textAnchorX, textAnchorY);
 
           // Matrix coordinate badge
           ctx.font = '600 7px "JetBrains Mono", ui-monospace, monospace';
-          ctx.fillStyle = isDark ? 'rgba(96, 165, 250, 0.40)' : 'rgba(37, 99, 235, 0.35)';
+          ctx.fillStyle = isDark ? 'rgba(96, 165, 250, 0.45)' : 'rgba(37, 99, 235, 0.50)';
           ctx.fillText(nodeCode, textAnchorX, codeY);
         } else {
           const strokeColor = `hsla(${currentHue}, 90%, ${isDark ? '68%' : '48%'}, ${0.4 + m.caught * 0.6})`;
@@ -681,12 +711,31 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       animFrameId = requestAnimationFrame(render);
     };
 
-    animFrameId = requestAnimationFrame(render);
+    // Immediate initial paint so canvas is never left blank
+    render(performance.now());
+
+    // Pause heavy render loop when scrolled offscreen to conserve GPU/CPU and prevent texture purging
+    let isIntersecting = true;
+    const intersectionObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      isIntersecting = entry.isIntersecting;
+      if (isIntersecting) {
+        lastTime = performance.now();
+        cancelAnimationFrame(animFrameId);
+        animFrameId = requestAnimationFrame(render);
+      } else {
+        cancelAnimationFrame(animFrameId);
+      }
+    }, {
+      rootMargin: '120px'
+    });
+    intersectionObserver.observe(heroZone);
 
     const onVisibilityChange = () => {
       if (document.hidden) {
         cancelAnimationFrame(animFrameId);
-      } else {
+      } else if (isIntersecting) {
         lastTime = performance.now();
         animFrameId = requestAnimationFrame(render);
       }
@@ -697,6 +746,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
     return () => {
       cancelAnimationFrame(animFrameId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
+      intersectionObserver.disconnect();
       resizeObserver.disconnect();
 
       heroZone.removeEventListener('touchstart', onTouchStart);

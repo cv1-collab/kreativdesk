@@ -533,16 +533,16 @@ export default function LandingPage() {
 
   // Typewriter state for Hero Interactive Typography
   const typewriterFields = currentLang === 'en' ? [
-    'General Contractors.',
     'Architects & Builders.',
+    'General Contractors.',
     'complex projects.',
     'Scenography & Events.',
     'Design Agencies.',
     'Trade Fairs & Exhibitions.',
     'Interior Design.'
   ] : [
-    'Generalplaner & GU.',
     'Architekten & Bau.',
+    'Generalplaner & GU.',
     'komplexe Projekte.',
     'Szenografie & Events.',
     'Design-Agenturen.',
@@ -550,7 +550,7 @@ export default function LandingPage() {
     'Innenarchitektur.'
   ];
 
-  const [typedText, setTypedText] = useState('');
+  const [typedText, setTypedText] = useState(() => currentLang === 'en' ? 'Architects & Builders.' : 'Architekten & Bau.');
   const [fieldIdx, setFieldIdx] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -854,17 +854,20 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
       <main>
         {/* HERO */}
-        <section className="hero-zone pt-36 sm:pt-48 pb-16 sm:pb-20 px-4 sm:px-6 text-center relative z-10 overflow-hidden" style={{ touchAction: 'pan-y' }}>
+        <section className={cn(
+          "hero-zone pt-36 sm:pt-48 pb-16 sm:pb-20 px-4 sm:px-6 text-center relative z-10 overflow-hidden",
+          theme === 'dark' ? "bg-hero-grid-dark" : "bg-hero-grid-light"
+        )} style={{ touchAction: 'pan-y' }}>
           {/* Interactive Retina Canvas Background with Blueprint Grid & Blooming Architecture Symbols (Desktop & Tablet only) */}
           <HeroBrandCanvas className="hidden md:block" isDark={theme === 'dark'} language={currentLang} />
 
           <div className="max-w-6xl mx-auto relative z-10 pointer-events-auto">
-            {/* Integrated Public Beta / Early Access Announcement Banner */}
+            {/* Integrated Public Beta / Early Access Announcement Banner (Single-Line Sleek Layout) */}
             <div className="flex items-center justify-center mb-8">
               <motion.div 
                 initial={{ opacity: 0, y: 10 }} 
                 animate={{ opacity: 1, y: 0 }} 
-                className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md max-w-3xl"
+                className="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md whitespace-nowrap max-w-none overflow-hidden"
               >
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 shadow-xs">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>
@@ -872,7 +875,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </span>
                 <span className="text-xs font-medium text-slate-700 dark:text-zinc-200">
                   {currentLang === 'de' 
-                    ? 'Wir befinden uns aktuell in der Public Beta. Sichere dir jetzt exklusive Early-Adopter Konditionen!' 
+                    ? 'Wir befinden uns in der Public Beta. Sichere dir exklusive Early-Adopter Konditionen!' 
                     : 'We are currently in Public Beta. Secure exclusive early-adopter conditions now!'}
                 </span>
               </motion.div>
