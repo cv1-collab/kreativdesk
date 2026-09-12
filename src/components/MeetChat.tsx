@@ -1285,7 +1285,7 @@ export default function MeetChat() {
   const handleQuickInvite = async (mode: 'copy' | 'whatsapp' | 'email') => {
     const isDe = currentLang === 'de';
 
-    if (isDemoMode) {
+    if (isDemo) {
       addToast(
         isDe
           ? 'In der Live-Demo gesperrt. Erstelle einen kostenlosen Account für Video-Calls & WhatsApp-Invites!'

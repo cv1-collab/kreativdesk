@@ -1,7 +1,59 @@
 import { test, expect } from '@playwright/test';
 import { AGENT_TEST_ACCOUNT } from '../src/config/agentTestAccount';
+import { createClient } from '@supabase/supabase-js';
+import 'dotenv/config';
+
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://jtgfrogbrkrllzdwzdrt.supabase.co';
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseAdmin = createClient(supabaseUrl, serviceKey);
 
 test.describe('Test Account: Full Onboarding, Tour Guide, Login & Email Verification Suite', () => {
+
+  test.beforeAll(async () => {
+    if (!serviceKey) return;
+    try {
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = users.find(u => u.email?.toLowerCase() === AGENT_TEST_ACCOUNT.email.toLowerCase());
+      if (!existingUser) {
+        const { data: created } = await supabaseAdmin.auth.admin.createUser({
+          email: AGENT_TEST_ACCOUNT.email,
+          password: AGENT_TEST_ACCOUNT.password,
+          email_confirm: true,
+          user_metadata: { full_name: AGENT_TEST_ACCOUNT.name }
+        });
+        if (created?.user) {
+          await supabaseAdmin.from('profiles').upsert({
+            id: created.user.id,
+            email: AGENT_TEST_ACCOUNT.email,
+            name: AGENT_TEST_ACCOUNT.name,
+            role: AGENT_TEST_ACCOUNT.role,
+            company_id: AGENT_TEST_ACCOUNT.companyId,
+            has_seen_tour: false,
+            has_completed_onboarding: false,
+            plan: AGENT_TEST_ACCOUNT.plan,
+            can_view_finance: true,
+            can_approve_budget: true
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Could not setup test account in beforeAll:', e);
+    }
+  });
+
+  test.afterAll(async () => {
+    if (!serviceKey) return;
+    try {
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
+      const testUser = users.find(u => u.email?.toLowerCase() === AGENT_TEST_ACCOUNT.email.toLowerCase());
+      if (testUser) {
+        await supabaseAdmin.from('profiles').delete().eq('id', testUser.id);
+        await supabaseAdmin.auth.admin.deleteUser(testUser.id);
+      }
+    } catch (e) {
+      console.warn('Could not teardown test account in afterAll:', e);
+    }
+  });
 
   test('1. Live Login with Test Account and Navigation to App Dashboard', async ({ page }) => {
     // Navigate to Login Page

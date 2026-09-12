@@ -145,6 +145,10 @@ export default function Signup() {
     e.preventDefault();
     if (loading) return;
 
+    if (password !== passwordConfirm) {
+      return setError(t('password_mismatch'));
+    }
+
     if (password.length < 8) {
       return setError(currentLang === 'de' 
         ? 'Das Passwort muss mindestens 8 Zeichen lang sein.' 
@@ -163,8 +167,6 @@ export default function Signup() {
         ? 'Das Passwort ist zu einfach. Bitte kombiniere Groß-/Kleinbuchstaben, Zahlen oder Sonderzeichen – oder klicke auf "Sicheres Passwort generieren".'
         : 'Password is too weak. Please combine upper/lowercase, numbers or symbols – or click "Generate secure password".');
     }
-
-    if (password !== passwordConfirm) return setError(t('password_mismatch'));
     if (!agreedToTerms) {
       return setError(currentLang === 'de' ? 'Bitte akzeptiere die AGB und Datenschutzrichtlinien.' : 'Please agree to the Terms of Service and Privacy Policy.');
     }

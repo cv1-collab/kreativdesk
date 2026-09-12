@@ -197,6 +197,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
   } : null;
 
   const { isDemoMode } = projectCtx; // WICHTIG: Auslesen des Demo-Status
+  const isDemo = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-');
 
   const [activeTab, setActiveTabRaw] = useState<'overview' | 'safety' | 'logistics' | 'drones' | 'access'>(() => {
     const saved = safeStorage.getString(`camera_activeTab_${currentProjectId}`);
@@ -235,7 +236,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const handleOpenLinkModal = (e: React.MouseEvent | undefined, type: 'droneUrl' | 'logisticsUrl' | 'accessUrl' | 'cam1Url' | 'cam2Url', url: string) => {
     if (e) e.stopPropagation();
-    if (isDemoMode) {
+    if (isDemo) {
       addToast(t('demo_disabled'), 'info');
       return;
     }
@@ -243,7 +244,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
   };
 
   const handleOpenLocationModal = () => {
-    if (isDemoMode) {
+    if (isDemo) {
       addToast(t('demo_disabled'), 'info');
       return;
     }
@@ -265,7 +266,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const handleSaveLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemoMode) {
+    if (isDemo) {
       addToast(t('demo_disabled'), 'info');
       setLinkModal(null);
       return;
@@ -342,7 +343,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
   const handleSaveLocation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isDemoMode) {
+    if (isDemo) {
       addToast(t('demo_disabled'), 'info');
       setIsWeatherModalOpen(false);
       return;
