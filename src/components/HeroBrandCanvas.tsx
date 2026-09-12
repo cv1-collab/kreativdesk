@@ -290,6 +290,14 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
 
       if (width === 0 || height === 0) return;
 
+      // On mobile / smartphones, leave out background canvas play to avoid cluttering small screens
+      if (width < 768) {
+        nodes = [];
+        modules = [];
+        ctx.clearRect(0, 0, width, height);
+        return;
+      }
+
       canvas.width = Math.floor(width * dpr);
       canvas.height = Math.floor(height * dpr);
       canvas.style.width = width + 'px';
@@ -298,8 +306,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
-      const isMobile = width < 768;
-      currentSpacing = isMobile ? 44 : 36;
+      currentSpacing = 36;
 
       nodes = [];
       let i = 0;
@@ -318,14 +325,9 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
         let computedX = m.rx * width;
         let computedY = m.ry * height;
 
-        // Ensure nodes maintain safe margin on ultra-wide or narrow screens
-        if (isMobile) {
-          if (m.rx < 0.3) computedX = Math.max(26, computedX);
-          if (m.rx > 0.7) computedX = Math.min(width - 26, computedX);
-        } else {
-          if (m.rx < 0.3) computedX = Math.max(38, computedX);
-          if (m.rx > 0.7) computedX = Math.min(width - 38, computedX);
-        }
+        // Ensure nodes maintain safe margin on desktop and tablet
+        if (m.rx < 0.3) computedX = Math.max(38, computedX);
+        if (m.rx > 0.7) computedX = Math.min(width - 38, computedX);
 
         const snapX = Math.round(computedX / currentSpacing) * currentSpacing;
         const snapY = Math.round(computedY / currentSpacing) * currentSpacing;
@@ -410,8 +412,13 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
 
       ctx.clearRect(0, 0, width, height);
 
-      const isMobile = width < 768;
-      const interactionRadius = isMobile ? 110 : 160;
+      // On mobile / smartphones, leave out background canvas play completely
+      if (width < 768) {
+        animFrameId = requestAnimationFrame(render);
+        return;
+      }
+
+      const interactionRadius = 160;
 
       // 1. Ambient Blueprint Radial Gradient
       const centerX = width / 2;
@@ -501,13 +508,13 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       ctx.restore();
 
       // 5. Module Nodes Rendering & Elastic Synapse Reaction
-      const CATCH_RADIUS = isMobile ? 110 : 170;
+      const CATCH_RADIUS = 170;
       const idleTime = time * 0.0015;
 
       modules.forEach((m, idx) => {
         // Organic floating micro-physics
-        const floatX = Math.sin(idleTime + idx * 0.85) * (isMobile ? 1.2 : 2.6);
-        const floatY = Math.cos(idleTime * 0.75 + idx * 0.85) * (isMobile ? 1.2 : 2.6);
+        const floatX = Math.sin(idleTime + idx * 0.85) * 2.6;
+        const floatY = Math.cos(idleTime * 0.75 + idx * 0.85) * 2.6;
 
         const targetBaseX = m.baseX + floatX;
         const targetBaseY = m.baseY + floatY;
@@ -637,7 +644,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
         ctx.save();
         ctx.translate(mouse.x, mouse.y);
 
-        const auraRadius = (isMobile ? 24 : 30) + Math.sin(mouse.auraPulse) * 3;
+        const auraRadius = 30 + Math.sin(mouse.auraPulse) * 3;
         const auraGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, auraRadius);
         auraGrad.addColorStop(0, `hsla(${currentHue}, 90%, 60%, ${isDark ? 0.28 : 0.20})`);
         auraGrad.addColorStop(1, 'transparent');

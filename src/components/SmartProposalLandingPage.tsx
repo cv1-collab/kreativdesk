@@ -2049,7 +2049,6 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               onClick={() => {
                 audioFeedback.playTouchClick();
                 setViewMode('story');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'story' ? "bg-blue-600 text-white shadow-md" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
@@ -2060,7 +2059,6 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               onClick={() => {
                 audioFeedback.playTouchClick();
                 setViewMode('deck');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className={cn("px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer", viewMode === 'deck' ? "bg-blue-600 text-white shadow-md" : (isLight ? "text-slate-500 hover:text-slate-900" : "text-zinc-400 hover:text-white"))}
             >
