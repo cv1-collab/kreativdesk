@@ -8,7 +8,7 @@ import {
   Check, Lock, AlertCircle, ExternalLink, Presentation, ChevronLeft,
   DollarSign, FileCheck, RefreshCw, Send, Layers, HelpCircle, PenTool,
   RotateCcw, Eye, FileSignature, CheckSquare, Milestone, X, Bot, QrCode, CreditCard, Loader2,
-  Sun, Moon
+  Sun, Moon, Printer
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { getProposalByShareToken, acceptProposalByClient, SmartProposal } from '../services/proposalService';
@@ -3060,48 +3060,309 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
         <p>{t('copyright')}</p>
       </footer>
 
-      {/* DOCUMENT PREVIEW MODAL */}
+      {/* 8. SWISS LEGAL CONTRACT DOCUMENT VIEWER MODAL */}
       <AnimatePresence>
-        {selectedLegalDocModal && (
-          <motion.div 
-            key="legal-doc-modal-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSelectedLegalDocModal(null)}
-            className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
-          >
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} onClick={(e) => e.stopPropagation()} className={cn("rounded-3xl p-6 max-w-3xl w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col border", isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-zinc-900 border-white/15 text-white")}>
-              <div className={cn("flex items-center justify-between border-b pb-3", isLight ? "border-slate-200" : "border-white/10")}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg">📄</div>
-                  <div>
-                    <h3 className={cn("text-base font-bold", isLight ? "text-slate-900" : "text-white")}>{getTranslatedDocName(selectedLegalDocModal)}</h3>
-                    <span className={cn("text-xs uppercase tracking-widest", isLight ? "text-slate-500" : "text-zinc-400")}>{selectedLegalDocModal.type || 'Vertragsdokument'}</span>
+        {selectedLegalDocModal && (() => {
+          const docName = getTranslatedDocName(selectedLegalDocModal) || '';
+          const docType = (selectedLegalDocModal.type || '').toLowerCase();
+          const isWerkvertrag = docType === 'werkvertrag' || docName.toLowerCase().includes('sia 118') || docName.toLowerCase().includes('werkvertrag');
+          const isAgb = docType === 'agb' || docName.toLowerCase().includes('agb') || docName.toLowerCase().includes('sia 102');
+          const isNda = docType === 'nda' || docName.toLowerCase().includes('nda') || docName.toLowerCase().includes('datenschutz') || docName.toLowerCase().includes('vertraulich');
+          const projectDisplayTitle = getTranslatedProposalTitle(proposal.title) || 'Quartier Neubau Süd - Residenz am Park';
+
+          return (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedLegalDocModal(null)}
+              className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+            >
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.95 }} 
+                onClick={(e) => e.stopPropagation()} 
+                className={cn("rounded-3xl p-5 sm:p-7 max-w-4xl w-full shadow-2xl space-y-4 max-h-[88vh] flex flex-col border", isLight ? "bg-white border-slate-200 text-slate-900 shadow-slate-900/15" : "bg-zinc-900 border-white/15 text-white")}
+              >
+                {/* MODAL HEADER */}
+                <div className={cn("flex items-center justify-between border-b pb-4", isLight ? "border-slate-200" : "border-white/10")}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600/15 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
+                      ⚖️
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className={cn("text-base sm:text-lg font-bold truncate", isLight ? "text-slate-900" : "text-white")}>
+                          {docName}
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/15 text-purple-400 border border-purple-500/25">
+                          {selectedLegalDocModal.type || 'Vertragsdokument'}
+                        </span>
+                      </div>
+                      <p className={cn("text-xs truncate mt-0.5", isLight ? "text-slate-500" : "text-zinc-400")}>
+                        Rechtsverbindliches Schweizer Vertragswerk nach SIA • {projectDisplayTitle}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedLegalDocModal(null)} 
+                    className={cn("p-2 rounded-xl transition-colors cursor-pointer shrink-0", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900" : "bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white")}
+                  >
+                    <X size={18}/>
+                  </button>
+                </div>
+
+                {/* MODAL BODY: STRUCTURED SWISS CONTRACT DOCUMENT SHEET */}
+                <div className={cn("flex-1 min-h-[360px] max-h-[62vh] rounded-2xl overflow-y-auto border p-4 sm:p-6 custom-scrollbar transition-colors", isLight ? "bg-slate-50 border-slate-200" : "bg-zinc-950/80 border-white/10")}>
+                  <div className={cn("max-w-3xl mx-auto rounded-xl border p-5 sm:p-8 shadow-sm space-y-6 transition-colors", isLight ? "bg-white border-slate-200 text-slate-800" : "bg-zinc-900/90 border-white/10 text-zinc-200")}>
+                    
+                    {/* DOCUMENT LETTERHEAD */}
+                    <div className={cn("border-b pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3", isLight ? "border-slate-200" : "border-white/10")}>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white shadow-xs">🇨🇭 SIA Standard</span>
+                          <span className={cn("text-[10px] font-bold uppercase tracking-widest", isLight ? "text-slate-500" : "text-zinc-400")}>
+                            {isWerkvertrag ? 'SIA 118 • OR Art. 363 ff.' : isAgb ? 'SIA 102 • Honorarordnung' : 'Schweizer DSG • Vertraulichkeit'}
+                          </span>
+                        </div>
+                        <h2 className={cn("text-lg sm:text-xl font-bold tracking-tight", isLight ? "text-slate-900" : "text-white")}>
+                          {docName}
+                        </h2>
+                        <p className={cn("text-xs mt-0.5", isLight ? "text-slate-500" : "text-zinc-400")}>
+                          Ref: {proposal.projectId || 'PRJ-2026-CH'} • Projekt: {projectDisplayTitle}
+                        </p>
+                      </div>
+
+                      <div className="flex sm:flex-col items-start sm:items-end gap-1 shrink-0">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                          <ShieldCheck size={12} /> Rechtsverbindlich
+                        </span>
+                        <span className={cn("text-[10px] font-medium", isLight ? "text-slate-400" : "text-zinc-500")}>Stand: Ausgabe 2026</span>
+                      </div>
+                    </div>
+
+                    {/* PARTIES INFO CARD */}
+                    <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl text-xs border", isLight ? "bg-slate-100/80 border-slate-200" : "bg-zinc-950/60 border-white/10")}>
+                      <div>
+                        <span className={cn("font-bold text-[10px] uppercase tracking-wider block mb-1", isLight ? "text-slate-500" : "text-zinc-400")}>Auftraggeber (Bauherrschaft / Bauleitung)</span>
+                        <p className={cn("font-semibold", isLight ? "text-slate-900" : "text-white")}>Kreativ Desk Studio AG</p>
+                        <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>handelnd im Auftrag der Bauherrschaft</p>
+                        <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>Bahnhofstrasse 100, 8001 Zürich</p>
+                      </div>
+                      <div>
+                        <span className={cn("font-bold text-[10px] uppercase tracking-wider block mb-1", isLight ? "text-slate-500" : "text-zinc-400")}>Auftragnehmer (Werkunternehmer / Kunde)</span>
+                        <p className={cn("font-semibold", isLight ? "text-slate-900" : "text-white")}>{proposal.clientName || 'Auftragspartner gemäss Offerte'}</p>
+                        <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>{proposal.clientCompany || projectDisplayTitle}</p>
+                        <p className={cn("text-[11px]", isLight ? "text-slate-500" : "text-zinc-400")}>Schweiz</p>
+                      </div>
+                    </div>
+
+                    {/* CONTRACT ARTICLES BODY */}
+                    <div className="space-y-5 text-xs sm:text-[13px] leading-relaxed">
+                      {isWerkvertrag && (
+                        <>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 1. Vertragsgegenstand & Ausführungsumfang
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Der Unternehmer verpflichtet sich zur fachgerechten, mangelfreien und termingerechten Erstellung der vereinbarten Bau-, Ausbau- und Montageleistungen gemäss vorliegender Offerte, dem Leistungsverzeichnis und den freigegebenen Werkplänen.
+                            </p>
+                          </section>
+
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 2. Rechtsgrundlagen (SIA 118)
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Für diesen Werkvertrag gelten als integrale, verbindliche Vertragsbestandteile in folgender Rangfolge:
+                            </p>
+                            <ol className={cn("list-decimal pl-5 space-y-1", isLight ? "text-slate-600" : "text-zinc-400")}>
+                              <li>Dieser Werkvertragstext und die freigegebene Offerte</li>
+                              <li>Die SIA-Norm 118 „Allgemeine Bedingungen für Bauarbeiten“ (Ausgabe 2013)</li>
+                              <li>Die einschlägigen fachtechnischen Spezialnormen der SIA für das betreffende Gewerk</li>
+                              <li>Die Bestimmungen des Schweizerischen Obligationenrechts (OR Art. 363 ff.)</li>
+                            </ol>
+                          </section>
+
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 3. Vergütung, Festpreisgarantie & Zahlungsplan
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Die vereinbarten Preise gelten als garantierte Festpreise bis zur vollständigen Fertigstellung und formellen Abnahme des Werkes. Teuerungen sind ausdrücklich ausgeschlossen. Abschlagszahlungen erfolgen gemäss dem vereinbarten Meilenstein-Zahlungsplan nach Prüfung und Freigabe durch die Bauleitung.
+                            </p>
+                          </section>
+
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 4. Ausführungsfristen, Bauprogramm & Verzug
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Die im Bauprogramm vereinbarten Termine sind verbindliche Vertragsfristen. Bei drohendem Verzug hat der Unternehmer unverzüglich schriftlich Anzeige zu erstatten. Gerät der Unternehmer in Verzug, behält sich die Bauleitung das Recht vor, nach schriftlicher Mahnung und Fristansetzung gemäss Art. 169 SIA 118 auf Kosten des Unternehmers eine Ersatzvornahme durch ein Drittunternehmen zu veranlassen.
+                            </p>
+                          </section>
+
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 5. Formelle Abnahme, Rügefristen & Gewährleistung (SIA 118)
+                            </h4>
+                            <ul className={cn("list-disc pl-5 space-y-1", isLight ? "text-slate-600" : "text-zinc-400")}>
+                              <li>Die Abnahme erfolgt nach Fertigstellung formell mittels gemeinsamem Abnahmeprotokoll (SIA 118 Art. 157 ff.).</li>
+                              <li><strong className={isLight ? "text-slate-800" : "text-zinc-200"}>2-jährige Rügefrist (Art. 172 SIA 118):</strong> Läuft ab Datum der formellen Abnahme. Während dieser Frist können Mängel jederzeit gerügt werden.</li>
+                              <li><strong className={isLight ? "text-slate-800" : "text-zinc-200"}>5-jährige Verjährungsfrist (Art. 180 SIA 118):</strong> Gilt für verdeckte Mängel ab Abnahmedatum.</li>
+                            </ul>
+                          </section>
+
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 6. Sicherheitsleistung & Garantierückbehalt
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Zur Sicherstellung der Mängelrechte verbleibt bei der Schlussrechnung ein Garantierückbehalt von 10 % oder der Unternehmer stellt eine gleichwertige Bank- oder Versicherungsgarantie für die Dauer der zweijährigen Rügefrist bereit.
+                            </p>
+                          </section>
+
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 7. Gerichtsstand & Anwendbares Recht
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Ausschliesslicher Gerichtsstand für sämtliche Streitigkeiten aus diesem Werkvertrag ist der Ort der gelegenen Sache (Zürich, Schweiz). Es gilt ausschliesslich Schweizerisches Recht.
+                            </p>
+                          </section>
+                        </>
+                      )}
+
+                      {isAgb && (
+                        <>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 1. Geltungsbereich & Vertragsgrundlagen (SIA 102)
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Diese Allgemeinen Geschäftsbedingungen regeln das Vertragsverhältnis für alle Architektur-, Planungs- und Bauleitungsleistungen und basieren auf der Ordnung SIA 102 (Ordnung für Leistungen und Honorare der Architektinnen und Architekten).
+                            </p>
+                          </section>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 2. Urheberrechte & Geistiges Eigentum
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Sämtliche Pläne, Entwürfe, 3D-BIM-Modelle und Berechnungen verbleiben im geistigen Eigentum des Planers und dürfen nur für das vertraglich vereinbarte Bauwerk verwendet werden.
+                            </p>
+                          </section>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 3. Zahlungsfristen & Verzugszins
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Rechnungen und Abschlagszahlungen sind innerhalb von 30 Tagen netto zahlbar. Bei Verzug wird der gesetzliche Verzugszins von 5 % p.a. fällig.
+                            </p>
+                          </section>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 4. Anwendbares Recht & Gerichtsstand
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Es gilt ausschliesslich Schweizer Recht unter Ausschluss des Wiener Kaufrechts. Gerichtsstand ist Zürich, Schweiz.
+                            </p>
+                          </section>
+                        </>
+                      )}
+
+                      {isNda && (
+                        <>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 1. Vertraulichkeitsverpflichtung & Schweizer DSG
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Die Parteien verpflichten sich gegenseitig, sämtliche im Rahmen des Projekts ausgetauschten Daten, Bauherrenangaben, Kalkulationen und CAD-/BIM-Daten streng vertraulich zu behandeln und die Vorgaben des Schweizer Datenschutzgesetzes (DSG) vollumfänglich einzuhalten.
+                            </p>
+                          </section>
+                          <section className="space-y-1.5">
+                            <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                              § 2. Dauer & Weitergabe an Dritte
+                            </h4>
+                            <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                              Die Vertraulichkeit gilt für die gesamte Projektdauer sowie 5 Jahre über den Projektabschluss hinaus. Eine Weitergabe an Fachplaner und Behörden erfolgt nur, soweit dies zur Projektabwicklung zwingend erforderlich ist.
+                            </p>
+                          </section>
+                        </>
+                      )}
+
+                      {!isWerkvertrag && !isAgb && !isNda && (
+                        <section className="space-y-1.5">
+                          <h4 className={cn("font-bold text-sm flex items-center gap-2", isLight ? "text-slate-900" : "text-white")}>
+                            § 1. Verbindliche Vertragsbedingungen
+                          </h4>
+                          <p className={cn(isLight ? "text-slate-600" : "text-zinc-400")}>
+                            Dieses Vertragsdokument ist integraler Bestandteil der Offerte und wird mit der digitalen Freigabe durch die Vertragsparteien rechtsverbindlich anerkannt.
+                          </p>
+                        </section>
+                      )}
+                    </div>
+
+                    {/* OFFICIAL SIGNATURE BLOCK */}
+                    <div className={cn("mt-6 pt-5 border-t grid grid-cols-1 sm:grid-cols-2 gap-4", isLight ? "border-slate-200" : "border-white/10")}>
+                      <div className="space-y-2">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider block", isLight ? "text-slate-500" : "text-zinc-400")}>Auftraggeber / Bauleitung</span>
+                        <div className={cn("h-14 border border-dashed rounded-lg flex items-center px-3", isLight ? "bg-slate-50 border-slate-300" : "bg-zinc-950/50 border-white/20")}>
+                          <span className="text-xs font-serif italic text-emerald-500 font-bold">✓ Sarah Meier (Kreativ Desk AG)</span>
+                        </div>
+                        <span className={cn("text-[10px]", isLight ? "text-slate-400" : "text-zinc-500")}>Zürich, digital signiert</span>
+                      </div>
+                      <div className="space-y-2">
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider block", isLight ? "text-slate-500" : "text-zinc-400")}>Auftragnehmer / Kunde</span>
+                        <div className={cn("h-14 border border-dashed rounded-lg flex items-center px-3", isLight ? "bg-slate-50 border-slate-300" : "bg-zinc-950/50 border-white/20")}>
+                          <span className={cn("text-xs italic", isLight ? "text-slate-400" : "text-zinc-500")}>Wird bei digitaler Annahme signiert</span>
+                        </div>
+                        <span className={cn("text-[10px]", isLight ? "text-slate-400" : "text-zinc-500")}>E-Signatur via Smart Offerte</span>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-                <button type="button" onClick={() => setSelectedLegalDocModal(null)} className={cn("p-2 rounded-xl transition-colors cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900" : "bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white")}><X size={18}/></button>
-              </div>
 
-              <div className={cn("flex-1 min-h-[350px] rounded-2xl overflow-hidden border flex items-center justify-center p-4", isLight ? "bg-slate-100 border-slate-200" : "bg-zinc-950 border-white/10")}>
-                {selectedLegalDocModal.url ? (
-                  <iframe src={selectedLegalDocModal.url} className="w-full h-full min-h-[400px] border-0" title={getTranslatedDocName(selectedLegalDocModal)} />
-                ) : (
-                  <div className="text-center space-y-2 p-8">
-                    <p className={cn("text-sm font-bold", isLight ? "text-slate-800" : "text-zinc-300")}>{t('officialLegalDoc')}</p>
-                    <p className={cn("text-xs max-w-md", isLight ? "text-slate-500" : "text-zinc-500")}>{t('officialLegalDocDesc')}</p>
+                {/* MODAL FOOTER */}
+                <div className={cn("flex items-center justify-between gap-3 pt-3 border-t", isLight ? "border-slate-200" : "border-white/10")}>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className={cn("px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700" : "bg-white/10 hover:bg-white/20 text-zinc-200")}
+                      title="Dokument drucken"
+                    >
+                      <Printer size={14} /> <span>Drucken</span>
+                    </button>
+                    {selectedLegalDocModal.url && (
+                      <a
+                        href={selectedLegalDocModal.url}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 bg-purple-600/15 hover:bg-purple-600/25 text-purple-400 hover:text-purple-300 border border-purple-500/20"
+                        title="PDF-Vorlage herunterladen"
+                      >
+                        <Download size={14} /> <span>PDF Download</span>
+                      </a>
+                    )}
                   </div>
-                )}
-              </div>
-
-              <div className={cn("flex justify-end gap-3 pt-2 border-t", isLight ? "border-slate-100" : "border-white/5")}>
-                <button type="button" onClick={() => setSelectedLegalDocModal(null)} className={cn("px-5 py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer", isLight ? "bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900" : "bg-white/10 hover:bg-white/20 text-white")}>
-                  {t('close')}
-                </button>
-              </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedLegalDocModal(null)} 
+                    className={cn("px-5 py-2 rounded-xl font-bold text-xs transition-all cursor-pointer", isLight ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-white text-zinc-900 hover:bg-zinc-200")}
+                  >
+                    {t('close')}
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       {/* ENHANCED DIGITAL ACCEPTANCE MODAL WITH E-SIGNATURE CANVAS */}

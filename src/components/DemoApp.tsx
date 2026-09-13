@@ -96,13 +96,13 @@ interface DemoAppProps {
 }
 
 export default function DemoApp({ activeTab }: DemoAppProps) {
-  const isFullscreenTab = ['bim', 'plans', 'whiteboard', 'proposal'].includes(activeTab);
+  const isFullscreenTab = ['bim', 'plans', 'whiteboard', 'proposal', 'pitch'].includes(activeTab);
 
   return (
     <LiveDemoProjectProvider>
       <div className={cn(
         "h-full w-full bg-background text-text-primary flex flex-col relative",
-        isFullscreenTab ? "p-0" : "p-4 md:p-8"
+        isFullscreenTab ? "p-0" : "p-3 sm:p-5 md:p-6"
       )}>
         <Suspense fallback={
           <div className="flex h-full w-full flex-col items-center justify-center text-text-muted gap-3 flex-1">

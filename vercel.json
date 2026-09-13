@@ -13,7 +13,7 @@
       "destination": "/api/[...route]?route=$1"
     },
     {
-      "source": "/((?!assets/|media/|sw\\.js|workbox-.*|manifest\\.webmanifest|favicon\\.ico|pwa-.*|masked-icon\\.svg|apple-touch-icon\\.png).*)",
+      "source": "/((?!assets/|media/|demo-assets/|sw\\.js|workbox-.*|manifest\\.webmanifest|favicon\\.ico|pwa-.*|masked-icon\\.svg|apple-touch-icon\\.png).*)",
       "destination": "/index.html"
     }
   ],
@@ -47,6 +47,15 @@
     },
     {
       "source": "/media/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/demo-assets/(.*)",
       "headers": [
         {
           "key": "Cache-Control",

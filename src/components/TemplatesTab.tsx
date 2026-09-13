@@ -500,8 +500,8 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
       {/* Top Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-text-primary flex items-center gap-3">
-            <LayoutTemplate className="text-accent-ai" /> {t('templates_hub')}
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2.5">
+            <LayoutTemplate className="text-accent-ai" size={24} /> {t('templates_hub')}
           </h1>
           <p className="text-text-muted mt-1.5 text-sm font-medium">{t('templates_desc')}</p>
         </div>

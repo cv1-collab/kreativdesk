@@ -73,21 +73,47 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   const [remoteCursors, setRemoteCursors] = useState<Record<string, { x: number; y: number; name: string; slideIndex: number }>>({});
   const channelRef = useRef<any>(null);
 
-  const [windowDimensions, setWindowDimensions] = useState({ 
+  const [containerDimensions, setContainerDimensions] = useState<{ w: number; h: number }>({ 
     w: typeof window !== 'undefined' ? window.innerWidth : 1200, 
     h: typeof window !== 'undefined' ? window.innerHeight : 800 
   });
 
   useEffect(() => {
-    const handleResize = () => setWindowDimensions({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          setContainerDimensions({ w: rect.width, h: rect.height });
+          return;
+        }
+      }
+      setContainerDimensions({ 
+        w: typeof window !== 'undefined' ? window.innerWidth : 1200, 
+        h: typeof window !== 'undefined' ? window.innerHeight : 800 
+      });
+    };
 
-  const isMobile = windowDimensions.w < 1024;
-  const availableWidth = isFullscreen ? windowDimensions.w : (windowDimensions.w - (isMobile ? 32 : 320));
-  const availableHeight = isFullscreen ? windowDimensions.h : (windowDimensions.h - (isMobile ? 180 : 260));
-  const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675) * 0.95;
+    updateDimensions();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (containerRef.current && typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateDimensions();
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
+    window.addEventListener('resize', updateDimensions);
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [isFullscreen]);
+
+  // Use actual container dimensions with safe padding margin so the 1200x675 slide NEVER overflows
+  const availableWidth = Math.max(280, containerDimensions.w - (isFullscreen ? 32 : 48));
+  const availableHeight = Math.max(200, containerDimensions.h - (isFullscreen ? 48 : 32));
+  const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675);
 
   useEffect(() => {
     if (isDemo || !currentProjectId) return;

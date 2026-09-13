@@ -1226,7 +1226,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </div>
 
               {/* MacBook Pro Casing */}
-              <div className="relative max-w-6xl mx-auto">
+              <div className="relative max-w-6xl xl:max-w-7xl mx-auto">
                 {/* Glow behind screen */}
                 <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4/5 h-96 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none -z-10" />
 

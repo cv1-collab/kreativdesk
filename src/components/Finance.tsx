@@ -2118,7 +2118,7 @@ export default function Finance() {
 
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
             {/* Primary Action Buttons */}
-            <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto shrink-0">
+            <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setShowTimeModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
@@ -2214,15 +2214,15 @@ export default function Finance() {
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full">
-          <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+          <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full sm:w-auto h-[42px] shrink-0">
             <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
             <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
             <button onClick={() => setActiveTab('control')} className={cn("tour-finance-control flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Receipt size={16} />{t('payment_control')}</button>
             <button onClick={() => setActiveTab('cashflow')} className={cn("tour-finance-cashflow flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Clock size={16} />{t('cashflow')}</button>
           </div>
 
-          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
             {currency !== 'CHF' && currencyMode === 'fx' && (
               <div
                 onClick={() => {
@@ -2490,11 +2490,11 @@ export default function Finance() {
                   )}
                 </div>
               </div>
-              <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-6 flex flex-col min-h-[380px]">
+              <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-6 flex flex-col min-h-[380px] min-w-0">
                 <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
                   <TrendingUp className="text-accent-ai" size={18} /> {t('planned_vs_actual')}
                 </h3>
-                <div className="flex-1 w-full">
+                <div className="flex-1 w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? "#27272a" : "#e4e4e7"} vertical={false} />

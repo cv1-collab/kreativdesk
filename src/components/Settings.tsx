@@ -333,7 +333,7 @@ export default function Settings() {
           <button onClick={() => navigate('/app')} className="mb-6 flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors text-sm font-medium">
             <ArrowLeft className="w-4 h-4" /> {t('back_to_workspace')}
           </button>
-          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{t('settings')}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('settings')}</h1>
           <p className="text-text-muted mt-2 text-sm md:text-base">{t('settings_desc')}</p>
         </div>
 

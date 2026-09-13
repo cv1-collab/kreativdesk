@@ -310,8 +310,8 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
       {/* HEADER & STATS */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-text-primary flex items-center gap-2.5">
-            <Sparkles className="text-blue-500" size={28} />
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2.5">
+            <Sparkles className="text-blue-500" size={24} />
             {t('dashboard_title')}
           </h1>
           <p className="text-xs sm:text-sm text-text-muted mt-1">

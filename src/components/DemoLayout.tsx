@@ -178,7 +178,7 @@ export default function DemoLayout({
       
       {/* SIDEBAR (Desktop) */}
       {!isMobileMockup && (
-        <aside className="w-64 border-r border-border bg-surface hidden md:flex flex-col shrink-0 z-20">
+        <aside className="w-56 lg:w-60 border-r border-border bg-surface hidden md:flex flex-col shrink-0 z-20">
           <div className="h-16 flex items-center px-4 border-b border-border/50 gap-3">
               <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg">K</div>
               <div>
