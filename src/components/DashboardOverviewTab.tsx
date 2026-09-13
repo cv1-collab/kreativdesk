@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTour } from '../contexts/TourContext';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { useProject } from '../contexts/ProjectContext';
 import { safeStorage } from '../utils/safeStorage';
@@ -39,6 +40,7 @@ export default function DashboardOverviewTab({
   const { projects: contextProjects } = useProject();
   const { language, t: globalT } = useLanguage();
   const { theme } = useTheme();
+  const { startTour } = useTour();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -331,6 +333,18 @@ export default function DashboardOverviewTab({
                       <Box size={13} />
                       <span>{currentLang === 'de' ? 'Musterprojekt' : 'Sample'}</span>
                     </button>
+
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startTour();
+                      }}
+                      className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                      title={currentLang === 'de' ? 'Interaktive System-Tour starten' : 'Start interactive tour'}
+                    >
+                      <Sparkles size={13} className="text-blue-400" />
+                      <span>{currentLang === 'de' ? 'Tour starten' : 'Tour'}</span>
+                    </button>
                   </div>
 
                   <span className="text-[11px] font-bold text-blue-500 group-hover:underline flex items-center gap-1">
@@ -342,7 +356,7 @@ export default function DashboardOverviewTab({
             </div>
 
             {/* Quick Checklist Footer */}
-            <div className="bg-surface/50 border border-border/50 rounded-xl px-3 py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-text-muted">
+            <div className="bg-surface/50 border border-border/50 rounded-xl px-3.5 py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-text-muted">
               <div className="flex items-center gap-2">
                 <Lightbulb size={14} className="text-amber-500 shrink-0" />
                 <span className="font-medium text-[11px] sm:text-xs">
@@ -352,13 +366,19 @@ export default function DashboardOverviewTab({
                 </span>
               </div>
               <button 
-                onClick={() => window.dispatchEvent(new CustomEvent('start-tour'))}
-                className="text-blue-500 hover:underline font-bold whitespace-nowrap self-end sm:self-auto cursor-pointer flex items-center gap-1 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startTour();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 hover:text-blue-400 border border-blue-500/30 font-bold whitespace-nowrap self-end sm:self-auto cursor-pointer flex items-center gap-1.5 text-xs transition-all shadow-xs active:scale-95 group"
+                title={currentLang === 'de' ? 'Interaktive 2-Ebenen-Tour starten' : 'Start interactive tour'}
               >
+                <Sparkles size={13} className="text-blue-500 group-hover:rotate-12 transition-transform" />
                 <span>{currentLang === 'de' ? 'Tour starten' : 'Guided Tour'}</span>
-                <ChevronRight size={12} />
+                <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
+
           </div>
         </div>
       )}

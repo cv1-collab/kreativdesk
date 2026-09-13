@@ -13,16 +13,27 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [isTourRunning, setIsTourRunning] = useState(false);
 
   // FIX 2.4: Race Condition bei der Product Tour beheben
-  // Wir setzen die Tour kurz zurück und geben dem React-DOM 500ms Zeit, 
+  // Wir setzen die Tour kurz zurück und geben dem React-DOM 100ms Zeit, 
   // um alle Elemente fertig zu rendern, bevor die Tour ihre Ziel-Elemente sucht.
   const startTour = useCallback(() => {
     setIsTourRunning(false);
     setTimeout(() => {
       setIsTourRunning(true);
-    }, 500);
+    }, 100);
   }, []);
 
   const stopTour = useCallback(() => setIsTourRunning(false), []);
+
+  React.useEffect(() => {
+    const handleStartTourEvent = () => {
+      startTour();
+    };
+    window.addEventListener('start-tour', handleStartTourEvent);
+    return () => {
+      window.removeEventListener('start-tour', handleStartTourEvent);
+    };
+  }, [startTour]);
+
 
   return (
     <TourContext.Provider value={{ isTourRunning, startTour, stopTour }}>
