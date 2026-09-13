@@ -309,7 +309,7 @@ export default function Layout() {
             <ArrowLeft size={18} />
           </button>
           <div className="truncate flex-1">
-            <h2 className="font-bold text-sm truncate text-text-primary">{project?.name || 'Projekt Workspace'}</h2>
+            <h2 className="font-semibold text-sm truncate text-text-primary">{project?.name || 'Projekt Workspace'}</h2>
             <p className="text-[10px] text-accent-ai uppercase tracking-widest font-extrabold mt-0.5">Workspace</p>
           </div>
         </div>
@@ -483,7 +483,7 @@ export default function Layout() {
             <button onClick={() => navigate('/app')} className="p-1.5 md:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm md:hidden cursor-pointer">
               <ArrowLeft size={18} />
             </button>
-            <span className="font-bold text-sm md:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
+            <span className="font-semibold text-sm md:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">

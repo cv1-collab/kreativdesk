@@ -1264,7 +1264,7 @@ export default function Calendar() {
           <div className="flex items-center gap-3">
             <CalendarIcon className="text-accent-ai shrink-0" size={24} />
             <div>
-              <h2 className="text-lg sm:text-2xl font-black text-text-primary capitalize leading-none">
+              <h2 className="text-lg sm:text-2xl font-semibold text-text-primary capitalize leading-none">
                 {currentMonthDate.toLocaleString(language === 'en' ? 'en-US' : 'de-CH', { month: 'long', year: 'numeric' })}
               </h2>
               <p className="text-xs text-text-muted font-bold mt-1">
@@ -1397,7 +1397,7 @@ export default function Calendar() {
           <div className="flex flex-wrap items-center justify-between border-b border-border/50 pb-4 gap-3">
             <div>
               <span className="text-xs font-bold uppercase tracking-widest text-text-muted">Tages-Agenda</span>
-              <h3 className="text-lg sm:text-xl font-black text-text-primary flex items-center gap-2 mt-0.5">
+              <h3 className="text-lg sm:text-xl font-semibold text-text-primary flex items-center gap-2 mt-0.5">
                 <CalendarIcon className="text-accent-ai" size={20} />
                 {selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
               </h3>
@@ -1579,7 +1579,7 @@ export default function Calendar() {
             <div style={{ zIndex: 999999 }} className="fixed inset-0 bg-background/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95">
               <div className="bg-surface border border-border p-6 sm:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-sm w-full">
                 <RotateCw size={48} className="mb-4 text-accent-ai animate-[spin_3s_linear_infinite]" />
-                <h2 className="text-xl font-bold mb-2 text-text-primary">Masterplan im Vollbild</h2>
+                <h2 className="text-xl font-semibold mb-2 text-text-primary">Masterplan im Vollbild</h2>
                 <p className="text-sm text-text-muted mb-6 font-medium">Drehe dein Smartphone ins Querformat oder öffne die Vollbild-Ansicht direkt.</p>
                 <div className="flex flex-col gap-3 w-full">
                   <button 
@@ -1881,7 +1881,7 @@ export default function Calendar() {
                            value={docHeader.title} 
                            onChange={e => setDocHeader({...docHeader, title: e.target.value})} 
                            disabled={isDemoMode}
-                           className="text-3xl sm:text-4xl font-extrabold bg-transparent outline-none w-full transition-colors border-b border-transparent focus:border-accent-ai placeholder-text-muted/50 text-text-primary disabled:opacity-70 disabled:cursor-not-allowed" 
+                           className="text-3xl sm:text-4xl font-semibold bg-transparent outline-none w-full transition-colors border-b border-transparent focus:border-accent-ai placeholder-text-muted/50 text-text-primary disabled:opacity-70 disabled:cursor-not-allowed" 
                            placeholder={t('title')} 
                          />
                          

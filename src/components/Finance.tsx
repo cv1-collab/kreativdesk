@@ -2454,7 +2454,7 @@ export default function Finance() {
 
             {/* Header Karte Mobile */}
             <div className="bg-surface border border-border/50 rounded-xl p-4 space-y-4 shadow-sm">
-              <input className="text-xl font-extrabold bg-transparent outline-none w-full border-b border-border/50 focus:border-accent-ai/50 text-text-primary pb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
+              <input className="text-xl font-semibold bg-transparent outline-none w-full border-b border-border/50 focus:border-accent-ai/50 text-text-primary pb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
               <div className="space-y-3">
                 <div className="flex justify-between items-center border-b border-border/30 pb-2">
                   <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</span>
@@ -2650,7 +2650,7 @@ export default function Finance() {
               <div className="min-w-[800px]">
                 <div className="p-8 bg-surface border-b border-border/50 w-full flex justify-between items-end">
                   <div>
-                    <input className="text-3xl font-extrabold bg-transparent outline-none w-[600px] border-b border-transparent focus:border-accent-ai/50 text-text-primary mb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
+                    <input className="text-3xl font-semibold bg-transparent outline-none w-[600px] border-b border-transparent focus:border-accent-ai/50 text-text-primary mb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
                     <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}:</span>

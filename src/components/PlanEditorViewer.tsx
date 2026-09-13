@@ -1747,7 +1747,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold text-text-primary">Noch kein CAD-Plan hinterlegt</h3>
+                  <h3 className="text-lg font-semibold text-text-primary">Noch kein CAD-Plan hinterlegt</h3>
                   <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
                     Lade einen 2D-Bauplan (PDF oder Bild) hoch, um mit der TrueScale™ Vermessung, Mängelerfassung und Vektorbeschriftung zu starten. Datei hier ablegen oder Button klicken.
                   </p>
@@ -1883,7 +1883,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       {isMounted && defectPrompt && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95">
-            <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2"><ShieldAlert className="text-red-500"/> {t('describe_defect')}</h3>
+            <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2"><ShieldAlert className="text-red-500"/> {t('describe_defect')}</h3>
             <form onSubmit={handleDefectSubmit}>
               <div className="space-y-4 mb-6">
                 <div>
@@ -1962,7 +1962,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> TrueScale™ Maßstabs-Kalibrierung</h3>
+              <h3 className="font-semibold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> TrueScale™ Maßstabs-Kalibrierung</h3>
               <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={18}/></button>
             </div>
 

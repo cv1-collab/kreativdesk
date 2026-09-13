@@ -973,7 +973,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-border p-4 md:p-6 rounded-3xl shadow-sm gap-4">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="text-lg md:text-xl font-black text-text-primary flex items-center gap-2">
+            <h3 className="text-lg md:text-xl font-semibold text-text-primary flex items-center gap-2">
               <FolderOpen className={isProjectMode ? "text-emerald-500" : "text-blue-500"} size={22} />
               {isProjectMode ? `Bauakte: ${currentProject?.name || 'Projekt'}` : t('document_hub')}
             </h3>
@@ -1049,9 +1049,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 setFolderPath([{ id: 'root', name: 'Root' }]);
               }}
               className={cn(
-                "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
+                "px-3.5 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
                 activeTab === 'company'
-                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 shadow-sm font-extrabold"
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 shadow-sm"
                   : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
               )}
             >
@@ -1069,9 +1069,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
               setFolderPath([{ id: 'root', name: 'Root' }]);
             }}
             className={cn(
-              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
+              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
               activeTab === 'projects'
-                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shadow-sm font-extrabold"
+                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shadow-sm"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >
@@ -1086,9 +1086,9 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
               setSelectedDocIds([]);
             }}
             className={cn(
-              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-bold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
+              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
               activeTab === 'proposals'
-                ? "border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-500/10 shadow-sm font-extrabold"
+                ? "border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-500/10 shadow-sm"
                 : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
             )}
           >

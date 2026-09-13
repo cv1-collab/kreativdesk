@@ -350,7 +350,7 @@ export default function Dashboard() {
       
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('project_overview')}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('project_overview')}</h1>
           <p className="text-sm text-text-muted mt-1 font-medium">{activeProject?.name}</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -384,19 +384,19 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 shrink-0">
         <div className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest">{t('team')}</span><Users className="text-accent-ai" size={16} /></div>
-          <div className="text-2xl md:text-3xl font-bold text-text-primary">{currentProjectMembers.length}</div>
+          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-semibold text-text-muted uppercase tracking-widest">{t('team')}</span><Users className="text-accent-ai" size={16} /></div>
+          <div className="text-2xl md:text-3xl font-semibold text-text-primary">{currentProjectMembers.length}</div>
         </div>
         <div 
           onClick={() => activeProject?.id && navigate(`/project/${activeProject.id}/finance`)}
           className="bg-surface border border-border rounded-xl p-3.5 sm:p-4 md:p-5 shadow-sm cursor-pointer hover:border-accent-ai/50 transition-colors group min-w-0"
         >
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-wider group-hover:text-accent-ai transition-colors truncate">{t('total_budget')}</span>
+            <span className="text-[10px] md:text-xs font-semibold text-text-muted uppercase tracking-wider group-hover:text-accent-ai transition-colors truncate">{t('total_budget')}</span>
             <DollarSign className="text-emerald-500 shrink-0" size={16} />
           </div>
           <div 
-            className="text-sm sm:text-base lg:text-sm xl:text-lg font-black text-text-primary tracking-tight truncate" 
+            className="text-sm sm:text-base lg:text-sm xl:text-lg font-semibold text-text-primary tracking-tight truncate" 
             title={overviewTotalBudget > 0 ? `CHF ${formatCHF(overviewTotalBudget)}` : '0.-'}
           >
             {overviewTotalBudget > 0 ? formatCompactCHF(overviewTotalBudget) : '0.-'}
@@ -408,23 +408,23 @@ export default function Dashboard() {
           </p>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest">{t('defects')}</span><AlertTriangle className={cn("size-4", openDefects > 0 ? "text-red-400" : "text-emerald-400")} /></div>
-          <div className="text-2xl md:text-3xl font-bold text-text-primary">{openDefects}<span className="text-xs md:text-sm text-text-muted ml-1">/ {totalDefects}</span></div>
+          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-semibold text-text-muted uppercase tracking-widest">{t('defects')}</span><AlertTriangle className={cn("size-4", openDefects > 0 ? "text-red-400" : "text-emerald-400")} /></div>
+          <div className="text-2xl md:text-3xl font-semibold text-text-primary">{openDefects}<span className="text-xs md:text-sm text-text-muted ml-1">/ {totalDefects}</span></div>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest">{t('hours')}</span><Clock className="text-orange-400" size={16} /></div>
-          <div className="text-2xl md:text-3xl font-bold text-text-primary">{totalHours}<span className="text-sm text-text-muted ml-1">h</span></div>
+          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-semibold text-text-muted uppercase tracking-widest">{t('hours')}</span><Clock className="text-orange-400" size={16} /></div>
+          <div className="text-2xl md:text-3xl font-semibold text-text-primary">{totalHours}<span className="text-sm text-text-muted ml-1">h</span></div>
         </div>
         <div className="bg-surface border border-border rounded-xl p-4 md:p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-bold text-text-muted uppercase tracking-widest">{t('documents')}</span><FileText className="text-blue-400" size={16} /></div>
-          <div className="text-2xl md:text-3xl font-bold text-text-primary">{documentsCount}</div>
+          <div className="flex items-center justify-between mb-2"><span className="text-[10px] md:text-xs font-semibold text-text-muted uppercase tracking-widest">{t('documents')}</span><FileText className="text-blue-400" size={16} /></div>
+          <div className="text-2xl md:text-3xl font-semibold text-text-primary">{documentsCount}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[400px]">
         <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[320px]">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium flex items-center gap-2"><PieChartIcon size={18} className="text-accent-ai"/> {t('budget_utilization')}</h3>
+            <h3 className="font-semibold text-base flex items-center gap-2"><PieChartIcon size={18} className="text-accent-ai"/> {t('budget_utilization')}</h3>
             {overviewTotalBudget > 0 && (
               <span className="text-xs font-bold text-text-muted">
                 CHF {formatCHF(overviewTotalBudget)}
@@ -497,7 +497,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[300px]">
-          <h3 className="font-medium flex items-center gap-2 mb-4"><Activity size={18} className="text-accent-ai"/> {t('recent_activities')}</h3>
+          <h3 className="font-semibold text-base flex items-center gap-2 mb-4"><Activity size={18} className="text-accent-ai"/> {t('recent_activities')}</h3>
           <div className="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
             {recentActivities.length === 0 ? (
               <div className="text-sm text-text-muted italic">{t('no_recent_activities')}</div>

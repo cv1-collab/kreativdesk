@@ -310,7 +310,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
       {/* HEADER & STATS */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-text-primary flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-text-primary flex items-center gap-2.5">
             <Sparkles className="text-blue-500" size={28} />
             {t('dashboard_title')}
           </h1>
@@ -318,7 +318,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
             {t('dashboard_subtitle')}
           </p>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
               <ShieldCheck size={12} /> {t('vault_badge')}
             </span>
             <span className="text-[11px] text-text-muted">
@@ -330,7 +330,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
         {proposals.length > 0 && (
           <button
             onClick={handleTriggerCreate}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
           >
             <Plus size={16} /> {t('btn_create_new')}
           </button>
@@ -341,8 +341,8 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl border border-border bg-surface shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold uppercase text-text-muted">{t('stat_active_links')}</div>
-            <div className="text-2xl font-black text-text-primary mt-1">{activeCount}</div>
+            <div className="text-xs font-semibold uppercase text-text-muted">{t('stat_active_links')}</div>
+            <div className="text-2xl font-semibold text-text-primary mt-1">{activeCount}</div>
             <div className="text-[11px] text-emerald-500 font-semibold mt-0.5">{t('stat_active_sub')}</div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
@@ -352,8 +352,8 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
 
         <div className="p-5 rounded-2xl border border-border bg-surface shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold uppercase text-text-muted">{t('stat_accepted')}</div>
-            <div className="text-2xl font-black text-text-primary mt-1">{acceptedCount}</div>
+            <div className="text-xs font-semibold uppercase text-text-muted">{t('stat_accepted')}</div>
+            <div className="text-2xl font-semibold text-text-primary mt-1">{acceptedCount}</div>
             <div className="text-[11px] text-blue-500 font-semibold mt-0.5">{t('stat_accepted_sub')}</div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
@@ -363,8 +363,8 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
 
         <div className="p-5 rounded-2xl border border-border bg-surface shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold uppercase text-text-muted">{t('stat_volume')}</div>
-            <div className="text-2xl font-black text-text-primary mt-1">CHF {totalVolume.toLocaleString('de-CH')}</div>
+            <div className="text-xs font-semibold uppercase text-text-muted">{t('stat_volume')}</div>
+            <div className="text-2xl font-semibold text-text-primary mt-1">CHF {totalVolume.toLocaleString('de-CH')}</div>
             <div className="text-[11px] text-purple-500 font-semibold mt-0.5">{t('stat_volume_sub')}</div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center">
@@ -374,8 +374,8 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
 
         <div className="p-5 rounded-2xl border border-border bg-surface shadow-sm flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold uppercase text-text-muted">{t('stat_total')}</div>
-            <div className="text-2xl font-black text-text-primary mt-1">{totalProposals}</div>
+            <div className="text-xs font-semibold uppercase text-text-muted">{t('stat_total')}</div>
+            <div className="text-2xl font-semibold text-text-primary mt-1">{totalProposals}</div>
             <div className="text-[11px] text-text-muted mt-0.5">{t('stat_total_sub')}</div>
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -433,7 +433,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
           </div>
           {proposals.length === 0 ? (
             <>
-              <h3 className="text-base font-bold text-text-primary">{t('empty_title')}</h3>
+              <h3 className="text-base font-semibold text-text-primary">{t('empty_title')}</h3>
               <p className="text-xs text-text-muted max-w-sm mx-auto">
                 {t('empty_desc')}
               </p>
