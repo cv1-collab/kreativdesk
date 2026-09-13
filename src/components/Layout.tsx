@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense } from 'react';
-import { Outlet, NavLink, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useParams, useNavigate, useLocation } from 'react-router-dom';
 import ErrorBoundary from './ErrorBoundary';
 import { useProject } from '../contexts/ProjectContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -81,6 +81,19 @@ export default function Layout() {
   const [announcement, setAnnouncement] = useState<any>(null);
   const [isAnnouncementDismissed, setIsAnnouncementDismissed] = useState(false);
   const [adminPreviewCompany, setAdminPreviewCompany] = useState<{ id: string; name: string } | null>(null);
+
+  const location = useLocation();
+
+  // Automatische Tour-Aktivierung beim Wechsel aus Ebene 2 (Firmen-Dashboard) in den Projekt-Workspace
+  useEffect(() => {
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('auto_start_project_tour') === 'true') {
+      sessionStorage.removeItem('auto_start_project_tour');
+      const timer = setTimeout(() => {
+        startTour();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, startTour]);
 
   useEffect(() => {
     // Check preview mode in sessionStorage

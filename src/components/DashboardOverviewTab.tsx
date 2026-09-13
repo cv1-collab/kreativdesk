@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, Megaphone, Users, ArrowRight, Activity, Target,
-  Sparkles, Plus, Box, Briefcase, Lightbulb, CheckCircle2, ChevronRight
+  Sparkles, Plus, Box, Briefcase, Lightbulb, CheckCircle2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTour } from '../contexts/TourContext';
+import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { useProject } from '../contexts/ProjectContext';
 import { safeStorage } from '../utils/safeStorage';
@@ -36,8 +37,9 @@ export default function DashboardOverviewTab({
   onOpenNewProject, 
   onOpenDemoProject 
 }: DashboardOverviewTabProps) {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const { projects: contextProjects } = useProject();
+  const { projects: contextProjects, setActiveProject } = useProject();
   const { language, t: globalT } = useLanguage();
   const { theme } = useTheme();
   const { startTour } = useTour();
@@ -51,6 +53,29 @@ export default function DashboardOverviewTab({
   const [isCompassDismissed, setIsCompassDismissed] = useState<boolean>(() => safeStorage.getString('hide_onboarding_compass') === 'true');
 
   const projects = (contextProjects && contextProjects.length > 0) ? contextProjects : dbProjects;
+
+  const handleStartCompanyTour = () => {
+    startTour();
+  };
+
+  const handleStartProjectTour = () => {
+    const availableProjects = (contextProjects && contextProjects.length > 0) ? contextProjects : (projects.length > 0 ? projects : dbProjects);
+    if (availableProjects && availableProjects.length > 0) {
+      const targetProj = availableProjects[0];
+      if (setActiveProject) {
+        setActiveProject(targetProj.id);
+      }
+      sessionStorage.setItem('auto_start_project_tour', 'true');
+      navigate(`/project/${targetProj.id}`);
+    } else {
+      sessionStorage.setItem('auto_start_project_tour', 'true');
+      if (onOpenDemoProject) {
+        onOpenDemoProject();
+      } else {
+        window.dispatchEvent(new CustomEvent('create-demo-project', { detail: { type: 'construction' } }));
+      }
+    }
+  };
 
   useEffect(() => {
     if (!currentUser || !currentUser.uid) return;
@@ -244,10 +269,18 @@ export default function DashboardOverviewTab({
                     </button>
                   </div>
 
-                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 group-hover:underline flex items-center gap-1">
-                    {currentLang === 'de' ? 'Kachel öffnen' : 'Open card'}
-                    <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
-                  </span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartCompanyTour();
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/25 text-xs cursor-pointer active:scale-95 group/btn"
+                    title={currentLang === 'de' ? 'Tour Firmenzentrale starten' : 'Start Company Hub Tour'}
+                  >
+                    <Sparkles size={12} className="text-emerald-200 group-hover/btn:rotate-12 transition-transform" />
+                    <span>{currentLang === 'de' ? 'Tour starten' : 'Start Tour'}</span>
+                    <ArrowRight size={12} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
               </div>
 
@@ -275,9 +308,8 @@ export default function DashboardOverviewTab({
                       <Sparkles size={12} className="text-amber-300" />
                       🏗️ {currentLang === 'de' ? 'Ebene 2: Projekt-Workspace' : 'Tier 2: Project Workspace'}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-blue-500 bg-blue-500/15 border border-blue-500/40 px-2.5 py-1 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
-                      <span>{currentLang === 'de' ? '⚡ Hier geht\'s weiter' : '⚡ Next Step'}</span>
-                      <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 px-2.5 py-1 rounded-lg shadow-xs">
+                      <span>{currentLang === 'de' ? '🏗️ A bis Z Ausführung' : '🏗️ Full Lifecycle'}</span>
                     </span>
                   </div>
 
@@ -333,50 +365,32 @@ export default function DashboardOverviewTab({
                       <Box size={13} />
                       <span>{currentLang === 'de' ? 'Musterprojekt' : 'Sample'}</span>
                     </button>
-
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startTour();
-                      }}
-                      className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 hover:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                      title={currentLang === 'de' ? 'Interaktive System-Tour starten' : 'Start interactive tour'}
-                    >
-                      <Sparkles size={13} className="text-blue-400" />
-                      <span>{currentLang === 'de' ? 'Tour starten' : 'Tour'}</span>
-                    </button>
                   </div>
 
-                  <span className="text-[11px] font-bold text-blue-500 group-hover:underline flex items-center gap-1">
-                    {currentLang === 'de' ? 'Projekt starten' : 'Launch project'}
-                    <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
-                  </span>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartProjectTour();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold inline-flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/30 text-xs cursor-pointer active:scale-95 group/btn"
+                    title={currentLang === 'de' ? 'Projekt-Cockpit öffnen & Tour starten' : 'Open Project Cockpit & Start Tour'}
+                  >
+                    <Sparkles size={12} className="text-amber-300 group-hover/btn:rotate-12 transition-transform" />
+                    <span>{currentLang === 'de' ? 'Tour starten' : 'Start Tour'}</span>
+                    <ArrowRight size={12} className="group-hover/btn:translate-x-0.5 transition-transform" />
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Quick Checklist Footer */}
-            <div className="bg-surface/50 border border-border/50 rounded-xl px-3.5 py-2.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-text-muted">
-              <div className="flex items-center gap-2">
-                <Lightbulb size={14} className="text-amber-500 shrink-0" />
-                <span className="font-medium text-[11px] sm:text-xs">
-                  {currentLang === 'de' 
-                    ? 'Tipp: Firmen-Vorlagen werden beim Projektstart automatisch verknüpft.'
-                    : 'Tip: Master templates are automatically inherited in new projects.'}
-                </span>
-              </div>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  startTour();
-                }}
-                className="px-3 py-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 hover:text-blue-400 border border-blue-500/30 font-bold whitespace-nowrap self-end sm:self-auto cursor-pointer flex items-center gap-1.5 text-xs transition-all shadow-xs active:scale-95 group"
-                title={currentLang === 'de' ? 'Interaktive 2-Ebenen-Tour starten' : 'Start interactive tour'}
-              >
-                <Sparkles size={13} className="text-blue-500 group-hover:rotate-12 transition-transform" />
-                <span>{currentLang === 'de' ? 'Tour starten' : 'Guided Tour'}</span>
-                <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-              </button>
+            <div className="bg-surface/50 border border-border/50 rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs text-text-muted">
+              <Lightbulb size={14} className="text-amber-500 shrink-0" />
+              <span className="font-medium text-[11px] sm:text-xs">
+                {currentLang === 'de' 
+                  ? 'Tipp: Firmen-Vorlagen werden beim Projektstart automatisch verknüpft.'
+                  : 'Tip: Master templates are automatically inherited in new projects.'}
+              </span>
             </div>
 
           </div>
