@@ -114,21 +114,21 @@ export default function DashboardOverviewTab({
           <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-0" />
           
           <div className="relative z-10">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4 pb-3 border-b border-border/50">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                  <Sparkles size={16} />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-5 pb-3.5 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Sparkles size={18} />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-text-primary">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="font-bold text-xl sm:text-2xl text-text-primary tracking-tight">
                       {currentLang === 'de' ? 'Dein Onboarding-Kompass' : 'Your Onboarding Compass'}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[10px] font-bold uppercase tracking-wider border border-blue-500/20">
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold uppercase tracking-wider border border-blue-500/20">
                       {currentLang === 'de' ? '2-Ebenen-Prinzip' : '2-Tier Model'}
                     </span>
                   </div>
-                  <p className="text-xs text-text-muted font-medium mt-0.5">
+                  <p className="text-sm text-text-muted font-medium mt-1">
                     {currentLang === 'de' 
                       ? 'Firmenzentrale (Ebene 1) vs. operatives Projekt-Cockpit (Ebene 2).' 
                       : 'Company Hub (Tier 1) vs. Project Cockpit (Tier 2).'}
@@ -142,7 +142,7 @@ export default function DashboardOverviewTab({
                     setIsCompassDismissed(true);
                     safeStorage.setItem('hide_onboarding_compass', 'true');
                   }} 
-                  className="text-xs text-text-muted hover:text-text-primary px-2.5 py-1 rounded-lg border border-border hover:bg-white/5 transition-colors font-medium cursor-pointer self-start sm:self-auto"
+                  className="text-xs text-text-muted hover:text-text-primary px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 transition-colors font-medium cursor-pointer self-start sm:self-auto"
                 >
                   {currentLang === 'de' ? 'Ausblenden' : 'Dismiss'}
                 </button>
@@ -150,28 +150,28 @@ export default function DashboardOverviewTab({
             </div>
 
             {/* Die 2 Ebenen im direkten Vergleich */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
               {/* Ebene 1: Firmenzentrale */}
-              <div className="bg-surface/80 border border-border/70 rounded-2xl p-4 flex flex-col justify-between hover:border-border transition-colors">
+              <div className="bg-surface/80 border border-border/70 rounded-2xl p-5 flex flex-col justify-between hover:border-border transition-colors">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 rounded bg-zinc-500/10 text-text-primary text-[10px] font-bold uppercase tracking-wider border border-border/60">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="px-2.5 py-0.5 rounded bg-zinc-500/10 text-text-primary text-[11px] font-bold uppercase tracking-wider border border-border/60">
                       🏢 {currentLang === 'de' ? 'Ebene 1: Firmenzentrale' : 'Tier 1: Company Hub'}
                     </span>
-                    <span className="text-[10px] font-medium text-text-muted">
+                    <span className="text-xs font-medium text-text-muted">
                       {currentLang === 'de' ? 'Hier bist du gerade' : 'Current Location'}
                     </span>
                   </div>
-                  <h4 className="font-bold text-sm text-text-primary mb-1">
+                  <h3 className="font-bold text-base text-text-primary mb-1">
                     {currentLang === 'de' ? 'Standards & Verwaltung' : 'Standards & Admin'}
-                  </h4>
-                  <p className="text-xs text-text-muted mb-3 font-medium">
+                  </h3>
+                  <p className="text-sm text-text-muted mb-3.5 font-medium">
                     {currentLang === 'de' 
                       ? 'Firmenweite Master-Vorlagen, Finanzen & Team.' 
                       : 'Firm-wide master templates, finance & team.'}
                   </p>
                   
-                  <div className="space-y-1.5 text-xs text-text-primary font-medium mb-3">
+                  <div className="space-y-2 text-sm text-text-primary font-medium mb-4">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                       <span><strong>{currentLang === 'de' ? 'Vorlagen:' : 'Templates:'}</strong> {currentLang === 'de' ? 'SIA 102/118, Devis & Briefköpfe' : 'SIA 102/118 & letters'}</span>
@@ -205,26 +205,26 @@ export default function DashboardOverviewTab({
               </div>
 
               {/* Ebene 2: Projekt-Cockpit */}
-              <div className="bg-gradient-to-br from-blue-600/10 via-surface to-background border border-blue-500/30 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
+              <div className="bg-gradient-to-br from-blue-600/10 via-surface to-background border border-blue-500/30 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 rounded bg-blue-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="px-2.5 py-0.5 rounded bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider">
                       🏗️ {currentLang === 'de' ? 'Ebene 2: Projekt-Workspace' : 'Tier 2: Project Workspace'}
                     </span>
-                    <span className="text-[10px] font-bold text-blue-500">
+                    <span className="text-xs font-bold text-blue-500">
                       {currentLang === 'de' ? 'A bis Z' : 'A to Z'}
                     </span>
                   </div>
-                  <h4 className="font-bold text-sm text-text-primary mb-1">
+                  <h3 className="font-bold text-base text-text-primary mb-1">
                     {currentLang === 'de' ? 'Operatives Projekt-Cockpit' : 'Operational Project Cockpit'}
-                  </h4>
-                  <p className="text-xs text-text-muted mb-3 font-medium">
+                  </h3>
+                  <p className="text-sm text-text-muted mb-3.5 font-medium">
                     {currentLang === 'de' 
                       ? 'Hier findet die reale Bearbeitung für Bauherren statt.' 
                       : 'Where real execution for your client happens.'}
                   </p>
                   
-                  <div className="space-y-1.5 text-xs text-text-primary font-medium mb-3">
+                  <div className="space-y-2 text-sm text-text-primary font-medium mb-4">
                     <div className="flex items-center gap-2">
                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                       <span><strong>3D BIM & CAD:</strong> {currentLang === 'de' ? 'IFC-Viewer & Mängel-Pins' : 'IFC viewer & defect pins'}</span>

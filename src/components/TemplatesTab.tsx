@@ -19,6 +19,62 @@ import { safeStorage } from '../utils/safeStorage';
 import { MASTER_TEMPLATES, TEMPLATE_CATEGORIES, MasterTemplate } from '../data/masterTemplates';
 import { bindTemplateVariables, getCachedCompanyProfile } from '../utils/templateVariableEngine';
 
+const AI_CATEGORIES = [
+  { id: 'sia_102', label: 'SIA 102 Honorarvertrag (Architektur & Planung)', icon: '🏛️' },
+  { id: 'sia_118', label: 'SIA 118 Werkvertrag (Handwerker & Bauausführung)', icon: '🔨' },
+  { id: 'protokoll', label: 'Bauabnahmeprotokoll & Mängelrüge', icon: '📋' },
+  { id: 'mahnung', label: 'Verwarnung, Mahnung & Nachfristsetzung', icon: '⚠️' },
+  { id: 'mitteilung', label: 'Bauherren-Mitteilung & Freigabeantrag', icon: '📩' },
+  { id: 'nachtrag', label: 'Nachtragsofferte & Baukosten-Anpassung', icon: '💼' },
+  { id: 'custom', label: 'Freier Schweizer Geschäftsbrief (DIN 5008)', icon: '✍️' }
+];
+
+const AI_TONES = [
+  { id: 'legal', label: 'Rechtsverbindlich & Detailliert', desc: 'Gerichtsstand, Salvatorische Klausel & SIA-Fristen' },
+  { id: 'standard', label: 'Standard (Praxisnah)', desc: 'Kompakt 1–2 Seiten, sauber gegliedert' },
+  { id: 'advisory', label: 'Partnerschaftlich / Beratend', desc: 'Kooperativer Bauherren-Dialog' }
+];
+
+const AI_LANGUAGES = [
+  { id: 'de', label: 'Deutsch (CH)', flag: '🇨🇭' },
+  { id: 'en', label: 'English (FIDIC/SIA)', flag: '🇬🇧' },
+  { id: 'fr', label: 'Français (CH)', flag: '🇫🇷' },
+  { id: 'it', label: 'Italiano (CH)', flag: '🇮🇹' }
+];
+
+const INSPIRATION_CHIPS = [
+  { 
+    label: '🏛️ SIA 102 Honorarvertrag', 
+    category: 'sia_102', 
+    prompt: 'SIA 102 Honorarvertrag für Umbau Mehrfamilienhaus mit 6 Wohnungen, Phasen 31 bis 53, Abrechnung nach effektivem Aufwand mit Kostendach' 
+  },
+  { 
+    label: '🔨 SIA 118 Werkvertrag Sanitär', 
+    category: 'sia_118', 
+    prompt: 'SIA 118 Werkvertrag für Sanitär- und Heizungsinstallationen, 5% Garantierückbehalt für 2 Jahre, Zahlungsplan nach Baufortschritt' 
+  },
+  { 
+    label: '📋 Bauabnahme Rohbau', 
+    category: 'protokoll', 
+    prompt: 'Bauabnahmeprotokoll Rohbau & Betonarbeiten mit Auflistung von 3 festgestellten Mängeln und Fristansetzung von 14 Tagen zur Behebung' 
+  },
+  { 
+    label: '⚠️ Nachfrist Mängelbehebung', 
+    category: 'mahnung', 
+    prompt: 'Förmliche Mängelrüge und Ansetzung einer letzten Nachfrist von 10 Tagen zur Nachbesserung mit Androhung der Ersatzvornahme' 
+  },
+  { 
+    label: '📩 Freigabe Phase 32', 
+    category: 'mitteilung', 
+    prompt: 'Offizielle Mitteilung an den Bauherrn zur Genehmigung und Freigabe des Bauprojekts (Phase 32) vor Baueingabe' 
+  },
+  { 
+    label: '💼 Nachtrag Mehraufwand', 
+    category: 'nachtrag', 
+    prompt: 'Nachtragsofferte wegen zusätzlichen Bauherrenwünschen (Grundrissänderung Dachgeschoss), Mehraufwand 24 Planerstunden' 
+  }
+];
+
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     templates_hub: 'Interactive Templates & Tools',
@@ -33,8 +89,18 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ai_template: 'Create AI Template', ai_template_desc: 'Generate custom contracts & documents with AI.',
     free_editor: 'Free Letter & Contract Editor', free_editor_desc: 'A4 live studio for letters, minutes & contracts.',
     open_tool: 'Open Tool',
-    ai_modal_title: 'Generate AI Template',
-    ai_prompt_placeholder: 'e.g. SIA 102 Fee Contract for residential building conversion in Zurich...',
+    ai_modal_title: 'AI Template & Contract Generator',
+    ai_modal_subtitle: 'Custom Swiss contracts, protocols & letters with SIA precision',
+    quick_suggestions: 'Quick Suggestions & SIA Standards:',
+    doc_category: 'Document Category & SIA Standard:',
+    doc_tone: 'Legal Depth & Tone:',
+    doc_language: 'Language:',
+    smart_context: 'Smart Context & Data Linking:',
+    include_company: 'Company Header & Details',
+    include_project: 'Active Project & Client Data',
+    include_signatures: 'Dual Legally Binding Signatures',
+    prompt_label: 'Custom Specifications & Clauses:',
+    ai_prompt_placeholder: 'e.g. SIA 102 Fee Contract for residential conversion in Zurich Oberland, 6 apartments, fee phases 31–53, monthly milestone billing, 5% warranty retention according to SIA 118...',
     generate_btn: 'Generate Template Now',
     generating: 'Generating Template...',
     choose_location: 'Choose save location for document:',
@@ -73,8 +139,18 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     ai_template: 'KI-Vorlage erstellen', ai_template_desc: 'Generiere maßgeschneiderte Verträge & Dokumente mit KI.',
     free_editor: 'Freier Brief- & Vertrags-Editor', free_editor_desc: 'DIN-A4 Live-Studio für Schweizer Briefe, Protokolle & Verträge.',
     open_tool: 'Tool öffnen',
-    ai_modal_title: 'KI-Vorlage generieren',
-    ai_prompt_placeholder: 'z.B. SIA 102 Honorarvertrag für Umbau MFH Zürcher Oberland...',
+    ai_modal_title: 'KI-Vorlagen- & Vertrags-Generator',
+    ai_modal_subtitle: 'Massgeschneiderte Schweizer Verträge, Protokolle & Briefe mit SIA-Präzision',
+    quick_suggestions: 'Schnellauswahl & Schweizer SIA-Standards:',
+    doc_category: 'Vorlagenart & SIA-Norm:',
+    doc_tone: 'Rechtstiefe & Tonalität:',
+    doc_language: 'Dokumentensprache:',
+    smart_context: 'Smarte Kontext-Verknüpfung:',
+    include_company: 'Firmen-Briefkopf & Absenderdaten einbinden',
+    include_project: 'Projektdaten & Bauherr verknüpfen',
+    include_signatures: 'Rechtsgültigen Unterschriftenblock generieren',
+    prompt_label: 'Spezifische Anforderungen & Klauseln:',
+    ai_prompt_placeholder: 'z.B. SIA 102 Honorarvertrag für Umbau MFH Zürcher Oberland, 6 Wohnungen, Phasen 31–53, monatliche Abschlagszahlungen, 5% Garantierückbehalt nach SIA 118...',
     generate_btn: 'Vorlage jetzt generieren',
     generating: 'Generiere Vorlage...',
     choose_location: 'Ablageort für Dokument wählen:',
@@ -137,6 +213,14 @@ export default function TemplatesTab({
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [saveScope, setSaveScope] = useState<'company' | 'project'>('company');
+
+  // AI Modal Advanced Customization States
+  const [selectedAiCategory, setSelectedAiCategory] = useState('sia_102');
+  const [selectedAiTone, setSelectedAiTone] = useState<'legal' | 'standard' | 'advisory'>('legal');
+  const [selectedAiLang, setSelectedAiLang] = useState<'de' | 'en' | 'fr' | 'it'>('de');
+  const [includeCompanyData, setIncludeCompanyData] = useState(true);
+  const [includeProjectData, setIncludeProjectData] = useState(Boolean(activeProject));
+  const [includeSignatures, setIncludeSignatures] = useState(true);
 
   // Document Studio Modal States
   const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
@@ -268,17 +352,49 @@ export default function TemplatesTab({
     if (!aiPrompt.trim()) return;
     setIsGeneratingAi(true);
     try {
-      const fullPrompt = `Erstelle eine professionelle Dokumentenvorlage / Briefvorlage im Schweizer Standard nach DIN 5008 (A4 Hochformat) für das Thema: "${aiPrompt}". 
-Verwende eine klare Gliederung mit Briefkopf, Betreffzeile, Anrede, Textinhalt und Grußformel. Schweizer Rechtschreibung (ss statt ß).`;
+      const catObj = AI_CATEGORIES.find(c => c.id === selectedAiCategory) || AI_CATEGORIES[0];
+      const toneObj = AI_TONES.find(t => t.id === selectedAiTone) || AI_TONES[0];
+      const langObj = AI_LANGUAGES.find(l => l.id === selectedAiLang) || AI_LANGUAGES[0];
+
+      const fullPrompt = `Du bist ein hochqualifizierter Schweizer Rechtsexperte für Architektur-, Ingenieur- und Bauvertragsrecht (SIA 102, SIA 118, Schweizer OR).
+Erstelle ein vollständiges, professionelles Dokument für die Schweizer Bau- und Planungsbranche im Standard DIN 5008 (A4).
+
+Kategorie: ${catObj.label}
+Dokumentensprache: ${langObj.label} (Schweizer Rechtschreibung, "ss" statt "ß")
+Tonalität & Rechtstiefe: ${toneObj.label} - ${toneObj.desc}
+
+Kontext-Informationen:
+${includeCompanyData ? `- Absender / Planer: ${companyProfile.name}, ${companyProfile.address}, ${companyProfile.zipCity}, Tel: ${companyProfile.phone}, Email: ${companyProfile.email}` : '- Absender: [Planer / Architekturbüro]'}
+${includeProjectData && activeProject ? `- Projekt: ${activeProject.name}, Bauherr: ${activeProject.clientName || 'Bauherr'}, Adresse: ${activeProject.address || 'Zürich'}` : '- Projekt: [Bauvorhaben / Projekt]'}
+${includeSignatures ? '- Enthält rechtsgültigen Unterschriftenblock mit Ort, Datum, Linie für Bauherr und Auftragnehmer' : ''}
+
+Inhaltliche Anforderungen vom Benutzer:
+"${aiPrompt}"
+
+Struktur des Dokuments (DIN 5008 Schweizer Standard):
+1. Briefkopf mit Absenderangaben
+2. Empfängeradresse
+3. Ort und Datum (heutiges Datum)
+4. Klarer Betreff (z.B. "BETREFF: ...")
+5. Anrede ("Sehr geehrte Damen und Herren" oder personalisiert)
+6. Einleitung
+7. Hauptteil in nummerierten Abschnitten (z.B. "1. GEGENSTAND & LEISTUNGSUMFANG", "2. VERGÜTUNG & ZAHLUNGSPLAN", "3. FRISTEN & VERZUG", "4. RECHTE & PFLICHTEN", "5. SCHLUSSBESTIMMUNGEN")
+8. Höfliche Grussformel ("Freundliche Grüsse")
+${includeSignatures ? '9. Ausführlicher Unterschriftenblock für beide Parteien' : ''}
+
+Gib NUR den fertigen, sauberen Vertragstext zurück, ohne einleitende Meta-Kommentare.`;
+
       const res = await callGeminiAPI('gemini-2.5-flash', [{ text: fullPrompt }]);
       const outputText = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(res));
       setGeneratedTemplate(outputText);
-      setStudioDocTitle(`KI-Vorlage: ${aiPrompt}`);
-      addToast('KI-Vorlage generiert!', 'success');
+      setStudioDocTitle(`KI-Vorlage: ${aiPrompt.slice(0, 45)}...`);
+      addToast('KI-Vorlage erfolgreich generiert!', 'success');
     } catch (err: any) {
       console.error("AI Template Gen Error:", err);
+      const catObj = AI_CATEGORIES.find(c => c.id === selectedAiCategory) || AI_CATEGORIES[0];
       const fallbackTemplate = `===============================================================
 MUSTER-DOKUMENT / VORLAGE (DIN 5008 - SCHWEIZER STANDARD)
+${catObj.label.toUpperCase()}
 ===============================================================
 
 [Absender / Ihr Unternehmen]
@@ -286,7 +402,7 @@ ${companyProfile.name} | ${companyProfile.address} | ${companyProfile.zipCity}
 Tel: ${companyProfile.phone} | Email: ${companyProfile.email}
 
 Empfänger:
-[Name / Firma Empfänger]
+${activeProject?.clientName || '[Name / Firma Empfänger]'}
 [Strasse / Hausnummer]
 [PLZ / Ort]
 
@@ -296,26 +412,30 @@ BETREFF: ${aiPrompt}
 
 Sehr geehrte Damen und Herren,
 
-vielen Dank für Ihr Interesse. Nachfolgend erhalten Sie die gewünschten Spezifikationen und Vereinbarungen zum Thema "${aiPrompt}":
+in Ergänzung zu den bisherigen Vereinbarungen erhalten Sie nachfolgend die rechtsgültigen Vertragsbestimmungen und Konditionen zum Thema "${aiPrompt}":
 
 1. LEISTUNGSUMFANG & GEGENSTAND
-   - Vereinbarungsgemäße Erbringung der Dienstleistungen nach Schweizer Standards.
-   - Sorgfältige Dokumentation und Qualitätssicherung.
+   - Vereinbarungsgemäße Erbringung der Dienstleistungen nach Schweizer Standards (SIA / OR).
+   - Sorgfältige Dokumentation, Terminüberwachung und Qualitätssicherung.
 
 2. VERGÜTUNG & ZAHLUNGSKONDITIONEN
-   - Rechnungsstellung in CHF rein netto innert 30 Tagen.
+   - Rechnungsstellung in CHF rein netto innert 30 Tagen nach Baufortschritt bzw. Leistungsphasen.
+   - Allfällige Nebenkosten und Spesen werden nach effektivem Aufwand belegt.
 
-3. SCHLUSSBESTIMMUNGEN
-   - Änderungen bedürfen der Schriftform.
-   - Anwendbares Recht: Schweizer Recht (Gerichtsstand ${companyProfile.city}).
+3. FRISTEN & SCHLUSSBESTIMMUNGEN
+   - Änderungen und Ergänzungen bedürfen der beidseitigen Schriftform.
+   - Anwendbares Recht: Schweizer Recht (Gerichtsstand ${companyProfile.city || 'Zürich'}).
 
 Freundliche Grüsse,
 
 ${companyProfile.name}
-[Unterschrift / Geschäftsleitung]`;
+
+_____________________________              _____________________________
+Ort, Datum: Zürich, ${new Date().toLocaleDateString('de-CH')}        Ort, Datum: Zürich, ${new Date().toLocaleDateString('de-CH')}
+Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
       setGeneratedTemplate(fallbackTemplate);
-      setStudioDocTitle(`KI-Vorlage: ${aiPrompt}`);
+      setStudioDocTitle(`Vorlage: ${aiPrompt.slice(0, 45)}`);
       addToast(t('ai_fallback_notice'), 'info');
     } finally {
       setIsGeneratingAi(false);
@@ -614,29 +734,203 @@ ${companyProfile.name}
         )}
       </section>
 
-      {/* KI-Vorlagen Modal */}
+      {/* KI-Vorlagen- & Vertrags-Generator Modal */}
       {isAiModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-surface border border-border p-6 rounded-3xl max-w-xl w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-                <Sparkles className="text-amber-500" size={20} /> {t('ai_modal_title')}
-              </h3>
-              <button onClick={() => setIsAiModalOpen(false)} className="p-2 text-text-muted hover:text-text-primary">✕</button>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-surface border border-border p-5 sm:p-7 rounded-3xl max-w-2xl w-full shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto custom-scrollbar">
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-sm">
+                  <Sparkles size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-text-primary">
+                    {t('ai_modal_title')}
+                  </h3>
+                  <p className="text-xs text-text-muted font-medium mt-0.5">
+                    {t('ai_modal_subtitle')}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAiModalOpen(false)} 
+                className="p-2 text-text-muted hover:text-text-primary rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm font-bold"
+              >
+                ✕
+              </button>
             </div>
 
             <form onSubmit={handleGenerateTemplate} className="space-y-4">
-              <input
-                type="text"
-                placeholder={t('ai_prompt_placeholder')}
-                value={aiPrompt}
-                onChange={e => setAiPrompt(e.target.value)}
-                className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm text-text-primary focus:border-amber-500 outline-none"
-              />
+              
+              {/* 1. Schnellauswahl & Inspiration Chips */}
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                  1. {t('quick_suggestions')}
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {INSPIRATION_CHIPS.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setAiPrompt(chip.prompt);
+                        setSelectedAiCategory(chip.category);
+                      }}
+                      className={cn(
+                        "px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border cursor-pointer",
+                        aiPrompt === chip.prompt
+                          ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-bold"
+                          : "bg-background/80 hover:bg-surface border-border/60 text-text-muted hover:text-text-primary"
+                      )}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Vorlagenart & Sprache Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                {/* Kategorie Dropdown */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    2. {t('doc_category')}
+                  </label>
+                  <select
+                    value={selectedAiCategory}
+                    onChange={e => setSelectedAiCategory(e.target.value)}
+                    className="w-full bg-background border border-border/70 rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-amber-500 cursor-pointer"
+                  >
+                    {AI_CATEGORIES.map(cat => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon} {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Sprache Pills */}
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    3. {t('doc_language')}
+                  </label>
+                  <div className="grid grid-cols-4 gap-1">
+                    {AI_LANGUAGES.map(lang => (
+                      <button
+                        key={lang.id}
+                        type="button"
+                        onClick={() => setSelectedAiLang(lang.id as any)}
+                        className={cn(
+                          "py-2 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1 cursor-pointer",
+                          selectedAiLang === lang.id
+                            ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-bold"
+                            : "bg-background border-border/60 text-text-muted hover:text-text-primary"
+                        )}
+                      >
+                        <span>{lang.flag}</span>
+                        <span>{lang.id.toUpperCase()}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Rechtstiefe & Tonalität */}
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                  4. {t('doc_tone')}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {AI_TONES.map(tone => (
+                    <button
+                      key={tone.id}
+                      type="button"
+                      onClick={() => setSelectedAiTone(tone.id as any)}
+                      className={cn(
+                        "p-2.5 rounded-xl text-left border transition-all cursor-pointer flex flex-col justify-between",
+                        selectedAiTone === tone.id
+                          ? "bg-amber-500/10 border-amber-500/60 text-text-primary shadow-xs"
+                          : "bg-background border-border/60 text-text-muted hover:text-text-primary"
+                      )}
+                    >
+                      <span className="font-bold text-xs text-text-primary flex items-center gap-1">
+                        {selectedAiTone === tone.id && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                        {tone.label}
+                      </span>
+                      <span className="text-[10px] text-text-muted mt-1 leading-tight">{tone.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Smarte Kontext-Verknüpfung Toggles */}
+              <div className="space-y-2 bg-background/60 border border-border/60 p-3.5 rounded-2xl">
+                <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                  5. {t('smart_context')}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  <label className="flex items-center gap-2 p-2 bg-surface/80 rounded-xl border border-border/50 cursor-pointer hover:border-border transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={includeCompanyData}
+                      onChange={e => setIncludeCompanyData(e.target.checked)}
+                      className="accent-amber-500 rounded"
+                    />
+                    <span className="font-medium text-text-primary text-[11px] leading-tight truncate">
+                      🏢 {companyProfile.name || 'Firmen-Absender'}
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2 bg-surface/80 rounded-xl border border-border/50 cursor-pointer hover:border-border transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={includeProjectData}
+                      onChange={e => setIncludeProjectData(e.target.checked)}
+                      className="accent-amber-500 rounded"
+                    />
+                    <span className="font-medium text-text-primary text-[11px] leading-tight truncate">
+                      🏗️ {activeProject?.name || 'Aktives Projekt'}
+                    </span>
+                  </label>
+
+                  <label className="flex items-center gap-2 p-2 bg-surface/80 rounded-xl border border-border/50 cursor-pointer hover:border-border transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={includeSignatures}
+                      onChange={e => setIncludeSignatures(e.target.checked)}
+                      className="accent-amber-500 rounded"
+                    />
+                    <span className="font-medium text-text-primary text-[11px] leading-tight">
+                      ✍️ 2x Unterschriftenblock
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 5. Prompt Textarea */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                    6. {t('prompt_label')}
+                  </label>
+                  <span className="text-[10px] text-text-muted font-mono">{aiPrompt.length} Zeichen</span>
+                </div>
+                <textarea
+                  rows={3}
+                  placeholder={t('ai_prompt_placeholder')}
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  className="w-full bg-background border border-border/70 rounded-xl p-3 text-xs md:text-sm text-text-primary focus:border-amber-500 outline-none resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* 6. Submit Button */}
               <button
                 type="submit"
-                disabled={isGeneratingAi}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                disabled={isGeneratingAi || !aiPrompt.trim()}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs md:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
               >
                 {isGeneratingAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                 {isGeneratingAi ? t('generating') : t('generate_btn')}
