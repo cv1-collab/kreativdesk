@@ -895,7 +895,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }} 
               transition={{ delay: 0.1 }} 
-              className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.2rem] xl:text-[4.8rem] font-semibold tracking-tight mb-6 sm:mb-8 leading-[1.12] select-none text-slate-900 dark:text-white"
+              className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.2rem] xl:text-[4.8rem] font-bold tracking-tight mb-6 sm:mb-8 leading-[1.12] select-none text-slate-900 dark:text-white"
             >
               <span className="block mb-2 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
                 {currentLang === 'en' ? 'The Operating System' : 'Das Operating System'}
@@ -904,7 +904,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <span className="text-slate-900 dark:text-white shrink-0">
                   {currentLang === 'en' ? 'for' : 'für'}
                 </span>
-                <span className="inline-flex items-baseline text-blue-600 dark:text-blue-500 font-semibold tracking-tight text-center">
+                <span className="inline-flex items-baseline text-blue-600 dark:text-blue-500 font-bold tracking-tight text-center">
                   <span>{typedText}</span>
                   <span 
                     className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse shrink-0" 

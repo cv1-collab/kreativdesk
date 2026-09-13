@@ -98,55 +98,59 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
     let currentSpacing = 36;
     const isDe = (language || 'de').toLowerCase().startsWith('de');
 
-    // 14 Module Nodes placed cleanly in clear background zones away from the title and video
+    // 14 Module Nodes placed cleanly in clear background zones away from the central headline and video
     const moduleDefs = [
-      // Top Wings above headline (shifted outwards and upwards away from the title per screenshot)
-      { id: 'cad', labelDe: 'CAD Pläne', labelEn: 'CAD Plans', codeDe: 'CAD.1:50', codeEn: 'CAD.1:50', rx: 0.16, ry: 0.14, align: 'left' as const },
-      { id: 'cube', labelDe: '3D BIM (IFC)', labelEn: '3D BIM (IFC)', codeDe: 'IFC4::01', codeEn: 'IFC4::01', rx: 0.30, ry: 0.04, align: 'center' as const },
-      { id: 'deck', labelDe: 'Pitch Deck Studio', labelEn: 'Pitch Deck Studio', codeDe: 'PDF.VEKTOR', codeEn: 'PDF.VECTOR', rx: 0.70, ry: 0.04, align: 'center' as const },
-      { id: 'ledger', labelDe: 'Finanzen & BKP', labelEn: 'Finance & Cost Plans', codeDe: 'BKP.100-900', codeEn: 'CFC.100-900', rx: 0.84, ry: 0.14, align: 'right' as const },
+      // Top Wings: safely positioned in the open zone BETWEEN the top navbar (0..64px) and headline (144px+)
+      { id: 'cad', labelDe: 'CAD Pläne', labelEn: 'CAD Plans', codeDe: 'CAD.1:50', codeEn: 'CAD.1:50', rx: 0.15, ry: 0.135, align: 'left' as const },
+      { id: 'cube', labelDe: '3D BIM (IFC)', labelEn: '3D BIM (IFC)', codeDe: 'IFC4::01', codeEn: 'IFC4::01', rx: 0.32, ry: 0.095, align: 'center' as const },
+      { id: 'deck', labelDe: 'Pitch Deck Studio', labelEn: 'Pitch Deck Studio', codeDe: 'PDF.VEKTOR', codeEn: 'PDF.VECTOR', rx: 0.68, ry: 0.095, align: 'center' as const },
+      { id: 'ledger', labelDe: 'Finanzen & BKP', labelEn: 'Finance & Cost Plans', codeDe: 'BKP.100-900', codeEn: 'CFC.100-900', rx: 0.85, ry: 0.135, align: 'right' as const },
 
-      // Left Flank (strictly on the open background to the left of the central video)
-      { id: 'offerte', labelDe: 'Smart Offerte', labelEn: 'Smart Proposals', codeDe: 'OFF.SIA102', codeEn: 'PROP.SIA102', rx: 0.06, ry: 0.28, align: 'left' as const },
-      { id: 'calendar', labelDe: 'Smart Calendar', labelEn: 'Smart Calendar', codeDe: 'SIA.TERM', codeEn: 'SCHED.SIA', rx: 0.08, ry: 0.42, align: 'left' as const },
-      { id: 'chat', labelDe: 'Meet & Chat', labelEn: 'Meet & Chat', codeDe: 'P2P.VOIP', codeEn: 'P2P.VOIP', rx: 0.06, ry: 0.56, align: 'left' as const },
-      { id: 'bauakte', labelDe: 'Bauakte', labelEn: 'Project Archive', codeDe: 'DOC.VAULT', codeEn: 'DOC.VAULT', rx: 0.08, ry: 0.70, align: 'left' as const },
-      { id: 'rbac', labelDe: 'Rollen & RBAC', labelEn: 'Roles & RBAC', codeDe: 'AUTH.RBAC', codeEn: 'AUTH.RBAC', rx: 0.06, ry: 0.84, align: 'left' as const },
+      // Left Flank: Playful, organic constellation (in-out-in-out staggered depths, not vertically rastered)
+      { id: 'offerte', labelDe: 'Smart Offerte', labelEn: 'Smart Proposals', codeDe: 'OFF.SIA102', codeEn: 'PROP.SIA102', rx: 0.05, ry: 0.28, align: 'left' as const },
+      { id: 'calendar', labelDe: 'Smart Calendar', labelEn: 'Smart Calendar', codeDe: 'SIA.TERM', codeEn: 'SCHED.SIA', rx: 0.14, ry: 0.39, align: 'left' as const },
+      { id: 'chat', labelDe: 'Meet & Chat', labelEn: 'Meet & Chat', codeDe: 'P2P.VOIP', codeEn: 'P2P.VOIP', rx: 0.04, ry: 0.52, align: 'left' as const },
+      { id: 'bauakte', labelDe: 'Bauakte', labelEn: 'Project Archive', codeDe: 'DOC.VAULT', codeEn: 'DOC.VAULT', rx: 0.15, ry: 0.66, align: 'left' as const },
+      { id: 'rbac', labelDe: 'Rollen & RBAC', labelEn: 'Roles & RBAC', codeDe: 'AUTH.RBAC', codeEn: 'AUTH.RBAC', rx: 0.07, ry: 0.81, align: 'left' as const },
 
-      // Right Flank (strictly on the open background to the right of the central video)
-      { id: 'tickets', labelDe: 'Mängel & Tickets', labelEn: 'Defects & Tickets', codeDe: 'ISSUE.SYNC', codeEn: 'ISSUE.SYNC', rx: 0.94, ry: 0.28, align: 'right' as const },
-      { id: 'camera', labelDe: 'Baukamera', labelEn: 'Site Camera', codeDe: 'CAM.LIVE', codeEn: 'CAM.LIVE', rx: 0.92, ry: 0.42, align: 'right' as const },
-      { id: 'whiteboard', labelDe: 'Whiteboard', labelEn: 'Whiteboard', codeDe: 'CANVAS.2D', codeEn: 'CANVAS.2D', rx: 0.94, ry: 0.56, align: 'right' as const },
-      { id: 'ai', labelDe: 'KI-Concierge', labelEn: 'AI Concierge', codeDe: 'AI.NEURAL', codeEn: 'AI.NEURAL', rx: 0.92, ry: 0.70, align: 'right' as const },
-      { id: 'cloud', labelDe: 'Colocation & Cloud', labelEn: 'Colocation & Cloud', codeDe: 'CH.HOSTING', codeEn: 'CH.HOSTING', rx: 0.94, ry: 0.84, align: 'right' as const }
+      // Right Flank: Playful, organic constellation (in-out-in-out staggered depths)
+      { id: 'tickets', labelDe: 'Mängel & Tickets', labelEn: 'Defects & Tickets', codeDe: 'ISSUE.SYNC', codeEn: 'ISSUE.SYNC', rx: 0.95, ry: 0.28, align: 'right' as const },
+      { id: 'camera', labelDe: 'Baukamera', labelEn: 'Site Camera', codeDe: 'CAM.LIVE', codeEn: 'CAM.LIVE', rx: 0.86, ry: 0.39, align: 'right' as const },
+      { id: 'whiteboard', labelDe: 'Whiteboard', labelEn: 'Whiteboard', codeDe: 'CANVAS.2D', codeEn: 'CANVAS.2D', rx: 0.96, ry: 0.52, align: 'right' as const },
+      { id: 'ai', labelDe: 'KI-Concierge', labelEn: 'AI Concierge', codeDe: 'AI.NEURAL', codeEn: 'AI.NEURAL', rx: 0.85, ry: 0.66, align: 'right' as const },
+      { id: 'cloud', labelDe: 'Colocation & Cloud', labelEn: 'Colocation & Cloud', codeDe: 'CH.HOSTING', codeEn: 'CH.HOSTING', rx: 0.93, ry: 0.81, align: 'right' as const }
     ];
 
-    // Synapse network connections linking nodes into a technical blueprint matrix
-    // Note: No horizontal connection through the center [1, 2] so the headline area remains 100% clean
+    // Synapse network connections linking nodes into an organic, playful technical blueprint web
+    // Center is 100% open so no horizontal line crosses behind the main headline
     const synapseConnections: [number, number][] = [
-      // Top wings (linking upper nodes outward and downward to the flanks)
+      // Top wings
       [0, 1], // cad -> cube
       [2, 3], // deck -> ledger
       [0, 4], // cad -> offerte
-      [1, 4], // cube -> offerte (diagonal perimeter brace)
+      [1, 4], // cube -> offerte (diagonal brace)
       [3, 9], // ledger -> tickets
-      [2, 9], // deck -> tickets (diagonal perimeter brace)
+      [2, 9], // deck -> tickets (diagonal brace)
 
-      // Left flank & inner network
-      [4, 5], // offerte -> calendar
-      [5, 6], // calendar -> chat
-      [6, 7], // chat -> bauakte
-      [7, 8], // bauakte -> rbac
-      [4, 6], // offerte -> chat (cross matrix)
-      [5, 8], // calendar -> rbac (cross matrix)
+      // Left flank: playful triangular organic web (like constellation stars)
+      [0, 5], // cad -> calendar
+      [4, 5], // offerte -> calendar (triangle 1)
+      [4, 6], // offerte -> chat
+      [5, 6], // calendar -> chat (triangle 2)
+      [5, 7], // calendar -> bauakte
+      [6, 7], // chat -> bauakte (triangle 3)
+      [6, 8], // chat -> rbac
+      [7, 8], // bauakte -> rbac (triangle 4)
 
-      // Right flank & inner network
-      [9, 10], // tickets -> camera
-      [10, 11], // camera -> whiteboard
-      [11, 12], // whiteboard -> ai
-      [12, 13], // ai -> cloud
-      [9, 11], // tickets -> whiteboard (cross matrix)
-      [11, 13]  // whiteboard -> cloud (cross matrix)
+      // Right flank: playful triangular organic web
+      [3, 10], // ledger -> camera
+      [9, 10], // tickets -> camera (triangle 1)
+      [9, 11], // tickets -> whiteboard
+      [10, 11], // camera -> whiteboard (triangle 2)
+      [10, 12], // camera -> ai
+      [11, 12], // whiteboard -> ai (triangle 3)
+      [11, 13], // whiteboard -> cloud
+      [12, 13]  // ai -> cloud (triangle 4)
     ];
 
     let modules: ModuleNode[] = [];
@@ -325,39 +329,45 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       const videoLeftEdge = horizontalGutter;
       const videoRightEdge = width - horizontalGutter;
 
-      // Initialize 14 module nodes mapped onto proportional positions
+      // Initialize 14 module nodes mapped onto organic proportional positions
       modules = moduleDefs.map((m) => {
         let computedX = m.rx * width;
         let computedY = m.ry * height;
 
-        // If node is in the vertical range of the central video (ry > 0.46)
-        if (m.ry > 0.46) {
+        // Top synapse nodes: ensure they sit safely BETWEEN the fixed navbar (0..64px) and headline (144px+)
+        if (m.id === 'cube' || m.id === 'deck') {
+          computedY = Math.max(92, Math.min(115, height * 0.095));
+        } else if (m.id === 'cad' || m.id === 'ledger') {
+          computedY = Math.max(122, height * 0.135);
+        }
+
+        // Avoid overlapping the central video frame (ry > 0.44)
+        if (m.ry > 0.44) {
           if (m.rx < 0.4) {
-            // Keep strictly to the left of the video frame in the open white space
-            computedX = Math.min(videoLeftEdge - 34, computedX);
+            computedX = Math.min(videoLeftEdge - 28, computedX);
           } else if (m.rx > 0.6) {
-            // Keep strictly to the right of the video frame in the open white space
-            computedX = Math.max(videoRightEdge + 34, computedX);
+            computedX = Math.max(videoRightEdge + 28, computedX);
           }
         }
 
-        // Ensure nodes maintain safe margin from viewport edges so text is never clipped
+        // Ensure nodes maintain safe margin from viewport outer edges
         if (m.rx < 0.3) {
-          computedX = Math.max(28, Math.min(videoLeftEdge - 28, computedX));
+          computedX = Math.max(24, computedX);
         }
         if (m.rx > 0.7) {
-          computedX = Math.min(width - 28, Math.max(videoRightEdge + 28, computedX));
+          computedX = Math.min(width - 24, computedX);
         }
 
-        const snapX = Math.round(computedX / currentSpacing) * currentSpacing;
-        const snapY = Math.round(computedY / currentSpacing) * currentSpacing;
+        // Do NOT rigidly snap modules to 54px lattice grid so they remain organic, dynamic & playful!
+        const posX = Math.round(computedX);
+        const posY = Math.round(computedY);
 
         return {
           ...m,
-          baseX: snapX,
-          baseY: snapY,
-          currentX: snapX,
-          currentY: snapY,
+          baseX: posX,
+          baseY: posY,
+          currentX: posX,
+          currentY: posY,
           vx: 0,
           vy: 0,
           caught: 0
