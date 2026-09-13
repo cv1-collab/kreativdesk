@@ -394,6 +394,37 @@ ${companyProfile.name}
         </div>
       </header>
 
+      {/* 💡 ARCHITEKTUR-HINWEIS: FIRMEN-MASTERFILES VS. PROJEKT-WORKSPACE */}
+      <div className="p-5 bg-gradient-to-r from-blue-500/10 via-surface to-background border border-blue-500/25 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+            <Briefcase size={20} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="font-bold text-sm text-text-primary">
+                {currentLang === 'de' ? 'Firmen-Masterfiles vs. Projekt-Cockpit' : 'Company Masterfiles vs. Project Cockpit'}
+              </h4>
+              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500 text-[10px] uppercase tracking-wider font-extrabold border border-blue-500/30">
+                Prinzip
+              </span>
+            </div>
+            <p className="text-xs text-text-muted mt-1 leading-relaxed max-w-3xl font-medium">
+              {currentLang === 'de' 
+                ? 'Diese Vorlagen (SIA 102/118, Honorarverträge, Briefe, Devis) bilden den firmenweiten Qualitätsstandard. Sobald du ein konkretes Projekt bearbeitest, zieht sich das Projekt-Cockpit diese Vorlagen automatisch und befüllt sie mit den jeweiligen Bauherren-, Liegenschafts- und BKP-Daten.'
+                : 'These master templates (SIA 102/118, fee agreements, letters) define your firm-wide standard. In any active project, the workspace automatically inherits these templates and fills them with client and project data.'}
+            </p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setActiveTab('projects')} 
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer self-end sm:self-auto"
+        >
+          <span>{currentLang === 'de' ? 'Zu den Projekten' : 'Go to Projects'}</span>
+          <ArrowRight size={14} />
+        </button>
+      </div>
+
       {/* Quick Launch Cards (Existing Suite) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 w-full">
         {templates.map((template) => (

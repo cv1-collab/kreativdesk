@@ -140,11 +140,13 @@ export default function ProductTour() {
       candidateDefs = [
         { 
           target: 'body', 
-          title: isGerman ? 'Kreativ-Desk OS' : 'Kreativ-Desk OS', 
-          content: isGerman ? 'Willkommen bei Kreativ-Desk OS! Deine ganzheitliche Plattform für Spatial Design, Baustellen-Management und Schweizer Unternehmens-Steuerung.' : 'Welcome to Kreativ-Desk OS! Your holistic platform for spatial design, site management, and business control.', 
+          title: isGerman ? 'Firmenzentrale vs. Projekt-Cockpit' : 'Company Hub vs. Project Cockpit', 
+          content: isGerman 
+            ? 'Willkommen bei Kreativ-Desk OS! Das System basiert auf zwei Ebenen: Hier in deiner Firmenzentrale verwaltest du firmenweite Master-Vorlagen, globale Finanzen und das Team. Um ein konkretes Projekt von A bis Z mit BKP-Budget, 3D BIM, CAD-Plänen und Pitch Deck zu steuern, erstellst oder öffnest du ein Projekt.'
+            : 'Welcome to Kreativ-Desk OS! The system is built on two tiers: Here in your Company Hub, you manage firm-wide master templates, global finance, and team settings. To execute an actual project from A to Z with BKP budgets, 3D BIM, CAD, and pitch decks, you open or create a project.', 
           IconComponent: Sparkles, 
-          submodules: isGerman ? ['Multi-Tenant OS', 'Schweizer Standards', 'Echtzeit-Kollaboration'] : ['Multi-Tenant OS', 'Swiss Standards', 'Realtime Collaboration'],
-          proTip: isGerman ? 'In wenigen Schritten entdeckst du die wichtigsten Funktionen und Module.' : 'Discover all core capabilities and submodules in just a few quick steps.', 
+          submodules: isGerman ? ['Ebene 1: Firmenzentrale', 'Ebene 2: Projekt-Cockpit', 'Schweizer SIA-Standards'] : ['Tier 1: Company Hub', 'Tier 2: Project Cockpit', 'Swiss SIA Standards'],
+          proTip: isGerman ? 'Master-Vorlagen werden firmenweit definiert und in jedem Projekt automatisch für den jeweiligen Bauherren übernommen.' : 'Master templates are defined firm-wide and inherited into each project automatically.', 
           placement: 'center', 
           disableBeacon: true 
         },
@@ -159,11 +161,13 @@ export default function ProductTour() {
         },
         { 
           target: '.tour-projects', 
-          title: isGerman ? 'Portfolio-Management' : 'Portfolio Management', 
-          content: isGerman ? 'Verwalte all deine Bau- & Designprojekte. Ein Klick bringt dich tief in die 3D-BIM- und Kollaborations-Tools.' : 'Manage all projects. One click dives into specific 3D BIM and collaboration tools.', 
+          title: isGerman ? 'Projekt-Portfolio (Operative Cockpits)' : 'Project Portfolio (Operational Cockpits)', 
+          content: isGerman 
+            ? 'Das Herzstück der Projektausführung: Ein Klick auf ein Projekt öffnet dein operatives Cockpit von A bis Z mit 3D-BIM-Viewer (IFC), BKP 1–9 Baukosten, 2D-Plänen mit Mängel-Pins, Bau-Kamera und Pitch Deck Studio.' 
+            : 'The core of project execution: Clicking a project opens your 360° workspace from A to Z with 3D BIM (IFC), BKP 1–9 budgets, 2D CAD plans with defect pins, site cameras, and pitch deck studio.', 
           IconComponent: Briefcase, 
-          submodules: isGerman ? ['3D BIM / IFC', '2D CAD Pläne', 'PIN-Mängelmarker', 'Zeitraffer-Kamera', 'Bautagebuch'] : ['3D BIM / IFC', '2D CAD Plans', 'Pinpoint Defects', 'Timelapse Camera', 'Site Journal'],
-          proTip: isGerman ? 'Hier siehst du den Status und Fortschritt aller aktiven Projekte auf einen Blick.' : 'View status and progress for all active project environments.', 
+          submodules: isGerman ? ['Projekt von A bis Z', '3D BIM (IFC)', 'BKP 1–9 Baukosten', 'Mängel & Termine', 'Pitch Deck Studio'] : ['Project from A to Z', '3D BIM & CAD', 'BKP Cost Plans', 'Defects & Schedule', 'Pitch Deck Studio'],
+          proTip: isGerman ? 'Erstelle hier dein erstes Projekt oder öffne das Musterprojekt, um alle operativen Werkzeuge live zu erleben.' : 'Create your first project here or open the sample project to experience all tools live.', 
           placement: 'right' 
         },
         { 

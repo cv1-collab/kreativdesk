@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Megaphone, Users, ArrowRight, Activity, Target } from 'lucide-react';
+import { 
+  Building2, Megaphone, Users, ArrowRight, Activity, Target,
+  Sparkles, Plus, Box, Briefcase, Lightbulb, CheckCircle2, ChevronRight
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-
 import { useProject } from '../contexts/ProjectContext';
+import { safeStorage } from '../utils/safeStorage';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: { 
@@ -21,7 +24,17 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   }
 };
 
-export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
+interface DashboardOverviewTabProps {
+  setActiveTab: (tab: string) => void;
+  onOpenNewProject?: () => void;
+  onOpenDemoProject?: () => void;
+}
+
+export default function DashboardOverviewTab({ 
+  setActiveTab, 
+  onOpenNewProject, 
+  onOpenDemoProject 
+}: DashboardOverviewTabProps) {
   const { currentUser } = useAuth();
   const { projects: contextProjects } = useProject();
   const { language, t: globalT } = useLanguage();
@@ -33,6 +46,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
   const [leads, setLeads] = useState<any[]>([]);
   const [team, setTeam] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [isCompassDismissed, setIsCompassDismissed] = useState<boolean>(() => safeStorage.getString('hide_onboarding_compass') === 'true');
 
   const projects = (contextProjects && contextProjects.length > 0) ? contextProjects : dbProjects;
 
@@ -95,10 +109,202 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {/* 🧭 ONBOARDING KOMPASS & 2-EBENEN ARCHITEKTUR-FÜHRUNG */}
+      {(!isCompassDismissed || projects.length === 0) && (
+        <div className="bg-gradient-to-br from-blue-500/10 via-surface to-background border border-blue-500/30 rounded-3xl p-6 sm:p-7 relative overflow-hidden shadow-lg animate-in fade-in duration-300">
+          <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -z-0" />
+          
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-border/60 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-lg text-text-primary">
+                      {currentLang === 'de' ? 'Dein Onboarding-Kompass' : 'Your Onboarding Compass'}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-500 text-[10px] font-extrabold uppercase tracking-wider border border-blue-500/25">
+                      {currentLang === 'de' ? '2-Ebenen-Prinzip' : '2-Tier Model'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-0.5 font-medium">
+                    {currentLang === 'de' 
+                      ? 'Verstehe in 2 Minuten die Mechanik: Firmenzentrale vs. operatives Projekt-Cockpit von A bis Z.' 
+                      : 'Understand how Kreativ Desk works: Company Hub vs. operational Project Cockpit from A to Z.'}
+                  </p>
+                </div>
+              </div>
+
+              {projects.length > 0 && (
+                <button 
+                  onClick={() => {
+                    setIsCompassDismissed(true);
+                    safeStorage.setItem('hide_onboarding_compass', 'true');
+                  }} 
+                  className="text-xs text-text-muted hover:text-text-primary px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 transition-colors self-start sm:self-auto font-medium cursor-pointer"
+                >
+                  {currentLang === 'de' ? 'Ausblenden' : 'Dismiss'}
+                </button>
+              )}
+            </div>
+
+            {/* Die 2 Ebenen im direkten Vergleich */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+              {/* Ebene 1: Firmenzentrale */}
+              <div className="bg-surface/80 border border-border/80 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative group hover:border-border transition-colors">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="px-2.5 py-1 rounded-md bg-zinc-500/10 text-text-primary text-[11px] font-bold uppercase tracking-wider border border-border/60">
+                      🏢 {currentLang === 'de' ? 'Ebene 1: Firmenzentrale' : 'Tier 1: Company Hub'}
+                    </span>
+                    <span className="text-[11px] font-semibold text-text-muted">
+                      {currentLang === 'de' ? 'Hier bist du gerade' : 'Current Location'}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-base text-text-primary mb-1.5">
+                    {currentLang === 'de' ? 'Übergeordnete Standards & Verwaltung' : 'Firm-wide Standards & Admin'}
+                  </h4>
+                  <p className="text-xs text-text-muted leading-relaxed mb-4 font-medium">
+                    {currentLang === 'de' 
+                      ? 'Gilt firmenweit und unabhängig von einzelnen Bauprojekten. Hier hinterlegst du Master-Vorlagen, globale Finanzen und dein Team.' 
+                      : 'Applies firm-wide across all projects. Manage master templates, global finance, and your team here.'}
+                  </p>
+                  
+                  <ul className="space-y-2 text-xs text-text-primary font-medium mb-5">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                      <span><strong>{currentLang === 'de' ? 'Master-Vorlagen:' : 'Master Templates:'}</strong> {currentLang === 'de' ? 'SIA 102/118 Verträge, Devis & Briefköpfe' : 'SIA 102/118 contracts & letterheads'}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span><strong>{currentLang === 'de' ? 'Firmen-Finanzen:' : 'Company Finance:'}</strong> {currentLang === 'de' ? 'Betriebskosten (OpEx), QR-Rechnungen & Cashflow' : 'OpEx, Swiss QR bills & cashflow'}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                      <span><strong>{currentLang === 'de' ? 'Zentrales Team:' : 'Central Team:'}</strong> {currentLang === 'de' ? 'Mitarbeiter, Rollen (RBAC) & Stundensätze' : 'Employees, RBAC roles & hourly rates'}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-3 border-t border-border/50 flex items-center justify-between">
+                  <button 
+                    onClick={() => setActiveTab('templates')}
+                    className="text-xs font-bold text-blue-500 hover:text-blue-400 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>{currentLang === 'de' ? 'Master-Vorlagen ansehen' : 'View Master Templates'}</span>
+                    <ArrowRight size={13} />
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('finance')}
+                    className="text-xs font-bold text-text-muted hover:text-text-primary inline-flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <span>{currentLang === 'de' ? 'Firmen-Finanzen' : 'Company Finances'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Ebene 2: Projekt-Cockpit */}
+              <div className="bg-gradient-to-br from-blue-600/10 via-surface to-background border-2 border-blue-500/40 rounded-2xl p-5 flex flex-col justify-between shadow-md relative group">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="px-2.5 py-1 rounded-md bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider shadow-xs">
+                      🏗️ {currentLang === 'de' ? 'Ebene 2: Projekt-Workspace' : 'Tier 2: Project Workspace'}
+                    </span>
+                    <span className="text-[11px] font-bold text-blue-500">
+                      {currentLang === 'de' ? 'Projekt von A bis Z' : 'A to Z Execution'}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-base text-text-primary mb-1.5">
+                    {currentLang === 'de' ? 'Das operative Baustellen- & Planungs-Cockpit' : 'Operational Site & Planning Cockpit'}
+                  </h4>
+                  <p className="text-xs text-text-muted leading-relaxed mb-4 font-medium">
+                    {currentLang === 'de' 
+                      ? 'Hier findet die reale Bearbeitung für deinen Bauherren statt. Erst im Projekt greifen alle Spezialwerkzeuge ineinander.' 
+                      : 'Where real execution for your client happens. All high-performance tools converge inside a project.'}
+                  </p>
+                  
+                  <ul className="space-y-2 text-xs text-text-primary font-medium mb-5">
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                      <span><strong>3D BIM & 2D CAD:</strong> {currentLang === 'de' ? 'IFC-Viewer im Browser & Mängel-Pins auf Plänen' : 'Browser IFC viewer & plan defect pins'}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span><strong>{currentLang === 'de' ? 'BKP 1–9 Baukosten:' : 'BKP 1–9 Cost Plan:'}</strong> {currentLang === 'de' ? 'Soll/Ist-Vergleich, Handwerkerrechnungen & Spesen' : 'Budget vs. actuals & contractor invoices'}</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span><strong>{currentLang === 'de' ? 'Termine & Pitch Deck:' : 'Gantt & Pitch Deck:'}</strong> {currentLang === 'de' ? 'SIA-Phasen, Zeitraffer-Kamera & Bauherren-Präsentation' : 'SIA phases, timelapse cam & client presentations'}</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="pt-3 border-t border-border/50 flex flex-wrap items-center gap-2.5">
+                  <button 
+                    onClick={() => onOpenNewProject ? onOpenNewProject() : setActiveTab('projects')}
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    <span>{currentLang === 'de' ? 'Neues Projekt erstellen' : 'Create New Project'}</span>
+                  </button>
+
+                  <button 
+                    onClick={() => onOpenDemoProject ? onOpenDemoProject() : window.dispatchEvent(new CustomEvent('create-demo-project', { detail: { type: 'construction' } }))}
+                    className="px-3.5 py-2 bg-surface hover:bg-white/10 border border-blue-500/30 text-blue-400 hover:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="Lädt das voll ausgestattete Musterprojekt Quartier Neubau Süd"
+                  >
+                    <Box size={14} />
+                    <span>{currentLang === 'de' ? 'Musterprojekt erkunden' : 'Explore Sample Project'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Checklist Footer */}
+            <div className="bg-surface/50 border border-border/60 rounded-xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-text-muted">
+              <div className="flex items-center gap-2">
+                <Lightbulb size={16} className="text-amber-500 shrink-0" />
+                <span className="font-medium">
+                  {currentLang === 'de' 
+                    ? 'Tipp: Firmen-Vorlagen (SIA 102, Verträge) werden beim Erstellen eines Projekts automatisch herangezogen und mit den Bauherren-Daten verknüpft.'
+                    : 'Tip: Master templates (SIA 102, contracts) are automatically inherited when creating a project and linked to client data.'}
+                </span>
+              </div>
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('start-tour'))}
+                className="text-blue-500 hover:underline font-bold whitespace-nowrap self-end sm:self-auto cursor-pointer flex items-center gap-1"
+              >
+                <span>{currentLang === 'de' ? 'Geführte Tour starten' : 'Start Guided Tour'}</span>
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wiederaufklappen Button, falls ausgeblendet */}
+      {isCompassDismissed && projects.length > 0 && (
+        <div className="flex justify-end">
+          <button 
+            onClick={() => {
+              setIsCompassDismissed(false);
+              safeStorage.removeItem('hide_onboarding_compass');
+            }} 
+            className="text-xs text-text-muted hover:text-blue-500 flex items-center gap-1.5 px-3 py-1 rounded-lg border border-border/60 bg-surface/50 hover:bg-surface transition-colors font-medium cursor-pointer"
+          >
+            <Sparkles size={13} className="text-blue-500" />
+            <span>{currentLang === 'de' ? 'Onboarding-Kompass (2-Ebenen-Modell) einblenden' : 'Show Onboarding Compass'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* GREETING & SUMMARY STATS */}
       <div className="bg-surface border border-border rounded-3xl p-8 relative overflow-hidden shadow-sm">
          <div className="absolute top-0 right-0 w-64 h-64 bg-accent-ai/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
          <div className="relative z-10">
-            <h2 className="text-3xl font-black text-text-primary tracking-tight mb-2">
+            <h2 className="text-3xl font-bold text-text-primary tracking-tight mb-2">
               {t('good_morning')}, <span className="capitalize">{currentUser?.displayName || currentUser?.name || currentUser?.email?.split('@')[0]}</span>!
             </h2>
             <p className="text-text-muted font-medium text-lg">{t('daily_briefing')}</p>
@@ -106,7 +312,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 relative z-10">
             <div onClick={() => setActiveTab('projects')} className="bg-background border border-border/50 rounded-2xl p-5 hover:border-emerald-500/50 transition-colors cursor-pointer group shadow-sm">
                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Building2 size={20}/></div>
-               <div className="text-3xl font-black text-text-primary mb-1">{projects.length}</div>
+               <div className="text-3xl font-bold text-text-primary mb-1">{projects.length}</div>
                <div className="text-sm text-text-muted font-medium flex items-center justify-between">
                  <span>{activeProjects.length} {t('active_projects')}</span>
                  <ArrowRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity text-emerald-500" />
@@ -115,7 +321,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
 
             <div onClick={() => setActiveTab('leads')} className="bg-background border border-border/50 rounded-2xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer group shadow-sm">
                <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Megaphone size={20}/></div>
-               <div className="text-3xl font-black text-text-primary mb-1">{leads.length}</div>
+               <div className="text-3xl font-bold text-text-primary mb-1">{leads.length}</div>
                <div className="text-sm text-text-muted font-medium flex items-center justify-between">
                  <span>{openLeads.length} {t('open_requests')}</span>
                  <ArrowRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
@@ -124,7 +330,7 @@ export default function DashboardOverviewTab({ setActiveTab }: { setActiveTab: (
 
             <div onClick={() => setActiveTab('crm')} className="bg-background border border-border/50 rounded-2xl p-5 hover:border-purple-500/50 transition-colors cursor-pointer group shadow-sm">
                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Users size={20}/></div>
-               <div className="text-3xl font-black text-text-primary mb-1">{team.length}</div>
+               <div className="text-3xl font-bold text-text-primary mb-1">{team.length}</div>
                <div className="text-sm text-text-muted font-medium flex items-center justify-between">
                  <span>{team.length} {t('saved_contacts')}</span>
                  <ArrowRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity text-purple-500" />

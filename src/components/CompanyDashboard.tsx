@@ -37,7 +37,7 @@ import {
   X, Shield, Moon, Sun, FolderOpen, Megaphone, Trash2, Landmark,
   DollarSign, LayoutDashboard, Bell, LayoutTemplate, Layers, BookOpen, CalendarDays, Video,
   Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw, Lightbulb,
-  Monitor, Smartphone, Apple, Laptop, Download
+  Monitor, Smartphone, Apple, Laptop, Download, Box
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useTheme } from '../contexts/ThemeContext';
@@ -813,7 +813,13 @@ export default function CompanyDashboard() {
         <div className="flex-1 overflow-y-auto relative custom-scrollbar w-full p-4 md:p-8">
            {isMounted && (
              <div className="w-full h-full flex flex-col">
-               {activeTab === 'dashboard' && <DashboardOverviewTab setActiveTab={(tab) => setActiveTab(tab as any)} />}
+               {activeTab === 'dashboard' && (
+                 <DashboardOverviewTab 
+                   setActiveTab={(tab) => setActiveTab(tab as any)} 
+                   onOpenNewProject={() => setIsNewProjectModalOpen(true)}
+                   onOpenDemoProject={() => handleCreateDemoProject('construction', 'Quartier Neubau Süd - Residenz am Park', 'Musterprojekt mit Schweizer BKP 1-9 Kostenplan, 3D BIM-Modell, Terminen und Bauakte.')}
+                 />
+               )}
                {activeTab === 'audit' && <AuditLogsTab />}
                {activeTab === 'meet' && <MeetChat />}
                
@@ -902,25 +908,46 @@ export default function CompanyDashboard() {
                         </div>
                       ))}
                       {filteredProjects.length === 0 && (
-                        <div className="col-span-full py-16 text-center border-2 border-dashed border-border rounded-2xl bg-surface/50">
+                        <div className="col-span-full p-8 md:p-12 text-center border-2 border-dashed border-blue-500/30 rounded-3xl bg-gradient-to-b from-blue-500/5 via-surface to-background shadow-sm">
                           {activeProjectFilter === 'active' ? (
-                            <>
-                              <Building2 size={48} className="mx-auto text-text-muted mb-4 opacity-50" />
-                              <h3 className="text-xl font-bold text-text-primary mb-2">Noch keine aktiven Projekte</h3>
-                              <p className="text-text-muted mb-6">Erstelle dein erstes Projekt, um loszulegen.</p>
-                              {canCreateProjects && (
-                                <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2"><Plus size={16} /> {t('create_project')}</button>
-                              )}
-                            </>
+                            <div className="max-w-xl mx-auto">
+                              <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mx-auto mb-4 border border-blue-500/20 shadow-inner">
+                                <Building2 size={32} />
+                              </div>
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-500 text-[11px] font-extrabold uppercase tracking-wider mb-3">
+                                🏗️ {currentLang === 'de' ? 'Ebene 2: Operatives Projekt-Cockpit' : 'Tier 2: Project Workspace'}
+                              </div>
+                              <h3 className="text-xl md:text-2xl font-bold text-text-primary mb-2">
+                                {currentLang === 'de' ? 'Bereit für dein erstes Projekt?' : 'Ready for your first project?'}
+                              </h3>
+                              <p className="text-text-muted text-sm leading-relaxed mb-6 font-medium">
+                                {currentLang === 'de' 
+                                  ? 'Ein Projekt ist dein operativer Arbeitsraum von A bis Z. Erst hier greifen 3D BIM Viewer (IFC), Schweizer BKP 1–9 Baukosten, 2D Pläne mit Mängel-PINs, Bau-Kamera und das Pitch Deck Studio nahtlos ineinander.'
+                                  : 'A project is your operational A to Z workspace. Only inside a project do 3D BIM (IFC), Swiss BKP budgets, 2D plans with defect pins, site cameras, and pitch deck studio converge.'}
+                              </p>
+                              <div className="flex flex-wrap items-center justify-center gap-3">
+                                {canCreateProjects && (
+                                  <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all inline-flex items-center gap-2 cursor-pointer">
+                                    <Plus size={16} /> {t('create_project')}
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => handleCreateDemoProject('construction', 'Quartier Neubau Süd - Residenz am Park', 'Musterprojekt mit Schweizer BKP 1-9 Kostenplan, 3D BIM-Modell, Terminen und Bauakte.')} 
+                                  className="px-6 py-3 bg-surface hover:bg-white/10 border border-blue-500/30 text-blue-400 hover:text-blue-300 rounded-xl text-sm font-bold transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
+                                >
+                                  <Box size={16} /> {currentLang === 'de' ? 'Musterprojekt laden (Quartier Neubau Süd)' : 'Load Sample Project'}
+                                </button>
+                              </div>
+                            </div>
                           ) : (
-                            <>
+                            <div className="max-w-md mx-auto">
                               <Archive size={48} className="mx-auto text-amber-500 mb-4 opacity-70" />
                               <h3 className="text-xl font-bold text-text-primary mb-2">Keine archivierten Projekte</h3>
-                              <p className="text-text-muted mb-6">Du hast derzeit keine archivierten Projekte.</p>
-                              <button onClick={() => setActiveProjectFilter('active')} className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2">
+                              <p className="text-text-muted mb-6 text-sm font-medium">Du hast derzeit keine archivierten Projekte.</p>
+                              <button onClick={() => setActiveProjectFilter('active')} className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2 cursor-pointer">
                                 Zu aktiven Projekten
                               </button>
-                            </>
+                            </div>
                           )}
                         </div>
                       )}
