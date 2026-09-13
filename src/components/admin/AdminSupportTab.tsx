@@ -50,8 +50,8 @@ export default function AdminSupportTab() {
             <Clock size={24} />
           </div>
           <div>
-            <div className="text-2xl font-black text-text-primary">{openTickets}</div>
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('tickets_open')}</div>
+            <div className="text-2xl font-semibold text-text-primary">{openTickets}</div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('tickets_open')}</div>
           </div>
         </div>
 
@@ -60,14 +60,14 @@ export default function AdminSupportTab() {
             <CheckCircle size={24} />
           </div>
           <div>
-            <div className="text-2xl font-black text-text-primary">{closedTickets}</div>
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('tickets_closed')}</div>
+            <div className="text-2xl font-semibold text-text-primary">{closedTickets}</div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('tickets_closed')}</div>
           </div>
         </div>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-4 border-b border-border bg-background/50 font-bold text-text-primary">
+        <div className="p-4 border-b border-border bg-background/50 font-semibold text-text-primary">
           Support-Anfragen
         </div>
         <div className="divide-y divide-border/50">
@@ -79,10 +79,10 @@ export default function AdminSupportTab() {
             tickets.map((ticket) => (
               <div key={ticket.id} className="p-4 flex items-center justify-between hover:bg-surface-hover/50 transition-colors">
                 <div>
-                  <div className="font-bold text-sm text-text-primary">{ticket.subject || t('no_subject')}</div>
+                  <div className="font-semibold text-sm text-text-primary">{ticket.subject || t('no_subject')}</div>
                   <div className="text-xs text-text-muted">{ticket.user_email || ticket.email}</div>
                 </div>
-                <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border bg-blue-500/10 text-blue-500 border-blue-500/20">
+                <span className="px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-blue-500/10 text-blue-500 border-blue-500/20">
                   {ticket.status || 'Offen'}
                 </span>
               </div>

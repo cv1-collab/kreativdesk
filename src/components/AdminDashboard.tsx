@@ -126,8 +126,8 @@ export default function AdminDashboard() {
               <Shield size={20} />
             </div>
             <div className="overflow-hidden">
-              <h1 className="font-bold text-sm tracking-wide truncate">{t('admin_control')}</h1>
-              <p className="text-[10px] text-red-500 uppercase tracking-widest font-bold">{t('root_access')}</p>
+              <h1 className="font-semibold text-sm tracking-wide truncate">{t('admin_control')}</h1>
+              <p className="text-[10px] text-red-500 uppercase tracking-widest font-semibold">{t('root_access')}</p>
             </div>
           </div>
         </div>
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
               key={item.id} 
               onClick={() => setActiveTab(item.id)} 
               className={cn(
-                "w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-bold transition-all", 
+                "w-full flex items-center px-3 py-2.5 rounded-lg text-sm font-semibold transition-all", 
                 activeTab === item.id ? "bg-red-500 text-white shadow-lg shadow-red-500/20" : "text-text-muted hover:bg-white/5 hover:text-text-primary",
                 item.className
               )}
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
                 </div>
                 <span className="truncate">{item.label}</span>
                 {item.id === 'leads' && newLeadsCount > 0 && (
-                  <span className={cn("ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold", activeTab === item.id ? "bg-white text-red-500" : "bg-red-500 text-white")}>
+                  <span className={cn("ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold", activeTab === item.id ? "bg-white text-red-500" : "bg-red-500 text-white")}>
                     {newLeadsCount}
                   </span>
                 )}
@@ -163,13 +163,13 @@ export default function AdminDashboard() {
 
         {/* 🔥 HIER SIND DIE UNTEREN BUTTONS INKLUSIVE "ZUR LANDINGPAGE" */}
         <div className="p-4 border-t border-border/50 space-y-2">
-          <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-accent-ai hover:bg-accent-ai/10 transition-all border border-transparent hover:border-accent-ai/20">
+          <button onClick={() => navigate('/')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-accent-ai hover:bg-accent-ai/10 transition-all border border-transparent hover:border-accent-ai/20">
             <Globe size={18} /> {t('to_landingpage')}
           </button>
-          <button onClick={() => navigate('/app')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-text-muted hover:bg-white/5 transition-all">
+          <button onClick={() => navigate('/app')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-text-muted hover:bg-white/5 transition-all">
             <ArrowLeft size={18} /> {t('user_workspace')}
           </button>
-          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
+          <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-500 hover:bg-red-500/10 transition-all border border-transparent hover:border-red-500/20">
             <LogOut size={18} /> {t('logout')}
           </button>
         </div>
@@ -180,17 +180,17 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <div className="md:hidden flex items-center gap-2">
                <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500"><Shield size={16} /></div>
-               <span className="font-bold text-sm truncate max-w-[120px]">{t('admin_control')}</span>
+               <span className="font-semibold text-sm truncate max-w-[120px]">{t('admin_control')}</span>
             </div>
             <div className="hidden md:flex items-center gap-2">
-              <div className="px-2.5 py-1 bg-red-500/10 text-red-500 rounded-lg text-xs font-bold border border-red-500/20 flex items-center gap-1.5 uppercase tracking-wider">
+              <div className="px-2.5 py-1 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold border border-red-500/20 flex items-center gap-1.5 uppercase tracking-wider">
                 <Shield size={14} /> Root Admin
               </div>
-              <span className="text-text-muted font-bold text-xs">/</span>
-              <span className="font-bold text-sm text-text-primary capitalize">{navItems.find(i => i.id === activeTab)?.label || activeTab}</span>
+              <span className="text-text-muted font-semibold text-xs">/</span>
+              <span className="font-semibold text-sm text-text-primary capitalize">{navItems.find(i => i.id === activeTab)?.label || activeTab}</span>
             </div>
             {kdCompany && (
-              <div className="hidden lg:flex items-center gap-2 text-xs font-bold bg-accent-ai/10 text-accent-ai px-3 py-1 rounded-full border border-accent-ai/20 ml-2">
+              <div className="hidden lg:flex items-center gap-2 text-xs font-semibold bg-accent-ai/10 text-accent-ai px-3 py-1 rounded-full border border-accent-ai/20 ml-2">
                 <Users size={14} />
                 <span>{t('licenses')}: {kdCompany.usedSeats || 1} / {kdCompany.maxSeats || 10}</span>
               </div>
@@ -198,7 +198,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-4 relative z-30">
-            <button onClick={toggleLanguage} className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-background border border-border/50 rounded-md text-xs font-bold text-text-primary hover:bg-white/5 transition-colors uppercase cursor-pointer"><Globe size={14} className="text-red-500" /> <span className="hidden sm:inline">{language}</span></button>
+            <button onClick={toggleLanguage} className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-background border border-border/50 rounded-md text-xs font-semibold text-text-primary hover:bg-white/5 transition-colors uppercase cursor-pointer"><Globe size={14} className="text-red-500" /> <span className="hidden sm:inline">{language}</span></button>
             <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer" title={t('start_tour')}><HelpCircle size={16} /></button>
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
             <button onClick={() => setShowNotifications(true)} className="p-2 text-text-muted hover:text-text-primary rounded-full transition-colors relative cursor-pointer bg-background border border-border/50 shadow-sm">
@@ -207,14 +207,14 @@ export default function AdminDashboard() {
                 <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse" />
               )}
             </button>
-            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-bold shadow-lg shadow-red-500/20 border-2 border-white/10 shrink-0 ml-1">
+            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-semibold shadow-lg shadow-red-500/20 border-2 border-white/10 shrink-0 ml-1">
                 {currentUser?.email?.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>
 
         <div className="md:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-md border-b border-border/50 overflow-x-auto custom-scrollbar shrink-0 w-full z-20 touch-pan-x">
-          <button onClick={() => navigate('/app')} className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border bg-background text-text-muted border-border/50 shrink-0">
+          <button onClick={() => navigate('/app')} className="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border bg-background text-text-muted border-border/50 shrink-0">
              <ArrowLeft size={14} /> Workspace
           </button>
           <div className="w-px h-6 bg-border mx-1 shrink-0"></div>
@@ -223,8 +223,8 @@ export default function AdminDashboard() {
               key={item.id} 
               onClick={() => setActiveTab(item.id)} 
               className={cn(
-                "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-200 border shrink-0", 
-                activeTab === item.id ? "bg-red-500 text-white border-red-500 shadow-md font-extrabold" : "bg-background text-text-muted border-border/50 hover:bg-white/5",
+                "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 border shrink-0", 
+                activeTab === item.id ? "bg-red-500 text-white border-red-500 shadow-md font-semibold" : "bg-background text-text-muted border-border/50 hover:bg-white/5",
                 item.className
               )}
             >
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
               </div>
               {item.label}
               {item.id === 'leads' && newLeadsCount > 0 && (
-                <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-black", activeTab === item.id ? "bg-white text-red-500" : "bg-red-500 text-white")}>
+                <span className={cn("text-[9px] px-1.5 py-0.2 rounded-full font-semibold", activeTab === item.id ? "bg-white text-red-500" : "bg-red-500 text-white")}>
                   {newLeadsCount}
                 </span>
               )}

@@ -192,7 +192,7 @@ export default function AdminBrandTab() {
         {/* Header Box */}
         <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h3 className="text-xl font-black text-text-primary mb-1 flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-text-primary mb-1 flex items-center gap-2">
               <Palette className="text-blue-500" size={24} />
               {t('global_branding')}
             </h3>
@@ -201,7 +201,7 @@ export default function AdminBrandTab() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shrink-0 cursor-pointer"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shrink-0 cursor-pointer"
           >
             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}
             {t('save_branding')}
@@ -214,12 +214,12 @@ export default function AdminBrandTab() {
           <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-6">
             <div className="border-b border-border/50 pb-4 flex items-center gap-2">
               <PaintBucket className="text-purple-500" size={20} />
-              <h4 className="font-bold text-base text-text-primary">{t('design')}</h4>
+              <h4 className="font-semibold text-base text-text-primary">{t('design')}</h4>
             </div>
 
             {/* Master Logo Upload */}
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('logo_preview')}</label>
+              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">{t('logo_preview')}</label>
               <div className="flex items-center gap-4">
                 <div className="w-24 h-24 rounded-2xl bg-background border-2 border-dashed border-border flex items-center justify-center overflow-hidden shrink-0 relative group">
                   {config.masterLogo ? (
@@ -229,7 +229,7 @@ export default function AdminBrandTab() {
                   )}
                 </div>
                 <div className="space-y-2 flex-1">
-                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-background border border-border/60 hover:bg-white/5 rounded-xl text-xs font-bold text-text-primary cursor-pointer transition-colors shadow-sm">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 bg-background border border-border/60 hover:bg-white/5 rounded-xl text-xs font-semibold text-text-primary cursor-pointer transition-colors shadow-sm">
                     {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                     <span>Logo Datei Hochladen</span>
                     <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
@@ -239,7 +239,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1">Logo URL (Alternativ)</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1">Logo URL (Alternativ)</label>
                 <input
                   type="url"
                   placeholder="https://deine-domain.ch/logo.png"
@@ -253,12 +253,12 @@ export default function AdminBrandTab() {
             {/* Accent Color Picker */}
             <div className="space-y-3 pt-4 border-t border-border/50">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">{t('accent_color')}</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">{t('accent_color')}</label>
                 {config.accentColor !== DEFAULT_BRAND_COLOR && (
                   <button
                     type="button"
                     onClick={handleResetColor}
-                    className="text-[11px] font-bold text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors cursor-pointer"
+                    className="text-[11px] font-semibold text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors cursor-pointer"
                     title={t('reset_color')}
                   >
                     <RotateCcw size={12} />
@@ -280,12 +280,12 @@ export default function AdminBrandTab() {
                   type="text"
                   value={config.accentColor || DEFAULT_BRAND_COLOR}
                   onChange={(e) => handleColorChange(e.target.value)}
-                  className="w-32 px-3 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-sans font-bold text-text-primary uppercase tracking-wider focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-32 px-3 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-sans font-semibold text-text-primary uppercase tracking-wider focus:outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">{t('preset_colors')}</span>
+                <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">{t('preset_colors')}</span>
                 <div className="flex items-center gap-2 flex-wrap">
                   {COLOR_PRESETS.map(preset => (
                     <button
@@ -312,11 +312,11 @@ export default function AdminBrandTab() {
               {/* Live Interactive Accent Color Preview Card */}
               <div className="mt-4 p-4 rounded-2xl bg-background/80 border border-border space-y-3 shadow-inner">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-text-primary">
                     <Eye size={14} style={{ color: config.accentColor || DEFAULT_BRAND_COLOR }} />
                     <span>{t('live_preview')}</span>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface text-text-muted font-bold border border-border">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface text-text-muted font-semibold border border-border">
                     {config.accentColor || DEFAULT_BRAND_COLOR}
                   </span>
                 </div>
@@ -329,7 +329,7 @@ export default function AdminBrandTab() {
                   {/* Sample Primary Button */}
                   <button
                     type="button"
-                    className="px-3.5 py-1.5 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-1.5 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
                     style={{ backgroundColor: config.accentColor || DEFAULT_BRAND_COLOR }}
                   >
                     <Sparkles size={13} />
@@ -338,7 +338,7 @@ export default function AdminBrandTab() {
 
                   {/* Sample Active Badge */}
                   <span
-                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border"
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border"
                     style={{
                       backgroundColor: currentShades.tint,
                       borderColor: currentShades.borderTint,
@@ -351,7 +351,7 @@ export default function AdminBrandTab() {
 
                   {/* Sample Tab Indicator */}
                   <div
-                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold border-b-2 flex items-center gap-1 bg-surface/50"
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border-b-2 flex items-center gap-1 bg-surface/50"
                     style={{
                       borderColor: config.accentColor || DEFAULT_BRAND_COLOR,
                       color: config.accentColor || DEFAULT_BRAND_COLOR
@@ -374,12 +374,12 @@ export default function AdminBrandTab() {
           <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm space-y-4">
             <div className="border-b border-border/50 pb-4 flex items-center gap-2">
               <Building2 className="text-blue-500" size={20} />
-              <h4 className="font-bold text-base text-text-primary">{t('master_data')}</h4>
+              <h4 className="font-semibold text-base text-text-primary">{t('master_data')}</h4>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('company_name')}</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1">{t('company_name')}</label>
                 <input
                   type="text"
                   value={config.companyName}
@@ -389,7 +389,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Hash size={12} /> {t('uid')}
                 </label>
                 <input
@@ -402,7 +402,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Globe size={12} /> {t('website')}
                 </label>
                 <input
@@ -415,7 +415,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Mail size={12} /> {t('email')}
                 </label>
                 <input
@@ -428,7 +428,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <Phone size={12} /> {t('phone')}
                 </label>
                 <input
@@ -441,7 +441,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <MapPin size={12} /> {t('address')}
                 </label>
                 <input
@@ -454,7 +454,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('zip')}</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1">{t('zip')}</label>
                 <input
                   type="text"
                   placeholder="8000"
@@ -465,7 +465,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1">{t('city')}</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1">{t('city')}</label>
                 <input
                   type="text"
                   placeholder="Zürich"
@@ -476,7 +476,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div className="sm:col-span-2 pt-2">
-                <label className="block text-xs font-bold text-text-muted uppercase mb-1 flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase mb-1 flex items-center gap-1">
                   <CreditCard size={12} /> {t('iban')}
                 </label>
                 <input
@@ -496,14 +496,14 @@ export default function AdminBrandTab() {
               <div className="flex items-center gap-2">
                 <ImageIcon className="text-amber-500" size={20} />
                 <div>
-                  <h4 className="font-bold text-base text-text-primary">Globaler Master-Bildschirmschoner</h4>
+                  <h4 className="font-semibold text-base text-text-primary">Globaler Master-Bildschirmschoner</h4>
                   <p className="text-xs text-text-muted">Definiere das Standard-Hintergrundbild und den Inaktivitäts-Timer für alle Workspaces.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setConfig(prev => ({ ...prev, screensaverActive: !prev.screensaverActive }))}
-                className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border", config.screensaverActive ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
+                className={cn("px-4 py-2 rounded-xl text-xs font-semibold transition-all border", config.screensaverActive ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
               >
                 {config.screensaverActive ? 'Master Screensaver: Aktiv' : 'Master Screensaver: Inaktiv'}
               </button>
@@ -511,7 +511,7 @@ export default function AdminBrandTab() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-3">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Inaktivitäts-Timer (Minuten)</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">Inaktivitäts-Timer (Minuten)</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -519,15 +519,15 @@ export default function AdminBrandTab() {
                     max={120}
                     value={config.screensaverTimeout || 5}
                     onChange={(e) => setConfig({ ...config, screensaverTimeout: Math.max(1, parseInt(e.target.value) || 5) })}
-                    className="w-24 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-bold text-text-primary text-center"
+                    className="w-24 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-semibold text-text-primary text-center"
                   />
-                  <span className="text-xs font-bold text-text-muted">Minuten ohne Interaktion</span>
+                  <span className="text-xs font-semibold text-text-muted">Minuten ohne Interaktion</span>
                 </div>
               </div>
 
               <div className="md:col-span-2 space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Master Wallpaper URL / Datei</label>
+                  <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">Master Wallpaper URL / Datei</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -535,7 +535,7 @@ export default function AdminBrandTab() {
                       setConfig(prev => ({ ...prev, loginBgImage: prev.screensaverImage }));
                       addToast('Screensaver-Bild als Login-Hintergrund übernommen!', 'info');
                     }}
-                    className="text-[11px] font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-[11px] font-semibold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
                   >
                     🔗 Für Login übernehmen
                   </button>
@@ -548,7 +548,7 @@ export default function AdminBrandTab() {
                     onChange={(e) => setConfig({ ...config, screensaverImage: e.target.value })}
                     className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                   />
-                  <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-2 shrink-0">
+                  <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-2 shrink-0">
                     <Upload size={14} className="text-amber-500" />
                     <span>Upload</span>
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'screensaverImage')} />
@@ -558,7 +558,7 @@ export default function AdminBrandTab() {
             </div>
 
             <div className="space-y-2 pt-2">
-              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Wallpaper Presets (Empfohlen)</span>
+              <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Wallpaper Presets (Empfohlen)</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { name: 'Abstract Gradient Wave', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop' },
@@ -576,7 +576,7 @@ export default function AdminBrandTab() {
                   >
                     <img src={w.url} alt={w.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2">
-                      <span className="text-[10px] font-bold text-white truncate">{w.name}</span>
+                      <span className="text-[10px] font-semibold text-white truncate">{w.name}</span>
                     </div>
                   </div>
                 ))}
@@ -590,14 +590,14 @@ export default function AdminBrandTab() {
               <div className="flex items-center gap-2">
                 <Megaphone className="text-blue-500" size={20} />
                 <div>
-                  <h4 className="font-bold text-base text-text-primary">Globales Ankündigungs-Banner (System-Wide Broadcast)</h4>
+                  <h4 className="font-semibold text-base text-text-primary">Globales Ankündigungs-Banner (System-Wide Broadcast)</h4>
                   <p className="text-xs text-text-muted">Blende wichtige Hinweise (z.B. Wartungsarbeiten, Releases) oben bei allen eingeloggten Nutzern ein.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setConfig(prev => ({ ...prev, announcementActive: !prev.announcementActive }))}
-                className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all border", config.announcementActive ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
+                className={cn("px-4 py-2 rounded-xl text-xs font-semibold transition-all border", config.announcementActive ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20" : "bg-background text-text-muted border-border hover:bg-white/5")}
               >
                 {config.announcementActive ? 'Banner: Aktiviert' : 'Banner: Deaktiviert'}
               </button>
@@ -605,7 +605,7 @@ export default function AdminBrandTab() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="md:col-span-2 space-y-2">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Ankündigungstext</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">Ankündigungstext</label>
                 <input
                   type="text"
                   placeholder="z.B. Wartungsarbeiten am Samstag ab 22:00 Uhr. Plattform bleibt erreichbar."
@@ -616,11 +616,11 @@ export default function AdminBrandTab() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Typ / Styling</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">Typ / Styling</label>
                 <select
                   value={config.announcementType || 'info'}
                   onChange={(e) => setConfig({ ...config, announcementType: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-bold text-text-primary focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
+                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-semibold text-text-primary focus:outline-none focus:border-blue-500 transition-colors cursor-pointer"
                 >
                   <option value="info">Info (Blau)</option>
                   <option value="warning">Warnung (Orange)</option>
@@ -630,7 +630,7 @@ export default function AdminBrandTab() {
               </div>
 
               <div className="md:col-span-3 space-y-2">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1">
+                <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider flex items-center gap-1">
                   <LinkIcon size={12} /> Link URL (Optional)
                 </label>
                 <input
@@ -649,14 +649,14 @@ export default function AdminBrandTab() {
             <div className="border-b border-border/50 pb-4 flex items-center gap-2">
               <Lock className="text-purple-500" size={20} />
               <div>
-                <h4 className="font-bold text-base text-text-primary">Custom Login & Registrierungs-Hintergrund</h4>
+                <h4 className="font-semibold text-base text-text-primary">Custom Login & Registrierungs-Hintergrund</h4>
                 <p className="text-xs text-text-muted">Passe das Hintergrundbild der Login- und Registrierungsseiten für dein White-Labeling an.</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider">Login Wallpaper URL / Datei</label>
+                <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider">Login Wallpaper URL / Datei</label>
                 <button
                   type="button"
                   onClick={() => {
@@ -664,7 +664,7 @@ export default function AdminBrandTab() {
                     setConfig(prev => ({ ...prev, screensaverImage: prev.loginBgImage }));
                     addToast('Login-Bild als Screensaver übernommen!', 'info');
                   }}
-                  className="text-[11px] font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   🔗 Für Screensaver übernehmen
                 </button>
@@ -677,7 +677,7 @@ export default function AdminBrandTab() {
                   onChange={(e) => setConfig({ ...config, loginBgImage: e.target.value })}
                   className="flex-1 px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 transition-colors"
                 />
-                <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold cursor-pointer transition-all flex items-center gap-2 shrink-0">
+                <label className="px-4 py-2.5 bg-background border border-border/50 hover:bg-white/5 text-text-primary rounded-xl text-xs font-semibold cursor-pointer transition-all flex items-center gap-2 shrink-0">
                   <Upload size={14} className="text-purple-400" />
                   <span>Upload</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => handleFileUpload(e, 'loginBgImage')} />
@@ -686,7 +686,7 @@ export default function AdminBrandTab() {
             </div>
 
             <div className="space-y-2 pt-2">
-              <span className="text-[11px] font-bold text-text-muted uppercase tracking-wider">Hintergrund Presets</span>
+              <span className="text-[11px] font-semibold text-text-muted uppercase tracking-wider">Hintergrund Presets</span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { name: 'Swiss Alp Panorama', url: 'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?q=80&w=2000&auto=format&fit=crop' },
@@ -704,7 +704,7 @@ export default function AdminBrandTab() {
                   >
                     <img src={w.url} alt={w.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-2">
-                      <span className="text-[10px] font-bold text-white truncate">{w.name}</span>
+                      <span className="text-[10px] font-semibold text-white truncate">{w.name}</span>
                     </div>
                   </div>
                 ))}
@@ -719,7 +719,7 @@ export default function AdminBrandTab() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}
             {t('save_branding')}

@@ -64,7 +64,7 @@ export default function AdminLegalTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-xl font-black text-text-primary mb-2 flex items-center gap-2">
+        <h3 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
           <Scale className="text-blue-500" size={24} />
           Rechtliches & Compliance (AGB / AVV)
         </h3>
@@ -81,7 +81,7 @@ export default function AdminLegalTab() {
           ].map((item) => (
             <div key={item.id} className="bg-background border border-border/50 p-5 rounded-2xl flex flex-col justify-between gap-4">
               <div>
-                <div className="font-bold text-text-primary text-sm mb-1">{item.title}</div>
+                <div className="font-semibold text-text-primary text-sm mb-1">{item.title}</div>
                 <div className="text-xs text-text-muted">
                   {legalDocs[item.id] ? `Aktuell: ${legalDocs[item.id].name}` : 'Kein Dokument hinterlegt.'}
                 </div>
@@ -98,7 +98,7 @@ export default function AdminLegalTab() {
                 <button 
                   onClick={() => item.ref.current?.click()}
                   disabled={uploading === item.id}
-                  className="px-4 py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+                  className="px-4 py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2"
                 >
                   {uploading === item.id ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                   PDF hochladen
@@ -109,7 +109,7 @@ export default function AdminLegalTab() {
                     href={legalDocs[item.id].url} 
                     target="_blank" 
                     rel="noreferrer" 
-                    className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-emerald-500 hover:underline flex items-center gap-1"
                   >
                     <FileText size={14} /> Ansehen
                   </a>

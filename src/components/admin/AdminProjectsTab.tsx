@@ -77,14 +77,14 @@ export default function AdminProjectsTab() {
             filtered.map(proj => (
               <div key={proj.id} className="bg-surface border border-border rounded-xl p-4 shadow-sm flex flex-col gap-3 group hover:border-blue-500/50 transition-colors">
                 <div className="flex justify-between items-start">
-                  <div className="font-bold text-text-primary text-sm flex items-center gap-2">
+                  <div className="font-semibold text-text-primary text-sm flex items-center gap-2">
                     <FolderOpen size={16} className="text-blue-500" /> {proj.name}
                   </div>
                   <button onClick={() => handleDeleteProject(proj.id)} className="text-text-muted hover:text-red-500 p-2 bg-background rounded-lg border border-border shrink-0 transition-colors shadow-sm opacity-0 group-hover:opacity-100"><Trash2 size={16}/></button>
                 </div>
                 <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-1 text-sm">
-                  <span className="text-xs font-bold text-text-muted">Status:</span>
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{proj.status || 'Aktiv'}</span>
+                  <span className="text-xs font-semibold text-text-muted">Status:</span>
+                  <span className="px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{proj.status || 'Aktiv'}</span>
                 </div>
               </div>
             ))

@@ -114,8 +114,8 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
             <Users size={24} />
           </div>
           <div>
-            <div className="text-2xl font-black text-text-primary">{usersCount}</div>
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('total_users')}</div>
+            <div className="text-2xl font-semibold text-text-primary">{usersCount}</div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('total_users')}</div>
           </div>
         </div>
 
@@ -124,8 +124,8 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
             <DollarSign size={24} />
           </div>
           <div>
-            <div className="text-2xl font-black text-text-primary">CHF {totalRevenue.toLocaleString()}</div>
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('monthly_revenue')}</div>
+            <div className="text-2xl font-semibold text-text-primary">CHF {totalRevenue.toLocaleString()}</div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('monthly_revenue')}</div>
           </div>
         </div>
 
@@ -134,8 +134,8 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
             <Box size={24} />
           </div>
           <div>
-            <div className="text-2xl font-black text-text-primary">{projectsCount}</div>
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('active_projects')}</div>
+            <div className="text-2xl font-semibold text-text-primary">{projectsCount}</div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">{t('active_projects')}</div>
           </div>
         </div>
 
@@ -144,14 +144,14 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
             <HardDrive size={24} />
           </div>
           <div>
-            <div className="text-2xl font-black text-text-primary">Healthy</div>
-            <div className="text-xs font-bold text-text-muted uppercase tracking-wider">Supabase Postgres</div>
+            <div className="text-2xl font-semibold text-text-primary">Healthy</div>
+            <div className="text-xs font-semibold text-text-muted uppercase tracking-wider">Supabase Postgres</div>
           </div>
         </div>
       </div>
 
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
           <TrendingUp size={20} className="text-emerald-500" />
           {t('revenue_growth')}
         </h3>

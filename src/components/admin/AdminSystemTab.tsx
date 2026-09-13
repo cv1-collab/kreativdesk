@@ -119,8 +119,8 @@ export default function AdminSystemTab() {
             <Database size={24} />
           </div>
           <div>
-            <div className="text-xl font-black text-text-primary">Supabase Postgres</div>
-            <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider">{t('operational')}</div>
+            <div className="text-xl font-semibold text-text-primary">Supabase Postgres</div>
+            <div className="text-xs font-semibold text-emerald-500 uppercase tracking-wider">{t('operational')}</div>
           </div>
         </div>
 
@@ -130,14 +130,14 @@ export default function AdminSystemTab() {
               <Wrench size={24} />
             </div>
             <div>
-              <div className="font-bold text-text-primary text-sm">{t('maintenance_mode')}</div>
+              <div className="font-semibold text-text-primary text-sm">{t('maintenance_mode')}</div>
               <div className="text-xs text-text-muted">{isMaintenance ? t('maintenance_enabled') : t('maintenance_disabled')}</div>
             </div>
           </div>
           <button 
             onClick={toggleMaintenance} 
             disabled={isUpdatingMaintenance}
-            className={cn("px-4 py-2 rounded-xl text-xs font-bold transition-all", isMaintenance ? "bg-amber-500 text-white" : "bg-background border border-border text-text-primary")}
+            className={cn("px-4 py-2 rounded-xl text-xs font-semibold transition-all", isMaintenance ? "bg-amber-500 text-white" : "bg-background border border-border text-text-primary")}
           >
             {isUpdatingMaintenance ? <Loader2 size={14} className="animate-spin" /> : isMaintenance ? t('deactivate') : t('activate')}
           </button>
@@ -145,7 +145,7 @@ export default function AdminSystemTab() {
       </div>
 
       <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
-        <h3 className="font-bold text-lg text-text-primary mb-4 flex items-center gap-2">
+        <h3 className="font-semibold text-lg text-text-primary mb-4 flex items-center gap-2">
           <Terminal size={20} className="text-blue-500" />
           {t('live_system_logs')}
         </h3>
@@ -158,7 +158,7 @@ export default function AdminSystemTab() {
             logs.map(log => (
               <div key={log.id} className="flex items-center gap-3 text-text-muted py-1.5 border-b border-border/20 last:border-0">
                 <span className="text-blue-500 font-semibold shrink-0 text-xs">{new Date(log.created_at || Date.now()).toLocaleTimeString()}</span>
-                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider shrink-0">
+                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold text-[10px] uppercase tracking-wider shrink-0">
                   {log.action || 'INFO'}
                 </span>
                 <span className="text-text-primary truncate font-normal">{log.details || log.message}</span>

@@ -351,13 +351,13 @@ export default function AdminUsersTab() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleCleanupTestUsers}
-            className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-sm text-center"
+            className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-semibold hover:bg-red-500/20 transition-all shadow-sm text-center"
           >
             {t('delete_test_users')}
           </button>
           <button
             onClick={() => setIsPreprovisionOpen(true)}
-            className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+            className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
           >
             <Shield size={16} /> {t('preprovision_vip_customer')}
           </button>
@@ -368,7 +368,7 @@ export default function AdminUsersTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
-              <tr className="border-b border-border bg-background/50 text-xs uppercase font-bold text-text-muted">
+              <tr className="border-b border-border bg-background/50 text-xs uppercase font-semibold text-text-muted">
                 <th className="px-6 py-4">{t('name_email')}</th>
                 <th className="px-6 py-4">{t('role_plan')}</th>
                 <th className="px-6 py-4 text-center">{t('status')}</th>
@@ -393,11 +393,11 @@ export default function AdminUsersTab() {
                   <tr key={user.id} className="hover:bg-surface-hover/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-500/20">
+                        <div className="w-9 h-9 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-semibold text-sm shrink-0 border border-blue-500/20">
                           {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                         </div>
                         <div>
-                          <div className="font-bold text-text-primary">{user.name || t('unnamed')}</div>
+                          <div className="font-semibold text-text-primary">{user.name || t('unnamed')}</div>
                           <div className="text-xs text-text-muted flex items-center gap-1">
                             <Mail size={12} /> {user.email}
                           </div>
@@ -405,16 +405,16 @@ export default function AdminUsersTab() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-bold text-text-primary capitalize">{user.role || 'Member'}</div>
+                      <div className="font-semibold text-text-primary capitalize">{user.role || 'Member'}</div>
                       <div className="text-xs text-text-muted">{user.plan || 'Free Trial'}</div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       {user.isPending ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20" title="Benutzer erfasst, Einladung noch ausstehend">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-amber-500/10 text-amber-500 border border-amber-500/20" title="Benutzer erfasst, Einladung noch ausstehend">
                           <Clock size={12} /> {t('pending')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                           <CheckCircle2 size={12} /> {t('active')}
                         </span>
                       )}
@@ -423,14 +423,14 @@ export default function AdminUsersTab() {
                       <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={() => handleImpersonateWorkspace(user)}
-                          className="px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
+                          className="px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                           title={t('preview_workspace_tooltip')}
                         >
                           <Eye size={14} /> {t('preview')}
                         </button>
                         <button 
                           onClick={() => handleEditClick(user)}
-                          className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-bold transition-colors"
+                          className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-semibold transition-colors"
                         >
                           {t('edit')}
                         </button>
@@ -454,14 +454,14 @@ export default function AdminUsersTab() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-surface border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-border bg-background/50">
-              <h3 className="font-bold text-text-primary">{t('edit_user')}</h3>
+              <h3 className="font-semibold text-text-primary">{t('edit_user')}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveChanges} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('full_name')}</label>
+                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('full_name')}</label>
                 <input 
-                  type="text"
+                  type="text" 
                   value={editingUser.name || ''}
                   onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
@@ -469,7 +469,7 @@ export default function AdminUsersTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('role')}</label>
+                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('role')}</label>
                 <select 
                   value={editingUser.role?.toLowerCase() || 'employee'}
                   onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
@@ -485,7 +485,7 @@ export default function AdminUsersTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('plan')}</label>
+                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('plan')}</label>
                 <select 
                   value={editingUser.plan || 'Pro'}
                   onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value })}
@@ -502,20 +502,20 @@ export default function AdminUsersTab() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">{t('max_seats')}</label>
+                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('max_seats')}</label>
                 <input 
-                  type="number"
-                  min="1"
-                  max="500"
-                  value={editingUser.maxSeats || 1}
-                  onChange={(e) => setEditingUser({ ...editingUser, maxSeats: e.target.value })}
+                  type="number" 
+                  min="1" 
+                  max="500" 
+                  value={editingUser.maxSeats || 1} 
+                  onChange={(e) => setEditingUser({ ...editingUser, maxSeats: e.target.value })} 
                   className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
                 />
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-surface-hover">{t('cancel')}</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20">{isSubmitting ? 'Speichere...' : t('save_changes')}</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-500/20">{isSubmitting ? 'Speichere...' : t('save_changes')}</button>
               </div>
             </form>
           </div>
@@ -533,7 +533,7 @@ export default function AdminUsersTab() {
                   <Sparkles size={20} />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-lg text-text-primary">VIP Concierge Akquise</h3>
+                  <h3 className="font-semibold text-lg text-text-primary">VIP Concierge Akquise</h3>
                   <p className="text-xs text-text-muted">Neuen Kunden-Workspace vorab einrichten & Einladung generieren</p>
                 </div>
               </div>
@@ -549,14 +549,14 @@ export default function AdminUsersTab() {
               <div className="space-y-5 animate-in zoom-in-95 duration-300">
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center space-y-2">
                   <CheckCircle2 size={32} className="text-emerald-500 mx-auto" />
-                  <h4 className="font-bold text-text-primary text-base">Workspace & VIP-Link sind bereit!</h4>
+                  <h4 className="font-semibold text-text-primary text-base">Workspace & VIP-Link sind bereit!</h4>
                   <p className="text-xs text-emerald-700 dark:text-emerald-300">
                     Schicke diesen persönlichen Einladungslink jetzt an <strong>{ceoName || companyName}</strong> ({ceoEmail}):
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-wider">Persönlicher VIP Einladungslink</label>
+                  <label className="text-xs font-semibold text-text-muted uppercase tracking-wider">Persönlicher VIP Einladungslink</label>
                   <div className="flex items-center gap-2 bg-background border border-border/50 rounded-xl p-2.5">
                     <input 
                       type="text" 
@@ -569,7 +569,7 @@ export default function AdminUsersTab() {
                         navigator.clipboard.writeText(createdVipLink);
                         addToast('VIP Link in Zwischenablage kopiert!', 'success');
                       }}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 shrink-0"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shrink-0"
                     >
                       <Copy size={14} /> Kopieren
                     </button>
@@ -581,13 +581,13 @@ export default function AdminUsersTab() {
                     href={`https://wa.me/?text=${encodeURIComponent(`Hallo ${ceoName || ''}, Ihr Kreativ-Desk OS Workspace für ${companyName} ist fertig eingerichtet! Hier ist Ihr persönlicher VIP-Zugangslink: ${createdVipLink}`)}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-600/20"
+                    className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-600/20"
                   >
                     💬 Per WhatsApp
                   </a>
                   <a 
                     href={`mailto:${ceoEmail}?subject=${encodeURIComponent(`Ihr Kreativ-Desk OS Workspace für ${companyName}`)}&body=${encodeURIComponent(`Hallo ${ceoName || ''},\n\nIhr eigener Kreativ-Desk OS Workspace für ${companyName} wurde fertig eingerichtet!\n\nHier ist Ihr persönlicher VIP-Link zum Starten:\n${createdVipLink}\n\nBeste Grüsse,\nKreativ Desk OS Team`)}`}
-                    className="py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-600/20"
+                    className="py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-600/20"
                   >
                     ✉️ Per E-Mail
                   </a>
@@ -602,7 +602,7 @@ export default function AdminUsersTab() {
                     setCeoEmail('');
                     setEmployeeEmailsStr('');
                   }}
-                  className="w-full py-2.5 border border-border rounded-xl text-xs font-bold text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
+                  className="w-full py-2.5 border border-border rounded-xl text-xs font-semibold text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors"
                 >
                   Schliessen
                 </button>
@@ -610,7 +610,7 @@ export default function AdminUsersTab() {
             ) : (
               <form onSubmit={handlePreprovisionSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Firmenname der Kunden-Firma *</label>
+                  <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">Firmenname der Kunden-Firma *</label>
                   <input 
                     type="text" 
                     required
@@ -623,7 +623,7 @@ export default function AdminUsersTab() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">CEO / Ansprechpartner Name</label>
+                    <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">CEO / Ansprechpartner Name</label>
                     <input 
                       type="text" 
                       placeholder="z.B. Peter Muster"
@@ -634,7 +634,7 @@ export default function AdminUsersTab() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">CEO E-Mail Adresse *</label>
+                    <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">CEO E-Mail Adresse *</label>
                     <input 
                       type="email" 
                       required
@@ -648,7 +648,7 @@ export default function AdminUsersTab() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Abo / Plan</label>
+                    <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">Abo / Plan</label>
                     <select
                       value={plan}
                       onChange={e => setPlan(e.target.value)}
@@ -662,7 +662,7 @@ export default function AdminUsersTab() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Lizenzen (Seats)</label>
+                    <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">Lizenzen (Seats)</label>
                     <input 
                       type="number" 
                       min="1" 
@@ -675,7 +675,7 @@ export default function AdminUsersTab() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-text-muted mb-1 uppercase tracking-wider">Mitarbeiter E-Mails (Optional, Komma-getrennt)</label>
+                  <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">Mitarbeiter E-Mails (Optional, Komma-getrennt)</label>
                   <input 
                     type="text" 
                     placeholder="mitarbeiter1@muster.ch, mitarbeiter2@muster.ch" 
@@ -709,7 +709,7 @@ export default function AdminUsersTab() {
                   <button 
                     type="submit" 
                     disabled={isPreprovisioning} 
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-500/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     {isPreprovisioning ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                     {isPreprovisioning ? 'Erstelle Workspace...' : '🚀 VIP Link Generieren'}

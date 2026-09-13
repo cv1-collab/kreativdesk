@@ -92,7 +92,7 @@ export default function AdminLeadsTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-xl font-black text-text-primary mb-6 flex items-center gap-2">
+        <h3 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
           <Megaphone className="text-blue-500" size={24} />
           {t('website_leads')}
         </h3>
@@ -107,9 +107,9 @@ export default function AdminLeadsTab() {
               <div key={lead.id} className="bg-background border border-border/50 p-5 rounded-2xl flex flex-col justify-between gap-4">
                 <div>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-text-primary text-base">{lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`}</span>
+                    <span className="font-semibold text-text-primary text-base">{lead.name || `${lead.first_name || ''} ${lead.last_name || ''}`}</span>
                     <span className={cn(
-                      "px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                      "px-2.5 py-1 rounded-md text-[10px] font-semibold uppercase tracking-wider border",
                       (lead.status === 'Done' || lead.status === 'Erledigt') ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20"
                     )}>
                       {lead.status === 'Done' || lead.status === 'Erledigt' ? t('status_done') : (lead.status || t('status_new'))}
@@ -123,7 +123,7 @@ export default function AdminLeadsTab() {
                 <div className="flex justify-between items-center border-t border-border/50 pt-3">
                   <button 
                     onClick={() => handleUpdateStatus(lead.id, 'Erledigt')}
-                    className="text-xs font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-semibold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <CheckCircle size={14} /> {t('mark_as_done')}
                   </button>

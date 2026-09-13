@@ -137,16 +137,16 @@ export default function AdminSalesTab() {
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1 sm:pb-0">
           <Filter size={16} className="text-text-muted shrink-0 mr-2" />
           {['All', 'Paid', 'Pending', 'Failed', 'Refunded', 'Canceled'].map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={cn("px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-colors border", filter === f ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-surface text-text-muted border-border hover:bg-white/5")}>
+            <button key={f} onClick={() => setFilter(f)} className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors border", filter === f ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-surface text-text-muted border-border hover:bg-white/5")}>
               {t(`filter_${f.toLowerCase()}`) || f}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={handleCleanupDummies} disabled={isSubmitting} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
+          <button onClick={handleCleanupDummies} disabled={isSubmitting} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 shadow-sm disabled:opacity-50">
             {t('delete_dummy_payments')}
           </button>
-          <button onClick={() => window.open('https://dashboard.stripe.com', '_blank')} className="px-4 py-2 bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 rounded-xl text-sm font-bold hover:bg-[#635BFF]/20 transition-all flex items-center justify-center gap-2 shadow-sm">
+          <button onClick={() => window.open('https://dashboard.stripe.com', '_blank')} className="px-4 py-2 bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/20 rounded-xl text-sm font-semibold hover:bg-[#635BFF]/20 transition-all flex items-center justify-center gap-2 shadow-sm">
             <ExternalLink size={16}/> {t('open_stripe')}
           </button>
         </div>
@@ -156,10 +156,10 @@ export default function AdminSalesTab() {
         <table className="w-full text-sm text-left border-collapse">
           <thead className="text-[10px] uppercase tracking-widest text-text-muted bg-background border-b border-border/50">
             <tr>
-              <th className="px-6 py-4 font-bold">{t('transaction_id')}</th>
-              <th className="px-6 py-4 font-bold">{t('user_plan')}</th>
-              <th className="px-6 py-4 font-bold text-right">{t('amount')}</th>
-              <th className="px-6 py-4 font-bold text-right">{t('status')}</th>
+              <th className="px-6 py-4 font-semibold">{t('transaction_id')}</th>
+              <th className="px-6 py-4 font-semibold">{t('user_plan')}</th>
+              <th className="px-6 py-4 font-semibold text-right">{t('amount')}</th>
+              <th className="px-6 py-4 font-semibold text-right">{t('status')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
@@ -170,17 +170,17 @@ export default function AdminSalesTab() {
                 <tr key={trx.id} onClick={() => { setSelectedTrx(trx); setIsModalOpen(true); }} className="hover:bg-background transition-colors cursor-pointer group">
                   <td className="px-6 py-4 font-mono text-xs text-text-muted">{trx.id.substring(0, 12)}...</td>
                   <td className="px-6 py-4">
-                    <p className="font-bold text-text-primary">{trx.userEmail || trx.userName || t('unknown')}</p>
+                    <p className="font-semibold text-text-primary">{trx.userEmail || trx.userName || t('unknown')}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-text-muted font-medium">{trx.plan || 'Subscription'}</p>
                       {trx.isManual && (
-                        <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest border border-purple-500/20">Manuell</span>
+                        <span className="text-[9px] bg-purple-500/10 text-purple-500 px-1.5 py-0.5 rounded uppercase font-semibold tracking-widest border border-purple-500/20">Manuell</span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right font-bold text-text-primary">CHF {trx.amount?.toFixed(2) || '0.00'}</td>
+                  <td className="px-6 py-4 text-right font-semibold text-text-primary">CHF {trx.amount?.toFixed(2) || '0.00'}</td>
                   <td className="px-6 py-4 text-right">
-                    <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase", trx.status === 'Paid' ? "bg-emerald-500/10 text-emerald-500" : trx.status === 'Pending' ? "bg-orange-500/10 text-orange-500" : "bg-red-500/10 text-red-500")}>
+                    <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase", trx.status === 'Paid' ? "bg-emerald-500/10 text-emerald-500" : trx.status === 'Pending' ? "bg-orange-500/10 text-orange-500" : "bg-red-500/10 text-red-500")}>
                       {trx.status || 'Pending'}
                     </span>
                   </td>
@@ -195,7 +195,7 @@ export default function AdminSalesTab() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-4 md:p-6 border-b border-border/50 flex items-center justify-between bg-surface/50">
-              <h3 className="font-bold flex items-center gap-2 text-text-primary"><CreditCard size={18} className="text-emerald-500"/> {t('details')}</h3>
+              <h3 className="font-semibold flex items-center gap-2 text-text-primary"><CreditCard size={18} className="text-emerald-500"/> {t('details')}</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors p-1.5 bg-background rounded-lg border border-border"><X size={20}/></button>
             </div>
             
@@ -203,18 +203,18 @@ export default function AdminSalesTab() {
               <form id="edit-trx-form" onSubmit={handleSaveTrx} className="space-y-5">
                 
                 <div className="p-4 bg-surface border border-border/50 rounded-xl space-y-3 mb-6">
-                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Transaktions-ID</span><span className="font-mono text-text-primary font-bold">{selectedTrx.id}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Nutzer</span><span className="text-text-primary font-bold">{selectedTrx.userEmail || selectedTrx.userName || 'Unbekannt'}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Betrag</span><span className="text-text-primary font-bold">CHF {selectedTrx.amount?.toFixed(2) || '0.00'}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Datum</span><span className="text-text-primary font-bold">{new Date(selectedTrx.createdAt || selectedTrx.date).toLocaleDateString()}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Transaktions-ID</span><span className="font-mono text-text-primary font-semibold">{selectedTrx.id}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Nutzer</span><span className="text-text-primary font-semibold">{selectedTrx.userEmail || selectedTrx.userName || 'Unbekannt'}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Betrag</span><span className="text-text-primary font-semibold">CHF {selectedTrx.amount?.toFixed(2) || '0.00'}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-text-muted font-medium">Datum</span><span className="text-text-primary font-semibold">{new Date(selectedTrx.createdAt || selectedTrx.date).toLocaleDateString()}</span></div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5">{t('status')}</label>
+                  <label className="block text-xs font-semibold text-text-muted uppercase tracking-widest mb-1.5">{t('status')}</label>
                   <select 
                     value={selectedTrx.status || 'Pending'} 
                     onChange={(e) => setSelectedTrx({...selectedTrx, status: e.target.value})} 
-                    className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm font-bold text-text-primary focus:outline-none focus:border-emerald-500 shadow-sm cursor-pointer"
+                    className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm font-semibold text-text-primary focus:outline-none focus:border-emerald-500 shadow-sm cursor-pointer"
                   >
                     <option value="Paid">Paid (Bezahlt)</option>
                     <option value="Pending">Pending (Ausstehend)</option>
@@ -228,12 +228,12 @@ export default function AdminSalesTab() {
             </div>
 
             <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0 sticky bottom-0 z-30">
-              <button type="button" onClick={() => handleDeleteTrx(selectedTrx.id)} disabled={isSubmitting} className="w-full sm:w-auto px-4 py-2.5 text-xs font-bold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
+              <button type="button" onClick={() => handleDeleteTrx(selectedTrx.id)} disabled={isSubmitting} className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
                 Löschen
               </button>
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-                <button form="edit-trx-form" type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
+                <button form="edit-trx-form" type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
                   {isSubmitting && <Loader2 size={16} className="animate-spin"/>} 
                   <CheckCircle2 size={18} /> {t('save_changes')}
                 </button>
