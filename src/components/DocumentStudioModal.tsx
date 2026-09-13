@@ -3,7 +3,7 @@ import {
   X, Save, Copy, Check, Sparkles, Building2, Briefcase, 
   FileText, Upload, Image as ImageIcon, Palette, Eye, EyeOff, Trash2, Loader2,
   Bold, Heading1, Heading2, List, Minus, Type, ChevronRight, CheckCircle2,
-  FileEdit, Layers
+  FileEdit, Layers, PenTool
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useProject } from '../contexts/ProjectContext';
@@ -74,6 +74,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     footer_info: 'IBAN, VAT ID, Company Registry...',
     page_view: 'Multi-Page DIN-A4 View',
     editor_view: 'Full Editor Mode',
+    wysiwyg_view: 'DIN-A4 Live Sheet (WYSIWYG)',
+    print_view: 'Multi-Page Print View',
+    compact_view: 'Compact Editor',
     font_weights: 'Font Weight',
     weight_bold: 'Bold',
     weight_semibold: 'Semibold',
@@ -127,6 +130,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     footer_info: 'IBAN, MWST-Nr., Handelsregister...',
     page_view: 'Mehrseitige DIN-A4 Ansicht',
     editor_view: 'Text-Editor Modus',
+    wysiwyg_view: 'DIN-A4 Live-Blatt (WYSIWYG)',
+    print_view: 'Mehrseitige Druckansicht',
+    compact_view: 'Kompakter Editor',
     font_weights: 'Schriftstärke / Gewicht',
     weight_bold: 'Fett (Bold)',
     weight_semibold: 'Halbfett (Semibold)',
@@ -200,7 +206,125 @@ const pdfStyles = StyleSheet.create({
   fixedFooter: { position: 'absolute', bottom: '8mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 3, textAlign: 'center', fontSize: 6.5, color: '#9ca3af' }
 });
 
-// Recursive Tag & Markdown Parser for Word-like Formatting (Bold, Semibold, Light, Book, Colors)
+// Helper: Normalize raw/legacy markup (BBCode or Markdown) to clean HTML for visual editing
+export function normalizeMarkupToHtml(content: string): string {
+  if (!content) return '<p>Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...</p>';
+  
+  // If already contains HTML paragraph/heading/span tags
+  if (/<(?:p|div|br|strong|b|span|h[1-6]|ul|li|hr)[\s>]/i.test(content)) {
+    return content
+      .replace(/\[(?:bold|b)\]([\s\S]*?)\[\/(?:bold|b)\]/gi, '<strong>$1</strong>')
+      .replace(/\[(?:semibold|sb)\]([\s\S]*?)\[\/(?:semibold|sb)\]/gi, '<span style="font-weight: 600">$1</span>')
+      .replace(/\[(?:light|l)\]([\s\S]*?)\[\/(?:light|l)\]/gi, '<span style="font-weight: 300">$1</span>')
+      .replace(/\[(?:book|regular)\]([\s\S]*?)\[\/(?:book|regular)\]/gi, '<span style="font-weight: 400">$1</span>')
+      .replace(/\[color:([^\]]+)\]([\s\S]*?)\[\/color\]/gi, '<span style="color: $1">$2</span>');
+  }
+
+  // Convert plaintext / markdown lines to rich HTML paragraphs
+  const lines = content.split('\n');
+  const htmlParts: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed) {
+      htmlParts.push('<p><br></p>');
+      continue;
+    }
+
+    if (/^[-=_*]{3,}$/.test(trimmed)) {
+      htmlParts.push('<hr class="my-3 border-slate-300">');
+      continue;
+    }
+
+    const isHeading = /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
+    
+    let formatted = rawLine
+      .replace(/\[(?:bold|b)\]([\s\S]*?)\[\/(?:bold|b)\]/gi, '<strong>$1</strong>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[(?:semibold|sb)\]([\s\S]*?)\[\/(?:semibold|sb)\]/gi, '<span style="font-weight: 600">$1</span>')
+      .replace(/\[(?:light|l)\]([\s\S]*?)\[\/(?:light|l)\]/gi, '<span style="font-weight: 300">$1</span>')
+      .replace(/\[(?:book|regular)\]([\s\S]*?)\[\/(?:book|regular)\]/gi, '<span style="font-weight: 400">$1</span>')
+      .replace(/\[color:([^\]]+)\]([\s\S]*?)\[\/color\]/gi, '<span style="color: $1">$2</span>');
+
+    if (isHeading) {
+      const headingText = formatted.replace(/^#+\s*/, '');
+      htmlParts.push(`<h3 class="text-sm font-bold uppercase tracking-wider text-slate-900 mt-4 mb-2 pb-1 border-b border-slate-200">${headingText}</h3>`);
+    } else if (/^[•\-\*]\s+/.test(trimmed)) {
+      const bulletText = formatted.replace(/^[•\-\*]\s+/, '');
+      htmlParts.push(`<p class="flex items-start gap-2 my-1 pl-2"><span class="font-bold text-slate-900">•</span><span>${bulletText}</span></p>`);
+    } else {
+      htmlParts.push(`<p class="my-1.5 leading-relaxed">${formatted}</p>`);
+    }
+  }
+
+  return htmlParts.join('\n');
+}
+
+// Helper: Convert HTML to clean plain text for clipboard copying or .txt files
+export function htmlToPlainText(html: string): string {
+  if (!html) return '';
+  let text = html
+    .replace(/<br\s*[\/]?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<hr[^>]*>/gi, '\n----------------------------------------\n');
+  text = text.replace(/<[^>]+>/g, '');
+  text = text.replace(/\[(?:bold|b)\]/gi, '').replace(/\[\/(?:bold|b)\]/gi, '');
+  text = text.replace(/\[(?:semibold|sb)\]/gi, '').replace(/\[\/(?:semibold|sb)\]/gi, '');
+  text = text.replace(/\[(?:light|l)\]/gi, '').replace(/\[\/(?:light|l)\]/gi, '');
+  text = text.replace(/\[(?:book|regular)\]/gi, '').replace(/\[\/(?:book|regular)\]/gi, '');
+  text = text.replace(/\[color:[^\]]+\]/gi, '').replace(/\[\/color\]/gi, '');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  return text.trim();
+}
+
+// Helper: Extract structured blocks from HTML or text for PDF & Page generation
+export function extractBlocksFromHtmlOrText(content: string): { type: string; text: string }[] {
+  if (!content) return [];
+  
+  let normalized = content
+    .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n')
+    .replace(/<hr[^>]*>/gi, '\n---\n')
+    .replace(/<br\s*[\/]?>/gi, '\n');
+
+  const lines = normalized.split('\n');
+  const blocks: { type: string; text: string }[] = [];
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      blocks.push({ type: 'spacer', text: '' });
+      continue;
+    }
+    if (/^[-=_*]{3,}$/.test(trimmed)) {
+      blocks.push({ type: 'divider', text: '' });
+      continue;
+    }
+    const isHeading = /^<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i.test(trimmed) || 
+                      /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
+    if (isHeading) {
+      const cleanHeading = trimmed.replace(/<[^>]+>/g, '').replace(/^#+\s*/, '');
+      blocks.push({ type: 'heading', text: cleanHeading });
+      continue;
+    }
+    const isBullet = /^<li[^>]*>([\s\S]*?)<\/li>/i.test(trimmed) || /^[•\-\*]\s+/.test(trimmed);
+    if (isBullet) {
+      const cleanBullet = trimmed.replace(/<[^>]+>/g, '').replace(/^[•\-\*]\s+/, '');
+      blocks.push({ type: 'bullet', text: cleanBullet });
+      continue;
+    }
+    blocks.push({ type: 'paragraph', text: trimmed });
+  }
+
+  return blocks;
+}
+
+// Recursive Tag & HTML Parser for Word-like Formatting (Bold, Semibold, Light, Book, Colors)
 const parseStyledTokens = (
   text: string,
   isPdf: boolean,
@@ -208,7 +332,7 @@ const parseStyledTokens = (
 ): React.ReactNode[] => {
   if (!text) return [];
 
-  const tagRegex = /(\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/g;
+  const tagRegex = /(<strong[^>]*>[\s\S]*?<\/strong>|<b[^>]*>[\s\S]*?<\/b>|<span[^>]*>[\s\S]*?<\/span>|<font[^>]*>[\s\S]*?<\/font>|\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/gi;
 
   const parts = text.split(tagRegex);
   const nodes: React.ReactNode[] = [];
@@ -216,7 +340,36 @@ const parseStyledTokens = (
   parts.forEach((part, idx) => {
     if (!part) return;
 
-    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+    if (/^<(strong|b)[^>]*>([\s\S]*?)<\/(strong|b)>$/i.test(part)) {
+      const match = part.match(/^<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>$/i);
+      const inner = match ? match[1] : '';
+      const nextStyle = { ...activeStyle, weight: 'bold' as const };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `b-h-${idx}`));
+    } else if (/^<span[^>]*>([\s\S]*?)<\/span>$/i.test(part)) {
+      const match = part.match(/^<span([^>]*)>([\s\S]*?)<\/span>$/i);
+      const attrs = match ? match[1] : '';
+      const inner = match ? match[2] : '';
+      let nextStyle = { ...activeStyle };
+      
+      if (/font-weight:\s*(?:600|bold)/i.test(attrs) || /font-semibold/i.test(attrs)) {
+        nextStyle.weight = 'semibold';
+      } else if (/font-weight:\s*300/i.test(attrs) || /font-light/i.test(attrs)) {
+        nextStyle.weight = 'light';
+      } else if (/font-weight:\s*400/i.test(attrs) || /font-normal/i.test(attrs)) {
+        nextStyle.weight = 'normal';
+      }
+      const colorMatch = attrs.match(/color:\s*([^";]+)/i);
+      if (colorMatch) {
+        nextStyle.color = colorMatch[1].trim();
+      }
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `sp-${idx}`));
+    } else if (/^<font[^>]*>([\s\S]*?)<\/font>$/i.test(part)) {
+      const match = part.match(/^<font[^>]*color=["']([^"']+)["'][^>]*>([\s\S]*?)<\/font>$/i);
+      const color = match ? match[1] : undefined;
+      const inner = match ? match[2] : part.replace(/<[^>]+>/g, '');
+      const nextStyle = { ...activeStyle, color: color || activeStyle.color };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `ft-${idx}`));
+    } else if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
       const inner = part.slice(2, -2);
       const nextStyle = { ...activeStyle, weight: 'bold' as const };
       nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `b-${idx}`));
@@ -255,7 +408,8 @@ const parseStyledTokens = (
         nodes.push(renderTokenNode(part, activeStyle, isPdf, `txt-${idx}`));
       }
     } else {
-      nodes.push(renderTokenNode(part, activeStyle, isPdf, `txt-${idx}`));
+      const cleanText = isPdf ? part.replace(/<[^>]+>/g, '') : part;
+      nodes.push(renderTokenNode(cleanText, activeStyle, isPdf, `txt-${idx}`));
     }
   });
 
@@ -324,29 +478,7 @@ function DocumentStudioPDFDocument({
   const primaryColor = settings?.accentColor || '#09090b';
   const logoUrl = settings?.logo || companyData.logo;
 
-  const contentBlocks = (docContent || '').split('\n').reduce((acc: any[], line: string) => {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      acc.push({ type: 'spacer', text: '' });
-      return acc;
-    }
-    if (/^[-=_*]{3,}$/.test(trimmed)) {
-      acc.push({ type: 'divider', text: '' });
-      return acc;
-    }
-    const isMainHeading = /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
-    if (isMainHeading) {
-      acc.push({ type: 'heading', text: trimmed.replace(/^#+\s*/, '') });
-      return acc;
-    }
-    const isBullet = /^[•\-\*]\s+/.test(trimmed);
-    if (isBullet) {
-      acc.push({ type: 'bullet', text: trimmed.replace(/^[•\-\*]\s+/, '') });
-      return acc;
-    }
-    acc.push({ type: 'paragraph', text: trimmed });
-    return acc;
-  }, []);
+  const contentBlocks = extractBlocksFromHtmlOrText(docContent || '');
 
   return (
     <Document>
@@ -619,7 +751,7 @@ export default function DocumentStudioModal({
   
   // Typography State
   const [selectedFontId, setSelectedFontId] = useState<string>('Inter');
-  const [canvasViewMode, setCanvasViewMode] = useState<'pages' | 'editor'>('pages');
+  const [canvasViewMode, setCanvasViewMode] = useState<'pages' | 'preview' | 'editor'>('pages');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
@@ -657,21 +789,42 @@ export default function DocumentStudioModal({
   });
 
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const compactEditorRef = useRef<HTMLDivElement>(null);
+  const isTypingRef = useRef(false);
+
+  const setEditorRef = (node: HTMLDivElement | null) => {
+    (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (node && !isTypingRef.current && node.innerHTML !== docContent) {
+      node.innerHTML = docContent;
+    }
+  };
+
+  const setCompactEditorRef = (node: HTMLDivElement | null) => {
+    (compactEditorRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    if (node && !isTypingRef.current && node.innerHTML !== docContent) {
+      node.innerHTML = docContent;
+    }
+  };
 
   const activeFont = FONT_OPTIONS.find(f => f.id === selectedFontId) || FONT_OPTIONS[0];
 
   useEffect(() => {
     setDocTitle(initialTitle || 'KI-Vorlage (Vertrag / Brief)');
-    setDocContent(initialContent || '');
+    const normalized = normalizeMarkupToHtml(initialContent || '');
+    setDocContent(normalized);
   }, [initialTitle, initialContent]);
 
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(380, textareaRef.current.scrollHeight)}px`;
+    if (!isTypingRef.current) {
+      if (editorRef.current && editorRef.current.innerHTML !== docContent) {
+        editorRef.current.innerHTML = docContent;
+      }
+      if (compactEditorRef.current && compactEditorRef.current.innerHTML !== docContent) {
+        compactEditorRef.current.innerHTML = docContent;
+      }
     }
-  }, [docContent]);
+  }, [docContent, canvasViewMode]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -714,33 +867,146 @@ export default function DocumentStudioModal({
     }
   };
 
-  // Text formatting insertion helper (Word-style text selection wrapping)
-  const insertFormatting = (prefix: string, suffix = '') => {
-    if (canvasViewMode !== 'editor') {
-      setCanvasViewMode('editor');
+  // Helper: Get the currently active editable element
+  const getActiveEditor = () => {
+    if (canvasViewMode === 'editor' && compactEditorRef.current) {
+      return compactEditorRef.current;
     }
-    setTimeout(() => {
-      if (!textareaRef.current) {
-        setDocContent(prev => prev + '\n' + prefix + (suffix ? 'Text' + suffix : ''));
-        return;
-      }
-      const el = textareaRef.current;
-      const start = el.selectionStart ?? docContent.length;
-      const end = el.selectionEnd ?? docContent.length;
-      const selected = docContent.substring(start, end);
-      const sampleWord = prefix.includes('bold') ? 'Fetter Text' : 
-                         prefix.includes('semibold') ? 'Halbfetter Text' : 
-                         prefix.includes('light') ? 'Feiner Text' : 
-                         prefix.includes('book') ? 'Text' :
-                         prefix.includes('color') ? 'Farbiger Text' : 'Text';
-      const replacement = selected ? `${prefix}${selected}${suffix}` : `${prefix}${sampleWord}${suffix}`;
-      const newContent = docContent.substring(0, start) + replacement + docContent.substring(end);
-      setDocContent(newContent);
-      setTimeout(() => {
-        el.focus();
-        el.setSelectionRange(start + prefix.length, start + replacement.length - suffix.length);
-      }, 50);
-    }, canvasViewMode !== 'editor' ? 80 : 0);
+    return editorRef.current || compactEditorRef.current;
+  };
+
+  const syncContent = () => {
+    const el = getActiveEditor();
+    if (el) {
+      setDocContent(el.innerHTML);
+    }
+  };
+
+  // Direct WYSIWYG Formatting Helpers (with instant visual feedback on selected text)
+  const handleApplyBold = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('bold', false);
+    syncContent();
+  };
+
+  const handleApplySemibold = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      document.execCommand('bold', false);
+      syncContent();
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontWeight = '600';
+    span.className = 'font-semibold text-slate-900';
+    try {
+      const contents = range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      sel.addRange(newRange);
+    } catch (e) {
+      document.execCommand('bold', false);
+    }
+    syncContent();
+  };
+
+  const handleApplyBook = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      document.execCommand('removeFormat', false);
+      syncContent();
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontWeight = '400';
+    span.className = 'font-normal text-slate-800';
+    try {
+      const contents = range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      sel.addRange(newRange);
+    } catch (e) {
+      document.execCommand('removeFormat', false);
+    }
+    syncContent();
+  };
+
+  const handleApplyLight = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+    const span = document.createElement('span');
+    span.style.fontWeight = '300';
+    span.className = 'font-light text-slate-600';
+    try {
+      const contents = range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      sel.addRange(newRange);
+    } catch (e) {
+      console.warn("Light format fallback:", e);
+    }
+    syncContent();
+  };
+
+  const handleApplyColor = (hex: string) => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('foreColor', false, hex);
+    syncContent();
+  };
+
+  const handleApplyHeading = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('formatBlock', false, '<h3>');
+    syncContent();
+  };
+
+  const handleApplySubheading = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('formatBlock', false, '<h4>');
+    syncContent();
+  };
+
+  const handleApplyBulletList = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('insertUnorderedList', false);
+    syncContent();
+  };
+
+  const handleApplyDivider = () => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('insertHorizontalRule', false);
+    syncContent();
+  };
+
+  const handleApplyFontFamily = (fontFamily: string) => {
+    const el = getActiveEditor();
+    if (el) el.focus();
+    document.execCommand('fontName', false, fontFamily);
+    syncContent();
   };
 
   // Quick prefill from selected project
@@ -825,7 +1091,7 @@ REFERENZ: ${docReference}
 ${cleanTitle.toUpperCase()}
 --------------------------------------------------
 
-${docContent}
+${htmlToPlainText(docContent)}
 
 ${showSignatures ? `--------------------------------------------------
 UNTERSCHRIFTEN & BESTÄTIGUNG:
@@ -980,9 +1246,10 @@ ${footerText}
   };
 
   const handleCopyText = () => {
-    navigator.clipboard.writeText(docContent);
+    const cleanText = htmlToPlainText(docContent);
+    navigator.clipboard.writeText(cleanText);
     setIsCopied(true);
-    addToast('Vertragstext in Zwischenablage kopiert!', 'info');
+    addToast('Vertragstext sauber kopiert (ohne Code-Tags)!', 'info');
     setTimeout(() => setIsCopied(false), 2000);
   };
 
@@ -1219,7 +1486,8 @@ ${footerText}
                 <div className="grid grid-cols-4 gap-1">
                   <button
                     type="button"
-                    onClick={() => insertFormatting('[bold]', '[/bold]')}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyBold}
                     className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                     title={t('weight_bold')}
                   >
@@ -1227,7 +1495,8 @@ ${footerText}
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormatting('[semibold]', '[/semibold]')}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplySemibold}
                     className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-semibold text-slate-900 dark:text-white transition-colors cursor-pointer"
                     title={t('weight_semibold')}
                   >
@@ -1235,7 +1504,8 @@ ${footerText}
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormatting('[book]', '[/book]')}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyBook}
                     className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-normal text-slate-900 dark:text-white transition-colors cursor-pointer"
                     title={t('weight_book')}
                   >
@@ -1243,7 +1513,8 @@ ${footerText}
                   </button>
                   <button
                     type="button"
-                    onClick={() => insertFormatting('[light]', '[/light]')}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyLight}
                     className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-light text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
                     title={t('weight_light')}
                   >
@@ -1260,17 +1531,22 @@ ${footerText}
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => insertFormatting(`[color:${c.hex}]`, '[/color]')}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => handleApplyColor(c.hex)}
                       className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 hover:scale-125 transition-transform cursor-pointer shadow-xs"
                       style={{ backgroundColor: c.hex }}
                       title={`${c.label} (${c.hex})`}
                     />
                   ))}
-                  <label className="relative w-5 h-5 rounded-full border border-dashed border-slate-400 hover:scale-125 transition-transform cursor-pointer flex items-center justify-center overflow-hidden" title="Eigene Farbe wählen">
+                  <label 
+                    onMouseDown={e => e.preventDefault()}
+                    className="relative w-5 h-5 rounded-full border border-dashed border-slate-400 hover:scale-125 transition-transform cursor-pointer flex items-center justify-center overflow-hidden" 
+                    title="Eigene Farbe wählen"
+                  >
                     <input 
                       type="color" 
                       className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                      onChange={e => insertFormatting(`[color:${e.target.value}]`, '[/color]')}
+                      onChange={e => handleApplyColor(e.target.value)}
                     />
                     <Palette size={10} className="text-slate-500" />
                   </label>
@@ -1281,23 +1557,26 @@ ${footerText}
               <div className="grid grid-cols-4 gap-1 pt-1">
                 <button
                   type="button"
-                  onClick={() => insertFormatting('\n\n1. ', '\n')}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={handleApplyHeading}
                   className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
-                  title="Haupttitel (1. ABSCHNITT)"
+                  title="Haupttitel (Abschnitt)"
                 >
                   <Heading1 size={14} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertFormatting('\n• Phase 31: ', '\n')}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={handleApplySubheading}
                   className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
-                  title="Unterabschnitt (Phase:)"
+                  title="Unterabschnitt"
                 >
                   <Heading2 size={14} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertFormatting('\n• ', '')}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={handleApplyBulletList}
                   className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                   title="Aufzählungspunkt (•)"
                 >
@@ -1305,7 +1584,8 @@ ${footerText}
                 </button>
                 <button
                   type="button"
-                  onClick={() => insertFormatting('\n--------------------------------------------------\n', '')}
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={handleApplyDivider}
                   className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                   title="Trennlinie"
                 >
@@ -1497,7 +1777,7 @@ ${footerText}
           
           {/* Canvas Mode Switcher Toolbar */}
           <div className="w-full max-w-[210mm] mb-4 flex items-center justify-between gap-2 bg-white dark:bg-slate-900 p-2 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm print:hidden">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <button
                 type="button"
                 onClick={() => setCanvasViewMode('pages')}
@@ -1508,8 +1788,22 @@ ${footerText}
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
+                <FileEdit size={14} />
+                <span>{t('wysiwyg_view')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCanvasViewMode('preview')}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
+                  canvasViewMode === 'preview'
+                    ? "bg-amber-500 text-slate-950 shadow-sm font-black"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                )}
+              >
                 <Layers size={14} />
-                {t('page_view')} ({pages.length})
+                <span>{t('print_view')} ({pages.length})</span>
               </button>
 
               <button
@@ -1522,20 +1816,275 @@ ${footerText}
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <FileEdit size={14} />
-                {t('editor_view')}
+                <PenTool size={14} />
+                <span>{t('compact_view')}</span>
               </button>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 hidden sm:inline">
-                Schrift: <strong className="text-slate-900 dark:text-white">{activeFont.id}</strong>
+                Schrift: <strong className="text-slate-900 dark:text-white">{activeFont.label}</strong>
               </span>
             </div>
           </div>
 
-          {/* MODE 1: MULTI-PAGE DIN-A4 LIVE PREVIEW SHEETS */}
-          {canvasViewMode === 'pages' ? (
+          {/* MODE 1: DIN-A4 LIVE-BLATT (WYSIWYG DIRECT EDITING) */}
+          {canvasViewMode === 'pages' && (
+            <div className="w-full max-w-[210mm] flex flex-col items-center">
+              
+              {/* Top Quick Formatting Toolbar right above sheet */}
+              <div className="w-full mb-3 flex flex-wrap items-center justify-between gap-2 px-2 print:hidden">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 shadow-sm flex items-center gap-1.5">
+                    <span>📄</span>
+                    <span>DIN-A4 Live-Blatt (Direkt editierbar)</span>
+                  </span>
+                </div>
+
+                {/* Floating Fast Formatting Ribbon */}
+                <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 shadow-sm">
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyBold}
+                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-black text-slate-900 dark:text-white transition-colors cursor-pointer"
+                    title={t('weight_bold')}
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplySemibold}
+                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-semibold text-slate-900 dark:text-white transition-colors cursor-pointer"
+                    title={t('weight_semibold')}
+                  >
+                    SB
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyBook}
+                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-normal text-slate-900 dark:text-white transition-colors cursor-pointer"
+                    title={t('weight_book')}
+                  >
+                    Book
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyLight}
+                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-light text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                    title={t('weight_light')}
+                  >
+                    Light
+                  </button>
+
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+                  {/* Quick Color Swatches */}
+                  <div className="flex items-center gap-1">
+                    {TEXT_COLORS.slice(0, 5).map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => handleApplyColor(c.hex)}
+                        className="w-3.5 h-3.5 rounded-full hover:scale-125 transition-transform cursor-pointer border border-slate-300 shadow-2xs"
+                        style={{ backgroundColor: c.hex }}
+                        title={`${c.label} (${c.hex})`}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyHeading}
+                    className="p-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                    title="Überschrift"
+                  >
+                    <Heading1 size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyBulletList}
+                    className="p-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                    title="Aufzählung"
+                  >
+                    <List size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={handleApplyDivider}
+                    className="p-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                    title="Trennlinie"
+                  >
+                    <Minus size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Physical DIN-A4 Live Sheet (Directly Editable) */}
+              <div 
+                className="w-full min-h-[297mm] bg-white text-slate-900 shadow-2xl rounded-sm p-6 sm:p-10 md:p-[20mm] border border-slate-200 flex flex-col justify-between relative print:shadow-none print:border-none print:p-[15mm] print:w-full print:max-w-none"
+                style={{ fontFamily: activeFont.fontStack }}
+              >
+                <div>
+                  {/* Swiss Letter Header */}
+                  <div 
+                    className="flex justify-between items-start border-b-2 pb-5 mb-6 transition-colors"
+                    style={{ borderColor: accentColor }}
+                  >
+                    <div>
+                      <h1 className="text-xl font-black text-slate-900 uppercase tracking-wider">{companyData.name}</h1>
+                      <p className="text-xs text-slate-600 font-medium mt-1">{companyData.street} • {companyData.zipCity}</p>
+                      <p className="text-[11px] text-blue-600 font-bold mt-0.5">{companyData.website}</p>
+                    </div>
+                    {companyData.logo ? (
+                      <img src={companyData.logo} alt="Logo" className="h-11 object-contain max-w-[170px]" />
+                    ) : (
+                      <div 
+                        className="w-11 h-11 rounded-xl text-white font-black flex items-center justify-center text-xl shadow-md"
+                        style={{ backgroundColor: accentColor }}
+                      >
+                        K
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recipient Address & Meta Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-8 text-xs">
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 focus-within:ring-1 focus-within:ring-amber-500 transition-all">
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Empfänger</div>
+                      <input
+                        type="text"
+                        value={recipientName}
+                        onChange={e => setRecipientName(e.target.value)}
+                        className="font-bold text-slate-900 text-xs sm:text-sm w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        placeholder={t('recipient_name')}
+                      />
+                      <input
+                        type="text"
+                        value={recipientStreet}
+                        onChange={e => setRecipientStreet(e.target.value)}
+                        className="text-slate-700 w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        placeholder={t('street')}
+                      />
+                      <input
+                        type="text"
+                        value={recipientZipCity}
+                        onChange={e => setRecipientZipCity(e.target.value)}
+                        className="text-slate-700 font-medium w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        placeholder={t('zip_city')}
+                      />
+                    </div>
+
+                    <div className="text-right space-y-1.5 self-end">
+                      <input
+                        type="text"
+                        value={docPlaceDate}
+                        onChange={e => setDocPlaceDate(e.target.value)}
+                        className="font-bold text-slate-900 text-xs text-right w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        placeholder={t('place_date')}
+                      />
+                      <input
+                        type="text"
+                        value={docReference}
+                        onChange={e => setDocReference(e.target.value)}
+                        className="text-slate-500 font-medium text-[11px] text-right w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        placeholder={t('reference')}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Document Subject Title */}
+                  <div className="mb-6">
+                    <input
+                      type="text"
+                      value={docTitle}
+                      onChange={e => setDocTitle(e.target.value)}
+                      className="w-full text-lg md:text-xl font-bold text-slate-900 border-b border-slate-200 hover:border-slate-300 focus:border-amber-500 outline-none pb-1 bg-transparent tracking-tight transition-colors"
+                      placeholder={t('subject_title')}
+                    />
+                  </div>
+
+                  {/* LIVE WYSIWYG Editable Document Body */}
+                  <div
+                    ref={setEditorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => {
+                      isTypingRef.current = true;
+                      setDocContent(e.currentTarget.innerHTML);
+                      setTimeout(() => {
+                        isTypingRef.current = false;
+                      }, 150);
+                    }}
+                    onBlur={(e) => {
+                      isTypingRef.current = false;
+                      setDocContent(e.currentTarget.innerHTML);
+                    }}
+                    className="outline-none min-h-[460px] text-xs md:text-sm leading-relaxed text-slate-800 focus:bg-amber-50/15 focus:ring-1 focus:ring-amber-500/30 rounded-lg p-2 transition-all"
+                    style={{ fontFamily: activeFont.fontStack }}
+                  />
+                </div>
+
+                {/* Dual Signature Block & Footer */}
+                <div>
+                  {showSignatures && (
+                    <div className="pt-6 border-t-2 border-slate-900 mt-8">
+                      <div className="text-[10px] font-bold text-slate-600 mb-4 uppercase tracking-wider">
+                        {t('signatures_heading')}
+                      </div>
+                      <div className="grid grid-cols-2 gap-8 text-xs">
+                        <div>
+                          <div className="text-slate-500 mb-8 text-[11px]">{t('place_date_line')} _______________________</div>
+                          <input
+                            type="text"
+                            value={clientSignatory}
+                            onChange={e => setClientSignatory(e.target.value)}
+                            className="border-t border-slate-900 pt-1.5 font-bold text-slate-900 text-xs w-full bg-transparent outline-none focus:border-amber-500"
+                          />
+                          <div className="text-[10px] text-slate-500">{t('signature_client')}</div>
+                        </div>
+
+                        <div>
+                          <div className="text-slate-500 mb-8 text-[11px]">{t('place_date_line')} _______________________</div>
+                          <input
+                            type="text"
+                            value={architectSignatory}
+                            onChange={e => setArchitectSignatory(e.target.value)}
+                            className="border-t border-slate-900 pt-1.5 font-bold text-slate-900 text-xs w-full bg-transparent outline-none focus:border-amber-500"
+                          />
+                          <div className="text-[10px] text-slate-500">{t('signature_architect')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Footer on DIN-A4 Live Page */}
+                  <div className="pt-4 mt-6 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400 font-sans tracking-tight">
+                    <input
+                      type="text"
+                      value={footerText}
+                      onChange={e => setFooterText(e.target.value)}
+                      className="truncate max-w-[400px] bg-transparent outline-none border-b border-transparent focus:border-slate-300"
+                    />
+                    <div className="font-bold text-slate-500">Seite 1 von {pages.length}</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* MODE 2: MULTI-PAGE DIN-A4 PRINT PREVIEW SHEETS */}
+          {canvasViewMode === 'preview' && (
             <div className="w-full max-w-[210mm] space-y-8 print:space-y-0">
               {pages.map((page) => (
                 <div key={page.pageNumber} className="flex flex-col items-center">
@@ -1604,13 +2153,9 @@ ${footerText}
 
                           {/* Document Subject Title */}
                           <div className="mb-6">
-                            <input
-                              type="text"
-                              value={docTitle}
-                              onChange={e => setDocTitle(e.target.value)}
-                              className="w-full text-lg md:text-xl font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-600 outline-none pb-1 bg-transparent tracking-tight"
-                              placeholder={t('subject_title')}
-                            />
+                            <h2 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight pb-1 border-b border-transparent">
+                              {docTitle}
+                            </h2>
                           </div>
                         </>
                       ) : (
@@ -1666,48 +2211,54 @@ ${footerText}
                 </div>
               ))}
             </div>
-          ) : (
-            /* MODE 2: DIRECT TEXT & PARAGRAPH EDITOR */
-            <div className="w-full max-w-[210mm] bg-white text-slate-900 shadow-2xl rounded-2xl p-6 sm:p-8 border border-slate-200 flex flex-col justify-between">
+          )}
+
+          {/* MODE 3: DIRECT TEXT & PARAGRAPH EDITOR */}
+          {canvasViewMode === 'editor' && (
+            <div className="w-full max-w-[210mm] bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xl rounded-2xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
               <div>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div>
-                    <h3 className="font-bold text-sm text-slate-900">Text- & Paragrafen-Editor</h3>
-                    <p className="text-xs text-slate-500">Bearbeite den gesamten Vertragstext mit automatischem DIN-A4 Seitenumbruch.</p>
+                    <h3 className="font-bold text-sm text-slate-900 dark:text-white">Text- & Paragrafen-Editor</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Fokussierter Editor mit Live-Formatierung und automatischer DIN-A4 Seitenberechnung.</p>
                   </div>
 
                   {/* Word-Style Typography & Color Ribbon */}
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Font Weight Toggles */}
-                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 shadow-xs">
+                    <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700 shadow-xs">
                       <button
                         type="button"
-                        onClick={() => insertFormatting('[bold]', '[/bold]')}
-                        className="px-2 py-1 hover:bg-white rounded text-xs font-bold text-slate-900 transition-colors cursor-pointer"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplyBold}
+                        className="px-2 py-1 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                         title={t('weight_bold')}
                       >
                         B
                       </button>
                       <button
                         type="button"
-                        onClick={() => insertFormatting('[semibold]', '[/semibold]')}
-                        className="px-2 py-1 hover:bg-white rounded text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplySemibold}
+                        className="px-2 py-1 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
                         title={t('weight_semibold')}
                       >
                         SB
                       </button>
                       <button
                         type="button"
-                        onClick={() => insertFormatting('[book]', '[/book]')}
-                        className="px-2 py-1 hover:bg-white rounded text-xs font-normal text-slate-800 transition-colors cursor-pointer"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplyBook}
+                        className="px-2 py-1 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-normal text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
                         title={t('weight_book')}
                       >
                         Book
                       </button>
                       <button
                         type="button"
-                        onClick={() => insertFormatting('[light]', '[/light]')}
-                        className="px-2 py-1 hover:bg-white rounded text-xs font-light text-slate-600 transition-colors cursor-pointer"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplyLight}
+                        className="px-2 py-1 hover:bg-white dark:hover:bg-slate-700 rounded text-xs font-light text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
                         title={t('weight_light')}
                       >
                         Light
@@ -1715,22 +2266,23 @@ ${footerText}
                     </div>
 
                     {/* Color Swatches Palette */}
-                    <div className="flex items-center gap-1 bg-slate-100 rounded-lg px-2 py-1 border border-slate-200 shadow-xs">
+                    <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg px-2 py-1 border border-slate-200 dark:border-slate-700 shadow-xs">
                       {TEXT_COLORS.map(c => (
                         <button
                           key={c.id}
                           type="button"
-                          onClick={() => insertFormatting(`[color:${c.hex}]`, '[/color]')}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => handleApplyColor(c.hex)}
                           className="w-3.5 h-3.5 rounded-full hover:scale-125 transition-transform cursor-pointer border border-slate-300 shadow-2xs"
                           style={{ backgroundColor: c.hex }}
                           title={`${c.label} (${c.hex})`}
                         />
                       ))}
-                      <label className="relative w-3.5 h-3.5 rounded-full border border-dashed border-slate-400 hover:scale-125 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ml-0.5" title="Eigene Farbe wählen">
+                      <label onMouseDown={e => e.preventDefault()} className="relative w-3.5 h-3.5 rounded-full border border-dashed border-slate-400 hover:scale-125 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ml-0.5" title="Eigene Farbe wählen">
                         <input 
                           type="color" 
                           className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                          onChange={e => insertFormatting(`[color:${e.target.value}]`, '[/color]')}
+                          onChange={e => handleApplyColor(e.target.value)}
                         />
                         <Palette size={8} className="text-slate-600" />
                       </label>
@@ -1740,27 +2292,39 @@ ${footerText}
                     <div className="flex items-center gap-0.5">
                       <button
                         type="button"
-                        onClick={() => insertFormatting('\n\n1. ', '\n')}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-                        title="Hauptabschnitt (1. )"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplyHeading}
+                        className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Hauptabschnitt"
                       >
                         <Heading1 size={13} />
                       </button>
                       <button
                         type="button"
-                        onClick={() => insertFormatting('\n• Phase 31: ', '\n')}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-                        title="Unterabschnitt (Phase: )"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplySubheading}
+                        className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Unterabschnitt"
                       >
                         <Heading2 size={13} />
                       </button>
                       <button
                         type="button"
-                        onClick={() => insertFormatting('\n• ', '')}
-                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-                        title="Aufzählungspunkt (• )"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplyBulletList}
+                        className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Aufzählungspunkt"
                       >
                         <List size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={handleApplyDivider}
+                        className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                        title="Trennlinie"
+                      >
+                        <Minus size={13} />
                       </button>
                     </div>
                   </div>
@@ -1772,30 +2336,41 @@ ${footerText}
                     type="text"
                     value={docTitle}
                     onChange={e => setDocTitle(e.target.value)}
-                    className="w-full text-base font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 outline-none focus:border-blue-600"
+                    className="w-full text-base font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-amber-500"
                     placeholder={t('subject_title')}
                   />
                 </div>
 
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Vertragsinhalt & Klauseln</label>
-                  <textarea
-                    ref={textareaRef}
-                    value={docContent}
-                    onChange={e => setDocContent(e.target.value)}
-                    placeholder={t('document_content')}
-                    className="w-full bg-slate-50/70 hover:bg-slate-50 focus:bg-white border border-slate-300 focus:border-blue-600 rounded-xl p-4 text-xs md:text-sm text-slate-800 leading-relaxed outline-none resize-none min-h-[420px] font-mono transition-all"
+                  <div
+                    ref={setCompactEditorRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={(e) => {
+                      isTypingRef.current = true;
+                      setDocContent(e.currentTarget.innerHTML);
+                      setTimeout(() => {
+                        isTypingRef.current = false;
+                      }, 150);
+                    }}
+                    onBlur={(e) => {
+                      isTypingRef.current = false;
+                      setDocContent(e.currentTarget.innerHTML);
+                    }}
+                    className="w-full bg-slate-50/70 dark:bg-slate-800/70 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-amber-500 rounded-xl p-4 text-xs md:text-sm text-slate-800 dark:text-slate-100 leading-relaxed outline-none min-h-[460px] transition-all"
+                    style={{ fontFamily: activeFont.fontStack }}
                   />
                 </div>
 
-                <div className="flex justify-between items-center text-xs text-slate-400 mt-2">
-                  <span>{docContent.length} Zeichen • ca. {pages.length} DIN-A4 Seiten</span>
+                <div className="flex justify-between items-center text-xs text-slate-400 mt-3">
+                  <span>ca. {pages.length} DIN-A4 {pages.length === 1 ? 'Seite' : 'Seiten'}</span>
                   <button
                     type="button"
                     onClick={() => setCanvasViewMode('pages')}
-                    className="text-blue-600 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    Zurück zur mehrseitigen Vorschau →
+                    Zurück zum DIN-A4 Live-Blatt →
                   </button>
                 </div>
               </div>
