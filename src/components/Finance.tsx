@@ -12,7 +12,7 @@ import {
   Clock, CheckCircle2, ClipboardList, Loader2, RotateCw, Camera, Smartphone,
   Image as ImageIcon, Maximize, Lock, Unlock, Layers, ChevronDown, Sparkles,
   User, Building2, FileSpreadsheet, ArrowLeftRight, Coins, Settings2,
-  UploadCloud, QrCode
+  UploadCloud, QrCode, Edit2, Check
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -480,11 +480,29 @@ export default function Finance() {
   const [includeOptions, setIncludeOptions] = useState(false);
   const [versions, setVersions] = useState<BudgetVersion[]>([{ id: 'v1', name: 'Variant 1', vatRate: 8.1, status: 'draft', groups: [{ id: 'g1', pos: '100', title: 'Phase', items: [] }] }]);
   const [activeVersionId, setActiveVersionId] = useState<string>('v1');
+  const [isEditingVersionName, setIsEditingVersionName] = useState(false);
+  const [editingVersionName, setEditingVersionName] = useState('');
 
   const activeVersion = versions.find(v => v.id === activeVersionId) || versions[0];
   const approvedVersions = versions.filter(v => v.status === 'approved');
   const budgetGroups = activeVersion.groups;
   const vatRate = activeVersion.vatRate;
+
+  const handleStartRenameVersion = () => {
+    setEditingVersionName(activeVersion?.name || '');
+    setIsEditingVersionName(true);
+  };
+
+  const handleSaveVersionName = () => {
+    const trimmed = editingVersionName.trim();
+    if (!trimmed) {
+      setIsEditingVersionName(false);
+      return;
+    }
+    setVersions(prev => prev.map(v => v.id === activeVersionId ? { ...v, name: trimmed } : v));
+    setIsEditingVersionName(false);
+    addToast('Variantenname aktualisiert', 'success');
+  };
 
   // Multi-Currency & FX Engine State
   const [currency, setCurrency] = useState<Currency>(() => getCurrencyPreference().currency);
@@ -1206,9 +1224,11 @@ export default function Finance() {
 
   const handleCreateNewVersion = () => {
     const newId = `v${Date.now()}`;
+    const nextNum = versions.length + 1;
+    const defaultName = `Konzept ${nextNum}`;
     setVersions([...versions, {
       id: newId,
-      name: t('new_variant'),
+      name: defaultName,
       vatRate: 8.1,
       status: 'draft',
       groups: [{
@@ -1219,14 +1239,15 @@ export default function Finance() {
       }]
     }]);
     setActiveVersionId(newId);
-    addToast(t('new_variant_created'), 'success');
+    addToast(`${defaultName} erstellt`, 'success');
   };
 
   const handleDuplicateVersion = () => {
     const newId = `v${Date.now()}`;
-    setVersions([...versions, { ...activeVersion, id: newId, status: 'draft', name: `${activeVersion.name} (Kopie)` }]);
+    const dupName = `${activeVersion.name} (Variante)`;
+    setVersions([...versions, { ...activeVersion, id: newId, status: 'draft', name: dupName }]);
     setActiveVersionId(newId);
-    addToast(t('variant_duplicated'), 'success');
+    addToast(`${dupName} erstellt`, 'success');
   };
 
   const handleDeleteVersion = (id: string) => {
@@ -2230,9 +2251,54 @@ export default function Finance() {
             {activeTab === 'budget' && (
               <div className="flex items-center gap-2 shrink-0">
                 <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
-                  <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-bold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-32 truncate shrink-0 appearance-none">
-                    {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-bold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
-                  </select>
+                  {isEditingVersionName ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={editingVersionName}
+                        onChange={(e) => setEditingVersionName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveVersionName();
+                          if (e.key === 'Escape') setIsEditingVersionName(false);
+                        }}
+                        autoFocus
+                        placeholder="z.B. Konzept 1"
+                        className="bg-background border border-accent-ai rounded px-2 py-1 text-xs font-semibold text-text-primary outline-none w-36 sm:w-48"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveVersionName}
+                        className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors shrink-0"
+                        title="Speichern"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingVersionName(false)}
+                        className="p-1 text-text-muted hover:text-red-400 transition-colors shrink-0"
+                        title="Abbrechen"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-semibold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-36 truncate shrink-0 appearance-none">
+                        {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-semibold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
+                      </select>
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={handleStartRenameVersion}
+                          className="p-1 text-text-muted hover:text-accent-ai transition-colors shrink-0 mr-1"
+                          title="Variante umbenennen (z.B. Konzept 1: Historische Werkbank)"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      )}
+                    </>
+                  )}
                   <div className="w-px h-4 bg-border mx-1"></div>
                   {!isReadOnly && (() => {
                     const normUserRole = (currentUser?.role || '').toLowerCase().trim();
@@ -2242,7 +2308,7 @@ export default function Finance() {
                     <button
                       onClick={handleToggleApproveVersion}
                       className={cn(
-                        "p-1 px-2.5 rounded-md text-xs font-bold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm",
+                        "p-1 px-2.5 rounded-md text-xs font-semibold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm",
                         activeVersion.status === 'approved'
                           ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
                           : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"

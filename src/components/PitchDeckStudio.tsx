@@ -153,7 +153,7 @@ interface Slide {
   ownerId: string; 
   companyId?: string; 
   projectId?: string; 
-  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents'; 
+  layout?: 'title-only' | 'split' | 'image-focus' | 'video-focus' | 'text-only' | 'data-budget' | 'team-grid' | 'smart-calendar' | 'defect-grid' | 'chart-donut' | 'table-of-contents' | 'budget-comparison'; 
   fontSize?: number; 
   titleFontSize?: number;
   dataPayload?: any; 
@@ -290,7 +290,7 @@ export default function PitchDeckStudio({
   };
   
   const { currentUser } = useAuth();
-  const { projects = [], projectMembers = [], companyUsers = [], defects = [], isDemoMode = false } = useProject() as any;
+  const { projects = [], projectMembers = [], companyUsers = [], defects = [], isDemoMode = false, demoData = null } = useProject() as any;
 
   const [importProjectId, setImportProjectId] = useState<string>(projectId || '');
   
@@ -336,6 +336,17 @@ export default function PitchDeckStudio({
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [showStampMenu, setShowStampMenu] = useState(false);
   const [showNotesDrawer, setShowNotesDrawer] = useState(false);
+  const [budgetVariantPicker, setBudgetVariantPicker] = useState<{
+    isOpen: boolean;
+    mode: 'table' | 'chart' | 'comparison';
+    versions: any[];
+    projectName: string;
+  }>({
+    isOpen: false,
+    mode: 'table',
+    versions: [],
+    projectName: ''
+  });
   
   const [windowDimensions, setWindowDimensions] = useState({ 
     w: typeof window !== 'undefined' ? window.innerWidth : 1200, 
@@ -1362,6 +1373,96 @@ export default function PitchDeckStudio({
         const totalAmt = slide.dataPayload.totalAmount || segments.reduce((acc: number, s: any) => acc + (s.value || 0), 0);
         docPdf.text(`Baukosten Gesamt: CHF ${totalAmt.toLocaleString('de-CH')}`, pw - 80, finalY + 10);
       }
+      else if (slide.layout === 'budget-comparison' && slide.dataPayload?.comparisonVariants) {
+        const variants = slide.dataPayload.comparisonVariants;
+        const colW = (pw - 30 - ((variants.length - 1) * 6)) / Math.max(variants.length, 1);
+        let vx = 15;
+        const cardH = ph - cy - 25;
+        variants.forEach((v: any, vIdx: number) => {
+          const isFeatured = vIdx === 1 || (v.badge && v.badge.toLowerCase().includes('empfohl'));
+          if (isDarkTheme) {
+            docPdf.setFillColor(26, 26, 34);
+            docPdf.roundedRect(vx, cy, colW, cardH, 3, 3, 'F');
+            docPdf.setDrawColor(isFeatured ? 168 : 50, isFeatured ? 85 : 50, isFeatured ? 247 : 65);
+            docPdf.setLineWidth(isFeatured ? 0.8 : 0.3);
+            docPdf.roundedRect(vx, cy, colW, cardH, 3, 3, 'S');
+          } else {
+            docPdf.setFillColor(248, 249, 252);
+            docPdf.roundedRect(vx, cy, colW, cardH, 3, 3, 'F');
+            docPdf.setDrawColor(isFeatured ? 147 : 220, isFeatured ? 51 : 225, isFeatured ? 234 : 235);
+            docPdf.setLineWidth(isFeatured ? 0.8 : 0.3);
+            docPdf.roundedRect(vx, cy, colW, cardH, 3, 3, 'S');
+          }
+
+          // Badge
+          if (v.badge) {
+            docPdf.setFillColor(isFeatured ? 147 : (isDarkTheme ? 55 : 200), isFeatured ? 51 : (isDarkTheme ? 55 : 205), isFeatured ? 234 : (isDarkTheme ? 65 : 215));
+            docPdf.roundedRect(vx + 6, cy + 6, colW - 12, 6, 1.5, 1.5, 'F');
+            docPdf.setTextColor(isFeatured ? 255 : (isDarkTheme ? 200 : 60));
+            docPdf.setFontSize(7);
+            docPdf.setFont("helvetica", "bold");
+            docPdf.text(v.badge.toUpperCase(), vx + (colW / 2), cy + 10.5, { align: 'center' });
+          }
+
+          // Title
+          docPdf.setTextColor(isDarkTheme ? 255 : 20, isDarkTheme ? 255 : 20, isDarkTheme ? 255 : 20);
+          docPdf.setFontSize(10);
+          docPdf.setFont("helvetica", "bold");
+          const titleLines = docPdf.splitTextToSize(v.title || `Konzept ${vIdx + 1}`, colW - 12);
+          docPdf.text(titleLines, vx + 6, cy + 18);
+
+          // Total Price Box
+          docPdf.setFillColor(isDarkTheme ? 18 : 235, isDarkTheme ? 18 : 238, isDarkTheme ? 22 : 243);
+          docPdf.roundedRect(vx + 5, cy + 26, colW - 10, 14, 2, 2, 'F');
+          docPdf.setTextColor(isDarkTheme ? 160 : 110);
+          docPdf.setFontSize(6.5);
+          docPdf.setFont("helvetica", "bold");
+          docPdf.text('INVESTITIONSRAHMEN', vx + 8, cy + 31);
+          docPdf.setTextColor(isFeatured ? 168 : (isDarkTheme ? 255 : 20), isFeatured ? 85 : (isDarkTheme ? 255 : 20), isFeatured ? 247 : (isDarkTheme ? 255 : 20));
+          docPdf.setFontSize(12);
+          docPdf.setFont("helvetica", "bold");
+          docPdf.text(`CHF ${(v.total || 0).toLocaleString('de-CH')}.-`, vx + 8, cy + 37);
+
+          // BKP breakdown
+          let by = cy + 46;
+          if (v.bkpSummary && v.bkpSummary.length > 0) {
+            docPdf.setFontSize(6.5);
+            docPdf.setFont("helvetica", "bold");
+            docPdf.setTextColor(isDarkTheme ? 140 : 120);
+            docPdf.text('BKP KOSTENBLÖCKE', vx + 6, by);
+            by += 4.5;
+            docPdf.setFont("helvetica", "normal");
+            docPdf.setFontSize(7.5);
+            docPdf.setTextColor(isDarkTheme ? 210 : 60);
+            v.bkpSummary.slice(0, 3).forEach((bkp: any) => {
+              const shortLbl = bkp.label.length > 20 ? bkp.label.slice(0, 18) + '...' : bkp.label;
+              docPdf.text(shortLbl, vx + 6, by);
+              docPdf.text(`CHF ${(bkp.value || 0).toLocaleString('de-CH')}`, vx + colW - 6, by, { align: 'right' });
+              by += 4.5;
+            });
+            by += 2;
+          }
+
+          // Highlights
+          if (v.highlightPoints && v.highlightPoints.length > 0) {
+            docPdf.setFontSize(6.5);
+            docPdf.setFont("helvetica", "bold");
+            docPdf.setTextColor(isDarkTheme ? 140 : 120);
+            docPdf.text('BESONDERHEITEN', vx + 6, by);
+            by += 4.5;
+            docPdf.setFont("helvetica", "normal");
+            docPdf.setFontSize(7.5);
+            docPdf.setTextColor(isDarkTheme ? 220 : 50);
+            v.highlightPoints.slice(0, 3).forEach((hp: string) => {
+              const hpLines = docPdf.splitTextToSize(`✓ ${hp}`, colW - 12);
+              docPdf.text(hpLines, vx + 6, by);
+              by += (hpLines.length * 4);
+            });
+          }
+
+          vx += colW + 6;
+        });
+      }
       else if (slide.layout === 'team-grid' && slide.dataPayload?.members) {
         const members = slide.dataPayload.members;
         const tData: any[] = members.map((m: any) => [m.name || '', m.role || '', m.email || '', m.phone || '']);
@@ -1639,42 +1740,247 @@ export default function PitchDeckStudio({
     } catch (err) {}
   };
 
-  // INTERAKTIVE KREISDIAGRAMME
-  const handleGenerateChartSlide = async () => {
-    let chartSegments: any[] = [];
-    let totalAmount = 0;
+  // INTELLIGENTER BUDGET & VARIANTEN PICKER
+  const handleOpenBudgetPicker = async (preferredMode: 'table' | 'chart' | 'comparison' = 'table') => {
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const currentProj = projects?.find((p: any) => p.id === targetId);
+    const projName = currentProj?.name || (targetId !== 'global' ? targetId : 'Projekt');
 
-    if (targetId && !targetId.startsWith('demo-')) {
+    let loadedVersions: any[] = [];
+
+    // 1. Aus direktem LocalStorage Cache lesen (0ms Latenz)
+    if (targetId && targetId !== 'global') {
+      const localCache = safeStorage.getItem<any>(`finance_cache_${targetId}`, null);
+      if (localCache && Array.isArray(localCache.versions) && localCache.versions.length > 0) {
+        loadedVersions = localCache.versions;
+      }
+    }
+
+    // 2. Fallback auf Supabase system_configs
+    if (loadedVersions.length === 0 && targetId && targetId !== 'global' && !targetId.startsWith('demo-')) {
       try {
-        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-        const data = await fetchSystemConfigJSON(`finance_${targetId}`, safeCompanyId);
-        if (data) {
-          const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
-          if (activeVersion && activeVersion.groups) {
-            const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
-            chartSegments = activeVersion.groups.map((g: any, idx: number) => {
-              const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || (item.qty * item.unitPrice) || 0), 0);
-              totalAmount += groupTotal;
-              return { label: `${g.pos} ${g.title}`, value: groupTotal, color: colors[idx % colors.length] };
-            });
-          }
+        const config = await fetchSystemConfigJSON(`finance_${targetId}`, safeCompanyId);
+        const data = (config as any)?.data || config;
+        if (data && Array.isArray(data.versions) && data.versions.length > 0) {
+          loadedVersions = data.versions;
         }
       } catch (e) {}
     }
 
-    if (chartSegments.length === 0) {
-      chartSegments = [
-        { label: 'BKP 1 Vorbereitung & Honorare', value: 65000, color: '#3b82f6' },
-        { label: 'BKP 2 Gebäude & Rohbau', value: 520000, color: '#8b5cf6' },
-        { label: 'BKP 3 Haustechnik & Elektro', value: 185000, color: '#ec4899' },
-        { label: 'BKP 4 Innenausbau & Umgebung', value: 140000, color: '#10b981' }
+    // 3. Fallback auf Demodaten falls im Demo-Modus
+    if (loadedVersions.length === 0 && (isDemoMode || targetId.startsWith('demo-')) && demoData?.financeGroups) {
+      loadedVersions = [
+        {
+          id: 'demo-v1',
+          name: 'Konzept 1: Historische Werkbank',
+          status: 'approved',
+          vatRate: 8.1,
+          groups: demoData.financeGroups
+        }
       ];
-      totalAmount = 910000;
     }
 
-    await handleAddSlide('chart-donut', 'Baukosten-Verteilung (BKP Share)', { chartSegments, totalAmount });
-    addToast('Kreisdiagramm-Folie erstellt!', 'success');
+    setBudgetVariantPicker({
+      isOpen: true,
+      mode: preferredMode,
+      versions: loadedVersions,
+      projectName: projName
+    });
+  };
+
+  const handleInsertBudgetTableForVersion = async (version: any) => {
+    let budgetGroups: any[] = [];
+    let totalBudget = 0;
+
+    if (version && version.groups && version.groups.length > 0) {
+      budgetGroups = version.groups.map((g: any) => {
+        const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || ((item.qty || 0) * (item.unitPrice || 0)) || 0), 0);
+        totalBudget += groupTotal;
+        return {
+          pos: g.pos,
+          title: g.title,
+          total: groupTotal,
+          items: (g.items || []).slice(0, 5).map((it: any) => ({
+            pos: it.pos,
+            title: it.description || it.title || 'Position',
+            total: it.total || ((it.qty || 0) * (it.unitPrice || 0)) || 0
+          }))
+        };
+      });
+    }
+
+    if (budgetGroups.length === 0) {
+      budgetGroups = [
+        { pos: 'BKP 1', title: 'Vorbereitungsarbeiten & Honorare', total: 45000, items: [{ pos: '101', title: 'Planung & Honorare', total: 45000 }] },
+        { pos: 'BKP 2', title: 'Ausführung & Schreinerarbeiten', total: 120000, items: [{ pos: '201', title: 'Werkbank Restaurierung', total: 120000 }] },
+        { pos: 'BKP 3', title: 'Beleuchtung & Medientechnik', total: 55000, items: [{ pos: '301', title: 'Akzentbeleuchtung & Spots', total: 55000 }] }
+      ];
+      totalBudget = 220000;
+    }
+
+    const vName = version?.name || 'Variante';
+    await handleAddSlide('data-budget', `${vName} – Budget Plan`, { budgetGroups, totalBudget, variantName: vName });
+    setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }));
+    addToast(`${vName} als Budget-Tabelle eingefügt!`, 'success');
     setMobileTab('slides');
+  };
+
+  const handleInsertChartForVersion = async (version: any) => {
+    let chartSegments: any[] = [];
+    let totalAmount = 0;
+
+    if (version && version.groups && version.groups.length > 0) {
+      const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#6366f1'];
+      chartSegments = version.groups.map((g: any, idx: number) => {
+        const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || ((item.qty || 0) * (item.unitPrice || 0)) || 0), 0);
+        totalAmount += groupTotal;
+        return {
+          label: `${g.pos} ${g.title}`,
+          value: groupTotal,
+          color: colors[idx % colors.length]
+        };
+      });
+    }
+
+    if (chartSegments.length === 0) {
+      chartSegments = [
+        { label: 'BKP 1 Konzeption & Planung', value: 35000, color: '#3b82f6' },
+        { label: 'BKP 2 Innenausbau & Möbel', value: 145000, color: '#8b5cf6' },
+        { label: 'BKP 3 Medientechnik & AV', value: 95000, color: '#10b981' }
+      ];
+      totalAmount = 275000;
+    }
+
+    const vName = version?.name || 'Baukosten';
+    await handleAddSlide('chart-donut', `${vName} – Kosten-Verteilung`, { chartSegments, totalAmount, variantName: vName });
+    setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }));
+    addToast(`${vName} als Baukosten-Chart eingefügt!`, 'success');
+    setMobileTab('slides');
+  };
+
+  const handleInsertComparisonSlide = async (versionsToCompare?: any[]) => {
+    const list = (versionsToCompare && versionsToCompare.length > 0) ? versionsToCompare : budgetVariantPicker.versions;
+    let comparisonVariants: any[] = [];
+
+    if (list && list.length > 0) {
+      const defaultBadges = ['Basis', 'Empfohlen', 'Premium'];
+      comparisonVariants = list.slice(0, 3).map((v: any, idx: number) => {
+        let vTotal = 0;
+        const bkpSummary: any[] = [];
+
+        (v.groups || []).forEach((g: any) => {
+          const gTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || ((item.qty || 0) * (item.unitPrice || 0)) || 0), 0);
+          vTotal += gTotal;
+          if (gTotal > 0 || bkpSummary.length < 3) {
+            bkpSummary.push({ label: `${g.pos} ${g.title}`, value: gTotal });
+          }
+        });
+
+        // Highlights aus Beschreibungen ableiten oder passenden Default setzen
+        const rawItems = (v.groups || []).flatMap((g: any) => g.items || []).filter((it: any) => it.description && it.description.trim().length > 0);
+        const highlights = rawItems.slice(0, 3).map((it: any) => it.description.slice(0, 45));
+        if (highlights.length === 0) {
+          if (idx === 0) highlights.push('Fokus auf historische Bausubstanz', 'Minimale Eingriffe & Kostenkontrolle', 'Schnelle Realisierung');
+          else if (idx === 1) highlights.push('Interaktive Touchpoints & Audio-Guide', 'Attraktive Besucherführung', 'Optimale Balance Budget / Wirkung');
+          else highlights.push('Immersives 360° Multimedia-Erlebnis', 'High-End Akustik & Licht-Inszenierung', 'Höchste Strahlkraft für Kunden');
+        }
+
+        return {
+          id: v.id || `v-${idx}`,
+          title: v.name || `Konzept ${idx + 1}`,
+          badge: idx === 1 ? 'Empfohlen' : (defaultBadges[idx] || `Option ${idx + 1}`),
+          total: vTotal > 0 ? vTotal : (idx === 0 ? 185000 : idx === 1 ? 310000 : 490000),
+          status: v.status === 'approved' ? 'Freigegeben' : 'Entwurf',
+          highlightPoints: highlights,
+          bkpSummary: bkpSummary.slice(0, 4)
+        };
+      });
+    }
+
+    // Wenn weniger als 3 Varianten im Projekt vorhanden sind, auf 3 auffüllen
+    if (comparisonVariants.length < 3) {
+      const demoTemplates = [
+        {
+          id: 'v-demo-1',
+          title: 'Konzept 1: Historische Werkbank',
+          badge: 'Basis / Historie',
+          total: 185000,
+          status: 'Freigegeben',
+          highlightPoints: ['Erhalt Originalelemente', 'Minimale Eingriffe in Bausubstanz', 'Fokus Archiv & Werkzeuge'],
+          bkpSummary: [
+            { label: 'BKP 1 Planung & Gutachten', value: 25000 },
+            { label: 'BKP 2 Restaurierung & Schreiner', value: 120000 },
+            { label: 'BKP 3 Beleuchtung', value: 40000 }
+          ]
+        },
+        {
+          id: 'v-demo-2',
+          title: 'Konzept 2: Interaktive Media-Wall',
+          badge: 'Empfohlen / Hybrid',
+          total: 310000,
+          status: 'Entwurf',
+          highlightPoints: ['Touchscreens & Augmented Reality', 'Digitales Audio-Archiv', 'Multi-User Stationen'],
+          bkpSummary: [
+            { label: 'BKP 1 Konzeption & Software', value: 55000 },
+            { label: 'BKP 2 Innenausbau & Möbel', value: 145000 },
+            { label: 'BKP 3 AV & Medientechnik', value: 110000 }
+          ]
+        },
+        {
+          id: 'v-demo-3',
+          title: 'Konzept 3: Premium Showroom',
+          badge: 'Visionär / High-End',
+          total: 485000,
+          status: 'Entwurf',
+          highlightPoints: ['Immersiver 360° Erlebnisraum', 'Dynamische Licht-Inszenierung', 'Ganzheitliche Akustik'],
+          bkpSummary: [
+            { label: 'BKP 1 Masterplan & Scenografie', value: 85000 },
+            { label: 'BKP 2 Hochwertiger Komplettausbau', value: 225000 },
+            { label: 'BKP 3 High-End Medientechnik', value: 175000 }
+          ]
+        }
+      ];
+
+      while (comparisonVariants.length < 3) {
+        comparisonVariants.push(demoTemplates[comparisonVariants.length]);
+      }
+    }
+
+    await handleAddSlide('budget-comparison', 'Varianten-Vergleich (3 Konzepte)', { comparisonVariants });
+    setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }));
+    addToast('3-Varianten-Vergleichsfolie erstellt!', 'success');
+    setMobileTab('slides');
+  };
+
+  const handleUpdateComparisonVariant = (slideId: string, variantIndex: number, field: string, value: any) => {
+    setSlides(prev => prev.map(s => {
+      if (s.id !== slideId) return s;
+      const currentVariants = s.dataPayload?.comparisonVariants || [];
+      const updated = currentVariants.map((v: any, idx: number) => {
+        if (idx !== variantIndex) return v;
+        return { ...v, [field]: value };
+      });
+      return { ...s, dataPayload: { ...s.dataPayload, comparisonVariants: updated } };
+    }));
+  };
+
+  const handleUpdateComparisonHighlight = (slideId: string, variantIndex: number, highlightIndex: number, value: string) => {
+    setSlides(prev => prev.map(s => {
+      if (s.id !== slideId) return s;
+      const currentVariants = s.dataPayload?.comparisonVariants || [];
+      const updated = currentVariants.map((v: any, idx: number) => {
+        if (idx !== variantIndex) return v;
+        const currentHp = [...(v.highlightPoints || [])];
+        currentHp[highlightIndex] = value;
+        return { ...v, highlightPoints: currentHp };
+      });
+      return { ...s, dataPayload: { ...s.dataPayload, comparisonVariants: updated } };
+    }));
+  };
+
+  // Legacy Callbacks leiten direkt auf den intelligenten Picker um
+  const handleGenerateChartSlide = async () => {
+    await handleOpenBudgetPicker('chart');
   };
 
   // DIREKT-IMPORT AUS DEM WHITEBOARD
@@ -1722,68 +2028,7 @@ export default function PitchDeckStudio({
 
   // ENHANCED REPORTING SLIDE GENERATORS
   const handleGenerateBudgetSlide = async () => {
-    try {
-      let budgetGroups: any[] = []; 
-      let totalBudget = 0;
-      
-      if (targetId && !targetId.startsWith('demo-')) {
-        let finConfig: any = null;
-        try {
-          const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
-          finConfig = await fetchSystemConfigJSON(`finance_${targetId}`, safeCompanyId);
-        } catch (e) {}
-        const data = (finConfig as any)?.data || finConfig;
-        if (data) {
-          const activeVersion = data.versions?.find((v:any) => v.id === data.activeVersionId) || data.versions?.[0];
-          if (activeVersion && activeVersion.groups && activeVersion.groups.length > 0) {
-            budgetGroups = activeVersion.groups.map((g: any) => {
-              const groupTotal = (g.items || []).reduce((sum: number, item: any) => sum + (item.total || (item.qty * item.unitPrice) || 0), 0);
-              totalBudget += groupTotal;
-              return { pos: g.pos, title: g.title, total: groupTotal, items: (g.items || []).slice(0, 4) };
-            });
-          }
-        }
-      }
-
-      if (budgetGroups.length === 0) {
-        budgetGroups = [
-          { 
-            pos: 'BKP 1', title: 'Vorbereitungsarbeiten & Honorare', total: 65000, 
-            items: [
-              { pos: '101', title: 'Architektur- & Ingenieurhonorare', total: 45000 },
-              { pos: '102', title: 'Geometer & Bodengutachten', total: 12000 },
-              { pos: '103', title: 'Bewilligungen & Baueingabegebühren', total: 8000 }
-            ] 
-          },
-          { 
-            pos: 'BKP 2', title: 'Gebäude & Rohbauarbeiten', total: 520000, 
-            items: [
-              { pos: '201', title: 'Aushub & Fundamentarbeiten', total: 85000 },
-              { pos: '202', title: 'Baumeisterarbeiten & Betonbau', total: 310000 },
-              { pos: '203', title: 'Holzbau & Dachkonstruktion', total: 125000 }
-            ] 
-          },
-          { 
-            pos: 'BKP 3', title: 'Haustechnik & Elektroanlagen', total: 185000, 
-            items: [
-              { pos: '301', title: 'Elektroinstallationen & Smart Home', total: 65000 },
-              { pos: '302', title: 'Heizung, Lüftung & Sanitär (HLS)', total: 120000 }
-            ] 
-          },
-          { 
-            pos: 'BKP 4', title: 'Innenausbau & Umgebungsarbeiten', total: 140000, 
-            items: [
-              { pos: '401', title: 'Gipser, Maler & Bodenbeläge', total: 90000 },
-              { pos: '402', title: 'Garten- & Umgebungsgestaltung', total: 50000 }
-            ] 
-          }
-        ];
-        totalBudget = 910000;
-      }
-      await handleAddSlide('data-budget', t('budget_plan'), { budgetGroups, totalBudget });
-      addToast(t('budget_imported'), "success");
-      setMobileTab('slides');
-    } catch (e) { addToast(t('error_load'), "error"); }
+    await handleOpenBudgetPicker('table');
   };
 
   const handleGenerateTimelineSlide = async () => {
@@ -1893,6 +2138,7 @@ export default function PitchDeckStudio({
           if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
           else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
           else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+          else if (s.layout === 'budget-comparison') autoDesc = 'Varianten-Vergleich (3 Konzepte)';
           else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
           else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
           else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
@@ -2036,6 +2282,7 @@ export default function PitchDeckStudio({
           if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
           else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
           else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+          else if (s.layout === 'budget-comparison') autoDesc = 'Varianten-Vergleich (3 Konzepte)';
           else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
           else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
           else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
@@ -2508,6 +2755,7 @@ export default function PitchDeckStudio({
                          if (s.layout === 'title-only') autoDesc = 'Hauptthema & Vision';
                          else if (s.layout === 'chart-donut') autoDesc = 'Baukosten-Verteilung & BKP Kennzahlen';
                          else if (s.layout === 'data-budget') autoDesc = 'BKP Kostenaufstellung & Ausführung';
+                         else if (s.layout === 'budget-comparison') autoDesc = 'Varianten-Vergleich (3 Konzepte)';
                          else if (s.layout === 'smart-calendar') autoDesc = 'Terminplan, Bauphasen & Meilensteine';
                          else if (s.layout === 'defect-grid') autoDesc = 'Mängelprotokoll & Qualitätssicherung';
                          else if (s.layout === 'team-grid') autoDesc = 'Projekt-Organisation & Ansprechpartner';
@@ -2868,6 +3116,142 @@ export default function PitchDeckStudio({
                 )}
              </div>
           )}
+
+          {/* 3-CONCEPT BUDGET COMPARISON SLIDE */}
+          {slide.layout === 'budget-comparison' && slide.dataPayload?.comparisonVariants && (
+            <div className="w-full h-full flex flex-col col-span-full justify-between">
+              <div className={cn(
+                "w-full flex-1 grid gap-3 lg:gap-4 items-stretch overflow-y-auto custom-scrollbar p-1",
+                slide.dataPayload.comparisonVariants.length === 2 ? "grid-cols-2" : "grid-cols-1 md:grid-cols-3"
+              )}>
+                {slide.dataPayload.comparisonVariants.map((v: any, vIdx: number) => {
+                  const isFeatured = vIdx === 1 || (v.badge && v.badge.toLowerCase().includes('empfohl'));
+                  return (
+                    <div
+                      key={v.id || vIdx}
+                      className={cn(
+                        "p-4 rounded-2xl flex flex-col justify-between relative transition-all border shadow-xl overflow-hidden",
+                        isFeatured
+                          ? (isDarkTheme ? "bg-gradient-to-b from-purple-950/40 via-purple-900/20 to-zinc-900/80 border-purple-500/60 ring-1 ring-purple-500/40" : "bg-gradient-to-b from-purple-50/90 to-white border-purple-400 ring-1 ring-purple-400/50")
+                          : (isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")
+                      )}
+                    >
+                      {/* Top badge & status */}
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        {!isPreviewMode ? (
+                          <input
+                            type="text"
+                            value={v.badge || ''}
+                            onChange={(e) => handleUpdateComparisonVariant(slide.id, vIdx, 'badge', e.target.value)}
+                            placeholder="Tag z.B. Empfohlen"
+                            className={cn(
+                              "px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-transparent border border-purple-500/40 outline-none w-32",
+                              isFeatured ? "text-purple-300" : "text-text-muted"
+                            )}
+                          />
+                        ) : (
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider shadow-sm",
+                            isFeatured
+                              ? "bg-purple-600 text-white shadow-purple-500/30"
+                              : (isDarkTheme ? "bg-white/10 text-white/70" : "bg-black/10 text-black/70")
+                          )}>
+                            {v.badge || `Option ${vIdx + 1}`}
+                          </span>
+                        )}
+
+                        <span className={cn(
+                          "text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5",
+                          v.status === 'Freigegeben' ? "text-emerald-400" : "text-amber-400"
+                        )}>
+                          <span className={cn("w-1.5 h-1.5 rounded-full", v.status === 'Freigegeben' ? "bg-emerald-400" : "bg-amber-400")} />
+                          {v.status || 'Entwurf'}
+                        </span>
+                      </div>
+
+                      {/* Concept Title */}
+                      <div className="mb-2">
+                        {!isPreviewMode ? (
+                          <input
+                            type="text"
+                            value={v.title || ''}
+                            onChange={(e) => handleUpdateComparisonVariant(slide.id, vIdx, 'title', e.target.value)}
+                            placeholder="Konzept Name..."
+                            style={{ fontSize: `${Math.max(13, contentFs - 1)}px` }}
+                            className={cn("font-semibold bg-transparent outline-none w-full border-b border-transparent focus:border-purple-500 pb-0.5", tc)}
+                          />
+                        ) : (
+                          <h4 style={{ fontSize: `${Math.max(13, contentFs - 1)}px` }} className={cn("font-semibold leading-tight line-clamp-2", tc)}>
+                            {v.title || `Konzept ${vIdx + 1}`}
+                          </h4>
+                        )}
+                      </div>
+
+                      {/* Total Investment Amount */}
+                      <div className={cn(
+                        "my-2 p-2.5 rounded-xl border flex flex-col",
+                        isDarkTheme ? "bg-black/40 border-white/5" : "bg-white/80 border-black/5"
+                      )}>
+                        <span className="text-[9px] font-semibold uppercase tracking-widest opacity-60">Investitionsrahmen</span>
+                        <div className="flex items-baseline gap-1 mt-0.5">
+                          <span className="text-xs font-semibold opacity-60">CHF</span>
+                          {!isPreviewMode ? (
+                            <input
+                              type="number"
+                              value={v.total || 0}
+                              onChange={(e) => handleUpdateComparisonVariant(slide.id, vIdx, 'total', Number(e.target.value))}
+                              className="text-lg font-semibold bg-transparent outline-none w-full tabular-nums font-sans"
+                              style={{ color: isFeatured ? '#c084fc' : (isDarkTheme ? '#ffffff' : '#000000') }}
+                            />
+                          ) : (
+                            <span
+                              className="text-lg font-semibold tabular-nums font-sans"
+                              style={{ color: isFeatured ? '#c084fc' : (isDarkTheme ? '#ffffff' : '#000000') }}
+                            >
+                              {(v.total || 0).toLocaleString('de-CH')}.-
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* BKP Breakdown */}
+                      {v.bkpSummary && v.bkpSummary.length > 0 && (
+                        <div className="space-y-1 my-1.5">
+                          <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50 block">BKP Kostenblöcke</span>
+                          {v.bkpSummary.slice(0, 3).map((bkp: any, bIdx: number) => (
+                            <div key={bIdx} className="flex items-center justify-between text-[10px] opacity-80 border-b border-white/5 pb-0.5">
+                              <span className="truncate pr-2">{bkp.label}</span>
+                              <span className="font-semibold tabular-nums shrink-0">CHF {(bkp.value || 0).toLocaleString('de-CH')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Highlights */}
+                      <div className="mt-auto pt-2 space-y-1 border-t border-white/10">
+                        <span className="text-[8px] font-semibold uppercase tracking-widest opacity-50 block">Besonderheiten</span>
+                        {(v.highlightPoints || []).slice(0, 3).map((hp: string, hIdx: number) => (
+                          <div key={hIdx} className="flex items-start gap-1.5 text-[10.5px] leading-snug opacity-90">
+                            <CheckCircle2 size={12} className={cn("shrink-0 mt-0.5", isFeatured ? "text-purple-400" : "text-emerald-400")} />
+                            {!isPreviewMode ? (
+                              <input
+                                type="text"
+                                value={hp}
+                                onChange={(e) => handleUpdateComparisonHighlight(slide.id, vIdx, hIdx, e.target.value)}
+                                className="bg-transparent outline-none w-full text-[10.5px] border-b border-transparent focus:border-purple-500"
+                              />
+                            ) : (
+                              <span className="line-clamp-2">{hp}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="h-[10%] flex flex-row items-end justify-between border-t border-black/10 pb-2 z-10 shrink-0 mt-4">
@@ -3104,17 +3488,21 @@ export default function PitchDeckStudio({
                 )}
 
                 <div className="grid grid-cols-1 gap-3 pt-2">
-                  <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-bold">
+                  <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-4 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-between font-semibold shadow-md">
+                    <span className="flex items-center gap-3"><Layers size={18}/> 3-Varianten-Vergleich</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/30 rounded font-sans font-semibold">Pitch</span>
+                  </button>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-semibold">
                     <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-sans font-bold">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-sans font-semibold">Tabelle</span>
                   </button>
-                  <button type="button" onClick={handleGenerateChartSlide} className="w-full p-4 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-between font-bold">
+                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-4 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-between font-semibold">
                     <span className="flex items-center gap-3"><PieChart size={18}/> Baukosten Chart</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/20 rounded font-sans font-bold">Donut</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 rounded font-sans font-semibold">Donut</span>
                   </button>
-                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-between font-bold">
+                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-between font-semibold">
                     <span className="flex items-center gap-3"><CalendarDays size={18}/>{t('generate_roadmap')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-sans font-bold">Vorlage</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-sans font-semibold">Vorlage</span>
                   </button>
                   <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-4 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-between font-bold">
                     <span className="flex items-center gap-3"><Users size={18}/>{t('load_team')}</span>
@@ -3192,17 +3580,21 @@ export default function PitchDeckStudio({
                   </select>
                 )}
                 <div className="space-y-2">
-                  <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-bold border border-indigo-500/20">
-                    <span className="flex items-center gap-2.5"><BookOpen size={15}/> Inhaltsverzeichnis & Agenda</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-indigo-500/20 text-indigo-300">Vorlage</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-2.5 rounded-lg bg-purple-500/10 text-purple-300 flex items-center justify-between hover:bg-purple-500/20 transition-all text-xs font-semibold border border-purple-500/30 shadow-sm">
+                    <span className="flex items-center gap-2.5"><Layers size={15}/> 3-Varianten-Vergleich</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-purple-500/20 text-purple-300">Pitch</span>
                   </button>
-                  <button type="button" onClick={handleGenerateBudgetSlide} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-bold border border-emerald-500/20">
+                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-semibold border border-emerald-500/20">
                     <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-emerald-500/20 text-emerald-300">BKP Plan</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-emerald-500/20 text-emerald-300">Tabelle</span>
                   </button>
-                  <button type="button" onClick={handleGenerateChartSlide} className="w-full p-2.5 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-between hover:bg-purple-500/20 transition-all text-xs font-bold border border-purple-500/20">
+                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-semibold border border-indigo-500/20">
                     <span className="flex items-center gap-2.5"><PieChart size={15}/> Baukosten Chart</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-purple-500/20 text-purple-300">Donut</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">Donut</span>
+                  </button>
+                  <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-semibold border border-indigo-500/20">
+                    <span className="flex items-center gap-2.5"><BookOpen size={15}/> Inhaltsverzeichnis & Agenda</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">Vorlage</span>
                   </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-between hover:bg-orange-500/20 transition-all text-xs font-bold border border-orange-500/20">
                     <span className="flex items-center gap-2.5"><CalendarDays size={15}/>{t('generate_roadmap')}</span>
@@ -3248,9 +3640,10 @@ export default function PitchDeckStudio({
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('video-focus', 'Video-Präsentation'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><VideoIcon size={14}/> Video-Fokus (HD/4K)</button>
-                    <button type="button" onClick={() => { handleAddSlide('text-only', t('text_block')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Layout size={14}/> {t('text_block')}</button>
-                    <button type="button" onClick={() => { handleGenerateAgendaSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><BookOpen size={14}/> Inhaltsverzeichnis & Agenda</button>
-                    <button type="button" onClick={() => { handleGenerateChartSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><PieChart size={14}/> Baukosten Donut</button>
+                    <button type="button" onClick={() => { handleOpenBudgetPicker('comparison'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-purple-300 hover:bg-purple-500/10 flex items-center gap-2"><Layers size={14}/> 3-Varianten-Vergleich</button>
+                    <button type="button" onClick={() => { handleOpenBudgetPicker('table'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"><DollarSign size={14}/> Budget Tabelle</button>
+                    <button type="button" onClick={() => { handleGenerateAgendaSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><BookOpen size={14}/> Inhaltsverzeichnis & Agenda</button>
+                    <button type="button" onClick={() => { handleOpenBudgetPicker('chart'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><PieChart size={14}/> Baukosten Donut</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -3743,6 +4136,183 @@ export default function PitchDeckStudio({
                     {isGeneratingPdf ? t('generating_pdf') : 'Klicke auf "Vorschau aktualisieren"'}
                   </div>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* INTELLIGENTER BUDGET & VARIANTEN PICKER MODAL */}
+      <AnimatePresence>
+        {budgetVariantPicker.isOpen && (
+          <div className="fixed inset-0 z-[120000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-surface border border-border/70 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Modal Header */}
+              <div className="p-5 border-b border-border/60 flex items-center justify-between bg-surface shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <DollarSign size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-text-primary text-base">
+                      Projekt-Budget & Varianten importieren
+                    </h3>
+                    <p className="text-xs text-text-muted mt-0.5 font-medium">
+                      Projekt: <span className="text-text-primary font-semibold">{budgetVariantPicker.projectName}</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }))}
+                  className="p-2 hover:bg-white/10 rounded-xl text-text-muted hover:text-text-primary transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                {/* 1. Fast Action: 3-Varianten-Gegenüberstellung */}
+                <div className="bg-gradient-to-r from-purple-500/10 via-accent-ai/10 to-emerald-500/10 border border-purple-500/30 rounded-2xl p-5 shadow-lg relative overflow-hidden group">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wider uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          Empfohlen für Pitch
+                        </span>
+                        <span className="text-xs text-text-muted">3 Konzepte nebeneinander</span>
+                      </div>
+                      <h4 className="font-semibold text-text-primary text-base">
+                        3-Varianten-Vergleichsfolie (Gegenüberstellung)
+                      </h4>
+                      <p className="text-xs text-text-muted leading-relaxed max-w-xl">
+                        Vergleicht Konzept 1 (Basis), Konzept 2 (Hybrid/Empfohlen) und Konzept 3 (High-End) direkt nebeneinander mit Gesamtkosten, BKP-Aufteilung und Stärken für den Kunden.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertComparisonSlide(budgetVariantPicker.versions)}
+                      className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs transition-all shadow-md flex items-center gap-2 shrink-0 cursor-pointer"
+                    >
+                      <Layers size={14} />
+                      <span>Vergleichsfolie einfügen</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Einzel-Varianten Liste */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-semibold text-text-muted uppercase tracking-widest">
+                      Verfügbare Budget-Varianten im Projekt ({budgetVariantPicker.versions.length})
+                    </h4>
+                    <span className="text-[11px] text-text-muted">Als Detail-Tabelle oder Chart einfügen</span>
+                  </div>
+
+                  {budgetVariantPicker.versions.length === 0 ? (
+                    <div className="border border-dashed border-border/80 rounded-2xl p-8 text-center bg-background/50">
+                      <DollarSign className="mx-auto text-text-muted/40 mb-3" size={32} />
+                      <p className="text-sm font-semibold text-text-primary mb-1">
+                        Noch keine Budget-Varianten in diesem Projekt hinterlegt
+                      </p>
+                      <p className="text-xs text-text-muted max-w-md mx-auto mb-4">
+                        Erstelle im Finanz-Modul Varianten (z.B. Konzept 1, 2, 3), oder starte direkt hier mit 3 Muster-Konzepten für deinen Pitch.
+                      </p>
+                      <div className="flex justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleInsertComparisonSlide([])}
+                          className="px-4 py-2 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 border border-purple-500/30 rounded-xl text-xs font-semibold"
+                        >
+                          Muster 3-Varianten einfügen
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {budgetVariantPicker.versions.map((ver: any, idx: number) => {
+                        const vTotal = (ver.groups || []).reduce((gSum: number, g: any) => {
+                          return gSum + (g.items || []).reduce((iSum: number, it: any) => {
+                            return iSum + (it.total || ((it.qty || 0) * (it.unitPrice || 0)) || 0);
+                          }, 0);
+                        }, 0);
+                        const phaseCount = (ver.groups || []).length;
+                        const itemCount = (ver.groups || []).reduce((acc: number, g: any) => acc + (g.items?.length || 0), 0);
+
+                        return (
+                          <div
+                            key={ver.id || idx}
+                            className="p-4 bg-background border border-border/60 hover:border-border rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h5 className="font-semibold text-text-primary text-sm">
+                                  {ver.name || `Konzept ${idx + 1}`}
+                                </h5>
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded text-[10px] font-semibold uppercase",
+                                  ver.status === 'approved' ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                )}>
+                                  {ver.status === 'approved' ? 'Freigegeben' : 'Entwurf'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-text-muted flex items-center gap-3">
+                                <span>{phaseCount} BKP Phasen</span>
+                                <span>•</span>
+                                <span>{itemCount} Positionen</span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 self-end sm:self-center">
+                              <div className="text-right mr-2">
+                                <div className="text-[10px] uppercase font-semibold text-text-muted">Total</div>
+                                <div className="text-sm font-semibold text-text-primary tabular-nums font-sans">
+                                  CHF {vTotal.toLocaleString('de-CH')}.-
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleInsertBudgetTableForVersion(ver)}
+                                className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                title="Als Tabelle einfügen"
+                              >
+                                <DollarSign size={13} />
+                                <span>Tabelle</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleInsertChartForVersion(ver)}
+                                className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                title="Als Kreisdiagramm einfügen"
+                              >
+                                <PieChart size={13} />
+                                <span>Chart</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-border/60 bg-surface/50 flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-text-muted">
+                <span>Tipp: Varianten können im Modul "Finanzen" beliebig umbenannt und kalkuliert werden.</span>
+                <button
+                  type="button"
+                  onClick={() => setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }))}
+                  className="px-4 py-2 hover:bg-white/10 rounded-xl text-text-primary font-semibold cursor-pointer"
+                >
+                  Schliessen
+                </button>
               </div>
             </motion.div>
           </div>
