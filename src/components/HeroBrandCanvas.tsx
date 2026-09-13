@@ -306,7 +306,7 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
 
-      currentSpacing = 36;
+      currentSpacing = 54;
 
       nodes = [];
       let i = 0;
@@ -723,12 +723,12 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       if (isIntersecting) {
         lastTime = performance.now();
         cancelAnimationFrame(animFrameId);
-        animFrameId = requestAnimationFrame(render);
+        render(lastTime);
       } else {
         cancelAnimationFrame(animFrameId);
       }
     }, {
-      rootMargin: '120px'
+      rootMargin: '500px'
     });
     intersectionObserver.observe(heroZone);
 

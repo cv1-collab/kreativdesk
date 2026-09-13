@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { 
   Moon, Sun, Video, Calendar, Sparkles, 
   ArrowRight, Shield, Menu, X, Briefcase, Zap, Building2, 
@@ -526,10 +526,37 @@ export default function LandingPage() {
   };
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 20;
+      setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = heroVideoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        if (entry.isIntersecting) {
+          video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
 
   // Typewriter state for Hero Interactive Typography
   const typewriterFields = currentLang === 'en' ? [
@@ -760,8 +787,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       
       {/* HEADER */}
       <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-4 sm:px-6 py-3 sm:py-4",
-        scrolled ? "bg-surface/80 backdrop-blur-md border-b border-border shadow-sm" : "bg-transparent"
+        "fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 sm:py-4 transform-gpu will-change-transform transition-[background-color,border-color,box-shadow] duration-200",
+        scrolled ? "bg-surface/85 backdrop-blur-md border-b border-border shadow-xs" : "bg-transparent border-b border-transparent shadow-none"
       )}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -855,32 +882,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       <main>
         {/* HERO */}
         <section className={cn(
-          "hero-zone pt-36 sm:pt-48 pb-16 sm:pb-20 px-4 sm:px-6 text-center relative z-10 overflow-hidden",
+          "hero-zone pt-28 sm:pt-36 pb-16 sm:pb-20 px-4 sm:px-6 text-center relative z-10 overflow-hidden",
           theme === 'dark' ? "bg-hero-grid-dark" : "bg-hero-grid-light"
         )} style={{ touchAction: 'pan-y' }}>
           {/* Interactive Retina Canvas Background with Blueprint Grid & Blooming Architecture Symbols (Desktop & Tablet only) */}
           <HeroBrandCanvas className="hidden md:block" isDark={theme === 'dark'} language={currentLang} />
 
           <div className="max-w-6xl mx-auto relative z-10 pointer-events-auto">
-            {/* Integrated Public Beta / Early Access Announcement Banner (Single-Line Sleek Layout) */}
-            <div className="flex items-center justify-center mb-8">
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                className="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md whitespace-nowrap max-w-none overflow-hidden"
-              >
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>
-                  {t('beta_badge')}
-                </span>
-                <span className="text-xs font-medium text-slate-700 dark:text-zinc-200">
-                  {currentLang === 'de' 
-                    ? 'Wir befinden uns in der Public Beta. Sichere dir exklusive Early-Adopter Konditionen!' 
-                    : 'We are currently in Public Beta. Secure exclusive early-adopter conditions now!'}
-                </span>
-              </motion.div>
-            </div>
-            
             {/* Interactive Typewriter Headline with Precision Cursor */}
             <motion.h1 
               initial={{ opacity: 0, y: 10 }} 
@@ -905,17 +913,28 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </span>
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-8 max-w-3xl mx-auto leading-relaxed">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
               {t('hero_subtitle')}
             </motion.p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <button onClick={() => scrollTo('live-demo')} className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer">
-                {t('cta_primary')} <ArrowRight size={20} />
-              </button>
-              <button onClick={() => scrollTo('systems')} className="w-full sm:w-auto px-8 py-4 bg-surface border border-border text-text-primary rounded-2xl font-bold text-lg hover:bg-white/5 transition-all cursor-pointer">
-                {t('cta_secondary')}
-              </button>
+            {/* Relocated Public Beta / Early Access Announcement Banner (Replaces redundant buttons, gives airy breathing room) */}
+            <div className="flex items-center justify-center mb-6 sm:mb-8">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: 0.25 }}
+                className="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md whitespace-nowrap max-w-none overflow-hidden"
+              >
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>
+                  {t('beta_badge')}
+                </span>
+                <span className="text-xs font-medium text-slate-700 dark:text-zinc-200">
+                  {currentLang === 'de' 
+                    ? 'Wir befinden uns in der Public Beta. Sichere dir exklusive Early-Adopter Konditionen!' 
+                    : 'We are currently in Public Beta. Secure exclusive early-adopter conditions now!'}
+                </span>
+              </motion.div>
             </div>
 
             {/* HERO 4K PORTAL VIDEO SHOWCASE */}
@@ -923,7 +942,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.8 }}
-              className="mt-14 sm:mt-16 max-w-5xl mx-auto relative group text-left"
+              className="mt-6 sm:mt-8 max-w-5xl mx-auto relative group text-left"
             >
               {/* Pulsing Ambient Glow */}
               <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600/30 via-cyan-500/20 to-indigo-600/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 transition-opacity duration-700 pointer-events-none" />
@@ -947,6 +966,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 {/* Video Screen Container */}
                 <div className="relative aspect-video w-full overflow-hidden bg-black flex items-center justify-center">
                   <video 
+                    ref={heroVideoRef}
                     autoPlay 
                     loop 
                     muted 
