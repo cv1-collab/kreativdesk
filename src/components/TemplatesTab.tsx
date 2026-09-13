@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   FileSignature, FileText, Receipt, Landmark, 
-  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, Loader2, Save, Copy, Check, Building2, Briefcase, Edit3, CheckCircle2
+  QrCode, Megaphone, MonitorPlay, LayoutTemplate, ArrowRight, Sparkles, 
+  Loader2, Save, Copy, Check, Building2, Briefcase, Edit3, CheckCircle2,
+  Search, Globe, FileCheck2, ShieldCheck, Clock, ExternalLink, Filter, Tag
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useToast } from '../contexts/ToastContext';
@@ -14,11 +16,13 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import DocumentStudioModal from './DocumentStudioModal';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import { MASTER_TEMPLATES, TEMPLATE_CATEGORIES, MasterTemplate } from '../data/masterTemplates';
+import { bindTemplateVariables, getCachedCompanyProfile } from '../utils/templateVariableEngine';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
-    templates_hub: 'Interactive Templates',
-    templates_desc: 'Central tools for finance, sales, and team presentation.',
+    templates_hub: 'Interactive Templates & Tools',
+    templates_desc: 'Central tools for finance, sales, team presentations, and bilingual contract management.',
     quote: 'Quotes', quote_desc: 'Create professional quotes for clients.',
     invoice: 'Invoices', invoice_desc: 'Generate outgoing invoices.',
     expense: 'Expenses', expense_desc: 'Internal expense reports with digital receipts.',
@@ -41,11 +45,24 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     quick_save_project: 'Quick Save (Project Folder)',
     copy: 'Copy',
     copied: 'Copied',
-    ai_fallback_notice: 'AI offline – standard template loaded'
+    ai_fallback_notice: 'AI offline – standard template loaded',
+
+    // Bilingual Master Catalog
+    catalog_badge: 'Bilingual Template Library',
+    catalog_title: 'Master Contract & Document Catalog',
+    catalog_desc: 'Standardized Swiss-compliant (SIA & OR) bilingual agreements, fees, and site protocols with automatic company branding.',
+    search_placeholder: 'Search templates by code (A01, B01), title, SIA, 3D, punch list...',
+    active_branding_notice: 'Company branding and project data are dynamically injected upon opening.',
+    open_in_studio_action: 'Open in Studio',
+    copy_text_action: 'Copy Text',
+    min_read: 'min',
+    no_templates_found: 'No templates match your criteria',
+    reset_filter: 'Reset filter',
+    lang_toggle_title: 'Document Language:'
   },
   de: {
-    templates_hub: 'Interaktive Vorlagen',
-    templates_desc: 'Zentrale Tools für Finanzen, Akquise und Team-Auftritt.',
+    templates_hub: 'Interaktive Vorlagen & Werkzeuge',
+    templates_desc: 'Zentrale Tools für Finanzen, Akquise, Team-Auftritt und zweisprachiges Vertragsmanagement.',
     quote: 'Offerten', quote_desc: 'Professionelle Offerten für Kunden erstellen.',
     invoice: 'Rechnungen', invoice_desc: 'Ausgangsrechnungen generieren.',
     expense: 'Spesen', expense_desc: 'Interne Spesenabrechnungen einreichen.',
@@ -68,7 +85,20 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     quick_save_project: 'Schnell-Speichern (Projekt-Bauakte)',
     copy: 'Kopieren',
     copied: 'Kopiert',
-    ai_fallback_notice: 'KI nicht erreichbar – Standard-Vorlage geladen'
+    ai_fallback_notice: 'KI nicht erreichbar – Standard-Vorlage geladen',
+
+    // Bilingual Master Catalog
+    catalog_badge: 'Zweisprachige Vorlagenbibliothek',
+    catalog_title: 'Standard-Vertrags- & Dokumentenkatalog',
+    catalog_desc: 'Schweizer SIA- & OR-konforme zweisprachige Verträge, Honorare und Abnahmeprotokolle mit automatischem Firmen-Branding.',
+    search_placeholder: 'Vorlagen durchsuchen (z.B. A01, B01, SIA, Szenografie, 3D, Abnahme)...',
+    active_branding_notice: 'Firmen-Branding und Projektdaten werden beim Öffnen automatisch eingesetzt.',
+    open_in_studio_action: 'Im Studio anpassen',
+    copy_text_action: 'Text kopieren',
+    min_read: 'Min.',
+    no_templates_found: 'Keine Vorlagen für diese Suchkriterien gefunden',
+    reset_filter: 'Filter zurücksetzen',
+    lang_toggle_title: 'Dokumentensprache:'
   }
 };
 
@@ -99,6 +129,7 @@ export default function TemplatesTab({
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
+  // AI Modal States
   const [aiPrompt, setAiPrompt] = useState('');
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
@@ -106,14 +137,77 @@ export default function TemplatesTab({
   const [isSavingDoc, setIsSavingDoc] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [saveScope, setSaveScope] = useState<'company' | 'project'>('company');
+
+  // Document Studio Modal States
   const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
+  const [studioDocTitle, setStudioDocTitle] = useState('');
+
+  // Master Catalog Filter & Language States
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [catalogLanguage, setCatalogLanguage] = useState<'de' | 'en'>(currentLang);
+  const [copiedTemplateId, setCopiedTemplateId] = useState<string | null>(null);
+
+  // Active Company Branding Information for Indicator
+  const companyProfile = useMemo(() => {
+    return getCachedCompanyProfile(currentUser?.companyId || currentUser?.uid);
+  }, [currentUser]);
+
+  // Filtered Master Templates
+  const filteredTemplates = useMemo(() => {
+    const q = templateSearch.trim().toLowerCase();
+    return MASTER_TEMPLATES.filter(tpl => {
+      const matchesCategory = selectedCategory === 'all' || tpl.category === selectedCategory;
+      if (!matchesCategory) return false;
+
+      if (!q) return true;
+      const titleDe = tpl.title.de.toLowerCase();
+      const titleEn = tpl.title.en.toLowerCase();
+      const descDe = tpl.description.de.toLowerCase();
+      const descEn = tpl.description.en.toLowerCase();
+      const code = tpl.code.toLowerCase();
+      const tags = tpl.tags.map(tag => tag.toLowerCase()).join(' ');
+
+      return titleDe.includes(q) || titleEn.includes(q) || descDe.includes(q) || descEn.includes(q) || code.includes(q) || tags.includes(q);
+    });
+  }, [templateSearch, selectedCategory]);
+
+  const handleOpenMasterTemplate = (tpl: MasterTemplate) => {
+    const lang = catalogLanguage;
+    const rawContent = tpl.content[lang] || tpl.content.de;
+    const boundContent = bindTemplateVariables(rawContent, {
+      company: companyProfile,
+      project: activeProject,
+      language: lang
+    });
+
+    const title = tpl.title[lang] || tpl.title.de;
+    setStudioDocTitle(title);
+    setGeneratedTemplate(boundContent);
+    setIsStudioModalOpen(true);
+  };
+
+  const handleCopyMasterTemplate = (tpl: MasterTemplate) => {
+    const lang = catalogLanguage;
+    const rawContent = tpl.content[lang] || tpl.content.de;
+    const boundContent = bindTemplateVariables(rawContent, {
+      company: companyProfile,
+      project: activeProject,
+      language: lang
+    });
+
+    navigator.clipboard.writeText(boundContent);
+    setCopiedTemplateId(tpl.id);
+    addToast(currentLang === 'de' ? `"${tpl.title.de}" kopiert!` : `"${tpl.title.en}" copied!`, 'info');
+    setTimeout(() => setCopiedTemplateId(null), 2000);
+  };
 
   const handleSaveToDocuments = async () => {
     if (!generatedTemplate || isSavingDoc) return;
     setIsSavingDoc(true);
     try {
       const safeCompanyId = currentUser?.companyId || currentUser?.uid || 'global';
-      const title = aiPrompt.trim() ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)';
+      const title = studioDocTitle.trim() || (aiPrompt.trim() ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)');
       const isProjectScope = saveScope === 'project';
       const targetProjectId = isProjectScope ? (activeProjectId || 'global') : 'global';
       const category = isProjectScope ? 'projects' : 'company';
@@ -144,10 +238,9 @@ export default function TemplatesTab({
 
       const locationName = isProjectScope ? `Projekt-Bauakte (${activeProject?.name || 'Projekt'})` : 'Company Dashboard (Firmenunterlagen)';
       
-      // Dispatch real-time notification
       await sendNotification({
         companyId: safeCompanyId,
-        title: '📄 Neue KI-Vorlage gespeichert',
+        title: '📄 Neue Vorlage gespeichert',
         message: `Vorlage "${docFileName}" wurde in ${locationName} abgelegt.`,
         type: 'document',
         link: isProjectScope ? `/project/${targetProjectId}/documents` : '/app'
@@ -180,6 +273,7 @@ Verwende eine klare Gliederung mit Briefkopf, Betreffzeile, Anrede, Textinhalt u
       const res = await callGeminiAPI('gemini-2.5-flash', [{ text: fullPrompt }]);
       const outputText = typeof res === 'string' ? res : (res?.text || res?.candidates?.[0]?.content?.parts?.[0]?.text || JSON.stringify(res));
       setGeneratedTemplate(outputText);
+      setStudioDocTitle(`KI-Vorlage: ${aiPrompt}`);
       addToast('KI-Vorlage generiert!', 'success');
     } catch (err: any) {
       console.error("AI Template Gen Error:", err);
@@ -188,8 +282,8 @@ MUSTER-DOKUMENT / VORLAGE (DIN 5008 - SCHWEIZER STANDARD)
 ===============================================================
 
 [Absender / Ihr Unternehmen]
-Muster AG | Bahnhofstrasse 10 | 8001 Zürich
-Tel: +41 44 123 45 67 | Email: info@muster.ch
+${companyProfile.name} | ${companyProfile.address} | ${companyProfile.zipCity}
+Tel: ${companyProfile.phone} | Email: ${companyProfile.email}
 
 Empfänger:
 [Name / Firma Empfänger]
@@ -213,14 +307,15 @@ vielen Dank für Ihr Interesse. Nachfolgend erhalten Sie die gewünschten Spezif
 
 3. SCHLUSSBESTIMMUNGEN
    - Änderungen bedürfen der Schriftform.
-   - Anwendbares Recht: Schweizer Recht (Gerichtsstand Zürich).
+   - Anwendbares Recht: Schweizer Recht (Gerichtsstand ${companyProfile.city}).
 
 Freundliche Grüsse,
 
-Muster AG
+${companyProfile.name}
 [Unterschrift / Geschäftsleitung]`;
 
       setGeneratedTemplate(fallbackTemplate);
+      setStudioDocTitle(`KI-Vorlage: ${aiPrompt}`);
       addToast(t('ai_fallback_notice'), 'info');
     } finally {
       setIsGeneratingAi(false);
@@ -238,7 +333,8 @@ Muster AG
       icon: Edit3, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/50 border-emerald-500/30 shadow-md',
       action: () => {
         setAiPrompt('');
-        setGeneratedTemplate('Sehr geehrte Damen und Herren,\n\n[Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...]');
+        setStudioDocTitle(currentLang === 'de' ? 'Freier Brief / Vertrag' : 'Letter / Agreement Studio');
+        setGeneratedTemplate(currentLang === 'de' ? 'Sehr geehrte Damen und Herren,\n\n[Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...]' : 'Dear Sir or Madam,\n\n[Compose your contract text, letter, or minutes here...]');
         setIsStudioModalOpen(true);
       } 
     },
@@ -280,14 +376,25 @@ Muster AG
   ];
 
   return (
-    <div className="w-full h-full flex flex-col space-y-6 md:space-y-8 animate-in fade-in duration-300 pb-20">
-      <header>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary flex items-center gap-3">
-          <LayoutTemplate className="text-accent-ai" /> {t('templates_hub')}
-        </h1>
-        <p className="text-text-muted mt-2 text-sm font-medium">{t('templates_desc')}</p>
+    <div className="w-full h-full flex flex-col space-y-8 md:space-y-10 animate-in fade-in duration-300 pb-24">
+      {/* Top Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary flex items-center gap-3">
+            <LayoutTemplate className="text-accent-ai" /> {t('templates_hub')}
+          </h1>
+          <p className="text-text-muted mt-1.5 text-sm font-medium">{t('templates_desc')}</p>
+        </div>
+
+        {/* Company Active Branding Indicator */}
+        <div className="flex items-center gap-2.5 px-3.5 py-2 bg-surface/80 border border-border/70 rounded-xl text-xs font-semibold text-text-muted backdrop-blur-sm self-start sm:self-auto shadow-sm">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Branding:</span>
+          <span className="text-text-primary font-bold">{companyProfile.name}</span>
+        </div>
       </header>
 
+      {/* Quick Launch Cards (Existing Suite) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 w-full">
         {templates.map((template) => (
           <div key={template.id} onClick={template.action} className={cn("bg-surface border border-border p-6 rounded-2xl shadow-sm cursor-pointer transition-all group flex flex-col h-full", template.border)}>
@@ -303,6 +410,178 @@ Muster AG
           </div>
         ))}
       </div>
+
+      {/* ========================================================================= */}
+      {/* MASTER CONTRACT & DOCUMENT CATALOG (BILINGUAL DE/EN, SIA & OR ALIGNED)     */}
+      {/* ========================================================================= */}
+      <section className="space-y-6 pt-4 border-t border-border/60">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-[11px] font-bold uppercase tracking-wider mb-2">
+              <ShieldCheck size={13} /> {t('catalog_badge')}
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-text-primary flex items-center gap-2.5">
+              <FileCheck2 className="text-blue-500" size={24} /> {t('catalog_title')}
+            </h2>
+            <p className="text-text-muted text-xs md:text-sm mt-1 max-w-2xl font-medium">
+              {t('catalog_desc')}
+            </p>
+          </div>
+
+          {/* Language Switcher for Documents */}
+          <div className="flex items-center gap-2 bg-surface border border-border p-1.5 rounded-xl self-start lg:self-auto shadow-sm">
+            <span className="text-[11px] font-bold text-text-muted px-2 flex items-center gap-1.5">
+              <Globe size={13} /> {t('lang_toggle_title')}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCatalogLanguage('de')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                catalogLanguage === 'de'
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-text-muted hover:text-text-primary"
+              )}
+            >
+              <span>🇩🇪</span> DE
+            </button>
+            <button
+              type="button"
+              onClick={() => setCatalogLanguage('en')}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                catalogLanguage === 'en'
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-text-muted hover:text-text-primary"
+              )}
+            >
+              <span>🇬🇧</span> EN
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Toolbar: Search & Categories */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-surface/50 border border-border/70 p-3.5 rounded-2xl">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" />
+            <input
+              type="text"
+              value={templateSearch}
+              onChange={e => setTemplateSearch(e.target.value)}
+              placeholder={t('search_placeholder')}
+              className="w-full pl-10 pr-4 py-2 bg-background border border-border/60 rounded-xl text-xs sm:text-sm text-text-primary outline-none focus:border-blue-500 transition-colors"
+            />
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+            {TEMPLATE_CATEGORIES.map(cat => {
+              const label = catalogLanguage === 'de' ? cat.labelDe : cat.labelEn;
+              const isSelected = selectedCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border",
+                    isSelected
+                      ? "bg-blue-600/10 text-blue-500 border-blue-500/50 shadow-sm"
+                      : "bg-surface text-text-muted border-border/40 hover:text-text-primary hover:border-border"
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Catalog Grid */}
+        {filteredTemplates.length === 0 ? (
+          <div className="p-12 text-center bg-surface/30 border border-dashed border-border/80 rounded-2xl">
+            <p className="text-text-muted text-sm font-semibold">{t('no_templates_found')}</p>
+            <button
+              type="button"
+              onClick={() => { setTemplateSearch(''); setSelectedCategory('all'); }}
+              className="mt-3 text-xs font-bold text-blue-400 hover:underline cursor-pointer"
+            >
+              {t('reset_filter')}
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredTemplates.map(tpl => {
+              const title = tpl.title[catalogLanguage] || tpl.title.de;
+              const desc = tpl.description[catalogLanguage] || tpl.description.de;
+              const isCopied = copiedTemplateId === tpl.id;
+
+              return (
+                <div
+                  key={tpl.id}
+                  className="bg-surface border border-border/80 hover:border-blue-500/40 p-5 rounded-2xl shadow-sm transition-all flex flex-col justify-between group hover:shadow-md hover:-translate-y-0.5"
+                >
+                  <div className="space-y-3">
+                    {/* Header: Code Badge & Duration */}
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 font-mono text-xs font-extrabold border border-blue-500/20">
+                        {tpl.code}
+                      </span>
+                      <span className="text-[11px] text-text-muted font-medium flex items-center gap-1">
+                        <Clock size={12} /> ~{tpl.estimatedMinutes} {t('min_read')}
+                      </span>
+                    </div>
+
+                    {/* Title & Description */}
+                    <div>
+                      <h3 className="font-bold text-base text-text-primary group-hover:text-blue-400 transition-colors leading-snug">
+                        {title}
+                      </h3>
+                      <p className="text-text-muted text-xs font-medium mt-1.5 line-clamp-3 leading-relaxed">
+                        {desc}
+                      </p>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {tpl.tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 rounded-md bg-background/80 text-text-muted text-[10px] font-semibold border border-border/40 flex items-center gap-1"
+                        >
+                          <Tag size={9} /> {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-5 mt-4 border-t border-border/50 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenMasterTemplate(tpl)}
+                      className="flex-1 py-2.5 px-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Edit3 size={14} />
+                      <span>{t('open_in_studio_action')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyMasterTemplate(tpl)}
+                      title={t('copy_text_action')}
+                      className="p-2.5 bg-background border border-border/70 hover:bg-surface-hover text-text-muted hover:text-text-primary rounded-xl transition-all cursor-pointer"
+                    >
+                      {isCopied ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       {/* KI-Vorlagen Modal */}
       {isAiModalOpen && (
@@ -428,7 +707,7 @@ Muster AG
       <DocumentStudioModal
         isOpen={isStudioModalOpen}
         onClose={() => setIsStudioModalOpen(false)}
-        initialTitle={aiPrompt ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)'}
+        initialTitle={studioDocTitle || (aiPrompt ? `KI-Vorlage: ${aiPrompt}` : 'KI-Vorlage (Vertrag / Brief)')}
         initialContent={generatedTemplate}
       />
     </div>

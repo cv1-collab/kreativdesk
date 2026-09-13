@@ -16,6 +16,7 @@ import { safeStorage } from '../utils/safeStorage';
 // Universal PDF Studio Engine Imports
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import { fetchCompanyProfileAsync, getCachedCompanyProfile } from '../utils/templateVariableEngine';
 
 interface DocumentStudioModalProps {
   isOpen: boolean;
@@ -286,16 +287,21 @@ export default function DocumentStudioModal({
   const [showSignatures, setShowSignatures] = useState(true);
   const [clientSignatory, setClientSignatory] = useState('Auftraggeber (Bauherr)');
   const [architectSignatory, setArchitectSignatory] = useState(currentUser?.email ? `Auftragnehmer (${currentUser.email})` : 'Auftragnehmer (Architekt / Planer)');
-  const [footerText, setFooterText] = useState('Kreativ-Desk OS Architecture • CHE-123.456.789 MWST • IBAN: CH93 0000 0000 0000 0000 0');
-  const [accentColor, setAccentColor] = useState('#09090b');
+
+  // Initial company profile from cache
+  const initialCompany = getCachedCompanyProfile(currentUser?.companyId || currentUser?.uid);
+  const [footerText, setFooterText] = useState(
+    `${initialCompany.name} • ${initialCompany.vatNumber} • IBAN: ${initialCompany.iban}`
+  );
+  const [accentColor, setAccentColor] = useState(initialCompany.primaryColor || '#09090b');
 
   // Company details
   const [companyData, setCompanyData] = useState({
-    name: 'Kreativ-Desk OS Architecture',
-    street: 'Bahnhofstrasse 1',
-    zipCity: '8001 Zürich',
-    website: 'www.kreativdesk.ch',
-    logo: ''
+    name: initialCompany.name,
+    street: initialCompany.address,
+    zipCity: initialCompany.zipCity,
+    website: initialCompany.website,
+    logo: initialCompany.logoUrl || ''
   });
 
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -321,21 +327,19 @@ export default function DocumentStudioModal({
         const safeCompanyId = currentUser?.companyId || currentUser?.uid;
         if (!safeCompanyId) return;
 
-        const { data } = await supabase
-          .from('company_settings')
-          .select('*')
-          .eq('company_id', safeCompanyId)
-          .maybeSingle();
-
-        if (data) {
-          const raw = data as any;
+        const profile = await fetchCompanyProfileAsync(safeCompanyId);
+        if (profile) {
           setCompanyData({
-            name: raw.company_name || 'Kreativ-Desk OS Architecture',
-            street: raw.street || 'Bahnhofstrasse 1',
-            zipCity: `${raw.zip || '8001'} ${raw.city || 'Zürich'}`,
-            website: raw.website || 'www.kreativdesk.ch',
-            logo: raw.logo_url || ''
+            name: profile.name,
+            street: profile.address,
+            zipCity: profile.zipCity,
+            website: profile.website,
+            logo: profile.logoUrl || ''
           });
+          if (profile.primaryColor) setAccentColor(profile.primaryColor);
+          if (profile.vatNumber || profile.iban) {
+            setFooterText(`${profile.name} • ${profile.vatNumber} • IBAN: ${profile.iban}`);
+          }
         }
       } catch (e) {
         console.error("Fetch company info error:", e);
