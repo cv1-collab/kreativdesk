@@ -527,9 +527,10 @@ export default function LandingPage() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 20;
+      const isScrolled = window.scrollY > 15;
       setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
     };
+    handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -787,8 +788,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
       
       {/* HEADER */}
       <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 sm:py-4 transform-gpu will-change-transform transition-[background-color,border-color,box-shadow] duration-200",
-        scrolled ? "bg-surface/85 backdrop-blur-md border-b border-border shadow-xs" : "bg-transparent border-b border-transparent shadow-none"
+        "fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 sm:py-4 transition-[background-color,border-color,box-shadow] duration-200",
+        scrolled ? "bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-border shadow-xs" : "bg-transparent border-b border-transparent shadow-none"
       )}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -894,55 +895,35 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }} 
               transition={{ delay: 0.1 }} 
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.8rem] xl:text-[4.4rem] font-black tracking-tighter mb-6 sm:mb-8 leading-[1.14] select-none text-slate-900 dark:text-white min-h-[2.35em]"
+              className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.2rem] xl:text-[4.8rem] font-black tracking-tighter mb-6 sm:mb-8 leading-[1.12] select-none text-slate-900 dark:text-white"
             >
-              <span className="block bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
+              <span className="block mb-2 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
                 {currentLang === 'en' ? 'The Operating System' : 'Das Operating System'}
               </span>
-              <span className="inline-flex items-baseline justify-center whitespace-nowrap max-w-full">
-                <span className="text-slate-900 dark:text-white mr-2 sm:mr-3 shrink-0">
-                  {currentLang === 'en' ? 'for ' : 'für '}
+              <span className="flex flex-wrap items-baseline justify-center gap-x-2 sm:gap-x-3">
+                <span className="text-slate-900 dark:text-white shrink-0">
+                  {currentLang === 'en' ? 'for' : 'für'}
                 </span>
-                <span className="text-blue-600 dark:text-blue-500 font-black tracking-tight">
-                  {typedText}
+                <span className="inline-flex items-baseline text-blue-600 dark:text-blue-500 font-black tracking-tight text-center">
+                  <span>{typedText}</span>
+                  <span 
+                    className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse shrink-0" 
+                    aria-hidden="true"
+                  />
                 </span>
-                <span 
-                  className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse shrink-0" 
-                  aria-hidden="true"
-                />
               </span>
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-lg md:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-base sm:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed">
               {t('hero_subtitle')}
             </motion.p>
-
-            {/* Relocated Public Beta / Early Access Announcement Banner (Replaces redundant buttons, gives airy breathing room) */}
-            <div className="flex items-center justify-center mb-6 sm:mb-8">
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.25 }}
-                className="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-3.5 sm:px-4 py-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md whitespace-nowrap max-w-none overflow-hidden"
-              >
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>
-                  {t('beta_badge')}
-                </span>
-                <span className="text-xs font-medium text-slate-700 dark:text-zinc-200">
-                  {currentLang === 'de' 
-                    ? 'Wir befinden uns in der Public Beta. Sichere dir exklusive Early-Adopter Konditionen!' 
-                    : 'We are currently in Public Beta. Secure exclusive early-adopter conditions now!'}
-                </span>
-              </motion.div>
-            </div>
 
             {/* HERO 4K PORTAL VIDEO SHOWCASE */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.8 }}
-              className="mt-6 sm:mt-8 max-w-5xl mx-auto relative group text-left"
+              className="mt-2 sm:mt-4 max-w-5xl mx-auto relative group text-left"
             >
               {/* Pulsing Ambient Glow */}
               <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600/30 via-cyan-500/20 to-indigo-600/30 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 transition-opacity duration-700 pointer-events-none" />
@@ -991,6 +972,26 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </div>
               </div>
             </motion.div>
+
+            {/* Integrated Public Beta / Early Access Announcement Banner (Placed below 4K video showcase, fully mobile-responsive) */}
+            <div className="mt-8 sm:mt-12 flex items-center justify-center px-4">
+              <motion.div 
+                initial={{ opacity: 0, y: 15 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: 0.2 }}
+                className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-2 rounded-2xl sm:rounded-full border border-amber-500/30 bg-amber-500/10 dark:bg-amber-400/10 text-amber-800 dark:text-amber-300 text-xs font-semibold shadow-sm backdrop-blur-md max-w-2xl text-center sm:text-left"
+              >
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-wider shrink-0 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-ping"></span>
+                  {t('beta_badge')}
+                </span>
+                <span className="text-xs font-medium text-slate-700 dark:text-zinc-200 leading-snug">
+                  {currentLang === 'de' 
+                    ? 'Wir befinden uns in der Public Beta. Sichere dir exklusive Early-Adopter Konditionen!' 
+                    : 'We are currently in Public Beta. Secure exclusive early-adopter conditions now!'}
+                </span>
+              </motion.div>
+            </div>
           </div>
         </section>
 
@@ -1047,7 +1048,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       alt="Status Quo Tool-Chaos & Margenverlust"
                       className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
                     />
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600/85 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
+                    <div className="hidden sm:flex absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600/85 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider items-center gap-1.5 shadow">
                       <AlertTriangle size={10} /> {t('chaos_video_tag')}
                     </div>
                   </div>
@@ -1102,7 +1103,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       alt="Single Source of Truth Live-Dashboard"
                       className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
                     />
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-blue-600/80 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow">
+                    <div className="hidden sm:flex absolute top-3 left-3 px-2.5 py-1 rounded-md bg-blue-600/80 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider items-center gap-1.5 shadow">
                       <Sparkles size={10} /> {t('ssot_video_tag')}
                     </div>
                   </div>
@@ -1150,7 +1151,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
                   <img src="/media/macbook_macro_controlling.jpg" alt={t('infra_p1_title')} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                  <div className="hidden sm:block absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p1_badge')}
                   </div>
                 </div>
@@ -1167,7 +1168,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
                   <img src="/media/devices_access_management_rbac.jpg" alt={t('infra_p2_title')} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                  <div className="hidden sm:block absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p2_badge')}
                   </div>
                 </div>
@@ -1184,7 +1185,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
                   <img src="/media/creatives_team_onboarding.jpg" alt="Team & Onboarding" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                  <div className="hidden sm:block absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p3_badge')}
                   </div>
                 </div>
@@ -1201,7 +1202,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-border/80 bg-slate-950 aspect-video relative group-hover:border-blue-500/40 transition-colors">
                   <img src="/media/macbook_bim_pipelines.jpg" alt={t('infra_p4_title')} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
+                  <div className="hidden sm:block absolute bottom-2.5 left-3 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-white text-[10px] font-bold">
                     {t('infra_p4_badge')}
                   </div>
                 </div>
@@ -1405,7 +1406,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     alt={t('practice_c1_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                  <div className="hidden sm:block absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
                     {t('practice_c1_tag')}
                   </div>
                 </div>
@@ -1431,7 +1432,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     alt={t('practice_c2_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                  <div className="hidden sm:block absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
                     {t('practice_c2_tag')}
                   </div>
                 </div>
@@ -1457,7 +1458,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     alt={t('practice_c3_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                  <div className="hidden sm:block absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
                     {t('practice_c3_tag')}
                   </div>
                 </div>
@@ -1483,7 +1484,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     alt={t('practice_c4_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                  <div className="hidden sm:block absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
                     {t('practice_c4_tag')}
                   </div>
                 </div>
@@ -1514,7 +1515,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     alt={t('practice_c5_alt')} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
                   />
-                  <div className="absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
+                  <div className="hidden sm:block absolute top-3 right-3 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-white/15 text-white text-[11px] font-bold">
                     {t('practice_c5_tag')}
                   </div>
                 </div>
