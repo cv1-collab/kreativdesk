@@ -481,11 +481,40 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     invalidateDocuments();
   };
 
+  const autoOrganizeLooseContracts = async (docs: any[], compId: string) => {
+    if (!docs || docs.length === 0 || !compId || isDemo) return;
+    const legalFolder = docs.find(d => d.is_folder && d.name === '02_RECHTLICHES');
+    if (!legalFolder) return;
+
+    const looseContracts = docs.filter(d => 
+      !d.is_folder && 
+      (d.folder_id === 'root' || !d.folder_id) && 
+      (d.category === 'company' || !d.project_id || d.project_id === 'global') &&
+      (d.type === 'vorlage' || d.name?.toLowerCase().includes('vertrag') || d.name?.startsWith('A0'))
+    );
+
+    if (looseContracts.length > 0) {
+      const looseIds = looseContracts.map(c => c.id);
+      try {
+        await supabase
+          .from('documents')
+          .update({ folder_id: legalFolder.id, category: 'company' })
+          .in('id', looseIds);
+        invalidateDocuments();
+      } catch (err) {
+        console.warn('Auto-organize loose contracts error:', err);
+      }
+    }
+  };
+
   useEffect(() => {
     if (queryDocuments && !isDemo) {
       setDocuments(queryDocuments as any);
+      if (safeCompanyId) {
+        autoOrganizeLooseContracts(queryDocuments as any, safeCompanyId);
+      }
     }
-  }, [queryDocuments, isDemo]);
+  }, [queryDocuments, isDemo, safeCompanyId]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;
@@ -752,10 +781,31 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     } else {
       // Company Tab (only available in company overview, never in project mode)
       const isCompanyCategory = doc.category === 'company' || !doc.project_id || doc.project_id === 'global';
+      
+      const currentFolder = documents.find(d => d.id === currentFolderId || d.name === currentFolderId);
+
       if (currentFolderId === 'root') {
         return isCompanyCategory && (doc.folder_id === 'root' || !doc.folder_id);
       }
-      return isCompanyCategory && doc.folder_id === currentFolderId;
+
+      if (currentFolder) {
+        const isDirectChild = doc.folder_id === currentFolder.id || doc.folder_id === currentFolder.name;
+        if (isDirectChild) return isCompanyCategory;
+
+        if (currentFolder.name === '02_RECHTLICHES') {
+          const isLegalContract = (doc.folder_id === 'root' || !doc.folder_id) && 
+            (doc.type === 'vorlage' || doc.name?.toLowerCase().includes('vertrag') || doc.name?.startsWith('A0'));
+          if (isLegalContract) return isCompanyCategory;
+        }
+
+        if (currentFolder.name === '10_KI_STUDIO') {
+          const isStudioDoc = (doc.folder_id === 'root' || !doc.folder_id) && 
+            (doc.type === 'vorlage' || doc.name?.includes('KI-Vorlage'));
+          if (isStudioDoc) return isCompanyCategory;
+        }
+      }
+
+      return isCompanyCategory && (doc.folder_id === currentFolderId || (currentFolder && doc.folder_id === currentFolder.name));
     }
   });
 
@@ -888,11 +938,25 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     }
   };
 
-  // Calculate file counts for company folders
+  // Calculate file counts for company folders with smart contract association
   const getCompanyFolderCount = (folderName: string) => {
     const folderObj = documents.find(d => d.is_folder && d.name === folderName);
     if (!folderObj) return 0;
-    return documents.filter(d => d.folder_id === folderObj.id).length;
+    return documents.filter(d => {
+      if (d.is_folder) return false;
+      const isCompany = d.category === 'company' || !d.project_id || d.project_id === 'global';
+      if (!isCompany) return false;
+      if (d.folder_id === folderObj.id || d.folder_id === folderName) return true;
+      if (folderName === '02_RECHTLICHES') {
+        return (d.folder_id === 'root' || !d.folder_id) && 
+               (d.type === 'vorlage' || d.name?.toLowerCase().includes('vertrag') || d.name?.startsWith('A0'));
+      }
+      if (folderName === '10_KI_STUDIO') {
+        return (d.folder_id === 'root' || !d.folder_id) && 
+               (d.type === 'vorlage' || d.name?.includes('KI-Vorlage'));
+      }
+      return false;
+    }).length;
   };
 
   // Calculate file counts for projects
