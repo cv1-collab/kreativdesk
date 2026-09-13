@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  X, Printer, Save, Copy, Check, Sparkles, Building2, Briefcase, 
+  X, Save, Copy, Check, Sparkles, Building2, Briefcase, 
   FileText, Upload, Image as ImageIcon, Palette, Eye, EyeOff, Trash2, Loader2,
   Bold, Heading1, Heading2, List, Minus, Type, ChevronRight, CheckCircle2,
   FileEdit, Layers
@@ -74,7 +74,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     footer_info: 'IBAN, VAT ID, Company Registry...',
     page_view: 'Multi-Page DIN-A4 View',
     editor_view: 'Full Editor Mode',
-    print_btn: 'Print (A4)'
+    font_weights: 'Font Weight',
+    weight_bold: 'Bold',
+    weight_semibold: 'Semibold',
+    weight_book: 'Book (Regular)',
+    weight_light: 'Light',
+    text_colors: 'Text Colors'
   },
   de: {
     studio_title: 'KI Brief- & Dokumenten-Studio',
@@ -122,9 +127,24 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     footer_info: 'IBAN, MWST-Nr., Handelsregister...',
     page_view: 'Mehrseitige DIN-A4 Ansicht',
     editor_view: 'Text-Editor Modus',
-    print_btn: 'Drucken (A4)'
+    font_weights: 'Schriftstärke / Gewicht',
+    weight_bold: 'Fett (Bold)',
+    weight_semibold: 'Halbfett (Semibold)',
+    weight_book: 'Buchschrift (Book)',
+    weight_light: 'Fein (Light)',
+    text_colors: 'Textfarben'
   }
 };
+
+const TEXT_COLORS = [
+  { id: 'black', hex: '#0f172a', label: 'Tiefschwarz' },
+  { id: 'slate', hex: '#475569', label: 'Schiefer' },
+  { id: 'blue', hex: '#2563eb', label: 'CI-Blau' },
+  { id: 'green', hex: '#059669', label: 'Smaragdgrün' },
+  { id: 'amber', hex: '#d97706', label: 'Bernstein' },
+  { id: 'red', hex: '#dc2626', label: 'Signalrot' },
+  { id: 'purple', hex: '#7c3aed', label: 'Kanzleiviolett' }
+];
 
 const FONT_OPTIONS = [
   { id: 'Inter', label: 'Inter (Schweizer Modern Sans)', fontStack: 'Inter, system-ui, -apple-system, sans-serif', pdfFont: 'Helvetica' },
@@ -179,6 +199,111 @@ const pdfStyles = StyleSheet.create({
   sigLabel: { fontSize: 6.5, color: '#6b7280', marginTop: 1 },
   fixedFooter: { position: 'absolute', bottom: '8mm', left: '15mm', right: '15mm', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 3, textAlign: 'center', fontSize: 6.5, color: '#9ca3af' }
 });
+
+// Recursive Tag & Markdown Parser for Word-like Formatting (Bold, Semibold, Light, Book, Colors)
+const parseStyledTokens = (
+  text: string,
+  isPdf: boolean,
+  activeStyle: { weight?: 'bold' | 'semibold' | 'light' | 'normal'; color?: string } = {}
+): React.ReactNode[] => {
+  if (!text) return [];
+
+  const tagRegex = /(\*\*[\s\S]*?\*\*|\[(?:bold|b)\][\s\S]*?\[\/(?:bold|b)\]|\[(?:semibold|sb)\][\s\S]*?\[\/(?:semibold|sb)\]|\[(?:light|l)\][\s\S]*?\[\/(?:light|l)\]|\[(?:book|regular)\][\s\S]*?\[\/(?:book|regular)\]|\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\][\s\S]*?\[\/color\])/g;
+
+  const parts = text.split(tagRegex);
+  const nodes: React.ReactNode[] = [];
+
+  parts.forEach((part, idx) => {
+    if (!part) return;
+
+    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+      const inner = part.slice(2, -2);
+      const nextStyle = { ...activeStyle, weight: 'bold' as const };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `b-${idx}`));
+    } else if ((part.startsWith('[bold]') && part.endsWith('[/bold]')) || (part.startsWith('[b]') && part.endsWith('[/b]'))) {
+      const startTagLen = part.startsWith('[bold]') ? 6 : 3;
+      const endTagLen = part.startsWith('[bold]') ? 7 : 4;
+      const inner = part.slice(startTagLen, -endTagLen);
+      const nextStyle = { ...activeStyle, weight: 'bold' as const };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `b2-${idx}`));
+    } else if ((part.startsWith('[semibold]') && part.endsWith('[/semibold]')) || (part.startsWith('[sb]') && part.endsWith('[/sb]'))) {
+      const startTagLen = part.startsWith('[semibold]') ? 10 : 4;
+      const endTagLen = part.startsWith('[semibold]') ? 11 : 5;
+      const inner = part.slice(startTagLen, -endTagLen);
+      const nextStyle = { ...activeStyle, weight: 'semibold' as const };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `sb-${idx}`));
+    } else if ((part.startsWith('[light]') && part.endsWith('[/light]')) || (part.startsWith('[l]') && part.endsWith('[/l]'))) {
+      const startTagLen = part.startsWith('[light]') ? 7 : 3;
+      const endTagLen = part.startsWith('[light]') ? 8 : 4;
+      const inner = part.slice(startTagLen, -endTagLen);
+      const nextStyle = { ...activeStyle, weight: 'light' as const };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `l-${idx}`));
+    } else if ((part.startsWith('[book]') && part.endsWith('[/book]')) || (part.startsWith('[regular]') && part.endsWith('[/regular]'))) {
+      const startTagLen = part.startsWith('[book]') ? 6 : 9;
+      const endTagLen = part.startsWith('[book]') ? 7 : 10;
+      const inner = part.slice(startTagLen, -endTagLen);
+      const nextStyle = { ...activeStyle, weight: 'normal' as const };
+      nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `reg-${idx}`));
+    } else if (part.startsWith('[color:') && part.endsWith('[/color]')) {
+      const match = part.match(/^\[color:(#[0-9a-fA-F]{3,8}|[a-zA-Z]+)\]([\s\S]*?)\[\/color\]$/);
+      if (match) {
+        const color = match[1];
+        const inner = match[2];
+        const nextStyle = { ...activeStyle, color };
+        nodes.push(renderTokenNode(parseStyledTokens(inner, isPdf, nextStyle), nextStyle, isPdf, `col-${idx}`));
+      } else {
+        nodes.push(renderTokenNode(part, activeStyle, isPdf, `txt-${idx}`));
+      }
+    } else {
+      nodes.push(renderTokenNode(part, activeStyle, isPdf, `txt-${idx}`));
+    }
+  });
+
+  return nodes;
+};
+
+const renderTokenNode = (
+  content: React.ReactNode,
+  style: { weight?: 'bold' | 'semibold' | 'light' | 'normal'; color?: string },
+  isPdf: boolean,
+  key: string
+) => {
+  if (!isPdf) {
+    let weightClass = '';
+    if (style.weight === 'bold') weightClass = 'font-bold text-slate-950';
+    else if (style.weight === 'semibold') weightClass = 'font-semibold text-slate-900';
+    else if (style.weight === 'light') weightClass = 'font-light text-slate-600';
+    else if (style.weight === 'normal') weightClass = 'font-normal text-slate-800';
+
+    return (
+      <span 
+        key={key} 
+        className={weightClass} 
+        style={style.color ? { color: style.color } : undefined}
+      >
+        {content}
+      </span>
+    );
+  } else {
+    // React-PDF mode
+    let fontWeight: any = undefined;
+    if (style.weight === 'bold' || style.weight === 'semibold') fontWeight = 'bold';
+    else if (style.weight === 'normal' || style.weight === 'light') fontWeight = 'normal';
+
+    return (
+      <Text 
+        key={key} 
+        style={{
+          fontWeight,
+          opacity: style.weight === 'light' ? 0.8 : 1,
+          color: style.color || undefined
+        }}
+      >
+        {content}
+      </Text>
+    );
+  }
+};
 
 function DocumentStudioPDFDocument({
   settings,
@@ -275,7 +400,7 @@ function DocumentStudioPDFDocument({
           if (block.type === 'heading') {
             return (
               <Text key={idx} style={[pdfStyles.sectionHeading, { color: primaryColor }]} wrap={false}>
-                {block.text}
+                {parseStyledTokens(block.text, true)}
               </Text>
             );
           }
@@ -283,13 +408,13 @@ function DocumentStudioPDFDocument({
             return (
               <View key={idx} style={pdfStyles.bulletRow}>
                 <Text style={pdfStyles.bulletDot}>•</Text>
-                <Text style={pdfStyles.bulletText}>{block.text}</Text>
+                <Text style={pdfStyles.bulletText}>{parseStyledTokens(block.text, true)}</Text>
               </View>
             );
           }
           return (
             <Text key={idx} style={pdfStyles.paragraph}>
-              {block.text}
+              {parseStyledTokens(block.text, true)}
             </Text>
           );
         })}
@@ -418,15 +543,9 @@ function splitContentIntoPages(
   }));
 }
 
-// Inline Markdown & Formatting Parser for DIN-A4 Screen View
+// Inline Formatting Parser for DIN-A4 Screen View
 const renderInlineFormatting = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={i} className="font-extrabold text-slate-950">{part.slice(2, -2)}</strong>;
-    }
-    return part;
-  });
+  return parseStyledTokens(text, false);
 };
 
 const renderFormattedText = (text: string, accentCol: string) => {
@@ -448,8 +567,8 @@ const renderFormattedText = (text: string, accentCol: string) => {
     if (isMainHeading) {
       return (
         <div key={idx} className="mt-4 mb-1.5 pt-2 border-b border-slate-200/80 pb-0.5">
-          <h3 className="text-xs md:text-sm font-black uppercase tracking-wider text-slate-900">
-            {trimmed.replace(/^#+\s*/, '')}
+          <h3 className="text-xs md:text-sm font-semibold uppercase tracking-wider text-slate-900">
+            {parseStyledTokens(trimmed.replace(/^#+\s*/, ''), false)}
           </h3>
         </div>
       );
@@ -462,14 +581,14 @@ const renderFormattedText = (text: string, accentCol: string) => {
       return (
         <div key={idx} className="flex items-start gap-2 my-1 pl-1.5 text-xs leading-relaxed text-slate-800">
           <span className="font-bold text-slate-900 mt-0.5">•</span>
-          <div>{renderInlineFormatting(bulletContent)}</div>
+          <div>{parseStyledTokens(bulletContent, false)}</div>
         </div>
       );
     }
 
     return (
       <p key={idx} className="my-1 text-xs leading-relaxed text-slate-800">
-        {renderInlineFormatting(line)}
+        {parseStyledTokens(line, false)}
       </p>
     );
   });
@@ -595,23 +714,33 @@ export default function DocumentStudioModal({
     }
   };
 
-  // Text formatting insertion helper
+  // Text formatting insertion helper (Word-style text selection wrapping)
   const insertFormatting = (prefix: string, suffix = '') => {
-    if (!textareaRef.current) {
-      setDocContent(prev => prev + '\n' + prefix + (suffix ? 'Text' + suffix : ''));
-      return;
+    if (canvasViewMode !== 'editor') {
+      setCanvasViewMode('editor');
     }
-    const el = textareaRef.current;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = docContent.substring(start, end);
-    const replacement = selected ? `${prefix}${selected}${suffix}` : `${prefix}Text${suffix}`;
-    const newContent = docContent.substring(0, start) + replacement + docContent.substring(end);
-    setDocContent(newContent);
     setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + prefix.length, start + replacement.length - suffix.length);
-    }, 50);
+      if (!textareaRef.current) {
+        setDocContent(prev => prev + '\n' + prefix + (suffix ? 'Text' + suffix : ''));
+        return;
+      }
+      const el = textareaRef.current;
+      const start = el.selectionStart ?? docContent.length;
+      const end = el.selectionEnd ?? docContent.length;
+      const selected = docContent.substring(start, end);
+      const sampleWord = prefix.includes('bold') ? 'Fetter Text' : 
+                         prefix.includes('semibold') ? 'Halbfetter Text' : 
+                         prefix.includes('light') ? 'Feiner Text' : 
+                         prefix.includes('book') ? 'Text' :
+                         prefix.includes('color') ? 'Farbiger Text' : 'Text';
+      const replacement = selected ? `${prefix}${selected}${suffix}` : `${prefix}${sampleWord}${suffix}`;
+      const newContent = docContent.substring(0, start) + replacement + docContent.substring(end);
+      setDocContent(newContent);
+      setTimeout(() => {
+        el.focus();
+        el.setSelectionRange(start + prefix.length, start + replacement.length - suffix.length);
+      }, 50);
+    }, canvasViewMode !== 'editor' ? 80 : 0);
   };
 
   // Quick prefill from selected project
@@ -871,7 +1000,7 @@ ${footerText}
           <div className="overflow-hidden">
             <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-wide flex items-center gap-2 truncate">
               {t('studio_title')} 
-              <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-black uppercase shrink-0">
+              <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-bold uppercase shrink-0">
                 {t('din_a4_live')} ({pages.length} {pages.length === 1 ? 'Seite' : 'Seiten'})
               </span>
             </h2>
@@ -882,16 +1011,8 @@ ${footerText}
         {/* Action Buttons Toolbar */}
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto shrink-0 pb-1 md:pb-0 justify-end">
           <button
-            onClick={() => window.print()}
-            className="px-3 md:px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap shrink-0"
-            title="Drucken oder als PDF drucken"
-          >
-            <Printer size={15} /> {t('print_btn')}
-          </button>
-
-          <button
             onClick={() => setIsPdfStudioOpen(true)}
-            className="px-3 md:px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
+            className="px-3 md:px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
           >
             <Sparkles size={15} /> {t('open_pdf_studio')}
           </button>
@@ -1088,49 +1209,107 @@ ${footerText}
               </select>
             </div>
 
-            {/* Quick Formatting Buttons */}
-            <div>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">{t('format_tools')}:</span>
-              <div className="grid grid-cols-5 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => insertFormatting('**', '**')}
-                  className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black text-slate-900 dark:text-white transition-colors cursor-pointer"
-                  title="Fett (Auswahl formatieren)"
-                >
-                  <Bold size={15} />
-                </button>
+            {/* Quick Formatting Suite (Word-like Font Weights & Colors) */}
+            <div className="space-y-2.5">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-bold">{t('format_tools')}:</span>
+              
+              {/* Schriftgewichte: Bold, Semibold, Book, Light */}
+              <div>
+                <span className="text-[9px] text-slate-400 block mb-1 font-medium">{t('font_weights')}:</span>
+                <div className="grid grid-cols-4 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('[bold]', '[/bold]')}
+                    className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
+                    title={t('weight_bold')}
+                  >
+                    Bold
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('[semibold]', '[/semibold]')}
+                    className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-semibold text-slate-900 dark:text-white transition-colors cursor-pointer"
+                    title={t('weight_semibold')}
+                  >
+                    Semi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('[book]', '[/book]')}
+                    className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-normal text-slate-900 dark:text-white transition-colors cursor-pointer"
+                    title={t('weight_book')}
+                  >
+                    Book
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertFormatting('[light]', '[/light]')}
+                    className="py-1.5 px-1 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-center text-xs font-light text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+                    title={t('weight_light')}
+                  >
+                    Light
+                  </button>
+                </div>
+              </div>
+
+              {/* Textfarben Palette */}
+              <div>
+                <span className="text-[9px] text-slate-400 block mb-1 font-medium">{t('text_colors')}:</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {TEXT_COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => insertFormatting(`[color:${c.hex}]`, '[/color]')}
+                      className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-600 hover:scale-125 transition-transform cursor-pointer shadow-xs"
+                      style={{ backgroundColor: c.hex }}
+                      title={`${c.label} (${c.hex})`}
+                    />
+                  ))}
+                  <label className="relative w-5 h-5 rounded-full border border-dashed border-slate-400 hover:scale-125 transition-transform cursor-pointer flex items-center justify-center overflow-hidden" title="Eigene Farbe wählen">
+                    <input 
+                      type="color" 
+                      className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                      onChange={e => insertFormatting(`[color:${e.target.value}]`, '[/color]')}
+                    />
+                    <Palette size={10} className="text-slate-500" />
+                  </label>
+                </div>
+              </div>
+
+              {/* Struktur Werkzeuge: H1, H2, Liste, Trennlinie */}
+              <div className="grid grid-cols-4 gap-1 pt-1">
                 <button
                   type="button"
                   onClick={() => insertFormatting('\n\n1. ', '\n')}
-                  className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black text-slate-900 dark:text-white transition-colors cursor-pointer"
+                  className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                   title="Haupttitel (1. ABSCHNITT)"
                 >
-                  <Heading1 size={15} />
+                  <Heading1 size={14} />
                 </button>
                 <button
                   type="button"
                   onClick={() => insertFormatting('\n• Phase 31: ', '\n')}
-                  className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-black text-slate-900 dark:text-white transition-colors cursor-pointer"
+                  className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                   title="Unterabschnitt (Phase:)"
                 >
-                  <Heading2 size={15} />
+                  <Heading2 size={14} />
                 </button>
                 <button
                   type="button"
                   onClick={() => insertFormatting('\n• ', '')}
-                  className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
+                  className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                   title="Aufzählungspunkt (•)"
                 >
-                  <List size={15} />
+                  <List size={14} />
                 </button>
                 <button
                   type="button"
                   onClick={() => insertFormatting('\n--------------------------------------------------\n', '')}
-                  className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
+                  className="p-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white transition-colors cursor-pointer"
                   title="Trennlinie"
                 >
-                  <Minus size={15} />
+                  <Minus size={14} />
                 </button>
               </div>
             </div>
@@ -1429,7 +1608,7 @@ ${footerText}
                               type="text"
                               value={docTitle}
                               onChange={e => setDocTitle(e.target.value)}
-                              className="w-full text-lg md:text-xl font-black text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-600 outline-none pb-1 bg-transparent tracking-tight"
+                              className="w-full text-lg md:text-xl font-semibold text-slate-900 border-b border-transparent hover:border-slate-300 focus:border-blue-600 outline-none pb-1 bg-transparent tracking-tight"
                               placeholder={t('subject_title')}
                             />
                           </div>
@@ -1439,7 +1618,7 @@ ${footerText}
                         <div className="flex justify-between items-center border-b border-slate-200 pb-3 mb-6 text-[10px] text-slate-500 font-bold uppercase tracking-wider">
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: accentColor }} />
-                            <span className="text-slate-900 font-black">{companyData.name}</span>
+                            <span className="text-slate-900 font-semibold">{companyData.name}</span>
                             <span>•</span>
                             <span className="truncate max-w-[280px]">{docTitle}</span>
                           </div>
@@ -1491,36 +1670,99 @@ ${footerText}
             /* MODE 2: DIRECT TEXT & PARAGRAPH EDITOR */
             <div className="w-full max-w-[210mm] bg-white text-slate-900 shadow-2xl rounded-2xl p-6 sm:p-8 border border-slate-200 flex flex-col justify-between">
               <div>
-                <div className="flex items-center justify-between mb-4 border-b border-slate-200 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-3">
                   <div>
                     <h3 className="font-bold text-sm text-slate-900">Text- & Paragrafen-Editor</h3>
                     <p className="text-xs text-slate-500">Bearbeite den gesamten Vertragstext mit automatischem DIN-A4 Seitenumbruch.</p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('**', '**')}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors"
-                      title="Fett"
-                    >
-                      <Bold size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('\n\n1. ', '\n')}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors"
-                      title="Hauptabschnitt"
-                    >
-                      <Heading1 size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => insertFormatting('\n• ', '')}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors"
-                      title="Aufzählung"
-                    >
-                      <List size={14} />
-                    </button>
+
+                  {/* Word-Style Typography & Color Ribbon */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Font Weight Toggles */}
+                    <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 shadow-xs">
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('[bold]', '[/bold]')}
+                        className="px-2 py-1 hover:bg-white rounded text-xs font-bold text-slate-900 transition-colors cursor-pointer"
+                        title={t('weight_bold')}
+                      >
+                        B
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('[semibold]', '[/semibold]')}
+                        className="px-2 py-1 hover:bg-white rounded text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+                        title={t('weight_semibold')}
+                      >
+                        SB
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('[book]', '[/book]')}
+                        className="px-2 py-1 hover:bg-white rounded text-xs font-normal text-slate-800 transition-colors cursor-pointer"
+                        title={t('weight_book')}
+                      >
+                        Book
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('[light]', '[/light]')}
+                        className="px-2 py-1 hover:bg-white rounded text-xs font-light text-slate-600 transition-colors cursor-pointer"
+                        title={t('weight_light')}
+                      >
+                        Light
+                      </button>
+                    </div>
+
+                    {/* Color Swatches Palette */}
+                    <div className="flex items-center gap-1 bg-slate-100 rounded-lg px-2 py-1 border border-slate-200 shadow-xs">
+                      {TEXT_COLORS.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => insertFormatting(`[color:${c.hex}]`, '[/color]')}
+                          className="w-3.5 h-3.5 rounded-full hover:scale-125 transition-transform cursor-pointer border border-slate-300 shadow-2xs"
+                          style={{ backgroundColor: c.hex }}
+                          title={`${c.label} (${c.hex})`}
+                        />
+                      ))}
+                      <label className="relative w-3.5 h-3.5 rounded-full border border-dashed border-slate-400 hover:scale-125 transition-transform cursor-pointer flex items-center justify-center overflow-hidden ml-0.5" title="Eigene Farbe wählen">
+                        <input 
+                          type="color" 
+                          className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                          onChange={e => insertFormatting(`[color:${e.target.value}]`, '[/color]')}
+                        />
+                        <Palette size={8} className="text-slate-600" />
+                      </label>
+                    </div>
+
+                    {/* Structural Formatting */}
+                    <div className="flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('\n\n1. ', '\n')}
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                        title="Hauptabschnitt (1. )"
+                      >
+                        <Heading1 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('\n• Phase 31: ', '\n')}
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                        title="Unterabschnitt (Phase: )"
+                      >
+                        <Heading2 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => insertFormatting('\n• ', '')}
+                        className="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                        title="Aufzählungspunkt (• )"
+                      >
+                        <List size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1530,7 +1772,7 @@ ${footerText}
                     type="text"
                     value={docTitle}
                     onChange={e => setDocTitle(e.target.value)}
-                    className="w-full text-base font-black text-slate-900 border border-slate-300 rounded-xl px-3 py-2 outline-none focus:border-blue-600"
+                    className="w-full text-base font-semibold text-slate-900 border border-slate-300 rounded-xl px-3 py-2 outline-none focus:border-blue-600"
                     placeholder={t('subject_title')}
                   />
                 </div>

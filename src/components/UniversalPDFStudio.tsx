@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, Sparkles, Printer } from 'lucide-react';
 import { cn } from '../utils';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
@@ -74,6 +74,8 @@ export default function UniversalPDFStudio({
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [isPdfCompiling, setIsPdfCompiling] = useState(true);
   
   const [format, setFormat] = useState<'A4' | 'A3'>('A4');
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(defaultOrientation);
@@ -89,6 +91,17 @@ export default function UniversalPDFStudio({
   useEffect(() => {
     if (defaultFooterText) setFooterText(defaultFooterText);
   }, [defaultFooterText]);
+
+  // Loading animation overlay while @react-pdf/renderer synthesizes layout & fonts
+  useEffect(() => {
+    if (isOpen) {
+      setIsPdfCompiling(true);
+      const timer = setTimeout(() => {
+        setIsPdfCompiling(false);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, format, orientation, logo, accentColor, footerText]);
   
   const logoRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -114,6 +127,58 @@ export default function UniversalPDFStudio({
   // Holt das dynamische React-PDF Dokument basierend auf den aktuellen Einstellungen
   const getDocument = () => {
     return typeof children === 'function' ? children({ format, orientation, logo, accentColor, footerText, watermark }) : children;
+  };
+
+  // Druckt das native PDF direkt ohne Verzögerung oder UI-Überlappung
+  const handlePrintPDF = async () => {
+    if (isDemoMode) {
+      addToast('PDF-Druck ist in der Live-Demo gesperrt.', 'info');
+      return;
+    }
+    setIsPrinting(true);
+    try {
+      const docElement = getDocument();
+      let blob: Blob | null = null;
+      try {
+        const asPdf = pdf(docElement as any);
+        blob = await asPdf.toBlob();
+      } catch (err1) {
+        const asPdf = pdf();
+        asPdf.updateContainer(docElement as any);
+        blob = await asPdf.toBlob();
+      }
+      if (!blob || blob.size === 0) {
+        throw new Error("Generiertes PDF ist leer");
+      }
+      const url = URL.createObjectURL(blob);
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.src = url;
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (printErr) {
+          window.open(url, '_blank')?.print();
+        }
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+          URL.revokeObjectURL(url);
+        }, 60000);
+      };
+      addToast('Druckdialog geöffnet', 'info');
+    } catch (error: any) {
+      console.error("Print Error", error);
+      addToast(`Fehler beim Drucken: ${error?.message || 'Bitte erneut versuchen'}`, 'error');
+    } finally {
+      setIsPrinting(false);
+    }
   };
 
   // Generiert das Blob direkt aus dem React-PDF Dokument für Download/Upload
@@ -263,18 +328,41 @@ export default function UniversalPDFStudio({
             </div>
           </div>
           
-          <div className="p-4 border-t border-border bg-surface space-y-3 shrink-0">
-            <button onClick={() => generatePDF(true)} disabled={isUploading || isGenerating} className="w-full py-3 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-bold hover:bg-indigo-500/20 flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-              {isUploading ? <Loader2 className="animate-spin" size={18} /> : <Cloud size={18} />} In Datenraum speichern
+          <div className="p-4 border-t border-border bg-surface space-y-2.5 shrink-0">
+            <button 
+              onClick={handlePrintPDF} 
+              disabled={isPrinting || isGenerating || isUploading} 
+              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-zinc-700 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer text-sm"
+              title="Direkt über Browser-Druckdialog ausgeben"
+            >
+              {isPrinting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} Dokument drucken
             </button>
-            <button onClick={() => generatePDF(false)} disabled={isGenerating || isUploading} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors">
-              {isGenerating ? <Loader2 className="animate-spin" size={18} /> : <Download size={18} />} Lokal herunterladen
+            <button onClick={() => generatePDF(true)} disabled={isUploading || isGenerating || isPrinting} className="w-full py-2.5 rounded-xl bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 font-bold hover:bg-indigo-500/20 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer text-sm">
+              {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />} In Datenraum speichern
+            </button>
+            <button onClick={() => generatePDF(false)} disabled={isGenerating || isUploading || isPrinting} className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors cursor-pointer text-sm shadow-md">
+              {isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />} Lokal herunterladen
             </button>
           </div>
         </div>
 
-        {/* 🚀 NATIVE PDF VIEWER FÜR ECHTES WYSIWYG */}
-        <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 relative">
+        {/* 🚀 NATIVE PDF VIEWER FÜR ECHTES WYSIWYG MIT LADE-FEEDBACK */}
+        <div className="flex-1 bg-zinc-100 dark:bg-zinc-900 relative flex flex-col overflow-hidden">
+          {isPdfCompiling && (
+            <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-xs transition-opacity duration-300">
+              <div className="p-6 rounded-2xl bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shadow-2xl flex flex-col items-center gap-3.5 max-w-sm text-center">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-inner">
+                  <Loader2 className="animate-spin" size={26} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">PDF-Vorschau wird vorbereitet</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    Vektor-Engine kompiliert DIN-A4 Layout, Schriften und mehrseitige Umbrüche für gestochen scharfen Druck...
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           <PDFErrorBoundary>
             <PDFViewer width="100%" height="100%" showToolbar={false} style={{ border: 'none', backgroundColor: 'transparent' }}>
                {getDocument() as any}

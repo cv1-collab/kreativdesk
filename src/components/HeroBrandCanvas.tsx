@@ -98,38 +98,41 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
     let currentSpacing = 36;
     const isDe = (language || 'de').toLowerCase().startsWith('de');
 
-    // 14 Module Nodes placed cleanly in clear background zones away from the central video
+    // 14 Module Nodes placed cleanly in clear background zones away from the title and video
     const moduleDefs = [
-      // Top Arch above headline (in the clear upper matrix zone)
-      { id: 'cad', labelDe: 'CAD Pläne', labelEn: 'CAD Plans', codeDe: 'CAD.1:50', codeEn: 'CAD.1:50', rx: 0.25, ry: 0.15, align: 'left' as const },
-      { id: 'cube', labelDe: '3D BIM (IFC)', labelEn: '3D BIM (IFC)', codeDe: 'IFC4::01', codeEn: 'IFC4::01', rx: 0.42, ry: 0.11, align: 'center' as const },
-      { id: 'deck', labelDe: 'Pitch Deck Studio', labelEn: 'Pitch Deck Studio', codeDe: 'PDF.VEKTOR', codeEn: 'PDF.VECTOR', rx: 0.58, ry: 0.11, align: 'center' as const },
-      { id: 'ledger', labelDe: 'Finanzen & BKP', labelEn: 'Finance & Cost Plans', codeDe: 'BKP.100-900', codeEn: 'CFC.100-900', rx: 0.75, ry: 0.15, align: 'right' as const },
+      // Top Wings above headline (shifted outwards and upwards away from the title per screenshot)
+      { id: 'cad', labelDe: 'CAD Pläne', labelEn: 'CAD Plans', codeDe: 'CAD.1:50', codeEn: 'CAD.1:50', rx: 0.16, ry: 0.14, align: 'left' as const },
+      { id: 'cube', labelDe: '3D BIM (IFC)', labelEn: '3D BIM (IFC)', codeDe: 'IFC4::01', codeEn: 'IFC4::01', rx: 0.30, ry: 0.04, align: 'center' as const },
+      { id: 'deck', labelDe: 'Pitch Deck Studio', labelEn: 'Pitch Deck Studio', codeDe: 'PDF.VEKTOR', codeEn: 'PDF.VECTOR', rx: 0.70, ry: 0.04, align: 'center' as const },
+      { id: 'ledger', labelDe: 'Finanzen & BKP', labelEn: 'Finance & Cost Plans', codeDe: 'BKP.100-900', codeEn: 'CFC.100-900', rx: 0.84, ry: 0.14, align: 'right' as const },
 
-      // Left Flank (strictly on the open white background to the left of the central video)
-      { id: 'offerte', labelDe: 'Smart Offerte', labelEn: 'Smart Proposals', codeDe: 'OFF.SIA102', codeEn: 'PROP.SIA102', rx: 0.08, ry: 0.32, align: 'left' as const },
-      { id: 'calendar', labelDe: 'Smart Calendar', labelEn: 'Smart Calendar', codeDe: 'SIA.TERM', codeEn: 'SCHED.SIA', rx: 0.10, ry: 0.44, align: 'left' as const },
-      { id: 'chat', labelDe: 'Meet & Chat', labelEn: 'Meet & Chat', codeDe: 'P2P.VOIP', codeEn: 'P2P.VOIP', rx: 0.07, ry: 0.56, align: 'left' as const },
-      { id: 'bauakte', labelDe: 'Bauakte', labelEn: 'Project Archive', codeDe: 'DOC.VAULT', codeEn: 'DOC.VAULT', rx: 0.09, ry: 0.69, align: 'left' as const },
-      { id: 'rbac', labelDe: 'Rollen & RBAC', labelEn: 'Roles & RBAC', codeDe: 'AUTH.RBAC', codeEn: 'AUTH.RBAC', rx: 0.07, ry: 0.82, align: 'left' as const },
+      // Left Flank (strictly on the open background to the left of the central video)
+      { id: 'offerte', labelDe: 'Smart Offerte', labelEn: 'Smart Proposals', codeDe: 'OFF.SIA102', codeEn: 'PROP.SIA102', rx: 0.06, ry: 0.28, align: 'left' as const },
+      { id: 'calendar', labelDe: 'Smart Calendar', labelEn: 'Smart Calendar', codeDe: 'SIA.TERM', codeEn: 'SCHED.SIA', rx: 0.08, ry: 0.42, align: 'left' as const },
+      { id: 'chat', labelDe: 'Meet & Chat', labelEn: 'Meet & Chat', codeDe: 'P2P.VOIP', codeEn: 'P2P.VOIP', rx: 0.06, ry: 0.56, align: 'left' as const },
+      { id: 'bauakte', labelDe: 'Bauakte', labelEn: 'Project Archive', codeDe: 'DOC.VAULT', codeEn: 'DOC.VAULT', rx: 0.08, ry: 0.70, align: 'left' as const },
+      { id: 'rbac', labelDe: 'Rollen & RBAC', labelEn: 'Roles & RBAC', codeDe: 'AUTH.RBAC', codeEn: 'AUTH.RBAC', rx: 0.06, ry: 0.84, align: 'left' as const },
 
-      // Right Flank (strictly on the open white background to the right of the central video)
-      { id: 'tickets', labelDe: 'Mängel & Tickets', labelEn: 'Defects & Tickets', codeDe: 'ISSUE.SYNC', codeEn: 'ISSUE.SYNC', rx: 0.92, ry: 0.32, align: 'right' as const },
-      { id: 'camera', labelDe: 'Baukamera', labelEn: 'Site Camera', codeDe: 'CAM.LIVE', codeEn: 'CAM.LIVE', rx: 0.90, ry: 0.44, align: 'right' as const },
-      { id: 'whiteboard', labelDe: 'Whiteboard', labelEn: 'Whiteboard', codeDe: 'CANVAS.2D', codeEn: 'CANVAS.2D', rx: 0.93, ry: 0.56, align: 'right' as const },
-      { id: 'ai', labelDe: 'KI-Concierge', labelEn: 'AI Concierge', codeDe: 'AI.NEURAL', codeEn: 'AI.NEURAL', rx: 0.91, ry: 0.69, align: 'right' as const },
-      { id: 'cloud', labelDe: 'Colocation & Cloud', labelEn: 'Colocation & Cloud', codeDe: 'CH.HOSTING', codeEn: 'CH.HOSTING', rx: 0.93, ry: 0.82, align: 'right' as const }
+      // Right Flank (strictly on the open background to the right of the central video)
+      { id: 'tickets', labelDe: 'Mängel & Tickets', labelEn: 'Defects & Tickets', codeDe: 'ISSUE.SYNC', codeEn: 'ISSUE.SYNC', rx: 0.94, ry: 0.28, align: 'right' as const },
+      { id: 'camera', labelDe: 'Baukamera', labelEn: 'Site Camera', codeDe: 'CAM.LIVE', codeEn: 'CAM.LIVE', rx: 0.92, ry: 0.42, align: 'right' as const },
+      { id: 'whiteboard', labelDe: 'Whiteboard', labelEn: 'Whiteboard', codeDe: 'CANVAS.2D', codeEn: 'CANVAS.2D', rx: 0.94, ry: 0.56, align: 'right' as const },
+      { id: 'ai', labelDe: 'KI-Concierge', labelEn: 'AI Concierge', codeDe: 'AI.NEURAL', codeEn: 'AI.NEURAL', rx: 0.92, ry: 0.70, align: 'right' as const },
+      { id: 'cloud', labelDe: 'Colocation & Cloud', labelEn: 'Colocation & Cloud', codeDe: 'CH.HOSTING', codeEn: 'CH.HOSTING', rx: 0.94, ry: 0.84, align: 'right' as const }
     ];
 
     // Synapse network connections linking nodes into a technical blueprint matrix
+    // Note: No horizontal connection through the center [1, 2] so the headline area remains 100% clean
     const synapseConnections: [number, number][] = [
-      // Top arch chain
+      // Top wings (linking upper nodes outward and downward to the flanks)
       [0, 1], // cad -> cube
-      [1, 2], // cube -> deck
       [2, 3], // deck -> ledger
+      [0, 4], // cad -> offerte
+      [1, 4], // cube -> offerte (diagonal perimeter brace)
+      [3, 9], // ledger -> tickets
+      [2, 9], // deck -> tickets (diagonal perimeter brace)
 
       // Left flank & inner network
-      [0, 4], // cad -> offerte
       [4, 5], // offerte -> calendar
       [5, 6], // calendar -> chat
       [6, 7], // chat -> bauakte
@@ -138,17 +141,12 @@ export default function HeroBrandCanvas({ className = '', isDark = true, languag
       [5, 8], // calendar -> rbac (cross matrix)
 
       // Right flank & inner network
-      [3, 9], // ledger -> tickets
       [9, 10], // tickets -> camera
       [10, 11], // camera -> whiteboard
       [11, 12], // whiteboard -> ai
       [12, 13], // ai -> cloud
       [9, 11], // tickets -> whiteboard (cross matrix)
-      [11, 13], // whiteboard -> cloud (cross matrix)
-
-      // Bridge connections around perimeter
-      [1, 5], // cube -> calendar
-      [2, 11]  // deck -> whiteboard
+      [11, 13]  // whiteboard -> cloud (cross matrix)
     ];
 
     let modules: ModuleNode[] = [];
