@@ -79,7 +79,7 @@ export default function AuditLogsTab() {
         {/* Header Title */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border/50 pb-5">
           <div>
-            <h3 className="text-lg sm:text-xl font-black text-text-primary flex items-center gap-2">
+            <h3 className="text-lg sm:text-xl font-semibold text-text-primary flex items-center gap-2">
               <Shield className="text-blue-500 shrink-0" size={24} />
               <span>{language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance'}</span>
             </h3>
@@ -128,8 +128,8 @@ export default function AuditLogsTab() {
                     </div>
                     <div className="overflow-hidden flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-xs sm:text-sm text-text-primary tracking-wide">{log.action || 'Aktivität'}</span>
-                        <span className="text-[10px] font-mono font-bold bg-surface border border-border px-2 py-0.5 rounded-full text-text-muted truncate max-w-[180px]">
+                        <span className="font-semibold text-xs sm:text-sm text-text-primary tracking-wide">{log.action || 'Aktivität'}</span>
+                        <span className="text-[10px] font-mono font-semibold bg-surface border border-border px-2 py-0.5 rounded-full text-text-muted truncate max-w-[180px]">
                           {userIdent}
                         </span>
                       </div>

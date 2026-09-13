@@ -712,7 +712,7 @@ export default function SettingsTab() {
           type="button"
           onClick={() => setActiveSubTab('general')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border",
+            "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
             activeSubTab === 'general'
               ? "bg-accent-ai text-white border-accent-ai shadow-md"
               : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
@@ -724,7 +724,7 @@ export default function SettingsTab() {
           type="button"
           onClick={() => setActiveSubTab('api')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border",
+            "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
             activeSubTab === 'api'
               ? "bg-accent-ai text-white border-accent-ai shadow-md"
               : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
@@ -742,7 +742,7 @@ export default function SettingsTab() {
         {/* RECHTE SPALTE (2/3) - PROFIL & EINSTELLUNGEN */}
         <div className="xl:col-span-2 space-y-6">
           <form onSubmit={handleSaveSettings} className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
-            <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
+            <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
               <Building2 size={16} /> {t('agency_profile')}
             </h3>
 

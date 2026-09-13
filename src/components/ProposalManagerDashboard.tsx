@@ -400,25 +400,25 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
         <div className="flex items-center gap-1.5 bg-surface border border-border rounded-xl p-1">
           <button
             onClick={() => setStatusFilter('all')}
-            className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer", statusFilter === 'all' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+            className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer", statusFilter === 'all' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
           >
             {t('filter_all')} ({proposals.length})
           </button>
           <button
             onClick={() => setStatusFilter('active')}
-            className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer", statusFilter === 'active' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+            className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer", statusFilter === 'active' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
           >
             {t('filter_active')} ({activeCount})
           </button>
           <button
             onClick={() => setStatusFilter('accepted')}
-            className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer", statusFilter === 'accepted' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+            className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer", statusFilter === 'accepted' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
           >
             {t('filter_accepted')} ({acceptedCount})
           </button>
           <button
             onClick={() => setStatusFilter('expired')}
-            className={cn("px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer", statusFilter === 'expired' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
+            className={cn("px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer", statusFilter === 'expired' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
           >
             {t('filter_expired')} ({expiredCount})
           </button>
@@ -440,7 +440,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
               <div className="pt-2">
                 <button
                   onClick={handleTriggerCreate}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-md inline-flex items-center gap-2 cursor-pointer active:scale-95"
                 >
                   <Plus size={14} /> {t('empty_btn')}
                 </button>
@@ -448,7 +448,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
             </>
           ) : (
             <>
-              <h3 className="text-base font-bold text-text-primary">{t('no_filter_results_title')}</h3>
+              <h3 className="text-base font-semibold text-text-primary">{t('no_filter_results_title')}</h3>
               <p className="text-xs text-text-muted max-w-sm mx-auto">
                 {t('no_filter_results_desc')}
               </p>
@@ -458,42 +458,39 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                     setSearchQuery('');
                     setStatusFilter('all');
                   }}
-                  className="px-4 py-2 bg-surface hover:bg-background border border-border text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm inline-flex items-center gap-2 cursor-pointer active:scale-95"
+                  className="px-4 py-2 bg-surface hover:bg-border text-text-primary rounded-xl text-xs font-semibold transition-all border border-border inline-flex items-center gap-2 cursor-pointer"
                 >
-                  <RefreshCw size={14} /> {t('btn_reset_filters')}
+                  <RefreshCw size={14} /> {t('filter_reset')}
                 </button>
               </div>
             </>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredProposals.map(proposal => {
+            const isAccepted = proposal.status === 'accepted';
             const isExpired = new Date(proposal.expiresAt).getTime() < Date.now();
             const daysLeft = Math.max(0, Math.ceil((new Date(proposal.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-            const isAccepted = proposal.status === 'accepted';
 
             return (
               <div
                 key={proposal.id}
-                className={cn(
-                  "p-6 rounded-3xl border transition-all duration-200 bg-surface flex flex-col justify-between space-y-5 relative shadow-sm hover:shadow-md",
-                  isAccepted ? "border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-500/5" : isExpired ? "border-border opacity-75" : "border-border hover:border-accent-ai/40"
-                )}
+                className="p-5 rounded-3xl border border-border bg-surface hover:border-blue-500/40 hover:shadow-xl transition-all duration-200 flex flex-col justify-between group"
               >
                 <div>
-                  {/* Top Status & Badge */}
+                  {/* Top Badges */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     {isAccepted ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 flex items-center gap-1">
-                        <Check size={11} /> {t('status_accepted')}
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-blue-50 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 flex items-center gap-1">
+                        <CheckCircle2 size={11} /> {t('status_accepted')}
                       </span>
                     ) : isExpired ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-red-50 text-red-800 dark:bg-red-500/20 dark:text-red-400 border border-red-200 dark:border-red-500/30 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-red-50 text-red-800 dark:bg-red-500/20 dark:text-red-400 border border-red-200 dark:border-red-500/30 flex items-center gap-1">
                         {t('status_expired')}
                       </span>
                     ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
                         <Clock size={11} /> {t('status_days_left').replace('{days}', String(daysLeft))}
                       </span>
                     )}
@@ -504,23 +501,23 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                   </div>
 
                   {/* Title & Customer */}
-                  <h3 className="font-extrabold text-base text-text-primary leading-tight line-clamp-1">{proposal.title}</h3>
+                  <h3 className="font-semibold text-base text-text-primary leading-tight line-clamp-1">{proposal.title}</h3>
                   <div className="text-xs text-text-muted mt-1 flex items-center gap-1.5">
                     <span>{t('client_label')}</span>
-                    <strong className="text-text-primary font-bold">{proposal.clientName}</strong>
+                    <strong className="text-text-primary font-semibold">{proposal.clientName}</strong>
                     {proposal.clientCompany && <span className="truncate">({proposal.clientCompany})</span>}
                   </div>
 
                   {/* Investment Info */}
                   <div className="mt-4 p-3 rounded-2xl bg-background border border-border flex items-center justify-between">
                     <div>
-                      <div className="text-[10px] uppercase font-bold text-text-muted">{t('investment_sum')}</div>
-                      <div className="text-base font-extrabold text-text-primary mt-0.5 tabular-nums">
+                      <div className="text-[10px] uppercase font-semibold text-text-muted">{t('investment_sum')}</div>
+                      <div className="text-base font-semibold text-text-primary mt-0.5 tabular-nums">
                         {proposal.currency} {(proposal.acceptedBy?.finalPrice || proposal.basePrice || 0).toLocaleString('de-CH')}
                       </div>
                     </div>
                     {proposal.heroVideoUrl && (
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-transparent text-[10px] font-bold rounded-lg flex items-center gap-1">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-transparent text-[10px] font-semibold rounded-lg flex items-center gap-1">
                         <Play size={10} className="fill-current" /> {t('badge_video')}
                       </span>
                     )}
@@ -536,7 +533,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                         setPreviewProposal(proposal);
                         setPreviewTheme(proposal.colorMode === 'light' ? 'light' : 'dark');
                       }}
-                      className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white dark:bg-blue-600/15 dark:hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white border border-blue-200 dark:border-blue-500/30 text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                      className="px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white dark:bg-blue-600/15 dark:hover:bg-blue-600 dark:text-blue-400 dark:hover:text-white border border-blue-200 dark:border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
                       title={t('btn_preview')}
                     >
                       <Eye size={14} /> {t('btn_preview')}
@@ -545,7 +542,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                     <button
                       onClick={(e) => handleToggleProposalColorMode(e, proposal)}
                       className={cn(
-                        "px-2.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs",
+                        "px-2.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs",
                         proposal.colorMode === 'light'
                           ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/30"
                           : "bg-background hover:bg-surface border-border text-text-muted hover:text-text-primary"
@@ -576,7 +573,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
 
                     <button
                       onClick={() => handleExtend(proposal.id)}
-                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      className="p-2 rounded-xl bg-background hover:bg-surface border border-border text-text-muted hover:text-text-primary transition-all text-xs font-semibold flex items-center gap-1 cursor-pointer"
                       title="+30 Tage"
                     >
                       <RefreshCw size={14} /> {t('btn_extend')}
@@ -609,10 +606,10 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-black text-sm sm:text-base text-text-primary truncate">
+                    <h3 className="font-semibold text-sm sm:text-base text-text-primary truncate">
                       {t('preview_title')} {previewProposal.title}
                     </h3>
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                       <ShieldCheck size={11} /> {t('preview_tenant_badge')}
                     </span>
                   </div>
@@ -630,7 +627,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                     type="button"
                     onClick={() => setPreviewTheme('light')}
                     className={cn(
-                      "p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      "p-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer",
                       previewTheme === 'light' ? "bg-amber-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
                     title={t('preview_light_mode')}
@@ -643,7 +640,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                     type="button"
                     onClick={() => setPreviewTheme('dark')}
                     className={cn(
-                      "p-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      "p-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer",
                       previewTheme === 'dark' ? "bg-zinc-800 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
                     title={t('preview_dark_mode')}
@@ -660,7 +657,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                     type="button"
                     onClick={() => setPreviewDevice('desktop')}
                     className={cn(
-                      "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      "px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer",
                       previewDevice === 'desktop' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
                     title={t('preview_desktop')}
@@ -672,7 +669,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                     type="button"
                     onClick={() => setPreviewDevice('mobile')}
                     className={cn(
-                      "px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                      "px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer",
                       previewDevice === 'mobile' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
                     )}
                     title={t('preview_mobile')}
@@ -686,7 +683,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                 <button
                   type="button"
                   onClick={() => handleCopyLink(previewProposal, previewTheme)}
-                  className="px-2.5 py-1.5 bg-background hover:bg-surface border border-border text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  className="px-2.5 py-1.5 bg-background hover:bg-surface border border-border text-text-primary text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
                   title={`${t('preview_copy_btn')} (${previewTheme === 'light' ? t('preview_light_mode') : t('preview_dark_mode')})`}
                 >
                   {copiedId === previewProposal.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
@@ -699,7 +696,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                   href={`/p/${previewProposal.shareToken}?theme=${previewTheme}&lang=${currentLang}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
+                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-blue-600/20 cursor-pointer"
                   title={t('preview_tab_btn')}
                 >
                   <ExternalLink size={14} />

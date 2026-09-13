@@ -238,7 +238,7 @@ export default function API() {
       <div className="bg-surface border border-border/60 p-6 rounded-3xl shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
-            <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Key className="text-blue-500" size={24} />
               {isDe ? 'API Schlüssel' : 'API Keys'}
             </h3>
@@ -248,7 +248,7 @@ export default function API() {
           </div>
           <button 
             onClick={handleCreateKey}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-xs shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all"
           >
             <Plus size={16} /> {isDe ? 'Neuen Key erstellen' : 'Create New Key'}
           </button>
@@ -263,7 +263,7 @@ export default function API() {
             keys.map(k => (
               <div key={k.id} className="p-4 bg-background border border-border/50 rounded-2xl flex items-center justify-between gap-4">
                 <div>
-                  <div className="font-bold text-sm text-text-primary">{k.name}</div>
+                  <div className="font-semibold text-sm text-text-primary">{k.name}</div>
                   <div className="text-xs text-text-muted mt-1 font-medium tracking-wide">{k.key.substring(0, 16)}...</div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function API() {
       <div className="bg-surface border border-border/60 p-6 rounded-3xl shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-text-primary flex items-center gap-2">
               <Webhook className="text-emerald-500" size={24} />
               {isDe ? 'Outgoing Webhooks & Integrationen' : 'Outgoing Webhooks'}
             </h3>
@@ -294,7 +294,7 @@ export default function API() {
           </div>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
+            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
           >
             <Plus size={16} /> {isDe ? 'Webhook hinzufügen' : 'Add Webhook'}
           </button>
@@ -304,15 +304,15 @@ export default function API() {
         {endpoints.length > 0 ? (
           <div className="p-4 bg-background/80 border border-border/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <div className="text-xs font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <div className="text-xs font-semibold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
                 <ShieldCheck size={14} className="text-emerald-500" /> Webhook Signing Secret Key (HMAC-SHA256)
               </div>
-              <div className="text-xs text-text-primary font-bold tracking-wider">{secretKey}</div>
+              <div className="text-xs text-text-primary font-semibold tracking-wider">{secretKey}</div>
             </div>
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => handleCopy('wh_sec', secretKey)}
-                className="px-3 py-1.5 bg-surface hover:bg-border/40 text-text-primary rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors border border-border/50"
+                className="px-3 py-1.5 bg-surface hover:bg-border/40 text-text-primary rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-border/50"
               >
                 {copiedId === 'wh_sec' ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
                 {isDe ? 'Kopieren' : 'Copy'}
@@ -344,14 +344,14 @@ export default function API() {
                 <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={cn("w-2 h-2 rounded-full", ep.active ? "bg-emerald-500 shadow-sm shadow-emerald-500/50" : "bg-text-muted/40")} />
-                    <span className="font-bold text-sm text-text-primary truncate">{ep.name}</span>
+                    <span className="font-semibold text-sm text-text-primary truncate">{ep.name}</span>
                   </div>
                   <div className="text-xs text-text-muted truncate font-medium">{ep.url}</div>
                   
                   {/* EVENTS BADGES */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {ep.events.map(ev => (
-                      <span key={ev} className="px-2 py-0.5 bg-surface text-text-muted text-[10px] font-bold rounded-md border border-border/40">
+                      <span key={ev} className="px-2 py-0.5 bg-surface text-text-muted text-[10px] font-semibold rounded-md border border-border/40">
                         {ev}
                       </span>
                     ))}
@@ -363,7 +363,7 @@ export default function API() {
                   <button
                     onClick={() => handleTestEndpoint(ep)}
                     disabled={testingEndpointId === ep.id}
-                    className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
+                    className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 font-semibold rounded-xl text-xs flex items-center gap-1.5 transition-all disabled:opacity-50"
                   >
                     {testingEndpointId === ep.id ? (
                       <RefreshCw size={14} className="animate-spin text-blue-500" />
@@ -375,7 +375,7 @@ export default function API() {
 
                   <button
                     onClick={() => handleToggleEndpoint(ep.id)}
-                    className={cn("px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors", 
+                    className={cn("px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors", 
                       ep.active 
                         ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
                         : "bg-surface text-text-muted border-border/50"
@@ -401,7 +401,7 @@ export default function API() {
       {testResult && (
         <div className="p-5 bg-surface border border-border/80 rounded-3xl shadow-lg animate-in slide-in-from-bottom-4 duration-300 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-sm text-text-primary">
+            <div className="flex items-center gap-2 font-semibold text-sm text-text-primary">
               {testResult.result.success ? (
                 <CheckCircle2 className="text-emerald-500" size={18} />
               ) : (
@@ -415,7 +415,7 @@ export default function API() {
           </div>
 
           <div className="flex items-center gap-3 text-xs font-medium">
-            <span className={cn("px-2 py-0.5 rounded-md font-bold text-white", testResult.result.success ? "bg-emerald-600" : "bg-red-600")}>
+            <span className={cn("px-2 py-0.5 rounded-md font-semibold text-white", testResult.result.success ? "bg-emerald-600" : "bg-red-600")}>
               HTTP {testResult.result.status || 'ERR'}
             </span>
             <span className="text-text-muted">Latenz: {testResult.result.durationMs} ms</span>
@@ -433,7 +433,7 @@ export default function API() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black text-text-primary flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                 <Webhook size={20} className="text-emerald-500" />
                 {isDe ? 'Neuen Outgoing Webhook anlegen' : 'Add Outgoing Webhook'}
               </h3>
@@ -444,7 +444,7 @@ export default function API() {
 
             <form onSubmit={handleAddEndpointSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
                   {isDe ? 'Webhook Name' : 'Endpoint Name'}
                 </label>
                 <input 
@@ -457,7 +457,7 @@ export default function API() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-1.5">
                   {isDe ? 'Target Webhook URL' : 'Target Webhook URL'}
                 </label>
                 <input 
@@ -471,7 +471,7 @@ export default function API() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
                   {isDe ? 'Auslösende Events' : 'Trigger Events'}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -483,7 +483,7 @@ export default function API() {
                         onChange={() => toggleEventSelection(ev)}
                         className="w-4 h-4 rounded border-border text-accent-ai bg-background"
                       />
-                      <span className="text-xs font-bold text-text-primary">{ev}</span>
+                      <span className="text-xs font-semibold text-text-primary">{ev}</span>
                     </label>
                   ))}
                 </div>
@@ -493,13 +493,13 @@ export default function API() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-background hover:bg-surface text-text-muted rounded-xl text-xs font-bold transition-all"
+                  className="px-4 py-2 bg-background hover:bg-surface text-text-muted rounded-xl text-xs font-semibold transition-all"
                 >
                   {isDe ? 'Abbrechen' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/20"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-md shadow-emerald-500/20"
                 >
                   {isDe ? 'Webhook Speichern' : 'Save Webhook'}
                 </button>

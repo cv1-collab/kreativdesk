@@ -500,7 +500,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
       {/* Top Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-text-primary flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-text-primary flex items-center gap-3">
             <LayoutTemplate className="text-accent-ai" /> {t('templates_hub')}
           </h1>
           <p className="text-text-muted mt-1.5 text-sm font-medium">{t('templates_desc')}</p>
@@ -510,7 +510,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
         <div className="flex items-center gap-2.5 px-3.5 py-2 bg-surface/80 border border-border/70 rounded-xl text-xs font-semibold text-text-muted backdrop-blur-sm self-start sm:self-auto shadow-sm">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span>Branding:</span>
-          <span className="text-text-primary font-bold">{companyProfile.name}</span>
+          <span className="text-text-primary font-semibold">{companyProfile.name}</span>
         </div>
       </header>
 
@@ -522,10 +522,10 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="font-bold text-sm text-text-primary">
+              <h4 className="font-semibold text-sm text-text-primary">
                 {currentLang === 'de' ? 'Firmen-Masterfiles vs. Projekt-Cockpit' : 'Company Masterfiles vs. Project Cockpit'}
               </h4>
-              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500 text-[10px] uppercase tracking-wider font-extrabold border border-blue-500/30">
+              <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-500 text-[10px] uppercase tracking-wider font-semibold border border-blue-500/30">
                 Prinzip
               </span>
             </div>
@@ -538,7 +538,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
         </div>
         <button 
           onClick={() => setActiveTab('projects')} 
-          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer self-end sm:self-auto"
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer self-end sm:self-auto"
         >
           <span>{currentLang === 'de' ? 'Zu den Projekten' : 'Go to Projects'}</span>
           <ArrowRight size={14} />
@@ -554,10 +554,10 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               <ArrowRight size={20} className="text-text-muted opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-lg text-text-primary mb-1">{template.title}</h3>
+              <h3 className="font-semibold text-lg text-text-primary mb-1">{template.title}</h3>
               <p className="text-text-muted text-sm font-medium">{template.desc}</p>
             </div>
-            <div className="mt-4 pt-4 border-t border-border/50"><span className={cn("text-xs font-bold uppercase tracking-widest", template.color)}>{t('open_tool')}</span></div>
+            <div className="mt-4 pt-4 border-t border-border/50"><span className={cn("text-xs font-semibold uppercase tracking-widest", template.color)}>{t('open_tool')}</span></div>
           </div>
         ))}
       </div>
@@ -568,10 +568,10 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
       <section className="space-y-6 pt-4 border-t border-border/60">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-[11px] font-bold uppercase tracking-wider mb-2">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-[11px] font-semibold uppercase tracking-wider mb-2">
               <ShieldCheck size={13} /> {t('catalog_badge')}
             </div>
-            <h2 className="text-xl md:text-2xl font-bold text-text-primary flex items-center gap-2.5">
+            <h2 className="text-xl md:text-2xl font-semibold text-text-primary flex items-center gap-2.5">
               <FileCheck2 className="text-blue-500" size={24} /> {t('catalog_title')}
             </h2>
             <p className="text-text-muted text-xs md:text-sm mt-1 max-w-2xl font-medium">
@@ -581,14 +581,14 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
           {/* Language Switcher for Documents */}
           <div className="flex items-center gap-2 bg-surface border border-border p-1.5 rounded-xl self-start lg:self-auto shadow-sm">
-            <span className="text-[11px] font-bold text-text-muted px-2 flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-text-muted px-2 flex items-center gap-1.5">
               <Globe size={13} /> {t('lang_toggle_title')}
             </span>
             <button
               type="button"
               onClick={() => setCatalogLanguage('de')}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
                 catalogLanguage === 'de'
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-text-muted hover:text-text-primary"
@@ -600,7 +600,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               type="button"
               onClick={() => setCatalogLanguage('en')}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5",
                 catalogLanguage === 'en'
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-text-muted hover:text-text-primary"
@@ -636,7 +636,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                   type="button"
                   onClick={() => setSelectedCategory(cat.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border",
+                    "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer border",
                     isSelected
                       ? "bg-blue-600/10 text-blue-500 border-blue-500/50 shadow-sm"
                       : "bg-surface text-text-muted border-border/40 hover:text-text-primary hover:border-border"
@@ -656,7 +656,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
             <button
               type="button"
               onClick={() => { setTemplateSearch(''); setSelectedCategory('all'); }}
-              className="mt-3 text-xs font-bold text-blue-400 hover:underline cursor-pointer"
+              className="mt-3 text-xs font-semibold text-blue-400 hover:underline cursor-pointer"
             >
               {t('reset_filter')}
             </button>
@@ -676,7 +676,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                   <div className="space-y-3">
                     {/* Header: Code Badge & Duration */}
                     <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 font-mono text-xs font-extrabold border border-blue-500/20">
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 font-mono text-xs font-semibold border border-blue-500/20">
                         {tpl.code}
                       </span>
                       <span className="text-[11px] text-text-muted font-medium flex items-center gap-1">
@@ -686,7 +686,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
                     {/* Title & Description */}
                     <div>
-                      <h3 className="font-bold text-base text-text-primary group-hover:text-blue-400 transition-colors leading-snug">
+                      <h3 className="font-semibold text-base text-text-primary group-hover:text-blue-400 transition-colors leading-snug">
                         {title}
                       </h3>
                       <p className="text-text-muted text-xs font-medium mt-1.5 line-clamp-3 leading-relaxed">
@@ -712,7 +712,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                     <button
                       type="button"
                       onClick={() => handleOpenMasterTemplate(tpl)}
-                      className="flex-1 py-2.5 px-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      className="flex-1 py-2.5 px-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Edit3 size={14} />
                       <span>{t('open_in_studio_action')}</span>
@@ -746,7 +746,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                   <Sparkles size={22} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-text-primary">
+                  <h3 className="font-semibold text-lg text-text-primary">
                     {t('ai_modal_title')}
                   </h3>
                   <p className="text-xs text-text-muted font-medium mt-0.5">
@@ -756,7 +756,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               </div>
               <button 
                 onClick={() => setIsAiModalOpen(false)} 
-                className="p-2 text-text-muted hover:text-text-primary rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm font-bold"
+                className="p-2 text-text-muted hover:text-text-primary rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-sm font-semibold"
               >
                 ✕
               </button>
@@ -766,7 +766,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               
               {/* 1. Schnellauswahl & Inspiration Chips */}
               <div className="space-y-2">
-                <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">
                   1. {t('quick_suggestions')}
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -781,7 +781,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       className={cn(
                         "px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border cursor-pointer",
                         aiPrompt === chip.prompt
-                          ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-bold"
+                          ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-semibold"
                           : "bg-background/80 hover:bg-surface border-border/60 text-text-muted hover:text-text-primary"
                       )}
                     >
@@ -795,7 +795,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
                 {/* Kategorie Dropdown */}
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                  <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">
                     2. {t('doc_category')}
                   </label>
                   <select
@@ -813,7 +813,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
                 {/* Sprache Pills */}
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                  <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">
                     3. {t('doc_language')}
                   </label>
                   <div className="grid grid-cols-4 gap-1">
@@ -823,9 +823,9 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                         type="button"
                         onClick={() => setSelectedAiLang(lang.id as any)}
                         className={cn(
-                          "py-2 rounded-xl text-xs font-bold transition-all border text-center flex items-center justify-center gap-1 cursor-pointer",
+                          "py-2 rounded-xl text-xs font-semibold transition-all border text-center flex items-center justify-center gap-1 cursor-pointer",
                           selectedAiLang === lang.id
-                            ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-bold"
+                            ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-semibold"
                             : "bg-background border-border/60 text-text-muted hover:text-text-primary"
                         )}
                       >
@@ -839,7 +839,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
               {/* 3. Rechtstiefe & Tonalität */}
               <div className="space-y-1.5 pt-1">
-                <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">
                   4. {t('doc_tone')}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -855,7 +855,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                           : "bg-background border-border/60 text-text-muted hover:text-text-primary"
                       )}
                     >
-                      <span className="font-bold text-xs text-text-primary flex items-center gap-1">
+                      <span className="font-semibold text-xs text-text-primary flex items-center gap-1">
                         {selectedAiTone === tone.id && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
                         {tone.label}
                       </span>
@@ -867,7 +867,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
               {/* 4. Smarte Kontext-Verknüpfung Toggles */}
               <div className="space-y-2 bg-background/60 border border-border/60 p-3.5 rounded-2xl">
-                <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">
                   5. {t('smart_context')}
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
@@ -912,7 +912,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               {/* 5. Prompt Textarea */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-[11px] font-bold text-text-muted uppercase tracking-wider">
+                  <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">
                     6. {t('prompt_label')}
                   </label>
                   <span className="text-[10px] text-text-muted font-mono">{aiPrompt.length} Zeichen</span>
@@ -930,7 +930,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               <button
                 type="submit"
                 disabled={isGeneratingAi || !aiPrompt.trim()}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-xs md:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-semibold text-xs md:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
               >
                 {isGeneratingAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                 {isGeneratingAi ? t('generating') : t('generate_btn')}
@@ -941,7 +941,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               <div className="space-y-4 pt-2 border-t border-border/50">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-500 flex items-center gap-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-500 flex items-center gap-1">
                       <CheckCircle2 size={13} /> Vorlagen-Vorschau
                     </span>
                     <span className="text-[10px] text-text-muted font-mono">{generatedTemplate.length} Zeichen</span>
@@ -953,32 +953,32 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
                 {/* Ablageort Auswahl */}
                 <div className="space-y-2 bg-background/50 border border-border/50 p-3.5 rounded-2xl">
-                  <label className="block text-[11px] font-extrabold text-text-muted uppercase tracking-wider">1. {t('choose_location')}</label>
+                  <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">1. {t('choose_location')}</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => setSaveScope('company')}
                       className={cn(
-                        "p-2.5 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
+                        "p-2.5 rounded-xl text-xs font-semibold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
                         saveScope === 'company'
-                          ? "bg-blue-600/10 text-blue-500 border-blue-500/50 shadow-sm font-bold"
+                          ? "bg-blue-600/10 text-blue-500 border-blue-500/50 shadow-sm font-semibold"
                           : "bg-surface text-text-muted border-border/50 hover:text-text-primary"
                       )}
                     >
-                      <span className="flex items-center gap-1.5 font-bold"><Building2 size={14} /> {t('company_docs')}</span>
+                      <span className="flex items-center gap-1.5 font-semibold"><Building2 size={14} /> {t('company_docs')}</span>
                       <span className="text-[10px] font-normal text-text-muted opacity-80">Company Dashboard ➔ Dokumente</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setSaveScope('project')}
                       className={cn(
-                        "p-2.5 rounded-xl text-xs font-bold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
+                        "p-2.5 rounded-xl text-xs font-semibold transition-all border text-left flex flex-col gap-0.5 cursor-pointer",
                         saveScope === 'project'
-                          ? "bg-emerald-600/10 text-emerald-500 border-emerald-500/50 shadow-sm font-bold"
+                          ? "bg-emerald-600/10 text-emerald-500 border-emerald-500/50 shadow-sm font-semibold"
                           : "bg-surface text-text-muted border-border/50 hover:text-text-primary"
                       )}
                     >
-                      <span className="flex items-center gap-1.5 font-bold"><Briefcase size={14} /> {t('project_docs')}</span>
+                      <span className="flex items-center gap-1.5 font-semibold"><Briefcase size={14} /> {t('project_docs')}</span>
                       <span className="text-[10px] font-normal text-text-muted opacity-80 truncate">{activeProject?.name || 'Aktuelles Projekt'}</span>
                     </button>
                   </div>
@@ -986,13 +986,13 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
 
                 {/* Section 2: Action Buttons */}
                 <div className="space-y-2 pt-1">
-                  <label className="block text-[11px] font-extrabold text-text-muted uppercase tracking-wider">2. Nächster Schritt wählen:</label>
+                  <label className="block text-[11px] font-semibold text-text-muted uppercase tracking-wider">2. Nächster Schritt wählen:</label>
 
                   {/* Primary CTA */}
                   <button
                     type="button"
                     onClick={() => setIsStudioModalOpen(true)}
-                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
+                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-semibold text-xs rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
                   >
                     <Sparkles size={16} /> {t('open_in_studio')}
                   </button>
@@ -1004,7 +1004,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       onClick={handleSaveToDocuments}
                       disabled={isSavingDoc}
                       className={cn(
-                        "py-2.5 px-3 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50",
+                        "py-2.5 px-3 text-white font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50",
                         saveScope === 'company' ? "bg-blue-600 hover:bg-blue-500 shadow-blue-500/20" : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20"
                       )}
                     >
@@ -1015,7 +1015,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                     <button
                       type="button"
                       onClick={handleCopyText}
-                      className="py-2.5 px-3 bg-surface border border-border hover:bg-surface-hover text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                      className="py-2.5 px-3 bg-surface border border-border hover:bg-surface-hover text-text-primary font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                     >
                       {isCopied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                       <span>{isCopied ? t('copied') : t('copy')}</span>

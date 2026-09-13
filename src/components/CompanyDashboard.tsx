@@ -781,32 +781,32 @@ export default function CompanyDashboard() {
       <main className="flex-1 flex flex-col min-w-0 h-[100dvh] relative w-full overflow-hidden bg-background">
         <header className="h-14 md:h-16 border-b border-border bg-surface/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0 z-40 sticky top-0 shadow-sm">
           <div className="flex items-center gap-3">
-             <h2 className="font-bold text-sm md:text-base text-text-primary capitalize tracking-tight flex items-center gap-2">
+             <h2 className="font-semibold text-sm md:text-base text-text-primary capitalize tracking-tight flex items-center gap-2">
                {t(activeTab)}
              </h2>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
+            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-semibold transition-all shadow-sm cursor-pointer">
               📱 <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
-            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
+            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-semibold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
             <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}><HelpCircle size={18} /></button>
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
             <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); setUnreadNotifications(0); safeStorage.removeItem('has_new_document'); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"><Bell size={18} />{(unreadNotifications > 0 || safeStorage.getString('has_new_document') === 'true') && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
             {isSuperAdmin && (
               <button onClick={() => navigate('/admin')} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">
-                <Shield size={16} /> <span className="hidden sm:inline text-xs font-bold">{t('admin')}</span>
+                <Shield size={16} /> <span className="hidden sm:inline text-xs font-semibold">{t('admin')}</span>
               </button>
             )}
             <button onClick={handleLogout} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors">
-              <LogOut size={16} /> <span className="hidden sm:inline text-xs font-bold">{t('logout')}</span>
+              <LogOut size={16} /> <span className="hidden sm:inline text-xs font-semibold">{t('logout')}</span>
             </button>
           </div>
         </header>
 
         <div className="md:hidden flex items-center gap-2 px-3 py-3 bg-surface/95 backdrop-blur-xl border-b border-border/50 overflow-x-auto hide-scrollbar shrink-0 w-full z-30 shadow-sm sticky top-14">
           {navGroups.flatMap(g => g.items).filter(item => !item.hide).map(item => (
-            <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap border shrink-0", activeTab === item.id ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border hover:bg-white/5", (item as any).className)}>{item.label}</button>
+            <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={cn("flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap border shrink-0", activeTab === item.id ? "bg-accent-ai text-white border-accent-ai shadow-md" : "bg-background text-text-muted border-border hover:bg-white/5", (item as any).className)}>{item.label}</button>
           ))}
         </div>
 
