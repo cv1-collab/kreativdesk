@@ -149,20 +149,52 @@ export default function DashboardOverviewTab({
               )}
             </div>
 
-            {/* Die 2 Ebenen im direkten Vergleich */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-              {/* Ebene 1: Firmenzentrale */}
-              <div className="bg-surface/80 border border-border/70 rounded-2xl p-5 flex flex-col justify-between hover:border-border transition-colors">
+            {/* Interaktiver Prozess-Wegweiser (Workflow von Ebene 1 zu Ebene 2) */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3.5 bg-surface/70 border border-border/70 rounded-2xl mb-4 text-xs">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-[10px] font-black border border-emerald-500/40">1</span>
+                <span>{currentLang === 'de' ? 'Schritt 1: Firmenzentrale (Master-Vorlagen & Finanzen aktiv)' : 'Step 1: Company Hub (Templates & Finances active)'}</span>
+              </div>
+              
+              <div className="hidden sm:flex items-center gap-1.5 text-blue-500 font-extrabold text-[11px] uppercase tracking-wider">
+                <div className="h-[2px] w-5 bg-gradient-to-r from-emerald-500 to-blue-500" />
+                <ArrowRight size={13} className="animate-pulse" />
+                <span>{currentLang === 'de' ? 'automatische Verknüpfung' : 'auto-linked'}</span>
+                <div className="h-[2px] w-5 bg-gradient-to-r from-blue-500 to-indigo-500" />
+              </div>
+
+              <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold">
+                <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-black shadow-xs">2</span>
+                <span>{currentLang === 'de' ? 'Schritt 2: Hier geht\'s weiter ➔ Projekt-Cockpit öffnen' : 'Step 2: Next Step ➔ Open Project Cockpit'}</span>
+              </div>
+            </div>
+
+            {/* Die 2 Ebenen mit leuchtenden, interaktiven Rändern */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-4">
+              {/* Ebene 1: Firmenzentrale (Standort: Hier bist du gerade) */}
+              <div 
+                onClick={() => setActiveTab('templates')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setActiveTab('templates'); }}
+                className="glow-border-ebene1 bg-surface/90 hover:bg-emerald-500/[0.03] border-2 border-emerald-500/70 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 relative group cursor-pointer hover:shadow-[0_0_35px_rgba(16,185,129,0.35)] transform hover:-translate-y-0.5"
+              >
                 <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className="px-2.5 py-0.5 rounded bg-zinc-500/10 text-text-primary text-[11px] font-bold uppercase tracking-wider border border-border/60">
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[11px] font-black uppercase tracking-wider border border-emerald-500/30 shadow-xs">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
                       🏢 {currentLang === 'de' ? 'Ebene 1: Firmenzentrale' : 'Tier 1: Company Hub'}
                     </span>
-                    <span className="text-xs font-medium text-text-muted">
+                    <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-lg shadow-xs">
+                      <CheckCircle2 size={13} className="text-emerald-500" />
                       {currentLang === 'de' ? 'Hier bist du gerade' : 'Current Location'}
                     </span>
                   </div>
-                  <h3 className="font-bold text-base text-text-primary mb-1">
+
+                  <h3 className="font-bold text-base text-text-primary mb-1 group-hover:text-emerald-500 transition-colors">
                     {currentLang === 'de' ? 'Standards & Verwaltung' : 'Standards & Admin'}
                   </h3>
                   <p className="text-sm text-text-muted mb-3.5 font-medium">
@@ -187,35 +219,67 @@ export default function DashboardOverviewTab({
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-t border-border/50 flex items-center justify-between text-xs">
-                  <button 
-                    onClick={() => setActiveTab('templates')}
-                    className="font-bold text-blue-500 hover:text-blue-400 inline-flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <span>{currentLang === 'de' ? 'Master-Vorlagen' : 'Templates'}</span>
-                    <ArrowRight size={12} />
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('finance')}
-                    className="font-bold text-text-muted hover:text-text-primary inline-flex items-center gap-1 transition-colors cursor-pointer"
-                  >
-                    <span>{currentLang === 'de' ? 'Firmen-Finanzen' : 'Finances'}</span>
-                  </button>
+                <div className="pt-3 border-t border-border/50 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveTab('templates');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>{currentLang === 'de' ? 'Master-Vorlagen' : 'Templates'}</span>
+                      <ArrowRight size={12} />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveTab('finance');
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-surface border border-border/60 hover:bg-white/10 text-text-muted hover:text-text-primary font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>{currentLang === 'de' ? 'Firmen-Finanzen' : 'Finances'}</span>
+                    </button>
+                  </div>
+
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 group-hover:underline flex items-center gap-1">
+                    {currentLang === 'de' ? 'Kachel öffnen' : 'Open card'}
+                    <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </div>
               </div>
 
-              {/* Ebene 2: Projekt-Cockpit */}
-              <div className="bg-gradient-to-br from-blue-600/10 via-surface to-background border border-blue-500/30 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
+              {/* Ebene 2: Projekt-Cockpit (Aktion: Hier geht's weiter!) */}
+              <div 
+                onClick={() => {
+                  if (onOpenNewProject) {
+                    onOpenNewProject();
+                  } else {
+                    setActiveTab('projects');
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { 
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    if (onOpenNewProject) onOpenNewProject(); else setActiveTab('projects');
+                  }
+                }}
+                className="glow-border-ebene2 bg-gradient-to-br from-blue-600/15 via-surface to-background border-2 border-blue-500 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 relative group cursor-pointer hover:shadow-[0_0_40px_rgba(59,130,246,0.5)] transform hover:-translate-y-0.5"
+              >
                 <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className="px-2.5 py-0.5 rounded bg-blue-600 text-white text-[11px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-[11px] font-black uppercase tracking-wider shadow-md shadow-blue-500/30">
+                      <Sparkles size={12} className="text-amber-300" />
                       🏗️ {currentLang === 'de' ? 'Ebene 2: Projekt-Workspace' : 'Tier 2: Project Workspace'}
                     </span>
-                    <span className="text-xs font-bold text-blue-500">
-                      {currentLang === 'de' ? 'A bis Z' : 'A to Z'}
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-blue-500 bg-blue-500/15 border border-blue-500/40 px-2.5 py-1 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
+                      <span>{currentLang === 'de' ? '⚡ Hier geht\'s weiter' : '⚡ Next Step'}</span>
+                      <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
                     </span>
                   </div>
-                  <h3 className="font-bold text-base text-text-primary mb-1">
+
+                  <h3 className="font-bold text-base text-text-primary mb-1 group-hover:text-blue-400 transition-colors">
                     {currentLang === 'de' ? 'Operatives Projekt-Cockpit' : 'Operational Project Cockpit'}
                   </h3>
                   <p className="text-sm text-text-muted mb-3.5 font-medium">
@@ -240,22 +304,39 @@ export default function DashboardOverviewTab({
                   </div>
                 </div>
 
-                <div className="pt-2.5 border-t border-border/50 flex flex-wrap items-center gap-2">
-                  <button 
-                    onClick={() => onOpenNewProject ? onOpenNewProject() : setActiveTab('projects')}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Plus size={13} />
-                    <span>{currentLang === 'de' ? 'Neues Projekt' : 'New Project'}</span>
-                  </button>
+                <div className="pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenNewProject) onOpenNewProject(); else setActiveTab('projects');
+                      }}
+                      className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/30 flex items-center gap-1.5 cursor-pointer transform active:scale-95"
+                    >
+                      <Plus size={13} />
+                      <span>{currentLang === 'de' ? 'Neues Projekt' : 'New Project'}</span>
+                    </button>
 
-                  <button 
-                    onClick={() => onOpenDemoProject ? onOpenDemoProject() : window.dispatchEvent(new CustomEvent('create-demo-project', { detail: { type: 'construction' } }))}
-                    className="px-3 py-1.5 bg-surface hover:bg-white/10 border border-blue-500/30 text-blue-400 hover:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Box size={13} />
-                    <span>{currentLang === 'de' ? 'Musterprojekt' : 'Sample'}</span>
-                  </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenDemoProject) {
+                          onOpenDemoProject();
+                        } else {
+                          window.dispatchEvent(new CustomEvent('create-demo-project', { detail: { type: 'construction' } }));
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-surface hover:bg-white/10 border border-blue-500/30 text-blue-400 hover:text-blue-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Box size={13} />
+                      <span>{currentLang === 'de' ? 'Musterprojekt' : 'Sample'}</span>
+                    </button>
+                  </div>
+
+                  <span className="text-[11px] font-bold text-blue-500 group-hover:underline flex items-center gap-1">
+                    {currentLang === 'de' ? 'Projekt starten' : 'Launch project'}
+                    <ArrowRight size={11} className="group-hover:translate-x-0.5 transition-transform" />
+                  </span>
                 </div>
               </div>
             </div>
