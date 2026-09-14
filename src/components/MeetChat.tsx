@@ -166,7 +166,13 @@ export default function MeetChat() {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
   const { language, t: globalT } = useLanguage();
-  const { activeProjectId, setActiveProject, projectMembers, companyUsers, isDemoMode } = useProject() as any;
+  const { activeProjectId, setActiveProject, projectMembers, companyUsers, isDemoMode, fetchCompanyUsers } = useProject() as any;
+
+  useEffect(() => {
+    if (fetchCompanyUsers) {
+      fetchCompanyUsers().catch(() => {});
+    }
+  }, [fetchCompanyUsers]);
 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -1119,9 +1125,17 @@ export default function MeetChat() {
     }
   };
 
+  // Alle Teammitglieder & Kontakte der Company (ausser man selbst), Projekt-Mitglieder priorisiert
   const currentProjectMembers = (companyUsers || []).filter((u: any) =>
-    (projectMembers || []).some((pm: any) => pm.projectId === (projectId || activeProjectId) && pm.userId === u.id) && u.id !== currentUser?.uid
-  );
+    u.id !== currentUser?.uid &&
+    (!currentUser?.email || (u.email || '').toLowerCase() !== currentUser.email.toLowerCase())
+  ).sort((a: any, b: any) => {
+    const aInProj = (projectMembers || []).some((pm: any) => pm.projectId === (projectId || activeProjectId) && (pm.userId === a.id || (pm.userEmail && a.email && pm.userEmail.toLowerCase() === a.email.toLowerCase())));
+    const bInProj = (projectMembers || []).some((pm: any) => pm.projectId === (projectId || activeProjectId) && (pm.userId === b.id || (pm.userEmail && b.email && pm.userEmail.toLowerCase() === b.email.toLowerCase())));
+    if (aInProj && !bInProj) return -1;
+    if (!aInProj && bInProj) return 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);

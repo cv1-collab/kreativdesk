@@ -121,6 +121,42 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const safeCompanyId = currentUser?.companyId || (currentUser?.uid ? currentUser.uid : '');
 
+  // Audio Chime für eingehende Anrufe (Web Audio API Synthesizer, keine externen MP3-Dateien nötig)
+  const playRingChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.001, start);
+        gain.gain.exponentialRampToValueAtTime(0.2, start + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+
+      // Sanfter Dreiklang Chime (C5 - E5 - G5)
+      playTone(523.25, now, 0.22);
+      playTone(659.25, now + 0.15, 0.22);
+      playTone(783.99, now + 0.3, 0.35);
+
+      // Zweite Wiederholung nach 0.7s
+      playTone(523.25, now + 0.7, 0.22);
+      playTone(659.25, now + 0.85, 0.22);
+      playTone(783.99, now + 1.0, 0.4);
+    } catch (err) {
+      console.warn("Ring chime audio note:", err);
+    }
+  };
+
   // INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {
     if (!safeCompanyId || !currentUser?.uid || currentUser?.uid === 'demo-user-id') return;
@@ -128,17 +164,28 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const channel = supabase
       .channel(`company-calls-${safeCompanyId}`)
       .on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
-        if (payload.callerId !== currentUser.uid) {
-          const isTargeted = payload.targetUserIds && payload.targetUserIds.length > 0;
-          const amITargeted = isTargeted && payload.targetUserIds.includes(currentUser.uid);
+        if (payload && payload.callerId !== currentUser.uid) {
+          const targetIds: string[] = payload.targetUserIds || [];
+          const targetEmails: string[] = (payload.targetUserEmails || []).map((e: string) => e.toLowerCase());
+          const isTargeted = targetIds.length > 0 || targetEmails.length > 0;
+          const amITargeted = 
+            targetIds.includes(currentUser.uid) || 
+            (currentUser.email && targetEmails.includes(currentUser.email.toLowerCase()));
+
           if (!isTargeted || amITargeted) {
             setIncomingCall({
               id: payload.callId,
-              projectId: payload.projectId,
+              projectId: payload.projectId || 'global',
               callerName: payload.callerName || 'Ein Teammitglied',
-              targetUserIds: payload.targetUserIds || []
+              targetUserIds: targetIds
             });
+            playRingChime();
           }
+        }
+      })
+      .on('broadcast', { event: 'call-cancelled' }, ({ payload }) => {
+        if (payload?.callId) {
+          setIncomingCall(prev => (prev?.id === payload.callId ? null : prev));
         }
       })
       .subscribe();
@@ -148,7 +195,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [safeCompanyId, currentUser?.uid]);
+  }, [safeCompanyId, currentUser?.uid, currentUser?.email]);
 
   const setupMediaSources = async () => {
     if (!navigator?.mediaDevices?.getUserMedia) {
@@ -489,6 +536,30 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.warn("video_calls upsert fallback handled:", vcErr);
     }
 
+    // 🔥 Send broadcast to company channel so other users receive the incoming call ringing alert!
+    if (safeCompanyId) {
+      try {
+        const companyCallChannel = supabase.channel(`company-calls-${safeCompanyId}`);
+        companyCallChannel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await companyCallChannel.send({
+              type: 'broadcast',
+              event: 'incoming-call',
+              payload: {
+                callId: currentCallId,
+                callerId: currentUser?.uid,
+                callerName: getMyDisplayName(),
+                projectId: currentProjectId || 'global',
+                targetUserIds: targetUserIds || []
+              }
+            });
+          }
+        });
+      } catch (bcErr) {
+        console.warn("Incoming call broadcast error:", bcErr);
+      }
+    }
+
     await joinMeshNetwork(currentCallId, stream);
   };
 
@@ -527,6 +598,18 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (callId && shouldEndForAll) {
       try {
         Promise.resolve(supabase.from('video_calls').update({ status: 'ended' }).eq('id', callId)).catch(() => {});
+      } catch (e) {}
+    }
+
+    // Notify other peers in the company to dismiss any ringing alert
+    if (safeCompanyId && callId) {
+      try {
+        const companyCallChannel = supabase.channel(`company-calls-${safeCompanyId}`);
+        companyCallChannel.send({
+          type: 'broadcast',
+          event: 'call-cancelled',
+          payload: { callId }
+        }).catch(() => {});
       } catch (e) {}
     }
 

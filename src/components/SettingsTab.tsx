@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal, Check
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal, Check, User
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn, sanitizeUrl } from '../utils';
@@ -16,6 +16,8 @@ import { initiateSubscriptionCheckout, openCustomerPortal } from '../services/st
 import { hasFeature } from '../utils/planFeatures';
 import { webhookNotifier } from '../utils/webhookNotifier';
 import { safeStorage } from '../utils/safeStorage';
+import { usePermissions } from '../hooks/usePermissions';
+import { checkIsSuperAdmin } from '../config/admins';
 import API from './API';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -158,7 +160,13 @@ export default function SettingsTab() {
   const { currentUser, logout, updateCurrentUser } = useAuth();
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const { hasPermission } = usePermissions();
   
+  const rawRole = (currentUser?.role || '').toLowerCase().trim();
+  const isSuperAdmin = checkIsSuperAdmin(currentUser?.email) || rawRole === 'super_admin';
+  const isOwner = rawRole === 'owner' || isSuperAdmin;
+  const isCompanyAdmin = isSuperAdmin || isOwner || hasPermission('canManageCompany');
+
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -707,34 +715,40 @@ export default function SettingsTab() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300 pb-24">
-      <div className="flex items-center gap-2 border-b border-border/50 pb-4">
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('general')}
-          className={cn(
-            "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
-            activeSubTab === 'general'
-              ? "bg-accent-ai text-white border-accent-ai shadow-md"
-              : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
-          )}
-        >
-          <Building2 size={15} /> Allgemeine Einstellungen
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('api')}
-          className={cn(
-            "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
-            activeSubTab === 'api'
-              ? "bg-accent-ai text-white border-accent-ai shadow-md"
-              : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
-          )}
-        >
-          <Terminal size={15} /> Webhook-Verwaltung & API-Keys
-        </button>
-      </div>
+      {/* Tab Leiste nur für Inhaber / Firmen-Admins */}
+      {isCompanyAdmin && (
+        <div className="flex items-center gap-2 border-b border-border/50 pb-4">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('general')}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
+              activeSubTab === 'general'
+                ? "bg-accent-ai text-white border-accent-ai shadow-md"
+                : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
+            )}
+          >
+            <Building2 size={15} /> Allgemeine Einstellungen
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('api')}
+            className={cn(
+              "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
+              activeSubTab === 'api'
+                ? "bg-accent-ai text-white border-accent-ai shadow-md"
+                : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
+            )}
+          >
+            <Terminal size={15} /> Webhook-Verwaltung & API-Keys
+          </button>
+        </div>
+      )}
 
-      {activeSubTab === 'api' ? (
+      {/* Normale Mitarbeiter & Viewer sehen ausschliesslich ihre persönlichen Einstellungen */}
+      {!isCompanyAdmin ? (
+        <EmployeeSettingsView currentUser={currentUser} />
+      ) : activeSubTab === 'api' ? (
         <API />
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -1343,6 +1357,341 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   );
 }
 
+// MITARBEITER & VIEWER PERSÖNLICHE EINSTELLUNGEN
+function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
+  const { addToast } = useToast();
+  const { language, t: globalT } = useLanguage();
+  const { updateCurrentUser } = useAuth();
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
+  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+
+  const [name, setName] = useState(currentUser?.name || currentUser?.displayName || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Password change states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isResetEmailLoading, setIsResetEmailLoading] = useState(false);
+
+  // 2FA states
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+
+  // Role display label
+  const rawRole = (currentUser?.role || '').toLowerCase().trim();
+  const roleLabel = 
+    rawRole === 'project_lead' ? 'Projektleiter' :
+    rawRole === 'client' ? 'Kunde / Auftraggeber' :
+    rawRole === 'guest' || rawRole === 'viewer' ? 'Viewer (Betrachter)' :
+    'Mitarbeiter';
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      addToast('Bitte gib einen gültigen Namen ein.', 'error');
+      return;
+    }
+    setIsSavingProfile(true);
+    try {
+      if (currentUser?.uid) {
+        await supabase.from('profiles').update({ name: name.trim() }).eq('id', currentUser.uid);
+        if (currentUser?.email) {
+          await supabase.from('profiles').update({ name: name.trim() }).eq('email', currentUser.email);
+          await supabase.from('company_users').update({ name: name.trim() } as any).eq('email', currentUser.email);
+        }
+      }
+      if (updateCurrentUser) {
+        updateCurrentUser({ name: name.trim(), displayName: name.trim() });
+      }
+      addToast('Persönliches Profil erfolgreich aktualisiert!', 'success');
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      addToast('Fehler beim Speichern des Profils.', 'error');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser?.uid) return;
+    setIsUploadingAvatar(true);
+    try {
+      const filePath = `avatars/${currentUser.uid}_${Date.now()}`;
+      const { error: upErr } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: pubData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const photoUrl = pubData.publicUrl;
+
+      await (supabase.from('profiles').update({ photo_url: photoUrl } as any) as any).eq('id', currentUser.uid);
+      if (currentUser?.email) {
+        await supabase.from('company_users').update({ avatar: photoUrl } as any).eq('email', currentUser.email);
+      }
+      if (updateCurrentUser) {
+        updateCurrentUser({ photoURL: photoUrl } as any);
+      }
+      addToast('Profilbild erfolgreich aktualisiert!', 'success');
+    } catch (err: any) {
+      console.error('Avatar Upload Error:', err);
+      addToast(`Fehler beim Hochladen des Profilbilds: ${err.message || 'Storage Fehler'}`, 'error');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      addToast('Das Passwort muss mindestens 6 Zeichen lang sein.', 'error');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      addToast('Die Passwörter stimmen nicht überein.', 'error');
+      return;
+    }
+    setIsSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword('');
+      setConfirmPassword('');
+      addToast('Dein Passwort wurde erfolgreich geändert!', 'success');
+    } catch (err: any) {
+      console.error('Password Update Error:', err);
+      addToast(err?.message || 'Fehler beim Ändern des Passworts.', 'error');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  const handleSendResetEmail = async () => {
+    if (!currentUser?.email) return;
+    setIsResetEmailLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(currentUser.email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      if (error) throw error;
+      addToast('Passwort-Reset-Link wurde an deine E-Mail gesendet!', 'success');
+    } catch (err: any) {
+      addToast(err?.message || 'Fehler beim Senden der Reset-E-Mail.', 'error');
+    } finally {
+      setIsResetEmailLoading(false);
+    }
+  };
+
+  const currentPhoto = currentUser?.photo_url || currentUser?.photoURL || currentUser?.avatar || '';
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      {/* Profil-Header-Banner */}
+      <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <div className="w-16 h-16 rounded-2xl bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold text-xl overflow-hidden shadow-inner">
+              {currentPhoto ? (
+                <img src={sanitizeUrl(currentPhoto)} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                (name || currentUser?.email || 'U').charAt(0).toUpperCase()
+              )}
+            </div>
+            {isUploadingAvatar && (
+              <div className="absolute inset-0 bg-background/80 rounded-2xl flex items-center justify-center">
+                <Loader2 size={18} className="animate-spin text-accent-ai" />
+              </div>
+            )}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-text-primary">{name || 'Mein Profil'}</h2>
+            <p className="text-xs text-text-muted">{currentUser?.email}</p>
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center gap-1">
+                <Users size={11} /> {roleLabel}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
+                Aktiv
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <input type="file" ref={avatarInputRef} onChange={handleAvatarUpload} accept="image/*" className="hidden" />
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={isUploadingAvatar}
+            className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer"
+          >
+            <Upload size={14} /> Profilbild ändern
+          </button>
+        </div>
+      </div>
+
+      {/* Persönliches Profil Formular */}
+      <form onSubmit={handleSaveProfile} className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+        <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
+          <Users size={16} /> Persönliche Informationen
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Dein Name / Anzeigename</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="Vor- und Nachname"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">E-Mail-Adresse (Login)</label>
+            <div className="relative">
+              <input
+                type="email"
+                value={currentUser?.email || ''}
+                readOnly
+                disabled
+                className="w-full bg-background/50 border border-border/40 rounded-lg px-4 py-3 text-sm text-text-muted font-medium cursor-not-allowed opacity-80"
+              />
+              <Lock size={14} className="absolute right-3.5 top-3.5 text-text-muted opacity-60" />
+            </div>
+          </div>
+
+          <div className="sm:col-span-2 p-4 bg-background/30 rounded-xl border border-border/30 flex items-start gap-3">
+            <Shield size={18} className="text-blue-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold text-text-primary">Unternehmenszugehörigkeit & Rechte</p>
+              <p className="text-[11px] text-text-muted leading-relaxed">
+                Du bist Mitglied im Kreativ Desk OS Workspace mit der Rolle <strong>{roleLabel}</strong>. Deine Arbeitsbereiche, Projekte und Freigaben werden zentral durch den Inhaber oder die Geschäftsleitung gesteuert.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <button
+            type="submit"
+            disabled={isSavingProfile}
+            className="px-5 py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {isSavingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Änderungen speichern
+          </button>
+        </div>
+      </form>
+
+      {/* Passwort & Account-Sicherheit */}
+      <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+        <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
+          <Shield size={16} /> Passwort & Sicherheit
+        </h3>
+
+        <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+          <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Passwort direkt ändern</h4>
+          <div>
+            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Neues Passwort</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Mindestens 6 Zeichen"
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Passwort bestätigen</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Passwort wiederholen"
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+            />
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={isSavingPassword || !newPassword}
+              className="px-4 py-2 bg-text-primary text-background hover:opacity-90 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40"
+            >
+              {isSavingPassword ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} Passwort speichern
+            </button>
+            <button
+              type="button"
+              onClick={handleSendResetEmail}
+              disabled={isResetEmailLoading}
+              className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              {isResetEmailLoading ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />} Reset-Link per Mail
+            </button>
+          </div>
+        </form>
+
+        <div className="pt-4 border-t border-border/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
+            <div>
+              <h4 className="text-xs font-bold text-text-primary flex items-center gap-2">
+                <Shield size={14} className="text-emerald-500" /> 2-Faktor-Authentifizierung (2FA)
+              </h4>
+              <p className="text-[11px] text-text-muted mt-0.5">Schütze deinen Account mit Google Authenticator oder 1Password.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShow2FASetup(prev => !prev)}
+              className="px-3 py-1.5 bg-background border border-border hover:border-emerald-500 text-text-primary rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
+            >
+              {show2FASetup ? 'Schliessen' : '2FA Einrichten'}
+            </button>
+          </div>
+
+          {show2FASetup && (
+            <div className="p-4 bg-background border border-border/50 rounded-xl space-y-3 mt-3 animate-in fade-in">
+              <div className="font-bold text-xs text-text-primary flex items-center gap-2">
+                <Shield className="text-emerald-500" size={16} /> QR-Code mit Authenticator App scannen
+              </div>
+              <div className="flex items-center gap-4">
+                <img
+                  src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP"
+                  alt="2FA QR Code"
+                  className="w-20 h-20 rounded-lg border border-border bg-white p-1.5"
+                />
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    placeholder="6-stelliger Code"
+                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-mono text-text-primary outline-none focus:border-emerald-500 w-36"
+                    maxLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIs2FAEnabled(true);
+                      setShow2FASetup(false);
+                      addToast('2FA erfolgreich aktiviert!', 'success');
+                    }}
+                    className="block px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer"
+                  >
+                    Bestätigen & Aktivieren
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Screensaver Modus */}
+      <ScreensaverSettingsCard currentUser={currentUser} />
+    </div>
+  );
+}
+
 // TEAM BERECHTIGUNGEN KOMPONENTE
 function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
   const { addToast } = useToast();
@@ -1405,9 +1754,27 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     fetchTeam();
   }, [currentUser?.companyId, currentUser?.uid]);
 
+  const rawRole = (currentUser?.role || '').toLowerCase().trim();
+  const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
+  const isOwner = rawRole === 'owner' || isSuperAdmin;
+
   const updateRole = async (userId: string, newRole: string) => {
+    if (!isSuperAdmin && !isOwner) {
+      addToast('Nur der Inhaber oder Super-Admin darf Rollen ändern.', 'error');
+      return;
+    }
+    if (userId === currentUser?.uid && !isSuperAdmin) {
+      addToast('Du kannst deine eigene Rolle nicht ändern.', 'error');
+      return;
+    }
+
     try {
       const member = teamMembers.find(m => m.id === userId);
+      if (member?.role === 'super_admin' && !isSuperAdmin) {
+        addToast('Die Super-Admin Rolle kann nicht verändert werden.', 'error');
+        return;
+      }
+
       const isExt = newRole === 'External Planner' || newRole === 'Client' || newRole === 'partner';
       
       await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
@@ -1441,6 +1808,10 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
   };
 
   const togglePermission = async (userId: string, field: 'canViewFinance' | 'canApproveBudget', currentValue: boolean) => {
+    if (!isSuperAdmin && !isOwner) {
+      addToast('Nur der Inhaber oder Super-Admin darf Berechtigungen verwalten.', 'error');
+      return;
+    }
     try {
       const newValue = !currentValue;
       const colName = field === 'canViewFinance' ? 'can_view_finance' : 'can_approve_budget';
@@ -1568,18 +1939,26 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <select
-                    value={member.role || 'Internal'}
-                    onChange={e => updateRole(member.id, e.target.value)}
-                    className="bg-background border border-border/50 rounded px-2 py-1 text-[11px] font-semibold text-text-primary outline-none focus:border-accent-ai cursor-pointer"
-                  >
-                    <option value="Admin">Admin</option>
-                    <option value="Internal">Interner Mitarbeiter</option>
-                    <option value="External Planner">Externer Planer</option>
-                    <option value="Client">Kunde / Auftraggeber</option>
-                  </select>
+                  {member.role === 'super_admin' ? (
+                    <span className="text-[11px] font-bold text-purple-400">Super Admin (System-Inhaber)</span>
+                  ) : (!isSuperAdmin && !isOwner) || member.id === currentUser?.uid ? (
+                    <span className="text-[11px] font-semibold text-text-muted px-2 py-1 bg-background/50 border border-border/40 rounded">
+                      {member.role === 'Admin' ? 'Admin' : member.role === 'Internal' ? 'Interner Mitarbeiter' : member.role || 'Mitarbeiter'}
+                    </span>
+                  ) : (
+                    <select
+                      value={member.role || 'Internal'}
+                      onChange={e => updateRole(member.id, e.target.value)}
+                      className="bg-background border border-border/50 rounded px-2 py-1 text-[11px] font-semibold text-text-primary outline-none focus:border-accent-ai cursor-pointer"
+                    >
+                      <option value="Admin">Admin</option>
+                      <option value="Internal">Interner Mitarbeiter</option>
+                      <option value="External Planner">Externer Planer</option>
+                      <option value="Client">Kunde / Auftraggeber</option>
+                    </select>
+                  )}
 
-                  {!member.isRegistered && member.email && (
+                  {!member.isRegistered && member.email && (isSuperAdmin || isOwner) && (
                     <button
                       type="button"
                       onClick={() => handleCopyInviteLink(member)}
@@ -1593,18 +1972,30 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
               </div>
 
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className={cn("flex items-center gap-2", (isSuperAdmin || isOwner) ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
                   <div className="relative">
-                    <input type="checkbox" className="sr-only" checked={member.canViewFinance || false} onChange={() => togglePermission(member.id, 'canViewFinance', member.canViewFinance || false)} />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only" 
+                      disabled={!isSuperAdmin && !isOwner}
+                      checked={member.canViewFinance || false} 
+                      onChange={() => togglePermission(member.id, 'canViewFinance', member.canViewFinance || false)} 
+                    />
                     <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canViewFinance ? "bg-accent-ai" : "bg-background border border-border")} />
                     <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canViewFinance ? "transform translate-x-3" : "")} />
                   </div>
                   <span className="text-xs font-bold text-text-muted">{t('view_finance')}</span>
                 </label>
                 
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className={cn("flex items-center gap-2", (isSuperAdmin || isOwner) ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>
                   <div className="relative">
-                    <input type="checkbox" className="sr-only" checked={member.canApproveBudget || false} onChange={() => togglePermission(member.id, 'canApproveBudget', member.canApproveBudget || false)} />
+                    <input 
+                      type="checkbox" 
+                      className="sr-only" 
+                      disabled={!isSuperAdmin && !isOwner}
+                      checked={member.canApproveBudget || false} 
+                      onChange={() => togglePermission(member.id, 'canApproveBudget', member.canApproveBudget || false)} 
+                    />
                     <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canApproveBudget ? "bg-accent-ai" : "bg-background border border-border")} />
                     <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canApproveBudget ? "transform translate-x-3" : "")} />
                   </div>

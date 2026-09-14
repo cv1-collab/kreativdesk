@@ -710,7 +710,7 @@ export default function CompanyDashboard() {
       { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), className: 'tour-agenda' }
     ]},
     { title: 'System', items: [ 
-      { id: 'settings', icon: Settings, label: t('settings'), hide: !canManageSettings, className: 'tour-settings' },
+      { id: 'settings', icon: Settings, label: t('settings'), className: 'tour-settings' },
       { id: 'audit', icon: Shield, label: 'Audit Logs', hide: !hasPermission('canManageCompany'), className: 'tour-audit' }
     ] }
   ];
@@ -766,7 +766,7 @@ export default function CompanyDashboard() {
           {(() => {
             const userDisplayName = currentUser?.name || currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'User');
             return (
-              <button title={currentUser?.email} onClick={() => canManageSettings ? setActiveTab('settings') : null} className={cn("w-full flex items-center justify-start gap-3 px-3 py-2.5 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm", canManageSettings ? "hover:bg-white/5 cursor-pointer" : "cursor-default opacity-80")}>
+              <button title={currentUser?.email} onClick={() => setActiveTab('settings')} className="w-full flex items-center justify-start gap-3 px-3 py-2.5 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm hover:bg-white/5 cursor-pointer">
                 <div className="w-8 h-8 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
                 <div className="text-left overflow-hidden">
                   <div className="truncate text-sm font-bold text-text-primary">{userDisplayName}</div>
@@ -983,7 +983,7 @@ export default function CompanyDashboard() {
                  />
                )}
                
-               {activeTab === 'settings' && canManageSettings && <div className="h-full w-full"><SettingsTab /></div>}
+               {activeTab === 'settings' && <div className="h-full w-full"><SettingsTab /></div>}
              </div>
            )}
         </div>

@@ -66,12 +66,17 @@ export function GlobalVideoPlayer() {
     const targetProject = incomingCall.projectId;
 
     setIncomingCall(null); // Popup schließen
-    navigate(`/project/${targetProject}/meet`); // Ins richtige Projekt navigieren
+    if (targetProject && targetProject !== 'global') {
+      navigate(`/project/${targetProject}/meet`); // Ins richtige Projekt navigieren
+    } else {
+      window.dispatchEvent(new CustomEvent('navigate-to-tab', { detail: 'meet' }));
+      navigate('/meet');
+    }
 
     // Kurze Verzögerung, damit die UI sauber aufbauen kann, bevor WebRTC startet
     setTimeout(() => {
       joinCall(targetId);
-    }, 500);
+    }, 400);
   };
 
   if (incomingCall && !isInCall) {

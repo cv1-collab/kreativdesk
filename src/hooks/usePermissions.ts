@@ -16,8 +16,7 @@ export function usePermissions() {
       normRole === 'owner' ||
       normRole === 'admin' ||
       normRole === 'management' ||
-      normRole === 'project_lead' ||
-      normRole === 'lead';
+      normRole === 'geschaeftsleitung';
     
     if (isOwnerOrAdmin) return true;
 
