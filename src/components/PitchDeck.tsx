@@ -82,14 +82,16 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          setContainerDimensions({ w: rect.width, h: rect.height });
+        if (rect.width > 0) {
+          const maxVisibleHeight = isFullscreen ? window.innerHeight : Math.max(260, window.innerHeight - rect.top - 24);
+          const effectiveHeight = rect.height > 0 ? Math.min(rect.height, maxVisibleHeight) : maxVisibleHeight;
+          setContainerDimensions({ w: rect.width, h: effectiveHeight });
           return;
         }
       }
       setContainerDimensions({ 
         w: typeof window !== 'undefined' ? window.innerWidth : 1200, 
-        h: typeof window !== 'undefined' ? window.innerHeight : 800 
+        h: typeof window !== 'undefined' ? Math.max(300, window.innerHeight - 200) : 675 
       });
     };
 
@@ -112,7 +114,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
 
   // Use actual container dimensions with safe padding margin so the 1200x675 slide NEVER overflows
   const availableWidth = Math.max(280, containerDimensions.w - (isFullscreen ? 32 : 48));
-  const availableHeight = Math.max(200, containerDimensions.h - (isFullscreen ? 48 : 32));
+  const availableHeight = Math.max(200, containerDimensions.h - (isFullscreen ? 32 : 36));
   const canvasScale = Math.min(availableWidth / 1200, availableHeight / 675);
 
   useEffect(() => {
@@ -334,11 +336,97 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         {deckSettings.themeStyle === 'cyberpunk' && <div className="absolute top-0 left-0 w-full h-[1px] opacity-50 shadow-[0_0_20px_2px_currentColor] pointer-events-none" style={{ color: deckSettings.themeColor, backgroundColor: deckSettings.themeColor }}></div>}
         {deckSettings.themeStyle === 'glassmorphism' && <div className="absolute -bottom-20 -left-20 w-[600px] h-[600px] rounded-full blur-[100px] opacity-20 pointer-events-none" style={{ backgroundColor: deckSettings.themeColor }}></div>}
         
-        <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
-          <h2 className={cn("w-full font-bold truncate leading-tight", slide.layout === 'title-only' ? "text-5xl md:text-7xl text-center" : "text-3xl md:text-5xl", tc)}>{slide.title}</h2>
-        </div>
+        {slide.layout !== 'title-only' ? (
+          <div className="h-[15%] shrink-0 flex items-end pb-4 z-10">
+            <h2 className={cn("w-full font-bold truncate leading-tight text-3xl md:text-5xl", tc)}>{slide.title}</h2>
+          </div>
+        ) : null}
         
-        <div className="h-[75%] w-full flex items-start z-10 pt-4 overflow-hidden">
+        <div className={cn("w-full z-10 overflow-hidden", slide.layout === 'title-only' ? "h-[90%] flex flex-col items-center justify-center text-center px-8" : "h-[75%] flex items-start pt-4")}>
+          {slide.layout === 'title-only' && (
+            <div className="w-full max-w-4xl flex flex-col items-center justify-center text-center my-auto space-y-4">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 text-xs font-bold uppercase tracking-widest shadow-xs">
+                <span>🏛️</span>
+                <span>{activeProject?.name || 'Projekt-Präsentation'}</span>
+              </div>
+              <h1 className={cn("text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight", tc)}>
+                {slide.title}
+              </h1>
+              {slide.content ? (
+                <p className={cn("text-lg md:text-2xl font-medium leading-relaxed max-w-3xl opacity-80 pt-2 whitespace-pre-wrap", tc)}>
+                  {slide.content}
+                </p>
+              ) : (
+                <p className="text-sm md:text-base text-zinc-400 font-medium pt-1">
+                  Kreativ Desk OS • Schweizer Architektur- & Projekt-Präsentation
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* INTERAKTIVER DONUT / KREISDIAGRAMM */}
+          {slide.layout === 'chart-donut' && slide.dataPayload?.chartSegments && (
+             <div className="w-full h-full flex flex-col md:flex-row items-center justify-center gap-8 col-span-full p-4 overflow-hidden">
+                <div className="relative w-64 h-64 flex items-center justify-center shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    {(() => {
+                      const segments = slide.dataPayload.chartSegments;
+                      const total = segments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
+                      let cumulativePercent = 0;
+
+                      return segments.map((seg: any, idx: number) => {
+                        const percent = (seg.value || 0) / total;
+                        const strokeDasharray = `${percent * 282.7} 282.7`;
+                        const strokeDashoffset = -cumulativePercent * 282.7;
+                        cumulativePercent += percent;
+
+                        return (
+                          <circle
+                            key={idx}
+                            cx="50"
+                            cy="50"
+                            r="45"
+                            fill="transparent"
+                            stroke={seg.color || ['#3b82f6', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'][idx % 5]}
+                            strokeWidth="10"
+                            strokeDasharray={strokeDasharray}
+                            strokeDashoffset={strokeDashoffset}
+                            className="transition-all duration-700"
+                          />
+                        );
+                      });
+                    })()}
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2">
+                    <span className="text-[10px] uppercase font-bold tracking-widest opacity-60">Gesamt</span>
+                    <span className="text-xl font-extrabold truncate max-w-[140px]" style={{ color: deckSettings.themeColor }}>
+                      CHF {(slide.dataPayload.totalAmount || slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0)).toLocaleString('de-CH')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 flex flex-col w-full max-h-full overflow-y-auto custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    {slide.dataPayload.chartSegments.map((seg: any, idx: number) => {
+                      const total = slide.dataPayload.chartSegments.reduce((acc: number, s: any) => acc + (s.value || 0), 0) || 1;
+                      const pct = Math.round(((seg.value || 0) / total) * 100);
+                      return (
+                        <div key={idx} className={cn("p-3 rounded-xl border flex items-center justify-between shadow-sm", isDarkTheme ? "bg-white/5 border-white/10" : "bg-black/5 border-black/10")}>
+                          <div className="flex items-center gap-2 truncate pr-2 flex-1">
+                            <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: seg.color || '#3b82f6' }}></span>
+                            <span className="text-xs font-bold truncate">{seg.label || `Segment ${idx + 1}`}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs font-bold font-mono">CHF {(seg.value || 0).toLocaleString('de-CH')}</div>
+                            <div className="text-[10px] opacity-60 font-semibold">{pct}%</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+             </div>
+          )}
           {slide.layout === 'smart-calendar' && slide.dataPayload?.milestones && (
              <div className="w-full h-full flex flex-col col-span-full">
                 <div className="flex-1 flex flex-col border border-black/10 rounded-2xl overflow-hidden shadow-2xl bg-black/5">

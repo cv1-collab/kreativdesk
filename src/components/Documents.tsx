@@ -1207,7 +1207,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in zoom-in-95">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="text-blue-500" size={20} />
-            <span className="font-extrabold text-sm text-text-primary">
+            <span className="font-semibold text-sm text-text-primary">
               {selectedDocIds.length} {t('files_selected')}
             </span>
           </div>
@@ -1244,7 +1244,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-extrabold text-sm sm:text-base text-text-primary">
+                  <h4 className="font-semibold text-sm sm:text-base text-text-primary">
                     Digitale Kunden-Offerten & Landingpages (Smart Proposals)
                   </h4>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/20">
@@ -1271,7 +1271,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
           </div>
 
           <div className="flex justify-between items-center pt-2">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+            <h4 className="text-xs font-semibold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Building2 size={16} className="text-blue-500" />
               {t('main_categories_company')}
             </h4>
@@ -1321,7 +1321,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
 
                       <div>
-                        <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-blue-500 transition-colors">
+                        <h5 className="font-semibold text-base text-text-primary tracking-tight group-hover:text-blue-500 transition-colors">
                           {presetLabel}
                         </h5>
                         <p className="text-text-muted text-xs font-medium leading-relaxed mt-1">
@@ -1345,15 +1345,15 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 <div
                   key={folderObj.id}
                   onClick={() => navigateToFolder(folderObj.id, folderObj.name)}
-                  className="group relative bg-surface border border-amber-500/20 hover:border-amber-500/60 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                  className="group relative bg-surface border border-sky-500/20 hover:border-sky-500/60 rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col justify-between"
                 >
                   <div className="space-y-4">
                     <div className="flex justify-between items-start">
-                      <div className="p-3.5 rounded-2xl bg-amber-500/10 text-amber-500 transition-transform group-hover:scale-110 shadow-md">
+                      <div className="p-3.5 rounded-2xl bg-sky-500/10 text-sky-500 transition-transform group-hover:scale-110 shadow-md">
                         <FolderOpen size={26} />
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-amber-500 flex items-center gap-1.5 shadow-sm">
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-background border border-border/50 text-sky-500 flex items-center gap-1.5 shadow-sm">
                           Ordner
                         </span>
                         {canDelete && (
@@ -1368,12 +1368,12 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
                     </div>
                     <div>
-                      <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-amber-500 transition-colors">
+                      <h5 className="font-semibold text-base text-text-primary tracking-tight group-hover:text-sky-500 transition-colors">
                         {folderObj.name}
                       </h5>
                     </div>
                   </div>
-                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold text-amber-500">
+                  <div className="pt-6 mt-4 border-t border-border/40 flex items-center justify-between text-xs font-bold text-sky-500">
                     <span className="text-text-muted uppercase text-[10px] tracking-widest font-black">BENUTZERORDNER</span>
                     <span className="flex items-center gap-1 group-hover:translate-x-1 transition-transform font-bold">
                       {t('open_folder')} <ArrowRight size={14} />
@@ -1477,7 +1477,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {activeTab === 'projects' && currentFolderId === 'root' && !selectedProjectId && !isProjectMode && !searchTerm && (
         <div className="space-y-8">
           <div className="flex justify-between items-center">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-text-muted flex items-center gap-2">
+            <h4 className="text-xs font-semibold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Briefcase size={16} className="text-emerald-500" />
               Projekt-Bauakten & Unterlagen nach Projekten
             </h4>
@@ -1507,7 +1507,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                       </div>
 
                       <div>
-                        <h5 className="font-extrabold text-base text-text-primary tracking-tight group-hover:text-emerald-500 transition-colors">
+                        <h5 className="font-semibold text-base text-text-primary tracking-tight group-hover:text-emerald-500 transition-colors">
                           {proj.name}
                         </h5>
                         <p className="text-text-muted text-xs font-medium mt-1">

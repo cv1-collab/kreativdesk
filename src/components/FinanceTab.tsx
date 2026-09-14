@@ -21,6 +21,7 @@ import { useProjectsQuery } from '../hooks/queries/useProjectsQuery';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
+import OpCostStudio from './OpCostStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -770,65 +771,8 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
 
       {/* EXT. KOSTEN MODAL */}
       {showOpCostModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-4 border-b border-border/50 flex items-center justify-between shrink-0">
-              <h3 className="font-bold text-lg flex items-center gap-2"><Landmark className="text-purple-500" /> {t('record_ext_cost')}</h3>
-              {isAnalyzingAI && (<span className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 text-purple-500 text-xs font-bold rounded-full animate-pulse border border-purple-500/20 ml-4"><Sparkles size={12} /> {t('analyzing_ai')}</span>)}
-              <button onClick={() => setShowOpCostModal(false)} className="text-text-muted hover:text-text-primary ml-auto"><X size={20} /></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 bg-background custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <form id="op-cost-form" onSubmit={(e) => { e.preventDefault(); setIsPdfStudioOpen(true); }} className="space-y-4">
-                  <div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('category')}</label><select value={opCostData.category} onChange={e => setOpCostData({ ...opCostData, category: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none text-text-primary">{opCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></div>
-                  <div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('purpose_merchant')}</label><input required value={opCostData.description} onChange={e => setOpCostData({ ...opCostData, description: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-purple-500 text-text-primary" /></div>
-                  <div className="grid grid-cols-2 gap-4"><div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('amount')} *</label><input type="number" step="0.05" required value={opCostData.amount} onChange={e => setOpCostData({ ...opCostData, amount: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none font-bold text-purple-500" /></div><div><label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}</label><input type="date" required value={opCostData.date} onChange={e => setOpCostData({ ...opCostData, date: e.target.value })} className="w-full bg-surface border border-border/50 rounded-lg px-4 py-2.5 text-sm outline-none text-text-primary" /></div></div>
-                </form>
-                <div>
-                  <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3 flex items-center justify-between"><span>{t('receipts_photos')}</span><span className="text-purple-500">{opCostReceipts.length} angehängt</span></h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                    {opCostReceipts.map((src, index) => (<div key={index} className="aspect-square rounded-lg border border-border/50 bg-surface relative group overflow-hidden flex items-center justify-center">{src.includes('.pdf') ? <FileText className="text-purple-500 opacity-50" size={32} /> : <img src={sanitizeUrl(src)} alt="Beleg" className="w-full h-full object-cover opacity-80" />}<button onClick={() => setOpCostReceipts(opCostReceipts.filter((_, i) => i !== index))} className="absolute inset-0 bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={24} /></button></div>))}
-                    {/* Camera Button */}
-                    <button type="button" onClick={() => mobileCameraRef.current?.click()} disabled={isAnalyzingAI} className="aspect-square rounded-lg border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
-                      {isAnalyzingAI ? <Loader2 size={24} className="text-purple-500 animate-spin mb-2" /> : <Camera size={24} className="text-purple-500 mb-2 group-hover:scale-110 transition-transform" />}
-                      <span className="text-[10px] font-bold text-text-muted group-hover:text-purple-500 text-center">{isAnalyzingAI ? t('analyzing_ai') : t('take_photo')}</span>
-                    </button>
-                    <input type="file" ref={mobileCameraRef} onChange={handleMobileCameraScan} accept="image/*" capture="environment" className="hidden" />
-
-                    {/* File Upload Button */}
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isAnalyzingAI} className="aspect-square rounded-lg border-2 border-dashed border-border/50 bg-surface flex flex-col items-center justify-center hover:bg-white/5 group disabled:opacity-50 transition-colors">
-                      {isAnalyzingAI ? <Loader2 size={24} className="text-purple-500 animate-spin mb-2" /> : <ImageIcon size={24} className={cn("mb-2 transition-colors", "text-text-muted group-hover:text-purple-500")} />}
-                      <span className={cn("text-[10px] font-medium text-center", isAnalyzingAI ? "text-purple-500" : "text-text-muted group-hover:text-purple-500")}>{isAnalyzingAI ? t('analyzing_ai') : t('upload_document')}</span>
-                    </button>
-                    <input type="file" ref={fileInputRef} onChange={handleLocalImageUpload} accept="image/*,application/pdf" multiple className="hidden" />
-
-                    {/* QR Code Live Scan */}
-                    <div className="aspect-square rounded-lg border border-purple-500/30 bg-purple-500/10 flex flex-col items-center justify-center p-2 text-center relative group" title="Scanne diesen Code mit dem Handy">
-                      <div className="bg-white p-1 rounded mb-1 opacity-90"><QRCode value={mobileUploadUrl} size={56} /></div>
-                      <span className="text-[10px] font-bold text-purple-500 flex items-center gap-1"><Smartphone size={10} /> {t('live_scan')}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-border/50 bg-surface/80 shrink-0">
-              <button form="op-cost-form" type="submit" disabled={isSubmitting || !opCostData.amount || isAnalyzingAI} className="w-full py-3 bg-purple-500 text-white rounded-lg font-bold shadow-lg hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                {t('generate_pdf_book')}
-              </button>
-            </div>
-          </div>
-        </div>
+        <OpCostStudio onClose={() => { setShowOpCostModal(false); invalidateFinancial(); }} />
       )}
-
-      <UniversalPDFStudio
-        isOpen={isPdfStudioOpen}
-        onClose={() => setIsPdfStudioOpen(false)}
-        title="Buchungsbeleg"
-        fileName={`Buchung_${opCostData.category.replace(/\s/g, '_')}_${Date.now()}`}
-        onSaveCloud={handleSaveToCloud}
-      >
-        {(settings) => <ExternalCostPDFDocument settings={settings} opCostData={opCostData} opCostReceipts={opCostReceipts} formatCHF={formatCHF} t={t} />}
-      </UniversalPDFStudio>
     </div>
   );
 }

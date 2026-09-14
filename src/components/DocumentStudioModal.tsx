@@ -1261,13 +1261,13 @@ ${footerText}
       {/* Top Header Control Toolbar */}
       <header className="h-auto md:h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-3 md:py-0 flex flex-col md:flex-row items-stretch md:items-center justify-between shrink-0 z-50 shadow-md gap-3 print:hidden">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 shadow-md shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-500 shadow-md shrink-0">
             <Sparkles size={20} />
           </div>
           <div className="overflow-hidden">
             <h2 className="font-bold text-sm text-slate-900 dark:text-white tracking-wide flex items-center gap-2 truncate">
               {t('studio_title')} 
-              <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500 text-slate-950 font-bold uppercase shrink-0">
+              <span className="px-2 py-0.5 rounded text-[10px] bg-sky-500 text-white font-bold uppercase shrink-0 shadow-xs">
                 {t('din_a4_live')} ({pages.length} {pages.length === 1 ? 'Seite' : 'Seiten'})
               </span>
             </h2>
@@ -1279,7 +1279,7 @@ ${footerText}
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto shrink-0 pb-1 md:pb-0 justify-end">
           <button
             onClick={() => setIsPdfStudioOpen(true)}
-            className="px-3 md:px-4 py-2 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
+            className="px-3 md:px-4 py-2 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-all uppercase tracking-wider whitespace-nowrap shrink-0"
           >
             <Sparkles size={15} /> {t('open_pdf_studio')}
           </button>
@@ -1322,7 +1322,7 @@ ${footerText}
           className={cn(
             "flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
             mobileTab === 'form'
-              ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md"
+              ? "bg-sky-500 text-white border-sky-400 shadow-md"
               : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
           )}
         >
@@ -1334,7 +1334,7 @@ ${footerText}
           className={cn(
             "flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border",
             mobileTab === 'preview'
-              ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md"
+              ? "bg-sky-500 text-white border-sky-400 shadow-md"
               : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700"
           )}
         >
@@ -1452,10 +1452,10 @@ ${footerText}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <Type size={14} className="text-amber-500" />
+                <Type size={14} className="text-sky-500" />
                 {t('typography_tools')}
               </label>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
                 CI Font
               </span>
             </div>
@@ -1466,7 +1466,7 @@ ${footerText}
               <select
                 value={selectedFontId}
                 onChange={e => setSelectedFontId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-amber-500 outline-none cursor-pointer"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-white focus:border-sky-500 outline-none cursor-pointer"
               >
                 {FONT_OPTIONS.map(font => (
                   <option key={font.id} value={font.id}>
@@ -1607,28 +1607,28 @@ ${footerText}
               value={companyData.name}
               onChange={e => setCompanyData(prev => ({ ...prev, name: e.target.value }))}
               placeholder={t('company_name')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-bold"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-bold"
             />
             <input
               type="text"
               value={companyData.street}
               onChange={e => setCompanyData(prev => ({ ...prev, street: e.target.value }))}
               placeholder={t('street')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
             <input
               type="text"
               value={companyData.zipCity}
               onChange={e => setCompanyData(prev => ({ ...prev, zipCity: e.target.value }))}
               placeholder={t('zip_city')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
             <input
               type="text"
               value={companyData.website}
               onChange={e => setCompanyData(prev => ({ ...prev, website: e.target.value }))}
               placeholder={t('website')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
 
             {/* Logo Upload */}
@@ -1651,14 +1651,14 @@ ${footerText}
               {t('accent_color')}
             </label>
             <div className="flex items-center gap-2 flex-wrap">
-              {['#09090b', '#2563eb', '#059669', '#d97706', '#7c3aed'].map((hex) => (
+              {['#09090b', '#2563eb', '#059669', '#0ea5e9', '#7c3aed'].map((hex) => (
                 <button
                   key={hex}
                   type="button"
                   onClick={() => setAccentColor(hex)}
                   className={cn(
                     "w-6 h-6 rounded-full border-2 transition-transform cursor-pointer",
-                    accentColor === hex ? "scale-125 border-amber-500 shadow-md" : "border-transparent hover:scale-110"
+                    accentColor === hex ? "scale-125 border-sky-500 shadow-md" : "border-transparent hover:scale-110"
                   )}
                   style={{ backgroundColor: hex }}
                 />
@@ -1678,21 +1678,21 @@ ${footerText}
               value={recipientName}
               onChange={e => setRecipientName(e.target.value)}
               placeholder={t('recipient_name')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-bold"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-bold"
             />
             <input
               type="text"
               value={recipientStreet}
               onChange={e => setRecipientStreet(e.target.value)}
               placeholder={t('street')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
             <input
               type="text"
               value={recipientZipCity}
               onChange={e => setRecipientZipCity(e.target.value)}
               placeholder={t('zip_city')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
           </div>
 
@@ -1708,14 +1708,14 @@ ${footerText}
               value={docPlaceDate}
               onChange={e => setDocPlaceDate(e.target.value)}
               placeholder={t('place_date')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
             <input
               type="text"
               value={docReference}
               onChange={e => setDocReference(e.target.value)}
               placeholder={t('reference')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
           </div>
 
@@ -1728,7 +1728,7 @@ ${footerText}
               <button
                 type="button"
                 onClick={() => setShowSignatures(prev => !prev)}
-                className="text-xs text-amber-500 font-bold flex items-center gap-1 cursor-pointer"
+                className="text-xs text-sky-500 font-bold flex items-center gap-1 cursor-pointer"
               >
                 {showSignatures ? <Eye size={14} /> : <EyeOff size={14} />}
                 {showSignatures ? 'Ein' : 'Aus'}
@@ -1743,7 +1743,7 @@ ${footerText}
                     type="text"
                     value={clientSignatory}
                     onChange={e => setClientSignatory(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium mt-1"
                   />
                 </div>
                 <div>
@@ -1752,7 +1752,7 @@ ${footerText}
                     type="text"
                     value={architectSignatory}
                     onChange={e => setArchitectSignatory(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium mt-1"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium mt-1"
                   />
                 </div>
               </>
@@ -1766,7 +1766,7 @@ ${footerText}
               value={footerText}
               onChange={e => setFooterText(e.target.value)}
               placeholder={t('footer_info')}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-amber-500 outline-none font-medium"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:border-sky-500 outline-none font-medium"
             />
           </div>
 
@@ -1784,7 +1784,7 @@ ${footerText}
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                   canvasViewMode === 'pages'
-                    ? "bg-amber-500 text-slate-950 shadow-sm font-black"
+                    ? "bg-sky-500 text-white shadow-sm font-bold"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
@@ -1798,7 +1798,7 @@ ${footerText}
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                   canvasViewMode === 'preview'
-                    ? "bg-amber-500 text-slate-950 shadow-sm font-black"
+                    ? "bg-sky-500 text-white shadow-sm font-bold"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
@@ -1812,7 +1812,7 @@ ${footerText}
                 className={cn(
                   "px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
                   canvasViewMode === 'editor'
-                    ? "bg-amber-500 text-slate-950 shadow-sm font-black"
+                    ? "bg-sky-500 text-white shadow-sm font-bold"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
@@ -1959,27 +1959,27 @@ ${footerText}
 
                   {/* Recipient Address & Meta Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8 mb-8 text-xs">
-                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 focus-within:ring-1 focus-within:ring-amber-500 transition-all">
+                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 focus-within:ring-1 focus-within:ring-sky-500 transition-all">
                       <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1">Empfänger</div>
                       <input
                         type="text"
                         value={recipientName}
                         onChange={e => setRecipientName(e.target.value)}
-                        className="font-bold text-slate-900 text-xs sm:text-sm w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        className="font-bold text-slate-900 text-xs sm:text-sm w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('recipient_name')}
                       />
                       <input
                         type="text"
                         value={recipientStreet}
                         onChange={e => setRecipientStreet(e.target.value)}
-                        className="text-slate-700 w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        className="text-slate-700 w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('street')}
                       />
                       <input
                         type="text"
                         value={recipientZipCity}
                         onChange={e => setRecipientZipCity(e.target.value)}
-                        className="text-slate-700 font-medium w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        className="text-slate-700 font-medium w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('zip_city')}
                       />
                     </div>
@@ -1989,14 +1989,14 @@ ${footerText}
                         type="text"
                         value={docPlaceDate}
                         onChange={e => setDocPlaceDate(e.target.value)}
-                        className="font-bold text-slate-900 text-xs text-right w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        className="font-bold text-slate-900 text-xs text-right w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('place_date')}
                       />
                       <input
                         type="text"
                         value={docReference}
                         onChange={e => setDocReference(e.target.value)}
-                        className="text-slate-500 font-medium text-[11px] text-right w-full bg-transparent outline-none border-b border-transparent focus:border-amber-500"
+                        className="text-slate-500 font-medium text-[11px] text-right w-full bg-transparent outline-none border-b border-transparent focus:border-sky-500"
                         placeholder={t('reference')}
                       />
                     </div>
@@ -2008,7 +2008,7 @@ ${footerText}
                       type="text"
                       value={docTitle}
                       onChange={e => setDocTitle(e.target.value)}
-                      className="w-full text-lg md:text-xl font-bold text-slate-900 border-b border-slate-200 hover:border-slate-300 focus:border-amber-500 outline-none pb-1 bg-transparent tracking-tight transition-colors"
+                      className="w-full text-lg md:text-xl font-bold text-slate-900 border-b border-slate-200 hover:border-slate-300 focus:border-sky-500 outline-none pb-1 bg-transparent tracking-tight transition-colors"
                       placeholder={t('subject_title')}
                     />
                   </div>
@@ -2029,7 +2029,7 @@ ${footerText}
                       isTypingRef.current = false;
                       setDocContent(e.currentTarget.innerHTML);
                     }}
-                    className="outline-none min-h-[460px] text-xs md:text-sm leading-relaxed text-slate-800 focus:bg-amber-50/15 focus:ring-1 focus:ring-amber-500/30 rounded-lg p-2 transition-all"
+                    className="outline-none min-h-[460px] text-xs md:text-sm leading-relaxed text-slate-800 focus:bg-sky-50/20 focus:ring-1 focus:ring-sky-500/30 rounded-lg p-2 transition-all"
                     style={{ fontFamily: activeFont.fontStack }}
                   />
                 </div>
@@ -2048,7 +2048,7 @@ ${footerText}
                             type="text"
                             value={clientSignatory}
                             onChange={e => setClientSignatory(e.target.value)}
-                            className="border-t border-slate-900 pt-1.5 font-bold text-slate-900 text-xs w-full bg-transparent outline-none focus:border-amber-500"
+                            className="border-t border-slate-900 pt-1.5 font-bold text-slate-900 text-xs w-full bg-transparent outline-none focus:border-sky-500"
                           />
                           <div className="text-[10px] text-slate-500">{t('signature_client')}</div>
                         </div>
@@ -2059,7 +2059,7 @@ ${footerText}
                             type="text"
                             value={architectSignatory}
                             onChange={e => setArchitectSignatory(e.target.value)}
-                            className="border-t border-slate-900 pt-1.5 font-bold text-slate-900 text-xs w-full bg-transparent outline-none focus:border-amber-500"
+                            className="border-t border-slate-900 pt-1.5 font-bold text-slate-900 text-xs w-full bg-transparent outline-none focus:border-sky-500"
                           />
                           <div className="text-[10px] text-slate-500">{t('signature_architect')}</div>
                         </div>
@@ -2095,7 +2095,7 @@ ${footerText}
                       📄 DIN-A4 Seite {page.pageNumber} von {pages.length}
                     </span>
                     {page.isFirst && (
-                      <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                      <span className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">
                         Briefkopf & Empfänger
                       </span>
                     )}
@@ -2336,7 +2336,7 @@ ${footerText}
                     type="text"
                     value={docTitle}
                     onChange={e => setDocTitle(e.target.value)}
-                    className="w-full text-base font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-amber-500"
+                    className="w-full text-base font-semibold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 outline-none focus:border-sky-500"
                     placeholder={t('subject_title')}
                   />
                 </div>
@@ -2358,7 +2358,7 @@ ${footerText}
                       isTypingRef.current = false;
                       setDocContent(e.currentTarget.innerHTML);
                     }}
-                    className="w-full bg-slate-50/70 dark:bg-slate-800/70 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-amber-500 rounded-xl p-4 text-xs md:text-sm text-slate-800 dark:text-slate-100 leading-relaxed outline-none min-h-[460px] transition-all"
+                    className="w-full bg-slate-50/70 dark:bg-slate-800/70 hover:bg-slate-50 focus:bg-white dark:focus:bg-slate-800 border border-slate-300 dark:border-slate-700 focus:border-sky-500 rounded-xl p-4 text-xs md:text-sm text-slate-800 dark:text-slate-100 leading-relaxed outline-none min-h-[460px] transition-all"
                     style={{ fontFamily: activeFont.fontStack }}
                   />
                 </div>
@@ -2368,7 +2368,7 @@ ${footerText}
                   <button
                     type="button"
                     onClick={() => setCanvasViewMode('pages')}
-                    className="text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-sky-600 dark:text-sky-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     Zurück zum DIN-A4 Live-Blatt →
                   </button>

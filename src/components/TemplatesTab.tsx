@@ -445,7 +445,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
   const templates = [
     { 
       id: 'ai_gen', title: t('ai_template'), desc: t('ai_template_desc'), 
-      icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'hover:border-amber-500/50 border-amber-500/30',
+      icon: Sparkles, color: 'text-sky-500', bg: 'bg-sky-500/10', border: 'hover:border-sky-500/50 border-sky-500/30',
       action: () => setIsAiModalOpen(true) 
     },
     { 
@@ -470,7 +470,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
     },
     { 
       id: 'expense', title: t('expense'), desc: t('expense_desc'), 
-      icon: Receipt, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/50',
+      icon: Receipt, color: 'text-sky-500', bg: 'bg-sky-500/10', border: 'hover:border-sky-500/50',
       action: () => setShowExpenseModal(true) 
     },
     { 
@@ -742,7 +742,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 border-b border-border/50 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-sm">
+                <div className="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0 border border-sky-500/20 shadow-sm">
                   <Sparkles size={22} />
                 </div>
                 <div>
@@ -781,7 +781,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       className={cn(
                         "px-2.5 py-1 rounded-xl text-xs font-semibold transition-all border cursor-pointer",
                         aiPrompt === chip.prompt
-                          ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-semibold"
+                          ? "bg-sky-500 text-white border-sky-500 shadow-xs font-semibold"
                           : "bg-background/80 hover:bg-surface border-border/60 text-text-muted hover:text-text-primary"
                       )}
                     >
@@ -801,7 +801,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                   <select
                     value={selectedAiCategory}
                     onChange={e => setSelectedAiCategory(e.target.value)}
-                    className="w-full bg-background border border-border/70 rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-amber-500 cursor-pointer"
+                    className="w-full bg-background border border-border/70 rounded-xl px-3 py-2 text-xs font-semibold text-text-primary outline-none focus:border-sky-500 cursor-pointer"
                   >
                     {AI_CATEGORIES.map(cat => (
                       <option key={cat.id} value={cat.id}>
@@ -825,7 +825,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                         className={cn(
                           "py-2 rounded-xl text-xs font-semibold transition-all border text-center flex items-center justify-center gap-1 cursor-pointer",
                           selectedAiLang === lang.id
-                            ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-semibold"
+                            ? "bg-sky-500 text-white border-sky-500 shadow-xs font-semibold"
                             : "bg-background border-border/60 text-text-muted hover:text-text-primary"
                         )}
                       >
@@ -851,12 +851,12 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       className={cn(
                         "p-2.5 rounded-xl text-left border transition-all cursor-pointer flex flex-col justify-between",
                         selectedAiTone === tone.id
-                          ? "bg-amber-500/10 border-amber-500/60 text-text-primary shadow-xs"
+                          ? "bg-sky-500/10 border-sky-500/60 text-text-primary shadow-xs"
                           : "bg-background border-border/60 text-text-muted hover:text-text-primary"
                       )}
                     >
                       <span className="font-semibold text-xs text-text-primary flex items-center gap-1">
-                        {selectedAiTone === tone.id && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+                        {selectedAiTone === tone.id && <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />}
                         {tone.label}
                       </span>
                       <span className="text-[10px] text-text-muted mt-1 leading-tight">{tone.desc}</span>
@@ -876,7 +876,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       type="checkbox"
                       checked={includeCompanyData}
                       onChange={e => setIncludeCompanyData(e.target.checked)}
-                      className="accent-amber-500 rounded"
+                      className="accent-sky-500 rounded"
                     />
                     <span className="font-medium text-text-primary text-[11px] leading-tight truncate">
                       🏢 {companyProfile.name || 'Firmen-Absender'}
@@ -888,7 +888,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       type="checkbox"
                       checked={includeProjectData}
                       onChange={e => setIncludeProjectData(e.target.checked)}
-                      className="accent-amber-500 rounded"
+                      className="accent-sky-500 rounded"
                     />
                     <span className="font-medium text-text-primary text-[11px] leading-tight truncate">
                       🏗️ {activeProject?.name || 'Aktives Projekt'}
@@ -900,7 +900,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                       type="checkbox"
                       checked={includeSignatures}
                       onChange={e => setIncludeSignatures(e.target.checked)}
-                      className="accent-amber-500 rounded"
+                      className="accent-sky-500 rounded"
                     />
                     <span className="font-medium text-text-primary text-[11px] leading-tight">
                       ✍️ 2x Unterschriftenblock
@@ -922,7 +922,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                   placeholder={t('ai_prompt_placeholder')}
                   value={aiPrompt}
                   onChange={e => setAiPrompt(e.target.value)}
-                  className="w-full bg-background border border-border/70 rounded-xl p-3 text-xs md:text-sm text-text-primary focus:border-amber-500 outline-none resize-none leading-relaxed"
+                  className="w-full bg-background border border-border/70 rounded-xl p-3 text-xs md:text-sm text-text-primary focus:border-sky-500 outline-none resize-none leading-relaxed"
                 />
               </div>
 
@@ -930,7 +930,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               <button
                 type="submit"
                 disabled={isGeneratingAi || !aiPrompt.trim()}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-semibold text-xs md:text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
+                className="w-full py-3.5 bg-gradient-to-r from-sky-500 via-blue-500 to-sky-600 hover:from-sky-400 hover:to-blue-400 text-white font-semibold text-xs md:text-sm rounded-xl transition-all shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
               >
                 {isGeneratingAi ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                 {isGeneratingAi ? t('generating') : t('generate_btn')}
@@ -941,7 +941,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
               <div className="space-y-4 pt-2 border-t border-border/50">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-500 flex items-center gap-1">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-500 flex items-center gap-1">
                       <CheckCircle2 size={13} /> Vorlagen-Vorschau
                     </span>
                     <span className="text-[10px] text-text-muted font-mono">{generatedTemplate.length} Zeichen</span>
@@ -992,7 +992,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                   <button
                     type="button"
                     onClick={() => setIsStudioModalOpen(true)}
-                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-semibold text-xs rounded-2xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
+                    className="w-full py-3.5 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white font-semibold text-xs rounded-2xl transition-all shadow-lg shadow-sky-500/25 flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider transform active:scale-[0.99]"
                   >
                     <Sparkles size={16} /> {t('open_in_studio')}
                   </button>
