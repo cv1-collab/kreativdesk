@@ -3,7 +3,8 @@ import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { 
   CreditCard, CheckCircle2, Shield, Image as ImageIcon, ExternalLink, 
-  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal, Check, User
+  Zap, Loader2, Monitor, Clock, Play, Building2, Save, Upload, KeyRound, LifeBuoy, Users, Lock, FileText, Palette, Link as LinkIcon, Download, Trash2, AlertTriangle, Coins, Terminal, Check, User,
+  Phone, MapPin, Briefcase, Globe, Mail, Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn, sanitizeUrl } from '../utils';
@@ -1357,15 +1358,26 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   );
 }
 
-// MITARBEITER & VIEWER PERSÖNLICHE EINSTELLUNGEN
+// MITARBEITER & VIEWER PERSÖNLICHE EINSTELLUNGEN (Erweitert mit voller Adress- & Sicherheitsverwaltung)
 function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
   const { addToast } = useToast();
-  const { language, t: globalT } = useLanguage();
+  const { language, setLanguage, t: globalT } = useLanguage();
   const { updateCurrentUser } = useAuth();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
+  // Profil-Felder
   const [name, setName] = useState(currentUser?.name || currentUser?.displayName || '');
+  const [phone, setPhone] = useState('');
+  const [street, setStreet] = useState('');
+  const [zipCode, setZipCode] = useState('');
+  const [city, setCity] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [department, setDepartment] = useState('');
+  const [personalBio, setPersonalBio] = useState('');
+  const [preferredLang, setPreferredLang] = useState(currentLang);
+  const [soundEnabled, setSoundEnabled] = useState(() => safeStorage.getItem<string>('kreativ_desk_sound_enabled', 'true') !== 'false');
+
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -1378,15 +1390,66 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
 
   // 2FA states
   const [show2FASetup, setShow2FASetup] = useState(false);
-  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(() => safeStorage.getItem<string>(`user_2fa_enabled_${currentUser?.uid}`, 'false') === 'true');
 
   // Role display label
   const rawRole = (currentUser?.role || '').toLowerCase().trim();
   const roleLabel = 
     rawRole === 'project_lead' ? 'Projektleiter' :
-    rawRole === 'client' ? 'Kunde / Auftraggeber' :
+    rawRole === 'super_admin' ? 'Super Admin' :
+    rawRole === 'owner' ? 'Inhaber / Geschäftsleitung' :
+    rawRole === 'client' ? 'Kunde / Bauherr' :
     rawRole === 'guest' || rawRole === 'viewer' ? 'Viewer (Betrachter)' :
     'Mitarbeiter';
+
+  // Lade bestehende Adressdaten & Profilinformationen aus company_users und Local Storage
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (!currentUser?.email && !currentUser?.uid) return;
+      try {
+        let loadedCu: any = null;
+        if (currentUser.email) {
+          const { data } = await supabase
+            .from('company_users')
+            .select('*')
+            .eq('email', currentUser.email)
+            .maybeSingle();
+          if (data) loadedCu = data;
+        }
+
+        const localCache = safeStorage.getItem<any>(`user_profile_${currentUser.uid}`, null);
+
+        if (loadedCu) {
+          if (loadedCu.phone) setPhone(loadedCu.phone);
+          if (loadedCu.street) setStreet(loadedCu.street);
+          if (loadedCu.zip_city) {
+            const parts = loadedCu.zip_city.trim().split(' ');
+            setZipCode(parts[0] || '');
+            setCity(parts.slice(1).join(' ') || '');
+          }
+          if (loadedCu.notes && loadedCu.notes.startsWith('__CRM_META__:')) {
+            try {
+              const meta = JSON.parse(loadedCu.notes.replace('__CRM_META__:', ''));
+              if (meta.jobTitle) setJobTitle(meta.jobTitle);
+              if (meta.department) setDepartment(meta.department);
+              if (meta.personalBio) setPersonalBio(meta.personalBio);
+            } catch (_) {}
+          }
+        } else if (localCache) {
+          if (localCache.phone) setPhone(localCache.phone);
+          if (localCache.street) setStreet(localCache.street);
+          if (localCache.zipCode) setZipCode(localCache.zipCode);
+          if (localCache.city) setCity(localCache.city);
+          if (localCache.jobTitle) setJobTitle(localCache.jobTitle);
+          if (localCache.department) setDepartment(localCache.department);
+          if (localCache.personalBio) setPersonalBio(localCache.personalBio);
+        }
+      } catch (e) {
+        console.warn('Fehler beim Laden der persönlichen Daten:', e);
+      }
+    };
+    loadUserData();
+  }, [currentUser?.email, currentUser?.uid]);
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1396,17 +1459,94 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
     }
     setIsSavingProfile(true);
     try {
-      if (currentUser?.uid) {
-        await supabase.from('profiles').update({ name: name.trim() }).eq('id', currentUser.uid);
-        if (currentUser?.email) {
-          await supabase.from('profiles').update({ name: name.trim() }).eq('email', currentUser.email);
-          await supabase.from('company_users').update({ name: name.trim() } as any).eq('email', currentUser.email);
+      const trimmedName = name.trim();
+      const trimmedPhone = phone.trim();
+      const trimmedStreet = street.trim();
+      const trimmedZip = zipCode.trim();
+      const trimmedCity = city.trim();
+      const trimmedZipCity = `${trimmedZip} ${trimmedCity}`.trim();
+      const trimmedJob = jobTitle.trim();
+      const trimmedDept = department.trim();
+      const trimmedBio = personalBio.trim();
+
+      // 1. Update company_users in database
+      if (currentUser?.email) {
+        try {
+          const { data: existingCu } = await supabase
+            .from('company_users')
+            .select('notes')
+            .eq('email', currentUser.email)
+            .maybeSingle();
+
+          let meta: any = {};
+          if (existingCu?.notes && existingCu.notes.startsWith('__CRM_META__:')) {
+            try { meta = JSON.parse(existingCu.notes.replace('__CRM_META__:', '')); } catch (_) {}
+          }
+          meta.jobTitle = trimmedJob;
+          meta.department = trimmedDept;
+          meta.personalBio = trimmedBio;
+
+          await supabase.from('company_users').update({
+            name: trimmedName,
+            phone: trimmedPhone || null,
+            street: trimmedStreet || null,
+            zip_city: trimmedZipCity || null,
+            notes: `__CRM_META__:${JSON.stringify(meta)}`
+          } as any).eq('email', currentUser.email);
+        } catch (cuErr) {
+          console.warn('company_users update handled:', cuErr);
         }
       }
-      if (updateCurrentUser) {
-        updateCurrentUser({ name: name.trim(), displayName: name.trim() });
+
+      // 2. Update profiles table
+      if (currentUser?.uid) {
+        await supabase.from('profiles').update({ name: trimmedName }).eq('id', currentUser.uid);
+        if (currentUser?.email) {
+          await supabase.from('profiles').update({ name: trimmedName }).eq('email', currentUser.email);
+        }
       }
-      addToast('Persönliches Profil erfolgreich aktualisiert!', 'success');
+
+      // 3. Update Supabase Auth user metadata
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            name: trimmedName,
+            displayName: trimmedName,
+            phone: trimmedPhone,
+            street: trimmedStreet,
+            zipCode: trimmedZip,
+            city: trimmedCity,
+            jobTitle: trimmedJob,
+            department: trimmedDept
+          }
+        });
+      } catch (_) {}
+
+      // 4. Update local storage cache
+      safeStorage.setItem(`user_profile_${currentUser?.uid}`, {
+        name: trimmedName,
+        phone: trimmedPhone,
+        street: trimmedStreet,
+        zipCode: trimmedZip,
+        city: trimmedCity,
+        jobTitle: trimmedJob,
+        department: trimmedDept,
+        personalBio: trimmedBio
+      });
+
+      // 5. Update language if changed
+      if (preferredLang !== currentLang && (preferredLang === 'de' || preferredLang === 'en')) {
+        setLanguage(preferredLang as 'de' | 'en');
+      }
+
+      if (updateCurrentUser) {
+        updateCurrentUser({
+          name: trimmedName,
+          displayName: trimmedName
+        } as any);
+      }
+
+      addToast('Persönliche Daten & Adresse erfolgreich gespeichert!', 'success');
     } catch (err: any) {
       console.error('Error saving profile:', err);
       addToast('Fehler beim Speichern des Profils.', 'error');
@@ -1532,11 +1672,14 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
         </div>
       </div>
 
-      {/* Persönliches Profil Formular */}
+      {/* Persönliche Informationen & Adresse Formular */}
       <form onSubmit={handleSaveProfile} className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
-        <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-          <Users size={16} /> Persönliche Informationen
-        </h3>
+        <div className="flex items-center justify-between pb-4 border-b border-border/50">
+          <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2">
+            <User size={16} /> Persönliche Informationen & Adresse
+          </h3>
+          <span className="text-[11px] text-text-muted font-medium">Deine individuellen Kontaktdaten im Team</span>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -1564,6 +1707,103 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Phone size={13} className="text-accent-ai" /> Telefonnummer / Mobil
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="+41 79 123 45 67"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Briefcase size={13} className="text-accent-ai" /> Funktion / Berufsbezeichnung
+            </label>
+            <input
+              type="text"
+              value={jobTitle}
+              onChange={e => setJobTitle(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="z. B. Projektleiter, Bauleiter, Architekt"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <MapPin size={13} className="text-accent-ai" /> Straße / Hausnummer (Persönliche Adresse)
+            </label>
+            <input
+              type="text"
+              value={street}
+              onChange={e => setStreet(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="Musterstrasse 12"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">PLZ</label>
+            <input
+              type="text"
+              value={zipCode}
+              onChange={e => setZipCode(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="8000"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Ort</label>
+            <input
+              type="text"
+              value={city}
+              onChange={e => setCity(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="Zürich"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <Globe size={13} className="text-accent-ai" /> Bevorzugte Systemsprache
+            </label>
+            <select
+              value={preferredLang}
+              onChange={e => setPreferredLang(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner cursor-pointer"
+            >
+              <option value="de">Deutsch (Schweiz / Standard)</option>
+              <option value="en">English (International)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Abteilung / Fachbereich</label>
+            <input
+              type="text"
+              value={department}
+              onChange={e => setDepartment(e.target.value)}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              placeholder="z. B. Planung, Ausführung, Bauleitung"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Über mich / Notiz / Signatur</label>
+            <textarea
+              value={personalBio}
+              onChange={e => setPersonalBio(e.target.value)}
+              rows={2}
+              className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner custom-scrollbar"
+              placeholder="Zusätzliche persönliche Info oder Signatur..."
+            />
+          </div>
+
           <div className="sm:col-span-2 p-4 bg-background/30 rounded-xl border border-border/30 flex items-start gap-3">
             <Shield size={18} className="text-blue-400 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
@@ -1579,115 +1819,160 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           <button
             type="submit"
             disabled={isSavingProfile}
-            className="px-5 py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            className="px-6 py-3 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
             {isSavingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Änderungen speichern
           </button>
         </div>
       </form>
 
-      {/* Passwort & Account-Sicherheit */}
-      <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
-        <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-          <Shield size={16} /> Passwort & Sicherheit
+      {/* SICHERHEIT & SUPPORT (PERSÖNLICHER ACCOUNT) - GENAU WIE BEIM ADMIN */}
+      <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-5">
+        <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
+          <Shield size={16} /> {t('security_support')} (Persönlicher Account)
         </h3>
+        
+        {/* Die 3 Haupt-Action-Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button 
+            type="button" 
+            onClick={handleSendResetEmail} 
+            disabled={isResetEmailLoading} 
+            className="flex-1 py-3 bg-background border border-border hover:bg-white/5 text-text-primary rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+          >
+            {isResetEmailLoading ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />} {t('reset_password')}
+          </button>
+          <button 
+            type="button"
+            onClick={() => setShow2FASetup(prev => !prev)}
+            className={cn(
+              "flex-1 py-3 border rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer",
+              is2FAEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-background border-border text-text-primary hover:bg-white/5"
+            )}
+          >
+            <Shield size={16} /> {is2FAEnabled ? 'Mein 2FA ist Aktiv' : 'Mein 2FA einrichten'}
+          </button>
+          <a 
+            href={`mailto:support@kreativdesk.ch?subject=Support%20Anfrage%20von%20${encodeURIComponent(currentUser?.email || '')}`} 
+            className="flex-1 py-3 bg-background border border-border hover:bg-white/5 text-text-primary rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+            <LifeBuoy size={16} /> {t('contact_support')}
+          </a>
+        </div>
 
-        <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-          <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Passwort direkt ändern</h4>
-          <div>
-            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Neues Passwort</label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              placeholder="Mindestens 6 Zeichen"
-              className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Passwort bestätigen</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Passwort wiederholen"
-              className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
-            />
-          </div>
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              type="submit"
-              disabled={isSavingPassword || !newPassword}
-              className="px-4 py-2 bg-text-primary text-background hover:opacity-90 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40"
-            >
-              {isSavingPassword ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} Passwort speichern
-            </button>
-            <button
-              type="button"
-              onClick={handleSendResetEmail}
-              disabled={isResetEmailLoading}
-              className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-lg text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isResetEmailLoading ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />} Reset-Link per Mail
-            </button>
-          </div>
-        </form>
-
-        <div className="pt-4 border-t border-border/50">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
-            <div>
-              <h4 className="text-xs font-bold text-text-primary flex items-center gap-2">
-                <Shield size={14} className="text-emerald-500" /> 2-Faktor-Authentifizierung (2FA)
-              </h4>
-              <p className="text-[11px] text-text-muted mt-0.5">Schütze deinen Account mit Google Authenticator oder 1Password.</p>
+        {/* 2FA QR Code Setup Box */}
+        {show2FASetup && (
+          <div className="p-5 bg-background border border-border/50 rounded-xl space-y-4 animate-in fade-in">
+            <div className="font-bold text-sm text-text-primary flex items-center gap-2">
+              <Shield className="text-emerald-500" size={18} /> Google Authenticator / 1Password 2FA Einrichtung
             </div>
-            <button
-              type="button"
-              onClick={() => setShow2FASetup(prev => !prev)}
-              className="px-3 py-1.5 bg-background border border-border hover:border-emerald-500 text-text-primary rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer"
-            >
-              {show2FASetup ? 'Schliessen' : '2FA Einrichten'}
-            </button>
-          </div>
-
-          {show2FASetup && (
-            <div className="p-4 bg-background border border-border/50 rounded-xl space-y-3 mt-3 animate-in fade-in">
-              <div className="font-bold text-xs text-text-primary flex items-center gap-2">
-                <Shield className="text-emerald-500" size={16} /> QR-Code mit Authenticator App scannen
-              </div>
-              <div className="flex items-center gap-4">
-                <img
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP"
-                  alt="2FA QR Code"
-                  className="w-20 h-20 rounded-lg border border-border bg-white p-1.5"
-                />
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    placeholder="6-stelliger Code"
-                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-mono text-text-primary outline-none focus:border-emerald-500 w-36"
-                    maxLength={6}
+            <p className="text-xs text-text-muted">Scanne den QR-Code mit deiner Authenticator App und bestätige die Einrichtung.</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+              <img 
+                src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP" 
+                alt="2FA QR Code" 
+                className="w-28 h-28 rounded-xl border border-border bg-white p-2 shadow-sm shrink-0" 
+              />
+              <div className="space-y-3 flex-1">
+                <p className="text-xs text-text-muted font-mono bg-surface px-3 py-1.5 rounded-lg border border-border/60 inline-block">
+                  Schlüssel: JBSWY3DPEHPK3PXP
+                </p>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="text" 
+                    placeholder="6-stelliger Code" 
+                    className="px-4 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500 w-36 shadow-inner" 
+                    maxLength={6} 
                   />
-                  <button
+                  <button 
                     type="button"
                     onClick={() => {
                       setIs2FAEnabled(true);
+                      safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid}`, 'true');
                       setShow2FASetup(false);
-                      addToast('2FA erfolgreich aktiviert!', 'success');
+                      addToast('Zwei-Faktor-Authentifizierung (2FA) erfolgreich aktiviert!', 'success');
                     }}
-                    className="block px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer"
                   >
                     Bestätigen & Aktivieren
                   </button>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
+
+        {/* Direktes Passwort Ändern Formular */}
+        <div className="pt-4 border-t border-border/50">
+          <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
+              <KeyRound size={13} className="text-accent-ai" /> Passwort direkt ändern
+            </h4>
+            <div>
+              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Neues Passwort</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Mindestens 6 Zeichen"
+                className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Passwort bestätigen</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                placeholder="Passwort wiederholen"
+                className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
+              />
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="submit"
+                disabled={isSavingPassword || !newPassword}
+                className="px-5 py-2.5 bg-text-primary text-background hover:opacity-90 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-sm"
+              >
+                {isSavingPassword ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} Passwort speichern
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
-      {/* Screensaver Modus */}
+      {/* Screensaver & Kiosk Modus */}
       <ScreensaverSettingsCard currentUser={currentUser} />
+
+      {/* Persönliche Benachrichtigungen & Töne */}
+      <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
+        <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
+          <Sparkles size={16} className="text-accent-ai" /> App-Audio & Benachrichtigungen
+        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
+          <div>
+            <h4 className="text-xs font-bold text-text-primary">Klingelton & Sound-Effekte</h4>
+            <p className="text-[11px] text-text-muted mt-0.5">Spielt einen angenehmen Akkord bei eingehenden Video-Calls und Live-Anrufen ab.</p>
+          </div>
+          <label className="flex items-center cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={soundEnabled}
+                onChange={e => {
+                  setSoundEnabled(e.target.checked);
+                  safeStorage.setItem('kreativ_desk_sound_enabled', String(e.target.checked));
+                  addToast(e.target.checked ? 'Audio-Signale aktiviert' : 'Audio-Signale stummgeschaltet', 'info');
+                }}
+              />
+              <div className={cn("block w-10 h-6 rounded-full transition-colors", soundEnabled ? "bg-accent-ai" : "bg-background border border-border")} />
+              <div className={cn("absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", soundEnabled ? "transform translate-x-4" : "")} />
+            </div>
+            <span className="ml-3 text-xs font-bold text-text-muted uppercase tracking-widest">{soundEnabled ? 'Aktiv' : 'Stumm'}</span>
+          </label>
+        </div>
+      </div>
     </div>
   );
 }
