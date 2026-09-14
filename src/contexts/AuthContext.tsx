@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Role } from '../config/permissions';
+import { checkIsSuperAdmin } from '../config/admins';
 import { safeStorage } from '../utils/safeStorage';
 
 export interface AppUser {
@@ -161,10 +162,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let effectiveCompanyId = profile?.company_id || null;
       let effectiveRole = (profile?.role as Role) || 'owner';
 
+      const isSuperUser = checkIsSuperAdmin(user.email) || profile?.role === 'super_admin';
+      if (isSuperUser) {
+        effectiveRole = 'super_admin';
+        targetRole = 'super_admin';
+      }
+
       // If user was invited or exists in company_users, associate them with the inviting company
       if (isInvitedUser && targetCompanyId) {
         effectiveCompanyId = targetCompanyId;
-        effectiveRole = targetRole;
+        if (!isSuperUser) {
+          effectiveRole = targetRole;
+        }
 
         const { data: compPlanData } = await supabase
           .from('companies')
@@ -177,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profile) {
           await supabase.from('profiles').update({ 
             company_id: targetCompanyId, 
-            role: targetRole,
+            role: isSuperUser ? 'super_admin' : targetRole,
             plan: targetPlan
           }).eq('id', user.id);
         }

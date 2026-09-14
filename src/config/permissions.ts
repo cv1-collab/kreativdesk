@@ -61,7 +61,7 @@ export function normalizeRole(rawRole?: string | null): Role {
   const r = rawRole.toLowerCase().trim();
   if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
   if (r === 'owner') return 'owner';
-  if (r === 'management' || r === 'manager' || r === 'admin') return 'management';
+  if (r === 'management' || r === 'manager' || r === 'admin' || r === 'project_lead' || r === 'lead') return 'management';
   if (r === 'employee' || r === 'internal' || r === 'editor' || r === 'member' || r === 'user' || r === 'team') return 'employee';
   if (r === 'client' || r === 'external') return 'client';
   if (r === 'guest' || r === 'viewer') return 'guest';
