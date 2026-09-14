@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
-  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck, Download, History, Image
+  Paperclip, Loader2, PenTool, FileText, ChevronRight, FileCheck, X, Trash2, Eraser, Phone, Calendar, Clock, Monitor, Users, Copy, CheckCircle2, PhoneCall, PhoneForwarded, MonitorOff, Link as LinkIcon, VideoOff, Captions, UserPlus, UserCheck, Download, History, Image, Move
 } from 'lucide-react';
 import { downloadICSFile } from '../utils/icsGenerator';
 import { cn, sanitizeUrl } from '../utils';
@@ -38,7 +38,9 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
 
     video.srcObject = stream;
     video.play().catch(err => {
-      console.warn("Remote video play note:", err);
+      if (err?.name !== 'AbortError') {
+        console.warn("Remote video play note:", err);
+      }
       video.muted = true;
       video.play().catch(() => {});
       setNeedsUserClick(true);
@@ -205,6 +207,18 @@ export default function MeetChat() {
 
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
   const activeCallRoomId = callId || joinCallId || generatedMeetingId || defaultRoomId;
+
+  type PreviewCorner = 'bottom-right' | 'top-right' | 'bottom-left' | 'top-left';
+  const [previewCorner, setPreviewCorner] = useState<PreviewCorner>(() => {
+    return (safeStorage.getItem('meetchat_preview_corner', 'bottom-right') as PreviewCorner) || 'bottom-right';
+  });
+
+  const previewCornerClasses: Record<PreviewCorner, string> = {
+    'bottom-right': 'bottom-24 right-4 md:bottom-6 md:right-6',
+    'bottom-left': 'bottom-24 left-4 md:bottom-6 md:left-6',
+    'top-right': 'top-16 right-4 md:top-6 md:right-6',
+    'top-left': 'top-16 left-4 md:top-6 md:left-6'
+  };
 
   const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
     const saved = safeStorage.getItem(`meetchat_activeView_${currentProjectId}`);
@@ -1411,7 +1425,16 @@ export default function MeetChat() {
                         return;
                       }
                       await ensureCallRegistered(activeCallRoomId); 
-                      await startCall(selectedUserIds, activeCallRoomId); 
+                      const selectedUsers = currentProjectMembers.filter((u: any) => selectedUserIds.includes(u.id));
+                      const allTargetIds: string[] = [];
+                      const allTargetEmails: string[] = [];
+                      selectedUsers.forEach((u: any) => {
+                        if (u.id) allTargetIds.push(u.id);
+                        if (u.user_id) allTargetIds.push(u.user_id);
+                        if (u.userId) allTargetIds.push(u.userId);
+                        if (u.email) allTargetEmails.push(u.email);
+                      });
+                      await startCall(allTargetIds, activeCallRoomId, allTargetEmails); 
                     }} className="w-full px-6 py-3 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer">
                       <PhoneCall size={18} /> {selectedUserIds.length > 0 ? `${selectedUserIds.length} ${t('call_selected')}` : t('start_rundruf')}
                     </button>
@@ -1488,7 +1511,10 @@ export default function MeetChat() {
                     )}
                   </div>
 
-                  <div className="absolute bottom-24 right-4 w-24 h-36 md:bottom-6 md:right-6 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20 group relative">
+                  <div className={cn(
+                    "absolute w-24 h-36 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20 group relative transition-all duration-300",
+                    previewCornerClasses[previewCorner]
+                  )}>
                     {(bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && (
                       <div
                         className="absolute inset-0 bg-cover bg-center z-0 transition-all duration-300"
@@ -1518,13 +1544,35 @@ export default function MeetChat() {
                     <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-white/90 pointer-events-none">
                       Du
                     </div>
-                    <button
-                      onClick={() => setShowBgModal(true)}
-                      className="absolute top-2 right-2 z-20 p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80 cursor-pointer"
-                      title="Hintergrund wechseln"
-                    >
-                      <Image size={14} />
-                    </button>
+                    <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const nextCorner: Record<PreviewCorner, PreviewCorner> = {
+                            'bottom-right': 'bottom-left',
+                            'bottom-left': 'top-left',
+                            'top-left': 'top-right',
+                            'top-right': 'bottom-right'
+                          };
+                          const n = nextCorner[previewCorner];
+                          setPreviewCorner(n);
+                          safeStorage.setItem('meetchat_preview_corner', n);
+                        }}
+                        className="p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg hover:bg-black/80 cursor-pointer"
+                        title="Vorschau-Position wechseln (unten-rechts / oben-rechts / oben-links / unten-links)"
+                      >
+                        <Move size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowBgModal(true)}
+                        className="p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg hover:bg-black/80 cursor-pointer"
+                        title="Hintergrund wechseln"
+                      >
+                        <Image size={14} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto">
@@ -1554,12 +1602,15 @@ export default function MeetChat() {
                     </div>
                   )}
 
-                  <div className="absolute top-6 left-4 flex flex-col md:flex-row items-start md:items-center gap-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 px-4 py-2.5 rounded-xl shadow-lg z-30">
-                    <div className="flex flex-col"><span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Meeting ID</span><span className="text-xs md:text-sm font-mono font-bold text-white">{callId || joinCallId}</span></div>
-                    <div className="w-px h-8 bg-slate-700/60 hidden md:block mx-1"></div>
-                    <button onClick={() => handleQuickInvite('copy')} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer" title="Gäste-Einladungslink kopieren">
-                      {copiedLink ? <CheckCircle2 size={16} className="text-emerald-400" /> : <LinkIcon size={16} />}
-                      <span className="hidden sm:inline">{copiedLink ? 'Link kopiert!' : 'Link kopieren'}</span>
+                  <div className="absolute top-4 right-4 flex items-center gap-2 bg-slate-900/90 backdrop-blur-md border border-slate-700/60 px-3 py-1.5 rounded-xl shadow-lg z-30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold hidden sm:inline">Meeting ID</span>
+                      <span className="text-xs font-mono font-bold text-white">{callId || joinCallId}</span>
+                    </div>
+                    <div className="w-px h-5 bg-slate-700/60 hidden sm:block mx-0.5"></div>
+                    <button onClick={() => handleQuickInvite('copy')} className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer" title="Gäste-Einladungslink kopieren">
+                      {copiedLink ? <CheckCircle2 size={14} className="text-emerald-400" /> : <LinkIcon size={14} />}
+                      <span className="text-[11px] font-bold">{copiedLink ? 'Kopiert!' : 'Link'}</span>
                     </button>
                   </div>
                 </div>

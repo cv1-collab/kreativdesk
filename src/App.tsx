@@ -22,9 +22,9 @@ import { VideoCallProvider } from './contexts/VideoCallContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AIProvider } from './contexts/AIContext';
 
-// Tour Provider
 import { TourProvider } from './contexts/TourContext';
 import ProductTour from './components/ProductTour';
+import { GlobalVideoPlayer } from './components/GlobalVideoPlayer';
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   componentImport: () => Promise<{ default: T }>
@@ -146,6 +146,7 @@ export default function App() {
                           <Suspense fallback={null}>
                             <CookieBanner />
                           </Suspense>
+                          <GlobalVideoPlayer />
 
                           <Suspense fallback={<GlobalSuspenseFallback />}>
                             <ErrorBoundary>

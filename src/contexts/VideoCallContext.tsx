@@ -10,14 +10,10 @@ const servers: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    {
-      urls: [
-        'turn:openrelay.metered.ca:80',
-        'turn:openrelay.metered.ca:443'
-      ],
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' }
   ],
   iceCandidatePoolSize: 10
 };
@@ -27,6 +23,7 @@ interface IncomingCall {
   projectId: string;
   callerName: string;
   targetUserIds?: string[];
+  targetUserEmails?: string[];
 }
 
 interface VideoCallContextType {
@@ -42,7 +39,7 @@ interface VideoCallContextType {
   joinCallId: string;
   setJoinCallId: (id: string) => void;
   
-  startCall: (targetUserIds?: string[], customCallId?: string) => Promise<void>; 
+  startCall: (targetUserIds?: string[], customCallId?: string, targetUserEmails?: string[]) => Promise<void>; 
   joinCall: (overrideId?: string | null) => Promise<void>; 
   hangUp: (endForAll?: boolean | unknown) => void;
   toggleMic: () => void;
@@ -157,6 +154,8 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const companyCallChannelRef = useRef<any>(null);
+
   // INTELLIGENTER LISTENER FÜR ZIELGERICHTETE ANRUFE
   useEffect(() => {
     if (!safeCompanyId || !currentUser?.uid || currentUser?.uid === 'demo-user-id') return;
@@ -166,18 +165,21 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .on('broadcast', { event: 'incoming-call' }, ({ payload }) => {
         if (payload && payload.callerId !== currentUser.uid) {
           const targetIds: string[] = payload.targetUserIds || [];
-          const targetEmails: string[] = (payload.targetUserEmails || []).map((e: string) => e.toLowerCase());
+          const targetEmails: string[] = (payload.targetUserEmails || []).map((e: string) => (e || '').toLowerCase());
           const isTargeted = targetIds.length > 0 || targetEmails.length > 0;
+          const currentEmail = (currentUser.email || '').toLowerCase();
           const amITargeted = 
             targetIds.includes(currentUser.uid) || 
-            (currentUser.email && targetEmails.includes(currentUser.email.toLowerCase()));
+            (currentUser.id && targetIds.includes(currentUser.id)) ||
+            (currentEmail && targetEmails.includes(currentEmail));
 
           if (!isTargeted || amITargeted) {
             setIncomingCall({
               id: payload.callId,
               projectId: payload.projectId || 'global',
               callerName: payload.callerName || 'Ein Teammitglied',
-              targetUserIds: targetIds
+              targetUserIds: targetIds,
+              targetUserEmails: targetEmails
             });
             playRingChime();
           }
@@ -188,14 +190,19 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           setIncomingCall(prev => (prev?.id === payload.callId ? null : prev));
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          companyCallChannelRef.current = channel;
+        }
+      });
 
     return () => {
+      companyCallChannelRef.current = null;
       if (channel) {
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [safeCompanyId, currentUser?.uid, currentUser?.email]);
+  }, [safeCompanyId, currentUser?.uid, currentUser?.id, currentUser?.email]);
 
   const setupMediaSources = async () => {
     if (!navigator?.mediaDevices?.getUserMedia) {
@@ -513,7 +520,7 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
   };
 
-  const startCall = async (targetUserIds: string[] = [], customCallId?: string) => {
+  const startCall = async (targetUserIds: string[] = [], customCallId?: string, targetUserEmails: string[] = []) => {
     const stream = await setupMediaSources();
     if (!stream) return;
 
@@ -544,23 +551,35 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     // 🔥 Send broadcast to company channel so other users receive the incoming call ringing alert!
     if (safeCompanyId) {
+      const broadcastPayload = {
+        callId: currentCallId,
+        callerId: currentUser?.uid,
+        callerName: getMyDisplayName(),
+        projectId: currentProjectId || 'global',
+        targetUserIds: targetUserIds || [],
+        targetUserEmails: targetUserEmails || []
+      };
+
       try {
-        const companyCallChannel = supabase.channel(`company-calls-${safeCompanyId}`);
-        companyCallChannel.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await companyCallChannel.send({
-              type: 'broadcast',
-              event: 'incoming-call',
-              payload: {
-                callId: currentCallId,
-                callerId: currentUser?.uid,
-                callerName: getMyDisplayName(),
-                projectId: currentProjectId || 'global',
-                targetUserIds: targetUserIds || []
-              }
-            });
-          }
-        });
+        if (companyCallChannelRef.current) {
+          companyCallChannelRef.current.send({
+            type: 'broadcast',
+            event: 'incoming-call',
+            payload: broadcastPayload
+          }).catch((err: any) => console.warn("Broadcast direct send err:", err));
+        } else {
+          const tempCh = supabase.channel(`company-calls-${safeCompanyId}`);
+          tempCh.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+              companyCallChannelRef.current = tempCh;
+              await tempCh.send({
+                type: 'broadcast',
+                event: 'incoming-call',
+                payload: broadcastPayload
+              });
+            }
+          });
+        }
       } catch (bcErr) {
         console.warn("Incoming call broadcast error:", bcErr);
       }
@@ -610,12 +629,20 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Notify other peers in the company to dismiss any ringing alert
     if (safeCompanyId && callId) {
       try {
-        const companyCallChannel = supabase.channel(`company-calls-${safeCompanyId}`);
-        companyCallChannel.send({
-          type: 'broadcast',
-          event: 'call-cancelled',
-          payload: { callId }
-        }).catch(() => {});
+        if (companyCallChannelRef.current) {
+          companyCallChannelRef.current.send({
+            type: 'broadcast',
+            event: 'call-cancelled',
+            payload: { callId }
+          }).catch(() => {});
+        } else {
+          const tempCh = supabase.channel(`company-calls-${safeCompanyId}`);
+          tempCh.send({
+            type: 'broadcast',
+            event: 'call-cancelled',
+            payload: { callId }
+          }).catch(() => {});
+        }
       } catch (e) {}
     }
 
