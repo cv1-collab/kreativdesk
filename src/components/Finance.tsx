@@ -2529,12 +2529,12 @@ export default function Finance() {
                   <input type="date" value={projectHeader.date} onChange={e => setProjectHeader({ ...projectHeader, date: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary" disabled={activeVersion.status === 'approved'} />
                 </div>
                 <div className="flex justify-between items-center border-b border-border/30 pb-2">
-                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('client')}</span>
-                  <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({ ...projectHeader, client: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary w-1/2" placeholder="Kunde" disabled={activeVersion.status === 'approved'} />
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest shrink-0 mr-3">{t('client')}</span>
+                  <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({ ...projectHeader, client: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary flex-1 min-w-0" placeholder="Kunde / Bauherr" disabled={activeVersion.status === 'approved'} />
                 </div>
                 <div className="flex justify-between items-center border-b border-border/30 pb-2">
-                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Version</span>
-                  <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({ ...projectHeader, version: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary w-1/4" disabled={activeVersion.status === 'approved'} />
+                  <span className="text-xs font-bold text-text-muted uppercase tracking-widest shrink-0 mr-3">Version / Bezeichnung</span>
+                  <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({ ...projectHeader, version: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-right text-text-primary flex-1 min-w-0" placeholder="z. B. Originalbudget" disabled={activeVersion.status === 'approved'} />
                 </div>
                 <div className="pt-2">
                   <label className="flex items-center justify-between text-sm font-bold text-text-primary cursor-pointer">
@@ -2716,28 +2716,67 @@ export default function Finance() {
           <div className="hidden lg:flex flex-col w-full overflow-hidden">
             <div className="bg-surface border border-border rounded-xl shadow-lg mt-0 w-full flex-col overflow-x-auto custom-scrollbar">
               <div className="min-w-[800px]">
-                <div className="p-8 bg-surface border-b border-border/50 w-full flex justify-between items-end">
-                  <div>
-                    <input className="text-3xl font-semibold bg-transparent outline-none w-[600px] border-b border-transparent focus:border-accent-ai/50 text-text-primary mb-2" value={projectHeader.project} onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} placeholder={t('project')} disabled={activeVersion.status === 'approved'} />
-                    <div className="flex items-center gap-6">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('date')}:</span>
-                        <input type="date" value={projectHeader.date} onChange={e => setProjectHeader({ ...projectHeader, date: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-text-primary cursor-pointer border-b border-transparent focus:border-accent-ai/50 py-1" disabled={activeVersion.status === 'approved'} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('client')}:</span>
-                        <input type="text" value={projectHeader.client} onChange={e => setProjectHeader({ ...projectHeader, client: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-48" placeholder="Kunde / Bauherr" disabled={activeVersion.status === 'approved'} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Version:</span>
-                        <input type="text" value={projectHeader.version} onChange={e => setProjectHeader({ ...projectHeader, version: e.target.value })} className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-16" placeholder="v1.0" disabled={activeVersion.status === 'approved'} />
-                      </div>
+                <div className="p-6 lg:p-8 bg-surface border-b border-border/50 w-full space-y-4">
+                  {/* Obere Zeile: Projekt-Titel & Optionen einrechnen */}
+                  <div className="flex items-center justify-between gap-4 w-full">
+                    <input 
+                      className="text-2xl lg:text-3xl font-semibold bg-transparent outline-none flex-1 border-b border-transparent focus:border-accent-ai/50 text-text-primary pb-1 transition-colors" 
+                      value={projectHeader.project} 
+                      onChange={e => setProjectHeader({ ...projectHeader, project: e.target.value })} 
+                      placeholder={t('project')} 
+                      disabled={activeVersion.status === 'approved'} 
+                    />
+                    <label className="flex items-center gap-2 text-sm font-bold text-text-muted cursor-pointer hover:text-text-primary transition-colors bg-background border border-border/50 px-3.5 py-2 rounded-lg shadow-sm shrink-0">
+                      <input 
+                        type="checkbox" 
+                        checked={includeOptions} 
+                        onChange={(e) => setIncludeOptions(e.target.checked)} 
+                        className="rounded border-border text-accent-ai focus:ring-accent-ai w-4 h-4 cursor-pointer" 
+                      />
+                      Optionen einrechnen
+                    </label>
+                  </div>
+
+                  {/* Untere Zeile: Ganze Reihe nutzen für Datum, Kunde und Version / Bezeichnung (blauer Bereich) */}
+                  <div className="flex items-center gap-6 lg:gap-8 w-full pt-1">
+                    {/* Datum */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-bold text-text-muted uppercase tracking-widest shrink-0">{t('date')}:</span>
+                      <input 
+                        type="date" 
+                        value={projectHeader.date} 
+                        onChange={e => setProjectHeader({ ...projectHeader, date: e.target.value })} 
+                        className="bg-transparent text-sm font-medium outline-none text-text-primary cursor-pointer border-b border-transparent focus:border-accent-ai/50 py-1" 
+                        disabled={activeVersion.status === 'approved'} 
+                      />
+                    </div>
+
+                    {/* Kunde / Bauherr - mehr Platz und flexibel */}
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      <span className="text-xs font-bold text-text-muted uppercase tracking-widest shrink-0">{t('client')}:</span>
+                      <input 
+                        type="text" 
+                        value={projectHeader.client} 
+                        onChange={e => setProjectHeader({ ...projectHeader, client: e.target.value })} 
+                        className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-full" 
+                        placeholder="Kunde / Bauherr" 
+                        disabled={activeVersion.status === 'approved'} 
+                      />
+                    </div>
+
+                    {/* Version / Bezeichnung - nutzt den vollen blauen Bereich */}
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      <span className="text-xs font-bold text-text-muted uppercase tracking-widest shrink-0">Version / Bezeichnung:</span>
+                      <input 
+                        type="text" 
+                        value={projectHeader.version} 
+                        onChange={e => setProjectHeader({ ...projectHeader, version: e.target.value })} 
+                        className="bg-transparent text-sm font-medium outline-none text-text-primary border-b border-transparent focus:border-accent-ai/50 py-1 w-full" 
+                        placeholder="z. B. Originalbudget, V1.0..." 
+                        disabled={activeVersion.status === 'approved'} 
+                      />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-text-muted cursor-pointer hover:text-text-primary transition-colors bg-background border border-border/50 px-3 py-2 rounded-lg shadow-sm">
-                    <input type="checkbox" checked={includeOptions} onChange={(e) => setIncludeOptions(e.target.checked)} className="rounded border-border text-accent-ai focus:ring-accent-ai w-4 h-4 cursor-pointer" />
-                    Optionen einrechnen
-                  </label>
                 </div>
 
                 <div className="w-full overflow-x-auto custom-scrollbar">
