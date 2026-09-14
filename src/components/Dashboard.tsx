@@ -528,8 +528,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0 pb-6 md:pb-0">
         {[
           { label: t('upload_floor_plan'), link: `/project/${activeProject?.id}/plans`, icon: Map },
-          { label: t('generate_client_pitch_deck'), link: `/project/${activeProject?.id}/pitch`, icon: MonitorPlay },
-          ...(hasPermission('canViewFinance') ? [{ label: t('review_budget_variance'), link: `/project/${activeProject?.id}/finance`, icon: DollarSign }] : [])
+          ...((currentUser?.role !== 'guest' && currentUser?.role !== 'client') || hasPermission('canViewProjectBudget') || hasPermission('canViewFinance') ? [{ label: t('review_budget_variance'), link: `/project/${activeProject?.id}/finance`, icon: DollarSign }] : [])
         ].map((action, i) => (
           <button key={i} onClick={() => navigate(action.link)} className="w-full text-left px-5 py-4 rounded-xl border border-border bg-surface hover:bg-white/5 transition-all text-sm font-bold text-text-muted hover:text-text-primary flex items-center justify-between group shadow-sm">
             <span className="flex items-center gap-3">

@@ -3,7 +3,8 @@ export type Role = 'super_admin' | 'owner' | 'management' | 'employee' | 'client
 export type Permission =
   // Company & Finance
   | 'canManageCompany' // Edit company settings, delete company
-  | 'canViewFinance'   // View financial data, invoices, subscriptions
+  | 'canViewFinance'   // View company-wide financial data, invoices, subscriptions, company bank accounts
+  | 'canViewProjectBudget' // View & manage project-specific BKP budgets and costs inside project workspace
   | 'canEditBilling'   // Change subscription, credit cards
   | 'canManageUsers'   // Invite/remove users in the company
   
@@ -24,19 +25,20 @@ export type Permission =
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   super_admin: [
-    'canManageCompany', 'canViewFinance', 'canEditBilling', 'canManageUsers',
+    'canManageCompany', 'canViewFinance', 'canViewProjectBudget', 'canEditBilling', 'canManageUsers',
     'canCreateProject', 'canDeleteProject', 'canViewAllProjects',
     'canUploadFiles', 'canDeleteFiles', 'canUseAI', 'canExportGLB',
     'canComment', 'canViewProjects'
   ],
   owner: [
-    'canManageCompany', 'canViewFinance', 'canEditBilling', 'canManageUsers',
+    'canManageCompany', 'canViewFinance', 'canViewProjectBudget', 'canEditBilling', 'canManageUsers',
     'canCreateProject', 'canDeleteProject', 'canViewAllProjects',
     'canUploadFiles', 'canDeleteFiles', 'canUseAI', 'canExportGLB',
     'canComment', 'canViewProjects'
   ],
   management: [
     'canViewFinance',
+    'canViewProjectBudget',
     'canManageCompany',
     'canManageUsers',
     'canCreateProject', 'canDeleteProject', 'canViewAllProjects',
@@ -45,6 +47,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ],
   employee: [
     'canCreateProject',
+    'canViewProjectBudget',
     'canUploadFiles', 'canUseAI', 'canExportGLB', 'canDeleteFiles',
     'canComment', 'canViewProjects'
   ],

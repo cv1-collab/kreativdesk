@@ -375,7 +375,9 @@ export default function Finance() {
   const { activeProjectId, projects, projectMembers, timeEntries, addTimeEntry, isDemoMode, demoData } = useProject() as any;
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const currentProjectId = urlProjectId || activeProjectId;
-  const canViewFinance = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || hasPermission('canViewFinance');
+  const userRole = (currentUser?.role || '') as string;
+  const isGuestOrClient = userRole === 'guest' || userRole === 'client';
+  const canViewFinance = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || !isGuestOrClient || hasPermission('canViewProjectBudget') || hasPermission('canViewFinance') || currentUser?.canViewFinance === true;
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;

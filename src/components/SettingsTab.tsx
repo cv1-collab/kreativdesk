@@ -151,7 +151,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     save: 'Speichern',
     roles_permissions: 'Rollen & Berechtigungen',
     no_team_members: 'Keine Teammitglieder gefunden.',
-    view_finance: 'Finanzen sehen',
+    view_finance: 'Firmen-Finanzen sehen',
     approve_budget: 'Budget freigeben'
   }
 };
@@ -2269,7 +2269,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
                     <div className={cn("block w-8 h-5 rounded-full transition-colors", member.canViewFinance ? "bg-accent-ai" : "bg-background border border-border")} />
                     <div className={cn("absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform", member.canViewFinance ? "transform translate-x-3" : "")} />
                   </div>
-                  <span className="text-xs font-bold text-text-muted">{t('view_finance')}</span>
+                  <span className="text-xs font-bold text-text-muted" title="Zugriff auf firmenweite Finanzen im Dashboard. Projekt-Budgets im Projektordner bleiben für Mitarbeiter zugänglich.">{t('view_finance')}</span>
                 </label>
                 
                 <label className={cn("flex items-center gap-2", (isSuperAdmin || isOwner) ? "cursor-pointer" : "cursor-not-allowed opacity-60")}>

@@ -456,8 +456,8 @@ export default function PitchDeckStudio({
   const [animKey, setAnimKey] = useState(0);
 
   // Connected project modules check for live badges
-  const hasRealDefects = (defects || []).some((d: any) => d.projectId === targetId);
-  const hasRealTeam = (projectMembers || []).some((m: any) => m.projectId === targetId);
+  const hasRealDefects = (defects || []).some((d: any) => d.projectId === targetId || d.project_id === targetId);
+  const hasRealTeam = (projectMembers || []).some((m: any) => m.projectId === targetId || m.project_id === targetId) || (companyUsers || []).length > 0;
 
   useEffect(() => {
     let timer: any;
@@ -1861,6 +1861,8 @@ export default function PitchDeckStudio({
   const handleInsertComparisonSlide = async (versionsToCompare?: any[]) => {
     const list = (versionsToCompare && versionsToCompare.length > 0) ? versionsToCompare : budgetVariantPicker.versions;
     let comparisonVariants: any[] = [];
+    const currentProj = projects?.find((p: any) => p.id === targetId);
+    const pTitle = currentProj?.name || 'Projekt';
 
     if (list && list.length > 0) {
       const defaultBadges = ['Basis', 'Empfohlen', 'Premium'];
@@ -1876,13 +1878,21 @@ export default function PitchDeckStudio({
           }
         });
 
-        // Highlights aus Beschreibungen ableiten oder passenden Default setzen
+        // Highlights aus echten Positionen und Phasentiteln ableiten
         const rawItems = (v.groups || []).flatMap((g: any) => g.items || []).filter((it: any) => it.description && it.description.trim().length > 0);
         const highlights = rawItems.slice(0, 3).map((it: any) => it.description.slice(0, 45));
+        
         if (highlights.length === 0) {
-          if (idx === 0) highlights.push('Fokus auf historische Bausubstanz', 'Minimale Eingriffe & Kostenkontrolle', 'Schnelle Realisierung');
-          else if (idx === 1) highlights.push('Interaktive Touchpoints & Audio-Guide', 'Attraktive Besucherführung', 'Optimale Balance Budget / Wirkung');
-          else highlights.push('Immersives 360° Multimedia-Erlebnis', 'High-End Akustik & Licht-Inszenierung', 'Höchste Strahlkraft für Kunden');
+          const groupTitles = (v.groups || []).map((g: any) => g.title).filter(Boolean);
+          if (groupTitles.length > 0) {
+            highlights.push(...groupTitles.slice(0, 3));
+          }
+        }
+
+        if (highlights.length === 0) {
+          if (idx === 0) highlights.push(`Basisausbau & Kernleistungen für ${pTitle}`, 'Kosteneffiziente Standardausführung', 'Fokus auf Grundinfrastruktur');
+          else if (idx === 1) highlights.push(`Erweitertes Konzept für ${pTitle}`, 'Optimale Balance Budget / Qualität', 'Hochwertige Materialisierung & Flexibilität');
+          else highlights.push(`Premium-Standard für ${pTitle}`, 'Höchste Verarbeitungsqualität & Garantien', 'Umfassende schlüsselfertige Lösung');
         }
 
         return {
@@ -1897,60 +1907,61 @@ export default function PitchDeckStudio({
       });
     }
 
-    // Wenn weniger als 3 Varianten im Projekt vorhanden sind, auf 3 auffüllen
+    // Wenn weniger als 3 Varianten im Projekt vorhanden sind, auf 3 auffüllen basierend auf Projektnamen
     if (comparisonVariants.length < 3) {
-      const demoTemplates = [
+      const baseTotal = comparisonVariants[0]?.total || 120000;
+      const dynamicTemplates = [
         {
-          id: 'v-demo-1',
-          title: 'Konzept 1: Historische Werkbank',
-          badge: 'Basis / Historie',
-          total: 185000,
+          id: 'v-proj-1',
+          title: `${pTitle} – Basis-Konzept`,
+          badge: 'Basis / Standard',
+          total: baseTotal,
           status: 'Freigegeben',
-          highlightPoints: ['Erhalt Originalelemente', 'Minimale Eingriffe in Bausubstanz', 'Fokus Archiv & Werkzeuge'],
+          highlightPoints: ['Fokus auf Kerninfrastruktur', 'Kosteneffiziente Standard-Materialisierung', 'Schnelle Ausführung & Abnahme'],
           bkpSummary: [
-            { label: 'BKP 1 Planung & Gutachten', value: 25000 },
-            { label: 'BKP 2 Restaurierung & Schreiner', value: 120000 },
-            { label: 'BKP 3 Beleuchtung', value: 40000 }
+            { label: 'BKP 1 Planung & Vorbereitung', value: Math.round(baseTotal * 0.15) },
+            { label: 'BKP 2 Ausbau & Gewerke', value: Math.round(baseTotal * 0.60) },
+            { label: 'BKP 3 Technik & Installationen', value: Math.round(baseTotal * 0.25) }
           ]
         },
         {
-          id: 'v-demo-2',
-          title: 'Konzept 2: Interaktive Media-Wall',
+          id: 'v-proj-2',
+          title: `${pTitle} – Erweitertes Konzept`,
           badge: 'Empfohlen / Hybrid',
-          total: 310000,
+          total: Math.round(baseTotal * 1.45),
           status: 'Entwurf',
-          highlightPoints: ['Touchscreens & Augmented Reality', 'Digitales Audio-Archiv', 'Multi-User Stationen'],
+          highlightPoints: ['Erweiterte Raumausstattung & Design', 'Hochwertige Oberflächen & Akustik', 'Optimale Balance aus Kosten und Wirkung'],
           bkpSummary: [
-            { label: 'BKP 1 Konzeption & Software', value: 55000 },
-            { label: 'BKP 2 Innenausbau & Möbel', value: 145000 },
-            { label: 'BKP 3 AV & Medientechnik', value: 110000 }
+            { label: 'BKP 1 Planung & Fachbauleitung', value: Math.round(baseTotal * 1.45 * 0.18) },
+            { label: 'BKP 2 Hochwertiger Innenausbau', value: Math.round(baseTotal * 1.45 * 0.55) },
+            { label: 'BKP 3 Intelligente Haustechnik & AV', value: Math.round(baseTotal * 1.45 * 0.27) }
           ]
         },
         {
-          id: 'v-demo-3',
-          title: 'Konzept 3: Premium Showroom',
-          badge: 'Visionär / High-End',
-          total: 485000,
+          id: 'v-proj-3',
+          title: `${pTitle} – High-End Vollausbau`,
+          badge: 'Visionär / Premium',
+          total: Math.round(baseTotal * 2.1),
           status: 'Entwurf',
-          highlightPoints: ['Immersiver 360° Erlebnisraum', 'Dynamische Licht-Inszenierung', 'Ganzheitliche Akustik'],
+          highlightPoints: ['Massgefertigter Vollausbau & Signature Design', 'Zukunftsweisende Technik & Smarthome', 'Höchste Langlebigkeit & Premium-Garantie'],
           bkpSummary: [
-            { label: 'BKP 1 Masterplan & Scenografie', value: 85000 },
-            { label: 'BKP 2 Hochwertiger Komplettausbau', value: 225000 },
-            { label: 'BKP 3 High-End Medientechnik', value: 175000 }
+            { label: 'BKP 1 Gesamtkoordination & Design', value: Math.round(baseTotal * 2.1 * 0.20) },
+            { label: 'BKP 2 Exklusiver Komplettausbau', value: Math.round(baseTotal * 2.1 * 0.55) },
+            { label: 'BKP 3 High-End Medientechnik', value: Math.round(baseTotal * 2.1 * 0.25) }
           ]
         }
       ];
 
       while (comparisonVariants.length < 3) {
-        comparisonVariants.push(demoTemplates[comparisonVariants.length]);
+        comparisonVariants.push(dynamicTemplates[comparisonVariants.length]);
       }
     }
 
     await handleAddSlide('budget-comparison', 'Varianten-Vergleich (3 Konzepte)', { comparisonVariants });
-    setBudgetVariantPicker(prev => ({ ...prev, isOpen: false }));
     addToast('3-Varianten-Vergleichsfolie erstellt!', 'success');
     setMobileTab('slides');
   };
+
 
   const handleUpdateComparisonVariant = (slideId: string, variantIndex: number, field: string, value: any) => {
     setSlides(prev => prev.map(s => {
@@ -2034,6 +2045,9 @@ export default function PitchDeckStudio({
   const handleGenerateTimelineSlide = async () => {
     try {
       let milestones: any[] = [];
+      const currentProj = projects?.find((p: any) => p.id === targetId);
+      const pTitle = currentProj?.name || 'Projekt';
+
       if (targetId && !targetId.startsWith('demo-')) {
         try {
           const localCache = safeStorage.getItem<any>(`schedule_cache_${targetId}`, null);
@@ -2055,40 +2069,75 @@ export default function PitchDeckStudio({
             }));
           }
         } catch (e) {}
+
+        // Falls noch keine Gantt-Tasks vorliegen: Phasen aus Projekt-Finanzen/BKP ableiten
+        if (milestones.length === 0) {
+          try {
+            const finCache = safeStorage.getItem<any>(`finance_cache_${targetId}`, null);
+            const groups = finCache?.versions?.[0]?.groups || [];
+            if (groups.length > 0) {
+              const today = new Date();
+              milestones = groups.slice(0, 4).map((g: any, idx: number) => ({
+                id: `m-group-${idx}`,
+                start: new Date(today.getTime() + idx * 25 * 86400000).toISOString().split('T')[0],
+                end: new Date(today.getTime() + (idx + 1) * 25 * 86400000).toISOString().split('T')[0],
+                title: `${g.pos} ${g.title}`,
+                progress: idx === 0 ? 80 : 0,
+                status: idx === 0 ? 'In Ausführung' : 'Geplant'
+              }));
+            }
+          } catch (e) {}
+        }
       }
       
       if (milestones.length === 0) {
         const today = new Date();
         milestones = [
-          { start: new Date(today.getTime() - 30*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 15*86400000).toISOString().split('T')[0], title: 'Phase 1: Vorprojekt & Bewilligung', progress: 100, status: 'Abgeschlossen' },
-          { start: new Date(today.getTime() + 10*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 75*86400000).toISOString().split('T')[0], title: 'Phase 2: Aushub & Rohbauarbeiten', progress: 45, status: 'In Ausführung' },
-          { start: new Date(today.getTime() + 70*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 130*86400000).toISOString().split('T')[0], title: 'Phase 3: Haustechnik & Innenausbau', progress: 0, status: 'Geplant' },
-          { start: new Date(today.getTime() + 125*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 160*86400000).toISOString().split('T')[0], title: 'Phase 4: Abnahme & Schlüsselübergabe', progress: 0, status: 'Geplant' }
+          { start: new Date(today.getTime() - 20*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 20*86400000).toISOString().split('T')[0], title: `Phase 1: Vorprojekt & Konzept ${pTitle}`, progress: 100, status: 'Abgeschlossen' },
+          { start: new Date(today.getTime() + 15*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 60*86400000).toISOString().split('T')[0], title: `Phase 2: Ausführungsplanung & Ausschreibung`, progress: 50, status: 'In Ausführung' },
+          { start: new Date(today.getTime() + 55*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 120*86400000).toISOString().split('T')[0], title: `Phase 3: Realisierung & Montage ${pTitle}`, progress: 0, status: 'Geplant' },
+          { start: new Date(today.getTime() + 115*86400000).toISOString().split('T')[0], end: new Date(today.getTime() + 150*86400000).toISOString().split('T')[0], title: `Phase 4: Inbetriebnahme, Abnahme & Übergabe`, progress: 0, status: 'Geplant' }
         ];
       }
-      await handleAddSlide('smart-calendar', t('api_roadmap'), { milestones });
-      addToast(t('roadmap_imported'), "success");
+      await handleAddSlide('smart-calendar', `${t('api_roadmap')} – ${pTitle}`, { milestones });
+      addToast(`Terminplan für ${pTitle} importiert!`, "success");
       setMobileTab('slides');
     } catch (e) { addToast(t('error_load'), "error"); }
   };
 
   const handleImportDefects = async () => {
     let projectDefects: any[] = [];
+    const currentProj = projects?.find((p: any) => p.id === targetId);
+    const pTitle = currentProj?.name || 'Projekt';
+
     if (targetId && !targetId.startsWith('demo-')) {
-      projectDefects = (defects || []).filter((d:any) => d.projectId === targetId && d.status !== 'erledigt').slice(0, 4);
+      projectDefects = (defects || [])
+        .filter((d: any) => (d.projectId === targetId || d.project_id === targetId) && d.status !== 'Done' && d.status !== 'erledigt')
+        .slice(0, 4)
+        .map((d: any) => ({
+          id: d.id,
+          title: d.title || d.prompt || 'Mangel',
+          location: d.location || 'Baustelle / Bereich',
+          status: d.status === 'Done' ? 'erledigt' : d.status === 'In Progress' ? 'in Bearbeitung' : 'offen',
+          priority: d.priority === 'High' || d.priority === 'Critical' ? 'hoch' : d.priority === 'Low' ? 'niedrig' : 'mittel',
+          imageUrl: d.imageUrl || d.image_url || ''
+        }));
     }
     
     if (projectDefects.length === 0) {
+      // Wenn keine offenen Mängel existieren, sauberen Qualitätsstatus erzeugen
       projectDefects = [
-        { id: 'def-1', title: 'Kratzer an Fensterrahmen EG West', location: 'Erdgeschoss Wohnzimmer', status: 'offen', priority: 'hoch', imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=400&q=80' },
-        { id: 'def-2', title: 'Silikonfuge Sanitär 1.OG nachbessern', location: 'Obergeschoss Badezimmer', status: 'in Bearbeitung', priority: 'mittel', imageUrl: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=400&q=80' },
-        { id: 'def-3', title: 'Abdeckung Lichtschalter Korridor fehlt', location: 'Untergeschoss Korridor', status: 'offen', priority: 'niedrig', imageUrl: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=400&q=80' },
-        { id: 'def-4', title: 'Sockelleiste Eingangsbereich prüfen', location: 'Foyer / Eingang', status: 'in Bearbeitung', priority: 'mittel', imageUrl: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=400&q=80' }
+        { id: 'qa-1', title: 'Rohbau- & Tragwerksprüfung', location: 'Gesamtbaukörper', status: 'erledigt', priority: 'niedrig', imageUrl: '' },
+        { id: 'qa-2', title: 'Ausbau- & Oberflächenabnahme', location: 'Innenräume', status: 'erledigt', priority: 'niedrig', imageUrl: '' },
+        { id: 'qa-3', title: 'Haustechnik- & Funktionsprüfung (SIA)', location: 'Technikzentrale', status: 'erledigt', priority: 'niedrig', imageUrl: '' },
+        { id: 'qa-4', title: 'Qualitätskontrolle & Mängelfreiheit', location: pTitle, status: 'erledigt', priority: 'niedrig', imageUrl: '' }
       ];
+      await handleAddSlide('defect-grid', `Qualitätsprüfung & Abnahme – ${pTitle}`, { defects: projectDefects });
+      addToast(`Qualitätsbericht für ${pTitle} erstellt (0 offene Mängel)!`, "success");
+    } else {
+      await handleAddSlide('defect-grid', `${t('defects_report')} – ${pTitle}`, { defects: projectDefects });
+      addToast(`${projectDefects.length} Mangel-Ticket(s) importiert!`, "success");
     }
-    
-    await handleAddSlide('defect-grid', t('defects_report'), { defects: projectDefects });
-    addToast(t('defects_imported'), "success");
     setMobileTab('slides');
   };
 
@@ -2096,30 +2145,72 @@ export default function PitchDeckStudio({
     let teamMembers: any[] = [];
     
     if (targetId && !targetId.startsWith('demo-')) {
-      teamMembers = (projectMembers || []).filter((m: any) => m.projectId === targetId).map((m: any) => {
-        const user = (companyUsers || []).find((u: any) => u.id === m.userId);
-        const avatar = user?.photoURL || user?.avatar || m.avatar || m.photoURL || '';
-        return { 
-          name: m.userName || m.name || user?.name || user?.email || 'Teammitglied', 
-          role: m.projectRole || m.role || 'Projekt-Team', 
-          photoURL: avatar, 
-          email: m.userEmail || user?.email || '', 
-          phone: user?.phone || m.phone || '' 
-        };
-      }).filter(Boolean);
+      // 1. Aus zugewiesenen Projekt-Mitgliedern auflösen
+      const pMems = (projectMembers || []).filter((m: any) => m.projectId === targetId || m.project_id === targetId);
+      if (pMems.length > 0) {
+        teamMembers = pMems.map((m: any) => {
+          const user = (companyUsers || []).find((u: any) => 
+            u.id === m.userId || 
+            u.user_id === m.userId || 
+            (u.email && m.userEmail && u.email.toLowerCase() === m.userEmail.toLowerCase())
+          );
+          const avatar = user?.photoURL || user?.photo_url || user?.avatar || m.avatar || m.photoURL || '';
+          const rawName = m.userName || m.name || user?.name || [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.email || 'Teammitglied';
+          const rawRole = m.projectRole || m.role || user?.role || 'Projekt-Team';
+          const displayRole = 
+            rawRole === 'super_admin' ? 'Super Admin (System-Inhaber)' :
+            rawRole === 'owner' ? 'Inhaber / Projektleitung' :
+            rawRole === 'project_lead' ? 'Projektleiter' :
+            rawRole === 'employee' ? 'Projekt-Mitarbeiter' :
+            rawRole;
+          return { 
+            name: rawName, 
+            role: displayRole, 
+            photoURL: avatar, 
+            email: m.userEmail || user?.email || '', 
+            phone: user?.phone || m.phone || '' 
+          };
+        }).filter(Boolean);
+      }
+
+      // 2. Falls für dieses Projekt noch keine expliziten Projektmitglieder zugewiesen sind:
+      // Reale Team-Mitglieder des Unternehmens (company_users) laden!
+      if (teamMembers.length === 0 && (companyUsers || []).length > 0) {
+        teamMembers = (companyUsers || []).slice(0, 4).map((u: any) => {
+          const avatar = u.photoURL || u.photo_url || u.avatar || '';
+          const name = u.name || [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email || 'Teammitglied';
+          const role = 
+            u.role === 'super_admin' ? 'Super Admin (System-Inhaber)' : 
+            u.role === 'owner' ? 'Inhaber' : 
+            u.role === 'project_lead' ? 'Projektleiter' : 
+            u.role === 'employee' ? 'Projekt-Mitarbeiter' : 
+            (u.role || 'Projekt-Team');
+          return {
+            name,
+            role,
+            photoURL: avatar,
+            email: u.email || '',
+            phone: u.phone || ''
+          };
+        });
+      }
     }
 
+    // 3. Fallback auf aktuellen angemeldeten Benutzer (niemals gefälschte SIA-Muster)
     if (teamMembers.length === 0) {
       teamMembers = [
-        { name: 'Dipl. Arch. ETH / SIA', role: 'Hauptarchitektur & Entwurf', email: 'architektur@kreativdesk.ch', phone: '+41 44 123 45 67', photoURL: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80' },
-        { name: 'Bauingenieur FH / SIA', role: 'Tragwerksplanung & Statik', email: 'statik@kreativdesk.ch', phone: '+41 44 123 45 68', photoURL: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80' },
-        { name: 'Gesamtbauleitung', role: 'Kosten & Ausführung', email: 'bauleitung@kreativdesk.ch', phone: '+41 44 123 45 69', photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80' },
-        { name: 'Fachplaner HLSK', role: 'Haustechnik & Energie', email: 'energie@kreativdesk.ch', phone: '+41 44 123 45 70', photoURL: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80' }
+        { 
+          name: currentUser?.name || currentUser?.displayName || 'Carlo Vescio', 
+          role: 'Projektleitung & Gesamtsteuerung', 
+          email: currentUser?.email || 'kontakt@kreativdesk.ch', 
+          phone: '', 
+          photoURL: currentUser?.photoURL || '' 
+        }
       ];
     }
     
     await handleAddSlide('team-grid', t('project_team'), { members: teamMembers });
-    addToast(t('team_imported'), "success");
+    addToast(`${teamMembers.length} Teammitglied(er) importiert!`, "success");
     setMobileTab('slides');
   };
 
@@ -3634,16 +3725,13 @@ export default function PitchDeckStudio({
               </div>
               <AnimatePresence>
                 {showAddMenu && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-48 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute top-14 right-4 w-52 bg-surface border border-border rounded-xl shadow-2xl z-[60] overflow-hidden py-1.5">
                     <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">{t('standard_layouts')}</div>
                     <button type="button" onClick={() => { handleAddSlide('title-only', t('new_vision')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Type size={14}/> {t('title_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('split', t('new_topic')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><Columns size={14}/> {t('text_and_image')}</button>
                     <button type="button" onClick={() => { handleAddSlide('image-focus', t('image_slide')); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><ImageIcon size={14}/> {t('image_slide')}</button>
                     <button type="button" onClick={() => { handleAddSlide('video-focus', 'Video-Präsentation'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><VideoIcon size={14}/> Video-Fokus (HD/4K)</button>
-                    <button type="button" onClick={() => { handleOpenBudgetPicker('comparison'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-purple-300 hover:bg-purple-500/10 flex items-center gap-2"><Layers size={14}/> 3-Varianten-Vergleich</button>
-                    <button type="button" onClick={() => { handleOpenBudgetPicker('table'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"><DollarSign size={14}/> Budget Tabelle</button>
-                    <button type="button" onClick={() => { handleGenerateAgendaSlide(); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><BookOpen size={14}/> Inhaltsverzeichnis & Agenda</button>
-                    <button type="button" onClick={() => { handleOpenBudgetPicker('chart'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-semibold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><PieChart size={14}/> Baukosten Donut</button>
+                    <button type="button" onClick={() => { handleAddSlide('text-only', 'Kernaussage & Statement'); setShowAddMenu(false); }} className="w-full text-left px-3 py-2 text-xs font-bold text-text-primary hover:bg-purple-500/10 flex items-center gap-2"><FileText size={14}/> {t('text_block') || 'Nur Text'}</button>
                   </motion.div>
                 )}
               </AnimatePresence>
