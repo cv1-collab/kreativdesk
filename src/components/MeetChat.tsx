@@ -210,14 +210,19 @@ export default function MeetChat() {
 
   type PreviewCorner = 'bottom-right' | 'top-right' | 'bottom-left' | 'top-left';
   const [previewCorner, setPreviewCorner] = useState<PreviewCorner>(() => {
-    return (safeStorage.getItem('meetchat_preview_corner', 'bottom-right') as PreviewCorner) || 'bottom-right';
+    const saved = safeStorage.getItem('meetchat_preview_corner');
+    // Ensure default is bottom-right (right next to call verlassen) as requested
+    if (saved === 'bottom-left' || saved === 'top-right') {
+      return saved as PreviewCorner;
+    }
+    return 'bottom-right';
   });
 
   const previewCornerClasses: Record<PreviewCorner, string> = {
     'bottom-right': 'bottom-24 right-4 md:bottom-6 md:right-6',
     'bottom-left': 'bottom-24 left-4 md:bottom-6 md:left-6',
-    'top-right': 'top-16 right-4 md:top-6 md:right-6',
-    'top-left': 'top-16 left-4 md:top-6 md:left-6'
+    'top-right': 'top-20 right-4 md:top-6 md:right-6',
+    'top-left': 'top-20 left-4 md:top-6 md:left-6'
   };
 
   const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
@@ -1486,7 +1491,7 @@ export default function MeetChat() {
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-full relative bg-black">
+                <div className="w-full h-full relative bg-black overflow-hidden rounded-2xl md:rounded-3xl">
                   <div ref={mainVideoRef} className="absolute inset-0 bg-transparent z-0" />
 
                   <div className={cn("absolute inset-0 z-10 grid gap-1.5 p-1.5 overflow-hidden",
@@ -1511,8 +1516,9 @@ export default function MeetChat() {
                     )}
                   </div>
 
+                  {/* Lokales Bild-in-Bild Vorschaufenster (unten rechts neben Call verlassen) */}
                   <div className={cn(
-                    "absolute w-24 h-36 md:w-48 md:h-32 bg-zinc-900 rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl z-20 group relative transition-all duration-300",
+                    "absolute w-36 aspect-video sm:w-44 sm:aspect-video md:w-48 md:aspect-video bg-zinc-900 rounded-2xl overflow-hidden border border-white/20 shadow-2xl shadow-black/80 ring-1 ring-black/40 z-30 group transition-all duration-300 pointer-events-auto",
                     previewCornerClasses[previewCorner]
                   )}>
                     {(bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && (
@@ -1537,11 +1543,24 @@ export default function MeetChat() {
                       className={cn(
                         "w-full h-full object-cover relative z-10 transition-all duration-300",
                         !isScreenSharing && "transform -scale-x-100",
-                        (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90"
+                        (bgMode === 'preset' || bgMode === 'custom' || bgMode === 'screensaver') && "opacity-90",
+                        !isCamOn && "opacity-0 pointer-events-none"
                       )}
                       style={bgMode === 'blur' ? { filter: `blur(${bgBlurAmount})` } : undefined}
                     />
-                    <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 bg-black/70 backdrop-blur-md rounded-md border border-white/10 text-[10px] font-bold text-white/90 pointer-events-none">
+
+                    {/* Fallback wenn Kamera aus ist */}
+                    {!isCamOn && (
+                      <div className="absolute inset-0 z-15 flex flex-col items-center justify-center bg-gradient-to-br from-zinc-900 to-slate-950 text-white">
+                        <div className="w-9 h-9 rounded-full bg-accent-ai/20 border border-accent-ai/50 flex items-center justify-center font-bold text-accent-ai text-xs mb-1">
+                          {currentUser?.name?.charAt(0)?.toUpperCase() || 'D'}
+                        </div>
+                        <span className="text-[10px] text-text-muted font-medium">Kamera aus</span>
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 bg-black/75 backdrop-blur-md rounded-md border border-white/15 text-[10px] font-bold text-white/90 pointer-events-none flex items-center gap-1.5 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                       Du
                     </div>
                     <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1559,41 +1578,41 @@ export default function MeetChat() {
                           setPreviewCorner(n);
                           safeStorage.setItem('meetchat_preview_corner', n);
                         }}
-                        className="p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg hover:bg-black/80 cursor-pointer"
+                        className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
                         title="Vorschau-Position wechseln (unten-rechts / oben-rechts / oben-links / unten-links)"
                       >
-                        <Move size={14} />
+                        <Move size={13} />
                       </button>
                       <button
                         type="button"
                         onClick={() => setShowBgModal(true)}
-                        className="p-1.5 bg-black/60 backdrop-blur-md text-white rounded-lg hover:bg-black/80 cursor-pointer"
+                        className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
                         title="Hintergrund wechseln"
                       >
-                        <Image size={14} />
+                        <Image size={13} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 md:gap-4 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto">
-                    <button onClick={toggleMic} className={cn("p-3 md:p-4 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Mikrofon">{isMicOn ? <Mic size={20} /> : <MicOff size={20} />}</button>
-                    <button onClick={toggleCam} className={cn("p-3 md:p-4 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={20} /> : <VideoOff size={20} />}</button>
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 md:gap-3 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2 md:p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto max-w-[calc(100%-2rem)]">
+                    <button onClick={toggleMic} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Mikrofon">{isMicOn ? <Mic size={18} /> : <MicOff size={18} />}</button>
+                    <button onClick={toggleCam} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={18} /> : <VideoOff size={18} />}</button>
                     <button
                       onClick={() => setShowBgModal(true)}
                       className={cn(
-                        "p-3 md:p-4 rounded-xl transition-all border cursor-pointer",
+                        "p-2.5 md:p-3 rounded-xl transition-all border cursor-pointer",
                         bgMode !== 'none'
                           ? "bg-accent-ai text-white border-accent-ai shadow-lg shadow-accent-ai/20"
                           : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700"
                       )}
                       title="Hintergrund & Weichzeichner anpassen"
                     >
-                      <Image size={20} />
+                      <Image size={18} />
                     </button>
-                    <button onClick={toggleScreenShare} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={20} /> : <MonitorOff size={20} />}</button>
-                    <button onClick={toggleTranscription} className={cn("p-3 md:p-4 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={20} className="animate-pulse" /> : <Captions size={20} />}</button>
-                    <div className="w-px h-8 bg-slate-700/60 mx-1 md:mx-2"></div>
-                    <button onClick={() => hangUp()} className="px-5 py-3 md:px-6 md:py-4 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2 cursor-pointer"><PhoneOff size={18} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
+                    <button onClick={toggleScreenShare} className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={18} /> : <MonitorOff size={18} />}</button>
+                    <button onClick={toggleTranscription} className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={18} className="animate-pulse" /> : <Captions size={18} />}</button>
+                    <div className="w-px h-7 bg-slate-700/60 mx-1"></div>
+                    <button onClick={() => hangUp()} className="px-4 py-2.5 md:px-5 md:py-3 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2 cursor-pointer text-sm"><PhoneOff size={16} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
                   </div>
 
                   {currentTranscript && (
