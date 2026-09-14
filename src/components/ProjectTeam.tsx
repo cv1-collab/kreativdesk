@@ -257,8 +257,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                         <Shield size={14} className="text-text-muted" />
                         {(() => {
                           const norm = (user.role || '').toLowerCase().trim();
-                          const isInternal = norm === 'internal' || norm === 'owner' || norm === 'super_admin' || norm === 'admin' || norm === 'management' || norm === 'employee' || norm === 'team';
                           const isClient = norm === 'client' || norm === 'kunde';
+                          const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor';
+                          const isInternal = !isExternal && !isClient;
                           return (
                             <span className={cn("px-2 py-0.5 rounded text-xs font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
                               {isInternal ? t('role_internal') : isClient ? t('role_client') : t('role_external')}
@@ -288,8 +289,9 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
               const user = allCompanyUsers.find((u: any) => u.id === member.userId || u.userId === member.userId) || member;
               if (!user) return null;
               const norm = (user.role || '').toLowerCase().trim();
-              const isInternal = norm === 'internal' || norm === 'owner' || norm === 'super_admin' || norm === 'admin' || norm === 'management' || norm === 'employee' || norm === 'team';
               const isClient = norm === 'client' || norm === 'kunde';
+              const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor';
+              const isInternal = !isExternal && !isClient;
               return (
                 <div key={member.id} className="bg-surface border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm relative overflow-hidden">
                   <div className="flex items-start justify-between">

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Video, Mic, MicOff, MonitorUp, PhoneOff, MessageSquare, Send, Sparkles, Mail,
@@ -186,15 +186,25 @@ export default function MeetChat() {
     toggleMic, toggleCam, toggleScreenShare, setIsMinimized, isInCall, setIsChatOpen
   } = useVideoCall();
 
-  const [sessionRoomId] = useState(() => {
-    const saved = sessionStorage.getItem('kreativ_desk_active_room');
-    if (saved) return saved;
-    const newId = `call-${Date.now()}`;
-    sessionStorage.setItem('kreativ_desk_active_room', newId);
-    return newId;
-  });
+  const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || '';
+  const isGlobal = !currentProjectId || currentProjectId === 'global' || currentProjectId === 'internal';
+
+  // 🔥 Synchronisierte Standard-Raum-ID für alle Teammitglieder des selben Projekts / der selben Firma
+  const defaultRoomId = useMemo(() => {
+    if (isDemo) return 'demo-meeting-room';
+    if (!isGlobal) {
+      const cleanProj = currentProjectId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 18);
+      return `call-project-${cleanProj}`;
+    }
+    if (safeCompanyId) {
+      const cleanComp = safeCompanyId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 18);
+      return `call-company-${cleanComp}`;
+    }
+    return `call-workspace`;
+  }, [isDemo, isGlobal, currentProjectId, safeCompanyId]);
+
   const [generatedMeetingId, setGeneratedMeetingId] = useState('');
-  const activeCallRoomId = callId || joinCallId || generatedMeetingId || sessionRoomId;
+  const activeCallRoomId = callId || joinCallId || generatedMeetingId || defaultRoomId;
 
   const [activeView, setActiveViewRaw] = useState<'video' | 'whiteboard'>(() => {
     const saved = safeStorage.getItem(`meetchat_activeView_${currentProjectId}`);
@@ -679,7 +689,6 @@ export default function MeetChat() {
       return;
     }
 
-    const safeCompanyId = currentUser?.companyId || currentUser?.uid || '';
     const currentMeetingCallId = callId || joinCallId || activeCallRoomId;
 
     const fetchChatMessages = async () => {

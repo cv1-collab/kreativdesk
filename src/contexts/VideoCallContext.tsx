@@ -518,7 +518,13 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!stream) return;
 
     const currentProjectId = activeProjectId || window.location.pathname.split('/')[2];
-    const currentCallId = customCallId || `call-${Date.now()}`;
+    const isProjValid = currentProjectId && currentProjectId !== 'app' && currentProjectId !== 'global' && currentProjectId !== 'project' && currentProjectId !== 'dashboard';
+    const fallbackCallId = isProjValid 
+      ? `call-project-${currentProjectId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 18)}`
+      : safeCompanyId 
+        ? `call-company-${safeCompanyId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 18)}` 
+        : `call-${Date.now()}`;
+    const currentCallId = customCallId || fallbackCallId;
 
     setCallId(currentCallId);
     setCallStatus('connected');
