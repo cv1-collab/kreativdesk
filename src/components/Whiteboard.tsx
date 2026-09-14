@@ -305,8 +305,8 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         safeStorage.setItem('wb_draft_latest', draftData);
 
         // In Supabase site_data sichern, wenn ein echtes Projekt aktiv ist und keine Remote-Aktualisierung empfangen wird
-        if (projectId && !isDemo && !isReceivingRemoteRef.current && currentUser) {
-          const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || null;
+        const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || null;
+        if (projectId && !isDemo && !isReceivingRemoteRef.current && currentUser && safeCompanyId) {
           await supabase.from('site_data').upsert({
             id: `wb_${projectId}`,
             company_id: safeCompanyId,
@@ -1323,7 +1323,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
   };
 
   const handleSaveToCloud = async () => {
-    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || activeProject?.company_id || currentUser?.uid;
     if (!stageRef.current || !currentUser || !safeCompanyId) return;
     setIsSavingToCloud(true); 
     setSelectedShapeId(null); 
