@@ -2252,6 +2252,34 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                       </span>
                     </div>
                   </>
+                ) : proposal.heroImageUrl?.toLowerCase().includes('.pdf') ? (
+                  <div className="w-full h-full min-h-[340px] flex flex-col items-center justify-center p-8 bg-zinc-950/90 text-center relative">
+                    <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 shadow-lg shadow-purple-500/10">
+                      <FileText size={32} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-1">Projekt-Dokumentation</span>
+                    <h3 className="text-xl font-extrabold text-white mb-2 max-w-md">{proposal.title} — Exposé</h3>
+                    <p className="text-xs text-zinc-400 max-w-md mb-6 leading-relaxed">
+                      Interaktives PDF-Exposé mit Baukonzept, Raumprogramm und Spezifikationen.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <a 
+                        href={proposal.heroImageUrl} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                      >
+                        <Eye size={15} /> PDF im Vollbild öffnen
+                      </a>
+                      <a 
+                        href={proposal.heroImageUrl} 
+                        download 
+                        className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
+                      >
+                        <Download size={15} /> PDF Herunterladen
+                      </a>
+                    </div>
+                  </div>
                 ) : (
                   <img src={proposal.heroImageUrl} alt={proposal.title} className="w-full h-full object-cover" />
                 )}

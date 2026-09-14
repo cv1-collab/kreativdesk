@@ -415,7 +415,11 @@ export default function PitchDeckStudio({
   const [proposalClientEmail, setProposalClientEmail] = useState('');
   const [proposalClientPhone, setProposalClientPhone] = useState('');
   const [proposalIntroText, setProposalIntroText] = useState('Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.');
+  const [proposalMediaType, setProposalMediaType] = useState<'video' | 'image' | 'pdf'>('video');
   const [proposalHeroVideoUrl, setProposalHeroVideoUrl] = useState('');
+  const [proposalHeroImageUrl, setProposalHeroImageUrl] = useState('');
+  const [proposalHeroPdfUrl, setProposalHeroPdfUrl] = useState('');
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [proposalBasePrice, setProposalBasePrice] = useState<number>(45000);
   const [proposalCurrency, setProposalCurrency] = useState('CHF');
   const [proposalExpiryDays, setProposalExpiryDays] = useState(30); // 30 Tage Standard gemäss Kundenwunsch
@@ -1202,6 +1206,58 @@ export default function PitchDeckStudio({
       addToast('Video lokal geladen', 'info');
     } finally {
       setIsUploadingVideo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDirectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, mediaType: 'video' | 'image' | 'pdf') => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
+
+    if (mediaType === 'video') setIsUploadingVideo(true);
+    else if (mediaType === 'image') setIsUploadingImage(true);
+    else if (mediaType === 'pdf') setIsUploadingPdf(true);
+
+    addToast(`${file.name} wird hochgeladen...`, 'info');
+
+    try {
+      const fileExt = file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : mediaType === 'image' ? 'png' : 'pdf');
+      const folder = mediaType === 'video' ? 'videos' : (mediaType === 'image' ? 'images' : 'documents');
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${safeCompanyId}/${folder}/${Date.now()}_${safeName}`;
+      
+      const { error: uploadErr } = await supabase.storage.from('documents').upload(filePath, file, { upsert: true });
+      let downloadUrl = '';
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+        downloadUrl = urlData?.publicUrl || '';
+      }
+      if (!downloadUrl) {
+        downloadUrl = URL.createObjectURL(file);
+      }
+
+      if (mediaType === 'video') {
+        setProposalHeroVideoUrl(downloadUrl);
+        addToast('Hero-Video für Offerte hinterlegt!', 'success');
+      } else if (mediaType === 'image') {
+        setProposalHeroImageUrl(downloadUrl);
+        addToast('Titelbild für Offerte hinterlegt!', 'success');
+      } else if (mediaType === 'pdf') {
+        setProposalHeroPdfUrl(downloadUrl);
+        addToast('PDF-Exposé für Offerte hinterlegt!', 'success');
+      }
+    } catch (err) {
+      console.error('Media upload failed:', err);
+      const fallbackUrl = URL.createObjectURL(file);
+      if (mediaType === 'video') setProposalHeroVideoUrl(fallbackUrl);
+      else if (mediaType === 'image') setProposalHeroImageUrl(fallbackUrl);
+      else if (mediaType === 'pdf') setProposalHeroPdfUrl(fallbackUrl);
+      addToast('Datei lokal hinterlegt', 'info');
+    } finally {
+      if (mediaType === 'video') setIsUploadingVideo(false);
+      else if (mediaType === 'image') setIsUploadingImage(false);
+      else if (mediaType === 'pdf') setIsUploadingPdf(false);
       e.target.value = '';
     }
   };
@@ -4772,6 +4828,19 @@ export default function PitchDeckStudio({
                 e.preventDefault();
                 setIsPublishingProposal(true);
 
+                const heroVideo = proposalMediaType === 'video' ? proposalHeroVideoUrl.trim() : '';
+                const heroImage = proposalMediaType === 'image' ? proposalHeroImageUrl.trim() : (proposalMediaType === 'pdf' ? proposalHeroPdfUrl.trim() : '');
+
+                const mergedAttachments = [
+                  ...(proposalHeroPdfUrl ? [{
+                    id: `pdf-${Date.now()}`,
+                    name: 'Projekt-Exposé & Dokumentation.pdf',
+                    url: proposalHeroPdfUrl.trim(),
+                    type: 'pdf' as const,
+                    size: 'PDF'
+                  }] : [])
+                ];
+
                 const proposalData = await saveSmartProposal({
                   projectId: targetId,
                   companyId: currentUser?.companyId || currentUser?.uid || 'company-default',
@@ -4782,7 +4851,9 @@ export default function PitchDeckStudio({
                   clientEmail: proposalClientEmail.trim(),
                   clientPhone: proposalClientPhone.trim(),
                   introText: proposalIntroText.trim(),
-                  heroVideoUrl: proposalHeroVideoUrl.trim(),
+                  heroVideoUrl: heroVideo,
+                  heroImageUrl: heroImage,
+                  attachments: mergedAttachments,
                   basePrice: Number(proposalBasePrice) || 0,
                   currency: proposalCurrency,
                   options: proposalOptions,
@@ -4895,27 +4966,153 @@ export default function PitchDeckStudio({
                       </div>
                     </div>
 
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-bold text-text-muted uppercase">{t('hero_video_label')}</label>
-                        <label className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer">
-                          {isUploadingVideo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-                          <span>{isUploadingVideo ? t('uploading') : t('upload_file')}</span>
-                          <input 
-                            type="file" 
-                            accept="video/mp4,video/webm,video/quicktime" 
-                            className="hidden" 
-                            onChange={(e) => handleDirectVideoUpload(e, 'hero')} 
-                          />
+                    {/* MEDIEN-AUSWAHL: VIDEO, BILD/RENDER ODER PDF EXPOSÉ */}
+                    <div className="p-3.5 rounded-2xl bg-surface border border-border space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-wider">
+                          Offerten-Hauptmedium
                         </label>
+                        <div className="flex items-center p-0.5 bg-background border border-border rounded-xl text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setProposalMediaType('video')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer",
+                              proposalMediaType === 'video' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            <Play size={11} className="fill-current" />
+                            <span>Video</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setProposalMediaType('image')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer",
+                              proposalMediaType === 'image' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            <ImageIcon size={11} />
+                            <span>Bild / Render</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setProposalMediaType('pdf')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer",
+                              proposalMediaType === 'pdf' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            <FileText size={11} />
+                            <span>PDF Exposé</span>
+                          </button>
+                        </div>
                       </div>
-                      <input 
-                        type="text" 
-                        placeholder="https://.../video.mp4"
-                        value={proposalHeroVideoUrl}
-                        onChange={e => setProposalHeroVideoUrl(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
-                      />
+
+                      {/* 1. WENN VIDEO */}
+                      {proposalMediaType === 'video' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] font-semibold text-text-muted">Showreel / MP4 Video (oder Stream URL)</span>
+                            <label className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer">
+                              {isUploadingVideo ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                              <span>{isUploadingVideo ? t('uploading') : 'Video hochladen'}</span>
+                              <input 
+                                type="file" 
+                                accept="video/mp4,video/webm,video/quicktime" 
+                                className="hidden" 
+                                onChange={(e) => handleDirectMediaUpload(e, 'video')} 
+                              />
+                            </label>
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="https://.../video.mp4 oder Cloud-Link"
+                            value={proposalHeroVideoUrl}
+                            onChange={e => setProposalHeroVideoUrl(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      )}
+
+                      {/* 2. WENN BILD / RENDERING */}
+                      {proposalMediaType === 'image' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] font-semibold text-text-muted">Titelbild / Visualisierung (PNG, JPG, WebP)</span>
+                            <label className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer">
+                              {isUploadingImage ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                              <span>{isUploadingImage ? t('uploading') : 'Bild hochladen'}</span>
+                              <input 
+                                type="file" 
+                                accept="image/png,image/jpeg,image/webp,image/svg+xml" 
+                                className="hidden" 
+                                onChange={(e) => handleDirectMediaUpload(e, 'image')} 
+                              />
+                            </label>
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="https://.../visualisierung.jpg oder Cloud-Link"
+                            value={proposalHeroImageUrl}
+                            onChange={e => setProposalHeroImageUrl(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                          />
+                          {proposalHeroImageUrl && (
+                            <div className="mt-2 h-24 rounded-xl overflow-hidden border border-border relative bg-background">
+                              <img src={proposalHeroImageUrl} alt="Vorschau" className="w-full h-full object-cover" />
+                              <button 
+                                type="button" 
+                                onClick={() => setProposalHeroImageUrl('')} 
+                                className="absolute top-1.5 right-1.5 p-1 bg-black/70 hover:bg-red-600 text-white rounded-lg text-xs transition-colors cursor-pointer"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 3. WENN PDF EXPOSÉ */}
+                      {proposalMediaType === 'pdf' && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[11px] font-semibold text-text-muted">Projekt-Exposé / Broschüre (PDF)</span>
+                            <label className="text-[11px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-1 cursor-pointer">
+                              {isUploadingPdf ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                              <span>{isUploadingPdf ? t('uploading') : 'PDF hochladen'}</span>
+                              <input 
+                                type="file" 
+                                accept="application/pdf" 
+                                className="hidden" 
+                                onChange={(e) => handleDirectMediaUpload(e, 'pdf')} 
+                              />
+                            </label>
+                          </div>
+                          <input 
+                            type="text" 
+                            placeholder="https://.../expose.pdf oder Cloud-Link"
+                            value={proposalHeroPdfUrl}
+                            onChange={e => setProposalHeroPdfUrl(e.target.value)}
+                            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                          />
+                          {proposalHeroPdfUrl && (
+                            <div className="mt-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2 text-purple-400 font-medium truncate">
+                                <FileText size={14} className="shrink-0" />
+                                <span className="truncate">PDF Exposé hinterlegt</span>
+                              </div>
+                              <button 
+                                type="button" 
+                                onClick={() => setProposalHeroPdfUrl('')} 
+                                className="p-1 text-text-muted hover:text-red-400 transition-colors cursor-pointer"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">

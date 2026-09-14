@@ -115,8 +115,15 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [bgImageSrc, setBgImageSrc] = useState<string | null>(initialDraft?.bgImageSrc || wbCache.bgImageSrc);
   const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
 
-  // Load draft whenever projectId changes
+  const wbChannelRef = useRef<any>(null);
+  const isReceivingRemoteRef = useRef<boolean>(false);
+  const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
+
+  // 1. Cloud-Datenbank & lokaler Entwurf synchron laden
   useEffect(() => {
+    let isMounted = true;
+
+    // A) Lokalen Entwurf sofort anzeigen für reaktionsschnelles Laden
     const draft = loadProjectDraft(projectId);
     if (draft && Array.isArray(draft.layers) && draft.layers.length > 0) {
       setLayers(draft.layers);
@@ -131,9 +138,147 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       setStagePos(draft.stagePos || { x: 0, y: 0 });
       setActiveColor(draft.activeColor || '#3b82f6');
     }
-  }, [projectId]);
 
-  // Debounced Auto-Save Draft to prevent freezing during mouse move
+    // B) Zentralen Projekt-Stand aus Supabase site_data abrufen (Team-Stand)
+    const fetchCloudProjectWhiteboard = async () => {
+      if (!projectId || isDemo) return;
+      try {
+        const { data, error } = await supabase
+          .from('site_data')
+          .select('data')
+          .eq('id', `wb_${projectId}`)
+          .maybeSingle();
+
+        if (!error && data?.data && isMounted) {
+          const cloud = data.data;
+          if (Array.isArray(cloud.layers) && cloud.layers.length > 0) {
+            isReceivingRemoteRef.current = true;
+            setLayers(cloud.layers);
+            if (cloud.activeLayerId) setActiveLayerId(cloud.activeLayerId);
+            if (cloud.bgImageSrc !== undefined) setBgImageSrc(cloud.bgImageSrc);
+            if (cloud.bgImagePos) setBgImagePos(cloud.bgImagePos);
+            if (cloud.stageScale) setStageScale(cloud.stageScale);
+            if (cloud.stagePos) setStagePos(cloud.stagePos);
+            if (cloud.activeColor) setActiveColor(cloud.activeColor);
+
+            wbCache = {
+              layers: cloud.layers,
+              activeLayerId: cloud.activeLayerId || 'layer-1',
+              bgImageSrc: cloud.bgImageSrc || null,
+              bgImagePos: cloud.bgImagePos || { x: 0, y: 0 },
+              stageScale: cloud.stageScale || 1,
+              stagePos: cloud.stagePos || { x: 0, y: 0 },
+              activeColor: cloud.activeColor || '#3b82f6'
+            };
+            setTimeout(() => { isReceivingRemoteRef.current = false; }, 100);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load cloud whiteboard:", err);
+      }
+    };
+
+    fetchCloudProjectWhiteboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId, isDemo]);
+
+  // 2. Echtzeit-Kollaboration via Supabase Realtime Broadcast
+  useEffect(() => {
+    if (!projectId || isDemo) return;
+
+    const myId = currentUser?.uid || currentUser?.id || `anon-${Math.random().toString(36).slice(2, 7)}`;
+    const channelName = `project_wb_${projectId}`;
+    const channel = supabase.channel(channelName, {
+      config: { broadcast: { self: false } }
+    });
+
+    channel
+      .on('broadcast', { event: 'wb_canvas_update' }, ({ payload }) => {
+        if (!payload || payload.senderId === myId) return;
+        isReceivingRemoteRef.current = true;
+        if (Array.isArray(payload.layers)) {
+          setLayers(payload.layers);
+        }
+        if (payload.activeLayerId) {
+          setActiveLayerId(payload.activeLayerId);
+        }
+        if (payload.bgImageSrc !== undefined) {
+          setBgImageSrc(payload.bgImageSrc);
+        }
+        if (payload.bgImagePos) {
+          setBgImagePos(payload.bgImagePos);
+        }
+        setTimeout(() => {
+          isReceivingRemoteRef.current = false;
+        }, 120);
+      })
+      .on('broadcast', { event: 'wb_request_state' }, ({ payload }) => {
+        if (!payload || payload.senderId === myId) return;
+        // Wenn wir bereits aktive Striche/Ebenen haben, teilen wir unseren Stand mit dem beigetretenen Nutzer
+        if (layers.some(l => l.items && l.items.length > 0)) {
+          channel.send({
+            type: 'broadcast',
+            event: 'wb_canvas_update',
+            payload: {
+              layers,
+              activeLayerId,
+              bgImageSrc,
+              bgImagePos,
+              senderId: myId,
+              senderName: currentUser?.name || currentUser?.email || 'Team',
+              timestamp: Date.now()
+            }
+          });
+        }
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setIsLiveConnected(true);
+          channel.send({
+            type: 'broadcast',
+            event: 'wb_request_state',
+            payload: { senderId: myId }
+          });
+        } else {
+          setIsLiveConnected(false);
+        }
+      });
+
+    wbChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      wbChannelRef.current = null;
+    };
+  }, [projectId, isDemo, currentUser?.uid, currentUser?.id]);
+
+  // Broadcast Helfer
+  const broadcastCanvasUpdate = (customLayers?: LayerData[], customBgSrc?: string | null, customBgPos?: { x: number, y: number }) => {
+    if (!wbChannelRef.current || isDemo) return;
+    const myId = currentUser?.uid || currentUser?.id || 'anon';
+    try {
+      wbChannelRef.current.send({
+        type: 'broadcast',
+        event: 'wb_canvas_update',
+        payload: {
+          layers: customLayers || layers,
+          activeLayerId,
+          bgImageSrc: customBgSrc !== undefined ? customBgSrc : bgImageSrc,
+          bgImagePos: customBgPos || bgImagePos,
+          senderId: myId,
+          senderName: currentUser?.name || currentUser?.email || 'Team',
+          timestamp: Date.now()
+        }
+      });
+    } catch (err) {
+      console.warn("Whiteboard broadcast error:", err);
+    }
+  };
+
+  // 3. Debounced Auto-Save: Sichert lokal und in der Cloud (site_data)
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -143,7 +288,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       clearTimeout(saveTimerRef.current);
     }
 
-    saveTimerRef.current = setTimeout(() => {
+    saveTimerRef.current = setTimeout(async () => {
       try {
         const draftData = {
           layers,
@@ -158,15 +303,26 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
         const key = getDraftStorageKey(projectId);
         safeStorage.setItem(key, draftData);
         safeStorage.setItem('wb_draft_latest', draftData);
+
+        // In Supabase site_data sichern, wenn ein echtes Projekt aktiv ist und keine Remote-Aktualisierung empfangen wird
+        if (projectId && !isDemo && !isReceivingRemoteRef.current && currentUser) {
+          const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || null;
+          await supabase.from('site_data').upsert({
+            id: `wb_${projectId}`,
+            company_id: safeCompanyId,
+            project_id: projectId,
+            data: draftData
+          });
+        }
       } catch (e) {
-        console.warn("Failed to save whiteboard draft:", e);
+        console.warn("Failed to save whiteboard draft/cloud:", e);
       }
-    }, 800);
+    }, 1200);
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId]);
+  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId, isDemo, currentUser]);
   
   const isDrawing = useRef(false);
   const drawingStartPos = useRef<{ x: number, y: number } | null>(null);
@@ -783,6 +939,11 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     drawingStartPos.current = null;
     currentDrawingLayerId.current = null;
     currentDrawingItemId.current = null;
+
+    // Sofort nach Strich-Abschluss an Teammitglieder broadcasten
+    setTimeout(() => {
+      broadcastCanvasUpdate();
+    }, 40);
   };
 
   useEffect(() => {
@@ -847,6 +1008,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     setSelectedShapeId(newId);
     setTool('select');
     addToast('Notiz hinzugefügt', 'success');
+    setTimeout(() => broadcastCanvasUpdate(), 50);
   };
 
   const finishPolygon = () => {
@@ -856,15 +1018,20 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       setSelectedShapeId(newId); 
     }
     setCurrentPolygon([]); setTool('select'); 
+    setTimeout(() => broadcastCanvasUpdate(), 50);
   };
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (textPrompt && textPrompt.value) addItemToActiveLayer({ type: 'text', x: textPrompt.x, y: textPrompt.y, text: textPrompt.value, id: Date.now().toString(), color: activeColor });
-    setTextPrompt(null); setTool('select');
+    if (textPrompt && textPrompt.value) {
+      addItemToActiveLayer({ type: 'text', x: textPrompt.x, y: textPrompt.y, text: textPrompt.value, id: Date.now().toString(), color: activeColor });
+    }
+    setTextPrompt(null); 
+    setTool('select');
+    setTimeout(() => broadcastCanvasUpdate(), 50);
   };
 
-  const clearBoard = () => {
+  const clearBoard = async () => {
     if (window.confirm(t('clear_canvas'))) {
       const defaultLayers = [{ id: 'layer-1', name: t('base_layer'), visible: true, items: [] }];
       setLayers(defaultLayers);
@@ -881,7 +1048,28 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         const key = getDraftStorageKey(projectId);
         safeStorage.removeItem(key);
         safeStorage.removeItem('wb_draft_latest');
+
+        if (projectId && !isDemo && currentUser) {
+          const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || null;
+          await supabase.from('site_data').upsert({
+            id: `wb_${projectId}`,
+            company_id: safeCompanyId,
+            project_id: projectId,
+            data: {
+              layers: defaultLayers,
+              activeLayerId: 'layer-1',
+              bgImageSrc: null,
+              bgImagePos: { x: 0, y: 0 },
+              stageScale: 1,
+              stagePos: { x: 0, y: 0 },
+              activeColor: '#3b82f6',
+              updatedAt: new Date().toISOString()
+            }
+          });
+        }
       } catch (e) {}
+
+      broadcastCanvasUpdate(defaultLayers, null, { x: 0, y: 0 });
     }
   };
 
@@ -1178,6 +1366,25 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             folder_id: targetFolderId || null, 
             category: 'projects'
           });
+
+          if (projectId && !isDemo) {
+            await supabase.from('site_data').upsert({
+              id: `wb_${projectId}`,
+              company_id: safeCompanyId,
+              project_id: projectId,
+              data: {
+                layers,
+                activeLayerId,
+                bgImageSrc,
+                bgImagePos,
+                stageScale,
+                stagePos,
+                activeColor,
+                updatedAt: new Date().toISOString()
+              }
+            });
+            broadcastCanvasUpdate();
+          }
           
           setIsSavingToCloud(false); 
           addToast(t('saved_cloud'), 'success');
@@ -1585,6 +1792,22 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                 )}
               </AnimatePresence>
             </div>
+
+            {/* REALTIME SYNC STATUS BADGE */}
+            {!isDemo && projectId && (
+              <div 
+                className={cn(
+                  "px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all shrink-0",
+                  isLiveConnected 
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
+                )}
+                title={isLiveConnected ? "Whiteboard ist in Echtzeit mit deinem Team verbunden" : "Verbinde mit Team-Whiteboard..."}
+              >
+                <span className={cn("w-2 h-2 rounded-full", isLiveConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
+                <span className="hidden lg:inline">{isLiveConnected ? "Live im Team" : "Verbinden..."}</span>
+              </div>
+            )}
 
             {/* 3. DIREKTER 1-KLICK SPEICHER-BUTTON (CLOUD) */}
             <button

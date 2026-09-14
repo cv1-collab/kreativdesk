@@ -4,7 +4,7 @@ import {
   Plus, Search, Filter, Clock, Eye, CheckCircle2, Share2, Copy,
   ExternalLink, Trash2, Calendar, FileText, Sparkles, RefreshCw,
   TrendingUp, AlertCircle, ArrowUpRight, MessageSquare, Mail, Play, Check,
-  Smartphone, Monitor, X, ShieldCheck, Lock, Sun, Moon
+  Smartphone, Monitor, X, ShieldCheck, Lock, Sun, Moon, Image as ImageIcon
 } from 'lucide-react';
 import { getCompanyProposals, extendProposalExpiry, deleteProposal, saveProposal, SmartProposal } from '../services/proposalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -516,11 +516,23 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                         {proposal.currency} {(proposal.acceptedBy?.finalPrice || proposal.basePrice || 0).toLocaleString('de-CH')}
                       </div>
                     </div>
-                    {proposal.heroVideoUrl && (
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-transparent text-[10px] font-semibold rounded-lg flex items-center gap-1">
-                        <Play size={10} className="fill-current" /> {t('badge_video')}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {proposal.heroVideoUrl && (
+                        <span className="px-2 py-1 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200 dark:border-transparent text-[10px] font-semibold rounded-lg flex items-center gap-1">
+                          <Play size={10} className="fill-current" /> {t('badge_video')}
+                        </span>
+                      )}
+                      {proposal.heroImageUrl && !proposal.heroImageUrl.toLowerCase().includes('.pdf') && (
+                        <span className="px-2 py-1 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-transparent text-[10px] font-semibold rounded-lg flex items-center gap-1">
+                          <ImageIcon size={10} /> Bild
+                        </span>
+                      )}
+                      {((proposal.heroImageUrl && proposal.heroImageUrl.toLowerCase().includes('.pdf')) || (proposal.attachments && proposal.attachments.some((a: any) => a.type === 'pdf' || a.url?.includes('.pdf')))) && (
+                        <span className="px-2 py-1 bg-purple-50 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 border border-purple-200 dark:border-transparent text-[10px] font-semibold rounded-lg flex items-center gap-1">
+                          <FileText size={10} /> PDF
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
