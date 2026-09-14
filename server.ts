@@ -825,7 +825,7 @@ Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.to
       const { data: company, error: compErr } = await supabaseAdmin.from('companies').insert({
         name: companyName,
         plan: plan || 'Enterprise',
-        max_seats: maxSeats || 5,
+        max_seats: maxSeats || 1,
         used_seats: 1,
         created_at: now
       }).select().single();

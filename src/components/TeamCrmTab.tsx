@@ -591,7 +591,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         }
       }
       
-      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
+      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}&email=${encodeURIComponent(contact.email)}`;
       await navigator.clipboard.writeText(inviteUrl);
       addToast(`Einladungslink für ${formatName(contact)} in die Zwischenablage kopiert!`, 'success');
       return inviteUrl;

@@ -1521,7 +1521,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
           throw insertErr;
         }
       }
-      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
+      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}&email=${encodeURIComponent(member.email)}`;
       await navigator.clipboard.writeText(inviteUrl);
       addToast(`Einladungslink für ${member.name || member.email} kopiert!`, 'success');
     } catch (_) {

@@ -61,7 +61,7 @@ export default function Signup() {
   const [confirmationSentEmail, setConfirmationSentEmail] = useState<string | null>(null);
   const [isResending, setIsResending] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [inviteInfo, setInviteInfo] = useState<{ companyName?: string; role?: string; email?: string } | null>(null);
+  const [inviteInfo, setInviteInfo] = useState<{ companyName?: string; role?: string; email?: string; companyId?: string } | null>(null);
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { addToast } = useToast();
@@ -74,43 +74,43 @@ export default function Signup() {
 
     const checkInvite = async () => {
       try {
+        const rawCompanyId = searchParams.get('companyId');
+        const rawEmail = searchParams.get('email');
+        if (rawEmail && !email) {
+          setEmail(rawEmail);
+        }
+
         const { data: inv } = await supabase
           .from('invites')
           .select('*')
           .eq('token', token)
-          .eq('status', 'pending')
           .maybeSingle();
 
+        const activeCompanyId = inv?.company_id || rawCompanyId;
+        let compName = '';
+        if (activeCompanyId) {
+          const { data: c } = await supabase.from('companies').select('name').eq('id', activeCompanyId).maybeSingle();
+          if (c?.name) compName = c.name;
+        }
+
         if (inv) {
-          let compName = '';
-          if (inv.company_id) {
-            const { data: c } = await supabase.from('companies').select('name').eq('id', inv.company_id).maybeSingle();
-            if (c?.name) compName = c.name;
-          }
           const isPlaceholder = inv.email?.startsWith('invite_') || inv.email?.endsWith('@workspace.local');
           setInviteInfo({
-            email: isPlaceholder ? undefined : inv.email,
-            companyName: compName,
-            role: inv.role || 'employee'
+            email: isPlaceholder ? (rawEmail || undefined) : inv.email,
+            companyName: compName || 'Team Workspace',
+            role: inv.role || 'employee',
+            companyId: activeCompanyId || undefined
           });
           if (!isPlaceholder && inv.email && !email) {
             setEmail(inv.email);
           }
-        } else {
-          // Prüfen, ob der Einladungslink bereits aktiviert wurde
-          const { data: usedInv } = await supabase
-            .from('invites')
-            .select('*')
-            .eq('token', token)
-            .eq('status', 'used')
-            .maybeSingle();
-
-          if (usedInv) {
-            setInviteAlreadyUsed(true);
-            if (usedInv.email && !email) {
-              setEmail(usedInv.email);
-            }
-          }
+        } else if (activeCompanyId) {
+          setInviteInfo({
+            email: rawEmail || undefined,
+            companyName: compName || 'Team Workspace',
+            role: 'employee',
+            companyId: activeCompanyId
+          });
         }
       } catch (e) {}
     };
@@ -187,7 +187,9 @@ export default function Signup() {
         options: {
           emailRedirectTo: `${window.location.origin}/app`,
           data: {
-            inviteToken: effectiveInviteToken
+            inviteToken: effectiveInviteToken,
+            companyId: searchParams.get('companyId') || (inviteInfo as any)?.companyId || null,
+            full_name: searchParams.get('name') || cleanEmail.split('@')[0]
           }
         }
       });

@@ -68,9 +68,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .from('invites')
           .select('*')
           .eq('token', effectiveInviteToken)
-          .eq('status', 'pending')
           .maybeSingle();
-        if (inv) pendingInvite = inv;
+
+        if (inv) {
+          const isGeneric = !inv.email || inv.email.startsWith('invite_') || inv.email.endsWith('@workspace.local');
+          const emailMatches = user.email && inv.email && inv.email.toLowerCase() === user.email.toLowerCase();
+          
+          // CRITICAL: A company owner testing or copying their own invite link must NEVER consume the invite!
+          if (emailMatches || (isGeneric && inv.status === 'pending')) {
+            // Check if current user is owner of the inviting company
+            const { data: owningComp } = await supabase
+              .from('companies')
+              .select('owner_id')
+              .eq('id', inv.company_id)
+              .maybeSingle();
+
+            if (owningComp?.owner_id !== user.id) {
+              pendingInvite = inv;
+            }
+          }
+        }
       }
 
       let targetCompanyId: string | null = null;
@@ -83,26 +100,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .from('invites')
           .select('*')
           .ilike('email', user.email)
-          .eq('status', 'pending')
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
         if (inv) pendingInvite = inv;
       }
 
-      // Check fallback in company_users by email if no pending invite token found
-      if (!pendingInvite && user.email) {
-        const { data: cuRecord } = await supabase
+      // Check fallback in company_users by email (CRM contact created by company owner!)
+      if (user.email) {
+        const { data: cuRecords } = await supabase
           .from('company_users')
           .select('*')
           .ilike('email', user.email)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (cuRecord && cuRecord.company_id) {
-          targetCompanyId = cuRecord.company_id;
-          targetRole = (cuRecord.role as Role) || 'employee';
-          isInvitedUser = true;
+          .not('company_id', 'is', null)
+          .order('created_at', { ascending: false });
+
+        if (cuRecords && cuRecords.length > 0) {
+          // Prefer records where user is already linked or unassigned CRM contacts
+          const matchedCu = cuRecords.find((cu: any) => cu.user_id === user.id) || cuRecords[0];
+          if (matchedCu && matchedCu.company_id) {
+            targetCompanyId = matchedCu.company_id;
+            targetRole = (matchedCu.role as Role) || 'employee';
+            isInvitedUser = true;
+          }
         }
       }
 
@@ -111,15 +131,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         targetRole = (pendingInvite.role as Role) || 'employee';
         isInvitedUser = true;
 
-        await supabase
-          .from('invites')
-          .update({
-            status: 'used',
-            used_by: user.id,
-            email: user.email || pendingInvite.email,
-            used_at: new Date().toISOString()
-          })
-          .eq('id', pendingInvite.id);
+        if (pendingInvite.status !== 'used') {
+          await supabase
+            .from('invites')
+            .update({
+              status: 'used',
+              used_by: user.id,
+              email: user.email || pendingInvite.email,
+              used_at: new Date().toISOString()
+            })
+            .eq('id', pendingInvite.id);
+        }
 
         safeStorage.removeItem('pending_invite_token');
       }
@@ -139,13 +161,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let effectiveCompanyId = profile?.company_id || null;
       let effectiveRole = (profile?.role as Role) || 'owner';
 
-      // If user had a pending invite or exists in company_users, associate them with the inviting company
+      // If user was invited or exists in company_users, associate them with the inviting company
       if (isInvitedUser && targetCompanyId) {
         effectiveCompanyId = targetCompanyId;
         effectiveRole = targetRole;
 
+        const { data: compPlanData } = await supabase
+          .from('companies')
+          .select('plan, used_seats')
+          .eq('id', targetCompanyId)
+          .maybeSingle();
+
+        const targetPlan = compPlanData?.plan || 'Enterprise';
+
         if (profile) {
-          await supabase.from('profiles').update({ company_id: targetCompanyId, role: targetRole }).eq('id', user.id);
+          await supabase.from('profiles').update({ 
+            company_id: targetCompanyId, 
+            role: targetRole,
+            plan: targetPlan
+          }).eq('id', user.id);
         }
 
         // Add or update company_users record and migrate pre-assigned project_members
@@ -160,30 +194,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!existingCu) {
             await supabase.from('company_users').insert({
               id: user.id,
+              user_id: user.id,
               company_id: targetCompanyId,
               name: userName,
               email: user.email || '',
               role: targetRole,
-              status: 'Aktiv'
+              status: 'team'
             });
 
-            const { data: compData } = await supabase
-              .from('companies')
-              .select('used_seats')
-              .eq('id', targetCompanyId)
-              .maybeSingle();
-            if (compData) {
+            if (compPlanData) {
               await supabase
                 .from('companies')
-                .update({ used_seats: (compData.used_seats || 1) + 1 })
+                .update({ used_seats: (compPlanData.used_seats || 1) + 1 })
                 .eq('id', targetCompanyId);
             }
           } else {
-            // Update existing company_users entry with active status
+            // Update existing company_users entry with active status and user_id
             await supabase
               .from('company_users')
               .update({
-                status: 'Aktiv',
+                user_id: user.id,
+                status: 'team',
                 name: userName || existingCu.name,
                 role: targetRole || existingCu.role
               })

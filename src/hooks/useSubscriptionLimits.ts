@@ -15,7 +15,7 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   'Free Trial': {
     maxProjects: 3,
     maxStorageGB: 5,
-    maxSeats: 3,
+    maxSeats: 1, // Single user (B2B requires custom seats)
     hasInvoicing: false,
     hasApiAccess: false,
     hasCustomBranding: false,

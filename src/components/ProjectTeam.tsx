@@ -152,7 +152,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
           status: 'pending',
           created_at: new Date().toISOString()
         });
-        const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}`;
+        const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${safeCompanyId}&email=${encodeURIComponent(newUserEmail)}`;
         await navigator.clipboard.writeText(inviteUrl);
         addToast(currentLang === 'de' ? `✅ ${newUserName} hinzugefügt & Einladungslink in Zwischenablage kopiert!` : `✅ ${newUserName} added & invite link copied to clipboard!`, 'success');
       } catch (_) {
