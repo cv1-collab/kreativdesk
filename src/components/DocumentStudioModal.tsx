@@ -238,9 +238,9 @@ export function normalizeMarkupToHtml(content: string): string {
       continue;
     }
 
-    const isHeading = /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
+    const isHeading = /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
     
-    let formatted = rawLine
+    const formatted = rawLine
       .replace(/\[(?:bold|b)\]([\s\S]*?)\[\/(?:bold|b)\]/gi, '<strong>$1</strong>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\[(?:semibold|sb)\]([\s\S]*?)\[\/(?:semibold|sb)\]/gi, '<span style="font-weight: 600">$1</span>')
@@ -251,8 +251,8 @@ export function normalizeMarkupToHtml(content: string): string {
     if (isHeading) {
       const headingText = formatted.replace(/^#+\s*/, '');
       htmlParts.push(`<h3 class="text-sm font-bold uppercase tracking-wider text-slate-900 mt-4 mb-2 pb-1 border-b border-slate-200">${headingText}</h3>`);
-    } else if (/^[•\-\*]\s+/.test(trimmed)) {
-      const bulletText = formatted.replace(/^[•\-\*]\s+/, '');
+    } else if (/^[•\-*]\s+/.test(trimmed)) {
+      const bulletText = formatted.replace(/^[•\-*]\s+/, '');
       htmlParts.push(`<p class="flex items-start gap-2 my-1 pl-2"><span class="font-bold text-slate-900">•</span><span>${bulletText}</span></p>`);
     } else {
       htmlParts.push(`<p class="my-1.5 leading-relaxed">${formatted}</p>`);
@@ -266,7 +266,7 @@ export function normalizeMarkupToHtml(content: string): string {
 export function htmlToPlainText(html: string): string {
   if (!html) return '';
   let text = html
-    .replace(/<br\s*[\/]?>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
@@ -287,10 +287,10 @@ export function htmlToPlainText(html: string): string {
 export function extractBlocksFromHtmlOrText(content: string): { type: string; text: string }[] {
   if (!content) return [];
   
-  let normalized = content
+  const normalized = content
     .replace(/<\/(p|div|h[1-6]|li)>/gi, '\n')
     .replace(/<hr[^>]*>/gi, '\n---\n')
-    .replace(/<br\s*[\/]?>/gi, '\n');
+    .replace(/<br\s*\/?>/gi, '\n');
 
   const lines = normalized.split('\n');
   const blocks: { type: string; text: string }[] = [];
@@ -306,15 +306,15 @@ export function extractBlocksFromHtmlOrText(content: string): { type: string; te
       continue;
     }
     const isHeading = /^<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i.test(trimmed) || 
-                      /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
+                      /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9]/.test(trimmed);
     if (isHeading) {
       const cleanHeading = trimmed.replace(/<[^>]+>/g, '').replace(/^#+\s*/, '');
       blocks.push({ type: 'heading', text: cleanHeading });
       continue;
     }
-    const isBullet = /^<li[^>]*>([\s\S]*?)<\/li>/i.test(trimmed) || /^[•\-\*]\s+/.test(trimmed);
+    const isBullet = /^<li[^>]*>([\s\S]*?)<\/li>/i.test(trimmed) || /^[•\-*]\s+/.test(trimmed);
     if (isBullet) {
-      const cleanBullet = trimmed.replace(/<[^>]+>/g, '').replace(/^[•\-\*]\s+/, '');
+      const cleanBullet = trimmed.replace(/<[^>]+>/g, '').replace(/^[•\-*]\s+/, '');
       blocks.push({ type: 'bullet', text: cleanBullet });
       continue;
     }
@@ -349,7 +349,7 @@ const parseStyledTokens = (
       const match = part.match(/^<span([^>]*)>([\s\S]*?)<\/span>$/i);
       const attrs = match ? match[1] : '';
       const inner = match ? match[2] : '';
-      let nextStyle = { ...activeStyle };
+      const nextStyle = { ...activeStyle };
       
       if (/font-weight:\s*(?:600|bold)/i.test(attrs) || /font-semibold/i.test(attrs)) {
         nextStyle.weight = 'semibold';
@@ -599,7 +599,7 @@ function splitContentIntoPages(
   let currentPara: string[] = [];
 
   for (const line of lines) {
-    const isHeading = /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9]/.test(line.trim());
+    const isHeading = /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9]/.test(line.trim());
     if (isHeading && currentPara.length > 0) {
       paragraphs.push(currentPara.join('\n'));
       currentPara = [line];
@@ -695,7 +695,7 @@ const renderFormattedText = (text: string, accentCol: string) => {
     }
 
     // Numbered headings (e.g. "1. VERTRAGSGEGENSTAND", "## ...")
-    const isMainHeading = /^(\d+\.|\#+)\s+[A-ZÄÖÜ0-9\s\-_&/()]+$/.test(trimmed) || /^(\d+\.\s+[A-ZÄÖÜ])/.test(trimmed);
+    const isMainHeading = /^(\d+\.|#+)\s+[A-ZÄÖÜ0-9\s\-_&/()]+$/.test(trimmed) || /^(\d+\.\s+[A-ZÄÖÜ])/.test(trimmed);
     if (isMainHeading) {
       return (
         <div key={idx} className="mt-4 mb-1.5 pt-2 border-b border-slate-200/80 pb-0.5">
@@ -707,9 +707,9 @@ const renderFormattedText = (text: string, accentCol: string) => {
     }
 
     // Bullet points
-    const isBullet = /^[•\-\*]\s+/.test(trimmed);
+    const isBullet = /^[•\-*]\s+/.test(trimmed);
     if (isBullet) {
-      const bulletContent = trimmed.replace(/^[•\-\*]\s+/, '');
+      const bulletContent = trimmed.replace(/^[•\-*]\s+/, '');
       return (
         <div key={idx} className="flex items-start gap-2 my-1 pl-1.5 text-xs leading-relaxed text-slate-800">
           <span className="font-bold text-slate-900 mt-0.5">•</span>

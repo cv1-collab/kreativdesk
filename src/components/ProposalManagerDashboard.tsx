@@ -67,8 +67,8 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     toast_deleted: 'Landing page deleted.',
     confirm_delete: 'Do you really want to delete this client landing page?',
     no_filter_results_title: 'No matching proposals found',
-    no_filter_results_desc: 'Try another search query or reset your status filters.',
-    btn_reset_filters: 'Reset filters'
+    btn_reset_filters: 'Reset filters',
+    filter_reset: 'Reset filters'
   },
   de: {
     dashboard_title: 'Pitch & Offerten Landingpages',
@@ -95,6 +95,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     no_filter_results_title: 'Keine passenden Offerten gefunden',
     no_filter_results_desc: 'Passen Sie den Suchbegriff an oder setzen Sie den Status-Filter zurück.',
     btn_reset_filters: 'Filter zurücksetzen',
+    filter_reset: 'Filter zurücksetzen',
     status_accepted: 'Digital Angenommen',
     status_expired: 'Abgelaufen',
     status_days_left: 'Noch {days} Tage',
@@ -151,6 +152,7 @@ const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
     no_filter_results_title: 'Aucune offre correspondante trouvée',
     no_filter_results_desc: 'Modifiez votre recherche ou réinitialisez les filtres.',
     btn_reset_filters: 'Réinitialiser les filtres',
+    filter_reset: 'Réinitialiser les filtres',
     status_accepted: 'Acceptée numériquement',
     status_expired: 'Expirée',
     status_days_left: 'Encore {days} jours',
