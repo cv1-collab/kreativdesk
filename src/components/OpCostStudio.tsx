@@ -375,6 +375,11 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const processImageWithAIRef = useRef(processImageWithAI);
+  processImageWithAIRef.current = processImageWithAI;
+  const addToastRef = useRef(addToast);
+  addToastRef.current = addToast;
+
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
     if (!uploadSessionId) return;
@@ -386,8 +391,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
         const data = payload?.payload;
         if (data?.url) {
           setOpCostReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAI(null, data.url, data.type || 'image/jpeg');
-          addToast('Beleg vom Smartphone empfangen & analysiert!', 'success');
+          await processImageWithAIRef.current(null, data.url, data.type || 'image/jpeg');
+          addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
         }
       })
       .subscribe();
@@ -408,8 +413,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
           if (docUrl) {
             setOpCostReceipts(prev => {
               if (prev.includes(docUrl)) return prev;
-              processImageWithAI(null, docUrl, doc.type || 'image/jpeg');
-              addToast('Beleg vom Smartphone empfangen & analysiert!', 'success');
+              processImageWithAIRef.current(null, docUrl, doc.type || 'image/jpeg');
+              addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
               return [...prev, docUrl];
             });
           }

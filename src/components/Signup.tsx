@@ -76,8 +76,8 @@ export default function Signup() {
       try {
         const rawCompanyId = searchParams.get('companyId');
         const rawEmail = searchParams.get('email');
-        if (rawEmail && !email) {
-          setEmail(rawEmail);
+        if (rawEmail) {
+          setEmail(prev => prev || rawEmail);
         }
 
         const { data: inv } = await supabase
@@ -101,8 +101,8 @@ export default function Signup() {
             role: inv.role || 'employee',
             companyId: activeCompanyId || undefined
           });
-          if (!isPlaceholder && inv.email && !email) {
-            setEmail(inv.email);
+          if (!isPlaceholder && inv.email) {
+            setEmail(prev => prev || inv.email);
           }
         } else if (activeCompanyId) {
           setInviteInfo({
@@ -115,7 +115,7 @@ export default function Signup() {
       } catch (e) {}
     };
     checkInvite();
-  }, [rawInviteToken]);
+  }, [rawInviteToken, searchParams]);
 
   const [customBg, setCustomBg] = useState<string | null>(null);
 

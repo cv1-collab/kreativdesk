@@ -471,7 +471,7 @@ export default function SettingsTab() {
       }
     };
     fetchCompany();
-  }, [currentUser?.companyId, currentUser?.uid]);
+  }, [currentUser]);
 
   // Helper zum direkten Speichern von Teil-Updates in Supabase documents
   const updateCompanyProfileConfig = async (updates: Record<string, any>) => {

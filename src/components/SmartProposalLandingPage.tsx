@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -1058,7 +1058,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
     return 'de';
   });
 
-  const t = (key: string, params?: Record<string, string | number>) => {
+  const t = useCallback((key: string, params?: Record<string, string | number>) => {
     let text = localTranslations[proposalLang]?.[key] || localTranslations['de']?.[key] || key;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
@@ -1066,16 +1066,16 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       });
     }
     return text;
-  };
+  }, [proposalLang]);
 
-  const getTranslatedProposalTitle = (title?: string) => {
+  const getTranslatedProposalTitle = useCallback((title?: string) => {
     if (!title) return '';
     const trimmed = title.trim();
     if (PROPOSAL_TITLE_TRANSLATIONS[trimmed]?.[proposalLang]) {
       return PROPOSAL_TITLE_TRANSLATIONS[trimmed][proposalLang];
     }
     return title;
-  };
+  }, [proposalLang]);
 
   const getTranslatedSlideTitle = (title?: string) => {
     if (!title) return '';
@@ -1291,7 +1291,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       }
       return prev;
     });
-  }, [proposalLang]);
+  }, [proposalLang, t]);
 
   // Global Escape Key Listener with cascading closure
   useEffect(() => {
@@ -1484,7 +1484,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
       const ogImg = document.querySelector('meta[property="og:image"]');
       if (ogImg) ogImg.setAttribute('content', proposal.heroImageUrl || '/interactv/renders/interactv_luxury_station_hero.jpg');
     }
-  }, [proposal, proposalLang]);
+  }, [proposal, proposalLang, getTranslatedProposalTitle]);
 
   // Keyboard Navigation for Deck Mode (Arrow Left, Arrow Right, Space)
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'motion/react';
@@ -76,7 +76,7 @@ export default function PublicLeadForm() {
 
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
-  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+  const t = useCallback((key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key, [currentLang, globalT]);
 
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -927,7 +927,7 @@ export default function Calendar() {
     };
 
     fetchSchedule();
-  }, [currentProjectId, currentUser, isDemoMode, demoData]);
+  }, [currentProjectId, currentUser, isDemoMode, demoData, activeProjectId, projectIsDemoMode]);
 
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {

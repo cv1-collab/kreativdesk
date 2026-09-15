@@ -9,7 +9,8 @@ import { useProject } from '../contexts/ProjectContext';
 import { cn, sanitizeUrl } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
 import { useToast } from '../contexts/ToastContext';
-import PitchDeckStudio, { deserializeSlideFromDb } from './PitchDeckStudio';
+import PitchDeckStudio from './PitchDeckStudio';
+import { deserializeSlideFromDb } from '../utils/pitchDeckHelpers';
 import { demoTemplates } from '../utils/demoTemplates';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { safeStorage } from '../utils/safeStorage';
@@ -252,7 +253,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
           const loadedSlides: Slide[] = data.map(d => deserializeSlideFromDb(d, currentUser?.uid) as any);
           setSlides(loadedSlides);
           if (loadedSlides.length > 0) setActiveSlideId(loadedSlides[0].id);
-        } else if (slides.length === 0) {
+        } else {
           const isDemo = isDemoMode || currentProjectId?.startsWith('demo-') || currentProjectId === 'demo-1' || currentProjectId === 'global';
           if (isDemo) {
             loadDemoSlides();
@@ -266,7 +267,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
     };
 
     fetchSlides();
-  }, [currentUser, currentProjectId, showStudio]);
+  }, [currentUser, currentProjectId, showStudio, isDemoMode]);
 
   useEffect(() => {
     const cleanup = addFullscreenChangeListener(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { 
   Moon, Sun, Video, Calendar, Sparkles, 
   ArrowRight, Shield, Menu, X, Briefcase, Zap, Building2, 
@@ -560,7 +560,7 @@ export default function LandingPage() {
 
 
   // Typewriter state for Hero Interactive Typography
-  const typewriterFields = currentLang === 'en' ? [
+  const typewriterFields = useMemo(() => currentLang === 'en' ? [
     'Architects & Builders.',
     'General Contractors.',
     'complex projects.',
@@ -576,7 +576,7 @@ export default function LandingPage() {
     'Design-Agenturen.',
     'Messe- & Ausstellungsbau.',
     'Innenarchitektur.'
-  ];
+  ], [currentLang]);
 
   const [typedText, setTypedText] = useState(() => currentLang === 'en' ? 'Architects & Builders.' : 'Architekten & Bau.');
   const [fieldIdx, setFieldIdx] = useState(0);
@@ -609,7 +609,7 @@ export default function LandingPage() {
     }
 
     return () => clearTimeout(timeout);
-  }, [typedText, isDeleting, fieldIdx, currentLang]);
+  }, [typedText, isDeleting, fieldIdx, typewriterFields]);
 
   // ROI Rechner States
   const [projectsCount, setProjectsCount] = useState(2);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Megaphone, LogOut, Download, Trash2, Smartphone, Loader2, CheckCircle2, 
@@ -389,7 +389,7 @@ export default function LeadsTab() {
     };
   }, [vcardSessionId, addToast, isDemo]);
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     if (!currentUser || !currentUser.uid) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
@@ -440,11 +440,11 @@ export default function LeadsTab() {
     } catch (err) {
       console.error("Error fetching leads:", err);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     fetchLeads();
-  }, [currentUser]);
+  }, [fetchLeads]);
 
   const handleMobileCardScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

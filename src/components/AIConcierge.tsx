@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles, Send, Bot, User, Minimize2, Loader2, AlertTriangle } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -41,7 +41,7 @@ export default function AIConcierge() {
   const location = useLocation();
 
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
-  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
+  const t = useCallback((key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key, [currentLang, globalT]);
 
   const publicRoutes = ['/', '/login', '/signup', '/reset-password', '/pricing', '/privacy', '/terms', '/imprint', '/offerte'];
   const isPublicRoute = publicRoutes.includes(location.pathname) || 
@@ -86,7 +86,7 @@ export default function AIConcierge() {
       }
       return prev;
     });
-  }, [currentLang]);
+  }, [currentLang, t]);
 
   // Reset context on project change so it re-fetches
   useEffect(() => {

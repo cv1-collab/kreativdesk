@@ -299,7 +299,7 @@ export default function ProductTour() {
     });
 
     setSteps(validSteps);
-  }, [isTourRunning, location.pathname, language, theme, isDark]);
+  }, [isTourRunning, location.pathname, language, theme, isDark, isGerman]);
 
   const handleJoyrideCallback = async (data: any) => {
     const { status, action, type } = data;

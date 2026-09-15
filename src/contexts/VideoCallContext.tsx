@@ -668,9 +668,14 @@ export const VideoCallProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIsMinimized(false);
   };
 
+  const hangUpRef = useRef(hangUp);
+  useEffect(() => {
+    hangUpRef.current = hangUp;
+  });
+
   useEffect(() => {
     return () => {
-      hangUp(false);
+      hangUpRef.current(false);
     };
   }, []);
 

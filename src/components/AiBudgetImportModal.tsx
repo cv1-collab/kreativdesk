@@ -201,38 +201,39 @@ export default function AiBudgetImportModal({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handlePasteRef = useRef<(e: ClipboardEvent) => void>(() => {});
+  handlePasteRef.current = (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const pastedBlob = item.getAsFile();
+        if (pastedBlob) {
+          handleFileSelected(pastedBlob);
+          notify(t('clipboard_pasted'), 'info');
+          return;
+        }
+      }
+    }
+
+    // If user pasted text and is in text tab, it pastes naturally
+    const text = e.clipboardData?.getData('text/plain');
+    if (text && activeTab === 'upload' && (text.includes('\t') || text.includes('\n'))) {
+      setPastedText(text);
+      setActiveTab('text');
+      notify(t('clipboard_pasted'), 'info');
+    }
+  };
+
   // Listen for Clipboard Paste (Cmd+V) for screenshots
   useEffect(() => {
     if (!isOpen || parsedGroups) return;
-
-    const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.type.startsWith('image/')) {
-          const pastedBlob = item.getAsFile();
-          if (pastedBlob) {
-            handleFileSelected(pastedBlob);
-            notify(t('clipboard_pasted'), 'info');
-            return;
-          }
-        }
-      }
-
-      // If user pasted text and is in text tab, it pastes naturally
-      const text = e.clipboardData?.getData('text/plain');
-      if (text && activeTab === 'upload' && (text.includes('\t') || text.includes('\n'))) {
-        setPastedText(text);
-        setActiveTab('text');
-        notify(t('clipboard_pasted'), 'info');
-      }
-    };
-
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [isOpen, parsedGroups, activeTab]);
+    const onPaste = (e: ClipboardEvent) => handlePasteRef.current(e);
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [isOpen, parsedGroups]);
 
   if (!isOpen) return null;
 

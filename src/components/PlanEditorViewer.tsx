@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,7 +20,6 @@ import { uploadPdfBlobWithFallback, uploadFileWithFallback } from '../utils/clou
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { safeStorage } from '../utils/safeStorage';
 import { dummySvgPlan } from '../utils/cadDemoPlan';
-export { dummySvgPlan };
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
@@ -363,9 +362,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const cadCacheKey = `kreativdesk_cad_cache_${currentProjectId}`;
   const cadStorageKey = `cad_state_${currentProjectId}`;
 
-  const getCachedPlan = () => {
+  const getCachedPlan = useCallback(() => {
     return safeStorage.getItem<any>(cadCacheKey, null);
-  };
+  }, [cadCacheKey]);
 
   const initialCache = getCachedPlan();
   const [projectPlans, setProjectPlans] = useState<any[]>([]);
@@ -376,14 +375,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     return saved.activePlanId || null;
   });
 
-  const setActivePlanId = (id: string | null | ((prev: string | null) => string | null)) => {
+  const activePlanIdRef = useRef(activePlanId);
+  activePlanIdRef.current = activePlanId;
+
+  const setActivePlanId = useCallback((id: string | null | ((prev: string | null) => string | null)) => {
     setActivePlanIdRaw(prev => {
       const nextId = typeof id === 'function' ? id(prev) : id;
       const saved = safeStorage.getItem<Record<string, any>>(cadStorageKey, {});
       safeStorage.setItem(cadStorageKey, { ...saved, activePlanId: nextId });
       return nextId;
     });
-  };
+  }, [cadStorageKey]);
 
   const [planImage, setPlanImage] = useState<string | null>(() => initialCache?.planImage || null);
   const [planName, setPlanName] = useState<string>(() => initialCache?.planName || '');
@@ -412,7 +414,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   
   const [elements, setElements] = useState<PlanElement[]>(() => initialCache?.elements || []);
 
-  const savePlanToCache = (data: {
+  const savePlanToCache = useCallback((data: {
     id: string | null;
     planName: string;
     planImage: string | null;
@@ -426,7 +428,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (data.id && data.planImage) {
       safeStorage.setItem(cadCacheKey, data);
     }
-  };
+  }, [cadCacheKey]);
 
   // Sync editor modifications into local intermediate cache
   useEffect(() => {
@@ -445,7 +447,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       });
     }, 300);
     return () => clearTimeout(timeout);
-  }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, elements, layers, activeLayerId]);
+  }, [activePlanId, planImage, planName, paperFormat, paperOrientation, planScale, elements, layers, activeLayerId, savePlanToCache]);
   const [draftElement, setDraftElement] = useState<PlanElement | null>(null);
   const [selectedElement, setSelectedElement] = useState<PlanElement | null>(null);
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
@@ -533,6 +535,43 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const calculateRatioForMeters = (meters: number) => { const paper_mm = 1000 / planScale; return (paper_mm * meters) / paperW_mm; };
   const getStrokeDasharray = (style: LineStyle, width: number) => { if(style === 'dashed') return `${width * 4},${width * 4}`; if(style === 'dotted') return `${width},${width * 2}`; return 'none'; };
 
+  const loadPlanDataToEditor = useCallback((planData: any) => {
+    if (!planData) return;
+    setActivePlanId(planData.id);
+    const metaEl = Array.isArray(planData.elements) ? planData.elements.find((e: any) => e?.id === '__plan_meta__') : null;
+    const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || null;
+    const resolvedName = planData.planName || planData.plan_name || planData.name || 'Unbenannt';
+    const resolvedElements = (planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
+    const resolvedLayers = planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }];
+    const resolvedActiveLayerId = planData.activeLayerId || planData.active_layer_id || 'default';
+    const resolvedPaperFormat = planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3';
+    const resolvedPaperOrientation = planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape';
+    const resolvedPlanScale = planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50;
+
+    setPlanImage(resolvedImage);
+    setPlanName(resolvedName);
+    setElements(resolvedElements);
+    setLayers(resolvedLayers);
+    setActiveLayerId(resolvedActiveLayerId);
+    setPaperFormat(resolvedPaperFormat);
+    setPaperOrientation(resolvedPaperOrientation);
+    setPlanScale(resolvedPlanScale);
+    setPan({ x: 0, y: 0 });
+    setSelectedElement(null);
+
+    savePlanToCache({
+      id: planData.id,
+      planName: resolvedName,
+      planImage: resolvedImage,
+      paperFormat: resolvedPaperFormat,
+      paperOrientation: resolvedPaperOrientation,
+      planScale: resolvedPlanScale,
+      elements: resolvedElements,
+      layers: resolvedLayers,
+      activeLayerId: resolvedActiveLayerId
+    });
+  }, [setActivePlanId, savePlanToCache]);
+
   useEffect(() => {
     const isDemoProject = isDemoMode || Boolean(activeProject?.name?.toLowerCase().includes('demo')) || currentProjectId === 'demo-1' || currentProjectId.startsWith('demo');
 
@@ -556,7 +595,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          activeLayerId: 'default'
        };
        setProjectPlans([mockPlan]);
-       if (!activePlanId) loadPlanDataToEditor(mockPlan);
+       if (!activePlanIdRef.current) loadPlanDataToEditor(mockPlan);
        return; 
     }
 
@@ -616,7 +655,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           setProjectPlans(mappedPlans as any);
           
           // Select and load the active plan, or fallback to the first plan in list
-          const targetPlan = (activePlanId ? mappedPlans.find((p: any) => p.id === activePlanId) : null) || mappedPlans[0];
+          const targetPlan = (activePlanIdRef.current ? mappedPlans.find((p: any) => p.id === activePlanIdRef.current) : null) || mappedPlans[0];
           loadPlanDataToEditor(targetPlan);
         } else {
           // Falls keine Pläne in der DB gefunden wurden, prüfen, ob ein lokaler Entwurf im Cache vorliegt
@@ -656,44 +695,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       }
     };
     fetchPlans();
-  }, [currentProjectId, currentUser, isDemoMode, demoData, activeProject?.name]);
-
-  const loadPlanDataToEditor = (planData: any) => {
-    if (!planData) return;
-    setActivePlanId(planData.id);
-    const metaEl = Array.isArray(planData.elements) ? planData.elements.find((e: any) => e?.id === '__plan_meta__') : null;
-    const resolvedImage = planData.planImage || planData.plan_image || metaEl?.plan_image || null;
-    const resolvedName = planData.planName || planData.plan_name || planData.name || 'Unbenannt';
-    const resolvedElements = (planData.elements || []).filter((e: any) => e?.id !== '__plan_meta__');
-    const resolvedLayers = planData.layers || [{ id: 'default', name: 'Standard-Ebene', visible: true, locked: false, opacity: 1 }];
-    const resolvedActiveLayerId = planData.activeLayerId || planData.active_layer_id || 'default';
-    const resolvedPaperFormat = planData.paperFormat || planData.paper_format || metaEl?.paper_format || 'A3';
-    const resolvedPaperOrientation = planData.paperOrientation || planData.paper_orientation || metaEl?.paper_orientation || 'landscape';
-    const resolvedPlanScale = planData.planScale || planData.plan_scale || metaEl?.plan_scale || 50;
-
-    setPlanImage(resolvedImage);
-    setPlanName(resolvedName);
-    setElements(resolvedElements);
-    setLayers(resolvedLayers);
-    setActiveLayerId(resolvedActiveLayerId);
-    setPaperFormat(resolvedPaperFormat);
-    setPaperOrientation(resolvedPaperOrientation);
-    setPlanScale(resolvedPlanScale);
-    setPan({ x: 0, y: 0 });
-    setSelectedElement(null);
-
-    savePlanToCache({
-      id: planData.id,
-      planName: resolvedName,
-      planImage: resolvedImage,
-      paperFormat: resolvedPaperFormat,
-      paperOrientation: resolvedPaperOrientation,
-      planScale: resolvedPlanScale,
-      elements: resolvedElements,
-      layers: resolvedLayers,
-      activeLayerId: resolvedActiveLayerId
-    });
-  };
+  }, [currentProjectId, currentUser, isDemoMode, demoData, activeProject?.name, getCachedPlan, loadPlanDataToEditor, setActivePlanId]);
 
   const handleAddLayer = () => {
     const newL = { id: `layer_${Date.now()}`, name: `${t('layer_prefix')} ${layers.length+1}`, visible: true, locked: false, opacity: 1 };

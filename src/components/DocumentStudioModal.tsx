@@ -207,7 +207,7 @@ const pdfStyles = StyleSheet.create({
 });
 
 // Helper: Normalize raw/legacy markup (BBCode or Markdown) to clean HTML for visual editing
-export function normalizeMarkupToHtml(content: string): string {
+function normalizeMarkupToHtml(content: string): string {
   if (!content) return '<p>Hier Ihren Vertragstext, Briefinhalt oder Ihr Protokoll verfassen...</p>';
   
   // If already contains HTML paragraph/heading/span tags
@@ -263,7 +263,7 @@ export function normalizeMarkupToHtml(content: string): string {
 }
 
 // Helper: Convert HTML to clean plain text for clipboard copying or .txt files
-export function htmlToPlainText(html: string): string {
+function htmlToPlainText(html: string): string {
   if (!html) return '';
   let text = html
     .replace(/<br\s*\/?>/gi, '\n')
@@ -284,7 +284,7 @@ export function htmlToPlainText(html: string): string {
 }
 
 // Helper: Extract structured blocks from HTML or text for PDF & Page generation
-export function extractBlocksFromHtmlOrText(content: string): { type: string; text: string }[] {
+function extractBlocksFromHtmlOrText(content: string): { type: string; text: string }[] {
   if (!content) return [];
   
   const normalized = content

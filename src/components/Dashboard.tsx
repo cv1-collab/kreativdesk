@@ -254,7 +254,7 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [currentUser, activeProject?.id, isDemoMode, demoData]);
+  }, [currentUser, activeProject?.id, activeProject?.name, isDemoMode, demoData]);
 
   const generateAIInsights = async () => {
     setIsGeneratingInsights(true);

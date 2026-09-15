@@ -33,8 +33,8 @@ interface UniversalPDFStudioProps {
   defaultFooterText?: string;
 }
 
-// Dummy-Export, damit bestehende Imports nicht crashen
-export const getPageDimensions = (format: string, orientation: string) => {
+// Dummy-Funktion, intern
+const getPageDimensions = (format: string, orientation: string) => {
   return { width: '100%', height: '100%' };
 };
 

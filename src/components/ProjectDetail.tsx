@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProject } from '../contexts/ProjectContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
@@ -24,10 +24,10 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     project_overview: 'Projektübersicht',
     status_active: 'Aktiv',
     open_pitch: 'Pitch Studio öffnen',
-    task_board: 'Aufgaben & Board',
-    add_task: 'Task erstellen',
-    task_title: 'Titel der Aufgabe:',
-    delete_confirm: 'Task wirklich löschen?'
+    task_board: 'Aufgaben-Board',
+    add_task: 'Aufgabe hinzufügen',
+    task_title: 'Aufgabentitel:',
+    delete_confirm: 'Diese Aufgabe wirklich löschen?'
   }
 };
 
@@ -44,7 +44,7 @@ export default function ProjectDetail() {
   const [isPitchStudioOpen, setIsPitchStudioOpen] = useState(false);
   const [tasks, setTasks] = useState<any[]>([]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!projectId || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
     try {
@@ -58,11 +58,11 @@ export default function ProjectDetail() {
     } catch (err) {
       console.error("Error fetching tasks:", err);
     }
-  };
+  }, [projectId, currentUser]);
 
   useEffect(() => {
     fetchTasks();
-  }, [projectId, currentUser]);
+  }, [fetchTasks]);
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);

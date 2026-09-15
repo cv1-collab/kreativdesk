@@ -696,6 +696,10 @@ export default function Finance() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const processImageWithAIRef = useRef<any>(null);
+  const addToastRef = useRef(addToast);
+  addToastRef.current = addToast;
+
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
     if (!opCostSessionId) return;
@@ -707,8 +711,8 @@ export default function Finance() {
         const data = payload?.payload;
         if (data?.url) {
           setIncomingReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAI(null, data.url, data.type || 'image/jpeg');
-          addToast('Beleg vom Smartphone empfangen & analysiert!', 'success');
+          await processImageWithAIRef.current?.(null, data.url, data.type || 'image/jpeg');
+          addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
         }
       })
       .subscribe();
@@ -729,8 +733,8 @@ export default function Finance() {
           if (docUrl) {
             setIncomingReceipts(prev => {
               if (prev.includes(docUrl)) return prev;
-              processImageWithAI(null, docUrl, doc.type || 'image/jpeg');
-              addToast('Beleg vom Smartphone empfangen & analysiert!', 'success');
+              processImageWithAIRef.current?.(null, docUrl, doc.type || 'image/jpeg');
+              addToastRef.current('Beleg vom Smartphone empfangen & analysiert!', 'success');
               return [...prev, docUrl];
             });
           }
@@ -920,7 +924,7 @@ export default function Finance() {
       }
     };
     fetchCompanyData();
-  }, [currentUser?.companyId]);
+  }, [currentUser?.companyId, currentUser?.uid]);
 
   useEffect(() => {
     if (!opCostSessionId || !showReceiptStudio) return;
@@ -1469,6 +1473,7 @@ export default function Finance() {
       reader.readAsDataURL(file);
     }
   };
+  processImageWithAIRef.current = processImageWithAI;
 
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const filesList = Array.from(e.target.files || []);

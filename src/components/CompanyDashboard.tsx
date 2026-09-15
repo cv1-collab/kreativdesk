@@ -319,7 +319,7 @@ export default function CompanyDashboard() {
     safeStorage.setItem('company_activeProjectFilter', filter);
   };
 
-  const safeProjects = Array.isArray(projects) ? projects : [];
+  const safeProjects = useMemo(() => Array.isArray(projects) ? projects : [], [projects]);
 
   const archiveYears = useMemo(() => {
     const years = new Set<string>();
@@ -403,7 +403,7 @@ export default function CompanyDashboard() {
     };
   }, [currentUser, isNotificationOpen]);
 
-  const safeAllDocs = Array.isArray(allDocuments) ? allDocuments : [];
+  const safeAllDocs = useMemo(() => Array.isArray(allDocuments) ? allDocuments : [], [allDocuments]);
   const safeCompanyUsers = Array.isArray(companyUsers) ? companyUsers : [];
   const safeLeads = Array.isArray(collectedLeads) ? collectedLeads : [];
 
@@ -486,13 +486,16 @@ export default function CompanyDashboard() {
     }
   };
 
+  const handleCreateDemoProjectRef = useRef(handleCreateDemoProject);
+  handleCreateDemoProjectRef.current = handleCreateDemoProject;
+
   useEffect(() => {
     const handleCreateDemo = (e: any) => {
-      handleCreateDemoProject(e.detail?.type || 'construction');
+      handleCreateDemoProjectRef.current(e.detail?.type || 'construction');
     };
     window.addEventListener('create-demo-project', handleCreateDemo);
     return () => window.removeEventListener('create-demo-project', handleCreateDemo);
-  }, [currentUser]);
+  }, []);
 
   const checkProjectLimit = (): boolean => {
     if (!currentUser) return false;

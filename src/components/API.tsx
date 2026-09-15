@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Network, Key, Link as LinkIcon, Plus, Copy, CheckCircle2, Trash2, Webhook, RefreshCw, Send, ShieldCheck, AlertCircle, Play, Check, X } from 'lucide-react';
 import { cn } from '../utils';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -36,7 +36,7 @@ export default function API() {
     'lead.created', 'defect.created', 'invoice.created', 'document.uploaded'
   ]);
 
-  const fetchKeys = async () => {
+  const fetchKeys = useCallback(async () => {
     if (isDemo) {
       setKeys([
         {
@@ -70,9 +70,9 @@ export default function API() {
     } catch (err) {
       console.error("Error fetching API keys:", err);
     }
-  };
+  }, [currentUser, isDe, isDemo]);
 
-  const loadWebhooks = () => {
+  const loadWebhooks = useCallback(() => {
     if (isDemo) {
       setEndpoints([
         {
@@ -92,12 +92,12 @@ export default function API() {
     setEndpoints(epList);
     const sec = webhookNotifier.getSecretKey(companyId);
     setSecretKey(sec);
-  };
+  }, [currentUser, isDemo]);
 
   useEffect(() => {
     fetchKeys();
     loadWebhooks();
-  }, [currentUser?.companyId, isDe, isDemo]);
+  }, [fetchKeys, loadWebhooks]);
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);

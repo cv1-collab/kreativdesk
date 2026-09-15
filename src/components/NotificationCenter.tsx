@@ -1,5 +1,5 @@
 import { checkIsSuperAdmin } from '../config/admins';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Bell, CheckCircle2, Megaphone, Calendar, DollarSign, FileText, Folder, Video, Info, Camera, Box, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,17 +46,17 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
 
   const safeCompanyId = currentUser?.companyId || currentUser?.uid;
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     if (!safeCompanyId) return;
     const notifs = await fetchNotifications(safeCompanyId);
     setUserNotifications(notifs);
-  };
+  }, [safeCompanyId]);
 
   useEffect(() => {
     if (isOpen && safeCompanyId) {
       loadNotifications();
     }
-  }, [isOpen, safeCompanyId]);
+  }, [isOpen, safeCompanyId, loadNotifications]);
 
   useEffect(() => {
     if (!safeCompanyId) return;
@@ -76,7 +76,7 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
         supabase.removeChannel(channel).catch(() => {});
       }
     };
-  }, [safeCompanyId]);
+  }, [safeCompanyId, loadNotifications]);
 
   useEffect(() => {
     if (!isSuperAdmin) return;

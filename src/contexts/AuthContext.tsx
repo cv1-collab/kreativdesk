@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { Role } from '../config/permissions';
@@ -51,6 +51,9 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const currentUserRef = useRef(currentUser);
+  currentUserRef.current = currentUser;
+  const logoutRef = useRef<() => Promise<void>>(null as any);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -407,7 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (session?.user) {
-        if (_event === 'TOKEN_REFRESHED' && currentUser) {
+        if (_event === 'TOKEN_REFRESHED' && currentUserRef.current) {
           setLoading(false);
           return;
         }
@@ -451,7 +454,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               `⚠️ Sitzung Beendet: Dein Konto wurde auf einem zweiten ${deviceTypeName} angemeldet. Du kannst dich gleichzeitig auf 1 Laptop und 1 Smartphone/iPad anmelden, jedoch nicht auf zwei ${deviceTypeName}en gleichzeitig.`
             );
           } catch (e) {}
-          logout();
+          logoutRef.current?.();
         }
       })
       .subscribe();
@@ -481,6 +484,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
     setUserRole(null);
   };
+  logoutRef.current = logout;
 
   return (
     <AuthContext.Provider value={{ currentUser, userRole, loading, logout, updateCurrentUser, refreshUserProfile }}>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { Stage, Layer as KonvaLayer, Line, Rect, Circle as KonvaCircle, Text as KonvaText, Image as KonvaImage, Group } from 'react-konva';
@@ -354,6 +354,9 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   }, [projectId, isDemo]);
 
   // 2. Echtzeit-Kollaboration via Supabase Realtime Broadcast
+  const liveStateRef = useRef({ layers, activeLayerId, bgImageSrc, bgImagePos, currentUser });
+  liveStateRef.current = { layers, activeLayerId, bgImageSrc, bgImagePos, currentUser };
+
   useEffect(() => {
     if (!projectId || isDemo) return;
 
@@ -386,17 +389,18 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
       .on('broadcast', { event: 'wb_request_state' }, ({ payload }) => {
         if (!payload || payload.senderId === myId) return;
         // Wenn wir bereits aktive Striche/Ebenen haben, teilen wir unseren Stand mit dem beigetretenen Nutzer
-        if (layers.some(l => l.items && l.items.length > 0)) {
+        const currentState = liveStateRef.current;
+        if (currentState.layers.some(l => l.items && l.items.length > 0)) {
           channel.send({
             type: 'broadcast',
             event: 'wb_canvas_update',
             payload: {
-              layers,
-              activeLayerId,
-              bgImageSrc,
-              bgImagePos,
+              layers: currentState.layers,
+              activeLayerId: currentState.activeLayerId,
+              bgImageSrc: currentState.bgImageSrc,
+              bgImagePos: currentState.bgImagePos,
               senderId: myId,
-              senderName: currentUser?.name || currentUser?.email || 'Team',
+              senderName: currentState.currentUser?.name || currentState.currentUser?.email || 'Team',
               timestamp: Date.now()
             }
           });
@@ -490,7 +494,7 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId, isDemo, currentUser]);
+  }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor, projectId, isDemo, currentUser, activeProject?.company_id]);
   
   const isDrawing = useRef(false);
   const drawingStartPos = useRef<{ x: number, y: number } | null>(null);
@@ -1114,10 +1118,13 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     }, 40);
   };
 
+  const handleMouseUpRef = useRef(handleMouseUp);
+  handleMouseUpRef.current = handleMouseUp;
+
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       if (isDrawing.current) {
-        handleMouseUp();
+        handleMouseUpRef.current();
       }
     };
     window.addEventListener('pointerup', handleGlobalMouseUp);
@@ -1132,7 +1139,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
       window.removeEventListener('pointercancel', handleGlobalMouseUp);
       window.removeEventListener('blur', handleGlobalMouseUp);
     };
-  }, [tool]);
+  }, []);
 
   const handleColorPick = (c: string) => {
     setActiveColor(c);
@@ -1257,7 +1264,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     }
   };
 
-  const deleteSelectedItem = () => {
+  const deleteSelectedItem = useCallback(() => {
     if (!selectedShapeId) return;
     setLayers(prev => prev.map(layer => ({
       ...layer,
@@ -1265,7 +1272,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     })));
     setSelectedShapeId(null);
     addToast('Element gelöscht', 'info');
-  };
+  }, [selectedShapeId, addToast]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1279,7 +1286,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedShapeId]);
+  }, [selectedShapeId, deleteSelectedItem]);
 
   const getCanvasDataUrl = (scale: number = 2, mimeType: string = 'image/png', forceWhiteBg: boolean = false) => {
     if (!stageRef.current) return null;

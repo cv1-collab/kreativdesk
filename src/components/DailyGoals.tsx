@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle2, Plus, Trash2, Calendar as CalendarIcon, Clock, AlertCircle, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
@@ -55,9 +55,9 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
   const { isDemoMode, demoData } = useProject() as any;
   
   const { language, t: globalT } = useLanguage();
-  const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key;
+  const t = useCallback((key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key) || key, [language, globalT]);
 
-  const fetchGoals = async () => {
+  const fetchGoals = useCallback(async () => {
     if (!currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
 
@@ -95,7 +95,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     } catch (err) {
       console.error("Error fetching goals:", err);
     }
-  };
+  }, [currentUser, projectId]);
 
   useEffect(() => {
     if (isDemoMode) {
@@ -108,7 +108,7 @@ export default function DailyGoals({ projectId }: { projectId: string }) {
     }
 
     fetchGoals();
-  }, [currentUser, projectId, language, isDemoMode]); 
+  }, [isDemoMode, projectId, t, fetchGoals]); 
 
   const handleAddGoal = async (e: React.FormEvent) => {
     e.preventDefault();

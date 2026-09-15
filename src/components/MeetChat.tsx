@@ -487,7 +487,9 @@ export default function MeetChat() {
 
   useEffect(() => { isTranscribingRef.current = isTranscribing; }, [isTranscribing]);
 
-    const sendChatMessage = async (msgData: {
+  const sendChatMessageRef = useRef<any>(null);
+
+  const sendChatMessage = async (msgData: {
       text: string;
       sender?: string;
       avatar?: string;
@@ -570,6 +572,7 @@ export default function MeetChat() {
         }
       } catch (err) {}
     };
+    sendChatMessageRef.current = sendChatMessage;
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -586,7 +589,7 @@ export default function MeetChat() {
         if (event.results[i].isFinal) {
           const finalStr = event.results[i][0].transcript.trim();
           if (finalStr && (callId || joinCallId || activeCallRoomId)) {
-            sendChatMessage({ text: finalStr, isTranscript: true });
+            sendChatMessageRef.current?.({ text: finalStr, isTranscript: true });
           }
         } else {
           interim += event.results[i][0].transcript;
@@ -897,7 +900,7 @@ export default function MeetChat() {
         supabase.removeChannel(channel).catch(() => { });
       }
     };
-  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId, activeCallRoomId]);
+  }, [currentUser, projectId, activeProjectId, callId, isInCall, joinCallId, activeCallRoomId, isDemo, safeCompanyId]);
 
   const handleFileAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isDemo) {

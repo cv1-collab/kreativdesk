@@ -38,6 +38,21 @@ export default function LegalPage() {
     );
   };
 
+  const t = {
+    de: {
+      title: 'Impressum & Rechtliche Informationen',
+      desc: 'Angaben gemäß den gesetzlichen Informationspflichten der Schweiz.',
+      agb: 'AGB herunterladen',
+      privacy: 'Datenschutzerklärung herunterladen'
+    },
+    en: {
+      title: 'Legal Notice & Statutory Information',
+      desc: 'Information in accordance with Swiss statutory legal requirements.',
+      agb: 'Download Terms of Service',
+      privacy: 'Download Privacy Policy'
+    }
+  }[currentLang];
+
   return (
     <div className="min-h-screen bg-[#09090b] text-[#a1a1aa] py-12 px-4 sm:px-6 lg:px-8 selection:bg-brand-500/30">
       <div className="max-w-4xl mx-auto">
@@ -47,12 +62,12 @@ export default function LegalPage() {
         </Link>
         <div className="space-y-12">
           <section className="bg-surface border border-border p-8 rounded-3xl">
-            <h1 className="text-3xl font-black text-white mb-4">Impressum & Rechtliche Informationen</h1>
+            <h1 className="text-3xl font-black text-white mb-4">{t.title}</h1>
             <p className="text-sm text-text-muted leading-relaxed">
-              Angaben gemäß den gesetzlichen Informationspflichten der Schweiz.
+              {t.desc}
             </p>
-            {renderDownloadButton('agb', 'AGB herunterladen')}
-            {renderDownloadButton('privacy', 'Datenschutzerklärung herunterladen')}
+            {renderDownloadButton('agb', t.agb)}
+            {renderDownloadButton('privacy', t.privacy)}
           </section>
         </div>
       </div>

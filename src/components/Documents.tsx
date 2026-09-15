@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -353,11 +353,11 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     return 'company';
   });
 
-  const setActiveTab = (tab: 'company' | 'projects' | 'proposals') => {
+  const setActiveTab = useCallback((tab: 'company' | 'projects' | 'proposals') => {
     const nextTab = isProjectMode && tab === 'company' ? 'projects' : tab;
     setActiveTabRaw(nextTab);
     safeStorage.setItem(`${docsStorageKey}_tab`, nextTab);
-  };
+  }, [isProjectMode, docsStorageKey]);
 
   const [showPitchModal, setShowPitchModal] = useState(false);
   const [pitchModalInitialPublish, setPitchModalInitialPublish] = useState(false);
@@ -374,7 +374,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     };
     window.addEventListener('navigate-to-tab', handleTabNav);
     return () => window.removeEventListener('navigate-to-tab', handleTabNav);
-  }, []);
+  }, [setActiveTab]);
 
   const [viewMode, setViewModeRaw] = useState<'grid' | 'list'>(() => {
     const saved = safeStorage.getString(`${docsStorageKey}_viewMode`);
@@ -481,7 +481,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
     invalidateDocuments();
   };
 
-  const autoOrganizeLooseContracts = async (docs: any[], compId: string) => {
+  const autoOrganizeLooseContracts = useCallback(async (docs: any[], compId: string) => {
     if (!docs || docs.length === 0 || !compId || isDemo) return;
     const legalFolder = docs.find(d => d.is_folder && d.name === '02_RECHTLICHES');
     if (!legalFolder) return;
@@ -505,7 +505,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         console.warn('Auto-organize loose contracts error:', err);
       }
     }
-  };
+  }, [isDemo, invalidateDocuments]);
 
   useEffect(() => {
     if (queryDocuments && !isDemo) {
@@ -514,7 +514,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         autoOrganizeLooseContracts(queryDocuments as any, safeCompanyId);
       }
     }
-  }, [queryDocuments, isDemo, safeCompanyId]);
+  }, [queryDocuments, isDemo, safeCompanyId, autoOrganizeLooseContracts]);
 
   const handleSeedDemoData = async () => {
     if (!currentUser) return;

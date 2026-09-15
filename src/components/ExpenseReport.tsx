@@ -204,6 +204,11 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
     }
   };
 
+  const processImageWithAIRef = useRef(processImageWithAI);
+  processImageWithAIRef.current = processImageWithAI;
+  const addToastRef = useRef(addToast);
+  addToastRef.current = addToast;
+
   // Realtime & Polling listener for Smartphone Live Scan (QR Code)
   useEffect(() => {
     if (!sessionId) return;
@@ -215,8 +220,8 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         const data = payload?.payload;
         if (data?.url) {
           setReceipts(prev => prev.includes(data.url) ? prev : [...prev, data.url]);
-          await processImageWithAI(null, data.url, data.type || 'image/jpeg');
-          addToast('Beleg vom Smartphone empfangen!', 'success');
+          await processImageWithAIRef.current(null, data.url, data.type || 'image/jpeg');
+          addToastRef.current('Beleg vom Smartphone empfangen!', 'success');
         }
       })
       .subscribe();
@@ -237,8 +242,8 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
           if (docUrl) {
             setReceipts(prev => {
               if (prev.includes(docUrl)) return prev;
-              processImageWithAI(null, docUrl, doc.type || 'image/jpeg');
-              addToast('Beleg vom Smartphone empfangen!', 'success');
+              processImageWithAIRef.current(null, docUrl, doc.type || 'image/jpeg');
+              addToastRef.current('Beleg vom Smartphone empfangen!', 'success');
               return [...prev, docUrl];
             });
           }
