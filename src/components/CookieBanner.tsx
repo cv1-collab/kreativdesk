@@ -60,7 +60,7 @@ export default function CookieBanner() {
         >
           <div className="max-w-4xl mx-auto bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-6 flex flex-col md:flex-row items-center gap-6 pointer-events-auto">
             <div className="flex-1">
-              <h4 className="font-bold text-lg mb-2 text-text-primary">{t('cookie_title')}</h4>
+              <h4 className="font-semibold text-lg mb-2 text-text-primary">{t('cookie_title')}</h4>
               <p className="text-sm text-text-muted font-medium">
                 {t('cookie_desc')} <Link to="/privacy" className="text-accent-ai hover:underline">{t('footer_privacy')}</Link>.
               </p>

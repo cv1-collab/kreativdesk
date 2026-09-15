@@ -332,7 +332,7 @@ export default function PublicLeadForm() {
           <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-8 h-8 text-emerald-500" />
           </div>
-          <h2 className="text-3xl font-black text-text-primary tracking-tight">
+          <h2 className="text-3xl font-semibold text-text-primary tracking-tight">
             {t('thank_you')}
           </h2>
           <p className="text-text-muted font-medium leading-relaxed">
@@ -354,7 +354,7 @@ export default function PublicLeadForm() {
             K
           </div>
         </div>
-        <h2 className="text-center text-3xl md:text-4xl font-black tracking-tight text-text-primary mb-4">
+        <h2 className="text-center text-3xl md:text-4xl font-semibold tracking-tight text-text-primary mb-4">
           {t('contact_us')}
         </h2>
         <p className="text-center text-text-muted mb-10 font-medium">
@@ -394,7 +394,7 @@ export default function PublicLeadForm() {
                     <div className="w-12 h-12 bg-brand-500/10 rounded-full flex items-center justify-center mb-3">
                       <QrCode className="text-brand-500" size={24} />
                     </div>
-                    <h3 className="text-sm font-bold text-text-primary mb-1">{t('take_photo')}</h3>
+                    <h3 className="text-sm font-semibold text-text-primary mb-1">{t('take_photo')}</h3>
                     <p className="text-xs text-text-muted mb-5 leading-relaxed max-w-[250px]">
                       {t('scan_with_phone')}
                     </p>
@@ -410,7 +410,7 @@ export default function PublicLeadForm() {
                   <div className="flex flex-col items-center animate-in zoom-in-95 duration-300">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-brand-500 animate-pulse" />
-                      <h3 className="text-sm font-bold text-brand-500">Live Scan aktiv</h3>
+                      <h3 className="text-sm font-semibold text-brand-500">Live Scan aktiv</h3>
                     </div>
                     <p className="text-xs text-text-muted mb-5 max-w-[250px] leading-relaxed">
                       {t('qr_desc')}
@@ -435,7 +435,7 @@ export default function PublicLeadForm() {
 
           <div className="flex items-center gap-4 mb-8">
              <div className="h-px bg-border flex-1"></div>
-             <span className="text-xs font-bold text-text-muted uppercase tracking-widest">oder manuell</span>
+             <span className="text-xs font-semibold text-text-muted uppercase tracking-widest">oder manuell</span>
              <div className="h-px bg-border flex-1"></div>
           </div>
 
@@ -444,7 +444,7 @@ export default function PublicLeadForm() {
 
             {/* B2B Plan / System Selection */}
             <div>
-              <label className="block text-sm font-bold text-text-primary mb-2">
+              <label className="block text-sm font-semibold text-text-primary mb-2">
                 {t('select_plan')}
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -466,7 +466,7 @@ export default function PublicLeadForm() {
                           : 'bg-background border-border text-text-muted hover:border-border/80'
                       }`}
                     >
-                      <div className="text-xs font-black text-text-primary">{p.label}</div>
+                      <div className="text-xs font-semibold text-text-primary">{p.label}</div>
                       <div className="text-[10px] text-text-muted mt-0.5">{p.price}</div>
                     </button>
                   );
@@ -476,7 +476,7 @@ export default function PublicLeadForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-bold text-text-primary">
+                <label htmlFor="firstName" className="block text-sm font-semibold text-text-primary">
                   {t('first_name')}
                 </label>
                 <div className="mt-2 relative">
@@ -497,7 +497,7 @@ export default function PublicLeadForm() {
               </div>
 
               <div>
-                <label htmlFor="lastName" className="block text-sm font-bold text-text-primary">
+                <label htmlFor="lastName" className="block text-sm font-semibold text-text-primary">
                   {t('last_name')}
                 </label>
                 <div className="mt-2 relative">
@@ -516,7 +516,7 @@ export default function PublicLeadForm() {
             </div>
 
             <div>
-              <label htmlFor="company" className="block text-sm font-bold text-text-primary">
+              <label htmlFor="company" className="block text-sm font-semibold text-text-primary">
                 {t('company')}
               </label>
               <div className="mt-2 relative">
@@ -537,7 +537,7 @@ export default function PublicLeadForm() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-bold text-text-primary">
+              <label htmlFor="email" className="block text-sm font-semibold text-text-primary">
                 {t('email')}
               </label>
               <div className="mt-2 relative">
@@ -558,7 +558,7 @@ export default function PublicLeadForm() {
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-bold text-text-primary">
+              <label htmlFor="phone" className="block text-sm font-semibold text-text-primary">
                 {t('phone')}
               </label>
               <div className="mt-2 relative">
@@ -578,7 +578,7 @@ export default function PublicLeadForm() {
             </div>
 
             <div>
-              <label htmlFor="message" className="block text-sm font-bold text-text-primary">
+              <label htmlFor="message" className="block text-sm font-semibold text-text-primary">
                 {t('message')}
               </label>
               <div className="mt-2 relative">

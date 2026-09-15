@@ -274,7 +274,7 @@ export default function Signup() {
             <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/25">
               <Layers size={24} />
             </div>
-            <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-[#fafafa]">{t('create_workspace')}</h2>
+            <h2 className="mt-6 text-3xl font-semibold tracking-tight text-slate-900 dark:text-[#fafafa]">{t('create_workspace')}</h2>
             <p className="mt-2 text-sm text-slate-500 dark:text-[#a1a1aa]">{t('start_journey')}</p>
           </div>
 
@@ -284,7 +284,7 @@ export default function Signup() {
                 <Mail size={32} />
               </div>
               <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-[#fafafa]">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-[#fafafa]">
                   {currentLang === 'de' ? 'Bestätigungs-E-Mail gesendet!' : 'Confirmation email sent!'}
                 </h3>
                 <p className="mt-2 text-xs text-slate-600 dark:text-[#a1a1aa] leading-relaxed">

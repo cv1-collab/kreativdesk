@@ -247,7 +247,7 @@ export default function Login() {
             <Command size={24} />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-slate-900 dark:text-[#fafafa]">{t('welcome_back')}</h2>
+        <h2 className="mt-6 text-center text-3xl font-semibold tracking-tight text-slate-900 dark:text-[#fafafa]">{t('welcome_back')}</h2>
         <p className="mt-2 text-center text-sm text-slate-500 dark:text-[#a1a1aa]">{t('access_workspace')}</p>
       </div>
 
@@ -347,7 +347,7 @@ export default function Login() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-[#18181b] border border-slate-200 dark:border-[#27272a] rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-5 border-b border-slate-200 dark:border-[#27272a] flex items-center justify-between">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-[#fafafa]">{t('reset_title')}</h3>
+              <h3 className="font-semibold text-lg text-slate-900 dark:text-[#fafafa]">{t('reset_title')}</h3>
               <button onClick={() => setIsResetModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:text-[#a1a1aa] dark:hover:text-[#fafafa] transition-colors cursor-pointer"><X size={20} /></button>
             </div>
             
