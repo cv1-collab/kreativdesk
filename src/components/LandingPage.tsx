@@ -106,12 +106,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     b2b_sys2_desc: 'Focus: Full resource controlling (target vs. actual), dedicated team workspaces, and automated on-/offboarding for maximum data security.',
     b2b_sys2_price: 'CHF 25,000',
     b2b_sys2_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: CHF 19,500/YR',
-    b2b_sys2_seats: 'Incl. 10 Governance Seats (+ CHF 780/yr per extra seat)',
+    b2b_sys2_seats: 'Incl. 15 Governance Seats (+ CHF 780/yr per extra seat)',
     b2b_sys3_title: 'Enterprise OS',
     b2b_sys3_desc: 'Focus: Custom API pipelines, Single Sign-On (SSO), strategic onboarding, and unlimited system resources.',
     b2b_sys3_price: 'from CHF 50,000',
     b2b_sys3_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: FROM CHF 35,000/YR',
-    b2b_sys3_seats: 'Incl. 20 Governance Seats (+ CHF 780/yr per extra seat)',
+    b2b_sys3_seats: 'Incl. 25 Governance Seats (+ CHF 780/yr per extra seat)',
     b2b_cta_request: 'Request Setup',
     b2b_vat: 'All B2B prices excl. statutory VAT',
 
@@ -332,12 +332,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     b2b_sys2_desc: 'Fokus: Volles Ressourcen-Controlling (Soll vs. Ist), dedizierte Team-Workspaces und automatisches On-/Offboarding für maximale Datensicherheit.',
     b2b_sys2_price: 'CHF 25’000',
     b2b_sys2_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: CHF 19’500/JAHR',
-    b2b_sys2_seats: 'Inkl. 10 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    b2b_sys2_seats: 'Inkl. 15 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
     b2b_sys3_title: 'Enterprise OS',
     b2b_sys3_desc: 'Fokus: Custom API-Pipelines, Single Sign-On (SSO), strategisches Onboarding und unlimitierte Systemressourcen.',
     b2b_sys3_price: 'ab CHF 50’000',
     b2b_sys3_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: AB CHF 35’000/JAHR',
-    b2b_sys3_seats: 'Inkl. 20 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    b2b_sys3_seats: 'Inkl. 25 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
     b2b_cta_request: 'Setup anfragen',
     b2b_vat: 'Alle B2B-Preise verstehen sich rein netto exkl. gesetzlicher MwSt.',
 
@@ -668,8 +668,8 @@ Offizielle Fakten & Wirtschaftliche Logik von Kreativ-Desk:
   * Expert: CHF 159/Mo (jährlich abgerechnet) / CHF 189/Mo (monatlich) - Alles aus Pro + PDF-Offerten & Rechnungs-Studio, API & Webhooks, Eigenes Branding, 250 GB Speicher.
 - B2B Projekt-Systeme (Kreativ-Desk OS):
   * Studio OS: ab CHF 15'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: CHF 7'500 / Jahr Flatrate | Inkl. 5 Governance-Lizenzen.
-  * Agency OS (Execution Booster): CHF 25'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: CHF 19'500 / Jahr Flatrate | Inkl. 10 Governance-Lizenzen.
-  * Enterprise OS: ab CHF 50'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: ab CHF 35'000 / Jahr Flatrate | Inkl. 20 Governance-Lizenzen.
+  * Agency OS (Execution Booster): CHF 25'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: CHF 19'500 / Jahr Flatrate | Inkl. 15 Governance-Lizenzen.
+  * Enterprise OS: ab CHF 50'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: ab CHF 35'000 / Jahr Flatrate | Inkl. 25 Governance-Lizenzen.
 - Zusatzlizenzen: Jede zusätzliche Governance-Lizenz kostet exakt CHF 780 / Jahr (CHF 65 / Monat). (Beispiel: 7 Lizenzen im Studio OS = CHF 15'000 + 2 × CHF 780 = CHF 16'560 im 1. Jahr; ab Jahr 2 CHF 7'500 + CHF 1'560 = CHF 9'060/Jahr).
 - Alle Preise sind exkl. MwSt. (netto).
 - Architektur & Sicherheit: 100% mandantenisoliert, sichere Schweizer Server (Datenhaltung & Infrastruktur in der Schweiz), Schweizer Entwicklerteam, Revisionssicherheit, RBAC-Rollenmanagement (Owner, GL, Projektleiter, Mitarbeiter), DSGVO & Schweizer Datenschutz (DSG). Kundendaten werden niemals für KI-Training verwendet.
