@@ -78,6 +78,16 @@ export default function AIConcierge() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // Synchronize initial greeting when language changes if no conversation has taken place yet
+  useEffect(() => {
+    setMessages(prev => {
+      if (prev.length === 1 && prev[0].id === 1) {
+        return [{ id: 1, role: 'ai', text: t('ai_greeting') }];
+      }
+      return prev;
+    });
+  }, [currentLang]);
+
   // Reset context on project change so it re-fetches
   useEffect(() => {
     setProjectContext(null);

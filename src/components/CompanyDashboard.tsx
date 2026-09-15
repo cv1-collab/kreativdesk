@@ -65,7 +65,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     delete_project: 'Delete Project', active_projects: 'Active Projects',
     archive: 'Archive', archive_project: 'Archive Project', unarchive_project: 'Restore Project',
     install_app: 'Install App', start_tour: 'Start Tour', admin: 'Admin',
-    create_folder: 'Create Folder', folder_name: 'Folder Name'
+    create_folder: 'Create Folder', folder_name: 'Folder Name',
+    workspace: 'Workspace', system: 'System', audit_logs: 'Audit Logs', badge_new: 'NEW',
+    role_owner: 'OWNER', role_admin: 'ADMIN', role_project_lead: 'PROJECT LEAD', role_employee: 'EMPLOYEE', role_external: 'EXTERNAL',
+    no_archived_projects: 'No archived projects',
+    no_archived_projects_desc: 'You currently have no archived projects.',
+    to_active_projects: 'To Active Projects'
   },
   de: {
     folder_finance: '01_FINANZEN', folder_legal: '02_RECHTLICHES', folder_hr: '03_HR_MITARBEITER', folder_sales: '04_SALES',
@@ -84,7 +89,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     delete_project: 'Projekt löschen', active_projects: 'Aktive Projekte',
     archive: 'Archiv', archive_project: 'Projekt archivieren', unarchive_project: 'Wiederherstellen',
     install_app: 'App installieren', start_tour: 'Tour starten', admin: 'Admin',
-    create_folder: 'Ordner erstellen', folder_name: 'Ordnername'
+    create_folder: 'Ordner erstellen', folder_name: 'Ordnername',
+    workspace: 'Arbeitsbereich', system: 'System', audit_logs: 'Audit-Logs', badge_new: 'NEU',
+    role_owner: 'INHABER', role_admin: 'ADMINISTRATOR', role_project_lead: 'PROJEKTLEITER', role_employee: 'MITARBEITER', role_external: 'EXTERN',
+    no_archived_projects: 'Keine archivierten Projekte',
+    no_archived_projects_desc: 'Du hast derzeit keine archivierten Projekte.',
+    to_active_projects: 'Zu aktiven Projekten'
   }
 };
 
@@ -701,7 +711,7 @@ export default function CompanyDashboard() {
       { id: 'proposals', icon: Globe, label: t('proposals'), className: 'tour-proposals' },
       { id: 'finance', icon: DollarSign, label: t('finance_budget'), hide: !canSeeFinances, className: 'tour-finance' }
     ]},
-    { title: 'Workspace', items: [
+    { title: t('workspace'), items: [
       { id: 'documents', icon: FileText, label: t('documents'), className: 'tour-documents' },
       { id: 'templates', icon: LayoutTemplate, label: t('templates'), className: 'tour-templates' },
       { id: 'leads', icon: Megaphone, label: t('crm_leads'), count: safeLeads.filter(l => l.status === 'neu' || l.status === 'New').length, className: 'tour-leads' },
@@ -709,9 +719,9 @@ export default function CompanyDashboard() {
       { id: 'meet', icon: Video, label: 'Meet & Chat', className: 'tour-meet' },
       { id: 'agenda', icon: CalendarDays, label: t('agenda_rapport'), className: 'tour-agenda' }
     ]},
-    { title: 'System', items: [ 
+    { title: t('system'), items: [ 
       { id: 'settings', icon: Settings, label: t('settings'), className: 'tour-settings' },
-      { id: 'audit', icon: Shield, label: 'Audit Logs', hide: !hasPermission('canManageCompany'), className: 'tour-audit' }
+      { id: 'audit', icon: Shield, label: t('audit_logs'), hide: !hasPermission('canManageCompany'), className: 'tour-audit' }
     ] }
   ];
 
@@ -750,7 +760,7 @@ export default function CompanyDashboard() {
                     </div>
                     {item.id === 'documents' && hasNewDocBadge && (
                       <span className="px-1.5 py-0.5 rounded-full bg-red-500 text-white font-black text-[9px] uppercase tracking-wider animate-pulse shadow-sm flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> NEU
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" /> {t('badge_new')}
                       </span>
                     )}
                     {item.count !== undefined && item.count > 0 && item.id !== 'documents' && (
@@ -765,12 +775,14 @@ export default function CompanyDashboard() {
         <div className="p-3 border-t border-border bg-surface/50 shrink-0">
           {(() => {
             const userDisplayName = currentUser?.name || currentUser?.displayName || (currentUser?.email ? currentUser.email.split('@')[0] : 'User');
+            const roleKey = `role_${userRole?.toLowerCase()}`;
+            const displayRole = localTranslations[currentLang]?.[roleKey] || userRole;
             return (
               <button title={currentUser?.email} onClick={() => setActiveTab('settings')} className="w-full flex items-center justify-start gap-3 px-3 py-2.5 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm hover:bg-white/5 cursor-pointer">
                 <div className="w-8 h-8 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
                 <div className="text-left overflow-hidden">
                   <div className="truncate text-sm font-bold text-text-primary">{userDisplayName}</div>
-                  <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{userRole}</div>
+                  <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{displayRole}</div>
                 </div>
               </button>
             );
@@ -942,10 +954,10 @@ export default function CompanyDashboard() {
                           ) : (
                             <div className="max-w-md mx-auto">
                               <Archive size={48} className="mx-auto text-amber-500 mb-4 opacity-70" />
-                              <h3 className="text-xl font-bold text-text-primary mb-2">Keine archivierten Projekte</h3>
-                              <p className="text-text-muted mb-6 text-sm font-medium">Du hast derzeit keine archivierten Projekte.</p>
+                              <h3 className="text-xl font-bold text-text-primary mb-2">{t('no_archived_projects')}</h3>
+                              <p className="text-text-muted mb-6 text-sm font-medium">{t('no_archived_projects_desc')}</p>
                               <button onClick={() => setActiveProjectFilter('active')} className="px-6 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all mx-auto inline-flex items-center gap-2 cursor-pointer">
-                                Zu aktiven Projekten
+                                {t('to_active_projects')}
                               </button>
                             </div>
                           )}

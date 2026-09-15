@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "types:generate": "node scripts/generate_database_types.mjs"
+    "types:generate": "node scripts/generate_database_types.mjs",
+    "vercel:clean": "node scripts/cleanup_vercel_deployments.mjs"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",

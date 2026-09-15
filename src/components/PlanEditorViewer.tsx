@@ -44,7 +44,23 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     switch_plan: 'Switch Plan', new_plan: '+ Upload New Plan', take_photo: 'Take Photo', upload_gallery: 'Gallery',
     layers: 'Layers', delete_plan: 'Delete Plan', confirm_delete_plan: 'Are you sure you want to delete this plan?',
     only_images_allowed: 'Please upload JPG/PNG for the editor.',
-    rasterizing_pdf: 'Processing PDF...'
+    rasterizing_pdf: 'Processing PDF...',
+    calibrate_truescale: 'Calibrate TrueScale™',
+    truescale_calibrate_short: 'Calibrate',
+    truescale_demo_info: 'TrueScale™ calibration is active in demo preview (1:50 standard).',
+    upload_plan_btn: 'Upload Plan',
+    upload_btn_short: 'Upload',
+    upload_plan_tooltip: 'Upload CAD drawing or PDF blueprint to project workspace',
+    export_pdf_tooltip: 'Export plan as high-resolution PDF',
+    export_pdf_tooltip_disabled: 'Upload a plan first to export',
+    save_layers_tooltip: 'Save drawings and layers',
+    default_layer: 'Default Layer',
+    add_layer: 'Add Layer',
+    layer_prefix: 'Layer',
+    truescale_modal_title: 'TrueScale™ Scale Calibration',
+    truescale_modal_desc: 'Draw a reference line over a known distance (e.g. a wall) and enter the exact value in meters. The CAD system calculates the scale automatically (1:50, 1:100 etc.).',
+    known_real_length: 'Known real length in meters (m)',
+    apply_calibration_btn: 'Apply Scale Calibration'
   },
   de: {
     save: 'Speichern', upload_success: 'Upload erfolgreich!', upload_failed: 'Upload fehlgeschlagen.',
@@ -63,7 +79,23 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     switch_plan: 'Plan wechseln', new_plan: '+ Neuen Plan hochladen', take_photo: 'Foto aufnehmen', upload_gallery: 'Aus Galerie',
     layers: 'Ebenen', delete_plan: 'Plan löschen', confirm_delete_plan: 'Möchtest du diesen Plan unwiderruflich löschen?',
     only_images_allowed: 'Bitte JPG/PNG für Editor nutzen.',
-    rasterizing_pdf: 'PDF wird verarbeitet...'
+    rasterizing_pdf: 'PDF wird verarbeitet...',
+    calibrate_truescale: 'TrueScale™ Kalibrieren',
+    truescale_calibrate_short: 'Kalibrieren',
+    truescale_demo_info: 'TrueScale™ Kalibrierung ist in der Demo-Vorschau aktiv (1:50 Standard).',
+    upload_plan_btn: 'Plan hochladen',
+    upload_btn_short: 'Hochladen',
+    upload_plan_tooltip: 'CAD-Plan oder PDF-Bauplan in den Projekt-Workspace hochladen',
+    export_pdf_tooltip: 'Plan als hochauflösendes PDF exportieren',
+    export_pdf_tooltip_disabled: 'Erst Plan hochladen zum Exportieren',
+    save_layers_tooltip: 'Zeichnungen und Ebenen speichern',
+    default_layer: 'Standard-Ebene',
+    add_layer: 'Zeichenebene hinzufügen',
+    layer_prefix: 'Ebene',
+    truescale_modal_title: 'TrueScale™ Maßstabs-Kalibrierung',
+    truescale_modal_desc: 'Zeichne eine Referenzlinie über eine bekannte Distanz (z.B. eine Wand) und gib den exakten Wert in Metern ein. Das CAD-System berechnet automatisch den Maßstab (1:50, 1:100 etc.).',
+    known_real_length: 'Bekannte Reallänge in Metern (m)',
+    apply_calibration_btn: 'Maßstab Kalibrieren'
   }
 };
 
@@ -318,7 +350,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const { currentUser } = useAuth();
   const { activeProjectId, projects, isDemoMode, demoData } = useProject() as any; 
   const { language, t: globalT } = useLanguage(); 
-  const t = (key: string) => localTranslations[language as 'de'|'en']?.[key] || globalT(key) || key;
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
+  const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
   const { projectId } = useParams();
   
   const currentProjectId = propProjectId || projectId || activeProjectId || 'global';
@@ -663,7 +696,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleAddLayer = () => {
-    const newL = { id: `layer_${Date.now()}`, name: `Ebene ${layers.length+1}`, visible: true, locked: false, opacity: 1 };
+    const newL = { id: `layer_${Date.now()}`, name: `${t('layer_prefix')} ${layers.length+1}`, visible: true, locked: false, opacity: 1 };
     setLayers([...layers, newL]); setActiveLayerId(newL.id);
   };
 
@@ -1481,13 +1514,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         <div className="flex items-center gap-2 shrink-0">
           <button onClick={() => { 
             if (isDemoMode || currentProjectId === 'demo-1') {
-              addToast('TrueScale™ Kalibrierung ist in der Demo-Vorschau aktiv (1:50 Standard).', 'info');
+              addToast(t('truescale_demo_info'), 'info');
               return;
             }
             setIsCalibratingMode(true); 
             setCalibrationModalOpen(true); 
           }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-            <Ruler size={14}/> <span className="hidden sm:inline">TrueScale™</span> Kalibrieren
+            <Ruler size={14}/> <span className="hidden sm:inline">TrueScale™</span> {t('truescale_calibrate_short')}
           </button>
           <button onClick={() => {
             if (isDemoMode || currentProjectId === 'demo-1') {
@@ -1506,13 +1539,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
               }
             }}
-            title="CAD-Plan oder PDF-Bauplan in den Projekt-Workspace hochladen"
+            title={t('upload_plan_tooltip')}
             className={cn(
               "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/30 rounded-xl text-xs font-bold shadow-md transition-all whitespace-nowrap",
               (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
             )}
           >
-            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">Plan hochladen</span><span className="sm:hidden">Hochladen</span>
+            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">{t('upload_plan_btn')}</span><span className="sm:hidden">{t('upload_btn_short')}</span>
             <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
           </label>
           <button onClick={() => {
@@ -1521,10 +1554,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               return;
             }
             handleOpenPdfStudio();
-          }} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? "Plan als hochauflösendes PDF exportieren" : "Erst Plan hochladen zum Exportieren"}>
+          }} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? t('export_pdf_tooltip') : t('export_pdf_tooltip_disabled')}>
             {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span className="hidden sm:inline">PDF Export</span><span className="sm:hidden">PDF</span>
           </button>
-          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-surface hover:bg-white/5 border border-border text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title="Zeichnungen und Ebenen speichern">
+          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-surface hover:bg-white/5 border border-border text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={t('save_layers_tooltip')}>
             {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} {t('save')}
           </button>
           <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center">
@@ -1582,7 +1615,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-4 flex flex-col pointer-events-auto max-h-[40%] shrink-0">
               <div className="flex justify-between items-center mb-3 border-b border-border pb-2 shrink-0">
                 <span className="font-bold text-sm flex items-center gap-2"><Layers size={16}/> {t('layers')}</span>
-                <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg transition-colors" title="Zeichenebene hinzufügen"><Plus size={14}/></button>
+                <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-lg transition-colors" title={t('add_layer')}><Plus size={14}/></button>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
@@ -1591,7 +1624,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     <div className="flex items-center gap-2 mb-2">
                       <button onClick={() => toggleLayerVisibility(layer.id)} className={layer.visible ? "text-text-primary" : "text-text-muted"}>{layer.visible ? <Eye size={14}/> : <EyeOff size={14}/>}</button>
                       <button onClick={() => toggleLayerLock(layer.id)} className={layer.locked ? "text-red-400" : "text-text-muted"}>{layer.locked ? <Lock size={12}/> : <Unlock size={12}/>}</button>
-                      <input value={layer.name} onChange={e => setLayers(layers.map(l=>l.id===layer.id?{...l, name:e.target.value}:l))} className="bg-transparent flex-1 outline-none text-xs font-bold" onClick={() => setActiveLayerId(layer.id)} readOnly={layer.locked} />
+                      <input value={layer.name === 'Standard-Ebene' && currentLang === 'en' ? 'Default Layer' : (layer.name === 'Default Layer' && currentLang === 'de' ? 'Standard-Ebene' : layer.name)} onChange={e => setLayers(layers.map(l=>l.id===layer.id?{...l, name:e.target.value}:l))} className="bg-transparent flex-1 outline-none text-xs font-bold" onClick={() => setActiveLayerId(layer.id)} readOnly={layer.locked} />
                       <button onClick={() => deleteLayer(layer.id)} className="text-red-500 opacity-50 hover:opacity-100"><Trash2 size={12}/></button>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1962,16 +1995,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> TrueScale™ Maßstabs-Kalibrierung</h3>
+              <h3 className="font-semibold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> {t('truescale_modal_title')}</h3>
               <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={18}/></button>
             </div>
 
             <p className="text-xs text-text-muted leading-relaxed">
-              Zeichne eine Referenzlinie über eine bekannte Distanz (z.B. eine Wand) und gib den exakten Wert in Metern ein. Das CAD-System berechnet automatisch den Maßstab (1:50, 1:100 etc.).
+              {t('truescale_modal_desc')}
             </p>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Bekannte Reallänge in Metern (m)</label>
+              <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('known_real_length')}</label>
               <input 
                 type="number"
                 step="0.1"
@@ -1983,9 +2016,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             </div>
 
             <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
-              <button type="button" onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">Abbrechen</button>
+              <button type="button" onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">{t('cancel')}</button>
               <button type="button" onClick={handleApplyScaleCalibration} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2">
-                <Check size={16} /> <span>Maßstab Kalibrieren</span>
+                <Check size={16} /> <span>{t('apply_calibration_btn')}</span>
               </button>
             </div>
           </motion.div>

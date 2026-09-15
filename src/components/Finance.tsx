@@ -61,8 +61,98 @@ function formatBytes(bytes: number) {
 }
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
-  de: { finance_budget: 'Finanzen & Budget', overview: 'Übersicht', budget_plan: 'Budgetplan', payment_control: 'Zahlungskontrolle', cashflow: 'Cashflow & Hauptbuch', all_time: 'Gesamte Zeit', this_year: 'Dieses Jahr', this_month: 'Dieser Monat', today: 'Heute', book_hours: 'Stunden erfassen', quote: 'Offerte', receipt: 'Beleg', invoice: 'Rechnung', planned: 'Geplant', actual_costs: 'Ist-Kosten', variance: 'Abweichung', pos: 'Pos', description: 'Beschreibung', qty: 'Menge', unit: 'Einh.', unit_price: 'EP', total: 'Total', subtotal: 'Zwischentotal', vat: 'MWST', total_amount: 'Bruttobetrag', budget_supplement: 'Nachtrag', internal_hours_time_tracking: 'Interne Stunden', date: 'Datum', budget_assignment: 'Budget-Zuweisung', credit_revenue: 'Haben (Umsatz)', debit_costs: 'Soll (Kosten)', balance_profit: 'Saldo', free_booking: 'Freie Buchung', status: 'Status', open: 'Offen', paid: 'Bezahlt', draft: 'Entwurf', no_bookings_period: 'Keine Buchungen.', book_costs: 'Kosten verbuchen', cancel: 'Abbrechen', take_photo: 'Foto aufnehmen', receipts_photos: 'Belege / Fotos', amount_chf: 'Betrag (CHF)', vendor_company: 'Firma', project: 'Projekt', book_receipt: 'Beleg erfassen', new_project: 'Neues Projekt', client: 'Kunde', new_variant: 'Neue Variante', duplicate_variant: 'Duplizieren', delete_variant: 'Löschen', approve: 'Freigeben', approve_revoke: 'Freigabe widerrufen', approved: 'Freigegeben', add_position: 'Position hinzufügen', new_phase: 'Neue Phase', status_updated: 'Status aktualisiert', update_error: 'Fehler', delete_confirm: 'Wirklich löschen?', booking_deleted: 'Gelöscht', delete_error: 'Fehler beim Löschen', hours_deleted: 'Stunden gelöscht', new_variant_created: 'Variante erstellt', variant_duplicated: 'Dupliziert', min_one_variant: 'Min. eine Variante', cant_delete_approved: 'Freigegebene können nicht gelöscht werden', variant_deleted: 'Gelöscht', revoke_confirm: 'Freigabe widerrufen?', approve_confirm: 'Freigeben?', approval_revoked: 'Widerrufen', budget_approved: 'Freigegeben', analyzing_ai: 'KI analysiert...', ai_failed: 'KI Fehler', receipt_live_received: 'Beleg erkannt!', project_profit: 'Projectgewinn', revenue: 'Umsatz', costs: 'Kosten', total_budget: 'Gesamtbudget', budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', no_budget_present: 'Kein Budget vorhanden', planned_vs_actual: 'Soll vs Ist', payment_control_inactive: 'Zahlungskontrolle Inaktiv', payment_control_inactive_desc: 'Gib ein Budget frei', total_project_excl_vat: 'Total Projekt (exkl. MwSt)', external_costs: 'Externe Kosten', invoices_total: 'Rechnungen Total', expenses_team: 'Spesen', ext_costs: 'Externe Kosten', open_quotes: 'Offene Offerten', quotes: 'Offerten', outgoing_invoices: 'Rechnungen', expenses: 'Spesen', no_entries: 'Keine Einträge', simple_internal: 'Einfach (Intern)', detailed_external: 'Detailliert (Extern)', generate_pdf_book: 'PDF generieren & verbuchen', rotate: 'Tabelle zeigen', remaining: 'Verbleibend', invoice_saved: 'Rechnung erfolgreich gespeichert', save_error: 'Fehler beim Speichern', quote_saved: 'Offerte erfolgreich gespeichert', receipt_booked_success: 'Beleg erfolgreich verbucht', hours_booked_success: 'Stunden erfolgreich erfasst' },
-  en: { finance_budget: 'Finance & Budget', overview: 'Overview', budget_plan: 'Budget Plan', payment_control: 'Payment Control', cashflow: 'Cashflow & Ledger', all_time: 'All Time', this_year: 'This Year', this_month: 'This Month', today: 'Today', book_hours: 'Book Hours', quote: 'Quote', receipt: 'Receipt', invoice: 'Invoice', planned: 'Planned', actual_costs: 'Actual Costs', variance: 'Variance', pos: 'Pos', description: 'Description', qty: 'Qty', unit: 'Unit', unit_price: 'Unit Price', total: 'Total', subtotal: 'Subtotal', vat: 'VAT', total_amount: 'Total Amount', budget_supplement: 'Supplement', internal_hours_time_tracking: 'Internal Hours', date: 'Date', budget_assignment: 'Budget Assignment', credit_revenue: 'Credit (Revenue)', debit_costs: 'Debit (Costs)', balance_profit: 'Balance', free_booking: 'Free Booking', status: 'Status', open: 'Open', paid: 'Paid', draft: 'Draft', no_bookings_period: 'No bookings.', book_costs: 'Book Costs', cancel: 'Cancel', take_photo: 'Take Photo', receipts_photos: 'Receipts / Photos', amount_chf: 'Amount (CHF)', vendor_company: 'Company', project: 'Project', book_receipt: 'Book Receipt', new_project: 'New Project', client: 'Client', new_variant: 'New Variant', duplicate_variant: 'Duplicate', delete_variant: 'Delete', approve: 'Approve', approve_revoke: 'Revoke', approved: 'Approved', add_position: 'Add Pos', new_phase: 'New Phase', status_updated: 'Status updated', update_error: 'Error', delete_confirm: 'Delete?', booking_deleted: 'Deleted', delete_error: 'Error', hours_deleted: 'Hours deleted', new_variant_created: 'Variant created', variant_duplicated: 'Duplicated', min_one_variant: 'Min 1 variant', cant_delete_approved: 'Cant delete approved', variant_deleted: 'Deleted', revoke_confirm: 'Revoke?', approve_confirm: 'Approve?', approval_revoked: 'Revoked', budget_approved: 'Approved', analyzing_ai: 'AI analyzing...', ai_failed: 'AI Failed', receipt_live_received: 'Receipt recognized!', project_profit: 'Project Profit', revenue: 'Revenue', costs: 'Costs', total_budget: 'Total Budget', budget_utilization: 'Budget Utilization', spent: 'Spent', no_budget_present: 'No budget', planned_vs_actual: 'Planned vs Actual', payment_control_inactive: 'Payment Control Inactive', payment_control_inactive_desc: 'Approve a budget', total_project_excl_vat: 'Total Project (excl. VAT)', external_costs: 'External Costs', invoices_total: 'Invoices Total', expenses_team: 'Expenses', ext_costs: 'Ext. Costs', open_quotes: 'Open Quotes', quotes: 'Quotes', outgoing_invoices: 'Invoices', expenses: 'Expenses', no_entries: 'No entries', simple_internal: 'Simple (Internal)', detailed_external: 'Detailed (External)', generate_pdf_book: 'Generate PDF & Book', rotate: 'Show Table', remaining: 'Remaining', invoice_saved: 'Invoice successfully saved', save_error: 'Error saving document', quote_saved: 'Quote successfully saved', receipt_booked_success: 'Receipt successfully booked', hours_booked_success: 'Hours successfully booked' }
+  de: { 
+    finance_budget: 'Finanzen & Budget', overview: 'Übersicht', budget_plan: 'Budgetplan', payment_control: 'Zahlungskontrolle', cashflow: 'Cashflow & Hauptbuch', all_time: 'Gesamte Zeit', this_year: 'Dieses Jahr', this_month: 'Dieser Monat', today: 'Heute', book_hours: 'Stunden erfassen', quote: 'Offerte', receipt: 'Beleg', invoice: 'Rechnung', planned: 'Geplant', actual_costs: 'Ist-Kosten', variance: 'Abweichung', pos: 'Pos', description: 'Beschreibung', qty: 'Menge', unit: 'Einh.', unit_price: 'EP', total: 'Total', subtotal: 'Zwischentotal', vat: 'MWST', total_amount: 'Bruttobetrag', budget_supplement: 'Nachtrag', internal_hours_time_tracking: 'Interne Stunden', date: 'Datum', budget_assignment: 'Budget-Zuweisung', credit_revenue: 'Haben (Umsatz)', debit_costs: 'Soll (Kosten)', balance_profit: 'Saldo', free_booking: 'Freie Buchung', status: 'Status', open: 'Offen', paid: 'Bezahlt', draft: 'Entwurf', no_bookings_period: 'Keine Buchungen.', book_costs: 'Kosten verbuchen', cancel: 'Abbrechen', take_photo: 'Foto aufnehmen', receipts_photos: 'Belege / Fotos', amount_chf: 'Betrag (CHF)', vendor_company: 'Firma', project: 'Projekt', book_receipt: 'Beleg erfassen', new_project: 'Neues Projekt', client: 'Kunde', new_variant: 'Neue Variante', duplicate_variant: 'Duplizieren', delete_variant: 'Löschen', approve: 'Freigeben', approve_revoke: 'Freigabe widerrufen', approved: 'Freigegeben', add_position: 'Position hinzufügen', new_phase: 'Neue Phase', status_updated: 'Status aktualisiert', update_error: 'Fehler', delete_confirm: 'Wirklich löschen?', booking_deleted: 'Gelöscht', delete_error: 'Fehler beim Löschen', hours_deleted: 'Stunden gelöscht', new_variant_created: 'Variante erstellt', variant_duplicated: 'Dupliziert', min_one_variant: 'Min. eine Variante', cant_delete_approved: 'Freigegebene können nicht gelöscht werden', variant_deleted: 'Gelöscht', revoke_confirm: 'Freigabe widerrufen?', approve_confirm: 'Freigeben?', approval_revoked: 'Widerrufen', budget_approved: 'Freigegeben', analyzing_ai: 'KI analysiert...', ai_failed: 'KI Fehler', receipt_live_received: 'Beleg erkannt!', project_profit: 'Projectgewinn', revenue: 'Umsatz', costs: 'Kosten', total_budget: 'Gesamtbudget', budget_utilization: 'Budget Auslastung', spent: 'Ausgegeben', no_budget_present: 'Kein Budget vorhanden', planned_vs_actual: 'Soll vs Ist', payment_control_inactive: 'Zahlungskontrolle Inaktiv', payment_control_inactive_desc: 'Gib ein Budget frei', total_project_excl_vat: 'Total Projekt (exkl. MwSt)', external_costs: 'Externe Kosten', invoices_total: 'Rechnungen Total', expenses_team: 'Spesen', ext_costs: 'Externe Kosten', open_quotes: 'Offene Offerten', quotes: 'Offerten', outgoing_invoices: 'Rechnungen', expenses: 'Spesen', no_entries: 'Keine Einträge', simple_internal: 'Einfach (Intern)', detailed_external: 'Detailliert (Extern)', generate_pdf_book: 'PDF generieren & verbuchen', rotate: 'Tabelle zeigen', remaining: 'Verbleibend', invoice_saved: 'Rechnung erfolgreich gespeichert', save_error: 'Fehler beim Speichern', quote_saved: 'Offerte erfolgreich gespeichert', receipt_booked_success: 'Beleg erfolgreich verbucht', hours_booked_success: 'Stunden erfolgreich erfasst',
+    simple_internal_own: 'Einfach (Intern: Eigenleistung)', detailed_external_tm: 'Detailliert (Extern: Partner & Regie)',
+    internal_time_hint: 'Interne Zeiterfassung für eigene Mitarbeiter, Bauleiter & Projektleitung.',
+    external_time_hint: 'Nachweisbare Regiestunden & Fremdleistung externer Partner, Ingenieure oder Handwerker.',
+    partner_company_planner: 'Partner-Firma / Planer', specialist_assignee: 'Fachkraft / Ausführende Person',
+    po_order_number: 'Auftrags- / Bestellnummer (PO)', report_timesheet_no: 'Rapport- / Regieschein-Nr.',
+    report_date: 'Rapportdatum', hours_label: 'Stunden (h)', rate_label: 'Ansatz (CHF/h)',
+    bkp_pos_label: 'BKP / Vergabe-Position', select_bkp_pos: 'BKP-Position wählen...',
+    review_billing_status: 'Prüf- & Abrechnungsstatus', submitted_for_review: 'Zur Prüfung eingereicht',
+    reviewed_approved: 'Geprüft & Freigegeben', already_billed: 'Bereits verrechnet',
+    approval_by_lead: 'Freigabe durch (Projektleiter)', approval_pending: 'Freigabe noch ausstehend...',
+    work_performed_report: 'Ausgeführte Arbeiten gemäss Rapport',
+    work_performed_placeholder: 'Genaue Beschreibung der erbrachten Regiearbeiten gemäss Rapport...',
+    book_submit_btn: 'Buchen',
+    select_file: 'Datei wählen', phone_scan: 'Handy-Scan', close_btn: 'Schliessen',
+    smartphone_scanner: 'Smartphone Scanner',
+    smartphone_scanner_desc: 'QR-Code mit Smartphone scannen, um Belege direkt von der Kamera hierher zu senden.',
+    drop_receipts_hint: 'Belege hier ablegen oder klicken',
+    receipt_formats_hint: 'JPG, PNG oder PDF • Automatische KI-Erkennung',
+    reading_receipt: 'Beleg wird ausgelesen...',
+    scanned_receipts: 'Gescannte Belege',
+    no_receipts_uploaded: 'Noch keine Belege hochgeladen.',
+    booking_details: 'Buchungsdetails',
+    internal_expenses_tab: 'Intern (Spesen & Auslagen)',
+    external_creditor_tab: 'Externer Kreditor (Lieferant)',
+    expense_report_hint: 'Spesenabrechnung: Rückerstattung für privat vorgelegte Auslagen oder Firmenkartenbelege.',
+    employee_beneficiary: 'Mitarbeiter / Begünstigter',
+    select_team_member: 'Teammitglied wählen...',
+    merchant_shop: 'Händler / Geschäft (Shop)',
+    vat_rate_label: 'MWST-Satz',
+    expense_cat_label: 'Spesenkategorie',
+    payment_method_label: 'Zahlungsart (Auslage via)',
+    reimbursement_status: 'Status Rückerstattung',
+    creditor_invoice_hint: 'Kreditorenrechnung: Offizielle Handwerker-, Material- oder Planerrechnung erfassen.',
+    company_creditor_supplier: 'Firma / Kreditor (Lieferant)',
+    contact_person_opt: 'Ansprechperson (optional)',
+    creditor_invoice_no: 'Kreditoren-Rechnungs-Nr.',
+    supplier_vat_no: 'MWST-Nr. des Lieferanten',
+    invoice_date: 'Rechnungsdatum',
+    due_date_terms: 'Fälligkeit (Zahlungsziel)',
+    skonto_rate_label: 'Skonto %',
+    expense_category_creditor: 'Aufwandskategorie',
+    iban_qr_optional: 'IBAN / QR-IBAN (optional)',
+    invoice_review_status: 'Status Rechnungsprüfung'
+  },
+  en: { 
+    finance_budget: 'Finance & Budget', overview: 'Overview', budget_plan: 'Budget Plan', payment_control: 'Payment Control', cashflow: 'Cashflow & Ledger', all_time: 'All Time', this_year: 'This Year', this_month: 'This Month', today: 'Today', book_hours: 'Book Hours', quote: 'Quote', receipt: 'Receipt', invoice: 'Invoice', planned: 'Planned', actual_costs: 'Actual Costs', variance: 'Variance', pos: 'Pos', description: 'Description', qty: 'Qty', unit: 'Unit', unit_price: 'Unit Price', total: 'Total', subtotal: 'Subtotal', vat: 'VAT', total_amount: 'Total Amount', budget_supplement: 'Supplement', internal_hours_time_tracking: 'Internal Hours', date: 'Date', budget_assignment: 'Budget Assignment', credit_revenue: 'Credit (Revenue)', debit_costs: 'Debit (Costs)', balance_profit: 'Balance', free_booking: 'Free Booking', status: 'Status', open: 'Open', paid: 'Paid', draft: 'Draft', no_bookings_period: 'No bookings.', book_costs: 'Book Costs', cancel: 'Cancel', take_photo: 'Take Photo', receipts_photos: 'Receipts / Photos', amount_chf: 'Amount (CHF)', vendor_company: 'Company', project: 'Project', book_receipt: 'Book Receipt', new_project: 'New Project', client: 'Client', new_variant: 'New Variant', duplicate_variant: 'Duplicate', delete_variant: 'Delete', approve: 'Approve', approve_revoke: 'Revoke', approved: 'Approved', add_position: 'Add Pos', new_phase: 'New Phase', status_updated: 'Status updated', update_error: 'Error', delete_confirm: 'Delete?', booking_deleted: 'Deleted', delete_error: 'Error', hours_deleted: 'Hours deleted', new_variant_created: 'Variant created', variant_duplicated: 'Duplicated', min_one_variant: 'Min 1 variant', cant_delete_approved: 'Cant delete approved', variant_deleted: 'Deleted', revoke_confirm: 'Revoke?', approve_confirm: 'Approve?', approval_revoked: 'Revoked', budget_approved: 'Approved', analyzing_ai: 'AI analyzing...', ai_failed: 'AI Failed', receipt_live_received: 'Receipt recognized!', project_profit: 'Project Profit', revenue: 'Revenue', costs: 'Costs', total_budget: 'Total Budget', budget_utilization: 'Budget Utilization', spent: 'Spent', no_budget_present: 'No budget', planned_vs_actual: 'Planned vs Actual', payment_control_inactive: 'Payment Control Inactive', payment_control_inactive_desc: 'Approve a budget', total_project_excl_vat: 'Total Project (excl. VAT)', external_costs: 'External Costs', invoices_total: 'Invoices Total', expenses_team: 'Expenses', ext_costs: 'Ext. Costs', open_quotes: 'Open Quotes', quotes: 'Quotes', outgoing_invoices: 'Invoices', expenses: 'Expenses', no_entries: 'No entries', simple_internal: 'Simple (Internal)', detailed_external: 'Detailed (External)', generate_pdf_book: 'Generate PDF & Book', rotate: 'Show Table', remaining: 'Remaining', invoice_saved: 'Invoice successfully saved', save_error: 'Error saving document', quote_saved: 'Quote successfully saved', receipt_booked_success: 'Receipt successfully booked', hours_booked_success: 'Hours successfully booked',
+    simple_internal_own: 'Simple (Internal: In-house)', detailed_external_tm: 'Detailed (External: Partner & T&M)',
+    internal_time_hint: 'Internal time tracking for employees, site managers & project leads.',
+    external_time_hint: 'Verifiable T&M hours & subcontractor services from partners, engineers or contractors.',
+    partner_company_planner: 'Partner Company / Planner', specialist_assignee: 'Specialist / Assignee',
+    po_order_number: 'Order / PO Number', report_timesheet_no: 'Timesheet / Daily Report No.',
+    report_date: 'Report Date', hours_label: 'Hours (h)', rate_label: 'Rate (CHF/h)',
+    bkp_pos_label: 'BKP / Cost Code', select_bkp_pos: 'Select BKP position...',
+    review_billing_status: 'Review & Billing Status', submitted_for_review: 'Submitted for review',
+    reviewed_approved: 'Approved & Verified', already_billed: 'Already billed',
+    approval_by_lead: 'Approval by (Project Lead)', approval_pending: 'Approval pending...',
+    work_performed_report: 'Work performed according to report',
+    work_performed_placeholder: 'Detailed description of T&M work performed according to report...',
+    book_submit_btn: 'Book',
+    select_file: 'Select File', phone_scan: 'Phone Scan', close_btn: 'Close',
+    smartphone_scanner: 'Smartphone Scanner',
+    smartphone_scanner_desc: 'Scan QR code with smartphone to send receipts directly from camera here.',
+    drop_receipts_hint: 'Drop receipts here or click',
+    receipt_formats_hint: 'JPG, PNG or PDF • Automatic AI recognition',
+    reading_receipt: 'Reading receipt...',
+    scanned_receipts: 'Scanned Receipts',
+    no_receipts_uploaded: 'No receipts uploaded yet.',
+    booking_details: 'Booking Details',
+    internal_expenses_tab: 'Internal (Expenses)',
+    external_creditor_tab: 'External Creditor (Supplier)',
+    expense_report_hint: 'Expense report: Reimbursement for out-of-pocket expenses or corporate card receipts.',
+    employee_beneficiary: 'Employee / Beneficiary',
+    select_team_member: 'Select team member...',
+    merchant_shop: 'Merchant / Store (Shop)',
+    vat_rate_label: 'VAT Rate',
+    expense_cat_label: 'Expense Category',
+    payment_method_label: 'Payment Method (Paid via)',
+    reimbursement_status: 'Reimbursement Status',
+    creditor_invoice_hint: 'Supplier invoice: Record official contractor, material or planner invoice.',
+    company_creditor_supplier: 'Company / Creditor (Supplier)',
+    contact_person_opt: 'Contact Person (Optional)',
+    creditor_invoice_no: 'Supplier Invoice No.',
+    supplier_vat_no: 'Supplier VAT No.',
+    invoice_date: 'Invoice Date',
+    due_date_terms: 'Due Date (Payment Terms)',
+    skonto_rate_label: 'Discount %',
+    expense_category_creditor: 'Expense Category',
+    iban_qr_optional: 'IBAN / QR-IBAN (Optional)',
+    invoice_review_status: 'Invoice Review Status'
+  }
 };
 
 const numberInputClass = "bg-transparent outline-none w-full text-right focus:border-b focus:border-accent-ai/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]";
@@ -3222,14 +3312,14 @@ export default function Finance() {
                     onClick={() => setTimeData(prev => ({ ...prev, type: 'internal', hourlyRate: prev.hourlyRate === 165 ? 120 : (prev.hourlyRate || 120) }))}
                     className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", timeData.type === 'internal' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
-                    <User size={14} /> Einfach (Intern: Eigenleistung)
+                    <User size={14} /> {t('simple_internal_own')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setTimeData(prev => ({ ...prev, type: 'external', hourlyRate: prev.hourlyRate === 120 ? 165 : (prev.hourlyRate || 165) }))}
                     className={cn("flex-1 py-2 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1.5", timeData.type === 'external' ? "bg-orange-500 text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
                   >
-                    <FileSpreadsheet size={14} /> Detailliert (Extern: Partner & Regie)
+                    <FileSpreadsheet size={14} /> {t('detailed_external_tm')}
                   </button>
                 </div>
 
@@ -3237,24 +3327,24 @@ export default function Finance() {
                   <>
                     <div className="text-xs text-text-muted bg-orange-500/10 border border-orange-500/20 p-2.5 rounded-lg flex items-center gap-2">
                       <Clock size={15} className="text-orange-500 shrink-0" />
-                      <span>Interne Zeiterfassung für eigene Mitarbeiter, Bauleiter & Projektleitung.</span>
+                      <span>{t('internal_time_hint')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Mitarbeiter</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Mitarbeiter' : 'Employee'}</label>
                         <select
                           required
                           value={timeData.userId}
                           onChange={(e) => setTimeData({ ...timeData, userId: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none"
                         >
-                          <option value="" disabled className="bg-surface">Mitarbeiter wählen...</option>
+                          <option value="" disabled className="bg-surface">{currentLang === 'de' ? 'Mitarbeiter wählen...' : 'Select employee...'}</option>
                           {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
                             <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
                           ))}
                           {(!projectMembers || projectMembers.filter((m: any) => m.projectId === currentProjectId).length === 0) && currentUser && (
-                            <option value={currentUser.uid} className="bg-surface">{currentUser.email || 'Aktueller Benutzer'}</option>
+                            <option value={currentUser.uid} className="bg-surface">{currentUser.email || (currentLang === 'de' ? 'Aktueller Benutzer' : 'Current user')}</option>
                           )}
                         </select>
                       </div>
@@ -3266,47 +3356,47 @@ export default function Finance() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Arbeitszeit brutto (h)</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Arbeitszeit brutto (h)' : 'Gross work time (h)'}</label>
                         <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 8.5" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Pausenregelung</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Pausenregelung' : 'Break rule'}</label>
                         <select
                           value={timeData.breakMinutes}
                           onChange={(e) => setTimeData({ ...timeData, breakMinutes: Number(e.target.value) || 0 })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer"
                         >
-                          <option value={0} className="bg-surface">Keine Pause (0 Min)</option>
-                          <option value={15} className="bg-surface">15 Min Kurzpause</option>
-                          <option value={30} className="bg-surface">30 Min Mittagspause</option>
-                          <option value={45} className="bg-surface">45 Min Pause</option>
-                          <option value={60} className="bg-surface">60 Min Mittagspause</option>
+                          <option value={0} className="bg-surface">{currentLang === 'de' ? 'Keine Pause (0 Min)' : 'No break (0 min)'}</option>
+                          <option value={15} className="bg-surface">{currentLang === 'de' ? '15 Min Kurzpause' : '15 min short break'}</option>
+                          <option value={30} className="bg-surface">{currentLang === 'de' ? '30 Min Mittagspause' : '30 min lunch break'}</option>
+                          <option value={45} className="bg-surface">{currentLang === 'de' ? '45 Min Pause' : '45 min break'}</option>
+                          <option value={60} className="bg-surface">{currentLang === 'de' ? '60 Min Mittagspause' : '60 min lunch break'}</option>
                         </select>
                       </div>
                     </div>
 
                     {timeData.breakMinutes > 0 && timeData.hours > 0 && (
                       <div className="text-[11px] font-medium text-text-muted bg-surface/70 border border-border/40 px-3 py-1.5 rounded-lg flex items-center justify-between">
-                        <span>Pausenabzug: {timeData.breakMinutes} Minuten</span>
-                        <span className="font-bold text-text-primary">Effektive Netto-Zeit: {Math.max(0, timeData.hours - (timeData.breakMinutes / 60)).toFixed(2)} h</span>
+                        <span>{currentLang === 'de' ? `Pausenabzug: ${timeData.breakMinutes} Minuten` : `Break deduction: ${timeData.breakMinutes} minutes`}</span>
+                        <span className="font-bold text-text-primary">{currentLang === 'de' ? 'Effektive Netto-Zeit:' : 'Effective net time:'} {Math.max(0, timeData.hours - (timeData.breakMinutes / 60)).toFixed(2)} h</span>
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Interner Ansatz (CHF/h)</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Interner Ansatz (CHF/h)' : 'Internal hourly rate (CHF/h)'}</label>
                         <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 120" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Überstunden-Konto</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Überstunden-Konto' : 'Overtime account'}</label>
                         <select
                           value={timeData.overtimeType}
                           onChange={(e) => setTimeData({ ...timeData, overtimeType: e.target.value as any })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer"
                         >
-                          <option value="normal" className="bg-surface">Normalarbeitszeit</option>
-                          <option value="overtime" className="bg-surface">Überstunden (+) Gutschrift</option>
-                          <option value="compensation" className="bg-surface">Kompensation (-) Zeitausgleich</option>
+                          <option value="normal" className="bg-surface">{currentLang === 'de' ? 'Normalarbeitszeit' : 'Regular hours'}</option>
+                          <option value="overtime" className="bg-surface">{currentLang === 'de' ? 'Überstunden (+) Gutschrift' : 'Overtime (+) credit'}</option>
+                          <option value="compensation" className="bg-surface">{currentLang === 'de' ? 'Kompensation (-) Zeitausgleich' : 'Compensation (-) time-off'}</option>
                         </select>
                       </div>
                     </div>
@@ -3314,12 +3404,12 @@ export default function Finance() {
                     {timeData.hours > 0 && timeData.hourlyRate > 0 && (
                       <div className="text-xs font-bold text-orange-500 bg-orange-500/10 border border-orange-500/20 p-2.5 rounded-lg flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                          <span>Aufwand ({Math.max(0, timeData.hours - (timeData.breakMinutes / 60)).toFixed(2)}h × CHF {timeData.hourlyRate}):</span>
+                          <span>{currentLang === 'de' ? 'Aufwand' : 'Total'} ({Math.max(0, timeData.hours - (timeData.breakMinutes / 60)).toFixed(2)}h × CHF {timeData.hourlyRate}):</span>
                           {timeData.overtimeType === 'overtime' && (
-                            <span className="text-[10px] font-extrabold bg-orange-500 text-white px-1.5 py-0.5 rounded">+ Überstunden</span>
+                            <span className="text-[10px] font-extrabold bg-orange-500 text-white px-1.5 py-0.5 rounded">{currentLang === 'de' ? '+ Überstunden' : '+ Overtime'}</span>
                           )}
                           {timeData.overtimeType === 'compensation' && (
-                            <span className="text-[10px] font-extrabold bg-blue-500 text-white px-1.5 py-0.5 rounded">- Kompensation</span>
+                            <span className="text-[10px] font-extrabold bg-blue-500 text-white px-1.5 py-0.5 rounded">{currentLang === 'de' ? '- Kompensation' : '- Compensation'}</span>
                           )}
                         </div>
                         <span>CHF {formatCHF(Math.max(0, timeData.hours - (timeData.breakMinutes / 60)) * Number(timeData.hourlyRate))}</span>
@@ -3327,9 +3417,9 @@ export default function Finance() {
                     )}
 
                     <div>
-                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Phase / SIA- / Budget-Zuweisung</label>
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Phase / SIA- / Budget-Zuweisung' : 'Phase / SIA / Budget allocation'}</label>
                       <select value={timeData.budgetPosId} onChange={(e) => setTimeData({ ...timeData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                        <option value="" className="bg-surface">Allgemeine Regiestunden (Ohne Phasenzuweisung)</option>
+                        <option value="" className="bg-surface">{currentLang === 'de' ? 'Allgemeine Regiestunden (Ohne Phasenzuweisung)' : 'General T&M hours (No phase assignment)'}</option>
                         <optgroup label="SIA Phasen (SIA 102 / 108 / 112)" className="bg-surface font-bold text-orange-500">
                           <option value="sia_31">SIA 31: Vorprojekt</option>
                           <option value="sia_32">SIA 32: Bauprojekt</option>
@@ -3341,7 +3431,7 @@ export default function Finance() {
                         </optgroup>
                         {budgetGroups.length > 0 && budgetGroups.map((group) => (
                           <optgroup key={group.id} label={`BKP ${group.pos} ${group.title}`} className="bg-surface font-bold">
-                            <option value={group.id} className="font-medium">{group.pos} {group.title} (Gesamte Phase)</option>
+                            <option value={group.id} className="font-medium">{group.pos} {group.title} {currentLang === 'de' ? '(Gesamte Phase)' : '(Entire phase)'}</option>
                             {group.items.map((item) => (
                               <option key={item.id} value={item.id} className="font-normal">&nbsp;&nbsp;↳ {item.pos} {item.description}</option>
                             ))}
@@ -3358,66 +3448,66 @@ export default function Finance() {
                         onChange={(e) => setTimeData({ ...timeData, isBillable: e.target.checked })}
                         className="rounded border-border text-orange-500 focus:ring-orange-500 w-4 h-4 cursor-pointer"
                       />
-                      <label htmlFor="time-is-billable" className="text-xs font-bold text-text-primary cursor-pointer">An Kunden verrechenbar</label>
+                      <label htmlFor="time-is-billable" className="text-xs font-bold text-text-primary cursor-pointer">{currentLang === 'de' ? 'An Kunden verrechenbar' : 'Billable to client'}</label>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Tätigkeitsbeschrieb</label>
-                      <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Was wurde gemacht (z.B. Detailpläne Fassade überarbeitet, Bauherrensitzung)..." />
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{currentLang === 'de' ? 'Tätigkeitsbeschrieb' : 'Activity description'}</label>
+                      <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder={currentLang === 'de' ? 'Was wurde gemacht (z.B. Detailpläne Fassade überarbeitet, Bauherrensitzung)...' : 'What was done (e.g. revised facade detail drawings, client meeting)...'} />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="text-xs text-text-muted bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex items-center gap-2">
                       <FileSpreadsheet size={15} className="text-blue-500 shrink-0" />
-                      <span>Nachweisbare Regiestunden & Fremdleistung externer Partner, Ingenieure oder Handwerker.</span>
+                      <span>{t('external_time_hint')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Partner-Firma / Planer</label>
-                        <input type="text" required placeholder="z.B. Geotechnik Schweiz AG" value={timeData.company} onChange={(e) => setTimeData({ ...timeData, company: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('partner_company_planner')}</label>
+                        <input type="text" required placeholder={currentLang === 'de' ? 'z.B. Geotechnik Schweiz AG' : 'e.g. Geotechnik Ltd'} value={timeData.company} onChange={(e) => setTimeData({ ...timeData, company: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Fachkraft / Ausführende Person</label>
-                        <input type="text" placeholder="z.B. Peter Keller (Bauleiter)" value={timeData.specialistName} onChange={(e) => setTimeData({ ...timeData, specialistName: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none" />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Auftrags- / Bestellnummer (PO)</label>
-                        <input type="text" placeholder="z.B. PO-2026-084 / Werkvertrag #12" value={timeData.orderNumber} onChange={(e) => setTimeData({ ...timeData, orderNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Rapport- / Regieschein-Nr.</label>
-                        <input type="text" required placeholder="z.B. Rapport #104 / 2026" value={timeData.rapportNumber} onChange={(e) => setTimeData({ ...timeData, rapportNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('specialist_assignee')}</label>
+                        <input type="text" placeholder={currentLang === 'de' ? 'z.B. Peter Keller (Bauleiter)' : 'e.g. Peter Keller (Site Manager)'} value={timeData.specialistName} onChange={(e) => setTimeData({ ...timeData, specialistName: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Rapportdatum</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('po_order_number')}</label>
+                        <input type="text" placeholder={currentLang === 'de' ? 'z.B. PO-2026-084 / Werkvertrag #12' : 'e.g. PO-2026-084 / Contract #12'} value={timeData.orderNumber} onChange={(e) => setTimeData({ ...timeData, orderNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('report_timesheet_no')}</label>
+                        <input type="text" required placeholder={currentLang === 'de' ? 'z.B. Rapport #104 / 2026' : 'e.g. Report #104 / 2026'} value={timeData.rapportNumber} onChange={(e) => setTimeData({ ...timeData, rapportNumber: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('report_date')}</label>
                         <input type="date" required value={timeData.date} onChange={(e) => setTimeData({ ...timeData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Stunden (h)</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('hours_label')}</label>
                         <input type="number" step="0.25" min="0.25" required value={timeData.hours || ''} onChange={(e) => setTimeData({ ...timeData, hours: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 8.0" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ansatz (CHF/h)</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('rate_label')}</label>
                         <input type="number" required value={timeData.hourlyRate || ''} onChange={(e) => setTimeData({ ...timeData, hourlyRate: parseFloat(e.target.value) || 0 })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none" placeholder="z.B. 165" />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">BKP / Vergabe-Position</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('bkp_pos_label')}</label>
                         <select required value={timeData.budgetPosId} onChange={(e) => setTimeData({ ...timeData, budgetPosId: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value="" disabled className="bg-surface">BKP-Position wählen...</option>
+                          <option value="" disabled className="bg-surface">{t('select_bkp_pos')}</option>
                           {budgetGroups.map((group) => (
                             <optgroup key={group.id} label={`${group.pos} ${group.title}`} className="bg-surface font-bold">
-                              <option value={group.id} className="font-medium">{group.pos} {group.title} (Gesamte Phase)</option>
+                              <option value={group.id} className="font-medium">{group.pos} {group.title} {currentLang === 'de' ? '(Gesamte Phase)' : '(Entire phase)'}</option>
                               {group.items.map((item) => (
                                 <option key={item.id} value={item.id} className="font-normal">&nbsp;&nbsp;↳ {item.pos} {item.description}</option>
                               ))}
@@ -3429,37 +3519,37 @@ export default function Finance() {
 
                     {timeData.hours > 0 && timeData.hourlyRate > 0 && (
                       <div className="text-xs font-bold text-blue-500 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                        <span>Total Fremdleistung ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
+                        <span>{currentLang === 'de' ? 'Total Fremdleistung' : 'Total external service'} ({timeData.hours}h × CHF {timeData.hourlyRate}):</span>
                         <span>CHF {formatCHF(Number(timeData.hours) * Number(timeData.hourlyRate))}</span>
                       </div>
                     )}
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Prüf- & Abrechnungsstatus</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('review_billing_status')}</label>
                         <select value={timeData.approvalStatus} onChange={(e) => setTimeData({ ...timeData, approvalStatus: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value="Zur Prüfung eingereicht" className="bg-surface">Zur Prüfung eingereicht</option>
-                          <option value="Geprüft & Freigegeben" className="bg-surface">Geprüft & Freigegeben</option>
-                          <option value="Bereits verrechnet" className="bg-surface">Bereits verrechnet</option>
+                          <option value="Zur Prüfung eingereicht" className="bg-surface">{t('submitted_for_review')}</option>
+                          <option value="Geprüft & Freigegeben" className="bg-surface">{t('reviewed_approved')}</option>
+                          <option value="Bereits verrechnet" className="bg-surface">{t('already_billed')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Freigabe durch (Projektleiter)</label>
+                        <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('approval_by_lead')}</label>
                         <select value={timeData.approvedBy} onChange={(e) => setTimeData({ ...timeData, approvedBy: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-bold text-text-primary outline-none cursor-pointer">
-                          <option value="" className="bg-surface">Freigabe noch ausstehend...</option>
+                          <option value="" className="bg-surface">{t('approval_pending')}</option>
                           {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
                             <option key={member.userId} value={member.userEmail || member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
                           ))}
                           {currentUser && (
-                            <option value={currentUser.email || 'Aktueller Projektleiter'} className="bg-surface">{currentUser.email || 'Aktueller Projektleiter'}</option>
+                            <option value={currentUser.email || (currentLang === 'de' ? 'Aktueller Projektleiter' : 'Current Project Lead')} className="bg-surface">{currentUser.email || (currentLang === 'de' ? 'Aktueller Projektleiter' : 'Current Project Lead')}</option>
                           )}
                         </select>
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">Ausgeführte Arbeiten gemäss Rapport</label>
-                      <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder="Genaue Beschreibung der erbrachten Regiearbeiten gemäss Rapport..." />
+                      <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 block">{t('work_performed_report')}</label>
+                      <textarea required value={timeData.description} onChange={(e) => setTimeData({ ...timeData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm font-medium text-text-primary outline-none resize-none h-20" placeholder={t('work_performed_placeholder')} />
                     </div>
                   </>
                 )}
@@ -3469,7 +3559,7 @@ export default function Finance() {
             <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
               <button onClick={() => setShowTimeModal(false)} className="px-5 py-2 text-sm font-bold text-text-muted border border-border rounded-lg hover:text-text-primary transition-colors">{t('cancel')}</button>
               <button form="time-form" type="submit" disabled={isSubmitting} className="px-5 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-orange-600 transition-colors shadow-lg shadow-orange-500/20 disabled:opacity-50">
-                {isSubmitting && <Loader2 size={16} className="animate-spin" />} Buchen
+                {isSubmitting && <Loader2 size={16} className="animate-spin" />} {t('book_submit_btn')}
               </button>
             </div>
           </motion.div>
@@ -3487,7 +3577,7 @@ export default function Finance() {
                   <Receipt className="text-red-500 shrink-0" size={20} /> {t('receipts_photos')}
                 </h3>
                 <span className="text-[11px] font-bold bg-red-500/10 text-red-500 px-2.5 py-0.5 rounded-full shrink-0">
-                  {incomingReceipts.length} {incomingReceipts.length === 1 ? 'Beleg' : 'Belege'}
+                  {incomingReceipts.length} {incomingReceipts.length === 1 ? (currentLang === 'de' ? 'Beleg' : 'Receipt') : (currentLang === 'de' ? 'Belege' : 'Receipts')}
                 </span>
               </div>
 
@@ -3498,7 +3588,7 @@ export default function Finance() {
                   onClick={() => mobileCameraRef.current?.click()}
                   disabled={isAnalyzingAI}
                   className="p-2.5 bg-surface hover:bg-white/5 border border-border/60 hover:border-blue-500/50 rounded-xl text-xs font-bold text-text-primary flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50 group"
-                  title="Foto mit Kamera aufnehmen"
+                  title={currentLang === 'de' ? "Foto mit Kamera aufnehmen" : "Take photo with camera"}
                 >
                   <Camera size={18} className="text-blue-500 group-hover:scale-110 transition-transform" />
                   <span className="text-[11px] text-center">{t('take_photo')}</span>
@@ -3509,10 +3599,10 @@ export default function Finance() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isAnalyzingAI}
                   className="p-2.5 bg-surface hover:bg-white/5 border border-border/60 hover:border-emerald-500/50 rounded-xl text-xs font-bold text-text-primary flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm disabled:opacity-50 group"
-                  title="PDF oder Belegbild auswählen"
+                  title={currentLang === 'de' ? "PDF oder Belegbild auswählen" : "Select PDF or receipt image"}
                 >
                   <UploadCloud size={18} className="text-emerald-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-[11px] text-center">Datei wählen</span>
+                  <span className="text-[11px] text-center">{t('select_file')}</span>
                 </button>
 
                 <button
@@ -3524,10 +3614,10 @@ export default function Finance() {
                       ? "bg-purple-500 text-white border-purple-500"
                       : "bg-surface hover:bg-white/5 text-text-primary border-border/60 hover:border-purple-500/50"
                   )}
-                  title="Smartphone QR-Code für Direkt-Scan anzeigen"
+                  title={currentLang === 'de' ? "Smartphone QR-Code für Direkt-Scan anzeigen" : "Show smartphone QR code for direct scan"}
                 >
                   <Smartphone size={18} className={cn(showMobileQrCode ? "text-white" : "text-purple-400 group-hover:scale-110 transition-transform")} />
-                  <span className="text-[11px] text-center">{showMobileQrCode ? 'Schliessen' : 'Handy-Scan'}</span>
+                  <span className="text-[11px] text-center">{showMobileQrCode ? t('close_btn') : t('phone_scan')}</span>
                 </button>
               </div>
 
@@ -3546,7 +3636,7 @@ export default function Finance() {
                   >
                     <div className="flex items-center justify-between w-full mb-2">
                       <span className="text-xs font-bold text-purple-400 flex items-center gap-1.5">
-                        <Smartphone size={14} /> Smartphone Scanner
+                        <Smartphone size={14} /> {t('smartphone_scanner')}
                       </span>
                       <button
                         type="button"
@@ -3560,7 +3650,7 @@ export default function Finance() {
                       <QRCode value={mobileUploadUrl} size={110} />
                     </div>
                     <p className="text-[11px] text-text-muted leading-relaxed max-w-[240px]">
-                      QR-Code mit Smartphone scannen, um Belege direkt von der Kamera hierher zu senden.
+                      {t('smartphone_scanner_desc')}
                     </p>
                   </motion.div>
                 )}
@@ -3577,22 +3667,22 @@ export default function Finance() {
                   <div className="absolute inset-0 bg-surface/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
                     <Loader2 size={28} className="text-red-500 animate-spin mb-2" />
                     <span className="text-xs font-bold text-red-500 uppercase tracking-widest">{t('analyzing_ai')}</span>
-                    <span className="text-[11px] text-text-muted mt-0.5">Beleg wird ausgelesen...</span>
+                    <span className="text-[11px] text-text-muted mt-0.5">{t('reading_receipt')}</span>
                   </div>
                 )}
                 <div className="p-2.5 rounded-full bg-red-500/10 text-red-500 mb-2 group-hover:scale-110 transition-transform">
                   <UploadCloud size={22} />
                 </div>
-                <div className="text-xs font-bold text-text-primary mb-0.5">Belege hier ablegen oder klicken</div>
-                <div className="text-[10px] text-text-muted">JPG, PNG oder PDF • Automatische KI-Erkennung</div>
+                <div className="text-xs font-bold text-text-primary mb-0.5">{t('drop_receipts_hint')}</div>
+                <div className="text-[10px] text-text-muted">{t('receipt_formats_hint')}</div>
               </div>
 
               {/* Scanned Receipts Grid */}
               <div className="flex-1 min-h-0 flex flex-col">
-                <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2.5 shrink-0">Gescannte Belege</h4>
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-2.5 shrink-0">{t('scanned_receipts')}</h4>
                 {incomingReceipts.length === 0 ? (
                   <div className="flex-1 border border-dashed border-border/50 rounded-xl flex items-center justify-center text-text-muted text-xs p-6 text-center bg-background/30">
-                    Noch keine Belege hochgeladen.
+                    {t('no_receipts_uploaded')}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 gap-2.5 overflow-y-auto custom-scrollbar pr-1 pb-2">
@@ -3619,7 +3709,7 @@ export default function Finance() {
             {/* RIGHT SIDE: DATA FORM */}
             <div className="w-full lg:w-7/12 flex flex-col h-full bg-surface min-h-0">
               <div className="p-5 sm:p-6 border-b border-border/50 flex justify-between items-center shrink-0">
-                <h3 className="font-bold text-lg text-text-primary">Buchungsdetails</h3>
+                <h3 className="font-bold text-lg text-text-primary">{t('booking_details')}</h3>
                 <button onClick={() => setShowReceiptStudio(false)} className="p-2 bg-background border border-border rounded-lg hover:text-red-500 transition-colors"><X size={18} /></button>
               </div>
 
@@ -3641,7 +3731,7 @@ export default function Finance() {
                     )}
                   >
                     <User size={14} className="shrink-0" />
-                    <span className="truncate">Intern (Spesen & Auslagen)</span>
+                    <span className="truncate">{t('internal_expenses_tab')}</span>
                   </button>
                   <button
                     type="button"
@@ -3659,7 +3749,7 @@ export default function Finance() {
                     )}
                   >
                     <Building2 size={14} className="shrink-0" />
-                    <span className="truncate">Externer Kreditor (Lieferant)</span>
+                    <span className="truncate">{t('external_creditor_tab')}</span>
                   </button>
                 </div>
 
@@ -3668,12 +3758,12 @@ export default function Finance() {
                   <div className="space-y-4">
                     <div className="text-xs text-text-muted bg-red-500/10 border border-red-500/20 p-2.5 rounded-lg flex items-center gap-2">
                       <Receipt size={15} className="text-red-500 shrink-0" />
-                      <span>Spesenabrechnung: Rückerstattung für privat vorgelegte Auslagen oder Firmenkartenbelege.</span>
+                      <span>{t('expense_report_hint')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Mitarbeiter / Begünstigter</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('employee_beneficiary')}</label>
                         <select
                           required
                           value={incomingData.beneficiaryUserId}
@@ -3687,24 +3777,24 @@ export default function Finance() {
                           }}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate"
                         >
-                          <option value="" disabled className="bg-surface">Teammitglied wählen...</option>
+                          <option value="" disabled className="bg-surface">{t('select_team_member')}</option>
                           {projectMembers?.filter((m: any) => m.projectId === currentProjectId).map((member: any) => (
                             <option key={member.userId} value={member.userId} className="bg-surface">{member.userEmail || member.userId}</option>
                           ))}
                           {(!projectMembers || projectMembers.filter((m: any) => m.projectId === currentProjectId).length === 0) && currentUser && (
-                            <option value={currentUser.uid} className="bg-surface">{currentUser.email || 'Aktueller Benutzer'}</option>
+                            <option value={currentUser.uid} className="bg-surface">{currentUser.email || (currentLang === 'de' ? 'Aktueller Benutzer' : 'Current user')}</option>
                           )}
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Händler / Geschäft (Shop)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('merchant_shop')}</label>
                         <input
                           type="text"
                           required
                           value={incomingData.vendor}
                           onChange={e => setIncomingData({ ...incomingData, vendor: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
-                          placeholder="z.B. Jumbo, SBB, Coop, Restaurant"
+                          placeholder={currentLang === 'de' ? "z.B. Jumbo, SBB, Coop, Restaurant" : "e.g. Home Depot, Transit, Coop, Restaurant"}
                         />
                       </div>
                     </div>
@@ -3715,42 +3805,42 @@ export default function Finance() {
                         <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-2.5 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">Betrag ({currency})</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{currentLang === 'de' ? 'Betrag' : 'Amount'} ({currency})</label>
                         <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-2.5 py-2.5 text-xs sm:text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Satz</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vat_rate_label')}</label>
                         <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value={8.1} className="bg-surface">8.1% (Normalsatz)</option>
-                          <option value={2.6} className="bg-surface">2.6% (Verpflegung)</option>
-                          <option value={0} className="bg-surface">0% (Steuerfrei)</option>
+                          <option value={8.1} className="bg-surface">8.1% ({currentLang === 'de' ? 'Normalsatz' : 'Standard Rate'})</option>
+                          <option value={2.6} className="bg-surface">2.6% ({currentLang === 'de' ? 'Verpflegung' : 'Catering / Food'})</option>
+                          <option value={0} className="bg-surface">0% ({currentLang === 'de' ? 'Steuerfrei' : 'Tax-Free'})</option>
                         </select>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Spesenkategorie</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('expense_cat_label')}</label>
                         <select value={incomingData.expenseCategory} onChange={e => setIncomingData({ ...incomingData, expenseCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value="Materialkauf & Muster" className="bg-surface">Materialkauf & Muster</option>
-                          <option value="Reise- & Fahrtkosten (ÖV / Auto / Parken)" className="bg-surface">Reise- & Fahrtkosten (ÖV / Auto)</option>
-                          <option value="Verpflegung & Kundenmeetings" className="bg-surface">Verpflegung & Kundenmeetings</option>
-                          <option value="Werkzeuge, Software & Kleinmaterial" className="bg-surface">Werkzeuge & Kleinmaterial</option>
-                          <option value="Sonstiges" className="bg-surface">Sonstiges</option>
+                          <option value="Materialkauf & Muster" className="bg-surface">{currentLang === 'de' ? 'Materialkauf & Muster' : 'Materials & Samples'}</option>
+                          <option value="Reise- & Fahrtkosten (ÖV / Auto / Parken)" className="bg-surface">{currentLang === 'de' ? 'Reise- & Fahrtkosten (ÖV / Auto)' : 'Travel & Transit (Transit / Car)'}</option>
+                          <option value="Verpflegung & Kundenmeetings" className="bg-surface">{currentLang === 'de' ? 'Verpflegung & Kundenmeetings' : 'Meals & Client Meetings'}</option>
+                          <option value="Werkzeuge, Software & Kleinmaterial" className="bg-surface">{currentLang === 'de' ? 'Werkzeuge & Kleinmaterial' : 'Tools & Supplies'}</option>
+                          <option value="Sonstiges" className="bg-surface">{currentLang === 'de' ? 'Sonstiges' : 'Other'}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Zahlungsart (Auslage via)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('payment_method_label')}</label>
                         <select value={incomingData.paymentMethod} onChange={e => setIncomingData({ ...incomingData, paymentMethod: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value="Privat vorgelegt (Rückerstattung ausstehend)" className="bg-surface">Privat vorgelegt (Rückerstattung)</option>
-                          <option value="Geschäftskarte / Firmenkarte" className="bg-surface">Firmenkarte / Geschäftskarte</option>
+                          <option value="Privat vorgelegt (Rückerstattung ausstehend)" className="bg-surface">{currentLang === 'de' ? 'Privat vorgelegt (Rückerstattung)' : 'Paid out of pocket (Reimbursement)'}</option>
+                          <option value="Geschäftskarte / Firmenkarte" className="bg-surface">{currentLang === 'de' ? 'Firmenkarte / Geschäftskarte' : 'Corporate Card / Company Card'}</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
-                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Wofür war diese Ausgabe (z.B. Musterplatten für Bauherrschaft)..." />
+                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder={currentLang === 'de' ? "Wofür war diese Ausgabe (z.B. Musterplatten für Bauherrschaft)..." : "Purpose of this expense (e.g. sample tiles for client)..."} />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -3768,10 +3858,10 @@ export default function Finance() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Status Rückerstattung</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('reimbursement_status')}</label>
                         <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value="Offen (Rückerstattung ausstehend)" className="bg-surface">Offen (Rückerstattung ausstehend)</option>
-                          <option value="Rückerstattet / Ausbezahlt" className="bg-surface">Rückerstattet / Ausbezahlt</option>
+                          <option value="Offen (Rückerstattung ausstehend)" className="bg-surface">{currentLang === 'de' ? 'Offen (Rückerstattung ausstehend)' : 'Open (Reimbursement pending)'}</option>
+                          <option value="Rückerstattet / Ausbezahlt" className="bg-surface">{currentLang === 'de' ? 'Rückerstattet / Ausbezahlt' : 'Reimbursed / Paid out'}</option>
                         </select>
                       </div>
                     </div>
@@ -3781,116 +3871,116 @@ export default function Finance() {
                   <div className="space-y-4">
                     <div className="text-xs text-text-muted bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg flex items-center gap-2">
                       <Building2 size={15} className="text-blue-500 shrink-0" />
-                      <span>Kreditorenrechnung: Offizielle Handwerker-, Material- oder Planerrechnung erfassen.</span>
+                      <span>{t('creditor_invoice_hint')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Firma / Kreditor (Lieferant)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('company_creditor_supplier')}</label>
                         <input
                           type="text"
                           required
                           value={incomingData.company || incomingData.vendor}
                           onChange={e => setIncomingData({ ...incomingData, company: e.target.value, vendor: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
-                          placeholder="z.B. Baumeister AG, Sanitär Meier"
+                          placeholder={currentLang === 'de' ? "z.B. Baumeister AG, Sanitär Meier" : "e.g. Master Builder Ltd, Meier Plumbing"}
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Ansprechperson (optional)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('contact_person_opt')}</label>
                         <input
                           type="text"
                           value={incomingData.contactPerson}
                           onChange={e => setIncomingData({ ...incomingData, contactPerson: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
-                          placeholder="z.B. Herr Keller, Bauleiter"
+                          placeholder={currentLang === 'de' ? "z.B. Herr Keller, Bauleiter" : "e.g. Mr. Keller, Site Manager"}
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Kreditoren-Rechnungs-Nr.</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('creditor_invoice_no')}</label>
                         <input
                           type="text"
                           value={incomingData.invoiceNumber}
                           onChange={e => setIncomingData({ ...incomingData, invoiceNumber: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors"
-                          placeholder="z.B. RE-2026-8910"
+                          placeholder={currentLang === 'de' ? "z.B. RE-2026-8910" : "e.g. INV-2026-8910"}
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Nr. des Lieferanten</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('supplier_vat_no')}</label>
                         <input
                           type="text"
                           value={incomingData.vatNumber}
                           onChange={e => setIncomingData({ ...incomingData, vatNumber: e.target.value })}
                           className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors"
-                          placeholder="z.B. CHE-123.456.789 MWST"
+                          placeholder={currentLang === 'de' ? "z.B. CHE-123.456.789 MWST" : "e.g. CHE-123.456.789 VAT"}
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Rechnungsdatum</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('invoice_date')}</label>
                         <input type="date" value={incomingData.date} onChange={e => setIncomingData({ ...incomingData, date: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Fälligkeit (Zahlungsziel)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('due_date_terms')}</label>
                         <input type="date" value={incomingData.dueDate} onChange={e => setIncomingData({ ...incomingData, dueDate: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">Betrag ({currency})</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block text-red-500">{currentLang === 'de' ? 'Betrag' : 'Amount'} ({currency})</label>
                         <input type="number" step="0.05" value={incomingData.amount} onChange={e => setIncomingData({ ...incomingData, amount: e.target.value })} className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-2.5 py-2.5 text-xs sm:text-sm font-bold text-red-500 outline-none focus:border-red-500 transition-colors placeholder:text-red-500/30" placeholder="0.00" />
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Skonto %</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('skonto_rate_label')}</label>
                         <select value={incomingData.skontoRate} onChange={e => setIncomingData({ ...incomingData, skontoRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value={0} className="bg-surface">0% Skonto (Netto)</option>
-                          <option value={2} className="bg-surface">2% Skonto (10 Tage)</option>
-                          <option value={3} className="bg-surface">3% Skonto (8 Tage)</option>
+                          <option value={0} className="bg-surface">0% {currentLang === 'de' ? 'Skonto (Netto)' : 'Discount (Net)'}</option>
+                          <option value={2} className="bg-surface">2% {currentLang === 'de' ? 'Skonto (10 Tage)' : 'Discount (10 days)'}</option>
+                          <option value={3} className="bg-surface">3% {currentLang === 'de' ? 'Skonto (8 Tage)' : 'Discount (8 days)'}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">MWST-Satz</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('vat_rate_label')}</label>
                         <select value={incomingData.vatRate} onChange={e => setIncomingData({ ...incomingData, vatRate: Number(e.target.value) })} className="w-full bg-background border border-border/50 rounded-lg px-2 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value={8.1} className="bg-surface">8.1% (Normalsatz)</option>
-                          <option value={2.6} className="bg-surface">2.6% (Reduziert)</option>
-                          <option value={0} className="bg-surface">0% (Steuerfrei)</option>
+                          <option value={8.1} className="bg-surface">8.1% ({currentLang === 'de' ? 'Normalsatz' : 'Standard Rate'})</option>
+                          <option value={2.6} className="bg-surface">2.6% ({currentLang === 'de' ? 'Reduziert' : 'Reduced Rate'})</option>
+                          <option value={0} className="bg-surface">0% ({currentLang === 'de' ? 'Steuerfrei' : 'Tax-Free'})</option>
                         </select>
                       </div>
                     </div>
 
                     {incomingData.skontoRate > 0 && incomingData.amount && (
                       <div className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-lg flex justify-between items-center">
-                        <span>Skonto Abzug ({incomingData.skontoRate}%): -{currency} {formatCurrency(Number(incomingData.amount) * (incomingData.skontoRate / 100), currency)}</span>
-                        <span>Effektiv Netto: {currency} {formatCurrency(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100), currency)}</span>
+                        <span>{currentLang === 'de' ? `Skonto Abzug (${incomingData.skontoRate}%):` : `Cash discount (${incomingData.skontoRate}%):`} -{currency} {formatCurrency(Number(incomingData.amount) * (incomingData.skontoRate / 100), currency)}</span>
+                        <span>{currentLang === 'de' ? 'Effektiv Netto:' : 'Effective Net:'} {currency} {formatCurrency(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100), currency)}</span>
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Aufwandskategorie</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('expense_category_creditor')}</label>
                         <select value={incomingData.creditorCategory} onChange={e => setIncomingData({ ...incomingData, creditorCategory: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value="Kreditorenrechnung (Handwerker / Material)" className="bg-surface">Kreditorenrechnung (Handwerker / Material)</option>
-                          <option value="Honorar / Planerleistung" className="bg-surface">Honorar / Planerleistung</option>
-                          <option value="Behörden & Gebühren" className="bg-surface">Behörden & Gebühren</option>
-                          <option value="Sonstige Fremdleistung" className="bg-surface">Sonstige Fremdleistung</option>
+                          <option value="Kreditorenrechnung (Handwerker / Material)" className="bg-surface">{currentLang === 'de' ? 'Kreditorenrechnung (Handwerker / Material)' : 'Supplier Invoice (Trades / Materials)'}</option>
+                          <option value="Honorar / Planerleistung" className="bg-surface">{currentLang === 'de' ? 'Honorar / Planerleistung' : 'Professional / Planner Fee'}</option>
+                          <option value="Behörden & Gebühren" className="bg-surface">{currentLang === 'de' ? 'Behörden & Gebühren' : 'Authorities & Official Fees'}</option>
+                          <option value="Sonstige Fremdleistung" className="bg-surface">{currentLang === 'de' ? 'Sonstige Fremdleistung' : 'Other Subcontractor Service'}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">IBAN / QR-IBAN (optional)</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('iban_qr_optional')}</label>
                         <input type="text" value={incomingData.iban} onChange={e => setIncomingData({ ...incomingData, iban: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-medium text-text-primary outline-none focus:border-red-500/50 transition-colors" placeholder="CH..." />
                       </div>
                     </div>
 
                     <div>
                       <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('description')}</label>
-                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder="Leistungsbeschrieb / Werkvertrag gemäss Rechnung..." />
+                      <textarea value={incomingData.description} onChange={e => setIncomingData({ ...incomingData, description: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-medium text-text-primary outline-none resize-none h-16 focus:border-red-500/50 transition-colors" placeholder={currentLang === 'de' ? "Leistungsbeschrieb / Werkvertrag gemäss Rechnung..." : "Scope of work / contract according to invoice..."} />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -3908,10 +3998,10 @@ export default function Finance() {
                         </select>
                       </div>
                       <div>
-                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">Status Rechnungsprüfung</label>
+                        <label className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1.5 block">{t('invoice_review_status')}</label>
                         <select value={incomingData.status} onChange={e => setIncomingData({ ...incomingData, status: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2.5 text-xs sm:text-sm font-bold text-text-primary outline-none cursor-pointer truncate">
-                          <option value="Offen zur Prüfung" className="bg-surface">Offen zur Prüfung</option>
-                          <option value="Freigegeben zur Zahlung" className="bg-surface">Freigegeben zur Zahlung</option>
+                          <option value="Offen zur Prüfung" className="bg-surface">{currentLang === 'de' ? 'Offen zur Prüfung' : 'Pending Verification'}</option>
+                          <option value="Freigegeben zur Zahlung" className="bg-surface">{currentLang === 'de' ? 'Freigegeben zur Zahlung' : 'Approved for Payment'}</option>
                           <option value="Bezahlt" className="bg-surface">{t('paid')}</option>
                         </select>
                       </div>

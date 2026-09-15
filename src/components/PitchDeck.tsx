@@ -36,12 +36,22 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
     loading: 'Loading presentation...', no_slides: 'No slides found', empty_deck: 'This Pitch Deck is empty.',
     open_studio: 'Open Pitch Studio', presentation_mode: 'Present',
-    project: 'Project', client: 'Client', planner: 'Planner', phase: 'Phase', date: 'Date'
+    project: 'Project', client: 'Client', planner: 'Planner', phase: 'Phase', date: 'Date',
+    share: 'Share', export: 'Export',
+    export_tooltip: 'Export presentation as PDF, Apple Keynote or Microsoft PowerPoint',
+    presentation_viewer: 'Presentation Viewer',
+    link_copied: 'Link copied to clipboard!',
+    export_presentation_modal_title: 'Export Presentation'
   },
   de: {
     loading: 'Lade Präsentation...', no_slides: 'Keine Folien vorhanden', empty_deck: 'Dieses Pitch Deck ist leer.',
     open_studio: 'Pitch Studio öffnen', presentation_mode: 'Präsentieren',
-    project: 'Projekt', client: 'Kunde', planner: 'Planverfasser', phase: 'Phase', date: 'Datum'
+    project: 'Projekt', client: 'Kunde', planner: 'Planverfasser', phase: 'Phase', date: 'Datum',
+    share: 'Teilen', export: 'Exportieren',
+    export_tooltip: 'Präsentation als PDF, Apple Keynote oder Microsoft PowerPoint exportieren',
+    presentation_viewer: 'Präsentationsansicht',
+    link_copied: 'Link in Zwischenablage kopiert!',
+    export_presentation_modal_title: 'Präsentation exportieren'
   }
 };
 
@@ -712,7 +722,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-ai/10 text-accent-ai shrink-0"><Presentation size={16} /></div>
             <div>
               <h2 className="font-bold text-xs sm:text-sm text-text-primary">Pitch Deck</h2>
-              <p className="text-[9px] sm:text-[10px] text-text-muted uppercase tracking-widest font-bold">Presentation Viewer</p>
+              <p className="text-[9px] sm:text-[10px] text-text-muted uppercase tracking-widest font-bold">{t('presentation_viewer')}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
@@ -725,17 +735,17 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                } catch(e) {
                  console.warn("Clipboard access limited:", e);
                }
-               addToast("Link in Zwischenablage kopiert!", "success");
+               addToast(t('link_copied'), "success");
              }} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
-               <Share2 size={14} /> <span className="hidden sm:inline">Teilen</span>
+               <Share2 size={14} /> <span className="hidden sm:inline">{t('share')}</span>
              </button>
              <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
                 className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
-                title="Präsentation als PDF, Apple Keynote oder Microsoft PowerPoint exportieren"
+                title={t('export_tooltip')}
               >
-                <Download size={14} /> <span>Exportieren</span>
+                <Download size={14} /> <span>{t('export')}</span>
               </button>
              <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
                <Settings size={14} /> <span className="hidden xs:inline">{t('open_studio')}</span>

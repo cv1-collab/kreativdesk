@@ -64,9 +64,177 @@ const loadProjectDraft = (pid: string | undefined) => {
 };
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
-  en: { title: 'Whiteboard & Audio Hub', desc: 'Interactive canvas for ideation and AI-transcribed voice notes.', import_media: 'Import Media', export_pdf: 'Export PDF', export_img: 'Export Image', save_cloud: 'Save to Cloud', saving_cloud: 'Saving...', saved_cloud: 'Saved to Documents!', send_slides: 'Send to Pitch Deck', sending: 'Sending...', sent: 'Sent to Slides!', draw_polygon: 'Draw Polygon', img_adjust: 'Image Adjustments', brightness: 'Brightness', contrast: 'Contrast', saturation: 'Saturation', delete_btn: 'Delete', close_shape: 'Close shape', ai_analyzing: 'AI is analyzing...', no_data: 'No voice notes yet.', ai_summary: 'AI Summary', full_transcript: 'Full Transcription', info_text: 'The AI will transcribe your voice note and extract key tasks automatically.', stop_rec: 'Stop Recording', start_rec: 'Record Voice Note', click_points: 'Click to add points...', clear_canvas: 'Clear Canvas?', mic_error: 'Microphone access denied.', ai_error: 'Failed to analyze audio.', pdf_success: 'PDF exported successfully!', add_text: 'Insert Text', enter_text: 'Add Text', type_text_here: 'Enter text...', cancel: 'Cancel', delete_note: 'Delete Note', confirm_delete_note: 'Are you sure you want to delete this voice note?', note_deleted: 'Voice note deleted!', tool_pan: 'Pan Canvas', tool_select: 'Select / Move', reset_zoom: 'Reset Zoom & Pan', fullscreen: 'Fullscreen', exit_fullscreen: 'Exit Fullscreen', layers: 'Layers', add_layer: 'Add Layer', base_layer: 'Base Layer', ai_render: 'AI Rendering', ai_render_desc: 'Transform your sketch into a photorealistic concept render.', describe_vision: 'Describe your vision (e.g. Futuristic sports car, neon colors, cyberpunk style)...', generate_render: 'Generate Concept', rendering: 'Rendering...', add_to_canvas: 'Add to Canvas as Base Layer', your_sketch: 'Your Sketch' },
-  de: { title: 'Whiteboard & Audio Hub', desc: 'Interaktive Zeichenfläche und KI-transkribierte Sprachnotizen.', import_media: 'Import (Bild/PDF)', export_pdf: 'Als PDF Exportieren', export_img: 'Als Bild Exportieren', save_cloud: 'In Cloud speichern', saving_cloud: 'Speichert...', saved_cloud: 'Im Dokumenten-Ordner gespeichert!', send_slides: 'An Pitch Deck', sending: 'Sende...', sent: 'Gesendet!', draw_polygon: 'Polygon', img_adjust: 'Bildbearbeitung', brightness: 'Helligkeit', contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schließen', ai_analyzing: 'KI analysiert...', no_data: 'Noch keine Sprachnotizen.', ai_summary: 'KI Zusammenfassung', full_transcript: 'Transkription', info_text: 'Die KI analysiert deine Aufnahme und leitet automatisch Aufgaben ab.', stop_rec: 'Aufnahme stoppen', start_rec: 'Sprachnotiz aufnehmen', click_points: 'Klicke auf Punkte...', clear_canvas: 'Canvas komplett löschen?', mic_error: 'Mikrofon blockiert.', ai_error: 'KI-Analyse fehlgeschlagen.', pdf_success: 'PDF erfolgreich exportiert!', add_text: 'Einfügen', enter_text: 'Text hinzufügen', type_text_here: 'Text eingeben...', cancel: 'Abbrechen', delete_note: 'Notiz löschen', confirm_delete_note: 'Bist du sicher, dass du diese Sprachnotiz unwiderruflich löschen möchtest?', note_deleted: 'Sprachnotiz gelöscht!', tool_pan: 'Ansicht verschieben (Pan)', tool_select: 'Auswählen / Bewegen', reset_zoom: 'Ansicht zentrieren', fullscreen: 'Vollbild', exit_fullscreen: 'Vollbild verlassen', layers: 'Ebenen', add_layer: 'Neue Ebene', base_layer: 'Basis-Ebene', ai_render: 'AI Rendering', ai_render_desc: 'Verwandle deine Skizze in ein fotorealistisches Konzept-Design.', describe_vision: 'Beschreibe deine Vision (z.B. Comicfigur, Neonfarben, Cyberpunk Stil)...', generate_render: 'Skizze Rendern', rendering: 'KI generiert Bild...', add_to_canvas: 'Als neue Basis-Ebene einfügen', your_sketch: 'Deine Skizze' },
-  fr: { title: 'Tableau blanc & Audio Hub', desc: 'Espace de dessin interactif et notes vocales transcrites par IA.', import_media: 'Importer (Image/PDF)', export_pdf: 'Exporter en PDF', export_img: 'Exporter en image', save_cloud: 'Enregistrer sur le Cloud', saving_cloud: 'Enregistrement...', saved_cloud: 'Enregistré dans Documents !', send_slides: 'Envoyer au Pitch Deck', sending: 'Envoi...', sent: 'Envoyé aux slides !', draw_polygon: 'Polygone', img_adjust: 'Ajustements image', brightness: 'Luminosité', contrast: 'Contraste', saturation: 'Saturation', delete_btn: 'Supprimer', close_shape: 'Fermer la forme', ai_analyzing: 'L’IA analyse...', no_data: 'Aucune note vocale pour l’instant.', ai_summary: 'Résumé IA', full_transcript: 'Transcription complète', info_text: 'L’IA analyse votre enregistrement et extrait automatiquement les tâches clés.', stop_rec: 'Arrêter l’enregistrement', start_rec: 'Enregistrer une note vocale', click_points: 'Cliquez pour ajouter des points...', clear_canvas: 'Effacer tout le tableau ?', mic_error: 'Accès au micro refusé.', ai_error: 'Échec de l’analyse audio.', pdf_success: 'PDF exporté avec succès !', add_text: 'Insérer texte', enter_text: 'Ajouter du texte', type_text_here: 'Saisissez du texte...', cancel: 'Annuler', delete_note: 'Supprimer la note', confirm_delete_note: 'Voulez-vous vraiment supprimer cette note vocale ?', note_deleted: 'Note vocale supprimée !', tool_pan: 'Déplacer le tableau (Pan)', tool_select: 'Sélectionner / Déplacer', reset_zoom: 'Réinitialiser le zoom', fullscreen: 'Plein écran', exit_fullscreen: 'Quitter le plein écran', layers: 'Calques', add_layer: 'Nouveau calque', base_layer: 'Calque de base', ai_render: 'Rendu IA', ai_render_desc: 'Transformez votre esquisse en rendu conceptuel photoréaliste.', describe_vision: 'Décrivez votre vision (ex. Voiture futuriste, néon, style cyberpunk)...', generate_render: 'Générer le concept', rendering: 'Génération en cours...', add_to_canvas: 'Ajouter au tableau comme calque de base', your_sketch: 'Votre esquisse' }
+  en: { 
+    title: 'Whiteboard & Audio Hub', desc: 'Interactive canvas for ideation and AI-transcribed voice notes.', 
+    import_media: 'Import Media', export_pdf: 'Export PDF', export_img: 'Export Image', 
+    save_cloud: 'Save to Cloud', saving_cloud: 'Saving...', saved_cloud: 'Saved to Documents!', 
+    send_slides: 'Send to Pitch Deck', sending: 'Sending...', sent: 'Sent to Slides!', 
+    draw_polygon: 'Draw Polygon', img_adjust: 'Image Adjustments', brightness: 'Brightness', 
+    contrast: 'Contrast', saturation: 'Saturation', delete_btn: 'Delete', close_shape: 'Close shape', 
+    ai_analyzing: 'AI is analyzing...', no_data: 'No voice notes yet.', ai_summary: 'AI Summary', 
+    full_transcript: 'Full Transcription', info_text: 'The AI will transcribe your voice note and extract key tasks automatically.', 
+    stop_rec: 'Stop Recording', start_rec: 'Record Voice Note', click_points: 'Click to add points...', 
+    clear_canvas: 'Clear Canvas?', mic_error: 'Microphone access denied.', ai_error: 'Failed to analyze audio.', 
+    pdf_success: 'PDF exported successfully!', add_text: 'Insert Text', enter_text: 'Add Text', 
+    type_text_here: 'Enter text...', cancel: 'Cancel', delete_note: 'Delete Note', 
+    confirm_delete_note: 'Are you sure you want to delete this voice note?', note_deleted: 'Voice note deleted!', 
+    tool_pan: 'Pan Canvas', tool_select: 'Select / Move', reset_zoom: 'Reset Zoom & Pan', 
+    fullscreen: 'Fullscreen', exit_fullscreen: 'Exit Fullscreen', layers: 'Layers', add_layer: 'Add Layer', 
+    base_layer: 'Base Layer', ai_render: 'AI Rendering', 
+    ai_render_desc: 'Transform your sketch into a photorealistic concept render.', 
+    describe_vision: 'Describe your vision (e.g. Futuristic sports car, neon colors, cyberpunk style)...', 
+    generate_render: 'Generate Concept', rendering: 'Rendering...', add_to_canvas: 'Add to Canvas as Base Layer', 
+    your_sketch: 'Your Sketch',
+    ai_tools: 'AI Tools',
+    ai_tools_title: 'AI Features (Concept Rendering & Plan Audit)',
+    ai_tools_header: 'AI Drawing & Audit Tools',
+    ai_render_sub: 'Transform sketch into photorealistic design',
+    ai_audit: 'AI Audit & Analysis',
+    ai_audit_sub: 'Check plans, sketches & standards',
+    media_pdf: 'Import & PDF',
+    media_pdf_title: 'Import plans, images and PDFs or open in PDF Studio',
+    media_pdf_header: 'Media, Plans & PDF',
+    import_media_sub: 'Load image or PDF onto canvas',
+    pdf_studio_sub: 'Plan viewer, annotations & export',
+    live_team: 'Live in Team',
+    connecting: 'Connecting...',
+    live_team_title: 'Whiteboard is connected in real-time with your team',
+    connecting_title: 'Connecting to team whiteboard...',
+    save_cloud_title: 'Save whiteboard snapshot directly to project file',
+    export_btn: 'Export',
+    export_btn_title: 'Export or send to Pitch Deck',
+    export_header: 'Export & Forwarding',
+    export_img_sub: 'Download canvas as high-resolution PNG',
+    send_slides_sub: 'Create slide and transfer to presentation',
+    clear_btn: 'Clear',
+    clear_canvas_title: 'Clear entire canvas',
+    delete_selected: 'Delete selection',
+    delete_selected_title: 'Delete selected element (Del)',
+    tab_sketch: 'Sketch',
+    tool_pen: 'Pen (Freehand drawing)',
+    tool_eraser: 'Eraser',
+    tool_rect: 'Rectangle (Click or drag)',
+    tool_circle: 'Circle (Click or drag)',
+    tool_text: 'Insert text',
+    color_pick: 'Pick color: ',
+    sticky_yellow: 'Insert yellow note',
+    sticky_cyan: 'Insert blue note',
+    sticky_pink: 'Insert pink note'
+  },
+  de: { 
+    title: 'Whiteboard & Audio Hub', desc: 'Interaktive Zeichenfläche und KI-transkribierte Sprachnotizen.', 
+    import_media: 'Import (Bild/PDF)', export_pdf: 'Als PDF Exportieren', export_img: 'Als Bild Exportieren', 
+    save_cloud: 'In Cloud speichern', saving_cloud: 'Speichert...', saved_cloud: 'Im Dokumenten-Ordner gespeichert!', 
+    send_slides: 'An Pitch Deck', sending: 'Sende...', sent: 'Gesendet!', 
+    draw_polygon: 'Polygon', img_adjust: 'Bildbearbeitung', brightness: 'Helligkeit', 
+    contrast: 'Kontrast', saturation: 'Sättigung', delete_btn: 'Löschen', close_shape: 'Schließen', 
+    ai_analyzing: 'KI analysiert...', no_data: 'Noch keine Sprachnotizen.', ai_summary: 'KI Zusammenfassung', 
+    full_transcript: 'Transkription', info_text: 'Die KI analysiert deine Aufnahme und leitet automatisch Aufgaben ab.', 
+    stop_rec: 'Aufnahme stoppen', start_rec: 'Sprachnotiz aufnehmen', click_points: 'Klicke auf Punkte...', 
+    clear_canvas: 'Canvas komplett löschen?', mic_error: 'Mikrofon blockiert.', ai_error: 'KI-Analyse fehlgeschlagen.', 
+    pdf_success: 'PDF erfolgreich exportiert!', add_text: 'Einfügen', enter_text: 'Text hinzufügen', 
+    type_text_here: 'Text eingeben...', cancel: 'Abbrechen', delete_note: 'Notiz löschen', 
+    confirm_delete_note: 'Bist du sicher, dass du diese Sprachnotiz unwiderruflich löschen möchtest?', note_deleted: 'Sprachnotiz gelöscht!', 
+    tool_pan: 'Ansicht verschieben (Pan)', tool_select: 'Auswählen / Bewegen', reset_zoom: 'Ansicht zentrieren', 
+    fullscreen: 'Vollbild', exit_fullscreen: 'Vollbild verlassen', layers: 'Ebenen', add_layer: 'Neue Ebene', 
+    base_layer: 'Basis-Ebene', ai_render: 'AI Rendering', 
+    ai_render_desc: 'Verwandle deine Skizze in ein fotorealistisches Konzept-Design.', 
+    describe_vision: 'Beschreibe deine Vision (z.B. Comicfigur, Neonfarben, Cyberpunk Stil)...', 
+    generate_render: 'Skizze Rendern', rendering: 'KI generiert Bild...', add_to_canvas: 'Als neue Basis-Ebene einfügen', 
+    your_sketch: 'Deine Skizze',
+    ai_tools: 'KI-Werkzeuge',
+    ai_tools_title: 'KI-Funktionen (Concept Rendering & Plan-Audit)',
+    ai_tools_header: 'KI Zeichen- & Audit-Tools',
+    ai_render_sub: 'Skizze in fotorealistisches Design verwandeln',
+    ai_audit: 'KI Audit & Analyse',
+    ai_audit_sub: 'Pläne, Skizzen & Normen prüfen',
+    media_pdf: 'Import & PDF',
+    media_pdf_title: 'Pläne, Bilder und PDFs importieren oder im PDF Studio öffnen',
+    media_pdf_header: 'Medien, Pläne & PDF',
+    import_media_sub: 'Bild oder PDF auf Canvas laden',
+    pdf_studio_sub: 'Plan-Viewer, Annotationen & Export',
+    live_team: 'Live im Team',
+    connecting: 'Verbinden...',
+    live_team_title: 'Whiteboard ist in Echtzeit mit deinem Team verbunden',
+    connecting_title: 'Verbinde mit Team-Whiteboard...',
+    save_cloud_title: 'Whiteboard-Schnappschuss direkt in der Projekt-Bauakte speichern',
+    export_btn: 'Exportieren',
+    export_btn_title: 'Exportieren oder an Pitch Deck senden',
+    export_header: 'Export & Weiterleitung',
+    export_img_sub: 'Zeichenfläche als hochauflösendes PNG herunterladen',
+    send_slides_sub: 'Folie erstellen und an Präsentation übertragen',
+    clear_btn: 'Leeren',
+    clear_canvas_title: 'Canvas komplett leeren',
+    delete_selected: 'Auswahl löschen',
+    delete_selected_title: 'Ausgewähltes Element löschen (Entf)',
+    tab_sketch: 'Skizze',
+    tool_pen: 'Stift (Freihand zeichnen)',
+    tool_eraser: 'Radierer',
+    tool_rect: 'Rechteck (Klicken oder Ziehen)',
+    tool_circle: 'Kreis (Klicken oder Ziehen)',
+    tool_text: 'Text einfügen',
+    color_pick: 'Farbe wählen: ',
+    sticky_yellow: 'Gelbe Notiz einfügen',
+    sticky_cyan: 'Blaue Notiz einfügen',
+    sticky_pink: 'Rosa Notiz einfügen'
+  },
+  fr: { 
+    title: 'Tableau blanc & Audio Hub', desc: 'Espace de dessin interactif et notes vocales transcrites par IA.', 
+    import_media: 'Importer (Image/PDF)', export_pdf: 'Exporter en PDF', export_img: 'Exporter en image', 
+    save_cloud: 'Enregistrer sur le Cloud', saving_cloud: 'Enregistrement...', saved_cloud: 'Enregistré dans Documents !', 
+    send_slides: 'Envoyer au Pitch Deck', sending: 'Envoi...', sent: 'Envoyé aux slides !', 
+    draw_polygon: 'Polygone', img_adjust: 'Ajustements image', brightness: 'Luminosité', 
+    contrast: 'Contraste', saturation: 'Saturation', delete_btn: 'Supprimer', close_shape: 'Fermer la forme', 
+    ai_analyzing: 'L’IA analyse...', no_data: 'Aucune note vocale pour l’instant.', ai_summary: 'Résumé IA', 
+    full_transcript: 'Transcription complète', info_text: 'L’IA analyse votre enregistrement et extrait automatiquement les tâches clés.', 
+    stop_rec: 'Arrêter l’enregistrement', start_rec: 'Enregistrer une note vocale', click_points: 'Cliquez pour ajouter des points...', 
+    clear_canvas: 'Effacer tout le tableau ?', mic_error: 'Accès au micro refusé.', ai_error: 'Échec de l’analyse audio.', 
+    pdf_success: 'PDF exporté avec succès !', add_text: 'Insérer texte', enter_text: 'Ajouter du texte', 
+    type_text_here: 'Saisissez du texte...', cancel: 'Annuler', delete_note: 'Supprimer la note', 
+    confirm_delete_note: 'Voulez-vous vraiment supprimer cette note vocale ?', note_deleted: 'Note vocale supprimée !', 
+    tool_pan: 'Déplacer le tableau (Pan)', tool_select: 'Sélectionner / Déplacer', reset_zoom: 'Réinitialiser le zoom', 
+    fullscreen: 'Plein écran', exit_fullscreen: 'Quitter le plein écran', layers: 'Calques', add_layer: 'Nouveau calque', 
+    base_layer: 'Calque de base', ai_render: 'Rendu IA', 
+    ai_render_desc: 'Transformez votre esquisse en rendu conceptuel photoréaliste.', 
+    describe_vision: 'Décrivez votre vision (ex. Voiture futuriste, néon, style cyberpunk)...', 
+    generate_render: 'Générer le concept', rendering: 'Génération en cours...', add_to_canvas: 'Ajouter au tableau comme calque de base', 
+    your_sketch: 'Votre esquisse',
+    ai_tools: 'Outils IA',
+    ai_tools_title: 'Fonctions IA (Rendu de concept & Audit de plan)',
+    ai_tools_header: 'Outils de dessin & d’audit IA',
+    ai_render_sub: 'Transformer l’esquisse en design photoréaliste',
+    ai_audit: 'Audit & Analyse IA',
+    ai_audit_sub: 'Vérifier plans, esquisses & normes',
+    media_pdf: 'Import & PDF',
+    media_pdf_title: 'Importer plans, images et PDF ou ouvrir dans PDF Studio',
+    media_pdf_header: 'Médias, plans & PDF',
+    import_media_sub: 'Charger image ou PDF sur le tableau',
+    pdf_studio_sub: 'Visionneuse de plans, annotations & export',
+    live_team: 'En direct en équipe',
+    connecting: 'Connexion...',
+    live_team_title: 'Le tableau blanc est connecté en temps réel avec votre équipe',
+    connecting_title: 'Connexion au tableau blanc...',
+    save_cloud_title: 'Enregistrer l’instantané dans les documents',
+    export_btn: 'Exporter',
+    export_btn_title: 'Exporter ou envoyer au Pitch Deck',
+    export_header: 'Export & Transmission',
+    export_img_sub: 'Télécharger le tableau en PNG haute résolution',
+    send_slides_sub: 'Créer une diapositive et transférer à la présentation',
+    clear_btn: 'Effacer',
+    clear_canvas_title: 'Effacer tout le tableau',
+    delete_selected: 'Supprimer la sélection',
+    delete_selected_title: 'Supprimer l’élément sélectionné (Suppr)',
+    tab_sketch: 'Esquisse',
+    tool_pen: 'Stylo (Dessin à main levée)',
+    tool_eraser: 'Gomme',
+    tool_rect: 'Rectangle (Cliquer ou glisser)',
+    tool_circle: 'Cercle (Cliquer ou glisser)',
+    tool_text: 'Insérer du texte',
+    color_pick: 'Choisir la couleur : ',
+    sticky_yellow: 'Insérer note jaune',
+    sticky_cyan: 'Insérer note bleue',
+    sticky_pink: 'Insérer note rose'
+  }
 };
 
 const AVAILABLE_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#fafafa', '#18181b'];
@@ -1673,10 +1841,10 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     ? "bg-accent-ai/20 border-accent-ai text-accent-ai"
                     : "bg-accent-ai/10 text-accent-ai border-accent-ai/20 hover:bg-accent-ai/20"
                 )}
-                title="KI-Funktionen (Concept Rendering & Plan-Audit)"
+                title={t('ai_tools_title')}
               >
                 <Sparkles size={16} />
-                <span className="hidden sm:inline">KI-Werkzeuge</span>
+                <span className="hidden sm:inline">{t('ai_tools')}</span>
                 <ChevronDown size={14} className={cn("transition-transform duration-150", showAiMenu && "rotate-180")} />
               </button>
 
@@ -1691,7 +1859,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                     >
                       <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
-                        KI Zeichen- & Audit-Tools
+                        {t('ai_tools_header')}
                       </div>
 
                       <button
@@ -1704,7 +1872,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                         <Wand2 size={16} className="text-accent-ai shrink-0" />
                         <div>
                           <div className="leading-tight">{t('ai_render')}</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Skizze in fotorealistisches Design verwandeln</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('ai_render_sub')}</div>
                         </div>
                       </button>
 
@@ -1717,8 +1885,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       >
                         <Sparkles size={16} className="text-purple-400 shrink-0" />
                         <div>
-                          <div className="leading-tight">KI Audit & Analyse</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Pläne, Skizzen & Normen prüfen</div>
+                          <div className="leading-tight">{t('ai_audit')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('ai_audit_sub')}</div>
                         </div>
                       </button>
                     </motion.div>
@@ -1738,10 +1906,10 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     ? "bg-surface border-text-primary text-text-primary"
                     : "bg-surface border-border text-text-primary hover:bg-background"
                 )}
-                title="Pläne, Bilder und PDFs importieren oder im PDF Studio öffnen"
+                title={t('media_pdf_title')}
               >
                 <UploadCloud size={16} />
-                <span className="hidden sm:inline">Import & PDF</span>
+                <span className="hidden sm:inline">{t('media_pdf')}</span>
                 <ChevronDown size={14} className={cn("transition-transform duration-150", showMediaMenu && "rotate-180")} />
               </button>
 
@@ -1756,7 +1924,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                     >
                       <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
-                        Medien, Pläne & PDF
+                        {t('media_pdf_header')}
                       </div>
 
                       <button
@@ -1769,8 +1937,8 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       >
                         {isUploadingMedia ? <Loader2 size={16} className="animate-spin text-text-muted shrink-0" /> : <UploadCloud size={16} className="text-blue-400 shrink-0" />}
                         <div>
-                          <div className="leading-tight">{isUploadingMedia ? 'Lädt...' : t('import_media')}</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Bild oder PDF auf Canvas laden</div>
+                          <div className="leading-tight">{isUploadingMedia ? t('saving_cloud') : t('import_media')}</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('import_media_sub')}</div>
                         </div>
                       </button>
 
@@ -1784,7 +1952,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                         <FileDown size={16} className="text-red-400 shrink-0" />
                         <div>
                           <div className="leading-tight">PDF Studio</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Plan-Viewer, Annotationen & Export</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('pdf_studio_sub')}</div>
                         </div>
                       </button>
                     </motion.div>
@@ -1802,10 +1970,10 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
                     : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
                 )}
-                title={isLiveConnected ? "Whiteboard ist in Echtzeit mit deinem Team verbunden" : "Verbinde mit Team-Whiteboard..."}
+                title={isLiveConnected ? t('live_team_title') : t('connecting_title')}
               >
                 <span className={cn("w-2 h-2 rounded-full", isLiveConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
-                <span className="hidden lg:inline">{isLiveConnected ? "Live im Team" : "Verbinden..."}</span>
+                <span className="hidden lg:inline">{isLiveConnected ? t('live_team') : t('connecting')}</span>
               </div>
             )}
 
@@ -1814,7 +1982,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               onClick={handleSaveToCloud}
               disabled={isSavingToCloud}
               className="px-3 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-xl text-sm font-bold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
-              title="Whiteboard-Schnappschuss direkt in der Projekt-Bauakte speichern"
+              title={t('save_cloud_title')}
             >
               {isSavingToCloud ? <Loader2 size={16} className="animate-spin" /> : <Cloud size={16} />}
               <span className="hidden md:inline">{isSavingToCloud ? t('saving_cloud') : t('save_cloud')}</span>
@@ -1830,10 +1998,10 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     ? "bg-purple-500/20 border-purple-500 text-purple-300"
                     : "bg-surface border-border text-text-primary hover:bg-background"
                 )}
-                title="Exportieren oder an Pitch Deck senden"
+                title={t('export_btn_title')}
               >
                 <Share2 size={15} />
-                <span className="hidden sm:inline">Exportieren</span>
+                <span className="hidden sm:inline">{t('export_btn')}</span>
                 <ChevronDown size={14} className={cn("transition-transform duration-150", showExportMenu && "rotate-180")} />
               </button>
 
@@ -1848,7 +2016,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       className="fixed top-20 right-4 md:right-8 mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                     >
                       <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
-                        Export & Weiterleitung
+                        {t('export_header')}
                       </div>
 
                       <button
@@ -1861,7 +2029,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                         <Download size={16} className="text-emerald-400 shrink-0" />
                         <div>
                           <div className="leading-tight">{t('export_img')}</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Zeichenfläche als hochauflösendes PNG herunterladen</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('export_img_sub')}</div>
                         </div>
                       </button>
 
@@ -1876,7 +2044,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                         {isSending ? <Loader2 size={16} className="animate-spin text-purple-400 shrink-0" /> : sendSuccess ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : <Presentation size={16} className="text-purple-400 shrink-0" />}
                         <div>
                           <div className="leading-tight">{isSending ? t('sending') : sendSuccess ? t('sent') : t('send_slides')}</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">Als neue Folie direkt ins Pitch Deck einfügen</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('send_slides_sub')}</div>
                         </div>
                       </button>
                     </motion.div>
@@ -1889,7 +2057,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
         <div className="flex lg:hidden bg-surface border-b border-border/50 p-1 shrink-0 shadow-sm">
           <button onClick={() => setMobileTab('whiteboard')} className={cn("flex-1 py-2.5 text-sm font-bold rounded-md transition-colors flex justify-center items-center gap-2", mobileTab === 'whiteboard' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
-            <PenTool size={16} /> Skizze
+            <PenTool size={16} /> {t('tab_sketch')}
           </button>
           <button onClick={() => setMobileTab('audio')} className={cn("flex-1 py-2.5 text-sm font-bold rounded-md transition-colors flex justify-center items-center gap-2", mobileTab === 'audio' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
             <Mic size={16} /> Audio Hub
@@ -1905,41 +2073,41 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             <div className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-1rem)] custom-scrollbar">
               <div className="flex items-center gap-1 px-1.5 border-r border-border mr-1 shrink-0">
                 {AVAILABLE_COLORS.map(c => (
-                  <button key={c} onClick={() => handleColorPick(c)} className={cn("w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-all shrink-0 cursor-pointer", activeColor === c ? "border-text-primary scale-110 shadow-md" : "border-transparent hover:scale-110")} style={{ backgroundColor: c }} title={`Farbe wählen: ${c}`} />
+                  <button key={c} onClick={() => handleColorPick(c)} className={cn("w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-all shrink-0 cursor-pointer", activeColor === c ? "border-text-primary scale-110 shadow-md" : "border-transparent hover:scale-110")} style={{ backgroundColor: c }} title={`${t('color_pick')}${c}`} />
                 ))}
               </div>
               <button onClick={() => { setTool('pan'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pan' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_pan')}><Hand size={16} /></button>
               <button onClick={() => setTool('select')} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'select' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_select')}><MousePointer2 size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
-              <button onClick={() => { setTool('pen'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pen' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Stift (Freihand zeichnen)"><PenTool size={16} /></button>
-              <button onClick={() => { setTool('eraser'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'eraser' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Radierer"><Eraser size={16} /></button>
+              <button onClick={() => { setTool('pen'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'pen' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_pen')}><PenTool size={16} /></button>
+              <button onClick={() => { setTool('eraser'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'eraser' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_eraser')}><Eraser size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
               <button onClick={() => { setTool('polygon'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'polygon' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('draw_polygon')}><Hexagon size={16} /></button>
-              <button onClick={() => { setTool('rect'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'rect' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Rechteck (Klicken oder Ziehen)"><Square size={16} /></button>
-              <button onClick={() => { setTool('circle'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'circle' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Kreis (Klicken oder Ziehen)"><Circle size={16} /></button>
-              <button onClick={() => { setTool('text'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'text' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title="Text einfügen"><Type size={16} /></button>
+              <button onClick={() => { setTool('rect'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'rect' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_rect')}><Square size={16} /></button>
+              <button onClick={() => { setTool('circle'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'circle' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_circle')}><Circle size={16} /></button>
+              <button onClick={() => { setTool('text'); setSelectedShapeId(null); }} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 cursor-pointer", tool === 'text' ? "bg-accent-ai text-white shadow-lg" : "text-text-muted hover:bg-white/5")} title={t('tool_text')}><Type size={16} /></button>
               <div className="w-px h-5 bg-border mx-1 shrink-0"></div>
               {/* STICKY NOTES PALETTE */}
-              <button onClick={() => handleAddStickyNote('#fef08a', '#eab308')} className="w-6 h-6 rounded-md bg-yellow-200 border border-yellow-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title="Gelbe Notiz einfügen" />
-              <button onClick={() => handleAddStickyNote('#a5f3fc', '#06b6d4')} className="w-6 h-6 rounded-md bg-cyan-200 border border-cyan-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title="Blaue Notiz einfügen" />
-              <button onClick={() => handleAddStickyNote('#fbcfe8', '#ec4899')} className="w-6 h-6 rounded-md bg-pink-200 border border-pink-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title="Rosa Notiz einfügen" />
+              <button onClick={() => handleAddStickyNote('#fef08a', '#eab308')} className="w-6 h-6 rounded-md bg-yellow-200 border border-yellow-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title={t('sticky_yellow')} />
+              <button onClick={() => handleAddStickyNote('#a5f3fc', '#06b6d4')} className="w-6 h-6 rounded-md bg-cyan-200 border border-cyan-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title={t('sticky_cyan')} />
+              <button onClick={() => handleAddStickyNote('#fbcfe8', '#ec4899')} className="w-6 h-6 rounded-md bg-pink-200 border border-pink-400 hover:scale-110 transition-transform shrink-0 cursor-pointer shadow-sm" title={t('sticky_pink')} />
               <div className="w-px h-5 bg-border mx-1 shrink-0 hidden sm:block"></div>
               <button onClick={() => setShowFilters(!showFilters)} className={cn("p-1.5 md:p-2 rounded-lg transition-all shrink-0 hidden sm:block cursor-pointer", showFilters ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-white/5")} title={t('img_adjust')}><SlidersHorizontal size={16} /></button>
               {selectedShapeId ? (
                 <button 
                   onClick={deleteSelectedItem} 
                   className="px-2.5 py-1.5 rounded-lg bg-red-500 text-white hover:bg-red-600 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md transition-all shrink-0 cursor-pointer"
-                  title="Ausgewähltes Element löschen (Entf)"
+                  title={t('delete_selected_title')}
                 >
-                  <Trash2 size={14} /> <span>Auswahl löschen</span>
+                  <Trash2 size={14} /> <span>{t('delete_selected')}</span>
                 </button>
               ) : (
                 <button 
                   onClick={clearBoard} 
                   className="p-1.5 md:p-2 rounded-lg text-red-500 hover:bg-red-500/20 text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-colors shrink-0 cursor-pointer"
-                  title="Canvas komplett leeren"
+                  title={t('clear_canvas_title')}
                 >
-                  <Trash2 size={14} /> <span className="hidden sm:inline">Leeren</span>
+                  <Trash2 size={14} /> <span className="hidden sm:inline">{t('clear_btn')}</span>
                 </button>
               )}
             </div>

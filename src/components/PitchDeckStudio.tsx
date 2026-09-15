@@ -86,7 +86,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     sia_milestones_heading: 'SIA 102/118 Payment Plan & Milestones', legal_docs_heading: 'Upload Contract Documents & Terms',
     legal_docs_sub: 'Upload your GTC, works contracts (SIA 118) or NDAs as PDF. The client can view and bindingly accept them on the landing page.',
     pdf_uploaded: '✅ Uploaded', pdf_none: '⚠️ No PDF attached yet', upload_pdf: 'Upload PDF',
-    cancel: 'Cancel', publish_landingpage: 'Publish Smart Landing Page', proposal_created_success: 'Client landing page created successfully!'
+    cancel: 'Cancel', publish_landingpage: 'Publish Smart Landing Page', proposal_created_success: 'Client landing page created successfully!',
+    insert: 'Insert', insert_tooltip: 'Insert elements, media, notes & stamps',
+    present_btn: 'Present', present_tooltip: 'Start fullscreen presentation mode',
+    share_export: 'Share & Export', share_export_tooltip: 'Sharing, client link & export',
+    exit_studio_tooltip: 'Exit Studio',
+    comparison_3variant: '3-Variant Comparison',
+    construction_cost_chart: 'Construction Cost Chart',
+    table_of_contents_agenda: 'Table of Contents & Agenda',
+    badge_table: 'Table', badge_template: 'Template', badge_sketch: 'Sketch', badge_media: 'Media',
+    whiteboard_sketch_btn: 'Whiteboard Sketch',
+    export_presentation_dropdown: 'Export Presentation',
+    export_presentation_sub: 'PDF Studio, Keynote & PPTX',
+    client_link_sub: '3D Web Link & E-Signature'
   },
   de: {
     new_slide: 'Neue Folie', type_text_here: 'Inhalt hier einfügen...', budget_plan: 'Projekt-Budget',
@@ -138,8 +150,19 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     new_option_placeholder: 'Neues Paket (z.B. 4K Drohnenflug)', price_placeholder: 'Preis', add_btn: '+ Hinzufügen',
     sia_milestones_heading: 'SIA 102/118 Zahlungsplan & Meilensteine', legal_docs_heading: 'Vertragsdokumente & AGBs hochladen',
     legal_docs_sub: 'Laden Sie Ihre AGB, Werkverträge (SIA 118) oder NDAs als PDF hoch. Der Kunde kann diese auf der Landingpage einsehen und verbindlich akzeptieren.',
-    pdf_uploaded: '✅ Hochgeladen', pdf_none: '⚠️ Noch keine PDF hinterlegt', upload_pdf: 'PDF hochladen',
-    cancel: 'Abbrechen', publish_landingpage: 'Smart Landingpage Veröffentlichen', proposal_created_success: 'Kunden-Landingpage erfolgreich erstellt!'
+    cancel: 'Abbrechen', publish_landingpage: 'Smart Landingpage Veröffentlichen', proposal_created_success: 'Kunden-Landingpage erfolgreich erstellt!',
+    insert: 'Einfügen', insert_tooltip: 'Elemente, Medien, Notizen & Stempel einfügen',
+    present_btn: 'Präsentieren', present_tooltip: 'Vollbild-Präsentationsmodus starten',
+    share_export: 'Freigabe & Export', share_export_tooltip: 'Freigabe, Kunden-Link & Exportieren',
+    exit_studio_tooltip: 'Studio verlassen',
+    comparison_3variant: '3-Varianten-Vergleich',
+    construction_cost_chart: 'Baukosten-Diagramm',
+    table_of_contents_agenda: 'Inhaltsverzeichnis & Agenda',
+    badge_table: 'Tabelle', badge_template: 'Vorlage', badge_sketch: 'Skizze', badge_media: 'Medien',
+    whiteboard_sketch_btn: 'Whiteboard-Skizze',
+    export_presentation_dropdown: 'Präsentation exportieren',
+    export_presentation_sub: 'PDF Studio, Keynote & PPTX',
+    client_link_sub: '3D Web-Link & E-Signatur'
   }
 };
 
@@ -3728,20 +3751,20 @@ export default function PitchDeckStudio({
                 )}
                 <div className="space-y-2">
                   <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-2.5 rounded-lg bg-purple-500/10 text-purple-300 flex items-center justify-between hover:bg-purple-500/20 transition-all text-xs font-semibold border border-purple-500/30 shadow-sm">
-                    <span className="flex items-center gap-2.5"><Layers size={15}/> 3-Varianten-Vergleich</span>
+                    <span className="flex items-center gap-2.5"><Layers size={15}/> {t('comparison_3variant')}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-purple-500/20 text-purple-300">Pitch</span>
                   </button>
                   <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-semibold border border-emerald-500/20">
                     <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-emerald-500/20 text-emerald-300">Tabelle</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-emerald-500/20 text-emerald-300">{t('badge_table')}</span>
                   </button>
                   <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-semibold border border-indigo-500/20">
-                    <span className="flex items-center gap-2.5"><PieChart size={15}/> Baukosten Chart</span>
+                    <span className="flex items-center gap-2.5"><PieChart size={15}/> {t('construction_cost_chart')}</span>
                     <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">Donut</span>
                   </button>
                   <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-semibold border border-indigo-500/20">
-                    <span className="flex items-center gap-2.5"><BookOpen size={15}/> Inhaltsverzeichnis & Agenda</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">Vorlage</span>
+                    <span className="flex items-center gap-2.5"><BookOpen size={15}/> {t('table_of_contents_agenda')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">{t('badge_template')}</span>
                   </button>
                   <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-between hover:bg-orange-500/20 transition-all text-xs font-bold border border-orange-500/20">
                     <span className="flex items-center gap-2.5"><CalendarDays size={15}/>{t('generate_roadmap')}</span>
@@ -3749,20 +3772,20 @@ export default function PitchDeckStudio({
                   </button>
                   <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-2.5 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-between hover:bg-blue-500/20 transition-all text-xs font-bold border border-blue-500/20">
                     <span className="flex items-center gap-2.5"><Users size={15}/>{t('load_team')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-blue-500/20 text-blue-300">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-blue-500/20 text-blue-300">{hasRealTeam ? 'Live' : t('badge_template')}</span>
                   </button>
                   <button type="button" onClick={handleImportDefects} className="w-full p-2.5 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-between hover:bg-red-500/20 transition-all text-xs font-bold border border-red-500/20">
                     <span className="flex items-center gap-2.5"><AlertTriangle size={15}/>{t('import_defects')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : t('badge_template')}</span>
                   </button>
                   <div className="w-full h-px bg-border/50 my-1"></div>
                   <button type="button" onClick={handleImportWhiteboard} className="w-full p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-between hover:bg-cyan-500/20 transition-all text-xs font-bold border border-cyan-500/20">
-                    <span className="flex items-center gap-2.5"><PenTool size={15}/> Whiteboard Skizze</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-cyan-500/20 text-cyan-300">Skizze</span>
+                    <span className="flex items-center gap-2.5"><PenTool size={15}/> {t('whiteboard_sketch_btn')}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-cyan-500/20 text-cyan-300">{t('badge_sketch')}</span>
                   </button>
                   <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-between hover:bg-pink-500/20 transition-all text-xs font-bold border border-pink-500/20">
                     <span className="flex items-center gap-2.5"><Box size={15}/>{t('import_renderings')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-pink-500/20 text-pink-300">Medien</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-pink-500/20 text-pink-300">{t('badge_media')}</span>
                   </button>
                 </div>
               </div>
@@ -3887,15 +3910,15 @@ export default function PitchDeckStudio({
                       id="btn-pitch-stamp"
                       onClick={() => setShowInsertMenu(!showInsertMenu)}
                       className={cn(
-                        "px-2.5 sm:px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm",
-                        (showInsertMenu || activeSlide.stamp || activeSlide.notes)
+                        "px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0 font-sans",
+                        showInsertMenu
                           ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
                           : "bg-background border-border text-text-muted hover:text-text-primary"
                       )}
-                      title="Elemente, Medien, Notizen & Stempel einfügen"
+                      title={t('insert_tooltip')}
                     >
                       <PlusCircle size={14} className="text-purple-400" />
-                      <span>Einfügen</span>
+                      <span>{t('insert')}</span>
                       {activeSlide.stamp && (
                         <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded text-[9px] font-black uppercase">
                           {activeSlide.stamp}
@@ -3918,7 +3941,7 @@ export default function PitchDeckStudio({
                             className="fixed top-14 left-44 sm:left-64 mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                           >
                             <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
-                              Folie bearbeiten & Medien
+                              {currentLang === 'de' ? 'Folie bearbeiten & Medien' : 'Edit Slide & Media'}
                             </div>
 
                             {/* Bild einfügen */}
@@ -3933,7 +3956,7 @@ export default function PitchDeckStudio({
                               <ImageIcon size={15} className="text-blue-400 shrink-0" />
                               <div>
                                 <div className="leading-tight">{t('choose_image')}</div>
-                                <div className="text-[10px] font-normal text-text-muted">Bild aus Galerie, Renderings oder Upload</div>
+                                <div className="text-[10px] font-normal text-text-muted">{currentLang === 'de' ? 'Bild aus Galerie, Renderings oder Upload' : 'Image from gallery, renderings or upload'}</div>
                               </div>
                             </button>
 
@@ -3941,8 +3964,8 @@ export default function PitchDeckStudio({
                             <label className="w-full text-left px-3 py-2 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-400 transition-colors cursor-pointer">
                               {isUploadingVideo ? <Loader2 size={15} className="animate-spin text-purple-400 shrink-0" /> : <VideoIcon size={15} className="text-purple-400 shrink-0" />}
                               <div>
-                                <div className="leading-tight">Video hochladen</div>
-                                <div className="text-[10px] font-normal text-text-muted">MP4, WebM direkt einbetten</div>
+                                <div className="leading-tight">{currentLang === 'de' ? 'Video hochladen' : 'Upload Video'}</div>
+                                <div className="text-[10px] font-normal text-text-muted">{currentLang === 'de' ? 'MP4, WebM direkt einbetten' : 'Embed MP4, WebM directly'}</div>
                               </div>
                               <input
                                 type="file"
@@ -3960,7 +3983,7 @@ export default function PitchDeckStudio({
 
                             {/* Stempel & Prüfvermerke */}
                             <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest">
-                              {t('stamp_label')} / Prüfvermerk
+                              {t('stamp_label')}
                             </div>
                             <div className="px-2.5 py-1 flex flex-wrap gap-1">
                               {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
@@ -3997,7 +4020,7 @@ export default function PitchDeckStudio({
                               <div>
                                 <div className="leading-tight">{t('notes_label')} (Speaker Notes)</div>
                                 <div className="text-[10px] font-normal text-text-muted">
-                                  {activeSlide.notes ? 'Notiz vorhanden' : 'Notiz für Präsentator anzeigen'}
+                                  {activeSlide.notes ? (currentLang === 'de' ? 'Notiz vorhanden' : 'Note added') : (currentLang === 'de' ? 'Notiz für Präsentator anzeigen' : 'Show presenter notes')}
                                 </div>
                               </div>
                             </button>
@@ -4014,7 +4037,7 @@ export default function PitchDeckStudio({
                               <Copy size={15} className="text-text-muted shrink-0" />
                               <div>
                                 <div className="leading-tight">{t('duplicate_slide')}</div>
-                                <div className="text-[10px] font-normal text-text-muted">Aktuelle Folie 1:1 kopieren</div>
+                                <div className="text-[10px] font-normal text-text-muted">{currentLang === 'de' ? 'Aktuelle Folie 1:1 kopieren' : 'Duplicate current slide 1:1'}</div>
                               </div>
                             </button>
                           </motion.div>
@@ -4031,7 +4054,7 @@ export default function PitchDeckStudio({
                 type="button" 
                 onClick={() => setIsAiGeneratorOpen(true)} 
                 className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm transition-all flex shrink-0"
-                title="KI Pitch Deck automatisch generieren"
+                title={currentLang === 'de' ? 'KI Pitch Deck automatisch generieren' : 'Generate AI Pitch Deck automatically'}
               >
                 <Sparkles size={14}/> <span className="hidden xl:inline">{t('ai_create_deck')}</span><span className="xl:hidden">KI</span>
               </button>
@@ -4046,9 +4069,9 @@ export default function PitchDeckStudio({
                 }} 
                 disabled={slides.length === 0} 
                 className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm disabled:opacity-50 transition-all flex shrink-0 cursor-pointer relative z-30 font-sans"
-                title="Vollbild-Präsentationsmodus starten"
+                title={t('present_tooltip')}
               >
-                <Play size={14} className="fill-current"/> <span>Präsentieren</span>
+                <Play size={14} className="fill-current"/> <span>{t('present_btn')}</span>
               </button>
 
               {/* UNIFIED FREIGABE & EXPORT DROPDOWN MENU */}
@@ -4057,9 +4080,9 @@ export default function PitchDeckStudio({
                   type="button" 
                   onClick={() => setShowExportShareMenu(!showExportShareMenu)} 
                   className="tour-deck-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold gap-1.5 items-center shadow-md transition-all flex shrink-0 cursor-pointer font-sans"
-                  title="Freigabe, Kunden-Link & Exportieren"
+                  title={t('share_export_tooltip')}
                 >
-                  <Share2 size={14}/> <span>Freigabe & Export</span>
+                  <Share2 size={14}/> <span>{t('share_export')}</span>
                   <ChevronDown size={13} className={cn("transition-transform duration-150", showExportShareMenu && "rotate-180")} />
                 </button>
                 <AnimatePresence>
@@ -4073,13 +4096,13 @@ export default function PitchDeckStudio({
                         className="fixed top-14 right-16 sm:right-28 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                       >
                         <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
-                          Freigabe & Export
+                          {t('share_export')}
                         </div>
                         <button 
                           type="button"
                           onClick={() => {
                             setShowExportShareMenu(false);
-                            setProposalClientName(activeProject?.name ? `Kunde für ${activeProject.name}` : 'Kunde');
+                            setProposalClientName(activeProject?.name ? (currentLang === 'de' ? `Kunde für ${activeProject.name}` : `Client for ${activeProject.name}`) : (currentLang === 'de' ? 'Kunde' : 'Client'));
                             setIsLandingPageModalOpen(true);
                           }}
                           className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-blue-500/10 hover:text-blue-400 transition-colors cursor-pointer"
@@ -4087,7 +4110,7 @@ export default function PitchDeckStudio({
                           <Globe size={15} className="text-blue-400 shrink-0" />
                           <div>
                             <div className="leading-tight">{t('client_link_proposal_btn')}</div>
-                            <div className="text-[10px] font-normal text-text-muted mt-0.5">3D Web-Link & E-Signatur</div>
+                            <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('client_link_sub')}</div>
                           </div>
                         </button>
                         <button 
@@ -4101,8 +4124,8 @@ export default function PitchDeckStudio({
                         >
                           <DownloadCloud size={15} className="text-indigo-400 shrink-0" />
                           <div>
-                            <div className="leading-tight">Präsentation exportieren</div>
-                            <div className="text-[10px] font-normal text-text-muted mt-0.5">PDF Studio, Keynote & PPTX</div>
+                            <div className="leading-tight">{t('export_presentation_dropdown')}</div>
+                            <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('export_presentation_sub')}</div>
                           </div>
                         </button>
                       </motion.div>
@@ -4116,7 +4139,7 @@ export default function PitchDeckStudio({
                 type="button" 
                 onClick={onClose} 
                 className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all border border-red-500/40 shadow-sm shrink-0 cursor-pointer font-sans" 
-                title="Studio schliessen"
+                title={t('exit_studio_tooltip')}
               >
                 <LogOut size={14} /> <span className="hidden xl:inline">{t('close_studio')}</span>
               </button>

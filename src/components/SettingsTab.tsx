@@ -86,7 +86,46 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     roles_permissions: 'Roles & Permissions',
     no_team_members: 'No team members found.',
     view_finance: 'View Finance',
-    approve_budget: 'Approve Budget'
+    approve_budget: 'Approve Budget',
+    general_settings: 'General Settings',
+    webhooks_api_keys: 'Webhooks & API Keys',
+    my_profile: 'My Profile',
+    active_badge: 'Active',
+    change_avatar: 'Change Profile Picture',
+    personal_info_address: 'Personal Information & Address',
+    personal_info_desc: 'Your individual contact details within the team',
+    your_name_display: 'Your Name / Display Name',
+    name_placeholder: 'First and last name',
+    email_login: 'Email Address (Login)',
+    phone_mobile: 'Phone Number / Mobile',
+    function_job_title: 'Function / Job Title',
+    job_title_placeholder: 'e.g. Project Lead, Site Manager, Architect',
+    street_number_personal: 'Street / House Number (Personal Address)',
+    street_placeholder: 'Sample Street 12',
+    postal_code: 'ZIP / Postal Code',
+    city_label: 'City',
+    preferred_system_language: 'Preferred System Language',
+    department_area: 'Department / Area',
+    department_placeholder: 'e.g. Planning, Execution, Construction Management',
+    about_me_bio: 'About Me / Notes / Signature',
+    about_me_placeholder: 'Additional personal info or signature...',
+    company_affiliation_rights: 'Company Affiliation & Permissions',
+    company_affiliation_desc_pre: 'You are a member in the Kreativ Desk OS Workspace with the role',
+    company_affiliation_desc_post: 'Your workspaces, projects and permissions are managed centrally by the owner or management.',
+    save_changes: 'Save Changes',
+    personal_account_bracket: '(Personal Account)',
+    two_factor_auth_active: 'My 2FA is Active',
+    two_factor_auth_setup: 'Set up My 2FA',
+    change_password_direct: 'Change password directly',
+    new_password: 'New Password',
+    confirm_password: 'Confirm Password',
+    save_password: 'Save Password',
+    audio_notifications: 'App Audio & Notifications',
+    ringtone_sound_effects: 'Ringtone & Sound Effects',
+    ringtone_desc: 'Plays a pleasant chime for incoming video calls and live alerts.',
+    muted_status: 'Muted',
+    de_lang_label: 'Deutsch (Schweiz / Standard)',
+    en_lang_label: 'English (International)'
   },
   de: {
     agency_profile: 'Unternehmensprofil', 
@@ -152,7 +191,46 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     roles_permissions: 'Rollen & Berechtigungen',
     no_team_members: 'Keine Teammitglieder gefunden.',
     view_finance: 'Firmen-Finanzen sehen',
-    approve_budget: 'Budget freigeben'
+    approve_budget: 'Budget freigeben',
+    general_settings: 'Allgemeine Einstellungen',
+    webhooks_api_keys: 'Webhook-Verwaltung & API-Keys',
+    my_profile: 'Mein Profil',
+    active_badge: 'Aktiv',
+    change_avatar: 'Profilbild ändern',
+    personal_info_address: 'Persönliche Informationen & Adresse',
+    personal_info_desc: 'Deine individuellen Kontaktdaten im Team',
+    your_name_display: 'Dein Name / Anzeigename',
+    name_placeholder: 'Vor- und Nachname',
+    email_login: 'E-Mail-Adresse (Login)',
+    phone_mobile: 'Telefonnummer / Mobil',
+    function_job_title: 'Funktion / Berufsbezeichnung',
+    job_title_placeholder: 'z. B. Projektleiter, Bauleiter, Architekt',
+    street_number_personal: 'Straße / Hausnummer (Persönliche Adresse)',
+    street_placeholder: 'Musterstrasse 12',
+    postal_code: 'PLZ',
+    city_label: 'Ort',
+    preferred_system_language: 'Bevorzugte Systemsprache',
+    department_area: 'Abteilung / Fachbereich',
+    department_placeholder: 'z. B. Planung, Ausführung, Bauleitung',
+    about_me_bio: 'Über mich / Notiz / Signatur',
+    about_me_placeholder: 'Zusätzliche persönliche Info oder Signatur...',
+    company_affiliation_rights: 'Unternehmenszugehörigkeit & Rechte',
+    company_affiliation_desc_pre: 'Du bist Mitglied im Kreativ Desk OS Workspace mit der Rolle',
+    company_affiliation_desc_post: 'Deine Arbeitsbereiche, Projekte und Freigaben werden zentral durch den Inhaber oder die Geschäftsleitung gesteuert.',
+    save_changes: 'Änderungen speichern',
+    personal_account_bracket: '(Persönlicher Account)',
+    two_factor_auth_active: 'Mein 2FA ist Aktiv',
+    two_factor_auth_setup: 'Mein 2FA einrichten',
+    change_password_direct: 'Passwort direkt ändern',
+    new_password: 'Neues Passwort',
+    confirm_password: 'Passwort bestätigen',
+    save_password: 'Passwort speichern',
+    audio_notifications: 'App-Audio & Benachrichtigungen',
+    ringtone_sound_effects: 'Klingelton & Sound-Effekte',
+    ringtone_desc: 'Spielt einen angenehmen Akkord bei eingehenden Video-Calls und Live-Anrufen ab.',
+    muted_status: 'Stumm',
+    de_lang_label: 'Deutsch (Schweiz / Standard)',
+    en_lang_label: 'English (International)'
   }
 };
 
@@ -729,7 +807,7 @@ export default function SettingsTab() {
                 : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
             )}
           >
-            <Building2 size={15} /> Allgemeine Einstellungen
+            <Building2 size={15} /> {t('general_settings')}
           </button>
           <button
             type="button"
@@ -741,7 +819,7 @@ export default function SettingsTab() {
                 : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
             )}
           >
-            <Terminal size={15} /> Webhook-Verwaltung & API-Keys
+            <Terminal size={15} /> {t('webhooks_api_keys')}
           </button>
         </div>
       )}
@@ -1394,13 +1472,21 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
 
   // Role display label
   const rawRole = (currentUser?.role || '').toLowerCase().trim();
-  const roleLabel = 
+  const roleLabel = currentLang === 'en' ? (
+    rawRole === 'project_lead' ? 'Project Lead' :
+    rawRole === 'super_admin' ? 'Super Admin' :
+    rawRole === 'owner' ? 'Owner / Executive' :
+    rawRole === 'client' ? 'Client / Builder' :
+    rawRole === 'guest' || rawRole === 'viewer' ? 'Viewer' :
+    'Team Member'
+  ) : (
     rawRole === 'project_lead' ? 'Projektleiter' :
     rawRole === 'super_admin' ? 'Super Admin' :
     rawRole === 'owner' ? 'Inhaber / Geschäftsleitung' :
     rawRole === 'client' ? 'Kunde / Bauherr' :
     rawRole === 'guest' || rawRole === 'viewer' ? 'Viewer (Betrachter)' :
-    'Mitarbeiter';
+    'Mitarbeiter'
+  );
 
   // Lade bestehende Adressdaten & Profilinformationen aus company_users und Local Storage
   useEffect(() => {
@@ -1646,14 +1732,14 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             )}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-text-primary">{name || 'Mein Profil'}</h2>
+            <h2 className="text-xl font-bold text-text-primary">{name || t('my_profile')}</h2>
             <p className="text-xs text-text-muted">{currentUser?.email}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center gap-1">
                 <Users size={11} /> {roleLabel}
               </span>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 border border-emerald-500/20 text-emerald-500">
-                Aktiv
+                {t('active_badge')}
               </span>
             </div>
           </div>
@@ -1667,7 +1753,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             disabled={isUploadingAvatar}
             className="px-4 py-2 bg-background border border-border hover:bg-white/5 text-text-primary rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer"
           >
-            <Upload size={14} /> Profilbild ändern
+            <Upload size={14} /> {t('change_avatar')}
           </button>
         </div>
       </div>
@@ -1676,25 +1762,25 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       <form onSubmit={handleSaveProfile} className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border/50">
           <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2">
-            <User size={16} /> Persönliche Informationen & Adresse
+            <User size={16} /> {t('personal_info_address')}
           </h3>
-          <span className="text-[11px] text-text-muted font-medium">Deine individuellen Kontaktdaten im Team</span>
+          <span className="text-[11px] text-text-muted font-medium">{t('personal_info_desc')}</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Dein Name / Anzeigename</label>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('your_name_display')}</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
-              placeholder="Vor- und Nachname"
+              placeholder={t('name_placeholder')}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">E-Mail-Adresse (Login)</label>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('email_login')}</label>
             <div className="relative">
               <input
                 type="email"
@@ -1709,7 +1795,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
 
           <div>
             <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Phone size={13} className="text-accent-ai" /> Telefonnummer / Mobil
+              <Phone size={13} className="text-accent-ai" /> {t('phone_mobile')}
             </label>
             <input
               type="tel"
@@ -1722,32 +1808,32 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
 
           <div>
             <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Briefcase size={13} className="text-accent-ai" /> Funktion / Berufsbezeichnung
+              <Briefcase size={13} className="text-accent-ai" /> {t('function_job_title')}
             </label>
             <input
               type="text"
               value={jobTitle}
               onChange={e => setJobTitle(e.target.value)}
               className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
-              placeholder="z. B. Projektleiter, Bauleiter, Architekt"
+              placeholder={t('job_title_placeholder')}
             />
           </div>
 
           <div className="sm:col-span-2">
             <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <MapPin size={13} className="text-accent-ai" /> Straße / Hausnummer (Persönliche Adresse)
+              <MapPin size={13} className="text-accent-ai" /> {t('street_number_personal')}
             </label>
             <input
               type="text"
               value={street}
               onChange={e => setStreet(e.target.value)}
               className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
-              placeholder="Musterstrasse 12"
+              placeholder={t('street_placeholder')}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">PLZ</label>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('postal_code')}</label>
             <input
               type="text"
               value={zipCode}
@@ -1758,7 +1844,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Ort</label>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('city_label')}</label>
             <input
               type="text"
               value={city}
@@ -1770,46 +1856,46 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
 
           <div>
             <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Globe size={13} className="text-accent-ai" /> Bevorzugte Systemsprache
+              <Globe size={13} className="text-accent-ai" /> {t('preferred_system_language')}
             </label>
             <select
               value={preferredLang}
               onChange={e => setPreferredLang(e.target.value)}
               className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner cursor-pointer"
             >
-              <option value="de">Deutsch (Schweiz / Standard)</option>
-              <option value="en">English (International)</option>
+              <option value="de">{t('de_lang_label')}</option>
+              <option value="en">{t('en_lang_label')}</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Abteilung / Fachbereich</label>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('department_area')}</label>
             <input
               type="text"
               value={department}
               onChange={e => setDepartment(e.target.value)}
               className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
-              placeholder="z. B. Planung, Ausführung, Bauleitung"
+              placeholder={t('department_placeholder')}
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Über mich / Notiz / Signatur</label>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('about_me_bio')}</label>
             <textarea
               value={personalBio}
               onChange={e => setPersonalBio(e.target.value)}
               rows={2}
               className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner custom-scrollbar"
-              placeholder="Zusätzliche persönliche Info oder Signatur..."
+              placeholder={t('about_me_placeholder')}
             />
           </div>
 
           <div className="sm:col-span-2 p-4 bg-background/30 rounded-xl border border-border/30 flex items-start gap-3">
             <Shield size={18} className="text-blue-400 shrink-0 mt-0.5" />
             <div className="space-y-0.5">
-              <p className="text-xs font-bold text-text-primary">Unternehmenszugehörigkeit & Rechte</p>
+              <p className="text-xs font-bold text-text-primary">{t('company_affiliation_rights')}</p>
               <p className="text-[11px] text-text-muted leading-relaxed">
-                Du bist Mitglied im Kreativ Desk OS Workspace mit der Rolle <strong>{roleLabel}</strong>. Deine Arbeitsbereiche, Projekte und Freigaben werden zentral durch den Inhaber oder die Geschäftsleitung gesteuert.
+                {t('company_affiliation_desc_pre')} <strong>{roleLabel}</strong>. {t('company_affiliation_desc_post')}
               </p>
             </div>
           </div>
@@ -1821,7 +1907,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
             disabled={isSavingProfile}
             className="px-6 py-3 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            {isSavingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Änderungen speichern
+            {isSavingProfile ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} {t('save_changes')}
           </button>
         </div>
       </form>
@@ -1829,7 +1915,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       {/* SICHERHEIT & SUPPORT (PERSÖNLICHER ACCOUNT) - GENAU WIE BEIM ADMIN */}
       <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-5">
         <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-          <Shield size={16} /> {t('security_support')} (Persönlicher Account)
+          <Shield size={16} /> {t('security_support')} {t('personal_account_bracket')}
         </h3>
         
         {/* Die 3 Haupt-Action-Buttons */}
@@ -1850,7 +1936,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
               is2FAEnabled ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-background border-border text-text-primary hover:bg-white/5"
             )}
           >
-            <Shield size={16} /> {is2FAEnabled ? 'Mein 2FA ist Aktiv' : 'Mein 2FA einrichten'}
+            <Shield size={16} /> {is2FAEnabled ? t('two_factor_auth_active') : t('two_factor_auth_setup')}
           </button>
           <a 
             href={`mailto:support@kreativdesk.ch?subject=Support%20Anfrage%20von%20${encodeURIComponent(currentUser?.email || '')}`} 
@@ -1864,9 +1950,9 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
         {show2FASetup && (
           <div className="p-5 bg-background border border-border/50 rounded-xl space-y-4 animate-in fade-in">
             <div className="font-bold text-sm text-text-primary flex items-center gap-2">
-              <Shield className="text-emerald-500" size={18} /> Google Authenticator / 1Password 2FA Einrichtung
+              <Shield className="text-emerald-500" size={18} /> Google Authenticator / 1Password 2FA
             </div>
-            <p className="text-xs text-text-muted">Scanne den QR-Code mit deiner Authenticator App und bestätige die Einrichtung.</p>
+            <p className="text-xs text-text-muted">{currentLang === 'en' ? 'Scan the QR code with your Authenticator app and confirm setup.' : 'Scanne den QR-Code mit deiner Authenticator App und bestätige die Einrichtung.'}</p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
               <img 
                 src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=otpauth://totp/KreativDesk:User?secret=JBSWY3DPEHPK3PXP" 
@@ -1875,12 +1961,12 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
               />
               <div className="space-y-3 flex-1">
                 <p className="text-xs text-text-muted font-mono bg-surface px-3 py-1.5 rounded-lg border border-border/60 inline-block">
-                  Schlüssel: JBSWY3DPEHPK3PXP
+                  {currentLang === 'en' ? 'Key:' : 'Schlüssel:'} JBSWY3DPEHPK3PXP
                 </p>
                 <div className="flex items-center gap-3">
                   <input 
                     type="text" 
-                    placeholder="6-stelliger Code" 
+                    placeholder={currentLang === 'en' ? '6-digit code' : '6-stelliger Code'}
                     className="px-4 py-2 bg-surface border border-border rounded-lg text-sm font-mono text-text-primary outline-none focus:border-emerald-500 w-36 shadow-inner" 
                     maxLength={6} 
                   />
@@ -1890,11 +1976,11 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
                       setIs2FAEnabled(true);
                       safeStorage.setItem(`user_2fa_enabled_${currentUser?.uid}`, 'true');
                       setShow2FASetup(false);
-                      addToast('Zwei-Faktor-Authentifizierung (2FA) erfolgreich aktiviert!', 'success');
+                      addToast(currentLang === 'en' ? 'Two-Factor Authentication (2FA) successfully activated!' : 'Zwei-Faktor-Authentifizierung (2FA) erfolgreich aktiviert!', 'success');
                     }}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all shadow-md cursor-pointer"
                   >
-                    Bestätigen & Aktivieren
+                    {currentLang === 'en' ? 'Confirm & Activate' : 'Bestätigen & Aktivieren'}
                   </button>
                 </div>
               </div>
@@ -1906,25 +1992,25 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
         <div className="pt-4 border-t border-border/50">
           <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
             <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
-              <KeyRound size={13} className="text-accent-ai" /> Passwort direkt ändern
+              <KeyRound size={13} className="text-accent-ai" /> {t('change_password_direct')}
             </h4>
             <div>
-              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Neues Passwort</label>
+              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('new_password')}</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
-                placeholder="Mindestens 6 Zeichen"
+                placeholder={currentLang === 'en' ? 'At least 6 characters' : 'Mindestens 6 Zeichen'}
                 className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">Passwort bestätigen</label>
+              <label className="block text-[11px] font-bold text-text-muted uppercase tracking-widest mb-1">{t('confirm_password')}</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Passwort wiederholen"
+                placeholder={currentLang === 'en' ? 'Repeat password' : 'Passwort wiederholen'}
                 className="w-full bg-background border border-border/50 rounded-lg px-4 py-2.5 text-sm focus:border-accent-ai outline-none text-text-primary font-medium transition-all shadow-inner"
               />
             </div>
@@ -1934,7 +2020,7 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
                 disabled={isSavingPassword || !newPassword}
                 className="px-5 py-2.5 bg-text-primary text-background hover:opacity-90 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-40 shadow-sm"
               >
-                {isSavingPassword ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} Passwort speichern
+                {isSavingPassword ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} {t('save_password')}
               </button>
             </div>
           </form>
@@ -1947,12 +2033,12 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
       {/* Persönliche Benachrichtigungen & Töne */}
       <div className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
-          <Sparkles size={16} className="text-accent-ai" /> App-Audio & Benachrichtigungen
+          <Sparkles size={16} className="text-accent-ai" /> {t('audio_notifications')}
         </h3>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
           <div>
-            <h4 className="text-xs font-bold text-text-primary">Klingelton & Sound-Effekte</h4>
-            <p className="text-[11px] text-text-muted mt-0.5">Spielt einen angenehmen Akkord bei eingehenden Video-Calls und Live-Anrufen ab.</p>
+            <h4 className="text-xs font-bold text-text-primary">{t('ringtone_sound_effects')}</h4>
+            <p className="text-[11px] text-text-muted mt-0.5">{t('ringtone_desc')}</p>
           </div>
           <label className="flex items-center cursor-pointer">
             <div className="relative">
@@ -1963,13 +2049,13 @@ function EmployeeSettingsView({ currentUser }: { currentUser: any }) {
                 onChange={e => {
                   setSoundEnabled(e.target.checked);
                   safeStorage.setItem('kreativ_desk_sound_enabled', String(e.target.checked));
-                  addToast(e.target.checked ? 'Audio-Signale aktiviert' : 'Audio-Signale stummgeschaltet', 'info');
+                  addToast(e.target.checked ? (currentLang === 'en' ? 'Audio alerts enabled' : 'Audio-Signale aktiviert') : (currentLang === 'en' ? 'Audio alerts muted' : 'Audio-Signale stummgeschaltet'), 'info');
                 }}
               />
               <div className={cn("block w-10 h-6 rounded-full transition-colors", soundEnabled ? "bg-accent-ai" : "bg-background border border-border")} />
               <div className={cn("absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", soundEnabled ? "transform translate-x-4" : "")} />
             </div>
-            <span className="ml-3 text-xs font-bold text-text-muted uppercase tracking-widest">{soundEnabled ? 'Aktiv' : 'Stumm'}</span>
+            <span className="ml-3 text-xs font-bold text-text-muted uppercase tracking-widest">{soundEnabled ? t('active_badge') : t('muted_status')}</span>
           </label>
         </div>
       </div>

@@ -19,6 +19,53 @@ import { safeStorage } from '../utils/safeStorage';
 import { MASTER_TEMPLATES, TEMPLATE_CATEGORIES, MasterTemplate } from '../data/masterTemplates';
 import { bindTemplateVariables, getCachedCompanyProfile } from '../utils/templateVariableEngine';
 
+const TAG_TRANSLATIONS: Record<string, string> = {
+  'Architektur': 'Architecture',
+  'Generalplanung': 'General Planning',
+  'Bauleitung': 'Site Management',
+  'Ausschreibung': 'Procurement',
+  'Kostengarantie': 'Cost Guarantee',
+  'Werkvertrag': 'Construction Contract',
+  'Handwerker': 'Contractor / Trades',
+  'Unternehmer': 'General Contractor',
+  'Urheberrecht': 'Copyright',
+  'Buyout': 'Buyout',
+  'Lizenzen': 'Licenses',
+  'Medienrechte': 'Media Rights',
+  'Künstliche Intelligenz': 'Artificial Intelligence',
+  'Generativ': 'Generative',
+  'Datenschutz': 'Data Privacy',
+  'Honorar': 'Fee Agreement',
+  'Zahlungsplan': 'Payment Schedule',
+  'Meilensteine': 'Milestones',
+  'Abnahme': 'Formal Handover',
+  'Mängel': 'Defects',
+  'Übergabe': 'Handover',
+  'Garantie': 'Warranty',
+  'Mängelrüge': 'Notice of Defects',
+  'Fristansetzung': 'Grace Period',
+  'Nachbesserung': 'Rectification',
+  'Mahnung': 'Reminder / Default Notice',
+  'Verzug': 'Default / Delay',
+  'Frist': 'Deadline',
+  'Kündigung': 'Termination',
+  'Freigabe': 'Approval',
+  'Bauherrschaft': 'Client / Owner',
+  'Planung': 'Planning Phase',
+  'Nachtrag': 'Addendum / Change Order',
+  'Mehraufwand': 'Additional Scope',
+  'Baukosten': 'Construction Costs',
+  'Geschäftsbrief': 'Business Letter',
+  'Korrespondenz': 'Correspondence',
+  'Szenografie': 'Scenography',
+  'Ausstellung': 'Exhibition',
+  'Museum': 'Museum',
+  'Interaktion': 'Interaction',
+  'Korrekturschleifen': 'Revision Rounds',
+  'Geheimhaltung': 'Non-Disclosure',
+  'Vertraulichkeit': 'Confidentiality'
+};
+
 const AI_CATEGORIES = [
   { id: 'sia_102', label: 'SIA 102 Honorarvertrag (Architektur & Planung)', icon: '🏛️' },
   { id: 'sia_118', label: 'SIA 118 Werkvertrag (Handwerker & Bauausführung)', icon: '🔨' },
@@ -226,11 +273,15 @@ export default function TemplatesTab({
   const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
   const [studioDocTitle, setStudioDocTitle] = useState('');
 
-  // Master Catalog Filter & Language States
   const [templateSearch, setTemplateSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [catalogLanguage, setCatalogLanguage] = useState<'de' | 'en'>(currentLang);
   const [copiedTemplateId, setCopiedTemplateId] = useState<string | null>(null);
+
+  // Synchronize catalog language with system language when user switches language
+  React.useEffect(() => {
+    setCatalogLanguage(currentLang);
+  }, [currentLang]);
 
   // Active Company Branding Information for Indicator
   const companyProfile = useMemo(() => {
@@ -251,8 +302,9 @@ export default function TemplatesTab({
       const descEn = tpl.description.en.toLowerCase();
       const code = tpl.code.toLowerCase();
       const tags = tpl.tags.map(tag => tag.toLowerCase()).join(' ');
+      const tagsEn = tpl.tags.map(tag => (TAG_TRANSLATIONS[tag] || tag).toLowerCase()).join(' ');
 
-      return titleDe.includes(q) || titleEn.includes(q) || descDe.includes(q) || descEn.includes(q) || code.includes(q) || tags.includes(q);
+      return titleDe.includes(q) || titleEn.includes(q) || descDe.includes(q) || descEn.includes(q) || code.includes(q) || tags.includes(q) || tagsEn.includes(q);
     });
   }, [templateSearch, selectedCategory]);
 
@@ -701,7 +753,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
                           key={tag}
                           className="px-2 py-0.5 rounded-md bg-background/80 text-text-muted text-[10px] font-semibold border border-border/40 flex items-center gap-1"
                         >
-                          <Tag size={9} /> {tag}
+                          <Tag size={9} /> {catalogLanguage === 'en' ? (TAG_TRANSLATIONS[tag] || tag) : tag}
                         </span>
                       ))}
                     </div>

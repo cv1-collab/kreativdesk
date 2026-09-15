@@ -22,6 +22,8 @@ import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelp
 import { safeStorage } from '../utils/safeStorage';
 
 const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: string }) => {
+  const { language } = useLanguage();
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [needsUserClick, setNeedsUserClick] = useState(false);
   const [hasVideoTrack, setHasVideoTrack] = useState(true);
@@ -83,7 +85,7 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
     }
   };
 
-  const displayName = peerName || 'Teilnehmer';
+  const displayName = peerName || (currentLang === 'de' ? 'Teilnehmer' : 'Participant');
   const initials = displayName.substring(0, 2).toUpperCase();
 
   return (
@@ -105,7 +107,7 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
             <span className="text-xl md:text-2xl font-black text-accent-ai tracking-wider">{initials}</span>
           </div>
           <span className="text-xs md:text-sm font-semibold text-white/90">{displayName}</span>
-          <span className="text-[10px] md:text-xs text-text-muted mt-0.5">Kamera deaktiviert</span>
+          <span className="text-[10px] md:text-xs text-text-muted mt-0.5">{currentLang === 'de' ? 'Kamera deaktiviert' : 'Camera disabled'}</span>
         </div>
       )}
 
@@ -115,7 +117,7 @@ const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: str
           onClick={handleManualUnmute}
           className="absolute top-3 right-3 z-30 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg flex items-center gap-1.5 animate-bounce cursor-pointer transition-all"
         >
-          🔊 Ton aktivieren
+          {currentLang === 'de' ? '🔊 Ton aktivieren' : '🔊 Unmute Audio'}
         </button>
       )}
 
@@ -138,7 +140,20 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     upcoming_calls: 'Upcoming Calls', no_upcoming_calls: 'No upcoming calls.', join_now: 'Join Now', mobile_blocked_title: 'Desktop Only Feature',
     mobile_blocked_desc: 'Video calls and live collaboration are only available on desktop devices to ensure a stable connection.',
     who_to_call: 'Who do you want to call? (Optional)', start_call: 'Start Project Call', start_rundruf: 'Start Group Call',
-    call_selected: 'Call selected people', invite_participants: 'Invite Participants', external_link: 'External Invite Link'
+    call_selected: 'Call selected people', invite_participants: 'Invite Participants', external_link: 'External Invite Link',
+    quick_invite_partner: 'Quick Invite for External Partners & Clients',
+    copy_link: 'Copy Link',
+    link_copied: 'Link copied!',
+    or_divider: 'OR',
+    meeting_id_placeholder: 'Meeting ID...',
+    join: 'Join',
+    waiting_for_participants: 'Waiting for participants...',
+    sync_notice: 'Supports 5+ participants simultaneously with audio/video sync',
+    camera_disabled: 'Camera disabled',
+    unmute_audio: '🔊 Unmute Audio',
+    participant: 'Participant',
+    you: 'You',
+    camera_off: 'Camera off'
   },
   de: {
     meet_chat_title: 'Meet & Chat', meet_chat_desc: 'Live-Video-Kollaboration und Projekt-Chat.', live_collaboration: 'Live Kollaboration',
@@ -149,7 +164,20 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     upcoming_calls: 'Bevorstehende Video Calls', no_upcoming_calls: 'Keine geplanten Calls vorhanden.', join_now: 'Teilnehmen', mobile_blocked_title: 'Nur auf Desktop verfügbar',
     mobile_blocked_desc: 'Video-Calls und das Live-Whiteboard sind auf Smartphones deaktiviert, um Verbindungsabbrüche zu verhindern.',
     who_to_call: 'Wen möchtest du anrufen? (Optional)', start_call: 'Projekt-Call starten', start_rundruf: 'Projekt-Rundruf starten',
-    call_selected: 'Person(en) anrufen', invite_participants: 'Teilnehmer einladen', external_link: 'Link für externe Partner'
+    call_selected: 'Person(en) anrufen', invite_participants: 'Teilnehmer einladen', external_link: 'Link für externe Partner',
+    quick_invite_partner: 'Schnell-Einladung für externe Partner & Bauherren',
+    copy_link: 'Link kopieren',
+    link_copied: 'Link kopiert!',
+    or_divider: 'ODER',
+    meeting_id_placeholder: 'Meeting-ID...',
+    join: 'Beitreten',
+    waiting_for_participants: 'Warte auf Teilnehmer...',
+    sync_notice: 'Unterstützt 5+ Teilnehmer gleichzeitig mit stabiler Audio/Video-Synchronisation',
+    camera_disabled: 'Kamera deaktiviert',
+    unmute_audio: '🔊 Ton aktivieren',
+    participant: 'Teilnehmer',
+    you: 'Du',
+    camera_off: 'Kamera aus'
   }
 };
 
@@ -1449,7 +1477,7 @@ export default function MeetChat() {
                   <div className="w-full bg-surface/50 border border-border/80 p-3.5 md:p-4 rounded-2xl space-y-3 mb-5">
                     <div className="text-[11px] font-extrabold uppercase tracking-wider text-text-muted flex items-center justify-center gap-1.5">
                       <Sparkles size={14} className="text-emerald-500 shrink-0" />
-                      <span>Schnell-Einladung für externe Partner & Bauherren</span>
+                      <span>{t('quick_invite_partner')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1458,7 +1486,7 @@ export default function MeetChat() {
                         className="px-3 py-2.5 bg-background hover:bg-surface border border-border rounded-xl font-bold text-xs text-text-primary flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
                       >
                         {copiedLink ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                        Link kopieren
+                        {t('copy_link')}
                       </button>
 
                       <button
@@ -1477,17 +1505,17 @@ export default function MeetChat() {
                     </div>
                   </div>
 
-                  <div className="relative flex items-center gap-2 w-full mb-5"><div className="flex-1 h-px bg-border/50"></div><span className="text-xs text-text-muted font-bold uppercase tracking-widest">ODER</span><div className="flex-1 h-px bg-border/50"></div></div>
+                  <div className="relative flex items-center gap-2 w-full mb-5"><div className="flex-1 h-px bg-border/50"></div><span className="text-xs text-text-muted font-bold uppercase tracking-widest">{t('or_divider')}</span><div className="flex-1 h-px bg-border/50"></div></div>
 
                   <div className="w-full flex gap-2">
-                    <input type="text" value={joinCallId} onChange={e => setJoinCallId(e.target.value)} placeholder="Meeting-ID..." className="flex-1 bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                    <input type="text" value={joinCallId} onChange={e => setJoinCallId(e.target.value)} placeholder={t('meeting_id_placeholder')} className="flex-1 bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
                     <button onClick={() => {
                       if (isDemo) {
-                        addToast('Live-Video-Calls sind in der Demo deaktiviert.', 'info');
+                        addToast(currentLang === 'de' ? 'Live-Video-Calls sind in der Demo deaktiviert.' : 'Live video calls are disabled in demo mode.', 'info');
                         return;
                       }
                       joinCall();
-                    }} disabled={!joinCallId.trim()} className="px-5 py-2.5 bg-surface border border-border rounded-xl font-bold text-text-primary hover:bg-white/5 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"><PhoneForwarded size={16} /> Join</button>
+                    }} disabled={!joinCallId.trim()} className="px-5 py-2.5 bg-surface border border-border rounded-xl font-bold text-text-primary hover:bg-white/5 disabled:opacity-50 transition-all flex items-center gap-2 cursor-pointer"><PhoneForwarded size={16} /> {t('join')}</button>
                   </div>
                 </div>
               ) : (
@@ -1510,8 +1538,8 @@ export default function MeetChat() {
                     {Object.keys(remoteStreams).length === 0 && (
                       <div className="w-full h-full flex flex-col items-center justify-center text-text-muted">
                         <Loader2 size={40} className="animate-spin mb-4 text-accent-ai" />
-                        <p className="font-bold text-sm tracking-widest uppercase text-white">Warte auf Teilnehmer...</p>
-                        <p className="text-xs text-text-muted mt-1">Unterstützt 5+ Teilnehmer gleichzeitig mit stabiler Audio/Video-Synchronisation</p>
+                        <p className="font-bold text-sm tracking-widest uppercase text-white">{t('waiting_for_participants')}</p>
+                        <p className="text-xs text-text-muted mt-1">{t('sync_notice')}</p>
                       </div>
                     )}
                   </div>
@@ -1555,13 +1583,13 @@ export default function MeetChat() {
                         <div className="w-9 h-9 rounded-full bg-accent-ai/20 border border-accent-ai/50 flex items-center justify-center font-bold text-accent-ai text-xs mb-1">
                           {currentUser?.name?.charAt(0)?.toUpperCase() || 'D'}
                         </div>
-                        <span className="text-[10px] text-text-muted font-medium">Kamera aus</span>
+                        <span className="text-[10px] text-text-muted font-medium">{t('camera_off')}</span>
                       </div>
                     )}
 
                     <div className="absolute bottom-2 left-2 z-20 px-2 py-0.5 bg-black/75 backdrop-blur-md rounded-md border border-white/15 text-[10px] font-bold text-white/90 pointer-events-none flex items-center gap-1.5 shadow-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      Du
+                      {t('you')}
                     </div>
                     <div className="absolute top-2 right-2 z-20 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -1579,7 +1607,7 @@ export default function MeetChat() {
                           safeStorage.setItem('meetchat_preview_corner', n);
                         }}
                         className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
-                        title="Vorschau-Position wechseln (unten-rechts / oben-rechts / oben-links / unten-links)"
+                        title={currentLang === 'de' ? 'Vorschau-Position wechseln (unten-rechts / oben-rechts / oben-links / unten-links)' : 'Switch preview position (bottom-right / top-right / top-left / bottom-left)'}
                       >
                         <Move size={13} />
                       </button>
@@ -1587,7 +1615,7 @@ export default function MeetChat() {
                         type="button"
                         onClick={() => setShowBgModal(true)}
                         className="p-1.5 bg-black/70 backdrop-blur-md text-white rounded-lg hover:bg-black/90 cursor-pointer border border-white/10"
-                        title="Hintergrund wechseln"
+                        title={currentLang === 'de' ? 'Hintergrund wechseln' : 'Change background'}
                       >
                         <Image size={13} />
                       </button>
@@ -1595,8 +1623,8 @@ export default function MeetChat() {
                   </div>
 
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 md:gap-3 bg-slate-900/90 backdrop-blur-xl border border-slate-700/60 p-2 md:p-2.5 rounded-2xl shadow-2xl z-30 pointer-events-auto max-w-[calc(100%-2rem)]">
-                    <button onClick={toggleMic} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Mikrofon">{isMicOn ? <Mic size={18} /> : <MicOff size={18} />}</button>
-                    <button onClick={toggleCam} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title="Kamera">{isCamOn ? <Video size={18} /> : <VideoOff size={18} />}</button>
+                    <button onClick={toggleMic} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isMicOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title={currentLang === 'de' ? 'Mikrofon' : 'Microphone'}>{isMicOn ? <Mic size={18} /> : <MicOff size={18} />}</button>
+                    <button onClick={toggleCam} className={cn("p-2.5 md:p-3 rounded-xl transition-all border", isCamOn ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-red-600 hover:bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/20")} title={currentLang === 'de' ? 'Kamera' : 'Camera'}>{isCamOn ? <Video size={18} /> : <VideoOff size={18} />}</button>
                     <button
                       onClick={() => setShowBgModal(true)}
                       className={cn(
@@ -1605,12 +1633,12 @@ export default function MeetChat() {
                           ? "bg-accent-ai text-white border-accent-ai shadow-lg shadow-accent-ai/20"
                           : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700"
                       )}
-                      title="Hintergrund & Weichzeichner anpassen"
+                      title={currentLang === 'de' ? 'Hintergrund & Weichzeichner anpassen' : 'Adjust background & blur'}
                     >
                       <Image size={18} />
                     </button>
-                    <button onClick={toggleScreenShare} className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title="Bildschirm teilen">{!isScreenSharing ? <MonitorUp size={18} /> : <MonitorOff size={18} />}</button>
-                    <button onClick={toggleTranscription} className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title="Live Transkription">{isTranscribing ? <Captions size={18} className="animate-pulse" /> : <Captions size={18} />}</button>
+                    <button onClick={toggleScreenShare} className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden md:block border", !isScreenSharing ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-700" : "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20")} title={currentLang === 'de' ? 'Bildschirm teilen' : 'Share screen'}>{!isScreenSharing ? <MonitorUp size={18} /> : <MonitorOff size={18} />}</button>
+                    <button onClick={toggleTranscription} className={cn("p-2.5 md:p-3 rounded-xl transition-all hidden md:block border", isTranscribing ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/20" : "bg-slate-800 hover:bg-slate-700 text-white border-slate-700")} title={currentLang === 'de' ? 'Live Transkription' : 'Live transcription'}>{isTranscribing ? <Captions size={18} className="animate-pulse" /> : <Captions size={18} />}</button>
                     <div className="w-px h-7 bg-slate-700/60 mx-1"></div>
                     <button onClick={() => hangUp()} className="px-4 py-2.5 md:px-5 md:py-3 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white border border-red-500 transition-all shadow-lg shadow-red-600/30 flex items-center gap-2 cursor-pointer text-sm"><PhoneOff size={16} /> <span className="hidden md:inline">{t('leave_call')}</span></button>
                   </div>
@@ -1627,9 +1655,9 @@ export default function MeetChat() {
                       <span className="text-xs font-mono font-bold text-white">{callId || joinCallId}</span>
                     </div>
                     <div className="w-px h-5 bg-slate-700/60 hidden sm:block mx-0.5"></div>
-                    <button onClick={() => handleQuickInvite('copy')} className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer" title="Gäste-Einladungslink kopieren">
+                    <button onClick={() => handleQuickInvite('copy')} className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 rounded-lg text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer" title={currentLang === 'de' ? 'Gäste-Einladungslink kopieren' : 'Copy guest invite link'}>
                       {copiedLink ? <CheckCircle2 size={14} className="text-emerald-400" /> : <LinkIcon size={14} />}
-                      <span className="text-[11px] font-bold">{copiedLink ? 'Kopiert!' : 'Link'}</span>
+                      <span className="text-[11px] font-bold">{copiedLink ? t('link_copied') : 'Link'}</span>
                     </button>
                   </div>
                 </div>
@@ -1669,25 +1697,25 @@ export default function MeetChat() {
                     <div key={idx} className="bg-surface border border-border/50 rounded-lg p-3 flex items-center justify-between shadow-sm">
                       <div>
                         <h4 className="font-bold text-text-primary text-xs">{call.title}</h4>
-                        <p className="text-[10px] text-text-muted mt-0.5 font-medium">{new Date(call.date).toLocaleDateString()} • {call.time} Uhr</p>
+                        <p className="text-[10px] text-text-muted mt-0.5 font-medium">{new Date(call.date).toLocaleDateString()} • {call.time}{currentLang === 'de' ? ' Uhr' : ''}</p>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => {
                             if (isDemo) {
-                              addToast('Kalender-Export ist in der Demo deaktiviert.', 'info');
+                              addToast(currentLang === 'de' ? 'Kalender-Export ist in der Demo deaktiviert.' : 'Calendar export is disabled in demo mode.', 'info');
                               return;
                             }
                             handleDownloadICS(call);
                           }}
                           className="p-1.5 bg-surface hover:bg-white/10 border border-border/50 text-text-muted hover:text-text-primary rounded-md text-xs font-bold transition-colors cursor-pointer"
-                          title="📅 .ics Kalenderdatei herunterladen"
+                          title={currentLang === 'de' ? '📅 .ics Kalenderdatei herunterladen' : '📅 Download .ics calendar file'}
                         >
                           <Calendar size={13} />
                         </button>
                         <button onClick={() => {
                           if (isDemo) {
-                            addToast('Live-Video-Calls sind in der Demo deaktiviert.', 'info');
+                            addToast(currentLang === 'de' ? 'Live-Video-Calls sind in der Demo deaktiviert.' : 'Live video calls are disabled in demo mode.', 'info');
                             return;
                           }
                           joinCall(call.meetingLink.split('join=')[1] || null); 
@@ -1731,12 +1759,12 @@ export default function MeetChat() {
                           >
                             <img
                               src={sanitizeUrl(msg.fileUrl)}
-                              alt={msg.text || 'Angehängtes Bild'}
+                              alt={msg.text || (currentLang === 'de' ? 'Angehängtes Bild' : 'Attached image')}
                               className="w-full max-h-60 object-contain rounded-xl bg-surface/40"
                               loading="lazy"
                             />
                             <div className="p-2 bg-surface/90 border-t border-border/50 text-[11px] font-bold text-accent-ai flex items-center justify-between gap-1.5">
-                              <span className="truncate">{msg.text?.replace(/^Dateianhang:\s*/, '') || 'Bild ansehen'}</span>
+                              <span className="truncate">{msg.text?.replace(/^Dateianhang:\s*/, '') || (currentLang === 'de' ? 'Bild ansehen' : 'View image')}</span>
                               <Download size={13} className="shrink-0" />
                             </div>
                           </a>
@@ -1747,7 +1775,7 @@ export default function MeetChat() {
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 text-accent-ai hover:underline text-xs font-bold bg-accent-ai/10 px-3 py-2 rounded-xl border border-accent-ai/20 shadow-sm transition-all hover:bg-accent-ai/20"
                           >
-                            <Paperclip size={14} /> {msg.text?.replace(/^Dateianhang:\s*/, '') || 'Datei ansehen / herunterladen'}
+                            <Paperclip size={14} /> {msg.text?.replace(/^Dateianhang:\s*/, '') || (currentLang === 'de' ? 'Datei ansehen / herunterladen' : 'View / download file')}
                           </a>
                         )}
                       </div>

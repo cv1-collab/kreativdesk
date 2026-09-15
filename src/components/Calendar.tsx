@@ -54,7 +54,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     saving_cloud: 'Saving...', generating_pdf: 'Generating...', download_local: 'Download Local', save_cloud: 'Save Cloud',
     upload_logo: 'Upload Logo', report_color: 'Accent Color', format: 'Format', orientation: 'Orientation',
     portrait: 'Portrait', landscape: 'Landscape', scale_preview: 'Zoom Preview', export_pdf_title: 'PDF Studio', logo_loaded: 'Logo loaded.',
-    pdf_saved: 'Calendar PDF successfully saved.', upload_failed: 'Upload failed. Please try again.'
+    pdf_saved: 'Calendar PDF successfully saved.', upload_failed: 'Upload failed. Please try again.',
+    month_overview_agenda: 'Monthly Overview & Agenda', prev_month: 'Previous month', next_month: 'Next month',
+    today: 'Today', day_agenda: 'Daily Agenda', no_events_today: 'No events scheduled for this day', to: 'to'
   },
   de: {
     master_plan: 'Masterplan', milestone: 'Meilenstein', project_phases: 'Projektphasen', pdf_export: 'Report Studio',
@@ -71,7 +73,9 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     saving_cloud: 'Speichert...', generating_pdf: 'Generiert...', download_local: 'Lokal herunterladen', save_cloud: 'In Cloud speichern',
     upload_logo: 'Logo hochladen', report_color: 'Akzentfarbe', format: 'Format', orientation: 'Ausrichtung',
     portrait: 'Hochformat', landscape: 'Querformat', scale_preview: 'Zoom Vorschau', export_pdf_title: 'PDF Studio', logo_loaded: 'Logo geladen.',
-    pdf_saved: 'Kalender-PDF erfolgreich gespeichert.', upload_failed: 'Upload fehlgeschlagen. Bitte erneut versuchen.'
+    pdf_saved: 'Kalender-PDF erfolgreich gespeichert.', upload_failed: 'Upload fehlgeschlagen. Bitte erneut versuchen.',
+    month_overview_agenda: 'Monatsübersicht & Agenda', prev_month: 'Vorheriger Monat', next_month: 'Nächster Monat',
+    today: 'Heute', day_agenda: 'Tages-Agenda', no_events_today: 'Keine Termine an diesem Tag', to: 'bis'
   }
 };
 
@@ -1268,7 +1272,7 @@ export default function Calendar() {
                 {currentMonthDate.toLocaleString(language === 'en' ? 'en-US' : 'de-CH', { month: 'long', year: 'numeric' })}
               </h2>
               <p className="text-xs text-text-muted font-bold mt-1">
-                Monatsübersicht & Agenda
+                {t('month_overview_agenda')}
               </p>
             </div>
           </div>
@@ -1277,7 +1281,7 @@ export default function Calendar() {
             <button 
               onClick={() => setCurrentMonthDate(new Date(year, month - 1, 1))}
               className="p-2 rounded-xl bg-background border border-border/50 hover:bg-white/5 text-text-primary transition-colors cursor-pointer"
-              title="Vorheriger Monat"
+              title={t('prev_month')}
             >
               <ChevronLeft size={18} />
             </button>
@@ -1289,12 +1293,12 @@ export default function Calendar() {
               }}
               className="px-3 py-1.5 rounded-xl bg-accent-ai/10 border border-accent-ai/30 text-accent-ai font-bold text-xs hover:bg-accent-ai/20 transition-colors cursor-pointer"
             >
-              Heute
+              {t('today')}
             </button>
             <button 
               onClick={() => setCurrentMonthDate(new Date(year, month + 1, 1))}
               className="p-2 rounded-xl bg-background border border-border/50 hover:bg-white/5 text-text-primary transition-colors cursor-pointer"
-              title="Nächster Monat"
+              title={t('next_month')}
             >
               <ChevronRight size={18} />
             </button>
@@ -1305,7 +1309,7 @@ export default function Calendar() {
         <div className="bg-surface border border-border/50 rounded-2xl p-2 sm:p-4 shadow-lg overflow-hidden">
           {/* Weekday Headers */}
           <div className="grid grid-cols-7 gap-1 mb-2 text-center border-b border-border/50 pb-2">
-            {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((dayName, idx) => (
+            {(currentLang === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']).map((dayName, idx) => (
               <div key={dayName} className={cn("text-xs font-black uppercase tracking-wider py-1", idx >= 5 ? "text-accent-ai/70" : "text-text-muted")}>
                 {dayName}
               </div>
@@ -1318,7 +1322,6 @@ export default function Calendar() {
               const dateStr = date.toISOString().split('T')[0];
               const isToday = date.toDateString() === new Date().toDateString();
               const isSelected = date.toDateString() === selectedCalendarDate.toDateString();
-
               const dayTasks = ganttTasks.filter(t => dateStr >= t.start && dateStr <= t.end);
               const dayMarkers = smartMarkers.filter(m => m.date === dateStr);
               const totalEvents = dayTasks.length + dayMarkers.length;
@@ -1396,7 +1399,7 @@ export default function Calendar() {
         <div className="bg-surface border border-border/50 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4">
           <div className="flex flex-wrap items-center justify-between border-b border-border/50 pb-4 gap-3">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-text-muted">Tages-Agenda</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-text-muted">{t('day_agenda')}</span>
               <h3 className="text-lg sm:text-xl font-semibold text-text-primary flex items-center gap-2 mt-0.5">
                 <CalendarIcon className="text-accent-ai" size={20} />
                 {selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
@@ -1417,8 +1420,8 @@ export default function Calendar() {
           {selectedDayTasks.length === 0 && selectedDayMarkers.length === 0 ? (
             <div className="text-center py-8 px-4 border-2 border-dashed border-border/50 rounded-xl bg-background/30 text-text-muted">
               <CheckCircle2 size={36} className="mx-auto mb-2 text-emerald-500/50" />
-              <p className="font-bold text-text-primary text-sm">Keine Termine an diesem Tag</p>
-              <p className="text-xs text-text-muted mt-1">Klicke oben auf "{t('add_phase')}", um ein Ereignis einzutragen.</p>
+              <p className="font-bold text-text-primary text-sm">{t('no_events_today')}</p>
+              <p className="text-xs text-text-muted mt-1">{currentLang === 'de' ? `Klicke oben auf "${t('add_phase')}", um ein Ereignis einzutragen.` : `Click "${t('add_phase')}" above to schedule an event.`}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -1431,9 +1434,9 @@ export default function Calendar() {
                     <div className="pl-3">
                       <h4 className="font-bold text-text-primary text-base">{task.title}</h4>
                       <div className="text-xs text-text-muted mt-1 flex items-center gap-2 font-bold uppercase tracking-wider">
-                        <span>{new Date(task.start).toLocaleDateString('de-CH')}</span>
-                        <span>bis</span>
-                        <span>{new Date(task.end).toLocaleDateString('de-CH')}</span>
+                        <span>{new Date(task.start).toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH')}</span>
+                        <span>{t('to')}</span>
+                        <span>{new Date(task.end).toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH')}</span>
                       </div>
                     </div>
 
@@ -1462,11 +1465,11 @@ export default function Calendar() {
                     <Milestone className="text-orange-500" size={20} />
                     <div>
                       <h4 className="font-bold text-text-primary text-sm">{marker.label}</h4>
-                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">Meilenstein</span>
+                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{t('milestone')}</span>
                     </div>
                   </div>
                   <span className="text-xs font-bold px-3 py-1 rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20">
-                    {new Date(marker.date).toLocaleDateString('de-CH')}
+                    {new Date(marker.date).toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH')}
                   </span>
                 </div>
               ))}

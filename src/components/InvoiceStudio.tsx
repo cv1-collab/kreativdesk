@@ -27,7 +27,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     sender_studio: 'Absender (Studio)', recipient_client: 'Empfänger (Kunde)', invoice_positions: 'Positionen', no_positions: 'Keine Positionen erfasst.',
     payment_info: 'Zahlungsinformationen / Schlusstext', subtotal: 'Zwischentotal', vat: 'MWST', total: 'Total', import_budget: 'Aus Budget importieren',
     budget_not_found: 'Kein freigegebenes Budget für dieses Projekt gefunden.', select_all: 'Alle auswählen', take_over_as_flat_rate: 'Übernehmen',
-    generate_pdf: 'PDF Generieren & Vorschau', cancel: 'Abbrechen', add_position: 'Position hinzufügen'
+    generate_pdf: 'PDF Generieren & Vorschau', cancel: 'Abbrechen', add_position: 'Position hinzufügen',
+    pos_label: 'Pos', title_label: 'Titel', desc_label: 'Beschreibung', qty_label: 'Menge', unit_label: 'Einh.', price_label: 'Preis'
   },
   en: {
     new_invoice: 'New Invoice', new_quote: 'New Quote',
@@ -36,7 +37,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     sender_studio: 'Sender (Studio)', recipient_client: 'Recipient (Client)', invoice_positions: 'Positions', no_positions: 'No positions added.',
     payment_info: 'Payment Information / Footer Text', subtotal: 'Subtotal', vat: 'VAT', total: 'Total', import_budget: 'Import from Budget',
     budget_not_found: 'No approved budget found for this project.', select_all: 'Select All', take_over_as_flat_rate: 'Take Over',
-    generate_pdf: 'Generate PDF & Preview', cancel: 'Cancel', add_position: 'Add Position'
+    generate_pdf: 'Generate PDF & Preview', cancel: 'Cancel', add_position: 'Add Position',
+    pos_label: 'Pos', title_label: 'Title', desc_label: 'Description', qty_label: 'Qty', unit_label: 'Unit', price_label: 'Price'
   }
 };
 
@@ -180,13 +182,24 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
     invoiceNumber: type === 'invoice' ? `RE-${Date.now().toString().slice(-6)}` : `OFF-${Date.now().toString().slice(-6)}`, 
     date: new Date().toISOString().split('T')[0], 
     location: 'Zürich', 
-    projectName: 'Neues Projekt', 
+    projectName: currentLang === 'de' ? 'Neues Projekt' : 'New Project', 
     sender: 'Kreativ-Desk Studio\nBahnhofstrasse 1\n8001 Zürich', 
-    recipient: 'Kunden Name\nMusterstrasse 12\n8000 Zürich', 
-    paymentInfo: type === 'invoice' ? 'Bitte überweisen Sie den Betrag innerhalb von 30 Tagen auf folgendes Konto:\nIBAN: CH00 0000 0000 0000 0000 0\nBank: Musterbank AG' : 'Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: 30 Tage', 
+    recipient: currentLang === 'de' ? 'Kunden Name\nMusterstrasse 12\n8000 Zürich' : 'Client Name\nExample Street 12\n8000 Zurich', 
+    paymentInfo: type === 'invoice' 
+      ? (currentLang === 'de' ? 'Bitte überweisen Sie den Betrag innerhalb von 30 Tagen auf folgendes Konto:\nIBAN: CH00 0000 0000 0000 0000 0\nBank: Musterbank AG' : 'Please transfer the amount within 30 days to the following account:\nIBAN: CH00 0000 0000 0000 0000 0\nBank: Example Bank Ltd') 
+      : (currentLang === 'de' ? 'Wir freuen uns auf Ihre Auftragserteilung.\nGültigkeit der Offerte: 30 Tage' : 'We look forward to working with you.\nQuote validity: 30 days'), 
     vatRate: 8.1 
   }));
-  const [positions, setPositions] = useState([{ id: 'pos1', pos: '1.0', title: 'Planungshonorar', description: 'Pauschal gemäss Absprache', qty: 1, unit: 'Pauschal', unitPrice: 0, total: 0 }]);
+  const [positions, setPositions] = useState(() => [{ 
+    id: 'pos1', 
+    pos: '1.0', 
+    title: currentLang === 'de' ? 'Planungshonorar' : 'Planning Fee', 
+    description: currentLang === 'de' ? 'Pauschal gemäss Absprache' : 'Lump sum as agreed', 
+    qty: 1, 
+    unit: currentLang === 'de' ? 'Pauschal' : 'Flat rate', 
+    unitPrice: 0, 
+    total: 0 
+  }]);
   const [isPdfStudioOpen, setIsPdfStudioOpen] = useState(false);
   const [showBudgetImport, setShowBudgetImport] = useState(false);
   const [selectedBudgetIds, setSelectedBudgetIds] = useState<string[]>([]);
@@ -324,9 +337,9 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
                 {positions.map((pos, index) => (
                   <div key={pos.id} className="bg-surface p-4 rounded-xl border border-border/50 shadow-sm relative flex flex-col gap-3 group">
                     <button onClick={() => setPositions(positions.filter((_, i) => i !== index))} className="absolute top-3 right-3 text-text-muted hover:text-red-500 bg-background p-1.5 rounded border border-border/50 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
-                    <div className="grid grid-cols-4 md:grid-cols-12 gap-3 pr-8"><div className="col-span-1 md:col-span-2"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Pos</label><input value={pos.pos} onChange={e => { const newP = [...positions]; newP[index].pos = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div><div className="col-span-3 md:col-span-10"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Titel</label><input value={pos.title} onChange={e => { const newP = [...positions]; newP[index].title = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div></div>
-                    <div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Beschreibung</label><input value={pos.description} onChange={e => { const newP = [...positions]; newP[index].description = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-medium text-text-primary focus:border-accent-ai transition-colors" /></div>
-                    <div className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3 mt-1"><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Menge</label><input type="number" value={pos.qty === 0 ? '0' : (pos.qty || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].qty = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Einh.</label><input value={pos.unit} onChange={e => { const newP = [...positions]; newP[index].unit = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">Preis ({currency})</label><input type="number" value={pos.unitPrice === 0 ? '0' : (pos.unitPrice || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].unitPrice = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-blue-500 text-right focus:border-accent-ai transition-colors" /></div></div>
+                    <div className="grid grid-cols-4 md:grid-cols-12 gap-3 pr-8"><div className="col-span-1 md:col-span-2"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('pos_label')}</label><input value={pos.pos} onChange={e => { const newP = [...positions]; newP[index].pos = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div><div className="col-span-3 md:col-span-10"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('title_label')}</label><input value={pos.title} onChange={e => { const newP = [...positions]; newP[index].title = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div></div>
+                    <div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('desc_label')}</label><input value={pos.description} onChange={e => { const newP = [...positions]; newP[index].description = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-medium text-text-primary focus:border-accent-ai transition-colors" /></div>
+                    <div className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3 mt-1"><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('qty_label')}</label><input type="number" value={pos.qty === 0 ? '0' : (pos.qty || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].qty = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('unit_label')}</label><input value={pos.unit} onChange={e => { const newP = [...positions]; newP[index].unit = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('price_label')} ({currency})</label><input type="number" value={pos.unitPrice === 0 ? '0' : (pos.unitPrice || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].unitPrice = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-blue-500 text-right focus:border-accent-ai transition-colors" /></div></div>
                   </div>
                 ))}
               </div>
