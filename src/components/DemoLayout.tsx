@@ -128,27 +128,23 @@ export default function DemoLayout({
     const actionable = target.closest('button, a, input[type="submit"], input[type="file"], [role="button"]');
 
     if (actionable) {
-      const text = (actionable.textContent || actionable.getAttribute('title') || actionable.getAttribute('aria-label') || '').toLowerCase();
+      const text = (actionable.textContent || actionable.getAttribute('title') || actionable.getAttribute('aria-label') || '').toLowerCase().trim();
       const isSubmit = (actionable as HTMLButtonElement).type === 'submit';
       const isFileInput = (actionable as HTMLInputElement).type === 'file' || !!actionable.querySelector('input[type="file"]');
       const isExternalTarget = actionable.getAttribute('target') === '_blank' || actionable.hasAttribute('download');
 
-      // Die "Rote Liste": Wenn ein Button diese Wörter enthält, blockieren wir ihn in der Demo!
-      const forbiddenWords = [
-        'speichern', 'save', 'pdf', 'ki ', 'ai ', 'generier', 'generate', 
-        'beitreten', 'join', 'buch', 'book', 'senden', 'send', 'erstell', 'create', 
-        'export', 'download', 'lösch', 'delete', 'hochladen', 'upload', 'cloud',
-        'anrufen', 'call', 'rundruf', 'planen', 'schedule', 'diktier', 'record',
-        'import', 'neu', 'new', 'einladen', 'invite', 'hinzufügen', 'add', 'scan',
-        'trueScale', 'kalibrier', 'rendern', 'render', 'whatsapp', 'wa.me', 'teilen',
-        'share', 'unterzeichnen', 'sign', 'unterschreib', 'unterlagen', 'datei'
-      ];
+      // Whitelist der erlaubten reinen Betrachtungs- & Ansichts-Umschalter in der Live-Demo
+      const isLanguageToggle = text === 'de' || text === 'en' || text === 'fr';
+      const isThemeToggle = text.includes('hell') || text.includes('dunkel') || text.includes('light') || text.includes('dark') || !!actionable.querySelector('svg.lucide-sun, svg.lucide-moon');
+      const isViewToggle = text === 'story' || text === 'deck' || text.includes('story mode');
+      const isSlidePagination = !!actionable.querySelector('svg.lucide-chevron-left, svg.lucide-chevron-right') && !text.includes('zurück') && !text.includes('app');
 
-      if (isSubmit || isFileInput || isExternalTarget || forbiddenWords.some(word => text.includes(word.toLowerCase()))) {
-        // Tab-Navigation nicht blockieren!
-        const isNavTab = actionable.closest('nav') || actionable.closest('.hide-scrollbar') || actionable.closest('.md\\:hidden');
-        if (isNavTab) return;
+      // Tab-Navigation nicht blockieren
+      const isNavTab = !!(actionable.closest('nav') || actionable.closest('.hide-scrollbar') || actionable.closest('.md\\:hidden'));
 
+      const isAllowedSafeInteraction = !isSubmit && !isFileInput && !isExternalTarget && (isNavTab || isLanguageToggle || isThemeToggle || isViewToggle || isSlidePagination);
+
+      if (!isAllowedSafeInteraction) {
         e.stopPropagation();
         e.preventDefault();
         showDemoBlockedToast();
