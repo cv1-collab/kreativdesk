@@ -66,13 +66,13 @@ test.describe('🚀 Comprehensive End-to-End Test Suite: All Features of Today',
     await expect(systemsSection.getByText(/Agency OS/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/25’000|25,000/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/19’500|19,500/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/10 Governance/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/15 Governance/i).first()).toBeVisible();
 
     // Enterprise OS (ab CHF 50'000 / ab 35'000)
     await expect(systemsSection.getByText(/Enterprise OS/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/50’000|50,000/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/35’000|35,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/20 Governance/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/25 Governance/i).first()).toBeVisible();
 
     // Additional Seat Note
     await expect(systemsSection.getByText(/780\/Jahr|780\/year/i).first()).toBeVisible();
