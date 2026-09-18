@@ -25,6 +25,23 @@ export const offboardCompanyUser = async (userId: string, companyId: string) => 
           .eq('company_id', companyId);
       } catch (_) {}
 
+      // 3. Belegte Lizenzen (used_seats) der Firma neu berechnen und freigeben
+      try {
+        const [{ data: pList }, { data: cuList }] = await Promise.all([
+          supabase.from('profiles').select('id, email').eq('company_id', companyId),
+          supabase.from('company_users').select('id, email, status, is_external').eq('company_id', companyId)
+        ]);
+        const unique = new Set<string>();
+        (pList || []).forEach((p: any) => { const k = (p.email || p.id || '').trim().toLowerCase(); if (k) unique.add(k); });
+        (cuList || []).forEach((u: any) => {
+          if (u.status === 'team' || u.is_external === false) {
+            const k = (u.email || u.id || '').trim().toLowerCase();
+            if (k) unique.add(k);
+          }
+        });
+        await supabase.from('companies').update({ used_seats: Math.max(1, unique.size) }).eq('id', companyId);
+      } catch (_) {}
+
     } else {
       await supabase.from('profiles').delete().eq('id', userId);
       await supabase.from('project_members').delete().eq('user_id', userId);

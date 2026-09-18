@@ -96,6 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       let targetCompanyId: string | null = null;
       let targetRole: Role = 'owner';
+      let targetPlan: string = 'Enterprise';
       let isInvitedUser = false;
 
       // Check also by user email if not found by token
@@ -184,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', targetCompanyId)
           .maybeSingle();
 
-        const targetPlan = compPlanData?.plan || 'Enterprise';
+        targetPlan = compPlanData?.plan || 'Enterprise';
 
         if (profile) {
           await supabase.from('profiles').update({ 
@@ -363,6 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           name: userName,
           role: isInvitedUser ? targetRole : 'owner',
           company_id: effectiveCompanyId,
+          plan: isInvitedUser ? targetPlan : 'Free Trial',
           has_active_subscription: true,
           trial_ends_at: isInvitedUser ? null : trialEndDate.toISOString(),
           has_seen_tour: false
@@ -382,6 +384,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           companyId: effectiveCompanyId || user.id,
           company_id: effectiveCompanyId || user.id,
           hasActiveSubscription: true,
+          plan: isInvitedUser ? targetPlan : 'Free Trial',
           trialEndsAt: newProfile.trial_ends_at || undefined,
           canViewFinance: true,
           canApproveBudget: true,

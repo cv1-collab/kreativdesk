@@ -394,10 +394,10 @@ export default function SettingsTab() {
 
       const safeCompanyId = compId || currentUser.uid;
 
-      // 3. Echte belegte Lizenzen (Seats) ohne doppelte Zählung ermitteln
+      // 3. Echte belegte Lizenzen (Seats) ohne doppelte Zählung ermitteln (nur interne Teammitglieder, keine externen CRM-Kontakte)
       const { data: cuList } = await supabase
         .from('company_users')
-        .select('id, email')
+        .select('id, email, status, is_external')
         .eq('company_id', safeCompanyId);
 
       const { data: pList } = await supabase
@@ -407,8 +407,11 @@ export default function SettingsTab() {
 
       const uniqueSeatHolders = new Set<string>();
       (cuList || []).forEach((u: any) => {
-        const key = (u.email || u.id || '').trim().toLowerCase();
-        if (key) uniqueSeatHolders.add(key);
+        const isInternal = u.status === 'team' || u.is_external === false;
+        if (isInternal) {
+          const key = (u.email || u.id || '').trim().toLowerCase();
+          if (key) uniqueSeatHolders.add(key);
+        }
       });
       (pList || []).forEach((p: any) => {
         const key = (p.email || p.id || '').trim().toLowerCase();

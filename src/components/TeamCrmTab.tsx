@@ -561,9 +561,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     }
     setIsGeneratingInvite(true);
     const safeCompanyId = currentUser?.companyId || currentUser?.uid;
-    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    
     try {
+      let token = '';
       if (safeCompanyId) {
         const { data: comp } = await supabase
           .from('companies')
@@ -576,18 +575,32 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
           return null;
         }
 
-        const { error: insertErr } = await supabase.from('invites').insert({
-          token,
-          company_id: safeCompanyId,
-          email: contact.email,
-          role: contact.role || 'employee',
-          status: 'pending',
-          created_at: new Date().toISOString()
-        });
+        const { data: existingInvites } = await supabase
+          .from('invites')
+          .select('token')
+          .ilike('email', contact.email)
+          .eq('company_id', safeCompanyId)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-        if (insertErr) {
-          console.error("Invite insert error:", insertErr);
-          throw insertErr;
+        if (existingInvites && existingInvites.length > 0) {
+          token = existingInvites[0].token;
+        } else {
+          token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          const { error: insertErr } = await supabase.from('invites').insert({
+            token,
+            company_id: safeCompanyId,
+            email: contact.email,
+            role: contact.role || 'employee',
+            status: 'pending',
+            created_at: new Date().toISOString()
+          });
+
+          if (insertErr) {
+            console.error("Invite insert error:", insertErr);
+            throw insertErr;
+          }
         }
       }
       

@@ -70,13 +70,16 @@ export default function CompanySettings() {
 
         const [{ data: pList }, { data: cuList }] = await Promise.all([
           supabase.from('profiles').select('id, email').eq('company_id', safeCompanyId),
-          supabase.from('company_users').select('id, email').eq('company_id', safeCompanyId)
+          supabase.from('company_users').select('id, email, status, is_external').eq('company_id', safeCompanyId)
         ]);
 
         const uniqueSeatHolders = new Set<string>();
         (cuList || []).forEach((u: any) => {
-          const key = (u.email || u.id || '').trim().toLowerCase();
-          if (key) uniqueSeatHolders.add(key);
+          const isInternal = u.status === 'team' || u.is_external === false;
+          if (isInternal) {
+            const key = (u.email || u.id || '').trim().toLowerCase();
+            if (key) uniqueSeatHolders.add(key);
+          }
         });
         (pList || []).forEach((p: any) => {
           const key = (p.email || p.id || '').trim().toLowerCase();
