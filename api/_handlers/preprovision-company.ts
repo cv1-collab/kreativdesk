@@ -50,6 +50,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
 
+    // 2.1 Pre-insert CEO into company_users
+    await supabaseAdmin.from('company_users').insert({
+      company_id: companyId,
+      name: ceoName || ceoEmail.split('@')[0],
+      email: ceoEmail.toLowerCase().trim(),
+      role: 'owner',
+      status: 'team',
+      is_external: false,
+      created_at: now
+    });
+
     // 3. Pre-seed Default 9 Folders
     const defaultFolders = [
       '01_FINANZEN', '02_RECHTLICHES', '03_HR_MITARBEITER',

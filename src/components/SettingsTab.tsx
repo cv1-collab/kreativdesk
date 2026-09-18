@@ -19,6 +19,7 @@ import { webhookNotifier } from '../utils/webhookNotifier';
 import { safeStorage } from '../utils/safeStorage';
 import { usePermissions } from '../hooks/usePermissions';
 import { checkIsSuperAdmin } from '../config/admins';
+import { syncCompanySeats } from '../services/userService';
 import API from './API';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -2252,6 +2253,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
     const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     try {
       if (safeCompanyId) {
+        const actualSeats = await syncCompanySeats(safeCompanyId);
         const { data: comp } = await supabase
           .from('companies')
           .select('used_seats, max_seats')
@@ -2259,7 +2261,7 @@ function TeamPermissionsCard({ currentUser }: { currentUser: any }) {
           .maybeSingle();
 
         const isSuperAdmin = currentUser?.role === 'super_admin' || currentUser?.email === 'cv1@gmx.ch' || currentUser?.email === 'carlo@vesciodesign.ch';
-        if (!isSuperAdmin && comp && comp.max_seats && (comp.used_seats || 1) >= comp.max_seats) {
+        if (!isSuperAdmin && comp && comp.max_seats && actualSeats >= comp.max_seats) {
           addToast('Lizenzlimit erreicht. Bitte erweitere deine Plätze in den Firmen-Einstellungen.', 'error');
           return;
         }

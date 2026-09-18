@@ -845,6 +845,16 @@ Beantworte Kundenfragen präzise, freundlich und faktenbasiert auf ${language.to
 
       if (inviteErr || !ceoInvite) throw (inviteErr || new Error('Failed to create CEO invite'));
 
+      await supabaseAdmin.from('company_users').insert({
+        company_id: companyId,
+        name: ceoName || ceoEmail.split('@')[0],
+        email: ceoEmail.toLowerCase().trim(),
+        role: 'owner',
+        status: 'team',
+        is_external: false,
+        created_at: now
+      });
+
       if (Array.isArray(employeeEmails) && employeeEmails.length > 0) {
         const employeeRecords = employeeEmails.map((empEmail: string) => ({
           token: crypto.randomUUID(),

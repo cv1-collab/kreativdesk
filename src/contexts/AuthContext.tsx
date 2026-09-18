@@ -70,8 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
 
-      const ownedComp = (ownedComps && ownedComps.length > 0) ? ownedComps[0] : null;
-      const isCompanyOwner = Boolean(ownedComp);
+      let ownedComp = (ownedComps && ownedComps.length > 0) ? ownedComps[0] : null;
+      let isCompanyOwner = Boolean(ownedComp);
       const isSuperUserCheck = checkIsSuperAdmin(user.email);
 
       // 2. Check for invite token across URL, user metadata, and persistent safeStorage
@@ -181,6 +181,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Fehler beim Laden des Profils:', error);
       }
 
+      // SELF-HEALING: If not recognized as ownedComp by owner_id, check if user's profile is owner of a company, or accepted an owner invite
+      if (!ownedComp && profile?.company_id && (profile?.role === 'owner' || isSuperUserCheck)) {
+        const { data: candidateComp } = await supabase
+          .from('companies')
+          .select('id, name, plan, max_seats, used_seats, owner_id')
+          .eq('id', profile.company_id)
+          .maybeSingle();
+
+        if (candidateComp) {
+          ownedComp = candidateComp;
+          isCompanyOwner = true;
+          // Self-heal owner_id in database if empty
+          if (!candidateComp.owner_id) {
+            await supabase.from('companies').update({ owner_id: user.id }).eq('id', candidateComp.id);
+          }
+        }
+      }
+
       const rawName = profile?.name || (profile as any)?.full_name || (profile as any)?.display_name || user.user_metadata?.full_name;
       const userName = rawName || (user.email === 'cv1@gmx.ch' ? 'Carlo Vescio' : user.email?.split('@')[0] || 'User');
       let effectiveCompanyId = profile?.company_id || ownedComp?.id || null;
@@ -273,24 +291,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             effectiveCompanyId = ownedComp.id;
             await supabase.from('profiles').update({ company_id: effectiveCompanyId }).eq('id', user.id);
           } else {
-            const { data: newCompany, error: compError } = await supabase
+            // Safety check: before creating a new company, check if an organization already exists for this owner
+            const { data: existingOwned } = await supabase
               .from('companies')
-              .insert({
-                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
-                plan: 'Free Trial',
-                max_seats: 1,
-                used_seats: 1,
-                owner_id: user.id
-              })
-              .select()
-              .maybeSingle();
+              .select('id')
+              .eq('owner_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
 
-            if (!compError && newCompany) {
-              effectiveCompanyId = newCompany.id;
-              await supabase
-                .from('profiles')
-                .update({ company_id: effectiveCompanyId })
-                .eq('id', user.id);
+            if (existingOwned && existingOwned.length > 0) {
+              effectiveCompanyId = existingOwned[0].id;
+              await supabase.from('profiles').update({ company_id: effectiveCompanyId }).eq('id', user.id);
+            } else {
+              const { data: newCompany, error: compError } = await supabase
+                .from('companies')
+                .insert({
+                  name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+                  plan: 'Free Trial',
+                  max_seats: 1,
+                  used_seats: 1,
+                  owner_id: user.id
+                })
+                .select()
+                .maybeSingle();
+
+              if (!compError && newCompany) {
+                effectiveCompanyId = newCompany.id;
+                await supabase
+                  .from('profiles')
+                  .update({ company_id: effectiveCompanyId })
+                  .eq('id', user.id);
+              }
             }
           }
         }
@@ -371,20 +402,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (ownedComp) {
             effectiveCompanyId = ownedComp.id;
           } else {
-            const { data: newCompany } = await supabase
+            // Safety check: check if user already owns an organization before creating a new one
+            const { data: existingOwned } = await supabase
               .from('companies')
-              .insert({
-                name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
-                plan: 'Free Trial',
-                max_seats: 1,
-                used_seats: 1,
-                owner_id: user.id
-              })
-              .select()
-              .maybeSingle();
+              .select('id')
+              .eq('owner_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
 
-            if (newCompany) {
-              effectiveCompanyId = newCompany.id;
+            if (existingOwned && existingOwned.length > 0) {
+              effectiveCompanyId = existingOwned[0].id;
+            } else {
+              const { data: newCompany } = await supabase
+                .from('companies')
+                .insert({
+                  name: `${user.email?.split('@')[0] || 'User'}'s Organization`,
+                  plan: 'Free Trial',
+                  max_seats: 1,
+                  used_seats: 1,
+                  owner_id: user.id
+                })
+                .select()
+                .maybeSingle();
+
+              if (newCompany) {
+                effectiveCompanyId = newCompany.id;
+              }
             }
           }
         }

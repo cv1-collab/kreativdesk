@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { logAuditAction } from '../utils/auditLogger';
-import { offboardCompanyUser } from '../services/userService';
+import { offboardCompanyUser, syncCompanySeats } from '../services/userService';
 import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { safeStorage } from '../utils/safeStorage';
@@ -564,13 +564,14 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
     try {
       let token = '';
       if (safeCompanyId) {
+        const actualSeats = await syncCompanySeats(safeCompanyId);
         const { data: comp } = await supabase
           .from('companies')
           .select('used_seats, max_seats')
           .eq('id', safeCompanyId)
           .maybeSingle();
 
-        if (!isSuperAdmin && comp && comp.max_seats && (comp.used_seats || 1) >= comp.max_seats) {
+        if (!isSuperAdmin && comp && comp.max_seats && actualSeats >= comp.max_seats) {
           addToast('Lizenzlimit erreicht. Bitte upgrade deinen Plan für weitere Mitarbeiter.', 'error');
           return null;
         }
