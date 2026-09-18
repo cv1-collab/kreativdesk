@@ -37,13 +37,16 @@ export const offboardCompanyUser = async (userId: string, companyId?: string | n
   if (!userId) throw new Error("Fehlende User ID für das Offboarding.");
 
   try {
-    // 1. User aus company_users löschen
+    // 1. User aus company_users löschen (sowohl nach row ID als auch nach auth user_id)
     await supabase.from('company_users').delete().eq('id', userId);
+    await supabase.from('company_users').delete().eq('user_id', userId);
 
-    // 2. User-Profil löschen (Profiles)
+    // 2. User-Profil von der Firma entkoppeln und ggf. löschen (Profiles)
     if (companyId) {
+      await supabase.from('profiles').update({ company_id: null, role: 'guest' }).eq('id', userId).eq('company_id', companyId);
       await supabase.from('profiles').delete().eq('id', userId).eq('company_id', companyId);
       await supabase.from('company_users').delete().eq('id', userId).eq('company_id', companyId);
+      await supabase.from('company_users').delete().eq('user_id', userId).eq('company_id', companyId);
       await supabase.from('project_members').delete().eq('user_id', userId).eq('company_id', companyId);
       
       // Mängel (Defects) & Leads für diesen Benutzer bei der Abmeldung neutralisieren

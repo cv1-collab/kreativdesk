@@ -272,9 +272,12 @@ async function runLifecycleTest() {
     // STEP 6: OFFBOARD EMPLOYEE 2 & RE-CLAIM SEAT
     // ------------------------------------------------------------------------
     console.log("\n[Step 6] CEO removes Employee 2 (Offboarding & Seat release)...");
+    await sb.from('profiles').update({ company_id: null, role: 'guest' }).eq('id', emp2Auth.user.id).eq('company_id', createdCompanyId);
+    await sb.from('company_users').delete().eq('user_id', emp2Auth.user.id);
+    await sb.from('company_users').delete().eq('email', emp2Email);
     await sb.from('company_users').delete().eq('id', emp2Auth.user.id);
     await sb.from('profiles').delete().eq('id', emp2Auth.user.id);
-    
+
     const seatsAfterOffboard = await syncCompanySeats(createdCompanyId);
     if (seatsAfterOffboard !== 2) {
       throw new Error(`Expected 2 seats after offboarding, got ${seatsAfterOffboard}`);
