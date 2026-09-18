@@ -22,7 +22,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     pending: 'Pending (Invited)',
     cleanup_confirm: 'Do you want to delete all demo and test users?',
     cleanup_success: 'Test users successfully deleted!',
-    cleanup_error: 'Error cleaning up test users'
+    cleanup_error: 'Error cleaning up test users',
+    invite: 'Invite',
+    copy_invite: 'Copy Invite Link',
+    send_invite_email: 'Send via Email',
+    workspace_member: 'Workspace Member',
+    workspace_member_sub: 'Included in Company Plan'
   },
   de: {
     search_users: 'Benutzer suchen...', name_email: 'Name & E-Mail', role_plan: 'Rolle & Plan', status: 'Status',
@@ -38,7 +43,12 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     pending: 'Ausstehend (Einladung)',
     cleanup_confirm: 'Möchtest du alle Demo- und Test-Nutzer löschen?',
     cleanup_success: 'Test-Nutzer erfolgreich gelöscht!',
-    cleanup_error: 'Fehler beim Bereinigen'
+    cleanup_error: 'Fehler beim Bereinigen',
+    invite: 'Einladung',
+    copy_invite: 'Einladungslink kopieren',
+    send_invite_email: 'Per E-Mail einladen',
+    workspace_member: 'Workspace-Mitglied',
+    workspace_member_sub: 'Im Firmenabo enthalten'
   }
 };
 
@@ -124,13 +134,15 @@ export default function AdminUsersTab() {
 
   const fetchUsers = async () => {
     try {
-      const [{ data: profs, error: profErr }, { data: companyUsers }] = await Promise.all([
+      const [{ data: profs, error: profErr }, { data: companyUsers }, { data: companies }] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('company_users').select('*').order('created_at', { ascending: false })
+        supabase.from('company_users').select('*').order('created_at', { ascending: false }),
+        supabase.from('companies').select('*')
       ]);
 
       if (profErr) throw profErr;
 
+      const companiesMap = new Map((companies || []).map(c => [c.id, c]));
       const registeredEmails = new Set((profs || []).map(p => (p.email || '').toLowerCase()));
       const registeredIds = new Set((profs || []).map(p => p.id));
 
@@ -143,10 +155,25 @@ export default function AdminUsersTab() {
         });
 
         const activeList = profs.map(u => {
-          if (checkIsSuperAdmin(u.email)) {
-            return { ...u, role: 'super_admin', plan: 'Enterprise', isPending: false };
-          }
-          return { ...u, isPending: false };
+          const comp = u.company_id ? companiesMap.get(u.company_id) : (companies || []).find(c => c.owner_id === u.id);
+          const isSuper = checkIsSuperAdmin(u.email);
+          const isOwner = isSuper || (comp ? comp.owner_id === u.id : true);
+          const companyName = comp?.name || (isSuper ? 'Kreativ Desk OS' : 'Workspace');
+          const companyPlan = comp?.plan || u.plan || 'Enterprise';
+          const maxSeats = comp?.max_seats || 1;
+          const usedSeats = comp?.used_seats || 1;
+
+          return {
+            ...u,
+            role: isSuper ? 'super_admin' : u.role,
+            plan: isSuper ? 'Enterprise' : (isOwner ? companyPlan : `Workspace Member (${companyName})`),
+            isPending: false,
+            isOwner,
+            companyName,
+            companyPlan,
+            maxSeats,
+            usedSeats
+          };
         });
 
         // Merge in pending invited team members from company_users who are not registered in auth yet
@@ -154,16 +181,27 @@ export default function AdminUsersTab() {
         (companyUsers || []).forEach(cu => {
           const emailLower = (cu.email || '').toLowerCase();
           if (emailLower && !registeredEmails.has(emailLower) && !registeredIds.has(cu.id)) {
+            const comp = cu.company_id ? companiesMap.get(cu.company_id) : null;
+            const companyName = comp?.name || 'Kreativ Desk OS';
+            const companyPlan = comp?.plan || 'Enterprise';
+            const maxSeats = comp?.max_seats || 1;
+            const usedSeats = comp?.used_seats || 1;
+
             pendingList.push({
               id: cu.id,
               email: cu.email,
               name: cu.name || [cu.first_name, cu.last_name].filter(Boolean).join(' ') || cu.email,
-              role: cu.role || 'Internal',
-              plan: 'Workspace Member',
+              role: cu.role || 'employee',
+              plan: `Workspace Member (${companyName})`,
               company_id: cu.company_id,
+              companyName,
+              companyPlan,
+              maxSeats,
+              usedSeats,
               created_at: cu.created_at,
               isPending: true,
-              isPendingCompanyUser: true
+              isPendingCompanyUser: true,
+              isOwner: false
             });
           }
         });
@@ -212,18 +250,100 @@ export default function AdminUsersTab() {
     }
   };
 
+  const handleCopyInviteLink = async (user: any) => {
+    if (!user?.email) {
+      addToast('Keine E-Mail-Adresse vorhanden', 'error');
+      return;
+    }
+    try {
+      const companyId = user.company_id;
+      const { data: existingInvites } = await supabase
+        .from('invites')
+        .select('token')
+        .ilike('email', user.email)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      let token = existingInvites?.[0]?.token;
+      if (!token) {
+        token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const { error: insErr } = await supabase.from('invites').insert({
+          token,
+          company_id: companyId,
+          email: user.email,
+          role: user.role || 'employee',
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+        if (insErr) throw insErr;
+      }
+
+      const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${companyId || ''}&email=${encodeURIComponent(user.email)}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      addToast(`Einladungslink für ${user.name || user.email} kopiert!`, 'success');
+    } catch (e: any) {
+      console.error(e);
+      addToast('Fehler beim Erstellen des Einladungslinks', 'error');
+    }
+  };
+
+  const handleSendInviteEmail = async (user: any) => {
+    if (!user?.email) return;
+    await handleCopyInviteLink(user);
+    const host = 'Carlo Vescio';
+    const compName = user.companyName || 'Kreativ Desk OS';
+    const { data: existingInvites } = await supabase
+      .from('invites')
+      .select('token')
+      .ilike('email', user.email)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const token = existingInvites?.[0]?.token || '';
+    const inviteUrl = `${window.location.origin}/signup?invite=${token}&companyId=${user.company_id || ''}&email=${encodeURIComponent(user.email)}`;
+    
+    const subject = encodeURIComponent(`Einladung zu ${compName} | Kreativ Desk OS`);
+    const body = encodeURIComponent(
+      `Hallo ${user.name || ''},\n\n` +
+      `${host} hat Sie als Mitarbeiter zu ${compName} auf Kreativ Desk OS eingeladen.\n\n` +
+      `Klicken Sie auf den folgenden Link, um Ihr Benutzerkonto zu aktivieren:\n` +
+      `${inviteUrl}\n\n` +
+      `Beste Grüsse,\n${host}`
+    );
+    window.location.href = `mailto:${user.email}?subject=${subject}&body=${body}`;
+  };
+
   const handleEditClick = async (user: any) => {
     let seats = user.maxSeats || user.max_seats;
-    if (!seats && (user.company_id || user.id)) {
+    let compName = user.companyName;
+    let compPlan = user.companyPlan;
+    let isOwner = user.isOwner;
+
+    if (user.company_id || user.id) {
       const compId = user.company_id || user.id;
-      const { data: comp } = await supabase.from('companies').select('max_seats').eq('id', compId).maybeSingle();
-      if (comp?.max_seats) seats = comp.max_seats;
-      else {
-        const { data: ownerComp } = await supabase.from('companies').select('max_seats').eq('owner_id', user.id).maybeSingle();
-        if (ownerComp?.max_seats) seats = ownerComp.max_seats;
+      const { data: comp } = await supabase.from('companies').select('*').eq('id', compId).maybeSingle();
+      if (comp) {
+        if (!seats) seats = comp.max_seats;
+        if (!compName) compName = comp.name;
+        if (!compPlan) compPlan = comp.plan;
+        if (isOwner === undefined) isOwner = comp.owner_id === user.id || checkIsSuperAdmin(user.email);
+      } else {
+        const { data: ownerComp } = await supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle();
+        if (ownerComp) {
+          if (!seats) seats = ownerComp.max_seats;
+          if (!compName) compName = ownerComp.name;
+          if (!compPlan) compPlan = ownerComp.plan;
+          if (isOwner === undefined) isOwner = true;
+        }
       }
     }
-    setEditingUser({ ...user, maxSeats: seats || 1 });
+
+    setEditingUser({ 
+      ...user, 
+      maxSeats: seats || 1,
+      companyName: compName || 'Kreativ Desk OS',
+      companyPlan: compPlan || 'Enterprise',
+      isOwner: isOwner ?? checkIsSuperAdmin(user.email)
+    });
     setIsModalOpen(true);
   };
 
@@ -246,28 +366,38 @@ export default function AdminUsersTab() {
           .update({
             role: editingUser.role,
             name: editingUser.name,
-            plan: editingUser.plan || 'Pro',
+            plan: editingUser.isOwner ? (editingUser.plan || 'Pro') : editingUser.plan,
             has_active_subscription: editingUser.plan ? editingUser.plan !== 'Free Trial' : true
           })
           .eq('id', editingUser.id);
 
-        const seatsToSave = parseInt(editingUser.maxSeats) || 1;
-        if (editingUser.company_id) {
-           await supabase
-             .from('companies')
-             .update({
-               max_seats: seatsToSave,
-               plan: editingUser.plan || 'Enterprise'
-             })
-             .eq('id', editingUser.company_id);
-        } else {
-           await supabase
-             .from('companies')
-             .update({
-               max_seats: seatsToSave,
-               plan: editingUser.plan || 'Enterprise'
-             })
-             .or(`owner_id.eq.${editingUser.id},id.eq.${editingUser.id}`);
+        await supabase
+          .from('company_users')
+          .update({
+            name: editingUser.name,
+            role: editingUser.role
+          })
+          .eq('user_id', editingUser.id);
+
+        if (editingUser.isOwner) {
+          const seatsToSave = parseInt(editingUser.maxSeats) || 1;
+          if (editingUser.company_id) {
+             await supabase
+               .from('companies')
+               .update({
+                 max_seats: seatsToSave,
+                 plan: editingUser.plan || 'Enterprise'
+               })
+               .eq('id', editingUser.company_id);
+          } else {
+             await supabase
+               .from('companies')
+               .update({
+                 max_seats: seatsToSave,
+                 plan: editingUser.plan || 'Enterprise'
+               })
+               .or(`owner_id.eq.${editingUser.id},id.eq.${editingUser.id}`);
+          }
         }
       }
 
@@ -405,8 +535,17 @@ export default function AdminUsersTab() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-semibold text-text-primary capitalize">{user.role || 'Member'}</div>
-                      <div className="text-xs text-text-muted">{user.plan || 'Free Trial'}</div>
+                      <div className="font-semibold text-text-primary capitalize">
+                        {user.role === 'employee' ? 'Mitarbeiter (Internal)' : user.role || 'Member'}
+                      </div>
+                      <div className="text-xs text-text-muted flex items-center gap-1.5 mt-0.5">
+                        <span>{user.plan || 'Free Trial'}</span>
+                        {!user.isOwner && user.companyPlan && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold border border-blue-500/20">
+                            {user.companyPlan}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       {user.isPending ? (
@@ -421,22 +560,31 @@ export default function AdminUsersTab() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {user.isPending && (
+                          <button 
+                            onClick={() => handleCopyInviteLink(user)}
+                            className="px-2.5 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                            title={t('copy_invite')}
+                          >
+                            <Mail size={13} /> {t('invite')}
+                          </button>
+                        )}
                         <button 
                           onClick={() => handleImpersonateWorkspace(user)}
-                          className="px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                          className="px-3 py-1.5 bg-purple-500/10 text-purple-500 hover:bg-purple-500/20 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
                           title={t('preview_workspace_tooltip')}
                         >
                           <Eye size={14} /> {t('preview')}
                         </button>
                         <button 
                           onClick={() => handleEditClick(user)}
-                          className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-semibold transition-colors"
+                          className="px-3 py-1.5 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
                         >
                           {t('edit')}
                         </button>
                         <button 
                           onClick={() => handleDeleteUser(user)}
-                          className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                          className="p-1.5 text-text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors cursor-pointer"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -455,7 +603,7 @@ export default function AdminUsersTab() {
           <div className="bg-surface border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-border bg-background/50">
               <h3 className="font-semibold text-text-primary">{t('edit_user')}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary cursor-pointer"><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveChanges} className="p-6 space-y-4">
               <div>
@@ -484,34 +632,86 @@ export default function AdminUsersTab() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('plan')}</label>
-                <select 
-                  value={editingUser.plan || 'Pro'}
-                  onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value })}
-                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 font-semibold"
-                >
-                  <option value="Free Trial">Free Trial</option>
-                  <option value="Starter">Starter (CHF 39 / Mon)</option>
-                  <option value="Pro">Pro (CHF 79 / Mon)</option>
-                  <option value="Expert">Expert (CHF 189 / Mon)</option>
-                  <option value="Studio">Kreativ Desk Studio (ab CHF 15'000)</option>
-                  <option value="Agency">Kreativ Desk Agency (CHF 25'000)</option>
-                  <option value="Enterprise">Kreativ Desk Enterprise (ab CHF 50'000.-)</option>
-                </select>
-              </div>
+              {!editingUser.isOwner ? (
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Workspace & Lizenz</span>
+                    <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400">
+                      {editingUser.companyPlan || 'Enterprise'} Plan
+                    </span>
+                  </div>
+                  <div className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                    <Building2 size={16} className="text-blue-500" />
+                    {editingUser.companyName || 'Kreativ Desk OS'}
+                  </div>
+                  <p className="text-xs text-text-muted leading-relaxed">
+                    Dieser Nutzer ist Teammitglied im Workspace <strong>{editingUser.companyName || 'Kreativ Desk OS'}</strong> und nutzt eine der <strong>{editingUser.maxSeats || 10} bezahlten Firmenlizenzen</strong>. Das Gesamtkontingent wird auf Unternehmensebene beim Inhaber verwaltet.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('plan')}</label>
+                    <select 
+                      value={editingUser.plan || 'Pro'}
+                      onChange={(e) => setEditingUser({ ...editingUser, plan: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 font-semibold"
+                    >
+                      <option value="Free Trial">Free Trial</option>
+                      <option value="Starter">Starter (CHF 39 / Mon)</option>
+                      <option value="Pro">Pro (CHF 79 / Mon)</option>
+                      <option value="Expert">Expert (CHF 189 / Mon)</option>
+                      <option value="Studio">Kreativ Desk Studio (ab CHF 15'000)</option>
+                      <option value="Agency">Kreativ Desk Agency (CHF 25'000)</option>
+                      <option value="Enterprise">Kreativ Desk Enterprise (ab CHF 50'000.-)</option>
+                    </select>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('max_seats')}</label>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="500" 
-                  value={editingUser.maxSeats || 1} 
-                  onChange={(e) => setEditingUser({ ...editingUser, maxSeats: e.target.value })} 
-                  className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-text-muted mb-1 uppercase tracking-wider">{t('max_seats')}</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      max="500" 
+                      value={editingUser.maxSeats || 1} 
+                      onChange={(e) => setEditingUser({ ...editingUser, maxSeats: e.target.value })} 
+                      className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingUser.isPending && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <Clock size={14} /> Einladung noch ausstehend
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-amber-600/80">Pending</span>
+                  </div>
+                  <p className="text-xs text-text-muted">
+                    Noch nicht in Auth registriert. Sende dem Mitarbeiter diesen persönlichen Einladungslink:
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyInviteLink(editingUser)}
+                      className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <Copy size={13} /> Link kopieren
+                    </button>
+                    {editingUser.email && (
+                      <button
+                        type="button"
+                        onClick={() => handleSendInviteEmail(editingUser)}
+                        className="flex-1 py-2 bg-surface border border-border hover:bg-surface-hover text-text-primary rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                      >
+                        <Mail size={13} /> Per E-Mail
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-surface-hover">{t('cancel')}</button>
