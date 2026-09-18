@@ -29,7 +29,8 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     copy_invite: 'Copy Invite Link',
     send_invite_email: 'Send via Email',
     workspace_member: 'Workspace Member',
-    workspace_member_sub: 'Included in Company Plan'
+    workspace_member_sub: 'Included in Company Plan',
+    cleaning_users: 'Cleaning up test users...'
   },
   de: {
     search_users: 'Benutzer suchen...', name_email: 'Name & E-Mail', role_plan: 'Rolle & Plan', status: 'Status',
@@ -38,6 +39,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     user_saved: 'Benutzer erfolgreich aktualisiert.', role: 'Rolle', plan: 'Abo / Plan', max_seats: 'Gekaufte Lizenzen (maxSeats)',
     full_name: 'Name', email_address: 'E-Mail Adresse',
     delete_test_users: 'Test-Nutzer löschen',
+    cleaning_users: 'Wird bereinigt...',
     preprovision_vip_customer: '🚀 Kunde vorab einrichten (VIP Concierge)',
     preview_workspace_tooltip: 'Workspace aus Kundensicht testen',
     preview: 'Vorschau',
@@ -69,6 +71,7 @@ export default function AdminUsersTab() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
 
   const handleImpersonateWorkspace = (user: any) => {
     const companyId = user.company_id || user.companyId || user.id;
@@ -235,6 +238,27 @@ export default function AdminUsersTab() {
   const handleDeleteUser = async (user: any) => {
     if (!window.confirm(t('delete_user_confirm'))) return;
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (token) {
+        try {
+          const res = await fetch('/api/admin/cleanup-test-users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ userId: user.id, userEmail: user.email })
+          });
+          if (res.ok) {
+            addToast('Benutzer erfolgreich gelöscht', 'success');
+            await fetchUsers();
+            return;
+          }
+        } catch (_) {}
+      }
+
       const companyId = user.company_id || user.companyId;
       await offboardCompanyUser(user.id, companyId);
       if (user.email) {
@@ -420,49 +444,37 @@ export default function AdminUsersTab() {
   };
 
   const handleCleanupTestUsers = async () => {
-    if (!window.confirm('Möchtest du alle Demo- und Test-Nutzer löschen?')) return;
+    if (!window.confirm(t('cleanup_confirm') || 'Möchtest du alle Demo- und Test-Nutzer löschen?')) return;
+    setIsCleaning(true);
     try {
-      const protectedEmails = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-      const staticTestEmails = [
-        'kreativdesk999@yopmail.com', 'kreativdesk999@mailinator.com', 'kreativdesk12345@mailnesia.com',
-        'test3@example.com', 'unique_user_12345@mailto.plus', 'faxpad@mailto.plus', 'test@example.com', 'tester@kreativdesk.ch'
-      ];
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
-      const testCandidates = users.filter(u => {
-        const mail = (u.email || '').toLowerCase().trim();
-        if (!mail || protectedEmails.includes(mail)) return false;
-        return (
-          staticTestEmails.includes(mail) ||
-          mail.startsWith('test_') ||
-          mail.startsWith('signup_probe_') ||
-          mail.startsWith('probe_') ||
-          mail.includes('agent.test') ||
-          mail.includes('example.com') ||
-          mail.includes('mailinator') ||
-          mail.includes('yopmail') ||
-          mail.includes('mailto.plus')
-        );
-      });
-
-      for (const u of testCandidates) {
-        if (u.isPendingCompanyUser || u.isPending) {
-          await supabase.from('company_users').delete().eq('id', u.id);
-        } else {
-          await supabase.from('profiles').delete().eq('id', u.id);
-        }
-        if (u.email) {
-          await supabase.from('company_users').delete().ilike('email', u.email);
-          await supabase.from('invites').delete().ilike('email', u.email);
-          await supabase.from('project_members').delete().eq('user_id', u.id);
-        }
+      if (!token) {
+        throw new Error('Keine aktive Admin-Sitzung gefunden.');
       }
 
-      await supabase.from('profiles').delete().in('email', staticTestEmails);
-      addToast(testCandidates.length > 0 ? `${testCandidates.length} Test-Nutzer gelöscht!` : 'Keine weiteren Test-Nutzer gefunden.', 'success');
+      const res = await fetch('/api/admin/cleanup-test-users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ cleanAllTestUsers: true })
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || 'Fehler beim Bereinigen');
+      }
+
+      addToast(result.deletedCount > 0 ? `${result.deletedCount} Test-Nutzer erfolgreich gelöscht!` : 'Keine weiteren Test-Nutzer gefunden.', 'success');
       await fetchUsers();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      addToast('Fehler beim Bereinigen', 'error');
+      addToast(err.message || t('cleanup_error') || 'Fehler beim Bereinigen', 'error');
+    } finally {
+      setIsCleaning(false);
     }
   };
 
@@ -488,9 +500,17 @@ export default function AdminUsersTab() {
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           <button
             onClick={handleCleanupTestUsers}
-            className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-semibold hover:bg-red-500/20 transition-all shadow-sm text-center"
+            disabled={isCleaning}
+            className="w-full sm:w-auto px-4 py-2.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-semibold hover:bg-red-500/20 transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {t('delete_test_users')}
+            {isCleaning ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                <span>{t('cleaning_users')}</span>
+              </>
+            ) : (
+              <span>{t('delete_test_users')}</span>
+            )}
           </button>
           <button
             onClick={() => setIsPreprovisionOpen(true)}
