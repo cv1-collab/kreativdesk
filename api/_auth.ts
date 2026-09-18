@@ -22,17 +22,21 @@ export async function verifyAuth(req: any) {
     if (error || !user) return null;
     
     const SUPER_ADMINS = ['cv1@gmx.ch', 'carlo@vesciodesign.ch'];
-    if (SUPER_ADMINS.includes(user.email?.toLowerCase() || '')) {
-      return user;
-    }
+    const isSuperAdmin = SUPER_ADMINS.includes(user.email?.toLowerCase() || '');
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    return { ...user, plan: profile?.plan, companyId: profile?.company_id };
+    return {
+      ...user,
+      plan: profile?.plan,
+      companyId: profile?.company_id,
+      role: isSuperAdmin ? 'super_admin' : profile?.role,
+      isSuperAdmin: isSuperAdmin || profile?.role === 'super_admin',
+    };
   } catch (error) {
     console.error('Auth verification failed:', error);
     return null;

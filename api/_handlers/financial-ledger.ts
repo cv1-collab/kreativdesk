@@ -34,6 +34,25 @@ export default async function handler(req: any, res: any) {
 
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Multi-tenant authorization check:
+    const isSuperAdmin = (authUser as any).isSuperAdmin || (authUser as any).role === 'super_admin';
+    if (!isSuperAdmin) {
+      const userCompanyId = (authUser as any).companyId;
+      if (!userCompanyId || String(userCompanyId) !== String(companyId)) {
+        // Double check membership in company_users as fallback
+        const { data: cuMembership } = await supabase
+          .from('company_users')
+          .select('id')
+          .eq('company_id', companyId)
+          .or(`user_id.eq.${authUser.id},email.ilike.${authUser.email}`)
+          .maybeSingle();
+
+        if (!cuMembership) {
+          return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
+        }
+      }
+    }
+
     // 1. Fetch transactions
     const { data: txData, error: txErr } = await supabase
       .from('transactions')
