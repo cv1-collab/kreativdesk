@@ -28,6 +28,7 @@ export interface AppUser {
   canApproveBudget?: boolean;
   hasSeenTour?: boolean;
   hasCompletedOnboarding?: boolean;
+  maxSeats?: number;
 }
 
 interface AuthContextType {
@@ -63,13 +64,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchOrCreateUserProfile = async (user: User) => {
     try {
       // 1. Check if user is the OWNER of an existing organization in companies table
-      const { data: ownedComp } = await supabase
+      const { data: ownedComps } = await supabase
         .from('companies')
         .select('id, name, plan, max_seats, used_seats, owner_id')
         .eq('owner_id', user.id)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
+      const ownedComp = (ownedComps && ownedComps.length > 0) ? ownedComps[0] : null;
       const isCompanyOwner = Boolean(ownedComp);
+      const isSuperUserCheck = checkIsSuperAdmin(user.email);
 
       // 2. Check for invite token across URL, user metadata, and persistent safeStorage
       const urlParams = new URLSearchParams(window.location.search);
@@ -104,8 +107,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       let targetPlan: string = 'Enterprise';
       let isInvitedUser = false;
 
-      // Check fallback by user email ONLY if user is not already the owner of a company
-      if (!isCompanyOwner) {
+      // Check fallback by user email ONLY if user is not already the owner and not super admin
+      if (!isCompanyOwner && !isSuperUserCheck) {
         if (!pendingInvite && user.email) {
           const { data: inv } = await supabase
             .from('invites')
@@ -130,9 +133,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (cuRecords && cuRecords.length > 0) {
             const matchedCu = cuRecords.find((cu: any) => cu.user_id === user.id) || cuRecords[0];
             if (matchedCu && matchedCu.company_id) {
-              targetCompanyId = matchedCu.company_id;
-              targetRole = (matchedCu.role as Role) || 'employee';
-              isInvitedUser = true;
+              // Ensure referenced company actually exists in database!
+              const { data: validComp } = await supabase
+                .from('companies')
+                .select('id, plan')
+                .eq('id', matchedCu.company_id)
+                .maybeSingle();
+
+              if (validComp) {
+                targetCompanyId = validComp.id;
+                targetPlan = validComp.plan || 'Enterprise';
+                targetRole = (matchedCu.role as Role) || 'employee';
+                isInvitedUser = true;
+              }
             }
           }
         }
@@ -321,7 +334,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           canViewFinance: profile.can_view_finance ?? true,
           canApproveBudget: profile.can_approve_budget ?? true,
           hasSeenTour: profile.has_seen_tour ?? false,
-          hasCompletedOnboarding: profile.has_completed_onboarding ?? false
+          hasCompletedOnboarding: profile.has_completed_onboarding ?? false,
+          maxSeats: companyData?.max_seats ? Number(companyData.max_seats) : (isSuperUser ? 10 : 1)
         };
 
         setUserRole(effectiveRole);
@@ -422,7 +436,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           canViewFinance: true,
           canApproveBudget: true,
           hasSeenTour: false,
-          hasCompletedOnboarding: false
+          hasCompletedOnboarding: false,
+          maxSeats: companyData?.max_seats ? Number(companyData.max_seats) : (isSuperUser ? 10 : 1)
         };
 
         setUserRole(appUser.role || 'owner');

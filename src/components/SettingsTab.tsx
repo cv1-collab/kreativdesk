@@ -288,8 +288,8 @@ export default function SettingsTab() {
   const [sessionTimeout, setSessionTimeout] = useState<number>(30);
 
   // Abo States (Dynamisch)
-  const [companyPlan, setCompanyPlan] = useState('Free Trial');
-  const [maxSeats, setMaxSeats] = useState(1);
+  const [companyPlan, setCompanyPlan] = useState(() => currentUser?.companyPlan || currentUser?.plan || 'Free Trial');
+  const [maxSeats, setMaxSeats] = useState(() => (currentUser as any)?.maxSeats || 1);
   const [usedSeats, setUsedSeats] = useState(1);
   const [storageUsed, setStorageUsed] = useState(0);
 
@@ -330,11 +330,19 @@ export default function SettingsTab() {
     if (!compId) return;
     const fetchCompany = async () => {
       // 1. Fetch Company row
-      const { data: comp } = await supabase.from('companies').select('*').eq('id', compId).maybeSingle();
-      let foundComp = comp;
-      if (!foundComp && currentUser.uid) {
-        const { data: ownerComp } = await supabase.from('companies').select('*').eq('owner_id', currentUser.uid).maybeSingle();
-        foundComp = ownerComp;
+      let foundComp = null;
+      if (compId) {
+        const { data: comp } = await supabase.from('companies').select('*').eq('id', compId).maybeSingle();
+        foundComp = comp;
+      }
+      if (!foundComp && currentUser?.uid) {
+        const { data: ownerComps } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('owner_id', currentUser.uid)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        foundComp = ownerComps?.[0] || null;
       }
       if (foundComp) {
         setAgencyName(foundComp.name || '');
@@ -342,6 +350,10 @@ export default function SettingsTab() {
         if (foundComp.max_seats) {
           setMaxSeats(Number(foundComp.max_seats));
         }
+      } else if (currentUser) {
+        if (currentUser.companyName) setAgencyName(currentUser.companyName);
+        if (currentUser.companyPlan || currentUser.plan) setCompanyPlan(currentUser.companyPlan || currentUser.plan || 'Free Trial');
+        if ((currentUser as any).maxSeats) setMaxSeats(Number((currentUser as any).maxSeats));
       }
 
       // 2. Fetch Company Profile Settings document from Supabase

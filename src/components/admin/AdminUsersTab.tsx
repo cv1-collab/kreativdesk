@@ -7,6 +7,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { checkIsSuperAdmin } from '../../config/admins';
 import { offboardCompanyUser } from '../../services/userService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -56,6 +57,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 export default function AdminUsersTab() {
   const { language, t: globalT } = useLanguage();
   const { addToast } = useToast();
+  const { currentUser, refreshUserProfile } = useAuth();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
@@ -322,7 +324,13 @@ export default function AdminUsersTab() {
         if (!compPlan) compPlan = comp.plan;
         if (isOwner === undefined) isOwner = comp.owner_id === user.id || checkIsSuperAdmin(user.email);
       } else {
-        const { data: ownerComp } = await supabase.from('companies').select('*').eq('owner_id', user.id).maybeSingle();
+        const { data: ownerComps } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const ownerComp = ownerComps?.[0];
         if (ownerComp) {
           if (!seats) seats = ownerComp.max_seats;
           if (!compName) compName = ownerComp.name;
@@ -394,6 +402,10 @@ export default function AdminUsersTab() {
                .or(`owner_id.eq.${editingUser.id},id.eq.${editingUser.id}`);
           }
         }
+      }
+
+      if (currentUser?.id === editingUser.id || (currentUser?.email && editingUser?.email && currentUser.email.toLowerCase() === editingUser.email.toLowerCase())) {
+        await refreshUserProfile().catch(() => {});
       }
 
       addToast(t('user_saved'), 'success');
