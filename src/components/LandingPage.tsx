@@ -1135,7 +1135,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
                 <Shield size={14} /> {t('infra_badge')}
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t('infra_title')}</h2>
+              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('infra_title')}</h2>
               <p className="text-lg text-text-muted font-medium max-w-2xl mx-auto">{t('infra_subtitle')}</p>
             </div>
 
@@ -1221,7 +1221,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
                   <MonitorPlay size={14} /> Interactive Live Environment
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t('demo_title')}</h2>
+                <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('demo_title')}</h2>
                 <p className="text-text-muted text-lg max-w-2xl mx-auto">{t('demo_subtitle')}</p>
               </div>
 
@@ -1387,7 +1387,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider mb-4">
                 <Sparkles size={14} /> {t('practice_badge')}
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">
                 {t('practice_title')}
               </h2>
               <p className="text-lg text-text-muted font-medium max-w-3xl mx-auto">
@@ -1544,7 +1544,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
                 <Briefcase size={14} /> {t('b2b_badge')}
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t('b2b_title')}</h2>
+              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('b2b_title')}</h2>
               <p className="text-lg text-text-muted font-medium max-w-2xl mx-auto">{t('b2b_subtitle')}</p>
             </div>
 
@@ -1554,8 +1554,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <div className="p-8 sm:p-10 bg-surface border border-border hover:border-border/80 rounded-[2.5rem] transition-all flex flex-col justify-between shadow-lg group">
                 <div>
                   <Briefcase className="w-10 h-10 text-text-muted mb-6 group-hover:text-blue-500 transition-colors" />
-                  <h3 className="text-2xl font-bold mb-2">{t('b2b_sys1_title')}</h3>
-                  <div className="text-3xl font-bold text-text-primary mb-2">{t('b2b_sys1_price')}</div>
+                  <h3 className="text-2xl font-semibold mb-2">{t('b2b_sys1_title')}</h3>
+                  <div className="text-4xl font-bold text-text-primary tracking-tight mb-2">{t('b2b_sys1_price')}</div>
                   <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-3 p-1.5 bg-background rounded-md border border-border inline-block">
                     {t('b2b_sys1_renewal')}
                   </div>
@@ -1576,8 +1576,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 </div>
                 <div>
                   <Zap className="w-10 h-10 text-blue-500 mb-6" />
-                  <h3 className="text-2xl font-bold mb-2">{t('b2b_sys2_title')}</h3>
-                  <div className="text-3xl font-bold text-text-primary mb-2">{t('b2b_sys2_price')}</div>
+                  <h3 className="text-2xl font-semibold mb-2">{t('b2b_sys2_title')}</h3>
+                  <div className="text-4xl font-bold text-text-primary tracking-tight mb-2">{t('b2b_sys2_price')}</div>
                   <div className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-3 p-1.5 bg-blue-500/10 rounded-md border border-blue-500/20 inline-block">
                     {t('b2b_sys2_renewal')}
                   </div>
@@ -1595,8 +1595,8 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <div className="p-8 sm:p-10 bg-surface border border-border hover:border-border/80 rounded-[2.5rem] transition-all flex flex-col justify-between shadow-lg group">
                 <div>
                   <Shield className="w-10 h-10 text-emerald-500 mb-6 group-hover:text-blue-500 transition-colors" />
-                  <h3 className="text-2xl font-bold mb-2">{t('b2b_sys3_title')}</h3>
-                  <div className="text-3xl font-bold text-text-primary mb-2">{t('b2b_sys3_price')}</div>
+                  <h3 className="text-2xl font-semibold mb-2">{t('b2b_sys3_title')}</h3>
+                  <div className="text-4xl font-bold text-text-primary tracking-tight mb-2">{t('b2b_sys3_price')}</div>
                   <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider mb-3 p-1.5 bg-emerald-500/10 rounded-md border border-emerald-500/20 inline-block">
                     {t('b2b_sys3_renewal')}
                   </div>
@@ -1623,7 +1623,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
                   <Rocket size={14} /> {t('saas_badge')}
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t('saas_title')}</h2>
+                <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('saas_title')}</h2>
                 <p className="text-lg text-text-muted font-medium max-w-2xl mx-auto mb-8">{t('saas_subtitle')}</p>
 
                 {/* Billing Toggle */}
@@ -1665,10 +1665,10 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       {plan.popular && (
                         <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-blue-600 text-white text-[10px] font-bold uppercase rounded-full shadow-md shadow-blue-500/20">{t('popular_badge')}</div>
                       )}
-                      <div className="flex items-center gap-3 mb-4 font-bold text-text-primary">
-                        {plan.icon} {plan.name}
-                      </div>
-                      <div className="text-5xl font-bold mb-2">CHF {plan.price}</div>
+                      <h3 className="text-2xl font-semibold mb-2 flex items-center gap-3 text-text-primary">
+                        {plan.icon} <span>{plan.name}</span>
+                      </h3>
+                      <div className="text-4xl font-bold text-text-primary tracking-tight mb-2">CHF {plan.price}</div>
                       <div className="text-sm text-text-muted font-bold mb-6">
                         / {t('saas_monthly').toLowerCase()} {isYearly && <span className="text-blue-500 ml-1">({t('saas_billed_yearly')})</span>}
                       </div>
@@ -1704,7 +1704,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
         <section id="roi" className="py-24 px-6 bg-surface/30 relative border-y border-border">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t('roi_title')}</h2>
+              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('roi_title')}</h2>
               <p className="text-lg text-text-muted font-medium">{t('roi_subtitle')}</p>
             </div>
 
@@ -1752,7 +1752,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
         {/* 6. FAQ (11 Fragen) */}
         <section id="faq" className="py-24 px-6 bg-background">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-center">{t('faq_title')}</h2>
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4 text-center">{t('faq_title')}</h2>
             <p className="text-text-muted font-medium text-center mb-16">{t('faq_subtitle')}</p>
             
             <div className="space-y-4">
@@ -1782,7 +1782,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-bold uppercase tracking-wider mb-4">
                 <Bot size={14} /> Knowledge Hub & AI Concierge
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">{t('help_title')}</h2>
+              <h2 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">{t('help_title')}</h2>
               <p className="text-lg text-text-muted font-medium max-w-2xl mx-auto">{t('help_subtitle')}</p>
             </div>
 

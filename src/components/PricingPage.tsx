@@ -170,7 +170,7 @@ export default function PricingPage() {
 
         {/* --- TIER 1: SELF-SERVICE (B2C) --- */}
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">{t('pricing_title')}</h1>
+          <h1 className="text-4xl md:text-6xl font-semibold tracking-tight mb-6">{t('pricing_title')}</h1>
           <p className="text-zinc-400 text-lg max-w-2xl mx-auto mb-10">{t('pricing_subtitle')}</p>
 
           <div className="flex items-center justify-center gap-4">
@@ -198,7 +198,7 @@ export default function PricingPage() {
               )}
               <div className="mb-8">
                 <div className="mb-4">{plan.icon}</div>
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                <h3 className="text-2xl font-semibold mb-2">{plan.name}</h3>
                 <p className="text-zinc-500 text-sm h-10">{plan.description}</p>
               </div>
               <div className="mb-8">
@@ -234,7 +234,7 @@ export default function PricingPage() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-blue-500/10 blur-[100px] rounded-full z-0 pointer-events-none"></div>
           
           <div className="text-center mb-16 relative z-10">
-              <h2 className="text-3xl md:text-5xl font-black tracking-tighter mb-4">{t('b2b_title')}</h2>
+              <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-4">{t('b2b_title')}</h2>
               <p className="text-zinc-400 max-w-2xl mx-auto text-lg">{t('b2b_subtitle')}</p>
           </div>
 
@@ -242,7 +242,7 @@ export default function PricingPage() {
               {/* Studio */}
               <div className="p-8 sm:p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
                   <Briefcase className="w-10 h-10 text-zinc-500 mb-8 group-hover:text-blue-500 transition-colors" />
-                  <h3 className="text-2xl md:text-3xl font-black mb-3">{t('sys1_title')}</h3>
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3">{t('sys1_title')}</h3>
                   <div className="flex items-baseline gap-2 mb-3">
                       <div className="text-xl md:text-2xl font-black leading-tight">{t('sys1_price')}</div>
                       <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
@@ -259,7 +259,7 @@ export default function PricingPage() {
               <div className="p-8 sm:p-10 bg-zinc-900 border border-blue-500/50 shadow-2xl md:scale-105 rounded-[2.5rem] relative flex flex-col group z-10">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">{t('sys2_title') === 'Agency OS' ? 'EXECUTION BOOSTER' : 'Execution Booster'}</div>
                   <Zap className="w-10 h-10 text-blue-500 mb-8" />
-                  <h3 className="text-2xl md:text-3xl font-black mb-3">{t('sys2_title')}</h3>
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3">{t('sys2_title')}</h3>
                   <div className="flex items-baseline gap-2 mb-3">
                       <div className="text-xl md:text-2xl font-black leading-tight">{t('sys2_price')}</div>
                       <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
@@ -275,7 +275,7 @@ export default function PricingPage() {
               {/* Enterprise */}
               <div className="p-8 sm:p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
                   <Shield className="w-10 h-10 text-emerald-500 mb-8 group-hover:text-blue-500 transition-colors" />
-                  <h3 className="text-2xl md:text-3xl font-black mb-3">{t('sys3_title')}</h3>
+                  <h3 className="text-2xl md:text-3xl font-semibold mb-3">{t('sys3_title')}</h3>
                   <div className="flex items-baseline gap-2 mb-3">
                       <div className="text-xl md:text-2xl font-black leading-tight">{t('sys3_price')}</div>
                       <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
