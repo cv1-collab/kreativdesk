@@ -1,0 +1,33 @@
+# Dependency & build outputs
+node_modules
+.git
+.env*
+.DS_Store
+
+# End-to-end tests and reports
+e2e/
+tests/
+playwright-report/
+test-results/
+scratch/
+
+# Test and benchmark scripts in root
+test-*.js
+test-*.mjs
+test-*.cjs
+test_*.js
+test_*.mjs
+test_*.cjs
+fal_test.mjs
+fal_upscale_test.mjs
+*.log
+*.pem
+
+# Local test images
+test_img2img.jpg
+test_poll.jpg
+test_post.jpg
+test_post_image.jpg
+
+# Maintenance & repair scripts
+scripts/
