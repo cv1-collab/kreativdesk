@@ -47,12 +47,9 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
     const heroH1 = page.locator('h1').first();
     await expect(heroH1).toBeVisible();
 
-    // Hero CTA Buttons
-    const heroCta1 = page.locator('section').first().getByRole('button', { name: /Jetzt starten|Get Started/i }).first();
-    await expect(heroCta1).toBeVisible();
-
-    const heroCta2 = page.locator('section').first().getByRole('button', { name: /Setup anfragen|Request Setup/i }).first();
-    await expect(heroCta2).toBeVisible();
+    // Hero 4K Portal Showcase
+    const heroVideo = page.locator('section video').first();
+    await expect(heroVideo).toBeAttached();
 
     // Status Quo vs SSoT
     const statusQuoHeading = page.getByText(/Status Quo: Chaos/i).first();

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('6. Accessibility (a11y): Keyboard Navigation & ARIA Suite', () => {
   test('Verify Landing Page supports keyboard navigation via Tab key', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Press Tab key 3 times
     await page.keyboard.press('Tab');
@@ -17,7 +17,7 @@ test.describe('6. Accessibility (a11y): Keyboard Navigation & ARIA Suite', () =>
 
   test('Verify Form Inputs on Signup have associated labels or placeholders', async ({ page }) => {
     await page.goto('/signup');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const inputs = page.locator('input');
     const count = await inputs.count();
