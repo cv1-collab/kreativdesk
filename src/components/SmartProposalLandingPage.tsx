@@ -2130,7 +2130,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
   const activeDeckSlide = slides[currentSlideIndex] || slides[0] || defaultProposalSlides[0];
 
   return (
-    <div className={cn("min-h-screen font-sans selection:bg-blue-500 selection:text-white transition-colors duration-300", isLight ? "bg-[#f8fafc] text-slate-900 light" : "bg-[#09090b] text-zinc-100 dark")}>
+    <div className={cn("min-h-screen w-full max-w-full overflow-x-hidden font-sans selection:bg-blue-500 selection:text-white transition-colors duration-300", isLight ? "bg-[#f8fafc] text-slate-900 light" : "bg-[#09090b] text-zinc-100 dark")}>
       
       {/* 1. TOP ANNOUNCEMENT & BRAND HEADER */}
       <header className={cn("sticky top-0 z-50 backdrop-blur-xl border-b px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2 transition-colors", isLight ? "bg-white/90 border-slate-200 text-slate-900 shadow-xs" : "bg-[#09090b]/85 border-white/10 text-zinc-100")}>
@@ -2179,8 +2179,8 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             </span>
           </div>
 
-          {/* Trilingual Language Switcher */}
-          <div className={cn("flex items-center border rounded-xl p-0.5 text-[11px] font-bold shrink-0", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
+          {/* Trilingual Language Switcher (Desktop 3-Buttons, Mobile 1-Button Cycle) */}
+          <div className={cn("hidden sm:flex items-center border rounded-xl p-0.5 text-[11px] font-bold shrink-0", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
             <button 
               type="button"
               onClick={() => changeLanguage('de')}
@@ -2203,6 +2203,15 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               EN
             </button>
           </div>
+
+          <button 
+            type="button"
+            onClick={() => changeLanguage(proposalLang === 'de' ? 'fr' : proposalLang === 'fr' ? 'en' : 'de')}
+            className={cn("sm:hidden px-2 py-1 rounded-xl border text-[11px] font-bold uppercase shrink-0 transition-all shadow-xs cursor-pointer", isLight ? "bg-slate-100 border-slate-200 text-slate-700" : "bg-white/10 border-white/15 text-white")}
+            title="Sprache wechseln"
+          >
+            {proposalLang.toUpperCase()}
+          </button>
 
           {/* Theme Mode Toggle (Hell / Dunkel) */}
           <button 
@@ -2257,8 +2266,8 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
             </button>
           )}
 
-          {/* Mode Switcher */}
-          <div className={cn("flex items-center border rounded-xl p-1", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
+          {/* Mode Switcher (Desktop / Tablet only) */}
+          <div className={cn("hidden sm:flex items-center border rounded-xl p-1 shrink-0", isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/10")}>
             <button 
               type="button"
               onClick={() => {
@@ -3035,13 +3044,13 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
                           : (isLight ? "bg-slate-50 border-slate-200 hover:border-slate-300" : "bg-white/5 border-white/5 hover:border-white/20")
                       )}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
                         <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center mt-0.5 transition-all shrink-0", isChecked ? "bg-blue-600 text-white" : isLight ? "border border-slate-300" : "border border-white/30")}>
                           {isChecked && <Check size={14} />}
                         </div>
-                        <div>
-                          <div className={cn("font-bold text-sm", isLight ? "text-slate-900" : "text-white")}>{getTranslatedOptionTitle(opt)}</div>
-                          {opt.description && <div className={cn("text-xs mt-0.5", isLight ? "text-slate-500" : "text-zinc-400")}>{getTranslatedOptionDesc(opt)}</div>}
+                        <div className="min-w-0 flex-1">
+                          <div className={cn("font-bold text-sm break-words", isLight ? "text-slate-900" : "text-white")}>{getTranslatedOptionTitle(opt)}</div>
+                          {opt.description && <div className={cn("text-xs mt-0.5 break-words", isLight ? "text-slate-500" : "text-zinc-400")}>{getTranslatedOptionDesc(opt)}</div>}
                         </div>
                       </div>
                       <div className="text-sm font-bold text-blue-500 dark:text-blue-400 shrink-0 font-sans tracking-tight">
