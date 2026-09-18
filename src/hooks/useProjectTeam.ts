@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { offboardCompanyUser } from '../services/userService';
 
 export interface CompanyUser {
   id: string;
@@ -147,8 +148,7 @@ export function useProjectTeam() {
   const removeCompanyUser = useCallback(async (id: string, safeCompanyId: string) => {
     if (!id) return;
     try {
-      await supabase.from('company_users').delete().eq('id', id);
-      await supabase.from('profiles').delete().eq('id', id).eq('company_id', safeCompanyId);
+      await offboardCompanyUser(id, safeCompanyId);
     } catch (e) {
       console.error('Fehler beim Löschen des Benutzers:', e);
     }

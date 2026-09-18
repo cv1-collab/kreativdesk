@@ -73,8 +73,8 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   const checkSeatLimit = (): boolean => {
     if (!currentUser) return true;
     if (checkIsSuperAdmin(currentUser.email) || currentUser?.role?.toLowerCase() === 'super_admin' || currentUser?.role?.toLowerCase() === 'admin') return true;
-    const plan = currentUser.plan || 'Starter';
-    if (plan.includes('Trial') || plan === 'Expert' || plan === 'Enterprise' || plan === 'Studio' || plan === 'Agency') return true;
+    const plan = currentUser.companyPlan || currentUser.plan || 'Starter';
+    if (plan.includes('Trial') || plan === 'Expert' || plan === 'Enterprise' || plan === 'Studio' || plan === 'Agency' || plan.includes('Workspace')) return true;
     const maxSeats = plan === 'Starter' ? 3 : 10;
     if (currentMembers.length >= maxSeats) {
       addToast(`Seat-Limit (${maxSeats} Mitglieder) für deinen ${plan}-Plan erreicht.`, 'info');

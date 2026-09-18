@@ -85,8 +85,11 @@ export default function CompanySettings() {
           const key = (p.email || p.id || '').trim().toLowerCase();
           if (key) uniqueSeatHolders.add(key);
         });
-        if (currentUser?.email) uniqueSeatHolders.add(currentUser.email.trim().toLowerCase());
-        setMemberCount(Math.max(1, uniqueSeatHolders.size));
+        const actualCount = Math.max(1, uniqueSeatHolders.size);
+        setMemberCount(actualCount);
+        if (data && data.used_seats !== actualCount) {
+          await supabase.from('companies').update({ used_seats: actualCount }).eq('id', safeCompanyId);
+        }
       } catch (err) {
         console.error(err);
       }

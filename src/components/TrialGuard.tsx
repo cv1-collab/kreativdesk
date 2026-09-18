@@ -16,13 +16,15 @@ export default function TrialGuard({ children }: TrialGuardProps) {
   const [forceLock, setForceLock] = useState(false);
   let isLocked = false;
   const isMemberOrExternal = ['employee', 'management', 'external', 'client', 'partner'].includes(currentUser?.role?.toLowerCase() || '');
-  const hasPaidPlan = Boolean(currentUser?.plan && !currentUser.plan.includes('Trial'));
+  const effectivePlan = currentUser?.companyPlan || currentUser?.plan;
+  const hasPaidPlan = Boolean(effectivePlan && !effectivePlan.includes('Trial'));
+  const isOwner = currentUser?.role === 'owner' || !currentUser?.role;
 
-  if (currentUser && !checkIsSuperAdmin(currentUser.email) && !isMemberOrExternal && !hasPaidPlan) {
+  if (currentUser && !checkIsSuperAdmin(currentUser.email) && isOwner && !isMemberOrExternal && !hasPaidPlan) {
     if (currentUser.trialEndsAt) {
       const today = new Date();
       const trialEnd = new Date(currentUser.trialEndsAt);
-      if (today > trialEnd && currentUser.plan?.includes('Trial')) {
+      if (today > trialEnd && (currentUser.plan?.includes('Trial') || effectivePlan?.includes('Trial'))) {
         isLocked = true;
       }
     }

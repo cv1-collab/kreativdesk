@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { checkIsSuperAdmin } from '../../config/admins';
+import { offboardCompanyUser } from '../../services/userService';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -157,7 +158,7 @@ export default function AdminUsersTab() {
         const activeList = profs.map(u => {
           const comp = u.company_id ? companiesMap.get(u.company_id) : (companies || []).find(c => c.owner_id === u.id);
           const isSuper = checkIsSuperAdmin(u.email);
-          const isOwner = isSuper || (comp ? comp.owner_id === u.id : true);
+          const isOwner = isSuper || (comp ? comp.owner_id === u.id : (u.role === 'owner' || !u.role));
           const companyName = comp?.name || (isSuper ? 'Kreativ Desk OS' : 'Workspace');
           const companyPlan = comp?.plan || u.plan || 'Enterprise';
           const maxSeats = comp?.max_seats || 1;
@@ -232,14 +233,8 @@ export default function AdminUsersTab() {
   const handleDeleteUser = async (user: any) => {
     if (!window.confirm(t('delete_user_confirm'))) return;
     try {
-      if (user.isPendingCompanyUser) {
-        await supabase.from('company_users').delete().eq('id', user.id);
-        await supabase.from('project_members').delete().eq('user_id', user.id);
-      } else {
-        await supabase.from('profiles').delete().eq('id', user.id);
-        await supabase.from('company_users').delete().or(`id.eq.${user.id},email.eq.${user.email}`);
-        await supabase.from('project_members').delete().eq('user_id', user.id);
-      }
+      const companyId = user.company_id || user.companyId;
+      await offboardCompanyUser(user.id, companyId);
       if (user.email) {
         await supabase.from('invites').delete().ilike('email', user.email);
       }
