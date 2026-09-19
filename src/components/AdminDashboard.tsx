@@ -176,7 +176,10 @@ export default function AdminDashboard() {
       </aside>
 
       <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
-        <header className="h-16 flex items-center justify-between px-4 md:px-8 border-b border-border/50 bg-surface/95 backdrop-blur-xl z-20 shrink-0">
+        <header 
+          className="min-h-16 flex items-center justify-between px-4 md:px-8 border-b border-border/50 bg-surface/95 backdrop-blur-xl z-20 shrink-0"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <div className="flex items-center gap-3">
             <div className="md:hidden flex items-center gap-2">
                <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500"><Shield size={16} /></div>

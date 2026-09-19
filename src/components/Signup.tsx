@@ -240,7 +240,10 @@ export default function Signup() {
       {customBg && <div className="absolute inset-0 bg-white/80 dark:bg-black/65 backdrop-blur-[3px] z-0" />}
 
       {/* Top Header Navigation */}
-      <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20">
+      <div 
+        className="absolute left-6 right-6 flex items-center justify-between z-20"
+        style={{ top: 'max(1.5rem, env(safe-area-inset-top, 0px))' }}
+      >
         <Link 
           to="/" 
           className="flex items-center gap-2 text-slate-500 hover:text-slate-900 dark:text-[#a1a1aa] dark:hover:text-[#fafafa] transition-colors text-sm font-semibold group bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200 dark:border-[#27272a] shadow-sm"

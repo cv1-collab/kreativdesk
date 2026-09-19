@@ -794,7 +794,10 @@ export default function CompanyDashboard() {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 h-[100dvh] relative w-full overflow-hidden bg-background">
-        <header className="h-14 md:h-16 border-b border-border bg-surface/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0 z-40 sticky top-0 shadow-sm">
+        <header 
+          className="min-h-14 md:min-h-16 border-b border-border bg-surface/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0 z-40 sticky top-0 shadow-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <div className="flex items-center gap-3">
              <h2 className="font-semibold text-sm md:text-base text-text-primary capitalize tracking-tight flex items-center gap-2">
                {t(activeTab)}

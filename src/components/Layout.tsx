@@ -478,7 +478,10 @@ export default function Layout() {
           </div>
         )}
 
-        <header className="h-14 md:h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 shrink-0 z-[60] sticky top-0 shadow-sm">
+        <header 
+          className="min-h-14 md:min-h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 shrink-0 z-[60] sticky top-0 shadow-sm"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
           <div className="flex items-center gap-2 md:gap-3">
             <button onClick={() => navigate('/app')} className="p-1.5 md:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm md:hidden cursor-pointer">
               <ArrowLeft size={18} />
@@ -524,7 +527,10 @@ export default function Layout() {
           </div>
         </header>
 
-        <div className="md:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-xl border-b border-border overflow-x-auto hide-scrollbar shrink-0 w-full z-[55] shadow-sm sticky top-14">
+        <div 
+          className="md:hidden flex items-center gap-2 px-4 py-3 bg-surface/95 backdrop-blur-xl border-b border-border overflow-x-auto hide-scrollbar shrink-0 w-full z-[55] shadow-sm sticky"
+          style={{ top: 'calc(3.5rem + env(safe-area-inset-top, 0px))' }}
+        >
           {mobileNavItems.map(item => {
             const path = `/project/${projectId}${item.id ? `/${item.id}` : ''}`;
             const isActive = window.location.pathname === path || window.location.pathname.startsWith(path + '/');

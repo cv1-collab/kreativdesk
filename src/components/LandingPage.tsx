@@ -11,6 +11,8 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { checkIsSuperAdmin } from '../config/admins';
 import { callGeminiAPI } from '../utils/geminiClient';
 const DemoLayout = lazy(() => import('../components/DemoLayout'));
 import { cn } from '../utils';
@@ -19,7 +21,7 @@ import HeroBrandCanvas from './HeroBrandCanvas';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
-    nav_infra: 'Infrastructure', nav_systems: 'Project Systems', nav_selfservice: 'Pricing', nav_roi: 'ROI Calculator', nav_faq: 'FAQ', nav_help: 'Help Center', nav_login: 'Login', nav_start: 'Get Started',
+    nav_infra: 'Infrastructure', nav_systems: 'Project Systems', nav_selfservice: 'Pricing', nav_roi: 'ROI Calculator', nav_faq: 'FAQ', nav_help: 'Help Center', nav_login: 'Login', nav_start: 'Get Started', nav_workspace: 'Workspace',
     hero_badge: 'Real Software. No Fake Images.', 
     beta_badge: 'Public Beta / Early Access',
     hero_title1: 'The Operating System', hero_title2: 'for complex projects.',
@@ -245,7 +247,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     footer_desc: 'The operating system for projects that must succeed.', footer_made: 'Designed in Switzerland.', footer_product: 'Product', footer_legal: 'Legal', footer_privacy: 'Privacy', footer_imprint: 'Imprint', footer_tos: 'Terms of Service'
   },
   de: {
-    nav_infra: 'Infrastruktur', nav_systems: 'Projekt-Systeme', nav_selfservice: 'Preise', nav_roi: 'ROI Rechner', nav_faq: 'FAQ', nav_help: 'Hilfe-Center', nav_login: 'Login', nav_start: 'Kostenlos starten',
+    nav_infra: 'Infrastruktur', nav_systems: 'Projekt-Systeme', nav_selfservice: 'Preise', nav_roi: 'ROI Rechner', nav_faq: 'FAQ', nav_help: 'Hilfe-Center', nav_login: 'Login', nav_start: 'Kostenlos starten', nav_workspace: 'Workspace',
     hero_badge: 'Real Software. Keine Fake-Bilder.', 
     beta_badge: 'Public Beta / Early Access',
     hero_title1: 'Das Operating System', hero_title2: 'für komplexe Projekte.',
@@ -475,8 +477,27 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const { currentUser, loading: authLoading } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // If installed as PWA / standalone native app and user already has an active session, auto-redirect to app
+  useEffect(() => {
+    if (currentUser && !authLoading) {
+      const isStandalone = typeof window !== 'undefined' && (
+        window.matchMedia('(display-mode: standalone)').matches || 
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://')
+      );
+      if (isStandalone) {
+        if (checkIsSuperAdmin(currentUser.email)) {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/app', { replace: true });
+        }
+      }
+    }
+  }, [currentUser, authLoading, navigate]);
 
   useEffect(() => {
     if (window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery')) {
@@ -786,18 +807,25 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
   return (
     <div className="min-h-screen bg-background text-text-primary selection:bg-blue-500/30 overflow-x-hidden font-sans">
       
-      {/* HEADER */}
-      <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 py-3 sm:py-4 transition-[background-color,border-color,box-shadow] duration-200",
-        scrolled ? "bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-border shadow-xs" : "bg-transparent border-b border-transparent shadow-none"
-      )}>
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+      {/* HEADER WITH FULL SAFE-AREA & STATUS-BAR ADAPTATION */}
+      <header 
+        className={cn(
+          "fixed top-0 left-0 right-0 z-50 px-3 sm:px-6 pb-2.5 sm:pb-3.5 transition-[background-color,border-color,box-shadow] duration-200",
+          scrolled 
+            ? "bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-b border-border shadow-xs" 
+            : "bg-white/85 dark:bg-zinc-950/85 sm:bg-white/40 sm:dark:bg-zinc-950/40 backdrop-blur-md border-b border-border/50 shadow-none"
+        )}
+        style={{
+          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))'
+        }}
+      >
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <div className="w-8 h-8 sm:w-9 sm:h-9 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-white text-base sm:text-lg shadow-lg shadow-blue-500/20 shrink-0 relative overflow-hidden group">
               <span className="relative z-10 leading-none mt-0.5">K</span>
               <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 pointer-events-none" />
             </div>
-            <span className="font-bold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
+            <span className="font-bold text-base sm:text-xl tracking-tight bg-gradient-to-r from-text-primary to-text-muted bg-clip-text text-transparent whitespace-nowrap select-none">
               Kreativ Desk
             </span>
           </div>
@@ -812,41 +840,59 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Desktop Language & Theme Buttons */}
             <button 
               onClick={handleLanguageToggle} 
-              className="px-2 sm:px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors"
+              className="hidden sm:inline-flex px-2 sm:px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors cursor-pointer"
             >
               {currentLang.toUpperCase()}
             </button>
             <button 
               onClick={toggleTheme} 
-              className="p-1.5 sm:p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface transition-colors"
+              className="hidden sm:inline-flex p-1.5 sm:p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
+              aria-label="Theme toggle"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             {deferredPrompt && (
               <button 
                 onClick={handleInstallClick} 
-                className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600/10 border border-blue-500/30 text-blue-500 text-xs font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                className="hidden lg:inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600/10 border border-blue-500/30 text-blue-500 text-xs font-bold rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm cursor-pointer"
               >
                 App installieren
               </button>
             )}
-            <button 
-              onClick={() => navigate('/login')} 
-              className="hidden sm:block text-sm font-bold text-text-muted hover:text-text-primary px-3 py-2 transition-colors"
-            >
-              {t('nav_login')}
-            </button>
-            <button 
-              onClick={() => navigate('/signup')} 
-              className="hidden sm:inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap"
-            >
-              {t('nav_start')}
-            </button>
+
+            {/* DIRECT LOGIN OR WORKSPACE BUTTON (VISIBLE ON BOTH MOBILE AND DESKTOP) */}
+            {currentUser ? (
+              <button 
+                onClick={() => navigate(checkIsSuperAdmin(currentUser.email) ? '/admin' : '/app')} 
+                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+              >
+                <span>{t('nav_workspace')}</span>
+                <ArrowRight size={14} />
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={() => navigate('/login')} 
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 bg-surface/90 sm:bg-transparent border border-border sm:border-transparent rounded-xl transition-colors whitespace-nowrap shadow-xs sm:shadow-none cursor-pointer"
+                >
+                  {t('nav_login')}
+                </button>
+                <button 
+                  onClick={() => navigate('/signup')} 
+                  className="hidden sm:inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+                >
+                  {t('nav_start')}
+                </button>
+              </>
+            )}
+
+            {/* Hamburger Button for Mobile Drawer */}
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)} 
-              className="md:hidden p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-lg border border-border sm:border-transparent hover:bg-surface transition-colors"
+              className="md:hidden p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-lg border border-border sm:border-transparent hover:bg-surface transition-colors cursor-pointer"
               aria-label={t('nav_open_menu')}
             >
               {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
@@ -855,7 +901,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
         </div>
       </header>
 
-      {/* MOBILE DRAWER */}
+      {/* MOBILE DRAWER WITH SAFE-AREA COMPENSATION */}
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div 
@@ -863,7 +909,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             animate={{ opacity: 1, y: 0 }} 
             exit={{ opacity: 0, y: -10 }} 
             transition={{ duration: 0.2 }}
-            className="fixed inset-x-0 top-[56px] sm:top-[68px] bg-surface/98 backdrop-blur-xl border-b border-border p-5 sm:p-6 z-40 md:hidden shadow-2xl max-h-[calc(100dvh-56px)] overflow-y-auto"
+            className="fixed inset-x-0 bg-surface/98 backdrop-blur-xl border-b border-border p-5 sm:p-6 z-40 md:hidden shadow-2xl overflow-y-auto"
+            style={{
+              top: 'calc(54px + max(0.75rem, env(safe-area-inset-top, 0px)))',
+              maxHeight: 'calc(100dvh - 54px - max(0.75rem, env(safe-area-inset-top, 0px)))'
+            }}
           >
              <div className="flex flex-col gap-3 text-base font-semibold">
                 <button onClick={() => scrollTo('infrastructure')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_infra')}</button>
@@ -872,9 +922,41 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <button onClick={() => scrollTo('roi')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_roi')}</button>
                 <button onClick={() => scrollTo('faq')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_faq')}</button>
                 <button onClick={() => scrollTo('help-center')} className="text-left py-2 hover:text-blue-500 transition-colors">{t('nav_help')}</button>
-                <hr className="border-border my-1" />
-                <button onClick={() => { setIsMenuOpen(false); navigate('/login'); }} className="py-2.5 bg-surface border border-border text-center rounded-xl font-bold hover:bg-white/5 transition-colors">{t('nav_login')}</button>
-                <button onClick={() => { setIsMenuOpen(false); navigate('/signup'); }} className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all">{t('nav_start')}</button>
+                
+                {/* Mobile Quick Controls: Language & Theme */}
+                <div className="flex items-center justify-between py-2 border-t border-b border-border my-1">
+                  <span className="text-xs font-medium text-text-muted">Ansicht & Sprache</span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={handleLanguageToggle} 
+                      className="px-2.5 py-1 rounded-lg border border-border text-xs font-bold bg-background hover:bg-surface transition-colors"
+                    >
+                      {currentLang.toUpperCase()}
+                    </button>
+                    <button 
+                      onClick={toggleTheme} 
+                      className="p-1.5 rounded-lg border border-border bg-background text-text-muted hover:text-text-primary transition-colors"
+                      aria-label="Theme toggle mobile"
+                    >
+                      {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                {currentUser ? (
+                  <button 
+                    onClick={() => { setIsMenuOpen(false); navigate(checkIsSuperAdmin(currentUser.email) ? '/admin' : '/app'); }} 
+                    className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    <span>{currentLang === 'de' ? 'Direkt zum Workspace' : 'Go to Workspace'}</span>
+                    <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => { setIsMenuOpen(false); navigate('/login'); }} className="py-2.5 bg-surface border border-border text-center rounded-xl font-bold hover:bg-white/5 transition-colors">{t('nav_login')}</button>
+                    <button onClick={() => { setIsMenuOpen(false); navigate('/signup'); }} className="py-3 bg-blue-600 hover:bg-blue-700 text-white text-center rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all">{t('nav_start')}</button>
+                  </>
+                )}
              </div>
           </motion.div>
         )}
@@ -882,10 +964,16 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
 
       <main>
         {/* HERO */}
-        <section className={cn(
-          "hero-zone pt-28 sm:pt-36 pb-16 sm:pb-20 px-4 sm:px-6 text-center relative z-10 overflow-hidden",
-          theme === 'dark' ? "bg-hero-grid-dark" : "bg-hero-grid-light"
-        )} style={{ touchAction: 'pan-y' }}>
+        <section 
+          className={cn(
+            "hero-zone pb-16 sm:pb-20 px-4 sm:px-6 text-center relative z-10 overflow-hidden",
+            theme === 'dark' ? "bg-hero-grid-dark" : "bg-hero-grid-light"
+          )} 
+          style={{ 
+            touchAction: 'pan-y',
+            paddingTop: 'calc(6rem + max(0.75rem, env(safe-area-inset-top, 0px)))'
+          }}
+        >
           {/* Interactive Retina Canvas Background with Blueprint Grid & Blooming Architecture Symbols (Desktop & Tablet only) */}
           <HeroBrandCanvas className="hidden md:block" isDark={theme === 'dark'} language={currentLang} />
 
@@ -914,9 +1002,44 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </span>
             </motion.h1>
 
-            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-base sm:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed">
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-base sm:text-xl xl:text-2xl text-slate-600 dark:text-zinc-300 font-medium mb-6 sm:mb-8 max-w-3xl mx-auto leading-relaxed">
               {t('hero_subtitle')}
             </motion.p>
+
+            {/* HERO DIRECT CTAs (PROMINENT MOBILE & DESKTOP ACCESS) */}
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: 0.25 }} 
+              className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 max-w-md sm:max-w-none mx-auto"
+            >
+              {currentUser ? (
+                <button 
+                  onClick={() => navigate(checkIsSuperAdmin(currentUser.email) ? '/admin' : '/app')}
+                  className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                >
+                  <span>{currentLang === 'de' ? 'Direkt zum Workspace' : 'Go to Workspace'}</span>
+                  <ArrowRight size={18} />
+                </button>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => navigate('/signup')}
+                    className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                  >
+                    <span>{currentLang === 'de' ? 'Jetzt kostenlos testen' : 'Start Free Trial'}</span>
+                    <ArrowRight size={18} />
+                  </button>
+                  <button 
+                    onClick={() => navigate('/login')}
+                    className="w-full sm:w-auto px-6 py-3.5 bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm sm:text-base backdrop-blur-md transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                  >
+                    <Lock size={16} className="text-blue-500" />
+                    <span>{currentLang === 'de' ? 'Workspace Login' : 'Workspace Login'}</span>
+                  </button>
+                </>
+              )}
+            </motion.div>
 
             {/* HERO 4K PORTAL VIDEO SHOWCASE */}
             <motion.div 
