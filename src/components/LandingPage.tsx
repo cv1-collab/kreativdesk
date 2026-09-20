@@ -843,13 +843,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
             {/* Desktop Language & Theme Buttons */}
             <button 
               onClick={handleLanguageToggle} 
-              className="hidden sm:inline-flex px-2 sm:px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors cursor-pointer"
+              className="hidden md:inline-flex px-2 sm:px-2.5 py-1.5 rounded-lg border border-border text-xs font-bold hover:bg-surface transition-colors cursor-pointer"
             >
               {currentLang.toUpperCase()}
             </button>
             <button 
               onClick={toggleTheme} 
-              className="hidden sm:inline-flex p-1.5 sm:p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
+              className="hidden md:inline-flex p-1.5 sm:p-2 rounded-lg border border-border text-text-muted hover:text-text-primary hover:bg-surface transition-colors cursor-pointer"
               aria-label="Theme toggle"
             >
               {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
@@ -863,11 +863,11 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               </button>
             )}
 
-            {/* DIRECT LOGIN OR WORKSPACE BUTTON (VISIBLE ON BOTH MOBILE AND DESKTOP) */}
+            {/* DIRECT LOGIN OR WORKSPACE BUTTON (DESKTOP NAVIGATION) */}
             {currentUser ? (
               <button 
                 onClick={() => navigate(checkIsSuperAdmin(currentUser.email) ? '/admin' : '/app')} 
-                className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+                className="hidden md:flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
               >
                 <span>{t('nav_workspace')}</span>
                 <ArrowRight size={14} />
@@ -876,13 +876,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               <>
                 <button 
                   onClick={() => navigate('/login')} 
-                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-bold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 bg-surface/90 sm:bg-transparent border border-border sm:border-transparent rounded-xl transition-colors whitespace-nowrap shadow-xs sm:shadow-none cursor-pointer"
+                  className="hidden md:inline-flex px-3.5 py-2 text-sm font-bold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 bg-transparent rounded-xl transition-colors whitespace-nowrap cursor-pointer"
                 >
                   {t('nav_login')}
                 </button>
                 <button 
                   onClick={() => navigate('/signup')} 
-                  className="hidden sm:inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
+                  className="hidden md:inline-flex px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-md shadow-blue-600/20 transition-all active:scale-95 whitespace-nowrap cursor-pointer"
                 >
                   {t('nav_start')}
                 </button>
@@ -1006,40 +1006,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               {t('hero_subtitle')}
             </motion.p>
 
-            {/* HERO DIRECT CTAs (PROMINENT MOBILE & DESKTOP ACCESS) */}
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              transition={{ delay: 0.25 }} 
-              className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-12 max-w-md sm:max-w-none mx-auto"
-            >
-              {currentUser ? (
-                <button 
-                  onClick={() => navigate(checkIsSuperAdmin(currentUser.email) ? '/admin' : '/app')}
-                  className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-                >
-                  <span>{currentLang === 'de' ? 'Direkt zum Workspace' : 'Go to Workspace'}</span>
-                  <ArrowRight size={18} />
-                </button>
-              ) : (
-                <>
-                  <button 
-                    onClick={() => navigate('/signup')}
-                    className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm sm:text-base shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-                  >
-                    <span>{currentLang === 'de' ? 'Jetzt kostenlos testen' : 'Start Free Trial'}</span>
-                    <ArrowRight size={18} />
-                  </button>
-                  <button 
-                    onClick={() => navigate('/login')}
-                    className="w-full sm:w-auto px-6 py-3.5 bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm sm:text-base backdrop-blur-md transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                  >
-                    <Lock size={16} className="text-blue-500" />
-                    <span>{currentLang === 'de' ? 'Workspace Login' : 'Workspace Login'}</span>
-                  </button>
-                </>
-              )}
-            </motion.div>
+
 
             {/* HERO 4K PORTAL VIDEO SHOWCASE */}
             <motion.div 
@@ -1059,11 +1026,6 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
                     <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
                     <span className="ml-2 font-medium text-xs text-zinc-300 hidden sm:inline tracking-tight">{t('hero_video_window_title')}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-400 text-[10px] font-bold uppercase tracking-wider">
-                      <Sparkles size={11} /> {t('hero_video_experience')}
-                    </span>
                   </div>
                 </div>
 
