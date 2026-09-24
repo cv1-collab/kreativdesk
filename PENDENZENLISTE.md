@@ -97,4 +97,13 @@ Dieses Dokument dient als zentrale Pendenzenliste für **Kreativ Desk OS**.
    - Zweisprachige (DE & EN) Integration in Trust-Badges auf Landingpage & Pricingpage: *„🇨🇭 Vertrag nach Schweizer Recht (Zürich) • DSG- & DSGVO-konform • Serverstandort Schweiz (ISO 27001)“* / *„🇨🇭 Contract under Swiss Law (Zurich) • FADP & GDPR compliant • Server Location Switzerland (ISO 27001)“*.
    - FAQ 1 auf der Landingpage (DE & EN) mit technischer Detailpräzisierung für IT-Leiter und DSBs ergänzt: *„Unsere Cloud-Infrastruktur und Datenbanken werden dediziert in Zürich (Schweiz) in ISO-27001-zertifizierten Rechenzentren betrieben (PostgreSQL via Supabase Cloud, Region eu-central-2 Zurich).“*
    - Datenschutzerklärung (`PrivacyPolicy.tsx`) in Abschnitt 7 (Drittanbieter / Supabase) und Abschnitt 10 (Datensicherheit & Serverstandort Schweiz) zweisprachig aktualisiert.
+6. **Hero Typewriter (Layout-Shift Beseitigung) & Vercel Speicher-Bereinigung [ERLEDIGT ✅]:**
+   - Vercel Deployments bereinigt: 9 ältere Deployments via `vercel rm --safe --yes` gelöscht, um Speichergrenzen zu schonen.
+   - Vertikalen Layout-Shift („Springen auf der Webseite“) zu 100% eliminiert:
+     - `whitespace-nowrap` verhindert, dass Begriffe wie *„Generalunternehmer“* oder *„Innenarchitektur“* auf 2 Zeilen umbrechen und den restlichen Seiteninhalt verschieben.
+     - Responsive Typografie (`text-2xl min-[380px]:text-3xl sm:text-5xl ...`) stellt sicher, dass die Zeile selbst auf kleinsten Displays (ab 360px) immer einzeilig bleibt.
+   - Kombinierte Phrasen in prägnante Einzelbereiche aufgeteilt:
+     - **DE:** *Innenarchitektur, Architektur, Generalplaner, Generalunternehmer, Bauleitung, Messebau, Events, Szenografie, Design*.
+     - **EN:** *Interior Design, Architecture, General Planning, General Contractors, Site Management, Exhibitions, Events, Scenography, Design*.
+   - Direkte Sprach-Synchronisation bei Wechsel zwischen Deutsch und Englisch.
 
