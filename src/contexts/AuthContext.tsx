@@ -29,6 +29,7 @@ export interface AppUser {
   hasSeenTour?: boolean;
   hasCompletedOnboarding?: boolean;
   maxSeats?: number;
+  trade?: string;
 }
 
 interface AuthContextType {
@@ -345,6 +346,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? (companyData?.plan || profile.plan || 'Free Trial')
           : (companyData?.plan || profile.plan || 'Enterprise');
 
+        // Resolve user trade for contractors (from profile, company_users.trade, or company_users.notes)
+        let userTrade = (profile as any)?.trade || '';
+        if (!userTrade && effectiveCompanyId && user.email) {
+          try {
+            const { data: userCu } = await supabase
+              .from('company_users')
+              .select('*')
+              .eq('company_id', effectiveCompanyId)
+              .ilike('email', user.email)
+              .maybeSingle();
+            if (userCu) {
+              userTrade = (userCu as any).trade || '';
+              if (!userTrade && userCu.notes) {
+                try {
+                  const matchCrm = userCu.notes.match(/__CRM_META__:(.+)/);
+                  if (matchCrm) {
+                    const parsed = JSON.parse(matchCrm[1]);
+                    if (parsed.trade) userTrade = parsed.trade;
+                  }
+                } catch (_) {}
+                if (!userTrade) {
+                  const matchG = userCu.notes.match(/Gewerk:\s*([^\n\r,]+)/i);
+                  if (matchG) userTrade = matchG[1].trim();
+                }
+              }
+            }
+          } catch (_) {}
+        }
+
         const appUser: AppUser = {
           id: user.id,
           uid: user.id,
@@ -366,7 +396,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           canApproveBudget: profile.can_approve_budget ?? true,
           hasSeenTour: profile.has_seen_tour ?? false,
           hasCompletedOnboarding: profile.has_completed_onboarding ?? false,
-          maxSeats: companyData?.max_seats ? Number(companyData.max_seats) : (isSuperUser ? 10 : 1)
+          maxSeats: companyData?.max_seats ? Number(companyData.max_seats) : (isSuperUser ? 10 : 1),
+          trade: userTrade || undefined
         };
 
         setUserRole(effectiveRole);

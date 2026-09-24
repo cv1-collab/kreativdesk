@@ -213,7 +213,24 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     u.userId === currentUser?.id
   );
 
-  const userTrade = (currentUser as any)?.trade || matchingContact?.trade || matchingContact?.department || '';
+  const extractContactTrade = (c: any): string => {
+    if (!c) return '';
+    if (c.trade) return c.trade;
+    if (c.notes) {
+      try {
+        const matchCrm = c.notes.match(/__CRM_META__:(.+)/);
+        if (matchCrm) {
+          const parsed = JSON.parse(matchCrm[1]);
+          if (parsed.trade) return parsed.trade;
+        }
+      } catch (_) {}
+      const matchG = c.notes.match(/Gewerk:\s*([^\n\r,]+)/i);
+      if (matchG) return matchG[1].trim();
+    }
+    return c.department || '';
+  };
+
+  const userTrade = currentUser?.trade || (currentUser as any)?.trade || extractContactTrade(matchingContact) || '';
   const userCompany = currentUser?.companyName || matchingContact?.company_name || '';
   const userName = currentUser?.name || currentUser?.displayName || matchingContact?.name || '';
   const userEmail = currentUser?.email || '';

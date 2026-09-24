@@ -161,12 +161,15 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
 
       if (insertErr) {
         // Fallback: If trade column does not exist yet in SQL, insert without it and store in notes
+        const fallbackNotes = newUserTrade 
+          ? `Gewerk: ${newUserTrade}\n\n__CRM_META__:${JSON.stringify({ trade: newUserTrade })}` 
+          : null;
         await (supabase.from('company_users') as any).insert({ 
           id: newUserId, 
           name: newUserName, 
           email: newUserEmail, 
           role: newUserCompanyRole,
-          notes: newUserTrade ? `Gewerk: ${newUserTrade}` : null,
+          notes: fallbackNotes,
           company_id: safeCompanyId 
         });
       }
