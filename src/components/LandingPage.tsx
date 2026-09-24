@@ -654,28 +654,39 @@ export default function LandingPage() {
   }, []);
 
 
-  // Typewriter state for Hero Interactive Typography
+  // Typewriter state for Hero Interactive Typography (single disciplines, zero-wrap)
   const typewriterFields = useMemo(() => currentLang === 'en' ? [
-    'Architects & Builders.',
-    'General Contractors.',
-    'complex projects.',
-    'Scenography & Events.',
-    'Design Agencies.',
-    'Trade Fairs & Exhibitions.',
-    'Interior Design.'
+    'Interior Design',
+    'Architecture',
+    'General Planning',
+    'General Contractors',
+    'Site Management',
+    'Exhibitions',
+    'Events',
+    'Scenography',
+    'Design'
   ] : [
-    'Architekten & Bau.',
-    'Generalplaner & GU.',
-    'komplexe Projekte.',
-    'Szenografie & Events.',
-    'Design-Agenturen.',
-    'Messe- & Ausstellungsbau.',
-    'Innenarchitektur.'
+    'Innenarchitektur',
+    'Architektur',
+    'Generalplaner',
+    'Generalunternehmer',
+    'Bauleitung',
+    'Messebau',
+    'Events',
+    'Szenografie',
+    'Design'
   ], [currentLang]);
 
-  const [typedText, setTypedText] = useState(() => currentLang === 'en' ? 'Architects & Builders.' : 'Architekten & Bau.');
+  const [typedText, setTypedText] = useState(() => currentLang === 'en' ? 'Interior Design' : 'Innenarchitektur');
   const [fieldIdx, setFieldIdx] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Synchronize typewriter reset on language switch
+  useEffect(() => {
+    setFieldIdx(0);
+    setIsDeleting(false);
+    setTypedText(typewriterFields[0]);
+  }, [currentLang, typewriterFields]);
 
   useEffect(() => {
     const currentWord = typewriterFields[fieldIdx % typewriterFields.length];
@@ -1132,19 +1143,19 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               initial={{ opacity: 0, y: 10 }} 
               animate={{ opacity: 1, y: 0 }} 
               transition={{ delay: 0.1 }} 
-              className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.2rem] xl:text-[4.8rem] font-bold tracking-tight mb-6 sm:mb-8 leading-[1.12] select-none text-slate-900 dark:text-white"
+              className="text-2xl min-[380px]:text-3xl sm:text-5xl md:text-6xl lg:text-[4.2rem] xl:text-[4.8rem] font-bold tracking-tight mb-6 sm:mb-8 leading-[1.15] select-none text-slate-900 dark:text-white"
             >
               <span className="block mb-2 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-700 dark:from-white dark:via-zinc-100 dark:to-zinc-400 bg-clip-text text-transparent">
                 {currentLang === 'en' ? 'The Operating System' : 'Das Operating System'}
               </span>
-              <span className="flex flex-wrap items-baseline justify-center gap-x-2 sm:gap-x-3">
+              <span className="flex items-baseline justify-center gap-x-2 sm:gap-x-3 whitespace-nowrap overflow-hidden">
                 <span className="text-slate-900 dark:text-white shrink-0">
                   {currentLang === 'en' ? 'for' : 'für'}
                 </span>
-                <span className="inline-flex items-baseline text-blue-600 dark:text-blue-500 font-bold tracking-tight text-center">
+                <span className="inline-flex items-baseline text-blue-600 dark:text-blue-500 font-bold tracking-tight text-center whitespace-nowrap">
                   <span>{typedText}</span>
                   <span 
-                    className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1.5 rounded-[1px] animate-pulse shrink-0" 
+                    className="inline-block w-[0.22em] h-[0.72em] bg-blue-600 dark:bg-blue-500 align-[0.04em] ml-1 sm:ml-1.5 rounded-[1px] animate-pulse shrink-0" 
                     aria-hidden="true"
                   />
                 </span>
