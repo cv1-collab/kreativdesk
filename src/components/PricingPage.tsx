@@ -409,7 +409,7 @@ export default function PricingPage() {
                 <div 
                   key={idx} 
                   className={cn(
-                    "p-8 sm:p-10 rounded-[2.5rem] transition-all flex flex-col justify-between group",
+                    "p-6 sm:p-8 xl:p-10 rounded-[2.5rem] transition-all flex flex-col justify-between group",
                     sys.popular 
                       ? "bg-zinc-900 border-2 border-blue-500 shadow-2xl relative md:scale-105 z-10" 
                       : "bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 shadow-lg"
@@ -430,7 +430,7 @@ export default function PricingPage() {
                       <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                         {t('b2b_total_first_year_label')}
                       </div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                      <div className="text-2xl sm:text-[1.75rem] xl:text-[2.1rem] font-extrabold text-white tracking-tight whitespace-nowrap tabular-nums">
                         {sys.totalFirstYear}
                       </div>
                       <div className="text-xs text-zinc-400 font-medium mt-1">

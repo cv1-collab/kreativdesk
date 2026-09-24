@@ -1808,7 +1808,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                 <div 
                   key={idx} 
                   className={cn(
-                    "p-8 sm:p-10 rounded-[2.5rem] transition-all flex flex-col justify-between group",
+                    "p-6 sm:p-8 xl:p-10 rounded-[2.5rem] transition-all flex flex-col justify-between group",
                     sys.popular 
                       ? "bg-surface border-2 border-blue-500 shadow-2xl relative md:scale-105 z-10" 
                       : "bg-surface border border-border hover:border-border/80 shadow-lg"
@@ -1829,7 +1829,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1">
                         {t('b2b_total_first_year_label')}
                       </div>
-                      <div className="text-3xl sm:text-4xl font-extrabold text-text-primary tracking-tight">
+                      <div className="text-2xl sm:text-[1.75rem] xl:text-[2.1rem] font-extrabold text-text-primary tracking-tight whitespace-nowrap tabular-nums">
                         {sys.totalFirstYear}
                       </div>
                       <div className="text-xs text-text-muted font-medium mt-1">
