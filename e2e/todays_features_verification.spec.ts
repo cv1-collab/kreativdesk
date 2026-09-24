@@ -75,7 +75,7 @@ test.describe('🚀 Comprehensive End-to-End Test Suite: All Features of Today',
     await expect(systemsSection.getByText(/25 Governance|25\+ Governance/i).first()).toBeVisible();
 
     // Additional Seat Note
-    await expect(systemsSection.getByText(/780\/Jahr|780\/year/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/780\/Jahr|780\/year|CHF\s*780/i).first()).toBeVisible();
   });
 
   test('4. Landing Page: SaaS Self-Service Plans & Monthly/Yearly Toggle', async ({ page }) => {
@@ -90,13 +90,13 @@ test.describe('🚀 Comprehensive End-to-End Test Suite: All Features of Today',
     
     await monthlyBtn.click();
     await page.waitForTimeout(200);
-    await expect(pricingSection.getByText(/CHF\s*39/i).first()).toBeVisible();
+    await expect(pricingSection.getByText(/CHF\s*59/i).first()).toBeVisible();
 
     await yearlyBtn.click();
     await page.waitForTimeout(200);
-    await expect(pricingSection.getByText(/CHF\s*35/i).first()).toBeVisible();
-    await expect(pricingSection.getByText(/CHF\s*65/i).first()).toBeVisible();
-    await expect(pricingSection.getByText(/CHF\s*159/i).first()).toBeVisible();
+    await expect(pricingSection.getByText(/CHF\s*49/i).first()).toBeVisible();
+    await expect(pricingSection.getByText(/CHF\s*89/i).first()).toBeVisible();
+    await expect(pricingSection.getByText(/CHF\s*240/i).first()).toBeVisible();
   });
 
   test('5. Landing Page: Interactive Help Center, Quick Prompts & 3 Topic Cards', async ({ page }) => {

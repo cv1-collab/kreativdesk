@@ -449,9 +449,9 @@ export default function PublicLeadForm() {
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { id: 'Studio OS', label: 'Studio OS', price: 'CHF 6’800 / J. + CHF 3’500 Setup (5 Seats)' },
-                  { id: 'Agency OS', label: 'Agency OS', price: 'CHF 16’800 / J. + CHF 6’500 Setup (15 Seats)' },
-                  { id: 'Enterprise OS', label: 'Enterprise OS', price: 'ab CHF 45’000 / J. + Custom Eng. (25+ Seats)' },
+                  { id: 'Studio OS', label: 'Studio OS', price: '1. J. CHF 10’300 (ab 2. J. CHF 6’800 / J.)' },
+                  { id: 'Agency OS', label: 'Agency OS', price: '1. J. CHF 23’300 (ab 2. J. CHF 16’800 / J.)' },
+                  { id: 'Enterprise OS', label: 'Enterprise OS', price: '1. J. ab CHF 60’000 (ab 2. J. ab CHF 45’000 / J.)' },
                   { id: 'Individuell', label: 'Individuell', price: 'Massgeschneidert' }
                 ].map(p => {
                   const isSelected = selectedPlan === p.id || (p.id === 'Agency OS' && selectedPlan?.includes('Agency')) || (p.id === 'Studio OS' && selectedPlan?.includes('Studio')) || (p.id === 'Enterprise OS' && selectedPlan?.includes('Enterprise'));

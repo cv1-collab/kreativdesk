@@ -46,21 +46,54 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_tenant: 'Tenant-Isolated Server Infrastructure',
     b2b_title: 'Project Control Systems (Kreativ-Desk OS)',
     b2b_subtitle: 'Turnkey infrastructure for studios, agencies, and enterprises managing complex productions at scale.',
+    b2b_total_first_year_label: 'Total Year 1 (All-in)',
+    b2b_followup_label: 'From Year 2 onwards (recurring):',
+    b2b_zero_setup: '0 CHF Setup',
     sys1_title: 'Studio OS',
-    sys1_desc: 'Focus: Establishing a central data architecture, kickoff workshop, data import & 2h admin training.',
+    sys1_total_y1: 'CHF 10,300',
     sys1_price: 'CHF 6,800 / yr',
     sys1_setup: '+ One-time Implementation Package CHF 3,500',
+    sys1_followup: 'CHF 6,800 / yr',
     sys1_seats: 'Incl. 5 Governance Seats',
+    sys1_f1: '5 Internal Governance Seats included',
+    sys1_f2: '500 GB dedicated Swiss Cloud Storage',
+    sys1_f3: 'Unlimited Projects & BKP 100–900 Budgets',
+    sys1_f4: '✓ Unlimited free contractor & client guest seats',
+    sys1_f5: '2D/3D BIM Viewer & Mobile Defects App',
+    sys1_f6: 'Company Controlling, RBAC & QR Invoicing',
+    sys1_f7: 'Kickoff workshop & data migration (Year 1)',
+    sys1_f8: '2h Admin & team onboarding (Year 1)',
+
     sys2_title: 'Agency OS',
-    sys2_desc: 'Focus: In-browser collision check, whitelabeling, workflow audit, interface setup & team training.',
+    sys2_total_y1: 'CHF 23,300',
     sys2_price: 'CHF 16,800 / yr',
     sys2_setup: '+ One-time Implementation Package CHF 6,500',
+    sys2_followup: 'CHF 16,800 / yr',
     sys2_seats: 'Incl. 15 Governance Seats',
+    sys2_f1: '15 Internal Governance Seats included',
+    sys2_f2: '2,000 GB (2 TB) High-Speed Swiss Cloud Storage',
+    sys2_f3: 'All features from Studio OS plan',
+    sys2_f4: 'In-browser 3D BIM collision & clash check',
+    sys2_f5: 'Full whitelabeling & custom domain',
+    sys2_f6: 'B2B REST API & Webhooks (Zapier/Make)',
+    sys2_f7: 'Workflow audit & interface setup (Year 1)',
+    sys2_f8: 'Comprehensive team training & priority support',
+
     sys3_title: 'Enterprise OS',
-    sys3_desc: 'Focus: Single Sign-On (SSO/SAML), deep ERP integration (Abacus/BauBit), dedicated Swiss instance & 99.9% SLA.',
+    sys3_total_y1: 'from CHF 60,000',
     sys3_price: 'from CHF 45,000 / yr',
     sys3_setup: '+ Custom Engineering from CHF 15,000',
+    sys3_followup: 'from CHF 45,000 / yr',
     sys3_seats: 'Incl. 25+ Governance Seats',
+    sys3_f1: '25+ Internal Governance Seats (scalable)',
+    sys3_f2: 'Unlimited Swiss Cloud Storage',
+    sys3_f3: 'All features from Agency OS plan',
+    sys3_f4: 'Single Sign-On (SSO / SAML 2.0 & AD)',
+    sys3_f5: 'Deep ERP integration (Abacus, BauBit, SAP)',
+    sys3_f6: 'Dedicated Swiss isolated instance & 99.9% SLA',
+    sys3_f7: 'Custom engineering & compliance audit (Year 1)',
+    sys3_f8: 'Dedicated Swiss Account Executive & 24/7 SLA',
+
     sys_vat: 'excl. statutory VAT',
     b2b_cta: 'Request Setup'
   },
@@ -105,21 +138,54 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_tenant: 'Mandantenisolierte Serverstruktur',
     b2b_title: 'Projekt-Steuerungssysteme (Kreativ-Desk OS)',
     b2b_subtitle: 'Schlüsselfertige Infrastruktur für Studios, Agenturen und Unternehmen, die komplexe Produktionen skalierbar steuern müssen.',
+    b2b_total_first_year_label: 'Gesamtpreis 1. Jahr (All-in)',
+    b2b_followup_label: 'Folgejahre (ab 2. Jahr wiederkehrend):',
+    b2b_zero_setup: '0 CHF Setup',
     sys1_title: 'Studio OS',
-    sys1_desc: 'Fokus: Etablierung zentraler Datenstruktur, Kickoff-Workshop, Datenimport & 2h Admin-Schulung.',
+    sys1_total_y1: 'CHF 10’300',
     sys1_price: 'CHF 6’800 / Jahr',
     sys1_setup: '+ Einmaliges Implementation Package CHF 3’500',
+    sys1_followup: 'CHF 6’800 / Jahr',
     sys1_seats: 'Inkl. 5 Governance-Lizenzen',
+    sys1_f1: '5 Interne Governance-Seats inklusive',
+    sys1_f2: '500 GB dedizierter Schweizer Cloud-Speicher',
+    sys1_f3: 'Unbegrenzte Projekte & BKP 100–900 Budgets',
+    sys1_f4: '✓ Unbegrenzte kostenlose Handwerker- & Bauherren-Zugänge',
+    sys1_f5: '2D/3D BIM Viewer & mobile Mängel-App',
+    sys1_f6: 'Firmen-Controlling, RBAC & QR-Rechnungen',
+    sys1_f7: 'Kickoff-Workshop & Datenimport (im 1. Jahr inkl.)',
+    sys1_f8: '2h Admin- & Teamschulung (im 1. Jahr inkl.)',
+
     sys2_title: 'Agency OS',
-    sys2_desc: 'Fokus: Kollisionsprüfung im Browser, Whitelabeling, Workflow-Audit, Schnittstellen-Setup & Teamschulung.',
+    sys2_total_y1: 'CHF 23’300',
     sys2_price: 'CHF 16’800 / Jahr',
     sys2_setup: '+ Einmaliges Implementation Package CHF 6’500',
+    sys2_followup: 'CHF 16’800 / Jahr',
     sys2_seats: 'Inkl. 15 Governance-Lizenzen',
+    sys2_f1: '15 Interne Governance-Seats inklusive',
+    sys2_f2: '2’000 GB (2 TB) High-Speed Schweizer Cloud',
+    sys2_f3: 'Alle Features aus dem Studio OS Plan',
+    sys2_f4: 'Browserbasierte 3D BIM Kollisionsprüfung',
+    sys2_f5: 'Vollständiges Whitelabeling (eigene Domain & Logo)',
+    sys2_f6: 'B2B REST API & Webhooks (Zapier/Make)',
+    sys2_f7: 'Workflow-Audit & Schnittstellen-Setup (im 1. J. inkl.)',
+    sys2_f8: 'Umfassende Teamschulung & Priority Support',
+
     sys3_title: 'Enterprise OS',
-    sys3_desc: 'Fokus: Single Sign-On (SSO/SAML), ERP-Tiefenintegration (Abacus/BauBit), dedizierte Schweizer Instanz & 99.9% SLA.',
+    sys3_total_y1: 'ab CHF 60’000',
     sys3_price: 'ab CHF 45’000 / Jahr',
     sys3_setup: '+ Custom Engineering ab CHF 15’000',
+    sys3_followup: 'ab CHF 45’000 / Jahr',
     sys3_seats: 'Inkl. 25+ Governance-Lizenzen',
+    sys3_f1: '25+ Interne Governance-Seats (skalierbar)',
+    sys3_f2: 'Unbegrenzter Schweizer Cloud-Speicher',
+    sys3_f3: 'Alle Features aus dem Agency OS Plan',
+    sys3_f4: 'Single Sign-On (SSO / SAML 2.0 & AD)',
+    sys3_f5: 'ERP-Tiefenintegration (Abacus, BauBit, SAP)',
+    sys3_f6: 'Dedizierte Schweizer Server-Instanz & 99.9% SLA',
+    sys3_f7: 'Custom Engineering & Revisions-Audit (im 1. J. inkl.)',
+    sys3_f8: 'Schweizer Account Executive & 24/7 SLA Support',
+
     sys_vat: 'rein netto exkl. gesetzlicher MwSt.',
     b2b_cta: 'Setup anfragen'
   }
@@ -132,6 +198,78 @@ export default function PricingPage() {
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const navigate = useNavigate();
+
+  const b2bSystems = [
+    {
+      id: 'Studio OS',
+      name: t('sys1_title'),
+      icon: <Briefcase className="w-10 h-10 text-zinc-400 group-hover:text-blue-500 transition-colors" />,
+      badge: null,
+      totalFirstYear: t('sys1_total_y1'),
+      annualSoftware: t('sys1_price'),
+      setupFee: t('sys1_setup'),
+      renewalYear2: t('sys1_followup'),
+      seats: t('sys1_seats'),
+      features: [
+        t('sys1_f1'),
+        t('sys1_f2'),
+        t('sys1_f3'),
+        t('sys1_f4'),
+        t('sys1_f5'),
+        t('sys1_f6'),
+        t('sys1_f7'),
+        t('sys1_f8'),
+      ],
+      popular: false,
+      leadPlan: 'Studio OS'
+    },
+    {
+      id: 'Agency OS',
+      name: t('sys2_title'),
+      icon: <Zap className="w-10 h-10 text-blue-500" />,
+      badge: 'EXECUTION BOOSTER',
+      totalFirstYear: t('sys2_total_y1'),
+      annualSoftware: t('sys2_price'),
+      setupFee: t('sys2_setup'),
+      renewalYear2: t('sys2_followup'),
+      seats: t('sys2_seats'),
+      features: [
+        t('sys2_f1'),
+        t('sys2_f2'),
+        t('sys2_f3'),
+        t('sys2_f4'),
+        t('sys2_f5'),
+        t('sys2_f6'),
+        t('sys2_f7'),
+        t('sys2_f8'),
+      ],
+      popular: true,
+      leadPlan: 'Agency OS'
+    },
+    {
+      id: 'Enterprise OS',
+      name: t('sys3_title'),
+      icon: <Shield className="w-10 h-10 text-emerald-500" />,
+      badge: null,
+      totalFirstYear: t('sys3_total_y1'),
+      annualSoftware: t('sys3_price'),
+      setupFee: t('sys3_setup'),
+      renewalYear2: t('sys3_followup'),
+      seats: t('sys3_seats'),
+      features: [
+        t('sys3_f1'),
+        t('sys3_f2'),
+        t('sys3_f3'),
+        t('sys3_f4'),
+        t('sys3_f5'),
+        t('sys3_f6'),
+        t('sys3_f7'),
+        t('sys3_f8'),
+      ],
+      popular: false,
+      leadPlan: 'Enterprise OS'
+    }
+  ];
 
   const plans = [
     {
@@ -267,60 +405,84 @@ export default function PricingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
-              {/* Studio */}
-              <div className="p-8 sm:p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
-                  <Briefcase className="w-10 h-10 text-zinc-500 mb-8 group-hover:text-blue-500 transition-colors" />
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3">{t('sys1_title')}</h3>
-                  <div className="flex items-baseline gap-2 mb-2">
-                      <div className="text-xl md:text-2xl font-black leading-tight">{t('sys1_price')}</div>
-                      <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
-                  </div>
-                  <div className="text-[11px] font-semibold text-blue-400 mb-2 p-1.5 bg-blue-500/10 rounded-md border border-blue-500/20 self-start">
-                    {t('sys1_setup')}
-                  </div>
-                  <div className="text-xs font-semibold text-zinc-300 mb-6">{t('sys1_seats')}</div>
-                  <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1 text-sm">{t('sys1_desc')}</p>
-                  <button onClick={() => navigate('/lead-form?plan=Studio%20OS')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2 cursor-pointer">
-                    {t('b2b_cta')} <ArrowRight size={18} />
-                  </button>
-              </div>
+              {b2bSystems.map((sys, idx) => (
+                <div 
+                  key={idx} 
+                  className={cn(
+                    "p-8 sm:p-10 rounded-[2.5rem] transition-all flex flex-col justify-between group",
+                    sys.popular 
+                      ? "bg-zinc-900 border-2 border-blue-500 shadow-2xl relative md:scale-105 z-10" 
+                      : "bg-zinc-900/50 border border-zinc-800 hover:border-zinc-700 shadow-lg"
+                  )}
+                >
+                  {sys.badge && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest shadow-md">
+                      {sys.badge}
+                    </div>
+                  )}
+                  
+                  <div>
+                    <div className="mb-6">{sys.icon}</div>
+                    <h3 className="text-2xl md:text-3xl font-semibold mb-3">{sys.name}</h3>
 
-              {/* Agency */}
-              <div className="p-8 sm:p-10 bg-zinc-900 border border-blue-500/50 shadow-2xl md:scale-105 rounded-[2.5rem] relative flex flex-col group z-10">
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-[10px] font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">EXECUTION BOOSTER</div>
-                  <Zap className="w-10 h-10 text-blue-500 mb-8" />
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3">{t('sys2_title')}</h3>
-                  <div className="flex items-baseline gap-2 mb-2">
-                      <div className="text-xl md:text-2xl font-black leading-tight">{t('sys2_price')}</div>
-                      <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
-                  </div>
-                  <div className="text-[11px] font-semibold text-blue-400 mb-2 p-1.5 bg-blue-500/10 rounded-md border border-blue-500/20 self-start">
-                    {t('sys2_setup')}
-                  </div>
-                  <div className="text-xs font-semibold text-zinc-300 mb-6">{t('sys2_seats')}</div>
-                  <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1 text-sm">{t('sys2_desc')}</p>
-                  <button onClick={() => navigate('/lead-form?plan=Agency%20OS')} className="block w-full py-4 bg-blue-600 text-white text-center rounded-2xl font-bold hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer">
-                    {t('b2b_cta')} <ArrowRight size={18} />
-                  </button>
-              </div>
+                    {/* GESAMTZAHL 1. JAHR */}
+                    <div className="mb-4 p-4 rounded-2xl bg-black/60 border border-zinc-800">
+                      <div className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                        {t('b2b_total_first_year_label')}
+                      </div>
+                      <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                        {sys.totalFirstYear}
+                      </div>
+                      <div className="text-xs text-zinc-400 font-medium mt-1">
+                        {sys.annualSoftware} + {sys.setupFee}
+                      </div>
+                    </div>
 
-              {/* Enterprise */}
-              <div className="p-8 sm:p-10 bg-zinc-900/50 border border-zinc-800 hover:bg-zinc-900 rounded-[2.5rem] transition-colors flex flex-col group">
-                  <Shield className="w-10 h-10 text-emerald-500 mb-8 group-hover:text-blue-500 transition-colors" />
-                  <h3 className="text-2xl md:text-3xl font-semibold mb-3">{t('sys3_title')}</h3>
-                  <div className="flex items-baseline gap-2 mb-2">
-                      <div className="text-xl md:text-2xl font-black leading-tight">{t('sys3_price')}</div>
-                      <div className="text-xs font-bold text-zinc-500 whitespace-nowrap">{t('sys_vat')}</div>
+                    {/* FOLGEJAHRE AB 2. JAHR */}
+                    <div className="mb-5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                      <div className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-0.5">
+                        {t('b2b_followup_label')}
+                      </div>
+                      <div className="text-sm font-bold text-white flex items-center justify-between">
+                        <span>{sys.renewalYear2}</span>
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          {t('b2b_zero_setup')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* SEATS BADGE */}
+                    <div className="text-xs font-bold text-blue-400 mb-6 flex items-center gap-1.5">
+                      <Shield size={14} /> {sys.seats}
+                    </div>
+
+                    {/* FEATURES DETAIL LISTE MIT HÄKCHEN */}
+                    <div className="space-y-3 mb-8">
+                      {sys.features.map((feat, fIdx) => (
+                        <div key={fIdx} className="flex items-start gap-2.5 text-xs sm:text-sm">
+                          <Check className={cn("w-4 h-4 shrink-0 mt-0.5", feat.startsWith('✓') ? "text-emerald-400" : "text-blue-500")} />
+                          <span className={cn(feat.startsWith('✓') ? "text-emerald-400 font-semibold" : "text-zinc-300 font-medium")}>
+                            {feat}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-[11px] font-semibold text-emerald-400 mb-2 p-1.5 bg-emerald-500/10 rounded-md border border-emerald-500/20 self-start">
-                    {t('sys3_setup')}
-                  </div>
-                  <div className="text-xs font-semibold text-zinc-300 mb-6">{t('sys3_seats')}</div>
-                  <p className="text-zinc-400 font-medium mb-10 leading-relaxed flex-1 text-sm">{t('sys3_desc')}</p>
-                  <button onClick={() => navigate('/lead-form?plan=Enterprise%20OS')} className="block w-full py-4 bg-zinc-800 text-white border border-zinc-700 text-center rounded-2xl font-bold hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+
+                  {/* CTA BUTTON */}
+                  <button 
+                    onClick={() => navigate(`/lead-form?plan=${encodeURIComponent(sys.leadPlan)}`)} 
+                    className={cn(
+                      "w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer mt-auto",
+                      sys.popular 
+                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/20" 
+                        : "bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white"
+                    )}
+                  >
                     {t('b2b_cta')} <ArrowRight size={18} />
                   </button>
-              </div>
+                </div>
+              ))}
           </div>
         </div>
 
