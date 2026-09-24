@@ -150,7 +150,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     try {
       const newUserId = `user-${Date.now()}`;
       
-      await (supabase.from('company_users') as any).insert({ 
+      const { error: insertErr } = await (supabase.from('company_users') as any).insert({ 
         id: newUserId, 
         name: newUserName, 
         email: newUserEmail, 
@@ -158,6 +158,18 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
         trade: newUserTrade || null,
         company_id: safeCompanyId 
       });
+
+      if (insertErr) {
+        // Fallback: If trade column does not exist yet in SQL, insert without it and store in notes
+        await (supabase.from('company_users') as any).insert({ 
+          id: newUserId, 
+          name: newUserName, 
+          email: newUserEmail, 
+          role: newUserCompanyRole,
+          notes: newUserTrade ? `Gewerk: ${newUserTrade}` : null,
+          company_id: safeCompanyId 
+        });
+      }
       
       await addProjectMember(currentProjectId, {
         userId: newUserId,

@@ -13,6 +13,7 @@ ADD COLUMN IF NOT EXISTS uid_number text,
 ADD COLUMN IF NOT EXISTS vat_number text,
 ADD COLUMN IF NOT EXISTS is_external boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS notes text,
+ADD COLUMN IF NOT EXISTS trade text,
 ADD COLUMN IF NOT EXISTS photo_url text,
 ADD COLUMN IF NOT EXISTS can_view_finance boolean DEFAULT false,
 ADD COLUMN IF NOT EXISTS can_approve_budget boolean DEFAULT false;
