@@ -1570,7 +1570,7 @@ export default function Calendar() {
                 setPdfExportMode(viewMode);
                 setIsPdfStudioOpen(true);
               }} 
-              className="flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0"
+              className="hidden md:flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0"
             >
                <FileText size={16} /> <span>{t('generate_pdf')}</span>
             </button>

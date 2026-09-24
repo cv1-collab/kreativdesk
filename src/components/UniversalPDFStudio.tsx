@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, Sparkles, Printer } from 'lucide-react';
+import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, Sparkles, Printer, Monitor } from 'lucide-react';
 import { cn } from '../utils';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
@@ -76,6 +76,7 @@ export default function UniversalPDFStudio({
   const [isUploading, setIsUploading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPdfCompiling, setIsPdfCompiling] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   
   const [format, setFormat] = useState<'A4' | 'A3'>('A4');
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(defaultOrientation);
@@ -83,6 +84,15 @@ export default function UniversalPDFStudio({
   const [accentColor, setAccentColor] = useState(defaultAccentColor);
   const [watermark, setWatermark] = useState<'NONE' | 'VERTRAULICH' | 'ENTWURF' | 'FREIGEGEBEN'>('NONE');
   const [footerText, setFooterText] = useState(defaultFooterText || ('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH')));
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(typeof window !== 'undefined' && window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (defaultLogo) setLogo(defaultLogo);
@@ -94,14 +104,14 @@ export default function UniversalPDFStudio({
 
   // Loading animation overlay while @react-pdf/renderer synthesizes layout & fonts
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isMobile) {
       setIsPdfCompiling(true);
       const timer = setTimeout(() => {
         setIsPdfCompiling(false);
       }, 1200);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, format, orientation, logo, accentColor, footerText]);
+  }, [isOpen, isMobile, format, orientation, logo, accentColor, footerText]);
   
   const logoRef = useRef<HTMLInputElement>(null);
   const [isMounted, setIsMounted] = useState(false);
@@ -109,6 +119,32 @@ export default function UniversalPDFStudio({
   useEffect(() => setIsMounted(true), []);
 
   if (!isOpen || !isMounted) return null;
+
+  // 📱 Smartphone-Schutz: PDF Studio auf mobilen Geräten sperren & informieren
+  if (isMobile) {
+    return createPortal(
+      <div className="fixed inset-0 z-[1000000] flex items-center justify-center p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="bg-surface border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-500 mx-auto flex items-center justify-center shadow-inner">
+            <Monitor size={28} />
+          </div>
+          <div>
+            <h3 className="font-bold text-lg text-text-primary">Desktop-Funktion</h3>
+            <p className="text-xs text-text-muted mt-2 leading-relaxed font-medium">
+              PDF Studio und die Erstellung von PDF-Dokumenten sind für Desktop-Bildschirme optimiert. Bitte öffnen Sie Kreativ Desk an einem Computer oder Tablet im Querformat, um Dokumente zu erstellen und zu drucken.
+            </p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="w-full py-3 rounded-xl bg-accent-ai hover:bg-accent-ai/90 text-white font-bold text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-accent-ai/20"
+          >
+            Verstanden
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isDemoMode) {

@@ -353,7 +353,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           </div>
           <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col md:flex-row justify-end gap-3 sticky bottom-0 z-30 shrink-0">
             <button onClick={onClose} className="px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary transition-colors border border-border md:border-transparent rounded-lg w-full md:w-auto">{t('cancel')}</button>
-            <button onClick={() => setIsPdfStudioOpen(true)} className="w-full md:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2"><FileText size={18} /> {t('generate_pdf')}</button>
+            <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all items-center justify-center gap-2"><FileText size={18} /> {t('generate_pdf')}</button>
           </div>
         </div>
       </div>

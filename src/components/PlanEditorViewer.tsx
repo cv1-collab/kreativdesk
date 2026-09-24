@@ -1556,8 +1556,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               return;
             }
             handleOpenPdfStudio();
-          }} disabled={isGeneratingPdf || !planImage} className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? t('export_pdf_tooltip') : t('export_pdf_tooltip_disabled')}>
-            {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span className="hidden sm:inline">PDF Export</span><span className="sm:hidden">PDF</span>
+          }} disabled={isGeneratingPdf || !planImage} className="hidden md:flex px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? t('export_pdf_tooltip') : t('export_pdf_tooltip_disabled')}>
+            {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span>PDF Export</span>
           </button>
           <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-surface hover:bg-white/5 border border-border text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={t('save_layers_tooltip')}>
             {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} {t('save')}

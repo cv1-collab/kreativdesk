@@ -43,12 +43,23 @@ export default defineConfig(({ mode }) => {
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,webp}'],
           globIgnores: ['**/BIMViewer*.js'],
           maximumFileSizeToCacheInBytes: 10485760, // 10 MB Limit
           navigateFallback: 'index.html',
-          navigateFallbackDenylist: [/^\/api/, /^\/assets\//],
+          navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /^\/media\//],
           runtimeCaching: [
+            {
+              urlPattern: /\/media\/.*\.(?:png|jpg|jpeg|svg|webp|gif)$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'media-cache',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 60 * 60 * 24 * 30
+                }
+              }
+            },
             {
               urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
               handler: 'NetworkOnly'

@@ -1245,11 +1245,11 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
             {isGeneratingAIRapport ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} KI-Baustellenrapport
           </button>
           {canWriteTimeAndEvents && (
-            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="hidden md:flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
               <FileText size={14} /> {t('rapport')} PDF
             </button>
           )}
-          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="hidden md:flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
             <FileText size={14} /> {t('agenda')} PDF
           </button>
         </div>

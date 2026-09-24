@@ -2328,7 +2328,7 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               </div>
               <button 
                 onClick={() => setIsPdfStudioOpen(true)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md"
+                className="hidden md:flex px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold items-center gap-2 transition-all cursor-pointer shadow-md"
               >
                 <Download size={15} /> {t('pdfStudioBtn')}
               </button>

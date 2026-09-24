@@ -738,7 +738,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                 <button onClick={() => setViewMode('list')} className={cn("flex-1 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2", viewMode === 'list' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><ListIcon size={16} /> {t('list')}</button>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button onClick={() => setIsPdfStudioOpen(true)} className="flex-1 sm:flex-none px-3.5 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors flex items-center justify-center gap-1.5 shadow-sm">
+                <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex px-3.5 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors items-center justify-center gap-1.5 shadow-sm">
                   <FileText size={16} /> <span>PDF Export</span>
                 </button>
                 <button onClick={openAddModal} className="flex-1 sm:flex-none px-4 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-1.5 whitespace-nowrap"><Plus size={16} /> {t('add_defect')}</button>

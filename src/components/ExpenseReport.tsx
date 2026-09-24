@@ -540,7 +540,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
             <div className="font-bold text-lg md:text-xl text-text-primary flex justify-between w-full sm:w-auto">{t('total')}: <span className="text-orange-500 ml-2">{currency} {formatAmount(totalAmount, currency)}</span></div>
             <div className="flex gap-3 w-full sm:w-auto">
               <button type="button" onClick={onClose} className="flex-1 sm:flex-none px-6 py-3 border border-border text-text-primary rounded-lg text-sm font-bold">{t('cancel')}</button>
-              <button onClick={() => setIsPdfStudioOpen(true)} disabled={totalAmount <= 0} className="flex-1 sm:flex-none px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-accent-ai/90 transition-all">
+              <button onClick={() => setIsPdfStudioOpen(true)} disabled={totalAmount <= 0} className="hidden md:flex px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg items-center justify-center gap-2 disabled:opacity-50 hover:bg-accent-ai/90 transition-all">
                 <FileText size={16}/> {t('generate_pdf')}
               </button>
             </div>

@@ -1196,7 +1196,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
                 <button onClick={handleAudit} className={cn("px-4 py-2 border rounded-md text-sm font-medium transition-colors flex items-center gap-2", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
                   <Sparkles size={16} />{auditMode ? t('analyzing_model') : t('audit_report')}
                 </button>
-                <button onClick={handleOpenPdfStudio} className="px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-medium hover:bg-background transition-colors flex items-center gap-2 shadow-sm">
+                <button onClick={handleOpenPdfStudio} className="hidden md:flex px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-medium hover:bg-background transition-colors items-center gap-2 shadow-sm">
                   <FileText size={16} /> <span>{t('create_pdf_btn')}</span>
                 </button>
                 <button onClick={handleOpenRenderModal} className="px-4 py-2 bg-accent-ai text-white rounded-md text-sm font-medium hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center gap-2">

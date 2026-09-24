@@ -1954,7 +1954,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           setShowMediaMenu(false);
                           executePdfExport();
                         }}
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors border-t border-border/50 cursor-pointer"
+                        className="hidden md:flex w-full text-left px-3 py-2.5 text-xs font-bold items-center gap-2.5 text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors border-t border-border/50 cursor-pointer"
                       >
                         <FileDown size={16} className="text-red-400 shrink-0" />
                         <div>

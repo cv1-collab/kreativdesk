@@ -738,7 +738,7 @@ export default function LeadsTab() {
             <LinkIcon size={16}/> {t('copy_link')}
           </button>
           
-          <button onClick={() => setIsPdfStudioOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-md text-sm font-bold transition-colors">
+          <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex items-center gap-2 px-4 py-2 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-md text-sm font-bold transition-colors">
             <FileText size={16}/> PDF Report
           </button>
         </div>

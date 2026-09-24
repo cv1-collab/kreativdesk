@@ -87,3 +87,14 @@ Dieses Dokument dient als zentrale Pendenzenliste für **Kreativ Desk OS**.
 1. Bestehende Kernmodule (Finanzen, 3D BIM, Mängel, Dokumente, CRM, Projekte) zu 100% funktionsfähig halten.
 2. Keine Regressionsfehler in der bestehenden Online-Beta.
 3. Ruckelfreie, reaktive UI und lückenlose Mandantensicherheit (RLS).
+4. **Smartphone PDF-Sperre & Mobile Optimierung [ERLEDIGT ✅]:**
+   - PDF-Buttons (`PDF Studio`, `PDF erstellen`) in sämtlichen Modulen (Dashboard, Mängel, Finanzen, Kalender, CAD Plan Editor, Baurapporte/Agenda, Spesen, Offerten/Rechnungen, Dokumente, Leads, CRM) auf Smartphones ausgeblendet (`hidden md:flex`).
+   - `UniversalPDFStudio.tsx` mit Mobile-Guard und Inform-Modal abgesichert (verhindert Rendering auf Geräten < 768px).
+   - Status Quo Chaos Bild auf Smartphones repariert: Schwarze Ladebox beseitigt, `<picture>` WebP-Fallback integriert, Workbox-PWA Caches aktualisiert (`kd_v2_2026_09_24_fix`).
+   - B2B- & SaaS-Preishinweise typografisch harmonisiert (störendes `uppercase tracking-widest` entfernt, einheitliche Inter-Schriftart wie gesamte Landingpage).
+5. **Serverstandort Schweiz & ISO 27001 Zertifizierungs-Präzisierung [ERLEDIGT ✅]:**
+   - Technisch und juristisch gedeckt: Supabase-Region Central Europe (Zurich) (`eu-central-2`) läuft physisch in Zürich in ISO-27001-zertifizierten AWS-Rechenzentren.
+   - Zweisprachige (DE & EN) Integration in Trust-Badges auf Landingpage & Pricingpage: *„🇨🇭 Vertrag nach Schweizer Recht (Zürich) • DSG- & DSGVO-konform • Serverstandort Schweiz (ISO 27001)“* / *„🇨🇭 Contract under Swiss Law (Zurich) • FADP & GDPR compliant • Server Location Switzerland (ISO 27001)“*.
+   - FAQ 1 auf der Landingpage (DE & EN) mit technischer Detailpräzisierung für IT-Leiter und DSBs ergänzt: *„Unsere Cloud-Infrastruktur und Datenbanken werden dediziert in Zürich (Schweiz) in ISO-27001-zertifizierten Rechenzentren betrieben (PostgreSQL via Supabase Cloud, Region eu-central-2 Zurich).“*
+   - Datenschutzerklärung (`PrivacyPolicy.tsx`) in Abschnitt 7 (Drittanbieter / Supabase) und Abschnitt 10 (Datensicherheit & Serverstandort Schweiz) zweisprachig aktualisiert.
+

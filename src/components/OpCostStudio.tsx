@@ -937,12 +937,15 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
             <button 
               onClick={() => setIsPdfStudioOpen(true)} 
               disabled={!opCostData.amount || isAnalyzingAI || isSubmitting} 
-              className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+              className="hidden md:flex w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-sky-500 via-blue-600 to-sky-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-xl font-bold text-xs sm:text-sm shadow-lg shadow-sky-500/20 transition-all disabled:opacity-50 items-center justify-center gap-2 cursor-pointer active:scale-95"
             >
               {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
               <span>Universal PDF Beleg erstellen & Verbuchen</span>
               <ArrowUpRight size={15} />
             </button>
+            <div className="md:hidden text-center text-xs text-text-muted font-medium py-1">
+              PDF-Belegerstellung ist am Desktop verfügbar.
+            </div>
           </div>
 
         </div>

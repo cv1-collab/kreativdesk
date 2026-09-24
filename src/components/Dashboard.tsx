@@ -372,7 +372,7 @@ export default function Dashboard() {
           <p className="text-sm text-text-muted mt-1 font-medium">{activeProject?.name}</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <button onClick={() => setIsPdfStudioOpen(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-surface border border-border rounded-xl sm:rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-all w-full sm:w-auto">
+          <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-all">
             <FileText size={16} className="text-accent-ai"/> {t('create_report')}
           </button>
           <button onClick={generateAIInsights} disabled={isGeneratingInsights} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-accent-ai/10 text-accent-ai rounded-xl sm:rounded-lg text-sm font-bold shadow-sm border border-accent-ai/20 hover:bg-accent-ai/20 transition-all disabled:opacity-50 w-full sm:w-auto">

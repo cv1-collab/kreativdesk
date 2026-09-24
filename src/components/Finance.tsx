@@ -2254,7 +2254,7 @@ export default function Finance() {
               </button>
               <button
                 onClick={() => setIsPdfStudioOpen(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+                className="hidden md:flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
               >
                 <FileText size={16} className="text-accent-ai shrink-0" /> <span>PDF Studio</span>
               </button>

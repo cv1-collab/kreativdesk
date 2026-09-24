@@ -169,7 +169,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     saas_save_20: 'Save up to 20%',
     saas_billed_yearly: 'billed yearly',
     saas_vat: 'All SaaS prices excl. VAT',
-    trust_badge: '🇨🇭 Contract under Swiss law (Zurich) • FADP & GDPR compliant • Swiss server location',
+    trust_badge: '🇨🇭 Contract under Swiss Law (Zurich) • FADP & GDPR compliant • Server Location Switzerland (ISO 27001)',
     plan_starter: 'Starter', desc_starter: 'For freelancers managing simple 2D plan workflows (1 Seat).',
     plan_pro: 'Pro', desc_pro: 'For site managers needing 3D BIM, AI Pitch Deck & defects (1 Seat).',
     plan_team_starter: 'Team Starter', desc_team_starter: 'For growing studios & teams with 3 seats, controlling & QR invoicing.',
@@ -198,7 +198,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
     // FAQ (11 questions)
     faq_title: 'Frequently Asked Questions', faq_subtitle: 'Everything you need to know about Kreativ-Desk.',
-    faq_1_q: 'How secure is my data?', faq_1_a: 'We use enterprise-grade encryption. Your data is stored on secure Swiss servers and strictly isolated per tenant.',
+    faq_1_q: 'How secure is my data?', faq_1_a: 'We use enterprise-grade encryption and strict tenant isolation. Our cloud infrastructure and databases are operated dedicatedly in Zurich (Switzerland) within ISO-27001 certified data centers (PostgreSQL via Supabase Cloud, Region eu-central-2 Zurich).',
     faq_2_q: 'Does the AI train on my project data?', faq_2_a: 'No. Our AI models process your receipts, plans, and documents in a strictly isolated environment. Your data is never used to train global models.',
     faq_3_q: 'How does the 3D BIM Viewer work?', faq_3_a: 'Upload your IFC or CAD model and navigate fluidly through the 3D architecture directly in your browser. Perform visual checks with your team without needing external software.',
     faq_4_q: 'Can I manage quotes and invoices directly in the system?', faq_4_a: 'Yes. The Expert plan includes the full Finance Studio. You can generate professional quotes and PDF invoices, track your income, and monitor your project budget in real-time.',
@@ -432,7 +432,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     saas_save_20: 'Spare bis zu 20%',
     saas_billed_yearly: 'jährlich abgerechnet',
     saas_vat: 'Alle SaaS-Preise exkl. gesetzlicher MwSt.',
-    trust_badge: '🇨🇭 Vertrag nach Schweizer Recht (Zürich) • DSG- & DSGVO-konform • Serverstandort Schweiz',
+    trust_badge: '🇨🇭 Vertrag nach Schweizer Recht (Zürich) • DSG- & DSGVO-konform • Serverstandort Schweiz (ISO 27001)',
     plan_starter: 'Starter', desc_starter: 'Für Freelancer zur simplen 2D-Planorganisation (1 Seat).',
     plan_pro: 'Pro', desc_pro: 'Für Bauleiter, die 3D BIM, KI-Pitch-Deck & Mängel benötigen (1 Seat).',
     plan_team_starter: 'Team Starter', desc_team_starter: 'Für wachsende Büros & Teams mit 3 Seats, Controlling & QR-Rechnungen.',
@@ -461,7 +461,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
 
     // FAQ (11 questions)
     faq_title: 'Häufig gestellte Fragen (FAQ)', faq_subtitle: 'Alles, was du über Kreativ-Desk wissen musst.',
-    faq_1_q: 'Wie sicher sind meine Daten?', faq_1_a: 'Wir nutzen Enterprise-Grade Verschlüsselung. Deine Daten liegen auf sicheren Schweizer Servern und sind strikt mandantenisoliert.',
+    faq_1_q: 'Wie sicher sind meine Daten?', faq_1_a: 'Wir nutzen Enterprise-Grade Verschlüsselung und strikte Mandantenisolation. Unsere Cloud-Infrastruktur und Datenbanken werden dediziert in Zürich (Schweiz) in ISO-27001-zertifizierten Rechenzentren betrieben (PostgreSQL via Supabase Cloud, Region eu-central-2 Zurich).',
     faq_2_q: 'Trainiert die KI mit meinen Projektdaten?', faq_2_a: 'Nein. Unsere KI-Modelle verarbeiten deine Belege, Pläne und Dokumente strikt isoliert. Deine Daten werden niemals genutzt, um globale Modelle zu trainieren.',
     faq_3_q: 'Wie funktioniert der 3D BIM Viewer?', faq_3_a: 'Lade dein IFC- oder CAD-Modell hoch und navigiere flüssig im Browser durch die 3D-Architektur. Du kannst visuelle Prüfungen direkt im Team durchführen, ohne externe Software installieren zu müssen.',
     faq_4_q: 'Kann ich Offerten und Rechnungen direkt im System verwalten?', faq_4_a: 'Ja. Ab dem Expert-Plan erhältst du das volle Finanz-Studio. Erstelle mit wenigen Klicks professionelle Offerten und Rechnungen als PDF, behalte deine Einnahmen im Blick und verfolge dein Projektbudget in Echtzeit.',
@@ -1276,12 +1276,17 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   </div>
 
                   {/* Status Quo Chaos Visual */}
-                  <div className="mb-6 rounded-2xl overflow-hidden border border-red-500/30 bg-slate-950 relative aspect-video shadow-lg group/img">
-                    <img 
-                      src="/media/shattered_ui_panels_chaos.jpg" 
-                      alt="Status Quo Tool-Chaos & Margenverlust"
-                      className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
-                    />
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-red-500/30 bg-slate-100 dark:bg-slate-900/60 relative aspect-video shadow-lg group/img flex items-center justify-center">
+                    <picture className="w-full h-full">
+                      <source srcSet="/media/shattered_ui_panels_chaos.webp" type="image/webp" />
+                      <img 
+                        src="/media/shattered_ui_panels_chaos.jpg" 
+                        alt="Status Quo Tool-Chaos & Margenverlust"
+                        loading="eager"
+                        decoding="async"
+                        className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
+                      />
+                    </picture>
                     <div className="hidden sm:flex absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600/85 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider items-center gap-1.5 shadow">
                       <AlertTriangle size={10} /> {t('chaos_video_tag')}
                     </div>
@@ -1331,12 +1336,17 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                   </div>
 
                   {/* Single Source of Truth Visual */}
-                  <div className="mb-6 rounded-2xl overflow-hidden border border-blue-500/30 bg-slate-950 relative aspect-video shadow-lg group/img">
-                    <img 
-                      src="/media/macbook_single_source_of_truth.jpg" 
-                      alt="Single Source of Truth Live-Dashboard"
-                      className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
-                    />
+                  <div className="mb-6 rounded-2xl overflow-hidden border border-blue-500/30 bg-slate-100 dark:bg-slate-900/60 relative aspect-video shadow-lg group/img flex items-center justify-center">
+                    <picture className="w-full h-full">
+                      <source srcSet="/media/macbook_single_source_of_truth.webp" type="image/webp" />
+                      <img 
+                        src="/media/macbook_single_source_of_truth.jpg" 
+                        alt="Single Source of Truth Live-Dashboard"
+                        loading="eager"
+                        decoding="async"
+                        className="w-full h-full object-cover opacity-90 group-hover/img:opacity-100 transition-opacity"
+                      />
+                    </picture>
                     <div className="hidden sm:flex absolute top-3 left-3 px-2.5 py-1 rounded-md bg-blue-600/80 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-wider items-center gap-1.5 shadow">
                       <Sparkles size={10} /> {t('ssot_video_tag')}
                     </div>
@@ -1863,7 +1873,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
               ))}
             </div>
 
-            <p className="text-center text-text-muted text-xs font-bold uppercase tracking-widest mt-12">{t('b2b_vat')}</p>
+            <p className="text-center text-text-muted text-xs sm:text-sm font-medium mt-10 max-w-4xl mx-auto leading-relaxed">{t('b2b_vat')}</p>
           </div>
         </section>
 
@@ -1955,7 +1965,7 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     </div>
                   ))}
               </div>
-              <p className="text-center text-text-muted text-xs font-bold uppercase tracking-widest">{t('saas_vat')}</p>
+              <p className="text-center text-text-muted text-xs sm:text-sm font-medium mt-8">{t('saas_vat')}</p>
           </div>
         </section>
 

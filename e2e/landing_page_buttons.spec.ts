@@ -92,7 +92,7 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
     await expect(systemsSection.getByText(/Enterprise OS/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/45’000|45,000/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/15’000|15,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/25 Governance|25\+ Team/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/25\+?\s*(?:Governance|Team)/i).first()).toBeVisible();
 
     // Verify Setup anfragen button
     const setupBtn = systemsSection.getByRole('button', { name: /Setup anfragen|Request Setup/i }).first();
