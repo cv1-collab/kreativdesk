@@ -37,17 +37,32 @@ export default async function handler(req: any, res: any) {
     // Multi-tenant authorization check:
     const isSuperAdmin = (authUser as any).isSuperAdmin || (authUser as any).role === 'super_admin';
     if (!isSuperAdmin) {
+      // ZERO LEAKAGE: External contractors and guests are strictly blocked from financial ledger records
+      const roleStr = String((authUser as any).role || '').toLowerCase();
+      const isExternalOrGuest = 
+        roleStr.includes('guest') || 
+        roleStr.includes('extern') || 
+        roleStr.includes('partner') || 
+        roleStr.includes('contractor') || 
+        roleStr.includes('handwerker') || 
+        roleStr === 'client';
+
+      if (isExternalOrGuest) {
+        return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
+      }
+
       const userCompanyId = (authUser as any).companyId;
       if (!userCompanyId || String(userCompanyId) !== String(companyId)) {
         // Double check membership in company_users as fallback
         const { data: cuMembership } = await supabase
           .from('company_users')
-          .select('id')
+          .select('id, role')
           .eq('company_id', companyId)
           .or(`user_id.eq.${authUser.id},email.ilike.${authUser.email}`)
           .maybeSingle();
 
-        if (!cuMembership) {
+        const cuRoleStr = String(cuMembership?.role || '').toLowerCase();
+        if (!cuMembership || cuRoleStr.includes('guest') || cuRoleStr.includes('extern') || cuRoleStr.includes('partner') || cuRoleStr.includes('contractor') || cuRoleStr.includes('handwerker') || cuRoleStr === 'client') {
           return res.status(403).json({ error: 'Forbidden: Access denied to company financial records' });
         }
       }

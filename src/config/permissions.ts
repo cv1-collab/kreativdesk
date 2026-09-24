@@ -65,10 +65,25 @@ export function normalizeRole(rawRole?: string | null): Role {
   if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
   if (r === 'owner') return 'owner';
   if (r === 'management' || r === 'manager' || r === 'admin' || r === 'geschaeftsleitung') return 'management';
-  if (r === 'project_lead' || r === 'lead' || r === 'employee' || r === 'internal' || r === 'editor' || r === 'member' || r === 'user' || r === 'team') return 'employee';
-  if (r === 'client' || r === 'external') return 'client';
-  if (r === 'guest' || r === 'viewer') return 'guest';
-  return 'employee';
+  if (r === 'project_lead' || r === 'lead' || r === 'editor') return 'employee';
+  if (r === 'internal' || r === 'employee' || r === 'member' || r === 'user' || r === 'team') return 'employee';
+  if (r === 'client' || r === 'kunde' || r === 'bauherr' || r === 'client guest') return 'client';
+  if (
+    r === 'guest' || 
+    r === 'viewer' || 
+    r === 'field guest' || 
+    r === 'field_guest' || 
+    r === 'contractor' || 
+    r === 'handwerker' || 
+    r === 'external' || 
+    r === 'external planner' || 
+    r === 'external partner' || 
+    r === 'partner' || 
+    r === 'subcontractor' || 
+    r === 'collaborator'
+  ) return 'guest';
+  // Safe default: unknown/unassigned roles default to guest (ZERO LEAKAGE), never employee!
+  return 'guest';
 }
 
 /**

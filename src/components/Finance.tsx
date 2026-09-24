@@ -465,9 +465,21 @@ export default function Finance() {
   const { activeProjectId, projects, projectMembers, timeEntries, addTimeEntry, isDemoMode, demoData } = useProject() as any;
   const { projectId: urlProjectId } = useParams<{ projectId: string }>();
   const currentProjectId = urlProjectId || activeProjectId;
-  const userRole = (currentUser?.role || '') as string;
-  const isGuestOrClient = userRole === 'guest' || userRole === 'client';
-  const canViewFinance = isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || !isGuestOrClient || hasPermission('canViewProjectBudget') || hasPermission('canViewFinance') || currentUser?.canViewFinance === true;
+  const userRoleStr = (currentUser?.role || '').toLowerCase().trim();
+  const isGuestOrContractor = 
+    userRoleStr === 'guest' || 
+    userRoleStr === 'client' || 
+    userRoleStr.includes('guest') || 
+    userRoleStr.includes('extern') || 
+    userRoleStr.includes('partner') || 
+    userRoleStr.includes('contractor') || 
+    userRoleStr.includes('handwerker') || 
+    userRoleStr.includes('subcontractor');
+  
+  // ZERO LEAKAGE: External contractors and guests can NEVER view BKP 100-900 or financial data!
+  const canViewFinance = isGuestOrContractor 
+    ? false 
+    : (isDemoMode || currentProjectId === 'demo-1' || currentProjectId?.startsWith('demo-') || hasPermission('canViewProjectBudget') || hasPermission('canViewFinance'));
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;

@@ -64,20 +64,43 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
   
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserCompanyRole, setNewUserCompanyRole] = useState<'Internal' | 'External Planner' | 'Client'>('External Planner');
+  const [newUserCompanyRole, setNewUserCompanyRole] = useState<'Internal' | 'External Planner' | 'Client' | 'Field Guest'>('Field Guest');
+  const [newUserTrade, setNewUserTrade] = useState('');
   const [selectedRole, setSelectedRole] = useState<'Owner' | 'Admin' | 'Editor' | 'Viewer'>('Viewer');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const availableCompanyUsers = (allCompanyUsers || []).filter((cu: any) => !currentMembers.some((cm: any) => cm.userId === cu.id));
 
-  const checkSeatLimit = (): boolean => {
+  const checkSeatLimit = (targetRole?: string): boolean => {
     if (!currentUser) return true;
     if (checkIsSuperAdmin(currentUser.email) || currentUser?.role?.toLowerCase() === 'super_admin' || currentUser?.role?.toLowerCase() === 'admin') return true;
+
+    // Nur interne Mitarbeiter zählen gegen das bezahlte Seat-Kontingent!
+    // Handwerker (Field Guest), Bauherren (Client Guest) und externe Fachplaner sind kostenlos & unbegrenzt.
+    const isTargetInternal = targetRole === 'Internal' || targetRole === 'employee' || targetRole === 'management';
+    if (targetRole && !isTargetInternal) {
+      return true;
+    }
+
     const plan = currentUser.companyPlan || currentUser.plan || 'Starter';
-    if (plan.includes('Trial') || plan === 'Expert' || plan === 'Enterprise' || plan === 'Studio' || plan === 'Agency' || plan.includes('Workspace')) return true;
-    const maxSeats = plan === 'Starter' ? 3 : 10;
-    if (currentMembers.length >= maxSeats) {
-      addToast(`Seat-Limit (${maxSeats} Mitglieder) für deinen ${plan}-Plan erreicht.`, 'info');
+    if (plan.includes('Trial') || plan === 'Enterprise' || plan.includes('Workspace')) return true;
+
+    let maxSeats = 1;
+    const planLower = plan.toLowerCase();
+    if (planLower.includes('starter') && !planLower.includes('team')) maxSeats = 1;
+    else if (planLower.includes('pro')) maxSeats = 1;
+    else if (planLower.includes('team')) maxSeats = 3;
+    else if (planLower.includes('studio')) maxSeats = 5;
+    else if (planLower.includes('agency')) maxSeats = 15;
+    else if (planLower.includes('enterprise')) maxSeats = 25;
+
+    const internalMembers = (currentMembers || []).filter((cm: any) => {
+      const r = (cm.companyRole || cm.role || '').toLowerCase();
+      return r === 'internal' || r === 'employee' || r === 'management' || r === 'owner';
+    });
+
+    if (internalMembers.length >= maxSeats) {
+      addToast(`Seat-Limit (${maxSeats} interne Lizenzen) für deinen ${plan}-Plan erreicht. Externe Handwerker & Bauherren sind unbegrenzt kostenlos.`, 'info');
       window.dispatchEvent(new CustomEvent('open-upgrade-modal'));
       return false;
     }
@@ -92,15 +115,16 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     }
     if (!selectedUserId || !currentProjectId || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    if (!checkSeatLimit()) return;
+    const selectedUser = companyUsers.find((u: any) => u.id === selectedUserId);
+    const targetRole = selectedUser?.role || 'External Partner';
+    if (!checkSeatLimit(targetRole)) return;
     setIsProcessing(true);
     try {
-      const selectedUser = companyUsers.find((u: any) => u.id === selectedUserId);
       await addProjectMember(currentProjectId, {
         userId: selectedUserId,
         userEmail: selectedUser?.email || '',
         projectRole: selectedRole,
-        companyRole: selectedUser?.role || 'External Partner'
+        companyRole: targetRole
       });
       addToast(t('upload_success'), 'success'); 
       setIsAddMemberModalOpen(false); 
@@ -121,16 +145,17 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     }
     if (!newUserName || !newUserEmail || !currentProjectId || !currentUser) return;
     const safeCompanyId = currentUser.companyId || currentUser.uid;
-    if (!checkSeatLimit()) return;
+    if (!checkSeatLimit(newUserCompanyRole)) return;
     setIsProcessing(true);
     try {
       const newUserId = `user-${Date.now()}`;
       
-      await supabase.from('company_users').insert({ 
+      await (supabase.from('company_users') as any).insert({ 
         id: newUserId, 
         name: newUserName, 
         email: newUserEmail, 
         role: newUserCompanyRole,
+        trade: newUserTrade || null,
         company_id: safeCompanyId 
       });
       
@@ -162,6 +187,7 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
       setIsAddMemberModalOpen(false); 
       setNewUserName(''); 
       setNewUserEmail('');
+      setNewUserTrade('');
     } catch (e) { 
       console.error(e);
       addToast(t('upload_failed'), 'error'); 
@@ -258,11 +284,12 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                         {(() => {
                           const norm = (user.role || '').toLowerCase().trim();
                           const isClient = norm === 'client' || norm === 'kunde';
-                          const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor';
+                          const isFieldGuest = norm === 'field guest' || norm === 'field_guest' || norm === 'contractor' || norm === 'handwerker';
+                          const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor' || isFieldGuest;
                           const isInternal = !isExternal && !isClient;
                           return (
-                            <span className={cn("px-2 py-0.5 rounded text-xs font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
-                              {isInternal ? t('role_internal') : isClient ? t('role_client') : t('role_external')}
+                            <span className={cn("px-2 py-0.5 rounded text-xs font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : isFieldGuest ? "bg-sky-500/10 text-sky-400 border-sky-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
+                              {isInternal ? t('role_internal') : isClient ? t('role_client') : isFieldGuest ? 'Field Guest' : t('role_external')}
                             </span>
                           );
                         })()}
@@ -314,9 +341,18 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                   <div className="flex items-center justify-between gap-2 pt-3 border-t border-border/50">
                     <div className="flex items-center gap-1.5">
                       <Shield size={13} className="text-text-muted" />
-                      <span className={cn("px-2 py-0.5 rounded text-[11px] font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
-                        {isInternal ? t('role_internal') : isClient ? t('role_client') : t('role_external')}
-                      </span>
+                      {(() => {
+                        const norm = (user.role || '').toLowerCase().trim();
+                        const isClient = norm === 'client' || norm === 'kunde';
+                        const isFieldGuest = norm === 'field guest' || norm === 'field_guest' || norm === 'contractor' || norm === 'handwerker';
+                        const isExternal = norm === 'external' || norm === 'extern' || norm === 'external partner' || norm === 'external planner' || norm === 'subcontractor' || isFieldGuest;
+                        const isInternal = !isExternal && !isClient;
+                        return (
+                          <span className={cn("px-2 py-0.5 rounded text-[11px] font-bold border tracking-wide uppercase", isInternal ? "bg-accent-ai/10 text-accent-ai border-accent-ai/20" : isClient ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : isFieldGuest ? "bg-sky-500/10 text-sky-400 border-sky-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20")}>
+                            {isInternal ? t('role_internal') : isClient ? t('role_client') : isFieldGuest ? 'Field Guest' : t('role_external')}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <select value={member.projectRole} onChange={(e) => handleRoleChange(member.id, e.target.value)} className="bg-background border border-border/50 rounded-lg px-2.5 py-1 text-xs font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer">
                       <option value="Viewer">{t('viewer_role')}</option><option value="Editor">{t('editor_role')}</option><option value="Admin">{t('admin_role')}</option><option value="Owner">{t('owner_role')}</option>
@@ -362,10 +398,27 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
                     <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">{t('company_role_label')}</label>
                     <div className="relative">
                       <select value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value as any)} className="w-full bg-background border border-border/50 rounded-xl py-3.5 px-4 text-sm font-bold focus:border-accent-ai text-text-primary appearance-none shadow-inner">
-                        <option value="External Planner">{t('role_external')}</option><option value="Client">{t('role_client')}</option><option value="Internal">{t('role_internal')}</option>
+                        <option value="Field Guest">{currentLang === 'de' ? 'Field Guest (Handwerker / Unternehmer – Kostenlos)' : 'Field Guest (Contractor / Trades – Free)'}</option>
+                        <option value="External Planner">{t('role_external')}</option>
+                        <option value="Client">{t('role_client')}</option>
+                        <option value="Internal">{t('role_internal')}</option>
                       </select>
                     </div>
                   </div>
+                  {newUserCompanyRole === 'Field Guest' && (
+                    <div>
+                      <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">
+                        {currentLang === 'de' ? 'Gewerk / Spezialisierung' : 'Trade / Specialization'}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={newUserTrade} 
+                        onChange={e => setNewUserTrade(e.target.value)} 
+                        placeholder="z.B. Sanitär, Elektro, Baumeister, Maler"
+                        className="w-full bg-background border border-border/50 rounded-xl py-3.5 px-4 text-sm font-bold focus:border-accent-ai text-text-primary shadow-inner" 
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

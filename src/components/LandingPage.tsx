@@ -96,24 +96,24 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     infra_p4_badge: 'From Sketch to IFC / 3D BIM Model',
 
     // B2B Project Systems
-    b2b_badge: 'Strategic Corporate Architecture',
+    b2b_badge: 'Turnkey Enterprise Architecture',
     b2b_title: 'B2B Project Systems (Kreativ-Desk OS)',
-    b2b_subtitle: 'Custom infrastructure for studios, agencies, and enterprises managing complex productions at scale.',
+    b2b_subtitle: 'Modular infrastructure for studios, agencies, and enterprises managing complex productions at scale.',
     b2b_sys1_title: 'Studio OS',
-    b2b_sys1_desc: 'Focus: Establishing a central data architecture, tenant-isolated environment, and executive master dashboard.',
-    b2b_sys1_price: 'from CHF 15,000',
-    b2b_sys1_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: CHF 7,500/YR',
-    b2b_sys1_seats: 'Incl. 5 Governance Seats (+ CHF 780/yr per extra seat)',
+    b2b_sys1_desc: 'Focus: Establishing a central data architecture, kickoff workshop, data import & 2h admin training.',
+    b2b_sys1_price: 'CHF 6,800 / yr',
+    b2b_sys1_renewal: '+ One-time Implementation Package CHF 3,500',
+    b2b_sys1_seats: 'Incl. 5 Governance Seats',
     b2b_sys2_title: 'Agency OS',
-    b2b_sys2_desc: 'Focus: Full resource controlling (target vs. actual), dedicated team workspaces, and automated on-/offboarding for maximum data security.',
-    b2b_sys2_price: 'CHF 25,000',
-    b2b_sys2_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: CHF 19,500/YR',
-    b2b_sys2_seats: 'Incl. 15 Governance Seats (+ CHF 780/yr per extra seat)',
+    b2b_sys2_desc: 'Focus: In-browser collision detection, whitelabeling, workflow audit, interface setup & team training.',
+    b2b_sys2_price: 'CHF 16,800 / yr',
+    b2b_sys2_renewal: '+ One-time Implementation Package CHF 6,500',
+    b2b_sys2_seats: 'Incl. 15 Governance Seats',
     b2b_sys3_title: 'Enterprise OS',
-    b2b_sys3_desc: 'Focus: Custom API pipelines, Single Sign-On (SSO), strategic onboarding, and unlimited system resources.',
-    b2b_sys3_price: 'from CHF 50,000',
-    b2b_sys3_renewal: 'SETUP INCL. 1ST YR. FROM YR 2: FROM CHF 35,000/YR',
-    b2b_sys3_seats: 'Incl. 25 Governance Seats (+ CHF 780/yr per extra seat)',
+    b2b_sys3_desc: 'Focus: Single Sign-On (SSO/SAML), deep ERP integration (Abacus/BauBit), dedicated Swiss instance & 99.9% SLA.',
+    b2b_sys3_price: 'from CHF 45,000 / yr',
+    b2b_sys3_renewal: '+ Custom Engineering from CHF 15,000',
+    b2b_sys3_seats: 'Incl. 25+ Governance Seats',
     b2b_cta_request: 'Request Setup',
     b2b_vat: 'All B2B prices excl. statutory VAT',
 
@@ -124,7 +124,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     roi_label_hours: 'Hours lost per project/week due to scattered tools',
     roi_label_rate: 'Hourly Rate (CHF)',
     roi_result_title: 'Estimated Annual Cost Savings',
-    roi_disclaimer: 'Based on automated reporting, centralized plan distribution, and eliminated license silos.',
+    roi_disclaimer: 'An office with 10 team members saves an average of CHF 18,400 / year by eliminating broken workflows and tool silos.',
     roi_cta: 'Request System Demo',
 
     // SaaS Pricing
@@ -133,12 +133,15 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     saas_subtitle: 'Start small and scale flexibly. Cancel anytime.',
     saas_monthly: 'Monthly',
     saas_yearly: 'Yearly',
-    saas_save_20: 'Save 20%',
+    saas_save_20: 'Save up to 20%',
     saas_billed_yearly: 'billed yearly',
     saas_vat: 'All SaaS prices excl. VAT',
-    plan_starter: 'Starter', desc_starter: 'For freelancers managing simple 2D plan workflows.',
-    plan_pro: 'Pro', desc_pro: 'For site managers needing 3D BIM, AI Pitch Deck & defects.',
-    plan_expert: 'Expert', desc_expert: 'For power users needing invoices, QR billing & API webhooks.',
+    trust_badge: '🇨🇭 Contract under Swiss law (Zurich) • FADP & GDPR compliant • Swiss server location',
+    plan_starter: 'Starter', desc_starter: 'For freelancers managing simple 2D plan workflows (1 Seat).',
+    plan_pro: 'Pro', desc_pro: 'For site managers needing 3D BIM, AI Pitch Deck & defects (1 Seat).',
+    plan_team_starter: 'Team Starter', desc_team_starter: 'For growing studios & teams with 3 seats, controlling & QR invoicing.',
+    f_seats_1: '1 Internal Seat included',
+    f_seats_3: '3 Internal Seats included (+ CHF 75/mo extra seat)',
     f_proj_3: '3 Active Projects',
     f_proj_unlimited: 'Unlimited Projects',
     f_2d_defects: '2D CAD Viewer & Defects',
@@ -146,12 +149,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_ai: 'AI Concierge & Pitch-Deck Studio',
     f_mobile: 'Mobile Defect App (Live-Sync)',
     f_budget: 'Project Budgets & Tracking',
-    f_invoice: 'PDF Quotes & Invoicing Studio',
+    f_qr_invoicing: 'PDF Quotes & Swiss QR-Invoicing',
     f_api: 'API & Webhooks (Zapier/Make)',
     f_brand: 'Custom Branding & Domain',
-    f_storage_5: '5 GB Cloud Storage',
-    f_storage_50: '50 GB Cloud Storage',
+    f_storage_15: '15 GB Cloud Storage',
+    f_storage_100: '100 GB Cloud Storage',
     f_storage_250: '250 GB Cloud Storage',
+    f_free_guests: '✓ Unlimited free contractor & client guest seats',
     all_pro_features: 'All features from Pro plan',
     f_controlling: 'Central Company Dashboard (Controlling)',
     f_rbac: 'Role-Based Access Control (RBAC)',
@@ -170,7 +174,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     faq_7_q: 'Can Kreativ-Desk connect to my existing CRM or tools like Zapier?', faq_7_a: 'Yes. Kreativ Desk has a built-in CRM for your team and leads. Additionally, Expert users can configure Webhook URLs in the settings to route events to external tools via Zapier or Make.',
     faq_8_q: 'How can I upgrade, downgrade, or cancel my subscription?', faq_8_a: 'You can manage your subscription at any time in the settings under "Admin & Billing". Clicking "Open Stripe Portal" takes you securely to Stripe, where you can easily upgrade, downgrade, or cancel your plan at the end of the billing cycle.',
     faq_9_q: 'What is the exact difference between Studio, Agency, and Enterprise?', faq_9_a: 'The Studio package is designed for single large-scale project control. Agency steers multiple parallel productions with full resource controlling. Enterprise provides custom API pipelines, SSO, and dedicated SLAs. All B2B models feature tenant-isolated servers and dedicated onboarding.',
-    faq_10_q: 'What are the costs for B2B Systems (Studio / Agency / Enterprise) from year 2 onwards?', faq_10_a: 'The first-year price includes full setup, technical onboarding, and team licenses. From the second year onwards, the setup fee is completely eliminated. You only pay a reduced flat rate: CHF 7,500/yr for Studio, CHF 19,500/yr for Agency, and from CHF 35,000/yr for Enterprise. Additional licenses can be booked anytime for CHF 780/year per user.',
+    faq_10_q: 'What are the costs for B2B Systems (Studio / Agency / Enterprise) from year 2 onwards?', faq_10_a: 'The first-year price includes software licenses and the one-time implementation package. From the second year onwards, the implementation fee is completely eliminated. You only pay the annual software license: CHF 6,800/yr for Studio (5 seats), CHF 16,800/yr for Agency (15 seats), and from CHF 45,000/yr for Enterprise (25+ seats). Additional internal licenses can be booked anytime for CHF 780/year per user. External contractors and guests are always free and unlimited.',
     faq_11_q: 'Are all prices listed inclusive or exclusive of VAT?', faq_11_a: 'All prices across our SaaS plans and B2B systems are explicitly stated exclusive of statutory VAT (excl. VAT).',
 
     // Help Center
@@ -322,24 +326,24 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     infra_p4_badge: 'Von der Skizze zum IFC / 3D-BIM-Modell',
 
     // B2B Projekt-Systeme
-    b2b_badge: 'Strategische Unternehmens-Architektur',
+    b2b_badge: 'Schlüsselfertige Unternehmens-Architektur',
     b2b_title: 'B2B Projekt-Systeme (Kreativ-Desk OS)',
-    b2b_subtitle: 'Infrastruktur für Studios, Agenturen und Unternehmen, die komplexe Produktionen skalierbar steuern müssen.',
+    b2b_subtitle: 'Modulare Infrastruktur für Studios, Agenturen und Unternehmen, die komplexe Produktionen skalierbar steuern müssen.',
     b2b_sys1_title: 'Studio OS',
-    b2b_sys1_desc: 'Fokus: Etablierung einer zentralen Datenstruktur, mandantenisolierte Umgebung und Master-Dashboard für die Geschäftsleitung.',
-    b2b_sys1_price: 'ab CHF 15’000',
-    b2b_sys1_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: CHF 7’500/JAHR',
-    b2b_sys1_seats: 'Inkl. 5 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    b2b_sys1_desc: 'Fokus: Etablierung zentraler Datenstruktur, Kickoff-Workshop, Datenimport & 2h Admin-Schulung.',
+    b2b_sys1_price: 'CHF 6’800 / Jahr',
+    b2b_sys1_renewal: '+ Einmaliges Implementation Package CHF 3’500',
+    b2b_sys1_seats: 'Inkl. 5 Governance-Lizenzen',
     b2b_sys2_title: 'Agency OS',
-    b2b_sys2_desc: 'Fokus: Volles Ressourcen-Controlling (Soll vs. Ist), dedizierte Team-Workspaces und automatisches On-/Offboarding für maximale Datensicherheit.',
-    b2b_sys2_price: 'CHF 25’000',
-    b2b_sys2_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: CHF 19’500/JAHR',
-    b2b_sys2_seats: 'Inkl. 15 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    b2b_sys2_desc: 'Fokus: Kollisionsprüfung im Browser, Whitelabeling, Workflow-Audit, Schnittstellen-Setup & Teamschulung.',
+    b2b_sys2_price: 'CHF 16’800 / Jahr',
+    b2b_sys2_renewal: '+ Einmaliges Implementation Package CHF 6’500',
+    b2b_sys2_seats: 'Inkl. 15 Governance-Lizenzen',
     b2b_sys3_title: 'Enterprise OS',
-    b2b_sys3_desc: 'Fokus: Custom API-Pipelines, Single Sign-On (SSO), strategisches Onboarding und unlimitierte Systemressourcen.',
-    b2b_sys3_price: 'ab CHF 50’000',
-    b2b_sys3_renewal: 'SETUP INKL. 1. JAHR. AB JAHR 2: AB CHF 35’000/JAHR',
-    b2b_sys3_seats: 'Inkl. 25 Governance-Lizenzen (+ CHF 780/Jahr pro Zusatzlizenz)',
+    b2b_sys3_desc: 'Fokus: Single Sign-On (SSO/SAML), ERP-Tiefenintegration (Abacus/BauBit), dedizierte Schweizer Instanz & 99.9% SLA.',
+    b2b_sys3_price: 'ab CHF 45’000 / Jahr',
+    b2b_sys3_renewal: '+ Custom Engineering ab CHF 15’000',
+    b2b_sys3_seats: 'Inkl. 25+ Governance-Lizenzen',
     b2b_cta_request: 'Setup anfragen',
     b2b_vat: 'Alle B2B-Preise verstehen sich rein netto exkl. gesetzlicher MwSt.',
 
@@ -350,7 +354,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     roi_label_hours: 'Verlorene Stunden pro Projekt/Woche durch Tool-Chaos',
     roi_label_rate: 'Stundensatz (CHF)',
     roi_result_title: 'Geschätzte jährliche Kostenersparnis',
-    roi_disclaimer: 'Basierend auf automatisiertem Reporting, zentraler Planverteilung und wegfallenden Lizenz-Silos.',
+    roi_disclaimer: 'Ein Büro mit 10 Mitarbeitern spart durchschnittlich CHF 18’400 / Jahr durch eliminierte Medienbrüche und Lizenz-Silos.',
     roi_cta: 'System-Demo anfragen',
 
     // SaaS Pricing
@@ -359,12 +363,15 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     saas_subtitle: 'Starte klein und skaliere flexibel nach Bedarf. Jederzeit monatlich kündbar.',
     saas_monthly: 'Monatlich',
     saas_yearly: 'Jährlich',
-    saas_save_20: 'Spare 20%',
+    saas_save_20: 'Spare bis zu 20%',
     saas_billed_yearly: 'jährlich abgerechnet',
     saas_vat: 'Alle SaaS-Preise exkl. gesetzlicher MwSt.',
-    plan_starter: 'Starter', desc_starter: 'Für Freelancer zur simplen 2D-Planorganisation.',
-    plan_pro: 'Pro', desc_pro: 'Für Bauleiter, die 3D BIM, KI-Pitch-Deck & Mängel benötigen.',
-    plan_expert: 'Expert', desc_expert: 'Für Power-User, die Finanzen, QR-Rechnungen & APIs suchen.',
+    trust_badge: '🇨🇭 Vertrag nach Schweizer Recht (Zürich) • DSG- & DSGVO-konform • Serverstandort Schweiz',
+    plan_starter: 'Starter', desc_starter: 'Für Freelancer zur simplen 2D-Planorganisation (1 Seat).',
+    plan_pro: 'Pro', desc_pro: 'Für Bauleiter, die 3D BIM, KI-Pitch-Deck & Mängel benötigen (1 Seat).',
+    plan_team_starter: 'Team Starter', desc_team_starter: 'Für wachsende Büros & Teams mit 3 Seats, Controlling & QR-Rechnungen.',
+    f_seats_1: '1 Interner Seat inklusive',
+    f_seats_3: '3 Interne Seats inklusive (+ CHF 75/Mt. pro Zusatz-Seat)',
     f_proj_3: '3 Aktive Projekte',
     f_proj_unlimited: 'Unbegrenzte Projekte',
     f_2d_defects: '2D CAD Viewer & Mängel',
@@ -372,12 +379,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     f_ai: 'KI-Concierge & Pitch-Deck Studio',
     f_mobile: 'Mobile Mängel-App (Live-Sync)',
     f_budget: 'Projekt-Budgets & Tracking',
-    f_invoice: 'PDF-Offerten & Rechnungs-Studio',
+    f_qr_invoicing: 'PDF-Offerten & Schweizer QR-Rechnungen',
     f_api: 'API & Webhooks (Zapier/Make)',
     f_brand: 'Eigenes Branding & Domain',
-    f_storage_5: '5 GB Cloud Speicher',
-    f_storage_50: '50 GB Cloud Speicher',
+    f_storage_15: '15 GB Cloud Speicher',
+    f_storage_100: '100 GB Cloud Speicher',
     f_storage_250: '250 GB Cloud Speicher',
+    f_free_guests: '✓ Unbegrenzte kostenlose Handwerker- & Bauherren-Zugänge',
     all_pro_features: 'Alles aus dem Pro-Plan',
     f_controlling: 'Zentrales Firmen-Dashboard (Controlling)',
     f_rbac: 'Rollenbasierte Zugriffsrechte (RBAC)',
@@ -396,7 +404,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     faq_7_q: 'Lässt sich Kreativ-Desk mit anderen Tools (Zapier) verbinden?', faq_7_a: 'Ja. Kreativ Desk verfügt über ein integriertes Smart CRM. Zudem kannst du als Expert-Nutzer Webhook-URLs (z.B. Zapier/Make) in den Einstellungen hinterlegen, um Daten an externe Tools weiterzuleiten.',
     faq_8_q: 'Wie kann ich mein Abo anpassen oder kündigen?', faq_8_a: 'Du kannst dein Abonnement jederzeit in den Einstellungen unter "Admin & Abrechnung" verwalten. Klicke auf "Stripe Portal öffnen", um dein Abo sicher über Stripe upzugraden, downzugraden oder zum Ende der Laufzeit zu kündigen.',
     faq_9_q: 'Was ist der genaue Unterschied zwischen Studio, Agency und Enterprise?', faq_9_a: 'Das Studio-Paket ist perfekt für Einzelprojekte, Agency steuert parallele Produktionen, Enterprise bietet tiefe Systemintegrationen. Alle B2B-Modelle beinhalten mandantenisolierte Server, garantierte SLAs und dedizierten Support, um sich klar von den Standard-SaaS-Plänen abzuheben.',
-    faq_10_q: 'Wie sehen die Folgekosten für die B2B-Systeme (Studio / Agency / Enterprise) ab dem 2. Jahr aus?', faq_10_a: 'Der Preis im ersten Jahr beinhaltet das gesamte Setup und alle Team-Lizenzen. Ab dem zweiten Jahr entfällt die Setup-Gebühr komplett. Du zahlst nur noch eine reduzierte Flatrate: CHF 7’500/Jahr für Studio, CHF 19’500/Jahr für Agency bzw. ab CHF 35’000/Jahr für Enterprise. Bei Bedarf können jederzeit flexible Zusatzlizenzen für CHF 780 / Jahr pro Nutzer hinzugebucht werden.',
+    faq_10_q: 'Wie sehen die Folgekosten für die B2B-Systeme (Studio / Agency / Enterprise) ab dem 2. Jahr aus?', faq_10_a: 'Der Preis im ersten Jahr beinhaltet die Software-Jahreslizenz und das einmalige Implementation Package. Ab dem zweiten Jahr entfällt das Implementation Package komplett. Du zahlst nur noch die reine Software-Jahreslizenz: CHF 6’800 / Jahr für Studio (5 Seats), CHF 16’800 / Jahr für Agency (15 Seats) bzw. ab CHF 45’000 / Jahr für Enterprise (25+ Seats). Bei Bedarf können flexible Zusatzlizenzen für CHF 780 / Jahr pro internem Nutzer hinzugebucht werden. Externe Handwerker und Gäste sind in allen Tarifen unbegrenzt kostenlos.',
     faq_11_q: 'Verstehen sich die Preise inklusive oder exklusive Mehrwertsteuer?', faq_11_a: 'Alle auf der Plattform ausgewiesenen Preise – sowohl für die monatlichen Abos als auch für die großen B2B-Systeme – verstehen sich rein netto exklusive gesetzlicher Mehrwertsteuer (exkl. MwSt.).',
 
     // Help Center
@@ -683,15 +691,15 @@ export default function LandingPage() {
       const prompt = `Du bist der offizielle KI-Assistent von Kreativ-Desk OS (kreativdesk.ch), dem Schweizer Projekt- und Betriebssystem für Architektur, Bau, Agenturen und Generalplanung.
 
 Offizielle Fakten & Wirtschaftliche Logik von Kreativ-Desk:
-- SaaS Einzelabos: 
-  * Starter: CHF 35/Mo (jährlich abgerechnet) / CHF 39/Mo (monatlich) - 3 Projekte, 2D CAD & Mängel, Budgets, 5 GB Speicher.
-  * Pro: CHF 65/Mo (jährlich abgerechnet) / CHF 79/Mo (monatlich) - Unbegrenzte Projekte, 3D BIM Viewer (IFC), KI-Concierge, Mobile Mängel-App, 50 GB Speicher.
-  * Expert: CHF 159/Mo (jährlich abgerechnet) / CHF 189/Mo (monatlich) - Alles aus Pro + PDF-Offerten & Rechnungs-Studio, API & Webhooks, Eigenes Branding, 250 GB Speicher.
+- SaaS Abonnements: 
+  * Starter: CHF 49/Mo (jährlich abgerechnet: CHF 588/Jahr) bzw. CHF 59/Mo (monatlich) - 1 Seat, 15 GB Speicher, unbegrenzte Projekte, 2D CAD & Mängel, Budgets. Externe Handwerker & Gäste kostenlos & unbegrenzt.
+  * Pro: CHF 89/Mo (jährlich abgerechnet: CHF 1'068/Jahr) bzw. CHF 109/Mo (monatlich) - 1 Seat, 100 GB Speicher, 3D BIM Viewer (IFC), KI-Kollisionsprüfung, Mobile Mängel-App, unbegrenzte Projekte. Externe Handwerker & Gäste kostenlos & unbegrenzt.
+  * Team Starter: CHF 240/Mo (jährlich abgerechnet: CHF 2'880/Jahr) bzw. CHF 290/Mo (monatlich) - 3 Seats inklusive, 250 GB Speicher, PDF-Offerten & Rechnungs-Studio, QR-Rechnungen, API & Webhooks, Custom Branding.
 - B2B Projekt-Systeme (Kreativ-Desk OS):
-  * Studio OS: ab CHF 15'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: CHF 7'500 / Jahr Flatrate | Inkl. 5 Governance-Lizenzen.
-  * Agency OS (Execution Booster): CHF 25'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: CHF 19'500 / Jahr Flatrate | Inkl. 15 Governance-Lizenzen.
-  * Enterprise OS: ab CHF 50'000 im 1. Jahr (Setup-Gebühr inkl. 1. Jahr) | Ab Jahr 2: ab CHF 35'000 / Jahr Flatrate | Inkl. 25 Governance-Lizenzen.
-- Zusatzlizenzen: Jede zusätzliche Governance-Lizenz kostet exakt CHF 780 / Jahr (CHF 65 / Monat). (Beispiel: 7 Lizenzen im Studio OS = CHF 15'000 + 2 × CHF 780 = CHF 16'560 im 1. Jahr; ab Jahr 2 CHF 7'500 + CHF 1'560 = CHF 9'060/Jahr).
+  * Studio OS: Software CHF 6'800 / Jahr + einmaliges Implementation Package CHF 3'500 (inkl. 5 Governance-Lizenzen).
+  * Agency OS: Software CHF 16'800 / Jahr + einmaliges Implementation Package CHF 6'500 (inkl. 15 Governance-Lizenzen).
+  * Enterprise OS: Software ab CHF 45'000 / Jahr + Custom Engineering ab CHF 15'000 (inkl. 25+ Governance-Lizenzen).
+- Zusatzlizenzen: Jede zusätzliche interne Governance-Lizenz kostet exakt CHF 780 / Jahr (CHF 65 / Monat). Externe Handwerker (Field Guest), Bauherren und Fachplaner sind stets kostenlos und unbegrenzt!
 - Alle Preise sind exkl. MwSt. (netto).
 - Architektur & Sicherheit: 100% mandantenisoliert, sichere Schweizer Server (Datenhaltung & Infrastruktur in der Schweiz), Schweizer Entwicklerteam, Revisionssicherheit, RBAC-Rollenmanagement (Owner, GL, Projektleiter, Mitarbeiter), DSGVO & Schweizer Datenschutz (DSG). Kundendaten werden niemals für KI-Training verwendet.
 - Technische Features: Nativer 3D IFC Viewer direkt im Browser (kein Plugin), automatische KI-Kollisionsprüfung, Live-Sync Baustellen-App, QR-Rechnungen, Whiteboard & Pitch Deck Studio.
@@ -769,36 +777,39 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
   const saasPlans = [
     {
       name: t('plan_starter'),
-      price: isYearly ? 35 : 39,
+      price: isYearly ? 49 : 59,
+      annualTotal: 'CHF 588 / J.',
       icon: <Building2 className="w-6 h-6 text-zinc-400" />,
       description: t('desc_starter'),
-      features: [t('f_proj_3'), t('f_2d_defects'), t('f_budget'), t('f_storage_5')],
+      features: [t('f_seats_1'), t('f_proj_3'), t('f_2d_defects'), t('f_budget'), t('f_storage_15'), t('f_free_guests')],
       notIncluded: [
-        t('f_3d'), t('f_ai'), t('f_mobile'), t('f_invoice'), t('f_api'),
+        t('f_3d'), t('f_ai'), t('f_mobile'), t('f_qr_invoicing'), t('f_api'),
         t('f_controlling'), t('f_rbac'), t('f_staff'), t('f_tenant')
       ],
       popular: false
     },
     {
       name: t('plan_pro'),
-      price: isYearly ? 65 : 79,
+      price: isYearly ? 89 : 109,
+      annualTotal: "CHF 1'068 / J.",
       icon: <Zap className="w-6 h-6 text-blue-500" />,
       description: t('desc_pro'),
-      features: [t('f_proj_unlimited'), t('f_3d'), t('f_ai'), t('f_mobile'), t('f_budget'), t('f_storage_50')],
+      features: [t('f_seats_1'), t('f_proj_unlimited'), t('f_3d'), t('f_ai'), t('f_mobile'), t('f_budget'), t('f_storage_100'), t('f_free_guests')],
       notIncluded: [
-        t('f_invoice'), t('f_api'), t('f_brand'),
+        t('f_qr_invoicing'), t('f_api'), t('f_brand'),
         t('f_controlling'), t('f_rbac'), t('f_staff'), t('f_tenant')
       ],
       popular: true
     },
     {
-      name: t('plan_expert'),
-      price: isYearly ? 159 : 189, 
+      name: t('plan_team_starter'),
+      price: isYearly ? 240 : 290,
+      annualTotal: "CHF 2'880 / J.",
       icon: <Layers className="w-6 h-6 text-emerald-500" />,
-      description: t('desc_expert'),
-      features: [t('f_proj_unlimited'), t('all_pro_features'), t('f_invoice'), t('f_api'), t('f_brand'), t('f_storage_250')],
+      description: t('desc_team_starter'),
+      features: [t('f_seats_3'), t('f_proj_unlimited'), t('all_pro_features'), t('f_controlling'), t('f_rbac'), t('f_qr_invoicing'), t('f_api'), t('f_brand'), t('f_storage_250'), t('f_free_guests')],
       notIncluded: [
-        t('f_controlling'), t('f_rbac'), t('f_staff'), t('f_tenant')
+        t('f_tenant')
       ],
       popular: false
     }
@@ -1739,6 +1750,13 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                     <span className="bg-blue-500/10 text-blue-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/20">{t('saas_save_20')}</span>
                   </div>
                 </div>
+
+                {/* Trust Badge */}
+                <div className="flex justify-center mt-8">
+                  <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-500 text-xs font-semibold shadow-sm text-center">
+                    {t('trust_badge')}
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch mb-12">
@@ -1755,14 +1773,15 @@ Beantworte die Frage präzise, professionell, klar formuliert, strukturiert und 
                       </h3>
                       <div className="text-4xl font-bold text-text-primary tracking-tight mb-2">CHF {plan.price}</div>
                       <div className="text-sm text-text-muted font-bold mb-6">
-                        / {t('saas_monthly').toLowerCase()} {isYearly && <span className="text-blue-500 ml-1">({t('saas_billed_yearly')})</span>}
+                        / {t('saas_monthly').toLowerCase()} {isYearly && <span className="text-blue-500 ml-1">({plan.annualTotal} {t('saas_billed_yearly')})</span>}
                       </div>
                       <p className="text-xs text-text-muted mb-6 h-8 leading-relaxed">{plan.description}</p>
                       
                       <div className="space-y-3 mb-10 flex-1">
                         {plan.features.map((f, j) => (
                           <div className="flex items-start gap-3 text-sm font-bold" key={`f-${j}`}>
-                            <Check className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" /> <span>{f}</span>
+                            <Check className={cn("w-4 h-4 shrink-0 mt-0.5", f.startsWith('✓') ? "text-emerald-500" : "text-blue-500")} /> 
+                            <span className={cn(f.startsWith('✓') ? "text-emerald-500" : "")}>{f}</span>
                           </div>
                         ))}
                         {plan.notIncluded.map((f, j) => (

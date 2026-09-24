@@ -58,9 +58,10 @@ export default async function handler(req: any, res: any) {
         if (profile?.company_id) {
           let newMaxSeats = 1;
           const planLower = planName.toLowerCase();
-          if (planLower.includes('studio')) newMaxSeats = 5;
-          else if (planLower.includes('agency')) newMaxSeats = 10;
-          else if (planLower.includes('enterprise')) newMaxSeats = 20;
+          if (planLower.includes('team')) newMaxSeats = 3;
+          else if (planLower.includes('studio')) newMaxSeats = 5;
+          else if (planLower.includes('agency')) newMaxSeats = 15;
+          else if (planLower.includes('enterprise')) newMaxSeats = 25;
 
           await supabaseAdmin.from('companies').update({
             plan: planName,
@@ -116,6 +117,14 @@ export default async function handler(req: any, res: any) {
       let maxSeats = 1;
       
       const PRICING_MATRIX: Record<string, {name: string, seats: number}> = {
+        // Neue Tarife
+        'price_1UJ7wAQTfAtOGrggmwM9ctT7': {name: 'Starter', seats: 1},
+        'price_1UJ7wBQTfAtOGrgg0W8idkBn': {name: 'Starter', seats: 1},
+        'price_1UJ7wBQTfAtOGrggIHnw7NFO': {name: 'Pro', seats: 1},
+        'price_1UJ7wBQTfAtOGrggKhnjecz8': {name: 'Pro', seats: 1},
+        'price_1UJ7wCQTfAtOGrggtc8sK2NT': {name: 'Team Starter', seats: 3},
+        'price_1UJ7wCQTfAtOGrgg5jYFVujy': {name: 'Team Starter', seats: 3},
+        // Vorherige Tarife (Abwärtskompatibilität)
         'price_1TdyXhQTfAtOGrggdoSEPjWr': {name: 'Starter', seats: 1},
         'price_1TdyYYQTfAtOGrggNecH3ItP': {name: 'Starter', seats: 1},
         'price_1TcizpQTfAtOGrggKGYLMG4c': {name: 'Pro', seats: 1},
@@ -131,9 +140,10 @@ export default async function handler(req: any, res: any) {
         planName = 'Pro';
       }
 
-      if (planName.toLowerCase().includes('studio')) maxSeats = 5;
-      else if (planName.toLowerCase().includes('agency')) maxSeats = 10;
-      else if (planName.toLowerCase().includes('enterprise')) maxSeats = 20;
+      if (planName.toLowerCase().includes('team')) maxSeats = 3;
+      else if (planName.toLowerCase().includes('studio')) maxSeats = 5;
+      else if (planName.toLowerCase().includes('agency')) maxSeats = 15;
+      else if (planName.toLowerCase().includes('enterprise')) maxSeats = 25;
 
       const isSubActive = subscription.status === 'active' || subscription.status === 'trialing';
 

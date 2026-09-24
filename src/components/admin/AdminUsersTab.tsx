@@ -685,12 +685,13 @@ export default function AdminUsersTab() {
                       className="w-full px-4 py-2.5 bg-background border border-border/50 rounded-xl text-sm font-medium text-text-primary focus:outline-none focus:border-blue-500 font-semibold"
                     >
                       <option value="Free Trial">Free Trial</option>
-                      <option value="Starter">Starter (CHF 39 / Mon)</option>
-                      <option value="Pro">Pro (CHF 79 / Mon)</option>
-                      <option value="Expert">Expert (CHF 189 / Mon)</option>
-                      <option value="Studio">Kreativ Desk Studio (ab CHF 15'000)</option>
-                      <option value="Agency">Kreativ Desk Agency (CHF 25'000)</option>
-                      <option value="Enterprise">Kreativ Desk Enterprise (ab CHF 50'000.-)</option>
+                      <option value="Starter">Starter (CHF 59 / Mon)</option>
+                      <option value="Pro">Pro (CHF 109 / Mon)</option>
+                      <option value="Team Starter">Team Starter (CHF 290 / Mon)</option>
+                      <option value="Expert">Expert (Legacy)</option>
+                      <option value="Studio">Kreativ Desk Studio OS (CHF 6'800 / J.)</option>
+                      <option value="Agency">Kreativ Desk Agency OS (CHF 16'800 / J.)</option>
+                      <option value="Enterprise">Kreativ Desk Enterprise OS (ab CHF 45'000 / J.)</option>
                     </select>
                   </div>
 

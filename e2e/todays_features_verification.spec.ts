@@ -56,23 +56,23 @@ test.describe('🚀 Comprehensive End-to-End Test Suite: All Features of Today',
     await systemsSection.scrollIntoViewIfNeeded();
     await expect(systemsSection).toBeVisible();
 
-    // Studio OS (CHF 15'000 / 7'500)
+    // Studio OS (CHF 6'800 / 3'500)
     await expect(systemsSection.getByText(/Studio OS/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/15’000|15,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/7’500|7,500/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/6’800|6,800/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/3’500|3,500/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/5 Governance/i).first()).toBeVisible();
 
-    // Agency OS (CHF 25'000 / 19'500)
+    // Agency OS (CHF 16'800 / 6'500)
     await expect(systemsSection.getByText(/Agency OS/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/25’000|25,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/19’500|19,500/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/16’800|16,800/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/6’500|6,500/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/15 Governance/i).first()).toBeVisible();
 
-    // Enterprise OS (ab CHF 50'000 / ab 35'000)
+    // Enterprise OS (ab CHF 45'000 / ab 15'000)
     await expect(systemsSection.getByText(/Enterprise OS/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/50’000|50,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/35’000|35,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/25 Governance/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/45’000|45,000/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/15’000|15,000/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/25 Governance|25\+ Governance/i).first()).toBeVisible();
 
     // Additional Seat Note
     await expect(systemsSection.getByText(/780\/Jahr|780\/year/i).first()).toBeVisible();

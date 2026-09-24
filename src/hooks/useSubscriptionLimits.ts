@@ -1,6 +1,6 @@
 import { useAuth } from '../contexts/AuthContext';
 
-export type PlanName = 'Starter' | 'Pro' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise' | 'Free Trial';
+export type PlanName = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise' | 'Free Trial';
 
 export interface SubscriptionLimits {
   maxProjects: number;      // -1 means unlimited
@@ -14,15 +14,15 @@ export interface SubscriptionLimits {
 export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   'Free Trial': {
     maxProjects: 3,
-    maxStorageGB: 5,
-    maxSeats: 1, // Single user (B2B requires custom seats)
+    maxStorageGB: 15,
+    maxSeats: 1, // Single user
     hasInvoicing: false,
     hasApiAccess: false,
     hasCustomBranding: false,
   },
   'Starter': {
     maxProjects: 3,
-    maxStorageGB: 5,
+    maxStorageGB: 15,
     maxSeats: 1, // B2C Single user
     hasInvoicing: false,
     hasApiAccess: false,
@@ -30,16 +30,24 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   },
   'Pro': {
     maxProjects: -1, // Unlimited
-    maxStorageGB: 50,
+    maxStorageGB: 100,
     maxSeats: 1,
     hasInvoicing: false,
     hasApiAccess: false,
     hasCustomBranding: false,
   },
+  'Team Starter': {
+    maxProjects: -1,
+    maxStorageGB: 250,
+    maxSeats: 3,
+    hasInvoicing: true,
+    hasApiAccess: true,
+    hasCustomBranding: true,
+  },
   'Expert': {
     maxProjects: -1,
     maxStorageGB: 250,
-    maxSeats: 1,
+    maxSeats: 3,
     hasInvoicing: true,
     hasApiAccess: true,
     hasCustomBranding: true,
@@ -63,7 +71,7 @@ export const PLAN_LIMITS: Record<PlanName, SubscriptionLimits> = {
   'Enterprise': {
     maxProjects: -1,
     maxStorageGB: -1, // Unlimited
-    maxSeats: 30,
+    maxSeats: 25,
     hasInvoicing: true,
     hasApiAccess: true,
     hasCustomBranding: true,

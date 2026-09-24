@@ -691,7 +691,7 @@ export default function SettingsTab() {
   };
 
   // Stripe
-  const handleUpgradeStripe = async (planName: 'Starter' | 'Pro' | 'Expert' = 'Expert') => {
+  const handleUpgradeStripe = async (planName: 'Starter' | 'Pro' | 'Team Starter' | 'Expert' = 'Team Starter') => {
     if (!currentUser?.uid || !currentUser?.email) return;
     setIsUpgradeLoading(true);
     try { await initiateSubscriptionCheckout(planName, 'month', currentUser.uid, currentUser.email); } 
@@ -1227,7 +1227,7 @@ export default function SettingsTab() {
                 {isPortalLoading ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />} {t('manage_subscription')}
               </button>
             ) : (
-              <button type="button" onClick={() => handleUpgradeStripe('Expert')} disabled={isUpgradeLoading} className="mt-auto w-full py-3 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-600 transition-colors shadow-lg flex justify-center items-center gap-2 disabled:opacity-50">
+              <button type="button" onClick={() => window.dispatchEvent(new CustomEvent('open-upgrade-modal'))} disabled={isUpgradeLoading} className="mt-auto w-full py-3 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-600 transition-colors shadow-lg flex justify-center items-center gap-2 disabled:opacity-50">
                 {isUpgradeLoading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={18} />} {t('upgrade_now')}
               </button>
             )}

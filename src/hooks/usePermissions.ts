@@ -20,7 +20,30 @@ export function usePermissions() {
     
     if (isOwnerOrAdmin) return true;
 
-    // Check specific user profile flag for finance permission
+    // ZERO LEAKAGE: External contractors (Field Guest), guests, clients, and partners MUST NEVER access finance or budgets
+    const isExternalOrGuest = 
+      effectiveRole === 'guest' || 
+      effectiveRole === 'client' ||
+      normRole.includes('guest') ||
+      normRole.includes('extern') ||
+      normRole.includes('partner') ||
+      normRole.includes('contractor') ||
+      normRole.includes('handwerker') ||
+      normRole.includes('subcontractor');
+
+    if (isExternalOrGuest) {
+      if (
+        permission === 'canViewFinance' || 
+        permission === 'canViewProjectBudget' || 
+        permission === 'canEditBilling' ||
+        permission === 'canManageCompany' ||
+        permission === 'canManageUsers'
+      ) {
+        return false;
+      }
+    }
+
+    // Check specific user profile flag for finance permission (only for internal team members)
     if (permission === 'canViewFinance') {
       if (currentUser?.canViewFinance !== undefined) {
         return Boolean(currentUser.canViewFinance);

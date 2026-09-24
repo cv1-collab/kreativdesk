@@ -1,12 +1,13 @@
 import { supabase } from '../lib/supabase';
 
-export type PlanType = 'Starter' | 'Pro' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise';
+export type PlanType = 'Starter' | 'Pro' | 'Team Starter' | 'Expert' | 'Studio' | 'Agency' | 'Enterprise';
 export type BillingInterval = 'month' | 'year';
 
 const PRICING_MATRIX: Record<PlanType, Record<BillingInterval, string>> = {
-  Starter: { month: 'price_1TdyXhQTfAtOGrggdoSEPjWr', year: 'price_1TdyYYQTfAtOGrggNecH3ItP' },
-  Pro: { month: 'price_1TcizpQTfAtOGrggKGYLMG4c', year: 'price_1TdyU4QTfAtOGrggIvnyXe2j' },
-  Expert: { month: 'price_1TdyaEQTfAtOGrggpbWcVles', year: 'price_1TdyaxQTfAtOGrggbeJBPDFY' },
+  Starter: { month: 'price_1UJ7wAQTfAtOGrggmwM9ctT7', year: 'price_1UJ7wBQTfAtOGrgg0W8idkBn' },
+  Pro: { month: 'price_1UJ7wBQTfAtOGrggIHnw7NFO', year: 'price_1UJ7wBQTfAtOGrggKhnjecz8' },
+  'Team Starter': { month: 'price_1UJ7wCQTfAtOGrggtc8sK2NT', year: 'price_1UJ7wCQTfAtOGrgg5jYFVujy' },
+  Expert: { month: 'price_1UJ7wCQTfAtOGrggtc8sK2NT', year: 'price_1UJ7wCQTfAtOGrgg5jYFVujy' },
   Studio: { month: '', year: '' },
   Agency: { month: '', year: '' },
   Enterprise: { month: '', year: '' }

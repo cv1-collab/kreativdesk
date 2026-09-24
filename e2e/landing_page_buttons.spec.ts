@@ -77,29 +77,29 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
 
     // Verify Studio OS
     await expect(systemsSection.getByText(/Studio OS/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/15’000|15,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/7’500|7,500/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/6’800|6,800/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/3’500|3,500/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/5 Governance|5 Team/i).first()).toBeVisible();
 
     // Verify Agency OS (Execution Booster)
     await expect(systemsSection.getByText(/Agency OS/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/25’000|25,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/19’500|19,500/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/16’800|16,800/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/6’500|6,500/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/15 Governance|15 Team/i).first()).toBeVisible();
     await expect(systemsSection.getByText(/EXECUTION BOOSTER/i).first()).toBeVisible();
 
     // Verify Enterprise OS
     await expect(systemsSection.getByText(/Enterprise OS/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/50’000|50,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/35’000|35,000/i).first()).toBeVisible();
-    await expect(systemsSection.getByText(/25 Governance|25 Team/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/45’000|45,000/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/15’000|15,000/i).first()).toBeVisible();
+    await expect(systemsSection.getByText(/25 Governance|25\+ Team/i).first()).toBeVisible();
 
     // Verify Setup anfragen button
     const setupBtn = systemsSection.getByRole('button', { name: /Setup anfragen|Request Setup/i }).first();
     await expect(setupBtn).toBeVisible();
   });
 
-  test('5. SaaS Plans (Starter, Pro, Expert) toggle Monthly/Yearly and display Stripe features', async ({ page }) => {
+  test('5. SaaS Plans (Starter, Pro, Team Starter) toggle Monthly/Yearly and display Stripe features', async ({ page }) => {
     const pricingSection = page.locator('#pricing');
     await pricingSection.scrollIntoViewIfNeeded();
     await expect(pricingSection).toBeVisible();
@@ -110,17 +110,17 @@ test.describe('Master Landing Page & Features Comprehensive E2E Verification Sui
 
     await monthlyBtn.click();
     await page.waitForTimeout(200);
-    // Starter monthly is CHF 39
-    await expect(pricingSection.getByText(/CHF\s*39/i).first()).toBeVisible();
+    // Starter monthly is CHF 59
+    await expect(pricingSection.getByText(/CHF\s*59/i).first()).toBeVisible();
 
     await yearlyBtn.click();
     await page.waitForTimeout(200);
-    // Starter yearly is CHF 35
-    await expect(pricingSection.getByText(/CHF\s*35/i).first()).toBeVisible();
-    // Pro yearly is CHF 65
-    await expect(pricingSection.getByText(/CHF\s*65/i).first()).toBeVisible();
-    // Expert yearly is CHF 159
-    await expect(pricingSection.getByText(/CHF\s*159/i).first()).toBeVisible();
+    // Starter yearly is CHF 49
+    await expect(pricingSection.getByText(/CHF\s*49/i).first()).toBeVisible();
+    // Pro yearly is CHF 89
+    await expect(pricingSection.getByText(/CHF\s*89/i).first()).toBeVisible();
+    // Team Starter yearly is CHF 240
+    await expect(pricingSection.getByText(/CHF\s*240/i).first()).toBeVisible();
 
     // Verify crossed-out enterprise features for SaaS plans
     await expect(pricingSection.getByText(/Zentrales Firmen-Dashboard|Central Company Dashboard/i).first()).toBeVisible();

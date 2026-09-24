@@ -184,8 +184,19 @@ export default function Layout() {
   const projectHours = safeTimeEntries.filter((e: any) => e.projectId === project?.id).reduce((sum: number, e: any) => sum + e.hours, 0) || 0;
 
   const { hasPermission } = usePermissions();
-  const isGuestOrClient = (currentUser?.role === 'guest' || currentUser?.role === 'client');
-  const canSeeProjFinance = !isGuestOrClient || hasPermission('canViewProjectBudget') || hasPermission('canViewFinance') || currentUser?.canViewFinance === true;
+  const userRoleStr = (currentUser?.role || '').toLowerCase().trim();
+  const isGuestOrContractor = 
+    userRoleStr === 'guest' || 
+    userRoleStr === 'client' || 
+    userRoleStr.includes('guest') || 
+    userRoleStr.includes('extern') || 
+    userRoleStr.includes('partner') || 
+    userRoleStr.includes('contractor') || 
+    userRoleStr.includes('handwerker') || 
+    userRoleStr.includes('subcontractor');
+
+  // ZERO LEAKAGE: External contractors and guests never see the Finance / BKP navigation item
+  const canSeeProjFinance = !isGuestOrContractor && (hasPermission('canViewProjectBudget') || hasPermission('canViewFinance'));
 
   const menuGroups = [
     {

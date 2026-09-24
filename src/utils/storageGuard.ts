@@ -1,13 +1,14 @@
 import { supabase } from '../lib/supabase';
 
 export const STORAGE_LIMITS = {
-  'Starter': 5 * 1024 * 1024 * 1024,
-  'Pro': 50 * 1024 * 1024 * 1024,
+  'Starter': 15 * 1024 * 1024 * 1024,
+  'Pro': 100 * 1024 * 1024 * 1024,
+  'Team Starter': 250 * 1024 * 1024 * 1024,
   'Expert': 250 * 1024 * 1024 * 1024,
-  'Studio': 250 * 1024 * 1024 * 1024,
-  'Agency': 250 * 1024 * 1024 * 1024,
-  'Enterprise': 250 * 1024 * 1024 * 1024,
-  'Free Trial': 5 * 1024 * 1024 * 1024
+  'Studio': 500 * 1024 * 1024 * 1024,
+  'Agency': 2000 * 1024 * 1024 * 1024,
+  'Enterprise': 5000 * 1024 * 1024 * 1024,
+  'Free Trial': 15 * 1024 * 1024 * 1024
 };
 
 export const parseSizeToBytes = (sizeStr: string | number): number => {

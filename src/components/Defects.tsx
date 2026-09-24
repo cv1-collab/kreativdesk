@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import { 
   AlertTriangle, LayoutGrid, List as ListIcon, Sparkles, Loader2, ChevronsUp, ChevronUp, 
   Equal, ChevronDown, Printer, BrainCircuit, Image as ImageIcon, Camera, X, Plus, 
-  Trash2, Smartphone, Eye, MapPin, AlignLeft, Edit2, Calendar, FileText, Mic
+  Trash2, Smartphone, Eye, MapPin, AlignLeft, Edit2, Calendar, FileText, Mic, Shield
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { callGeminiAPI } from '../utils/geminiClient';
@@ -182,8 +182,9 @@ const DefectsPDFDocument = ({ settings, defects, projectHeader, t }: any) => (
 export default function Defects({ projectId: propProjectId }: { projectId?: string }) {
   const { currentUser } = useAuth();
   const { addToast } = useToast();
-  const { projects, activeProjectId, isDemoMode } = useProject() as any;
+  const { projects, activeProjectId, isDemoMode, companyUsers } = useProject() as any;
   const { language, t: globalT } = useLanguage();
+  const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const { projectId: routeProjectId } = useParams<{ projectId: string }>();
 
   // 🔥 FIX: Prop ID bevorzugen (für die Demo-App)
@@ -192,6 +193,30 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   
   const t = (key: string) => localTranslations[language as 'en' | 'de']?.[key] || globalT(key);
   const activeProject = projects?.find((p: any) => p.id === currentProjectId);
+
+  // ZERO LEAKAGE: Role detection & Trade assignment
+  const userRoleStr = (currentUser?.role || '').toLowerCase().trim();
+  const isFieldGuest = 
+    userRoleStr === 'field guest' || 
+    userRoleStr === 'field_guest' || 
+    userRoleStr === 'guest' || 
+    userRoleStr === 'contractor' || 
+    userRoleStr === 'handwerker' || 
+    userRoleStr.includes('extern') || 
+    userRoleStr.includes('partner') || 
+    userRoleStr.includes('subcontractor');
+
+  // Look up contractor profile in companyUsers or currentUser metadata
+  const matchingContact = (companyUsers || []).find((u: any) => 
+    (u.email && currentUser?.email && u.email.toLowerCase() === currentUser.email.toLowerCase()) || 
+    u.id === currentUser?.id || 
+    u.userId === currentUser?.id
+  );
+
+  const userTrade = (currentUser as any)?.trade || matchingContact?.trade || matchingContact?.department || '';
+  const userCompany = currentUser?.companyName || matchingContact?.company_name || '';
+  const userName = currentUser?.name || currentUser?.displayName || matchingContact?.name || '';
+  const userEmail = currentUser?.email || '';
 
   const [defects, setDefects] = useState<Defect[]>([]);
   const [viewMode, setViewModeRaw] = useState<'board' | 'list'>(() => {
@@ -287,6 +312,35 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     }
   }, [isDemo, queryDefects]);
 
+  // Zero-Leakage Filtered Defects:
+  // If user is a Field Guest / external contractor, they ONLY see defects matching their trade, assignee, or created by them!
+  const displayDefects = React.useMemo(() => {
+    if (!isFieldGuest) return defects;
+    
+    return defects.filter(d => {
+      // 1. Match by trade / gewerk
+      if (userTrade && d.trade) {
+        const dt = d.trade.toLowerCase();
+        const ut = userTrade.toLowerCase();
+        if (dt.includes(ut) || ut.includes(dt)) return true;
+      }
+      // 2. Match by assignee (email, name, or company)
+      if (d.assignee) {
+        const ass = d.assignee.toLowerCase();
+        if (userEmail && ass.includes(userEmail.toLowerCase())) return true;
+        if (userName && ass.includes(userName.toLowerCase())) return true;
+        if (userCompany && ass.includes(userCompany.toLowerCase())) return true;
+      }
+      // 3. Match if created by this user
+      if (d.ownerId && d.ownerId === currentUser?.id) return true;
+
+      // If contractor has no specific trade assigned yet, show items directly assigned to them
+      if (!userTrade && !d.assignee) return false;
+
+      return false;
+    });
+  }, [defects, isFieldGuest, userTrade, userCompany, userName, userEmail, currentUser?.id]);
+
   useEffect(() => {
     return offlineSyncManager.registerAutoSync((msg, type) => {
       addToast(msg, type);
@@ -333,7 +387,16 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
   };
   const handleTouchMoveCancel = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
 
-  const openAddModal = () => { setEditingId(null); setCurrentDefect(DEFAULT_DEFECT); setShowQrScanner(false); setIsModalOpen(true); };
+  const openAddModal = () => { 
+    setEditingId(null); 
+    setCurrentDefect({
+      ...DEFAULT_DEFECT,
+      trade: userTrade || '',
+      assignee: userTrade ? `${userCompany || userName || userEmail} (${userTrade})` : (userName || userEmail || '')
+    }); 
+    setShowQrScanner(false); 
+    setIsModalOpen(true); 
+  };
   const openEditModal = (defect: Defect) => { setEditingId(defect.id); setCurrentDefect({ ...defect }); setShowQrScanner(false); setIsModalOpen(true); };
 
   const handleSaveDefect = async (e: React.FormEvent) => {
@@ -448,6 +511,13 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
     if (!window.confirm(t('delete_confirm'))) return;
 
     const targetDefect = defects.find(d => d.id === id);
+
+    // ZERO LEAKAGE: Contractors can only delete their own tickets
+    if (isFieldGuest && targetDefect && targetDefect.ownerId !== currentUser?.id) {
+      addToast(currentLang === 'de' ? 'Nur eigene erstellte Tickets können gelöscht werden.' : 'You can only delete your own tickets.', 'info');
+      return;
+    }
+
     setDefects(prev => prev.filter(d => d.id !== id));
 
     try { 
@@ -665,6 +735,23 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
              </button>
           </div>
 
+          {/* ZERO LEAKAGE BANNER FOR FIELD GUESTS / CONTRACTORS */}
+          {isFieldGuest && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs sm:text-sm text-blue-500 font-medium shrink-0 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <Shield size={16} className="text-blue-500 shrink-0" />
+                <span>
+                  {currentLang === 'de' 
+                    ? `Gewerke-Ansicht aktiv: Du siehst nur Mängel deines Gewerks (${userTrade || 'zugewiesene Arbeiten'}) – BKP Budget & Fremdgewerke sind geschützt.`
+                    : `Contractor View Active: You only see punch items of your trade (${userTrade || 'assigned tasks'}) – budgets & other trades are protected.`}
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-bold uppercase tracking-wider self-start sm:self-auto shrink-0">
+                Zero Leakage
+              </span>
+            </div>
+          )}
+
           {aiInsights && (
             <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 flex items-start gap-4 animate-in slide-in-from-top-2 shrink-0">
               <BrainCircuit className="text-purple-400 shrink-0 mt-0.5" size={20} />
@@ -677,7 +764,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
             <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-24 -mx-2 md:mx-0 px-2 md:px-0">
               <div className="flex gap-4 md:gap-6 h-full min-w-[900px]">
                 {STATUS_COLUMNS.map(status => {
-                  const colDefects = defects.filter(d => d.status === status);
+                  const colDefects = displayDefects.filter(d => d.status === status);
                   return (
                     <div key={status} data-status={status} className="flex-1 flex flex-col w-[260px] md:w-[300px] bg-surface/50 border border-border rounded-xl p-3 md:p-4 shadow-sm h-full" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, status)}>
                       <div className="flex items-center justify-between mb-4 shrink-0">
@@ -733,7 +820,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                   <tr><th className="px-6 py-4 font-semibold">{t('title')}</th><th className="px-6 py-4 font-semibold">{t('location')}</th><th className="px-6 py-4 font-semibold">{t('due_date')}</th><th className="px-6 py-4 font-semibold">{t('status')}</th><th className="px-6 py-4 font-semibold">{t('priority')}</th><th className="px-6 py-4 font-semibold">{t('trade')}</th><th className="px-6 py-4 text-right font-semibold">{t('actions')}</th></tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {defects.map(defect => (
+                  {displayDefects.map(defect => (
                     <tr key={defect.id} onClick={() => openEditModal(defect)} className="hover:bg-background transition-colors group cursor-pointer">
                       <td className="px-6 py-4 font-bold text-text-primary">{defect.title}</td>
                       <td className="px-6 py-4 text-text-muted font-medium">{defect.location || '-'}</td>
@@ -748,8 +835,8 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
               </table>
 
               <div className="md:hidden flex flex-col gap-3 pb-24">
-                {defects.length === 0 && <div className="text-center text-text-muted py-8 text-sm border-2 border-dashed border-border rounded-xl mx-2 bg-surface">{t('no_data_for_analysis')}</div>}
-                {defects.map(defect => (
+                {displayDefects.length === 0 && <div className="text-center text-text-muted py-8 text-sm border-2 border-dashed border-border rounded-xl mx-2 bg-surface">{t('no_data_for_analysis')}</div>}
+                {displayDefects.map(defect => (
                   <div key={defect.id} onClick={() => openEditModal(defect)} className="bg-surface border border-border rounded-xl p-4 shadow-sm flex flex-col gap-3 cursor-pointer">
                     <div className="flex justify-between items-start">
                       <div className="font-bold text-text-primary text-sm line-clamp-2 pr-2">{defect.title}</div>
@@ -813,7 +900,17 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2 h-5"><MapPin size={14}/> {t('location')}</label><input type="text" value={currentDefect.location} onChange={e => setCurrentDefect({...currentDefect, location: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" placeholder="z.B. Raum 3.04" /></div>
                       <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2 h-5"><Calendar size={14}/> {t('due_date')}</label><input type="date" value={currentDefect.dueDate} onChange={e => setCurrentDefect({...currentDefect, dueDate: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" /></div>
-                      <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">{t('trade')}</label><input type="text" value={currentDefect.trade} onChange={e => setCurrentDefect({...currentDefect, trade: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm" placeholder="z.B. Elektro" /></div>
+                      <div>
+                        <label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">{t('trade')}</label>
+                        <input 
+                          type="text" 
+                          value={currentDefect.trade} 
+                          disabled={isFieldGuest && !!userTrade}
+                          onChange={e => setCurrentDefect({...currentDefect, trade: e.target.value})} 
+                          className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai shadow-sm disabled:opacity-75 disabled:cursor-not-allowed" 
+                          placeholder="z.B. Elektro" 
+                        />
+                      </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">{t('priority')}</label><select value={currentDefect.priority} onChange={e => setCurrentDefect({...currentDefect, priority: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer shadow-sm"><option value="Low" className="bg-surface">{t('low')}</option><option value="Medium" className="bg-surface">{t('medium')}</option><option value="High" className="bg-surface">{t('high')}</option><option value="Critical" className="bg-surface">{t('critical')}</option></select></div>
                         <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center h-5">{t('status')}</label><select value={currentDefect.status} onChange={e => setCurrentDefect({...currentDefect, status: e.target.value})} className="w-full bg-background border border-border/50 rounded-lg py-3 px-4 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai cursor-pointer shadow-sm"><option value="To Do" className="bg-surface">{t('to_do')}</option><option value="In Progress" className="bg-surface">{t('in_progress')}</option><option value="In Review" className="bg-surface">{t('in_review')}</option><option value="Done" className="bg-surface">{t('done')}</option></select></div>
@@ -911,7 +1008,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
             {(settings) => (
               <DefectsPDFDocument 
                 settings={settings}
-                defects={defects}
+                defects={displayDefects}
                 projectHeader={projectHeader}
                 t={t}
               />
