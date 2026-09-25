@@ -208,14 +208,14 @@ async function testLiveIsolation() {
   } finally {
     // Clean up
     console.log("🧹 Bereinige Test-Benutzer und Test-Mandanten...");
-    if (userAId) await admin.auth.admin.deleteUser(userAId);
-    if (userBId) await admin.auth.admin.deleteUser(userBId);
     await admin.from('documents').delete().eq('company_id', companyAId);
     await admin.from('defects').delete().eq('company_id', companyAId);
     await admin.from('leads').delete().eq('company_id', companyAId);
     await admin.from('company_users').delete().eq('company_id', companyAId);
     await admin.from('projects').delete().eq('company_id', companyAId);
     await admin.from('companies').delete().in('id', [companyAId, companyBId]);
+    if (userAId) await admin.auth.admin.deleteUser(userAId);
+    if (userBId) await admin.auth.admin.deleteUser(userBId);
     console.log("✅ Bereinigung abgeschlossen.");
   }
 }
