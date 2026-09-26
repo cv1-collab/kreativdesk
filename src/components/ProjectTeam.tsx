@@ -260,13 +260,13 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
             <ModuleGuideButton moduleId="team" />
-            <button onClick={() => setIsAddMemberModalOpen(true)} className="flex-1 md:flex-none px-5 py-3 md:py-2 bg-accent-ai text-white rounded-xl md:rounded-lg text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-2">
+            <button onClick={() => setIsAddMemberModalOpen(true)} className="tour-team-add-btn flex-1 md:flex-none px-5 py-3 md:py-2 bg-accent-ai text-white rounded-xl md:rounded-lg text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-2">
               <UserPlus size={18} /> {t('add_person')}
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto bg-surface border border-border rounded-2xl shadow-lg custom-scrollbar">
+        <div className="tour-team-table flex-1 overflow-auto bg-surface border border-border rounded-2xl shadow-lg custom-scrollbar">
           <table className="hidden md:table w-full text-sm text-left">
             <thead className="text-xs uppercase tracking-wider text-text-muted bg-surface/50 border-b border-border sticky top-0 z-10">
               <tr>

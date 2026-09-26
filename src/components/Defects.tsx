@@ -740,10 +740,10 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <ModuleGuideButton moduleId="defects" />
-                <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex px-3.5 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors items-center justify-center gap-1.5 shadow-sm">
+                <button onClick={() => setIsPdfStudioOpen(true)} className="tour-defects-pdf hidden md:flex px-3.5 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors items-center justify-center gap-1.5 shadow-sm">
                   <FileText size={16} /> <span>PDF Export</span>
                 </button>
-                <button onClick={openAddModal} className="flex-1 sm:flex-none px-4 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-1.5 whitespace-nowrap"><Plus size={16} /> {t('add_defect')}</button>
+                <button onClick={openAddModal} className="tour-defects-add flex-1 sm:flex-none px-4 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-1.5 whitespace-nowrap"><Plus size={16} /> {t('add_defect')}</button>
               </div>
             </div>
           </header>
@@ -780,7 +780,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
           )}
 
           {viewMode === 'board' ? (
-            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-24 -mx-2 md:mx-0 px-2 md:px-0">
+            <div className="tour-defects-board flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-24 -mx-2 md:mx-0 px-2 md:px-0">
               <div className="flex gap-4 md:gap-6 h-full min-w-[900px]">
                 {STATUS_COLUMNS.map(status => {
                   const colDefects = displayDefects.filter(d => d.status === status);

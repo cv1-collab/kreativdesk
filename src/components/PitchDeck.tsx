@@ -745,7 +745,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
              <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
-                className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
+                className="tour-pitch-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
                 title={t('export_tooltip')}
               >
                 <Download size={14} /> <span>{t('export')}</span>
@@ -753,14 +753,14 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
              <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
                <Settings size={14} /> <span className="hidden xs:inline">{t('open_studio')}</span>
              </button>
-             <button onClick={toggleFullscreen} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-accent-ai text-white rounded-lg text-xs font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex items-center gap-1.5">
+             <button onClick={toggleFullscreen} className="tour-pitch-present px-2.5 sm:px-4 py-1.5 sm:py-2 bg-accent-ai text-white rounded-lg text-xs font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex items-center gap-1.5">
                <Play size={14} className="fill-current" /> <span className="hidden sm:inline">{t('presentation_mode')}</span>
              </button>
           </div>
         </header>
       )}
 
-      <div ref={containerRef} onPointerMove={handlePointerMove} className={cn("flex-1 relative flex items-center justify-center overflow-hidden cursor-crosshair", isFullscreen ? "fixed inset-0 z-[9999] bg-black rounded-none border-none" : "bg-zinc-950")}>
+      <div ref={containerRef} onPointerMove={handlePointerMove} className={cn("tour-pitch-stage flex-1 relative flex items-center justify-center overflow-hidden cursor-crosshair", isFullscreen ? "fixed inset-0 z-[9999] bg-black rounded-none border-none" : "bg-zinc-950")}>
         
         {/* MULTIPLAYER REALTIME LASER POINTERS */}
         {Object.entries(remoteCursors).map(([id, cursor]) => (

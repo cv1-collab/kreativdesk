@@ -1014,7 +1014,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
                 <button 
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isUploading}
-                  className="flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50 cursor-pointer"
+                  className="tour-docs-upload flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
                   {t('upload')}
@@ -1039,7 +1039,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       </div>
 
       {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen vs. Kunden-Offerten & Layout Switcher */}
-      <div className="flex flex-row justify-between items-center gap-2 border-b border-border/70 pb-1 overflow-x-auto custom-scrollbar">
+      <div className="tour-docs-tabs flex flex-row justify-between items-center gap-2 border-b border-border/70 pb-1 overflow-x-auto custom-scrollbar">
         <div className="flex border-b border-transparent gap-1.5 shrink-0">
           {!isProjectMode && (
             <button
@@ -1156,7 +1156,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
 
           {/* Search & Sort Dropdown */}
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <div className="relative flex-1 sm:w-48">
+            <div className="tour-docs-search relative flex-1 sm:w-48">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
               <input
                 type="text"

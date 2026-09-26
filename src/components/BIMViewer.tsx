@@ -1207,10 +1207,10 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
             <div className="flex flex-col items-end">
               <div className="flex flex-wrap gap-2 items-center">
                 <ModuleGuideButton moduleId="bim" />
-                <button onClick={handleAudit} className={cn("px-4 py-2 border rounded-md text-sm font-medium transition-colors flex items-center gap-2", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
+                <button onClick={handleAudit} className={cn("tour-bim-audit px-4 py-2 border rounded-md text-sm font-medium transition-colors flex items-center gap-2", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
                   <Sparkles size={16} />{auditMode ? t('analyzing_model') : t('audit_report')}
                 </button>
-                <button onClick={handleOpenPdfStudio} className="hidden md:flex px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-medium hover:bg-background transition-colors items-center gap-2 shadow-sm">
+                <button onClick={handleOpenPdfStudio} className="tour-bim-pdf hidden md:flex px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-medium hover:bg-background transition-colors items-center gap-2 shadow-sm">
                   <FileText size={16} /> <span>{t('create_pdf_btn')}</span>
                 </button>
                 <button onClick={handleOpenRenderModal} className="px-4 py-2 bg-accent-ai text-white rounded-md text-sm font-medium hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center gap-2">
@@ -1223,7 +1223,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">
           
-          <div ref={viewerRef} className={cn("flex-1 bg-black border border-border rounded-xl relative overflow-hidden flex flex-col min-h-0 z-10", isFullscreen && "fixed inset-0 z-[9999] rounded-none border-none")}>
+          <div ref={viewerRef} className={cn("tour-bim-viewport flex-1 bg-black border border-border rounded-xl relative overflow-hidden flex flex-col min-h-0 z-10", isFullscreen && "fixed inset-0 z-[9999] rounded-none border-none")}>
             
             {isMobile && !forceMobile3D ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 p-6 text-center relative overflow-hidden">
@@ -1249,7 +1249,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
               </div>
             ) : (
               <>
-                <div className="absolute top-0 left-0 right-0 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-2 flex flex-wrap justify-between items-center z-20 shadow-sm pointer-events-auto">
+                <div className="tour-bim-tools absolute top-0 left-0 right-0 bg-surface/90 backdrop-blur-md border-b border-border px-4 py-2 flex flex-wrap justify-between items-center z-20 shadow-sm pointer-events-auto">
                   <div className="flex items-center gap-1">
                     <button onClick={() => { setCameraMode('rotate'); setMeasureMode(false); setDefectMode(false); setSelectedId(null); }} className={cn("p-2 rounded-md transition-colors", cameraMode === 'rotate' && !measureMode && !defectMode ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('rotate')}><Rotate3D size={18} /></button>
                     <button onClick={() => { setCameraMode('pan'); setMeasureMode(false); setDefectMode(false); setSelectedId(null); }} className={cn("p-2 rounded-md transition-colors", cameraMode === 'pan' && !measureMode && !defectMode ? "bg-blue-500/20 text-blue-400" : "text-text-muted hover:bg-background hover:text-text-primary")} title={t('pan')}><Hand size={18} /></button>
@@ -1364,7 +1364,7 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           </div>
 
           {!isMobile && (
-            <div className="w-full md:w-80 flex flex-col gap-4 shrink-0 h-full min-h-0 relative z-20">
+            <div className="tour-bim-sidebar w-full md:w-80 flex flex-col gap-4 shrink-0 h-full min-h-0 relative z-20">
               {uiPanels}
             </div>
           )}

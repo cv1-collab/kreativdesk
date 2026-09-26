@@ -149,7 +149,7 @@ export default function ProductTour() {
       if (activeModuleTour === 'bim') {
         candidateDefs = [
           {
-            target: '.tour-bim-viewport, canvas, .tour-btn-module-guide, body',
+            target: '.tour-bim-viewport, canvas, body',
             title: isGerman ? '3D BIM Viewer & Navigation' : '3D BIM Viewer & Navigation',
             content: isGerman
               ? 'Interagiere direkt mit dem 3D-BIM-Modell: Linksklick gedrückt halten zum Rotieren (Orbit), Rechtsklick zum Verschieben (Pan) und Scrollrad zum Zoomen. Oben rechts kannst du zwischen Perspektive, Draufsicht und Schnitten umschalten.'
@@ -160,7 +160,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-bim-sidebar, .tour-bim-tools, .tour-btn-module-guide, body',
+            target: '.tour-bim-sidebar, .tour-bim-tools, body',
             title: isGerman ? 'Bauteil-Inspektor & IFC-Parameter' : 'Component Inspector & IFC Parameters',
             content: isGerman
               ? 'Wähle ein beliebiges Bauteil (z.B. Decke, Wand, Fenster) im 3D-Modell an, um exakte Geometriedaten, Volumen, BKP-Kostenzuordnung und IFC-Properties (Psets) im Inspektor einzusehen.'
@@ -171,7 +171,7 @@ export default function ProductTour() {
             placement: 'left'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-bim-audit, .tour-bim-pdf, .tour-bim-tools, body',
             title: isGerman ? '3D-Mängel-Pins & KI-Audit' : '3D Defect Pins & AI Audit',
             content: isGerman
               ? 'Platziere Mängel als Pins direkt auf der 3D-Oberfläche oder starte den KI-Audit, um das Modell automatisch auf Normenkonformität und Kollisionen zu prüfen.'
@@ -185,7 +185,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'finance') {
         candidateDefs = [
           {
-            target: '.tour-finance-invoices, .tour-btn-module-guide, header, body',
+            target: '.tour-finance-table, .tour-finance-budget, body',
             title: isGerman ? 'Schweizer BKP 1–9 Kostenstruktur' : 'Swiss BKP 1–9 Cost Structure',
             content: isGerman
               ? 'Deine Baukosten sind nach standardisierter Schweizer BKP-Systematik (BKP 1–9) gegliedert: Vorbereitung, Rohbau, Hülle, Ausbau, Betriebseinrichtungen, Umgebung und SIA 102/108 Baunebenkosten.'
@@ -196,18 +196,18 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'table, div.overflow-x-auto, .tour-btn-module-guide, body',
-            title: isGerman ? '3-Spaltiger Soll/Ist-Vergleich & Prognose' : '3-Column Plan/Actual Comparison',
+            target: '.tour-finance-tabs, .tour-finance-control, body',
+            title: isGerman ? '3-Spaltiger Soll/Ist-Vergleich & Ansichten' : '3-Column Plan/Actual Comparison & Views',
             content: isGerman
-              ? 'Behalte bewilligtes Budget, vergebene Werkverträge und bezahlte Handwerker-Rechnungen in Echtzeit im Blick. Über- oder Unterschreitungen werden sofort farblich signalisiert.'
-              : 'Compare approved budget, awarded contracts, and paid invoices in real time. Colored indicators highlight cost variances instantly.',
+              ? 'Wechsle zwischen Budgetplan, Zahlungskontrolle und Cashflow-Analyse. Behalte bewilligtes Budget, vergebene Werkverträge und bezahlte Handwerker-Rechnungen in Echtzeit im Blick.'
+              : 'Switch between Budget Plan, Payment Control, and Cashflow. Compare approved budget, awarded contracts, and paid invoices in real time.',
             IconComponent: Target,
-            submodules: isGerman ? ['Budget vs. Ist', 'Vergabe-Stand', 'Kostenprognose'] : ['Budget vs. Actual', 'Contract Status', 'Cost Forecast'],
+            submodules: isGerman ? ['Budget vs. Ist', 'Zahlungskontrolle', 'Kostenprognose'] : ['Budget vs. Actual', 'Payment Control', 'Cost Forecast'],
             proTip: isGerman ? 'Klicke auf eine BKP-Position, um alle verknüpften Handwerker-Teilrechnungen aufzuschlüsseln.' : 'Click any cost line to expand all linked contractor invoices and expenses.',
-            placement: 'top'
+            placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-finance-invoices, .tour-finance-export, .tour-finance-pdf, body',
             title: isGerman ? 'ISO 20022 Schweizer QR-Rechnung & Export' : 'Swiss QR-Bill & PDF Export',
             content: isGerman
               ? 'Generiere gesetzeskonforme Schweizer QR-Rechnungen mit QR-IBAN und strukturierter Referenznummer oder exportiere den gesamten Kostenstand per Klick ins Universal PDF Studio.'
@@ -221,7 +221,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'plans' || activeModuleTour === 'cad') {
         candidateDefs = [
           {
-            target: 'aside, .tour-btn-module-guide, header, body',
+            target: '.tour-plan-toolbar, aside, body',
             title: isGerman ? 'TrueScale 2D-Grundrisse & Massstab 1:50' : 'TrueScale 2D Plans & 1:50 Scale',
             content: isGerman
               ? 'Prüfe 2D-Architekturpläne in echten SIA-Massstäben (1:50, 1:100). Nutze das Messwerkzeug in der linken Werkzeugleiste zur zentimetergenauen Distanz- und Wandstärkenprüfung.'
@@ -232,7 +232,7 @@ export default function ProductTour() {
             placement: 'right'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-plan-toolbar, aside, body',
             title: isGerman ? 'Farbcodierte Mängel-Pins (SIA 118)' : 'Color-coded Defect Pins (SIA 118)',
             content: isGerman
               ? 'Platziere Mängel zentimetergenau mit farbcodierten Pins: Rot (Offen), Gelb (In Arbeit), Blau (Zur Abnahme) und Grün (Behoben). Jeder Pin speichert Gewerk, Frist und Fotos.'
@@ -240,10 +240,10 @@ export default function ProductTour() {
             IconComponent: Target,
             submodules: isGerman ? ['Rot: Offen', 'Gelb: In Bearbeitung', 'Blau: Abnahme', 'Grün: Behoben'] : ['Red: Open', 'Amber: In Progress', 'Blue: Review', 'Green: Resolved'],
             proTip: isGerman ? 'Klicke auf einen Pin, um Details und Behebungs-Status sofort anzupassen.' : 'Click any pin to edit its status, trade, or photos.',
-            placement: 'bottom'
+            placement: 'right'
           },
           {
-            target: 'header, button, .tour-btn-module-guide, body',
+            target: '.tour-plan-pdf, .tour-plan-upload, body',
             title: isGerman ? 'Plankopf, Freigabe & PDF-Druck' : 'Title Block, Approval & PDF Print',
             content: isGerman
               ? 'Füge SIA-konforme Planköpfe, Nordpfeile und Massstabsleisten ein. Exportiere druckreife Ausführungspläne in A3 oder A4 für die Handwerker auf der Baustelle.'
@@ -257,7 +257,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'defects') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, button, body',
+            target: '.tour-defects-add, body',
             title: isGerman ? 'Mobile Mängelerfassung & PWA Offline' : 'Mobile Defect Logging & Offline PWA',
             content: isGerman
               ? 'Erfasse Baumängel in Sekunden mit Smartphone oder Tablet: Schiesse Fotos, diktiere Sprachnotizen und weise den Mangel sofort dem zuständigen Handwerker zu.'
@@ -268,7 +268,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'header, div, .tour-btn-module-guide, body',
+            target: '.tour-defects-board, body',
             title: isGerman ? 'SIA 118 Rügefristen & Statusverfolgung' : 'SIA 118 Deadlines & Status Tracking',
             content: isGerman
               ? 'Verfolge Tickets auf dem Board von Offen über In Arbeit bis zur mängelfreien Abnahme. Gesetzliche Rügefristen nach Schweizer SIA 118 werden automatisch überwacht.'
@@ -276,10 +276,10 @@ export default function ProductTour() {
             IconComponent: Calendar,
             submodules: isGerman ? ['SIA 118 2-Jahresfrist', 'Kanban Drag & Drop', 'Gewerke-Filter'] : ['SIA 118 Warranty Period', 'Kanban Drag & Drop', 'Trade Filters'],
             proTip: isGerman ? 'Filtere nach Unternehmer, um zielgerichtete Pendenzenlisten für Bauleitungssitzungen zu erstellen.' : 'Filter by trade to generate focused task lists for site coordinator meetings.',
-            placement: 'bottom'
+            placement: 'top'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-defects-pdf, body',
             title: isGerman ? 'Offizielles Mängelprotokoll (PDF)' : 'Official Defect Protocol (PDF)',
             content: isGerman
               ? 'Erstelle mit einem Klick das rechtssichere Abnahme- und Rügeprotokoll inklusive Vorher/Nachher-Fotos, Unterschriftenfeldern und BKP-Zuordnung für Bauherr und Unternehmer.'
@@ -293,7 +293,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'calendar') {
         candidateDefs = [
           {
-            target: '.tour-calendar-gantt, .tour-btn-module-guide, header, body',
+            target: '.tour-calendar-gantt, .tour-calendar-views, body',
             title: isGerman ? 'SIA-Bauphasen & Gantt-Masterplan' : 'SIA Phases & Gantt Masterplan',
             content: isGerman
               ? 'Strukturiere deine Bauphasen nach SIA 112 (Vorprojekt, Bewilligung, Rohbau, Ausbau, Übergabe) im interaktiven Gantt-Balkenplan mit Meilensteinen und Deadlines.'
@@ -304,7 +304,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-calendar-pdf, body',
             title: isGerman ? 'Bautagebuch, Wetter & PDF-Journal' : 'Site Journal, Weather & PDF Export',
             content: isGerman
               ? 'Dokumentiere tägliche Baustellenfortschritte, anwesende Handwerker und Wetterdaten. Exportiere den gesamten Bauzeitenplan als grossformatiges A3-Gantt-PDF.'
@@ -318,7 +318,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'pitch') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-pitch-present, .tour-pitch-stage, body',
             title: isGerman ? '16:9 Cinema-Präsentation für Bauherren' : '16:9 Cinema Presentation for Clients',
             content: isGerman
               ? 'Präsentiere dein Architekturprojekt im modernen 16:9 Kino-Vollbildmodus. Zeige fotorealistische Renderings, 3D-BIM-Schnitte, Grundrisse und das interdisziplinäre Planungsteam.'
@@ -329,7 +329,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-pitch-export, body',
             title: isGerman ? 'Live-Kostensync & Dual-Export (PDF & PPTX)' : 'Live Cost Sync & Dual Export (PDF & PPTX)',
             content: isGerman
               ? 'Alle Baukostenzahlen, Meilensteine und Termine aktualisieren sich automatisch aus deinen BKP-Finanzen. Exportiere das Deck wahlweise als druckreifes PDF oder editierbare PowerPoint/Keynote.'
@@ -343,7 +343,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'overview' || activeModuleTour === 'dashboard') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-overview-briefing, body',
             title: isGerman ? 'Projekt-Cockpit & AI Briefing' : 'Project Cockpit & AI Briefing',
             content: isGerman
               ? 'Auf einen Blick siehst du den operativen Zustand deines Projekts. Mit dem Button "AI Briefing generieren" analysiert Google Gemini deine Projektdaten in Echtzeit und warnt dich vor Budget- oder Terminüberschreitungen.'
@@ -354,7 +354,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.recharts-wrapper, header, body',
+            target: '.tour-overview-budget, body',
             title: isGerman ? 'Budget-Auslastung & Kosten-Monitoring' : 'Budget Utilization & Cost Monitoring',
             content: isGerman
               ? 'Behalte die Baukosten im Griff: Das Diagramm visualisiert BKP-Baukosten, externe Handwerker und interne Stunden. Verfolge Kostenabweichungen proaktiv.'
@@ -365,7 +365,7 @@ export default function ProductTour() {
             placement: 'top'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-overview-report, body',
             title: isGerman ? 'Executive Summary Report (PDF)' : 'Executive Summary Report (PDF)',
             content: isGerman
               ? 'Erstelle mit einem Klick auf "Report erstellen" ein druckreifes Status-Dossier im Universal PDF Studio – perfekt für Bauherrensitzungen und Bauleitungsprotokolle.'
@@ -379,7 +379,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'camera' || activeModuleTour === 'site') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-camera-feeds, body',
             title: isGerman ? 'Live-Baustellenkamera & Zeitraffer' : 'Site Camera & Timelapse',
             content: isGerman
               ? 'Verfolge den Baufortschritt oder den Eventaufbau live im Browser. Schalte zwischen mehreren Kameras um, erstelle Zeitraffer-Sequenzen und archiviere Schlüsselmomente.'
@@ -387,10 +387,10 @@ export default function ProductTour() {
             IconComponent: Camera,
             submodules: isGerman ? ['Live-Kamera', 'Zeitraffer (Timelapse)', 'Multi-Kamera'] : ['Live Camera', 'Timelapse', 'Multi-Camera'],
             proTip: isGerman ? 'Automatische Schnappschüsse werden stündlich im Bautagebuch und der Bauakte hinterlegt.' : 'Snapshots are automatically archived hourly in the site journal.',
-            placement: 'bottom'
+            placement: 'top'
           },
           {
-            target: 'header, div, body',
+            target: '.tour-camera-weather, body',
             title: isGerman ? 'Live-Wetter & SIA-Sensorik' : 'Live Weather & SIA Sensors',
             content: isGerman
               ? 'Echtzeit-Wetterdaten direkt vom Baustellenstandort: Temperatur, Niederschlag und Wind helfen bei der Freigabe von Betonier-, Kran- und Fassadenarbeiten.'
@@ -401,7 +401,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-camera-safety, body',
             title: isGerman ? 'KI-Sicherheitsaudit (SUVA & Helmpflicht)' : 'AI Safety Audit (SUVA & PPE)',
             content: isGerman
               ? 'Die integrierte KI analysiert Kamerabilder auf Einhaltung der SUVA-Arbeitssicherheitsrichtlinien (z.B. Helmpflicht, Schutzwesten, Absperrungen) und protokolliert Auffälligkeiten.'
@@ -415,7 +415,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'whiteboard') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-whiteboard-tools, body',
             title: isGerman ? 'Unendliche Skizzen-Leinwand & Ebenen' : 'Infinite Canvas & Vector Layers',
             content: isGerman
               ? 'Entwirf Skizzen, Grundrisse und Raumkonzepte auf einer zoom- und schwenkbaren Vektorebene. Nutze Stifte, geometrische Formen und Multi-Layer wie in CAD-Systemen.'
@@ -426,7 +426,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'header, button, body',
+            target: '.tour-whiteboard-ai, body',
             title: isGerman ? 'KI-Visualisierung & Moodboard-Studio' : 'AI Visualization & Moodboards',
             content: isGerman
               ? 'Verwandle Handskizzen per Prompt in fotorealistische Architektur-Renderings mit integrierter Gemini- und Fal.ai-Technologie – ideal für frühe Kundenpräsentationen.'
@@ -437,7 +437,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-whiteboard-media, body',
             title: isGerman ? 'Audio-Notizen & Universal PDF Export' : 'Audio Memos & PDF Studio',
             content: isGerman
               ? 'Nimm Sprachmemos während Baubesprechungen auf: Die KI transkribiert und fasst Beschlüsse zusammen. Exportiere das fertige Board direkt als Folie ins Pitch Deck oder als A3-PDF.'
@@ -451,7 +451,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'meet') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-meet-modes, .tour-meet-video, body',
             title: isGerman ? 'Integrierte HD-Videokonferenzen' : 'Integrated HD Video Meetings',
             content: isGerman
               ? 'Führe Bau- und Planungsbesprechungen direkt im Web-Browser durch – ohne Software-Download. Externe Fachplaner und Bauherren treten per Einladungs-Link sofort bei.'
@@ -462,7 +462,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-meet-modes, header, body',
+            target: '.tour-meet-modes, body',
             title: isGerman ? 'Kollaboratives Live-Whiteboard' : 'Collaborative Live Whiteboard',
             content: isGerman
               ? 'Schalte während des Gesprächs nahtlos auf das interaktive Whiteboard um, um 2D-Pläne und 3D-Bildausschnitte gemeinsam live zu annotieren und Details abzustimmen.'
@@ -473,7 +473,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-meet-history, body',
             title: isGerman ? 'Sitzungsprotokoll & Historie' : 'Meeting Log & History',
             content: isGerman
               ? 'Dokumentiere Beschlüsse im Live-Chat. Nach dem Anruf bleibt das Protokoll mit Teilnehmerliste und Zeitstempel in der Historie revisionssicher nach SIA 102/118 erhalten.'
@@ -487,7 +487,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'documents' || activeModuleTour === 'bauakte') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-docs-tabs, .tour-docs-upload, body',
             title: isGerman ? 'Strukturierte Digitale Bauakte' : 'Structured Digital Project Records',
             content: isGerman
               ? 'Organisiere Verträge, Baugenehmigungen, Pläne und Handwerker-Rapporte in einer Schweizer Standard-Ordnerstruktur. Alle Dateien sind revisionssicher verschlüsselt.'
@@ -498,7 +498,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'header, input, div, body',
+            target: '.tour-docs-search, body',
             title: isGerman ? 'Volltextsuche & OCR-Erkennung' : 'Full-Text Search & OCR',
             content: isGerman
               ? 'Finde Bauakten sekundenschnell über die integrierte Volltextsuche. Hochgeladene PDFs, Rechnungen und Fotos werden automatisch per OCR indiziert.'
@@ -509,7 +509,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-docs-upload, body',
             title: isGerman ? 'Smartphone-Scan & BKP-Sync' : 'Smartphone Scanning & BKP Sync',
             content: isGerman
               ? 'Scanne Lieferscheine und Handwerker-Rapporte direkt auf der Baustelle mit dem Smartphone – sie synchronisieren sich in Echtzeit in die Bauakte und das Finanzmodul.'
@@ -523,7 +523,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'team' || activeModuleTour === 'access') {
         candidateDefs = [
           {
-            target: '.tour-btn-module-guide, header, body',
+            target: '.tour-team-table, table, body',
             title: isGerman ? 'Granulare Schweizer Rollenverwaltung' : 'Granular Swiss Role Permissions',
             content: isGerman
               ? 'Steuere exakt, wer Zugriff auf dein Projekt hat: Bauherren (nur Lesezugriff), Fachplaner (Editor) oder Bauleiter (Admin). Schütze vertrauliche Baukosten und Margen.'
@@ -534,7 +534,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'header, button, body',
+            target: '.tour-team-add-btn, body',
             title: isGerman ? 'Smarte Einladungs-Links & Externe Partner' : 'Smart Magic Invites & Contractors',
             content: isGerman
               ? 'Lade Handwerker und Planer per E-Mail oder Magic Invite Link ein. Externe Partner erhalten sofort Zugang zu ihren spezifischen Aufgaben und Mängeln.'
@@ -545,7 +545,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-btn-module-guide, table, header, body',
+            target: '.tour-team-table, table, body',
             title: isGerman ? 'Revisionssichere Zugriffs-Protokollierung' : 'Audit Logs & DSG Compliance',
             content: isGerman
               ? 'Jeder Zugriff und jede Rollenänderung wird im Audit-Trail dokumentiert – konform mit dem Schweizer Datenschutzgesetz (DSG) und der SIA-Norm.'
@@ -553,7 +553,7 @@ export default function ProductTour() {
             IconComponent: Shield,
             submodules: isGerman ? ['Schweizer DSG konform', 'Audit-Trail', 'Rollenhistorie'] : ['Swiss DSG Compliant', 'Audit Trail', 'Role History'],
             proTip: isGerman ? 'Passe Rollen jederzeit per Dropdown an – Änderungen werden sofort aktiv.' : 'Adjust roles anytime via dropdown – changes take effect immediately.',
-            placement: 'bottom'
+            placement: 'top'
           }
         ];
       }
@@ -720,15 +720,28 @@ export default function ProductTour() {
       if (selectorString === 'body') return { target: 'body', isBody: true };
       
       // Comma-separated selectors in candidateDefs specify priority from left to right:
-      // e.g. '.tour-finance-invoices, .tour-btn-module-guide, header, body'
       const selectors = selectorString.split(',').map(s => s.trim()).filter(Boolean);
       for (const sel of selectors) {
         if (sel === 'body') {
           return { target: 'body', isBody: true };
         }
+        // STRICT SAFETY CHECK:
+        // Never allow targeting the guide button itself, the top header bar, or generic div/button
+        if (
+          sel.includes('tour-btn-module-guide') ||
+          sel === 'header' ||
+          sel === 'div' ||
+          sel === 'button'
+        ) {
+          continue;
+        }
         try {
           const elements = Array.from(document.querySelectorAll(sel)) as HTMLElement[];
           for (const el of elements) {
+            // Strictly exclude anything inside or matching .tour-btn-module-guide or <header> tags
+            if (el.closest('.tour-btn-module-guide') || el.tagName.toLowerCase() === 'header') {
+              continue;
+            }
             const rect = el.getBoundingClientRect();
             const isVisible = el.offsetParent !== null || (rect.width > 0 && rect.height > 0);
             if (isVisible) return { target: el, isBody: false };
@@ -763,9 +776,12 @@ export default function ProductTour() {
         placement: effectivePlacement,
         skipBeacon: true, // ✅ CRUCIAL: Eliminates the red pulsing beacon dot in React-Joyride v3
         disableBeacon: true, // backwards compatibility
-        disableScrolling: isCenter ? true : (isMobile ? false : true),
+        disableScrolling: isCenter ? true : false,
         disableScrollParentFix: true,
-        floaterProps: { disableAnimation: true }
+        floaterProps: {
+          disableAnimation: true,
+          hideArrow: isCenter
+        }
       } as any;
     });
 

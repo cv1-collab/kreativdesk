@@ -374,10 +374,10 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <ModuleGuideButton moduleId="overview" />
-          <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-all">
+          <button onClick={() => setIsPdfStudioOpen(true)} className="tour-overview-report hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-all">
             <FileText size={16} className="text-accent-ai"/> {t('create_report')}
           </button>
-          <button onClick={generateAIInsights} disabled={isGeneratingInsights} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-accent-ai/10 text-accent-ai rounded-xl sm:rounded-lg text-sm font-bold shadow-sm border border-accent-ai/20 hover:bg-accent-ai/20 transition-all disabled:opacity-50 w-full sm:w-auto">
+          <button onClick={generateAIInsights} disabled={isGeneratingInsights} className="tour-overview-briefing flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 sm:py-2 bg-accent-ai/10 text-accent-ai rounded-xl sm:rounded-lg text-sm font-bold shadow-sm border border-accent-ai/20 hover:bg-accent-ai/20 transition-all disabled:opacity-50 w-full sm:w-auto">
             {isGeneratingInsights ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
             {isGeneratingInsights ? t('ai_generating') : t('generate_ai_briefing')}
           </button>
@@ -461,7 +461,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-[400px]">
         {canSeeFinance ? (
-          <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[320px]">
+          <div className="tour-overview-budget bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[320px]">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-base flex items-center gap-2"><PieChartIcon size={18} className="text-accent-ai"/> {t('budget_utilization')}</h3>
               {overviewTotalBudget > 0 && (

@@ -392,7 +392,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
 
           <div className="flex bg-surface border border-border rounded-xl p-1 w-full md:w-fit shrink-0 shadow-sm overflow-x-auto custom-scrollbar gap-1 mx-0">
              <button onClick={() => setActiveTab('overview')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Camera size={14}/> {t('overview_tab')}</button>
-             <button onClick={() => setActiveTab('safety')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'safety' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><HardHat size={14}/> {t('ai_safety')}</button>
+             <button onClick={() => setActiveTab('safety')} className={cn("tour-camera-safety px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'safety' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><HardHat size={14}/> {t('ai_safety')}</button>
              <button onClick={() => setActiveTab('access')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'access' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Scan size={14}/> {t('safety_access')}</button>
              <button onClick={() => setActiveTab('logistics')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'logistics' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Truck size={14}/> {t('logistics')}</button>
              <button onClick={() => setActiveTab('drones')} className={cn("px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0", activeTab === 'drones' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><Plane size={14}/> {t('drone_survey')}</button>
@@ -414,7 +414,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
               </div>
 
               {/* WETTER & SENSOR DATEN */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <div className="tour-camera-weather grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                  <div className="bg-surface border border-border rounded-xl p-3 md:p-4 shadow-sm relative overflow-hidden flex flex-col justify-between">
                    {isFetchingWeather && <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex items-center justify-center z-10"><Loader2 className="animate-spin text-accent-ai" size={20}/></div>}
                    <div className="flex items-center justify-between mb-2"><span className="text-text-muted text-xs md:text-sm font-medium truncate pr-1">{t('temperature')}</span><Thermometer className="text-orange-400 shrink-0" size={16}/></div>
@@ -444,7 +444,7 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
               </div>
 
               {/* KAMERAS */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 pt-4">
+              <div className="tour-camera-feeds grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 pt-4">
                 
                 {/* CAM 1 */}
                 {activeProject?.cam1Url ? (

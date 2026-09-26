@@ -1845,7 +1845,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <button
                 onClick={() => { setShowAiMenu(!showAiMenu); setShowMediaMenu(false); setShowExportMenu(false); }}
                 className={cn(
-                  "px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  "tour-whiteboard-ai px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
                   showAiMenu
                     ? "bg-accent-ai/20 border-accent-ai text-accent-ai"
                     : "bg-accent-ai/10 text-accent-ai border-accent-ai/20 hover:bg-accent-ai/20"
@@ -1910,7 +1910,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <button
                 onClick={() => { setShowMediaMenu(!showMediaMenu); setShowAiMenu(false); setShowExportMenu(false); }}
                 className={cn(
-                  "px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  "tour-whiteboard-media px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
                   showMediaMenu
                     ? "bg-surface border-text-primary text-text-primary"
                     : "bg-surface border-border text-text-primary hover:bg-background"
@@ -2079,7 +2079,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           <div className={cn("flex-1 relative overflow-hidden flex-col bg-[#f9fafb] dark:bg-[#09090b]", mobileTab === 'whiteboard' ? "flex h-full" : "hidden lg:flex h-full", isFullscreen && "fixed inset-0 z-[9999] rounded-none border-none")} ref={containerRef}>
             
             {/* TOOLBAR OBEN PLAZIERT UM ÜBERLAPPUNG ZU VERMEIDEN */}
-            <div className="absolute top-2 md:top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-1rem)] custom-scrollbar">
+            <div className="tour-whiteboard-tools absolute top-2 md:top-4 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur-xl border border-border rounded-xl p-1.5 flex items-center gap-1 z-20 shadow-2xl overflow-x-auto w-max max-w-[calc(100%-1rem)] custom-scrollbar">
               <div className="flex items-center gap-1 px-1.5 border-r border-border mr-1 shrink-0">
                 {AVAILABLE_COLORS.map(c => (
                   <button key={c} onClick={() => handleColorPick(c)} className={cn("w-4 h-4 md:w-5 md:h-5 rounded-full border-2 transition-all shrink-0 cursor-pointer", activeColor === c ? "border-text-primary scale-110 shadow-md" : "border-transparent hover:scale-110")} style={{ backgroundColor: c }} title={`${t('color_pick')}${c}`} />

@@ -1552,7 +1552,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             }}
             title={t('upload_plan_tooltip')}
             className={cn(
-              "flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/30 rounded-xl text-xs font-bold shadow-md transition-all whitespace-nowrap",
+              "tour-plan-upload flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/30 rounded-xl text-xs font-bold shadow-md transition-all whitespace-nowrap",
               (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
             )}
           >
@@ -1565,7 +1565,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               return;
             }
             handleOpenPdfStudio();
-          }} disabled={isGeneratingPdf || !planImage} className="hidden md:flex px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? t('export_pdf_tooltip') : t('export_pdf_tooltip_disabled')}>
+          }} disabled={isGeneratingPdf || !planImage} className="tour-plan-pdf hidden md:flex px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? t('export_pdf_tooltip') : t('export_pdf_tooltip_disabled')}>
             {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span>PDF Export</span>
           </button>
           <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-surface hover:bg-white/5 border border-border text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={t('save_layers_tooltip')}>
@@ -1580,7 +1580,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       <div className="flex-1 flex overflow-hidden relative bg-background touch-none">
         
         {/* WERKZEUGLEISTE LINKS */}
-        <aside className="absolute left-2 sm:left-6 top-2 sm:top-6 w-10 sm:w-14 flex flex-col items-center gap-1 sm:gap-2 py-1.5 sm:py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-xl sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[75%] custom-scrollbar">
+        <aside className="tour-plan-toolbar absolute left-2 sm:left-6 top-2 sm:top-6 w-10 sm:w-14 flex flex-col items-center gap-1 sm:gap-2 py-1.5 sm:py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-xl sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[75%] custom-scrollbar">
            {['pan', 'image', 'polygon', 'rect', 'circle', 'titleblock', 'scalebar', 'defect', 'text', 'pen', 'measure'].map(tool => (
              <button 
                key={tool} 

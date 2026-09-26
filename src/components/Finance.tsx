@@ -2261,7 +2261,7 @@ export default function Finance() {
               </button>
               <button
                 onClick={() => setIsPdfStudioOpen(true)}
-                className="hidden md:flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+                className="tour-finance-pdf hidden md:flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
               >
                 <FileText size={16} className="text-accent-ai shrink-0" /> <span>PDF Studio</span>
               </button>
@@ -2273,7 +2273,7 @@ export default function Finance() {
             <div className="relative" ref={csvMenuRef}>
               <button
                 onClick={() => setShowCsvMenu(prev => !prev)}
-                className="flex items-center justify-center px-3 sm:px-3.5 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-all shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+                className="tour-finance-export flex items-center justify-center px-3 sm:px-3.5 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-all shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
                 title="CSV Export- & Import-Aktionen"
               >
                 <Download size={15} className="text-accent-ai shrink-0" />
@@ -2331,7 +2331,7 @@ export default function Finance() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 w-full">
-          <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full sm:w-auto h-[42px] shrink-0">
+          <div className="tour-finance-tabs flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full sm:w-auto h-[42px] shrink-0">
             <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
             <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
             <button onClick={() => setActiveTab('control')} className={cn("tour-finance-control flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Receipt size={16} />{t('payment_control')}</button>
@@ -2893,7 +2893,7 @@ export default function Finance() {
                   </div>
                 </div>
 
-                <div className="w-full overflow-x-auto custom-scrollbar">
+                <div className="tour-finance-table w-full overflow-x-auto custom-scrollbar">
                   <table className="w-full text-sm text-left border-collapse bg-surface table-fixed">
                     <thead className="text-xs uppercase tracking-wider text-text-muted bg-background border-b border-border/50">
                       <tr>
