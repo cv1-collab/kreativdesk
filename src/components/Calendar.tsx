@@ -159,12 +159,13 @@ const CalendarPDFDocument = ({
   getYearPercentage, 
   t 
 }: any) => {
+  const isEn = settings?.language === 'en';
 
   // 1. MONATSFOKUS VIEW EXPORT
   if (exportMode === 'month') {
     const year = currentMonthDate.getFullYear();
     const month = currentMonthDate.getMonth();
-    const monthName = currentMonthDate.toLocaleString('de-CH', { month: 'long', year: 'numeric' });
+    const monthName = currentMonthDate.toLocaleString(isEn ? 'en-US' : 'de-CH', { month: 'long', year: 'numeric' });
     const firstDayOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
     const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
     const lastDayOfMonthStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
@@ -207,9 +208,9 @@ const CalendarPDFDocument = ({
     }
 
     const getStatusLabel = (status: string) => {
-      if (status === 'completed') return 'Abgeschlossen';
-      if (status === 'critical') return 'Kritisch';
-      return 'In Planung';
+      if (status === 'completed') return isEn ? 'Completed' : 'Abgeschlossen';
+      if (status === 'critical') return isEn ? 'Critical' : 'Kritisch';
+      return isEn ? 'In Planning' : 'In Planung';
     };
 
     const getStatusColor = (status: string) => {
@@ -224,9 +225,9 @@ const CalendarPDFDocument = ({
           {/* HEADER */}
           <View style={[pdfStyles.header, { borderBottomColor: settings.accentColor }]} fixed>
             <View>
-              <Text style={pdfStyles.title}>MONATSFOKUS – {monthName.toUpperCase()}</Text>
+              <Text style={pdfStyles.title}>{(isEn ? 'MONTHLY FOCUS' : 'MONATSFOKUS')} – {monthName.toUpperCase()}</Text>
               <Text style={pdfStyles.meta}>
-                {docHeader?.project || 'Projekt'} | Version: {docHeader?.version || 'v1.0'} | Aktive Phasen: {monthTasks.length} | Meilensteine: {monthMarkers.length} | Stand: {new Date().toLocaleDateString('de-CH')}
+                {docHeader?.project || (isEn ? 'Project' : 'Projekt')} | {isEn ? 'Version' : 'Version'}: {docHeader?.version || 'v1.0'} | {isEn ? 'Active Phases' : 'Aktive Phasen'}: {monthTasks.length} | {isEn ? 'Milestones' : 'Meilensteine'}: {monthMarkers.length} | {isEn ? 'As of' : 'Stand'}: {new Date().toLocaleDateString(isEn ? 'en-US' : 'de-CH')}
               </Text>
             </View>
             {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
@@ -235,7 +236,10 @@ const CalendarPDFDocument = ({
           {/* 7-DAY CALENDAR GRID */}
           <View style={pdfStyles.gridContainer} wrap={false}>
             <View style={pdfStyles.gridHeaderRow}>
-              {['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'].map((dayName, dIdx) => (
+              {(isEn 
+                ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                : ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag']
+              ).map((dayName, dIdx) => (
                 <Text key={`header-${dIdx}`} style={pdfStyles.gridHeaderCell}>{dayName}</Text>
               ))}
             </View>
@@ -279,7 +283,7 @@ const CalendarPDFDocument = ({
 
                       {dayTasks.length > 2 && (
                         <Text style={{ fontSize: 4.5, color: '#64748b', fontStyle: 'italic', paddingHorizontal: 2 }}>
-                          +{dayTasks.length - 2} weitere
+                          {isEn ? `+${dayTasks.length - 2} more` : `+${dayTasks.length - 2} weitere`}
                         </Text>
                       )}
                     </View>
@@ -291,14 +295,14 @@ const CalendarPDFDocument = ({
 
           {/* MONTH AGENDA / PHASES TABLE */}
           <View style={{ marginTop: 8 }}>
-            <Text style={pdfStyles.sectionTitle}>Aktive Phasen & Meilensteine im {monthName}</Text>
+            <Text style={pdfStyles.sectionTitle}>{isEn ? `Active Phases & Milestones in ${monthName}` : `Aktive Phasen & Meilensteine im ${monthName}`}</Text>
             
             <View style={pdfStyles.tableContainer}>
               <View style={pdfStyles.tableHeaderRow}>
-                <Text style={[pdfStyles.tableCol1, pdfStyles.th]}>Projektphase / Meilenstein</Text>
-                <Text style={[pdfStyles.tableCol2, pdfStyles.th]}>Zeitraum (Start – Ende)</Text>
-                <Text style={[pdfStyles.tableCol3, pdfStyles.th]}>Status</Text>
-                <Text style={[pdfStyles.tableCol4, pdfStyles.th]}>Notiz / Details</Text>
+                <Text style={[pdfStyles.tableCol1, pdfStyles.th]}>{isEn ? 'Project Phase / Milestone' : 'Projektphase / Meilenstein'}</Text>
+                <Text style={[pdfStyles.tableCol2, pdfStyles.th]}>{isEn ? 'Timeframe (Start – End)' : 'Zeitraum (Start – Ende)'}</Text>
+                <Text style={[pdfStyles.tableCol3, pdfStyles.th]}>{isEn ? 'Status' : 'Status'}</Text>
+                <Text style={[pdfStyles.tableCol4, pdfStyles.th]}>{isEn ? 'Note / Details' : 'Notiz / Details'}</Text>
               </View>
 
               {monthTasks.map((t: any) => {
@@ -310,7 +314,7 @@ const CalendarPDFDocument = ({
                     </View>
                     <View style={pdfStyles.tableCol2}>
                       <Text style={pdfStyles.tdMuted}>
-                        {new Date(t.start).toLocaleDateString('de-CH')} – {new Date(t.end).toLocaleDateString('de-CH')}
+                        {new Date(t.start).toLocaleDateString(isEn ? 'en-US' : 'de-CH')} – {new Date(t.end).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}
                       </Text>
                     </View>
                     <View style={pdfStyles.tableCol3}>
@@ -331,30 +335,30 @@ const CalendarPDFDocument = ({
                 <View key={`tbl-marker-${m.id}`} style={[pdfStyles.tableRow, { backgroundColor: '#fefce8' }]}>
                   <View style={pdfStyles.tableCol1}>
                     <Text style={[pdfStyles.td, { fontWeight: 'bold', color: m.color || '#b45309' }]}>
-                      ★ {m.label} (Meilenstein)
+                      ★ {m.label} ({isEn ? 'Milestone' : 'Meilenstein'})
                     </Text>
                   </View>
                   <View style={pdfStyles.tableCol2}>
                     <Text style={[pdfStyles.tdMuted, { fontWeight: 'bold' }]}>
-                      {new Date(m.date).toLocaleDateString('de-CH')}
+                      {new Date(m.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}
                     </Text>
                   </View>
                   <View style={pdfStyles.tableCol3}>
                     <View style={[pdfStyles.statusBadge, { backgroundColor: '#fef3c7' }]}>
                       <Text style={{ color: '#b45309', fontSize: 6, fontWeight: 'bold' }}>
-                        Meilenstein
+                        {isEn ? 'Milestone' : 'Meilenstein'}
                       </Text>
                     </View>
                   </View>
                   <View style={pdfStyles.tableCol4}>
-                    <Text style={pdfStyles.tdMuted}>Fixtermin</Text>
+                    <Text style={pdfStyles.tdMuted}>{isEn ? 'Fixed Date' : 'Fixtermin'}</Text>
                   </View>
                 </View>
               ))}
 
               {monthTasks.length === 0 && monthMarkers.length === 0 && (
                 <View style={[pdfStyles.tableRow, { justifyContent: 'center', paddingVertical: 12 }]}>
-                  <Text style={pdfStyles.tdMuted}>Keine aktiven Phasen oder Meilensteine in diesem Monat hinterlegt.</Text>
+                  <Text style={pdfStyles.tdMuted}>{isEn ? 'No active phases or milestones recorded for this month.' : 'Keine aktiven Phasen oder Meilensteine in diesem Monat hinterlegt.'}</Text>
                 </View>
               )}
             </View>
@@ -363,7 +367,7 @@ const CalendarPDFDocument = ({
           {/* FOOTER */}
           <View style={pdfStyles.footer} fixed>
             <Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text>
-            <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+            <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} />
           </View>
         </Page>
       </Document>
@@ -373,7 +377,7 @@ const CalendarPDFDocument = ({
   // 2. TAGESÜBERSICHT & STANDUP VIEW EXPORT
   if (exportMode === 'day') {
     const selectedDateStr = selectedCalendarDate.toISOString().split('T')[0];
-    const formattedDate = selectedCalendarDate.toLocaleDateString('de-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    const formattedDate = selectedCalendarDate.toLocaleDateString(isEn ? 'en-US' : 'de-CH', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
     const dayTasks = (ganttTasks || []).filter((t: any) => {
       if (!t.title || t.title.trim() === '') return false;
@@ -383,9 +387,9 @@ const CalendarPDFDocument = ({
     const dayMarkers = (smartMarkers || []).filter((m: any) => m.date === selectedDateStr);
 
     const getStatusLabel = (status: string) => {
-      if (status === 'completed') return 'Abgeschlossen';
-      if (status === 'critical') return 'Kritisch';
-      return 'In Bearbeitung';
+      if (status === 'completed') return isEn ? 'Completed' : 'Abgeschlossen';
+      if (status === 'critical') return isEn ? 'Critical' : 'Kritisch';
+      return isEn ? 'In Progress' : 'In Bearbeitung';
     };
 
     const getStatusColor = (status: string) => {
@@ -400,9 +404,9 @@ const CalendarPDFDocument = ({
           {/* HEADER */}
           <View style={[pdfStyles.header, { borderBottomColor: settings.accentColor }]} fixed>
             <View>
-              <Text style={pdfStyles.title}>TAGESÜBERSICHT & STANDUP</Text>
+              <Text style={pdfStyles.title}>{isEn ? 'DAILY OVERVIEW & STANDUP' : 'TAGESÜBERSICHT & STANDUP'}</Text>
               <Text style={pdfStyles.meta}>
-                {docHeader?.project || 'Projekt'} | Datum: {formattedDate} | Stand: {new Date().toLocaleDateString('de-CH')}
+                {docHeader?.project || (isEn ? 'Project' : 'Projekt')} | {isEn ? 'Date' : 'Datum'}: {formattedDate} | {isEn ? 'As of' : 'Stand'}: {new Date().toLocaleDateString(isEn ? 'en-US' : 'de-CH')}
               </Text>
             </View>
             {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
@@ -410,7 +414,7 @@ const CalendarPDFDocument = ({
 
           {/* SECTION 1: RUNNING PHASES ON THIS DAY */}
           <View style={{ marginBottom: 12 }}>
-            <Text style={pdfStyles.sectionTitle}>Laufende Phasen & Aktivitäten am Stichtag</Text>
+            <Text style={pdfStyles.sectionTitle}>{isEn ? 'Active Phases & Activities on this Date' : 'Laufende Phasen & Aktivitäten am Stichtag'}</Text>
             {dayTasks.map((task: any) => {
               const brdColor = task.color?.startsWith('#') ? task.color : '#3b82f6';
               const sColor = getStatusColor(task.status);
@@ -426,11 +430,11 @@ const CalendarPDFDocument = ({
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
                     <Text style={pdfStyles.cardMeta}>
-                      Zeitraum: {new Date(task.start).toLocaleDateString('de-CH')} bis {new Date(task.end).toLocaleDateString('de-CH')}
+                      {isEn ? 'Period' : 'Zeitraum'}: {new Date(task.start).toLocaleDateString(isEn ? 'en-US' : 'de-CH')} {isEn ? 'to' : 'bis'} {new Date(task.end).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}
                     </Text>
                     {task.barText && (
                       <Text style={[pdfStyles.cardMeta, { fontWeight: 'bold', color: '#1e293b' }]}>
-                        Zuständig / Rolle: {task.barText}
+                        {isEn ? 'Assignee / Role' : 'Zuständig / Rolle'}: {task.barText}
                       </Text>
                     )}
                   </View>
@@ -441,7 +445,7 @@ const CalendarPDFDocument = ({
             {dayTasks.length === 0 && (
               <View style={[pdfStyles.card, { borderLeftColor: '#10b981', paddingVertical: 12 }]}>
                 <Text style={{ fontSize: 9, color: '#047857', fontWeight: 'bold', textAlign: 'center' }}>
-                  ✓ Keine aktiven Phasen für diesen Stichtag. Alle Arbeiten im Soll.
+                  {isEn ? '✓ No active phases for this date. All work on track.' : '✓ Keine aktiven Phasen für diesen Stichtag. Alle Arbeiten im Soll.'}
                 </Text>
               </View>
             )}
@@ -449,44 +453,44 @@ const CalendarPDFDocument = ({
 
           {/* SECTION 2: MILESTONES TODAY */}
           <View style={{ marginBottom: 12 }}>
-            <Text style={pdfStyles.sectionTitle}>Meilensteine & Deadlines heute</Text>
+            <Text style={pdfStyles.sectionTitle}>{isEn ? 'Milestones & Deadlines Today' : 'Meilensteine & Deadlines heute'}</Text>
             {dayMarkers.map((m: any) => (
               <View key={`day-marker-${m.id}`} style={[pdfStyles.card, { borderLeftColor: m.color || '#ef4444', backgroundColor: '#fffbeb' }]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={[pdfStyles.cardTitle, { color: '#92400e' }]}>★ {m.label}</Text>
                   <View style={[pdfStyles.statusBadge, { backgroundColor: '#fef3c7' }]}>
-                    <Text style={{ color: '#b45309', fontSize: 6, fontWeight: 'bold' }}>Fällig heute</Text>
+                    <Text style={{ color: '#b45309', fontSize: 6, fontWeight: 'bold' }}>{isEn ? 'Due Today' : 'Fällig heute'}</Text>
                   </View>
                 </View>
-                <Text style={pdfStyles.cardMeta}>Priorität: {m.priority === 'high' ? 'Hoch / Kritisch' : 'Standard'}</Text>
+                <Text style={pdfStyles.cardMeta}>{isEn ? 'Priority' : 'Priorität'}: {m.priority === 'high' ? (isEn ? 'High / Critical' : 'Hoch / Kritisch') : 'Standard'}</Text>
               </View>
             ))}
 
             {dayMarkers.length === 0 && (
               <View style={[pdfStyles.card, { borderLeftColor: '#94a3b8', backgroundColor: '#f8fafc' }]}>
-                <Text style={{ fontSize: 8, color: '#64748b' }}>Keine Meilenstein-Deadlines am heutigen Tag.</Text>
+                <Text style={{ fontSize: 8, color: '#64748b' }}>{isEn ? 'No milestone deadlines on this date.' : 'Keine Meilenstein-Deadlines am heutigen Tag.'}</Text>
               </View>
             )}
           </View>
 
           {/* SECTION 3: BAUJOURNAL & TAGESRAPPORT */}
           <View style={{ marginBottom: 10 }}>
-            <Text style={pdfStyles.sectionTitle}>Baujournal & Tagesrapport / Notizen</Text>
+            <Text style={pdfStyles.sectionTitle}>{isEn ? 'Site Journal & Daily Report / Notes' : 'Baujournal & Tagesrapport / Notizen'}</Text>
             <View style={pdfStyles.journalBox}>
               <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#64748b', marginBottom: 4 }}>
-                WETTER / RAHMENBEDINGUNGEN / BESONDERE VORKOMMNISSE:
+                {isEn ? 'WEATHER / AMBIENT CONDITIONS / SPECIAL INCIDENTS:' : 'WETTER / RAHMENBEDINGUNGEN / BESONDERE VORKOMMNISSE:'}
               </Text>
               <Text style={{ fontSize: 8, color: '#94a3b8', fontStyle: 'italic' }}>
-                Temperatur, Witterung, Personalstärke vor Ort, besondere Vorkommnisse oder Behinderungen...
+                {isEn ? 'Temperature, weather conditions, on-site personnel count, special incidents or obstructions...' : 'Temperatur, Witterung, Personalstärke vor Ort, besondere Vorkommnisse oder Behinderungen...'}
               </Text>
             </View>
 
             <View style={pdfStyles.journalBox}>
               <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#64748b', marginBottom: 4 }}>
-                ERREICHTE TAGESZIELE & ANWEISUNGEN:
+                {isEn ? 'DAILY GOALS ACHIEVED & INSTRUCTIONS:' : 'ERREICHTE TAGESZIELE & ANWEISUNGEN:'}
               </Text>
               <Text style={{ fontSize: 8, color: '#94a3b8', fontStyle: 'italic' }}>
-                Ausgeführte Arbeiten am Stichtag, getroffene Absprachen und offene Punkte für morgen...
+                {isEn ? 'Completed tasks today, agreements reached, and action items for tomorrow...' : 'Ausgeführte Arbeiten am Stichtag, getroffene Absprachen und offene Punkte für morgen...'}
               </Text>
             </View>
           </View>
@@ -494,21 +498,21 @@ const CalendarPDFDocument = ({
           {/* SIGNATURE FIELDS */}
           <View style={pdfStyles.signatureRow} wrap={false}>
             <View style={pdfStyles.signatureBox}>
-              <Text style={pdfStyles.signatureLabel}>Erstellt durch (Bauleitung / Projektleiter)</Text>
+              <Text style={pdfStyles.signatureLabel}>{isEn ? 'Created by (Site Manager / Project Lead)' : 'Erstellt durch (Bauleitung / Projektleiter)'}</Text>
               <View style={pdfStyles.signatureLine} />
-              <Text style={pdfStyles.signatureLabel}>Datum, Unterschrift</Text>
+              <Text style={pdfStyles.signatureLabel}>{isEn ? 'Date, Signature' : 'Datum, Unterschrift'}</Text>
             </View>
             <View style={pdfStyles.signatureBox}>
-              <Text style={pdfStyles.signatureLabel}>Gesehen / Freigegeben (Bauherr / Gesamtleitung)</Text>
+              <Text style={pdfStyles.signatureLabel}>{isEn ? 'Reviewed / Approved by (Client / Executive)' : 'Gesehen / Freigegeben (Bauherr / Gesamtleitung)'}</Text>
               <View style={pdfStyles.signatureLine} />
-              <Text style={pdfStyles.signatureLabel}>Datum, Unterschrift</Text>
+              <Text style={pdfStyles.signatureLabel}>{isEn ? 'Date, Signature' : 'Datum, Unterschrift'}</Text>
             </View>
           </View>
 
           {/* FOOTER */}
           <View style={pdfStyles.footer} fixed>
             <Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text>
-            <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+            <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} />
           </View>
         </Page>
       </Document>
@@ -555,7 +559,7 @@ const CalendarPDFDocument = ({
         <View style={[pdfStyles.header, { borderBottomColor: settings.accentColor }]} fixed>
           <View>
             <Text style={pdfStyles.title}>{docHeader?.title || 'Masterplan'}</Text>
-            <Text style={pdfStyles.meta}>{docHeader?.project || 'Projekt'} | Version: {docHeader?.version} | Stand: {new Date(docHeader?.date || new Date()).toLocaleDateString('de-CH')}</Text>
+            <Text style={pdfStyles.meta}>{docHeader?.project || (isEn ? 'Project' : 'Projekt')} | {isEn ? 'Version' : 'Version'}: {docHeader?.version} | {isEn ? 'As of' : 'Stand'}: {new Date(docHeader?.date || new Date()).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text>
           </View>
           {settings.logo && <PDFImage src={settings.logo} style={pdfStyles.logo} />}
         </View>
@@ -603,7 +607,7 @@ const CalendarPDFDocument = ({
               <React.Fragment key={`task-content-${task.id}`}>
                 <View style={{ position: 'absolute', left: 16 * SCALE, top: taskY, width: LEFT_COL_W - 32 * SCALE, height: rowHeight, justifyContent: 'center' }}>
                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 11 * fontScale, color: '#000' }}>{task.title}</Text>
-                  <Text style={{ fontFamily: 'Helvetica', fontSize: 8 * fontScale, color: '#6b7280', marginTop: 2 * SCALE }}>{new Date(task.start).toLocaleDateString('de-CH')} - {new Date(task.end).toLocaleDateString('de-CH')}</Text>
+                  <Text style={{ fontFamily: 'Helvetica', fontSize: 8 * fontScale, color: '#6b7280', marginTop: 2 * SCALE }}>{new Date(task.start).toLocaleDateString(isEn ? 'en-US' : 'de-CH')} - {new Date(task.end).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text>
                 </View>
                 <View style={{ position: 'absolute', left: barLeft, top: taskY + 4 * SCALE, width: barWidth, height: 32 * SCALE, backgroundColor: bgColor, borderRadius: 4 * SCALE, justifyContent: 'center', paddingLeft: 6 * SCALE, overflow: 'hidden' }}>
                   {task.barText && <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 7 * fontScale, color: '#fff' }}>{task.barText}</Text>}
@@ -623,7 +627,7 @@ const CalendarPDFDocument = ({
             return (
               <View key={`m-${m.id}`} style={{ position: 'absolute', left: leftPt, top: getYPt(UI_HEADER_H), height: PDF_H - getYPt(UI_HEADER_H) - getYPt(20), borderLeftWidth: 1.5 * SCALE, borderLeftColor: hexCol, borderLeftStyle: m.style === 'dashed' ? 'dashed' : 'solid' }}>
                  <View style={{ position: 'absolute', top: boxTop - getYPt(UI_HEADER_H), left: -25 * fontScale, width: 50 * fontScale, backgroundColor: '#fff', borderWidth: 1 * SCALE, borderColor: hexCol, padding: 2 * SCALE, borderRadius: 2 * SCALE }}>
-                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 5 * fontScale, color: hexCol, textAlign: 'center' }}>{new Date(m.date).toLocaleDateString('de-CH')}</Text>
+                   <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 5 * fontScale, color: hexCol, textAlign: 'center' }}>{new Date(m.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text>
                    <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 6 * fontScale, color: hexCol, textAlign: 'center' }}>{m.label}</Text>
                  </View>
               </View>
@@ -669,7 +673,7 @@ const CalendarPDFDocument = ({
 
         <View style={pdfStyles.footer} fixed>
           <Text style={{ fontSize: 7, color: '#9ca3af' }}>{settings.footerText}</Text>
-          <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+          <Text style={{ fontSize: 7, color: '#9ca3af' }} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} />
         </View>
       </Page>
     </Document>
@@ -2337,24 +2341,30 @@ export default function Calendar() {
         onClose={() => setIsPdfStudioOpen(false)} 
         title={
           pdfExportMode === 'month' 
-            ? `Monatsfokus Export (${currentMonthDate.toLocaleString(language === 'en' ? 'en-US' : 'de-CH', { month: 'long', year: 'numeric' })})`
+            ? (language === 'en'
+                ? `Monthly Focus Export (${currentMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })})`
+                : `Monatsfokus Export (${currentMonthDate.toLocaleString('de-CH', { month: 'long', year: 'numeric' })})`)
             : pdfExportMode === 'day'
-            ? `Tagesübersicht Export (${selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH')})`
-            : `Masterplan Export (${activeSchedule?.name || 'Gantt'})`
+            ? (language === 'en'
+                ? `Daily Overview Export (${selectedCalendarDate.toLocaleDateString('en-US')})`
+                : `Tagesübersicht Export (${selectedCalendarDate.toLocaleDateString('de-CH')})`)
+            : (language === 'en'
+                ? `Master Schedule Export (${activeSchedule?.name || 'Gantt'})`
+                : `Masterplan Export (${activeSchedule?.name || 'Gantt'})`)
         } 
         fileName={
           pdfExportMode === 'month'
-            ? `Monatsfokus_${currentMonthDate.getFullYear()}_${String(currentMonthDate.getMonth() + 1).padStart(2, '0')}`
+            ? `${language === 'en' ? 'MonthlyFocus' : 'Monatsfokus'}_${currentMonthDate.getFullYear()}_${String(currentMonthDate.getMonth() + 1).padStart(2, '0')}`
             : pdfExportMode === 'day'
-            ? `Tagesuebersicht_${selectedCalendarDate.toISOString().split('T')[0]}`
-            : `Masterplan_${activeSchedule?.name || 'Gantt'}`
+            ? `${language === 'en' ? 'DailyOverview' : 'Tagesuebersicht'}_${selectedCalendarDate.toISOString().split('T')[0]}`
+            : `${language === 'en' ? 'MasterSchedule' : 'Masterplan'}_${activeSchedule?.name || 'Gantt'}`
         }
         onSaveCloud={handleSavePdfToCloud} 
         defaultOrientation={pdfExportMode === 'day' ? 'portrait' : 'landscape'}
         sidebarControls={
           <div className="space-y-3">
             <label className="text-xs font-bold text-text-muted uppercase tracking-widest">
-              PDF-Ansicht wählen
+              {language === 'en' ? 'Select PDF View' : 'PDF-Ansicht wählen'}
             </label>
             <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
               <button 
@@ -2362,27 +2372,27 @@ export default function Calendar() {
                 onClick={() => setPdfExportMode('gantt')}
                 className={cn("py-2 px-1 text-xs font-bold rounded-lg transition-colors text-center cursor-pointer", pdfExportMode === 'gantt' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
               >
-                Masterplan
+                {language === 'en' ? 'Masterplan' : 'Masterplan'}
               </button>
               <button 
                 type="button"
                 onClick={() => setPdfExportMode('month')}
                 className={cn("py-2 px-1 text-xs font-bold rounded-lg transition-colors text-center cursor-pointer", pdfExportMode === 'month' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
               >
-                Monat
+                {language === 'en' ? 'Month' : 'Monat'}
               </button>
               <button 
                 type="button"
                 onClick={() => setPdfExportMode('day')}
                 className={cn("py-2 px-1 text-xs font-bold rounded-lg transition-colors text-center cursor-pointer", pdfExportMode === 'day' ? "bg-accent-ai text-white shadow-sm" : "text-text-muted hover:text-text-primary")}
               >
-                Tag
+                {language === 'en' ? 'Day' : 'Tag'}
               </button>
             </div>
             <p className="text-[11px] text-text-muted">
-              {pdfExportMode === 'gantt' && 'Kompletter Jahresüberblick & Gantt-Diagramm.'}
-              {pdfExportMode === 'month' && 'Monatskalender-Raster inkl. detaillierter Agenda aller Monatsphasen.'}
-              {pdfExportMode === 'day' && 'Tagesfokus, aktive Deadlines & Notizen/Baujournal.'}
+              {pdfExportMode === 'gantt' && (language === 'en' ? 'Full annual overview & Gantt chart.' : 'Kompletter Jahresüberblick & Gantt-Diagramm.')}
+              {pdfExportMode === 'month' && (language === 'en' ? 'Monthly calendar grid with detailed agenda of all phases.' : 'Monatskalender-Raster inkl. detaillierter Agenda aller Monatsphasen.')}
+              {pdfExportMode === 'day' && (language === 'en' ? 'Daily focus, active deadlines & notes/site journal.' : 'Tagesfokus, aktive Deadlines & Notizen/Baujournal.')}
             </p>
           </div>
         }

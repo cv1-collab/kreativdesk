@@ -48,17 +48,18 @@ const pdfStyles = StyleSheet.create({
 });
 
 const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, receipts, currency = 'CHF', t, companyUsers, projects }: any) => {
+  const isEn = settings?.language === 'en';
   const user = Array.isArray(companyUsers) ? companyUsers.find((u:any) => u.id === headerData.userId) : null;
   const project = Array.isArray(projects) ? projects.find((p:any) => p.id === headerData.projectId) : null;
   return (
     <Document>
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
-        <View style={pdfStyles.headerContainer} fixed>
-          <View style={pdfStyles.headerLeft}><Text style={pdfStyles.title}>SPESEN</Text><Text style={pdfStyles.subtitle}>ABRECHNUNG</Text></View>
+        <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor || '#f97316' }]} fixed>
+          <View style={pdfStyles.headerLeft}><Text style={[pdfStyles.title, { color: settings.accentColor || '#f97316' }]}>{isEn ? 'EXPENSE' : 'SPESEN'}</Text><Text style={pdfStyles.subtitle}>{isEn ? 'REPORT' : 'ABRECHNUNG'}</Text></View>
           <View>
             <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('employee')}:</Text><Text style={pdfStyles.metaValue}>{user?.firstName} {user?.lastName}</Text></View>
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('date')}:</Text><Text style={pdfStyles.metaValue}>{new Date(headerData.date).toLocaleDateString('de-CH')}</Text></View>
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{project?.name || 'Intern'}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{t('date')}:</Text><Text style={pdfStyles.metaValue}>{new Date(headerData.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{isEn ? 'Project:' : 'Projekt:'}</Text><Text style={pdfStyles.metaValue}>{project?.name || (isEn ? 'Internal' : 'Intern')}</Text></View>
           </View>
         </View>
         <View style={pdfStyles.tableHeader} fixed>
@@ -72,18 +73,18 @@ const ExpensePDFDocument = ({ settings, headerData, positions, totalAmount, rece
           </View>
         ))}
         <View style={{ alignItems: 'flex-end', marginTop: 15 }} wrap={false}>
-          <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#f97316', paddingBottom: 5 }}>
-            <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>{t('total').toUpperCase()}</Text>
-            <Text style={[pdfStyles.textBold, { fontSize: 12, color: '#f97316' }]}>{currency} {formatAmount(totalAmount, currency)}</Text>
+          <View style={{ flexDirection: 'row', width: 200, justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: settings.accentColor || '#f97316', paddingBottom: 5 }}>
+            <Text style={[pdfStyles.textBold, { fontSize: 12, color: settings.accentColor || '#f97316' }]}>{t('total').toUpperCase()}</Text>
+            <Text style={[pdfStyles.textBold, { fontSize: 12, color: settings.accentColor || '#f97316' }]}>{currency} {formatAmount(totalAmount, currency)}</Text>
           </View>
         </View>
         {receipts.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <Text style={pdfStyles.receiptsTitle}>Angehängte Belege</Text>
+            <Text style={pdfStyles.receiptsTitle}>{isEn ? 'Attached Receipts' : 'Angehängte Belege'}</Text>
             <View style={pdfStyles.receiptsGrid}>{receipts.map((url: string, i: number) => <PDFImage key={i} src={url} style={pdfStyles.receiptImage} />)}</View>
           </View>
         )}
-        <View style={pdfStyles.footer} fixed><Text style={pdfStyles.footerText}>{settings.footerText}</Text><Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} /></View>
+        <View style={pdfStyles.footer} fixed><Text style={pdfStyles.footerText}>{settings.footerText}</Text><Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} /></View>
       </Page>
     </Document>
   );
@@ -548,7 +549,13 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
         </div>
       </div>
 
-      <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title="Spesenabrechnung" fileName={`Spesen_${Date.now()}`} onSaveCloud={handleSaveToCloud}>
+      <UniversalPDFStudio 
+        isOpen={isPdfStudioOpen} 
+        onClose={() => setIsPdfStudioOpen(false)} 
+        title={currentLang === 'en' ? 'Expense Report' : 'Spesenabrechnung'} 
+        fileName={`${currentLang === 'en' ? 'Expenses' : 'Spesen'}_${Date.now()}`} 
+        onSaveCloud={handleSaveToCloud}
+      >
         {(settings) => <ExpensePDFDocument settings={settings} headerData={headerData} positions={positions} totalAmount={totalAmount} receipts={receipts} currency={currency} t={t} companyUsers={companyUsers} projects={projects} />}
       </UniversalPDFStudio>
     </div>

@@ -67,6 +67,7 @@ const pdfStyles = StyleSheet.create({
 });
 
 const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vatAmount, total, currency = 'CHF', t }: any) => {
+  const isEn = settings?.language === 'en';
   const formatVal = (v: number) => formatAmount(v, currency);
   const isSwissQRSupported = currency === 'CHF' || currency === 'EUR';
 
@@ -80,15 +81,15 @@ const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vat
           </View>
           <View style={pdfStyles.metaTable}>
             {settings.logo && <PDFImage src={settings.logo} style={[pdfStyles.logo, { position: 'relative', marginBottom: 15, alignSelf: 'flex-end' }]} />}
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{type === 'invoice' ? 'Rechnungs-Nr:' : 'Offerten-Nr:'}</Text><Text style={pdfStyles.metaValue}>{formData.invoiceNumber}</Text></View>
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Datum:</Text><Text style={pdfStyles.metaValue}>{new Date(formData.date).toLocaleDateString('de-CH')}</Text></View>
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Ort:</Text><Text style={pdfStyles.metaValue}>{formData.location}</Text></View>
-            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>Projekt:</Text><Text style={pdfStyles.metaValue}>{formData.projectName}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{type === 'invoice' ? (isEn ? 'Invoice No:' : 'Rechnungs-Nr:') : (isEn ? 'Quote No:' : 'Offerten-Nr:')}</Text><Text style={pdfStyles.metaValue}>{formData.invoiceNumber}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{isEn ? 'Date:' : 'Datum:'}</Text><Text style={pdfStyles.metaValue}>{new Date(formData.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{isEn ? 'Location:' : 'Ort:'}</Text><Text style={pdfStyles.metaValue}>{formData.location}</Text></View>
+            <View style={pdfStyles.metaRow}><Text style={pdfStyles.metaLabel}>{isEn ? 'Project:' : 'Projekt:'}</Text><Text style={pdfStyles.metaValue}>{formData.projectName}</Text></View>
           </View>
         </View>
-        <Text style={[pdfStyles.title, { color: settings.accentColor }]}>{type === 'invoice' ? 'RECHNUNG' : 'OFFERTE'}</Text>
+        <Text style={[pdfStyles.title, { color: settings.accentColor }]}>{type === 'invoice' ? (isEn ? 'INVOICE' : 'RECHNUNG') : (isEn ? 'QUOTE' : 'OFFERTE')}</Text>
         <View style={pdfStyles.tableHeader} fixed>
-          <Text style={[pdfStyles.col1, pdfStyles.textBold]}>Pos</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>Bezeichnung</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>Menge</Text><Text style={[pdfStyles.col4, pdfStyles.textBold]}>Preis ({currency})</Text><Text style={[pdfStyles.col5, pdfStyles.textBold]}>Total ({currency})</Text>
+          <Text style={[pdfStyles.col1, pdfStyles.textBold]}>{isEn ? 'Item' : 'Pos'}</Text><Text style={[pdfStyles.col2, pdfStyles.textBold]}>{isEn ? 'Description' : 'Bezeichnung'}</Text><Text style={[pdfStyles.col3, pdfStyles.textBold]}>{isEn ? 'Qty' : 'Menge'}</Text><Text style={[pdfStyles.col4, pdfStyles.textBold]}>{isEn ? 'Price' : 'Preis'} ({currency})</Text><Text style={[pdfStyles.col5, pdfStyles.textBold]}>{isEn ? 'Total' : 'Total'} ({currency})</Text>
         </View>
         {positions.map((item: any, idx: number) => (
           <View key={idx} style={pdfStyles.tableRow} wrap={false}>
@@ -111,12 +112,12 @@ const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vat
           <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#000000', paddingTop: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }} wrap={false}>
             <View style={{ width: isSwissQRSupported ? '60%' : '100%' }}>
               <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#000000', marginBottom: 4 }}>
-                {isSwissQRSupported ? 'Zahlteil / Section paiement (Swiss QR-Bill)' : 'Zahlungsinformationen (Banküberweisung)'}
+                {isSwissQRSupported ? (isEn ? 'Payment Part (Swiss QR-Bill)' : 'Zahlteil / Section paiement (Swiss QR-Bill)') : (isEn ? 'Payment Information (Bank Transfer)' : 'Zahlungsinformationen (Banküberweisung)')}
               </Text>
               <Text style={{ fontSize: 8, color: '#4b5563', lineHeight: 1.4 }}>
-                Konto / IBAN: CH93 0076 2011 6238 5295 7{'\n'}
-                Währung / Currency: {currency} • Betrag / Amount: {currency} {formatVal(total)}{'\n'}
-                Zahlbar durch / Payable by: {formData.recipient.split('\n')[0] || 'Kunde'}
+                {isEn ? 'Account / IBAN: ' : 'Konto / IBAN: '}CH93 0076 2011 6238 5295 7{'\n'}
+                {isEn ? 'Currency: ' : 'Währung / Currency: '}{currency} • {isEn ? 'Amount: ' : 'Betrag / Amount: '}{currency} {formatVal(total)}{'\n'}
+                {isEn ? 'Payable by: ' : 'Zahlbar durch / Payable by: '}{formData.recipient.split('\n')[0] || (isEn ? 'Client' : 'Kunde')}
               </Text>
             </View>
             {isSwissQRSupported && (
@@ -126,8 +127,8 @@ const InvoicePDFDocument = ({ settings, type, formData, positions, subtotal, vat
                   creditor: { name: 'Kreativ-Desk Studio', postalCode: '8001', city: 'Zürich', country: 'CH' },
                   amount: total,
                   currency: currency as ('CHF' | 'EUR'),
-                  debtor: { name: formData.recipient.split('\n')[0] || 'Kunde', postalCode: '8000', city: 'Zürich', country: 'CH' },
-                  unstructuredMessage: `Rechnung ${formData.invoiceNumber}`
+                  debtor: { name: formData.recipient.split('\n')[0] || (isEn ? 'Client' : 'Kunde'), postalCode: '8000', city: 'Zürich', country: 'CH' },
+                  unstructuredMessage: `${isEn ? 'Invoice' : 'Rechnung'} ${formData.invoiceNumber}`
                 }))} 
                 style={{ width: 85, height: 85, borderRadius: 4 }} 
               />
@@ -370,7 +371,13 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
           </motion.div>
         )}
       </AnimatePresence>
-      <UniversalPDFStudio isOpen={isPdfStudioOpen} onClose={() => setIsPdfStudioOpen(false)} title={type === 'invoice' ? 'Rechnung' : 'Offerte'} fileName={formData.invoiceNumber} onSaveCloud={handleSaveToCloud}>
+      <UniversalPDFStudio 
+        isOpen={isPdfStudioOpen} 
+        onClose={() => setIsPdfStudioOpen(false)} 
+        title={type === 'invoice' ? (currentLang === 'en' ? 'Invoice' : 'Rechnung') : (currentLang === 'en' ? 'Quote' : 'Offerte')} 
+        fileName={formData.invoiceNumber} 
+        onSaveCloud={handleSaveToCloud}
+      >
         {(settings) => <InvoicePDFDocument settings={settings} type={type} formData={formData} positions={positions} subtotal={subtotal} vatAmount={vatAmount} total={total} currency={currency} t={t} />}
       </UniversalPDFStudio>
     </>,

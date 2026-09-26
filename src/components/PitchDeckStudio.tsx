@@ -62,6 +62,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     save_cloud: 'Save to Cloud', download_desktop: 'Download Local', upload_success: 'Saved to Documents!',
     design: 'Design', export_pdf_title: 'PDF Studio', company_logo: 'Company Logo', logo_loaded: 'Logo loaded.',
     color: 'Accent Color', format: 'Format', scale_preview: 'Scale Preview', saving_cloud: 'Saving to Cloud...', generating_pdf: 'Generating PDF...',
+    refresh_preview: 'Refresh Preview',
     loading: 'Loading Studio...', no_slides: 'No slides found', empty_deck: 'This Pitch Deck is empty or does not exist.',
     content: 'Content', title_size: 'Title Size', text_size: 'Text Size', light_mode: 'Light', dark_mode: 'Dark',
     ready_to_use_master_decks: 'Ready-to-Use Master-Decks', master_templates_header: 'Master Templates',
@@ -127,6 +128,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     save_cloud: 'In Cloud speichern', download_desktop: 'Lokal herunterladen', upload_success: 'In Bauakte gespeichert!',
     design: 'Design', export_pdf_title: 'PDF Studio', company_logo: 'Firmenlogo', logo_loaded: 'Logo geladen.',
     color: 'Akzentfarbe', format: 'Format', scale_preview: 'Zoom Vorschau', saving_cloud: 'Speichert...', generating_pdf: 'Wird erstellt...',
+    refresh_preview: 'Vorschau aktualisieren',
     loading: 'Lade Studio...', no_slides: 'Keine Folien vorhanden', empty_deck: 'Dieses Pitch Deck ist leer.',
     content: 'Inhalt', title_size: 'Titel-Grösse', text_size: 'Text-Grösse', light_mode: 'Hell', dark_mode: 'Dunkel',
     ready_to_use_master_decks: 'Fertige Master-Decks', master_templates_header: 'Master-Vorlagen',
@@ -4296,13 +4298,13 @@ export default function PitchDeckStudio({
               <div className={cn("w-full lg:w-80 border-b lg:border-b-0 lg:border-r flex flex-col shrink-0 h-[45dvh] lg:h-full z-20", deckSettings.colorMode === 'light' ? "border-slate-200 bg-slate-50" : "border-white/10 bg-black/30")}>
                 <div className={cn("p-4 lg:p-6 pb-4 border-b flex flex-row items-center justify-between sticky top-0 z-10 shrink-0", deckSettings.colorMode === 'light' ? "border-slate-200 bg-white" : "border-white/10 bg-black/90")}>
                   <h3 className={cn("font-semibold text-lg flex items-center gap-2", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")}><PenTool size={18} className="text-accent-ai" /> {t('export_pdf_title')}</h3>
-                  <button type="button" onClick={() => setIsPdfModalOpen(false)} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title="Schliessen"><X size={20}/></button>
+                  <button type="button" onClick={() => setIsPdfModalOpen(false)} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title={t('close_done') || 'Schliessen'}><X size={20}/></button>
                 </div>
                 
                 <div className={cn("p-4 lg:p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar", deckSettings.colorMode === 'light' ? "bg-slate-50/50" : "bg-black/50")}>
                   <button type="button" onClick={refreshPdfPreview} disabled={isGeneratingPdf} className="w-full py-3 bg-accent-ai/10 text-accent-ai border border-accent-ai/20 rounded-lg text-sm font-bold hover:bg-accent-ai/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
                     {isGeneratingPdf ? <Loader2 size={16} className="animate-spin shrink-0" /> : <RefreshCw size={16} className="shrink-0" />} 
-                    <span>Vorschau aktualisieren</span>
+                    <span>{t('refresh_preview')}</span>
                   </button>
 
                   <div className="space-y-3 pt-2">
@@ -4311,14 +4313,6 @@ export default function PitchDeckStudio({
                       <input type="file" accept="image/*" onChange={handlePdfLogoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                       {deckSettings.logoUrl ? <div className="text-xs text-emerald-500 font-bold">{t('logo_loaded')}</div> : <><ImageIcon size={24} className={cn("mb-2", deckSettings.colorMode === 'light' ? "text-slate-400" : "text-white/30")} /><span className={cn("text-xs font-medium", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('upload_logo')}</span></>}
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <label className={cn("text-xs font-bold uppercase tracking-widest", deckSettings.colorMode === 'light' ? "text-slate-500" : "text-white/50")}>{t('color')}</label>
-                    <div className={cn("flex flex-row items-center gap-3 border rounded-xl p-2 shadow-inner", deckSettings.colorMode === 'light' ? "bg-white border-slate-200" : "bg-black border-white/10")}>
-                       <input type="color" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
-                       <input type="text" value={deckSettings.themeColor} onChange={(e) => updateDeckSettings({ themeColor: e.target.value })} className={cn("flex-1 bg-transparent text-sm font-mono font-bold outline-none uppercase", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")} />
-                     </div>
                   </div>
                   
                   <div className="space-y-3">

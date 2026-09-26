@@ -4,6 +4,7 @@ import { X, Download, Cloud, Loader2, FileText, Settings2, Image as ImageIcon, S
 import { cn } from '../utils';
 import { useProject } from '../contexts/ProjectContext';
 import { useToast } from '../contexts/ToastContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // 🚀 NATIVE PDF ENGINE (Kein html2canvas, kein jspdf mehr!)
 import { PDFViewer, pdf } from '@react-pdf/renderer';
@@ -33,13 +34,87 @@ interface UniversalPDFStudioProps {
   defaultFooterText?: string;
 }
 
-// Dummy-Funktion, intern
-const getPageDimensions = (format: string, orientation: string) => {
-  return { width: '100%', height: '100%' };
+const pdfStudioTranslations = {
+  de: {
+    format: 'Format',
+    orientation: 'Ausrichtung',
+    portrait: 'Hochformat',
+    landscape: 'Querformat',
+    logo: 'Logo',
+    from_letterhead: '✓ Aus Briefkopf übernommen',
+    click_to_change: 'Klicken zum Ändern',
+    upload_logo: 'Logo hochladen',
+    remove_logo: 'Logo entfernen',
+    accent_color: 'Akzentfarbe',
+    footer: 'Fusszeile',
+    footer_placeholder: 'Fusszeile eingeben...',
+    default_footer: 'Vertraulich | Erstellt am ',
+    vector_engine_active: 'Vektor Engine aktiv',
+    vector_engine_desc: 'Was du rechts siehst, ist das echte, native PDF. Keine Überlappungen, keine Pixel.',
+    print_document: 'Dokument drucken',
+    print_tooltip: 'Direkt über Browser-Druckdialog ausgeben',
+    save_cloud: 'In Datenraum speichern',
+    download_desktop: 'Lokal herunterladen',
+    close: 'Schliessen',
+    compiling_title: 'PDF-Vorschau wird vorbereitet',
+    compiling_desc: 'Vektor-Engine kompiliert DIN-A4 Layout, Schriften und mehrseitige Umbrüche für gestochen scharfen Druck...',
+    error_title: 'Vorschau wird vorbereitet',
+    error_desc: 'Das PDF kann direkt über die Buttons links heruntergeladen oder im Datenraum gespeichert werden.',
+    error_retry: 'Vorschau neu laden',
+    desktop_only_title: 'Desktop-Funktion',
+    desktop_only_desc: 'PDF Studio und die Erstellung von PDF-Dokumenten sind für Desktop-Bildschirme optimiert. Bitte öffnen Sie Kreativ Desk an einem Computer oder Tablet im Querformat, um Dokumente zu erstellen und zu drucken.',
+    understood: 'Verstanden',
+    logo_demo_protected: 'Logo-Upload ist in der Demo-Vorschau geschützt.',
+    print_demo_protected: 'PDF-Druck ist in der Live-Demo gesperrt.',
+    print_dialog_opened: 'Druckdialog geöffnet',
+    print_error: 'Fehler beim Drucken',
+    export_demo_protected: 'PDF-Export und Download sind in der Live-Demo gesperrt.',
+    download_success: 'PDF erfolgreich heruntergeladen!',
+    generation_error: 'Fehler bei der PDF-Erstellung',
+    pdf_empty_error: 'Generiertes PDF ist leer'
+  },
+  en: {
+    format: 'Format',
+    orientation: 'Orientation',
+    portrait: 'Portrait',
+    landscape: 'Landscape',
+    logo: 'Logo',
+    from_letterhead: '✓ Applied from Letterhead',
+    click_to_change: 'Click to change',
+    upload_logo: 'Upload Logo',
+    remove_logo: 'Remove Logo',
+    accent_color: 'Accent Color',
+    footer: 'Footer Text',
+    footer_placeholder: 'Enter footer text...',
+    default_footer: 'Confidential | Created on ',
+    vector_engine_active: 'Vector Engine Active',
+    vector_engine_desc: 'What you see on the right is true native vector PDF. Zero overlapping, razor-sharp.',
+    print_document: 'Print Document',
+    print_tooltip: 'Print directly using browser print dialog',
+    save_cloud: 'Save to Vault',
+    download_desktop: 'Download Local',
+    close: 'Close',
+    compiling_title: 'Preparing PDF Preview',
+    compiling_desc: 'Vector engine is compiling layout, fonts and multi-page pagination for sharp printing...',
+    error_title: 'Preparing Preview',
+    error_desc: 'You can download the PDF directly using the sidebar buttons or save it to your project vault.',
+    error_retry: 'Reload Preview',
+    desktop_only_title: 'Desktop Feature',
+    desktop_only_desc: 'PDF Studio and document generation are optimized for desktop displays. Please open Kreativ Desk on a PC, Mac or tablet in landscape mode to create and print documents.',
+    understood: 'Understood',
+    logo_demo_protected: 'Logo upload is protected in demo preview.',
+    print_demo_protected: 'PDF printing is disabled in live demo.',
+    print_dialog_opened: 'Print dialog opened',
+    print_error: 'Error printing',
+    export_demo_protected: 'PDF export and download are disabled in live demo.',
+    download_success: 'PDF downloaded successfully!',
+    generation_error: 'Error generating PDF',
+    pdf_empty_error: 'Generated PDF is empty'
+  }
 };
 
-class PDFErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: { children: React.ReactNode }) {
+class PDFErrorBoundary extends React.Component<{ children: React.ReactNode; language?: 'de' | 'en' }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode; language?: 'de' | 'en' }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -51,12 +126,19 @@ class PDFErrorBoundary extends React.Component<{ children: React.ReactNode }, { 
   }
   render() {
     if (this.state.hasError) {
+      const isEn = this.props.language === 'en';
       return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center text-text-muted">
           <FileText size={48} className="mb-4 text-red-400" />
-          <p className="font-bold text-base text-text-primary mb-2">Vorschau wird vorbereitet</p>
-          <p className="text-xs mb-4">Das PDF kann direkt über die Buttons links heruntergeladen oder im Datenraum gespeichert werden.</p>
-          <button onClick={() => this.setState({ hasError: false })} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold cursor-pointer">Vorschau neu laden</button>
+          <p className="font-bold text-base text-text-primary mb-2">
+            {isEn ? 'Preparing Preview' : 'Vorschau wird vorbereitet'}
+          </p>
+          <p className="text-xs mb-4">
+            {isEn ? 'You can download the PDF directly using the sidebar buttons or save it to your project vault.' : 'Das PDF kann direkt über die Buttons links heruntergeladen oder im Datenraum gespeichert werden.'}
+          </p>
+          <button onClick={() => this.setState({ hasError: false })} className="px-4 py-2 bg-accent-ai text-white rounded-lg text-xs font-bold cursor-pointer">
+            {isEn ? 'Reload Preview' : 'Vorschau neu laden'}
+          </button>
         </div>
       );
     }
@@ -71,6 +153,9 @@ export default function UniversalPDFStudio({
 }: UniversalPDFStudioProps) {
   const { isDemoMode } = (useProject?.() || {}) as any;
   const { addToast } = useToast();
+  const { language } = useLanguage();
+  const currentLang: 'de' | 'en' = (language === 'en' ? 'en' : 'de');
+  const t = (key: keyof typeof pdfStudioTranslations.de) => pdfStudioTranslations[currentLang][key] || pdfStudioTranslations.de[key];
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -83,7 +168,12 @@ export default function UniversalPDFStudio({
   const [logo, setLogo] = useState<string | null>(defaultLogo || null);
   const [accentColor, setAccentColor] = useState(defaultAccentColor);
   const [watermark, setWatermark] = useState<'NONE' | 'VERTRAULICH' | 'ENTWURF' | 'FREIGEGEBEN'>('NONE');
-  const [footerText, setFooterText] = useState(defaultFooterText || ('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH')));
+  const [footerText, setFooterText] = useState(
+    defaultFooterText || 
+    (currentLang === 'en'
+      ? ('Confidential | Created on ' + new Date().toLocaleDateString('en-GB'))
+      : ('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH')))
+  );
 
   useEffect(() => {
     const checkMobile = () => {
@@ -99,8 +189,16 @@ export default function UniversalPDFStudio({
   }, [defaultLogo]);
 
   useEffect(() => {
-    if (defaultFooterText) setFooterText(defaultFooterText);
-  }, [defaultFooterText]);
+    if (defaultFooterText) {
+      setFooterText(defaultFooterText);
+    } else {
+      setFooterText(
+        currentLang === 'en'
+          ? ('Confidential | Created on ' + new Date().toLocaleDateString('en-GB'))
+          : ('Vertraulich | Erstellt am ' + new Date().toLocaleDateString('de-CH'))
+      );
+    }
+  }, [defaultFooterText, currentLang]);
 
   // Loading animation overlay while @react-pdf/renderer synthesizes layout & fonts
   useEffect(() => {
@@ -129,16 +227,16 @@ export default function UniversalPDFStudio({
             <Monitor size={28} />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-text-primary">Desktop-Funktion</h3>
+            <h3 className="font-bold text-lg text-text-primary">{t('desktop_only_title')}</h3>
             <p className="text-xs text-text-muted mt-2 leading-relaxed font-medium">
-              PDF Studio und die Erstellung von PDF-Dokumenten sind für Desktop-Bildschirme optimiert. Bitte öffnen Sie Kreativ Desk an einem Computer oder Tablet im Querformat, um Dokumente zu erstellen und zu drucken.
+              {t('desktop_only_desc')}
             </p>
           </div>
           <button 
             onClick={onClose} 
             className="w-full py-3 rounded-xl bg-accent-ai hover:bg-accent-ai/90 text-white font-bold text-xs tracking-wider transition-all cursor-pointer shadow-lg shadow-accent-ai/20"
           >
-            Verstanden
+            {t('understood')}
           </button>
         </div>
       </div>,
@@ -148,7 +246,7 @@ export default function UniversalPDFStudio({
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isDemoMode) {
-      addToast('Logo-Upload ist in der Demo-Vorschau geschützt.', 'info');
+      addToast(t('logo_demo_protected'), 'info');
       if (e?.target) e.target.value = '';
       return;
     }
@@ -162,13 +260,21 @@ export default function UniversalPDFStudio({
 
   // Holt das dynamische React-PDF Dokument basierend auf den aktuellen Einstellungen
   const getDocument = () => {
-    return typeof children === 'function' ? children({ format, orientation, logo, accentColor, footerText, watermark }) : children;
+    return typeof children === 'function' ? children({ 
+      format, 
+      orientation, 
+      logo, 
+      accentColor, 
+      footerText, 
+      watermark,
+      language: currentLang 
+    }) : children;
   };
 
   // Druckt das native PDF direkt ohne Verzögerung oder UI-Überlappung
   const handlePrintPDF = async () => {
     if (isDemoMode) {
-      addToast('PDF-Druck ist in der Live-Demo gesperrt.', 'info');
+      addToast(t('print_demo_protected'), 'info');
       return;
     }
     setIsPrinting(true);
@@ -184,7 +290,7 @@ export default function UniversalPDFStudio({
         blob = await asPdf.toBlob();
       }
       if (!blob || blob.size === 0) {
-        throw new Error("Generiertes PDF ist leer");
+        throw new Error(t('pdf_empty_error'));
       }
       const url = URL.createObjectURL(blob);
       const iframe = document.createElement('iframe');
@@ -208,10 +314,10 @@ export default function UniversalPDFStudio({
           URL.revokeObjectURL(url);
         }, 60000);
       };
-      addToast('Druckdialog geöffnet', 'info');
+      addToast(t('print_dialog_opened'), 'info');
     } catch (error: any) {
       console.error("Print Error", error);
-      addToast(`Fehler beim Drucken: ${error?.message || 'Bitte erneut versuchen'}`, 'error');
+      addToast(`${t('print_error')}: ${error?.message || ''}`, 'error');
     } finally {
       setIsPrinting(false);
     }
@@ -220,7 +326,7 @@ export default function UniversalPDFStudio({
   // Generiert das Blob direkt aus dem React-PDF Dokument für Download/Upload
   const generatePDF = async (toCloud: boolean) => {
     if (isDemoMode) {
-      addToast('PDF-Export und Download sind in der Live-Demo gesperrt.', 'info');
+      addToast(t('export_demo_protected'), 'info');
       return;
     }
     if (toCloud) { setIsUploading(true); } else { setIsGenerating(true); }
@@ -239,7 +345,7 @@ export default function UniversalPDFStudio({
       }
 
       if (!blob || blob.size === 0) {
-        throw new Error("Generiertes PDF ist leer");
+        throw new Error(t('pdf_empty_error'));
       }
 
       if (toCloud) {
@@ -256,11 +362,11 @@ export default function UniversalPDFStudio({
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
         }, 100);
-        addToast('PDF erfolgreich heruntergeladen!', 'success');
+        addToast(t('download_success'), 'success');
       }
     } catch (error: any) {
       console.error("PDF Generation Error", error);
-      addToast(`Fehler bei der PDF-Erstellung: ${error?.message || 'Bitte erneut versuchen'}`, 'error');
+      addToast(`${t('generation_error')}: ${error?.message || ''}`, 'error');
     } finally {
       setIsGenerating(false);
       setIsUploading(false);
@@ -275,7 +381,7 @@ export default function UniversalPDFStudio({
         <div className="w-80 bg-surface border-r border-border flex flex-col shrink-0 relative z-20">
           <div className="p-6 border-b border-border flex items-center justify-between">
             <h3 className="font-bold text-lg text-text-primary flex items-center gap-2"><FileText size={18} className="text-accent-ai" /> {title}</h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title="Schliessen"><X size={18} /></button>
+            <button onClick={onClose} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title={t('close')}><X size={18} /></button>
           </div>
           
           <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
@@ -283,7 +389,7 @@ export default function UniversalPDFStudio({
             <div className="space-y-6 mb-8">
               <div className="space-y-3">
                 <label className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
-                  <Settings2 size={14}/> Format
+                  <Settings2 size={14}/> {t('format')}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => setFormat('A4')} className={cn("py-2 px-3 text-sm font-bold rounded-md border transition-colors", format === 'A4' ? "bg-accent-ai/10 border-accent-ai text-accent-ai" : "bg-background border-border text-text-muted hover:text-text-primary")}>A4</button>
@@ -292,10 +398,10 @@ export default function UniversalPDFStudio({
               </div>
 
               <div className="space-y-3">
-                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Ausrichtung</label>
+                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('orientation')}</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => setOrientation('portrait')} className={cn("py-2 px-3 text-sm font-bold rounded-md border transition-colors", orientation === 'portrait' ? "bg-accent-ai/10 border-accent-ai text-accent-ai" : "bg-background border-border text-text-muted hover:text-text-primary")}>Hochformat</button>
-                  <button onClick={() => setOrientation('landscape')} className={cn("py-2 px-3 text-sm font-bold rounded-md border transition-colors", orientation === 'landscape' ? "bg-accent-ai/10 border-accent-ai text-accent-ai" : "bg-background border-border text-text-primary")}>Querformat</button>
+                  <button onClick={() => setOrientation('portrait')} className={cn("py-2 px-3 text-sm font-bold rounded-md border transition-colors", orientation === 'portrait' ? "bg-accent-ai/10 border-accent-ai text-accent-ai" : "bg-background border-border text-text-muted hover:text-text-primary")}>{t('portrait')}</button>
+                  <button onClick={() => setOrientation('landscape')} className={cn("py-2 px-3 text-sm font-bold rounded-md border transition-colors", orientation === 'landscape' ? "bg-accent-ai/10 border-accent-ai text-accent-ai" : "bg-background border-border text-text-primary")}>{t('landscape')}</button>
                 </div>
               </div>
             </div>
@@ -306,10 +412,10 @@ export default function UniversalPDFStudio({
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Logo</label>
+                  <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('logo')}</label>
                   {logo && (
                     <span className="text-[10px] text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      ✓ Aus Briefkopf übernommen
+                      {t('from_letterhead')}
                     </span>
                   )}
                 </div>
@@ -321,17 +427,17 @@ export default function UniversalPDFStudio({
                   {logo ? (
                     <div className="flex flex-col items-center gap-2">
                       <img src={logo} alt="Logo" className="max-h-12 object-contain" />
-                      <span className="text-[10px] text-text-muted font-bold">Klicken zum Ändern</span>
+                      <span className="text-[10px] text-text-muted font-bold">{t('click_to_change')}</span>
                     </div>
                   ) : (
-                    <><ImageIcon size={24} className="text-text-muted mb-1" /><span className="text-xs text-text-muted font-medium">Logo hochladen</span></>
+                    <><ImageIcon size={24} className="text-text-muted mb-1" /><span className="text-xs text-text-muted font-medium">{t('upload_logo')}</span></>
                   )}
                 </div>
-                {logo && <button onClick={() => setLogo(null)} className="text-xs text-red-500 hover:text-red-400 font-bold w-full text-center cursor-pointer">Logo entfernen</button>}
+                {logo && <button onClick={() => setLogo(null)} className="text-xs text-red-500 hover:text-red-400 font-bold w-full text-center cursor-pointer">{t('remove_logo')}</button>}
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Akzentfarbe</label>
+                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('accent_color')}</label>
                 <input 
                   type="color" 
                   value={accentColor} 
@@ -341,13 +447,13 @@ export default function UniversalPDFStudio({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">Fusszeile</label>
+                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('footer')}</label>
                 <input 
                   type="text" 
                   value={footerText} 
                   onChange={(e) => setFooterText(e.target.value)} 
                   className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-sm text-text-primary focus:border-accent-ai outline-none" 
-                  placeholder="Fusszeile eingeben..." 
+                  placeholder={t('footer_placeholder')} 
                 />
               </div>
             </div>
@@ -359,8 +465,8 @@ export default function UniversalPDFStudio({
             )}
 
             <div className="border-t border-border pt-6 mt-6">
-              <p className="font-bold text-emerald-500 mb-2 text-sm flex items-center gap-2"><Sparkles size={16}/> Vektor Engine aktiv</p>
-              <p className="text-xs text-text-muted">Was du rechts siehst, ist das echte, native PDF. Keine Überlappungen, keine Pixel.</p>
+              <p className="font-bold text-emerald-500 mb-2 text-sm flex items-center gap-2"><Sparkles size={16}/> {t('vector_engine_active')}</p>
+              <p className="text-xs text-text-muted">{t('vector_engine_desc')}</p>
             </div>
           </div>
           
@@ -369,15 +475,15 @@ export default function UniversalPDFStudio({
               onClick={handlePrintPDF} 
               disabled={isPrinting || isGenerating || isUploading} 
               className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-900 dark:text-white font-bold border border-slate-300 dark:border-zinc-700 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer text-sm"
-              title="Direkt über Browser-Druckdialog ausgeben"
+              title={t('print_tooltip')}
             >
-              {isPrinting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} Dokument drucken
+              {isPrinting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} {t('print_document')}
             </button>
             <button onClick={() => generatePDF(true)} disabled={isUploading || isGenerating || isPrinting} className="w-full py-2.5 rounded-xl bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 font-bold hover:bg-indigo-500/20 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 cursor-pointer text-sm">
-              {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />} In Datenraum speichern
+              {isUploading ? <Loader2 className="animate-spin" size={16} /> : <Cloud size={16} />} {t('save_cloud')}
             </button>
             <button onClick={() => generatePDF(false)} disabled={isGenerating || isUploading || isPrinting} className="w-full py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 flex items-center justify-center gap-2 disabled:opacity-50 transition-colors cursor-pointer text-sm shadow-md">
-              {isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />} Lokal herunterladen
+              {isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Download size={16} />} {t('download_desktop')}
             </button>
           </div>
         </div>
@@ -391,15 +497,15 @@ export default function UniversalPDFStudio({
                   <Loader2 className="animate-spin" size={26} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">PDF-Vorschau wird vorbereitet</h4>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-white">{t('compiling_title')}</h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                    Vektor-Engine kompiliert DIN-A4 Layout, Schriften und mehrseitige Umbrüche für gestochen scharfen Druck...
+                    {t('compiling_desc')}
                   </p>
                 </div>
               </div>
             </div>
           )}
-          <PDFErrorBoundary>
+          <PDFErrorBoundary language={currentLang}>
             <PDFViewer width="100%" height="100%" showToolbar={false} style={{ border: 'none', backgroundColor: 'transparent' }}>
                {getDocument() as any}
             </PDFViewer>

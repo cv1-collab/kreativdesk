@@ -373,59 +373,62 @@ const FinancePDFDocument = ({ settings, activeTab, t, projectHeader, budgetGroup
 };
 
 const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCHF, projectHeader, budgetDetails, receiptType, currency = 'CHF' }: any) => {
+  const isEn = settings?.language === 'en';
   const isExternal = receiptType === 'external_cost' || incomingData.type === 'external';
   return (
     <Document>
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
         <View style={[pdfStyles.headerContainer, { borderBottomColor: settings.accentColor }]} fixed>
           <View style={pdfStyles.headerLeft}>
-            <Text style={[pdfStyles.title, { color: settings.accentColor }]}>BUCHUNGSBELEG</Text>
+            <Text style={[pdfStyles.title, { color: settings.accentColor }]}>{isEn ? 'ACCOUNTING RECEIPT' : 'BUCHUNGSBELEG'}</Text>
             <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#6b7280', textTransform: 'uppercase' }}>
-              {isExternal ? 'EXTERNER KREDITORENBELEG' : 'INTERNER SPESEN- & AUSLAGENBELEG'}
+              {isExternal 
+                ? (isEn ? 'EXTERNAL VENDOR RECEIPT' : 'EXTERNER KREDITORENBELEG') 
+                : (isEn ? 'INTERNAL EXPENSE RECEIPT' : 'INTERNER SPESEN- & AUSLAGENBELEG')}
             </Text>
           </View>
           <View style={{ textAlign: 'right', alignItems: 'flex-end' }}>
-            <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>Datum: <Text style={{ color: '#000', fontWeight: 'bold' }}>{new Date(incomingData.date).toLocaleDateString('de-CH')}</Text></Text>
-            <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>Projekt: <Text style={{ color: '#000', fontWeight: 'bold' }}>{projectHeader.project}</Text></Text>
-            {budgetDetails && <Text style={{ fontSize: 9, color: '#6b7280' }}>Zuweisung: <Text style={{ color: '#000', fontWeight: 'bold' }}>{budgetDetails.phase}</Text></Text>}
+            <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{isEn ? 'Date:' : 'Datum:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{new Date(incomingData.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text></Text>
+            <Text style={{ fontSize: 9, color: '#6b7280', marginBottom: 2 }}>{isEn ? 'Project:' : 'Projekt:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{projectHeader.project}</Text></Text>
+            {budgetDetails && <Text style={{ fontSize: 9, color: '#6b7280' }}>{isEn ? 'Assignment:' : 'Zuweisung:'} <Text style={{ color: '#000', fontWeight: 'bold' }}>{budgetDetails.phase}</Text></Text>}
           </View>
         </View>
 
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#000', paddingBottom: 5, marginBottom: 10 }}>
-          <Text style={{ width: '35%', fontWeight: 'bold' }}>{isExternal ? 'Firma / Kreditor' : 'Begünstigter / Händler'}</Text>
-          <Text style={{ width: '45%', fontWeight: 'bold' }}>Beschreibung & Buchungsdetails</Text>
-          <Text style={{ width: '20%', fontWeight: 'bold', textAlign: 'right' }}>Betrag ({currency})</Text>
+          <Text style={{ width: '35%', fontWeight: 'bold' }}>{isExternal ? (isEn ? 'Company / Vendor' : 'Firma / Kreditor') : (isEn ? 'Beneficiary / Merchant' : 'Begünstigter / Händler')}</Text>
+          <Text style={{ width: '45%', fontWeight: 'bold' }}>{isEn ? 'Description & Details' : 'Beschreibung & Buchungsdetails'}</Text>
+          <Text style={{ width: '20%', fontWeight: 'bold', textAlign: 'right' }}>{isEn ? 'Amount' : 'Betrag'} ({currency})</Text>
         </View>
 
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 10 }}>
           <View style={{ width: '35%' }}>
             <Text style={{ backgroundColor: '#f3f4f6', color: '#111827', padding: 4, fontWeight: 'bold', fontSize: 9 }}>
-              {isExternal ? (incomingData.company || incomingData.vendor || 'Lieferant') : (incomingData.vendor || 'Auslage')}
+              {isExternal ? (incomingData.company || incomingData.vendor || (isEn ? 'Supplier' : 'Lieferant')) : (incomingData.vendor || (isEn ? 'Expense' : 'Auslage'))}
             </Text>
             {isExternal ? (
               <>
-                {incomingData.invoiceNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>Rechnungs-Nr: {incomingData.invoiceNumber}</Text>}
-                {incomingData.vatNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>MWST-Nr: {incomingData.vatNumber}</Text>}
-                {incomingData.contactPerson && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kontakt: {incomingData.contactPerson}</Text>}
-                {incomingData.dueDate && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Fällig bis: {new Date(incomingData.dueDate).toLocaleDateString('de-CH')}</Text>}
-                {incomingData.creditorCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kategorie: {incomingData.creditorCategory}</Text>}
+                {incomingData.invoiceNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>{isEn ? 'Invoice No:' : 'Rechnungs-Nr:'} {incomingData.invoiceNumber}</Text>}
+                {incomingData.vatNumber && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'VAT No:' : 'MWST-Nr:'} {incomingData.vatNumber}</Text>}
+                {incomingData.contactPerson && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'Contact:' : 'Kontakt:'} {incomingData.contactPerson}</Text>}
+                {incomingData.dueDate && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'Due by:' : 'Fällig bis:'} {new Date(incomingData.dueDate).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text>}
+                {incomingData.creditorCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'Category:' : 'Kategorie:'} {incomingData.creditorCategory}</Text>}
                 {incomingData.iban && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>IBAN: {incomingData.iban}</Text>}
               </>
             ) : (
               <>
-                {incomingData.beneficiaryName && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>Mitarbeiter: {incomingData.beneficiaryName}</Text>}
-                {incomingData.expenseCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Kategorie: {incomingData.expenseCategory}</Text>}
-                {incomingData.paymentMethod && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>Zahlungsart: {incomingData.paymentMethod}</Text>}
+                {incomingData.beneficiaryName && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>{isEn ? 'Employee:' : 'Mitarbeiter:'} {incomingData.beneficiaryName}</Text>}
+                {incomingData.expenseCategory && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'Category:' : 'Kategorie:'} {incomingData.expenseCategory}</Text>}
+                {incomingData.paymentMethod && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'Payment Method:' : 'Zahlungsart:'} {incomingData.paymentMethod}</Text>}
               </>
             )}
           </View>
           <View style={{ width: '45%', paddingRight: 10 }}>
             <Text style={{ fontWeight: 'bold', fontSize: 9 }}>{incomingData.description || '-'}</Text>
             {budgetDetails && <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 3 }}>BKP / Pos: {budgetDetails.item}</Text>}
-            <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>MWST: {incomingData.vatRate || 8.1}%</Text>
+            <Text style={{ fontSize: 8, color: '#4b5563', marginTop: 2 }}>{isEn ? 'VAT' : 'MWST'}: {incomingData.vatRate || 8.1}%</Text>
             {isExternal && incomingData.skontoRate > 0 && (
               <Text style={{ fontSize: 8, color: '#059669', marginTop: 2, fontWeight: 'bold' }}>
-                Skonto: {incomingData.skontoRate}% (Netto: {currency} {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))})
+                {isEn ? 'Cash discount' : 'Skonto'}: {incomingData.skontoRate}% ({isEn ? 'Net' : 'Netto'}: {currency} {formatCHF(Number(incomingData.amount) * (1 - incomingData.skontoRate / 100))})
               </Text>
             )}
           </View>
@@ -433,13 +436,15 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
             <Text style={{ textAlign: 'right', fontWeight: 'bold', color: settings.accentColor, fontSize: 13 }}>
               {formatCHF(Number(incomingData.amount))}
             </Text>
-            <Text style={{ fontSize: 8, color: '#6b7280', marginTop: 4 }}>Status: {incomingData.status || 'Offen'}</Text>
+            <Text style={{ fontSize: 8, color: '#6b7280', marginTop: 4 }}>Status: {incomingData.status || (isEn ? 'Open' : 'Offen')}</Text>
           </View>
         </View>
 
         {incomingReceipts.length > 0 && (
           <View style={{ marginTop: 20 }}>
-            <Text style={{ fontSize: 12, fontWeight: 'bold', color: settings.accentColor, borderBottomWidth: 1, borderBottomColor: settings.accentColor, paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase' }}>Original Beleg</Text>
+            <Text style={{ fontSize: 12, fontWeight: 'bold', color: settings.accentColor, borderBottomWidth: 1, borderBottomColor: settings.accentColor, paddingBottom: 5, marginBottom: 10, textTransform: 'uppercase' }}>
+              {isEn ? 'Original Receipt' : 'Original Beleg'}
+            </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
               {incomingReceipts.map((url: string, i: number) => (
                 <PDFImage key={i} src={url} style={{ width: 200, height: 200, objectFit: 'contain', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: 5, marginRight: 10, marginBottom: 10 }} />
@@ -450,7 +455,7 @@ const ReceiptPDFDocument = ({ settings, incomingData, incomingReceipts, formatCH
 
         <View style={pdfStyles.footer} fixed>
           <Text style={pdfStyles.footerText}>{settings.footerText}</Text>
-          <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+          <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} />
         </View>
       </Page>
     </Document>
@@ -3293,8 +3298,8 @@ export default function Finance() {
       <UniversalPDFStudio
         isOpen={isReceiptPdfStudioOpen}
         onClose={() => setIsReceiptPdfStudioOpen(false)}
-        title="Buchungsbeleg"
-        fileName={`Buchung_${incomingData.vendor.replace(/\s/g, '_')}_${Date.now()}`}
+        title={language === 'en' ? 'Accounting Receipt' : 'Buchungsbeleg'}
+        fileName={`${language === 'en' ? 'Receipt' : 'Buchung'}_${incomingData.vendor.replace(/\s/g, '_')}_${Date.now()}`}
         onSaveCloud={handleSaveReceiptPdfToCloud}
         defaultAccentColor={companyColor}
       >

@@ -60,6 +60,7 @@ const pdfStyles = StyleSheet.create({
 });
 
 const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, formatCHF }: any) => {
+  const isEn = settings?.language === 'en';
   const gross = Number(opCostData.amount) || 0;
   const vatRateNum = Number(opCostData.vatRate) || 0;
   const vatAmount = vatRateNum > 0 ? (gross * vatRateNum) / (100 + vatRateNum) : 0;
@@ -70,26 +71,26 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
       <Page size={settings.format} orientation={settings.orientation} style={pdfStyles.page}>
         <View style={pdfStyles.headerContainer} fixed>
           <View style={pdfStyles.headerLeft}>
-            <Text style={pdfStyles.title}>BUCHUNGSBELEG</Text>
-            <Text style={pdfStyles.subtitle}>KREDITOREN & EXTERNE KOSTEN (SCHWEIZ)</Text>
+            <Text style={pdfStyles.title}>{isEn ? 'ACCOUNTING RECEIPT' : 'BUCHUNGSBELEG'}</Text>
+            <Text style={pdfStyles.subtitle}>{isEn ? 'ACCOUNTS PAYABLE & EXTERNAL EXPENSES (SWITZERLAND)' : 'KREDITOREN & EXTERNE KOSTEN (SCHWEIZ)'}</Text>
           </View>
           <View style={pdfStyles.metaContainer}>
             <View style={pdfStyles.metaRow}>
-              <Text style={pdfStyles.metaLabel}>Beleg- / Rechnungs-Nr:</Text>
-              <Text style={pdfStyles.metaValue}>{opCostData.invoiceNumber || 'OHNE-NUMMER'}</Text>
+              <Text style={pdfStyles.metaLabel}>{isEn ? 'Receipt / Invoice No:' : 'Beleg- / Rechnungs-Nr:'}</Text>
+              <Text style={pdfStyles.metaValue}>{opCostData.invoiceNumber || (isEn ? 'NO-NUMBER' : 'OHNE-NUMMER')}</Text>
             </View>
             <View style={pdfStyles.metaRow}>
-              <Text style={pdfStyles.metaLabel}>Rechnungsdatum:</Text>
-              <Text style={pdfStyles.metaValue}>{new Date(opCostData.date).toLocaleDateString('de-CH')}</Text>
+              <Text style={pdfStyles.metaLabel}>{isEn ? 'Invoice Date:' : 'Rechnungsdatum:'}</Text>
+              <Text style={pdfStyles.metaValue}>{new Date(opCostData.date).toLocaleDateString(isEn ? 'en-US' : 'de-CH')}</Text>
             </View>
             <View style={pdfStyles.metaRow}>
-              <Text style={pdfStyles.metaLabel}>Fälligkeitsdatum:</Text>
-              <Text style={pdfStyles.metaValue}>{opCostData.dueDate ? new Date(opCostData.dueDate).toLocaleDateString('de-CH') : '-'}</Text>
+              <Text style={pdfStyles.metaLabel}>{isEn ? 'Due Date:' : 'Fälligkeitsdatum:'}</Text>
+              <Text style={pdfStyles.metaValue}>{opCostData.dueDate ? new Date(opCostData.dueDate).toLocaleDateString(isEn ? 'en-US' : 'de-CH') : '-'}</Text>
             </View>
             <View style={pdfStyles.metaRow}>
-              <Text style={pdfStyles.metaLabel}>Zahlungsstatus:</Text>
+              <Text style={pdfStyles.metaLabel}>{isEn ? 'Payment Status:' : 'Zahlungsstatus:'}</Text>
               <Text style={[pdfStyles.metaValue, { color: opCostData.status === 'Paid' ? '#16a34a' : '#0ea5e9' }]}>
-                {opCostData.status === 'Paid' ? 'Bezahlt' : opCostData.status === 'Review' ? 'In Prüfung' : 'Offen'}
+                {opCostData.status === 'Paid' ? (isEn ? 'Paid' : 'Bezahlt') : opCostData.status === 'Review' ? (isEn ? 'In Review' : 'In Prüfung') : (isEn ? 'Open' : 'Offen')}
               </Text>
             </View>
           </View>
@@ -97,21 +98,21 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
 
         {/* Positionen / Gegenstand */}
         <View style={pdfStyles.tableHeader} fixed>
-          <Text style={[pdfStyles.colPos, pdfStyles.textBold]}>Lieferant / Aufwandsposition</Text>
-          <Text style={[pdfStyles.colProj, pdfStyles.textBold]}>Projekt / Zuordnung</Text>
-          <Text style={[pdfStyles.colVat, pdfStyles.textBold]}>MWST %</Text>
-          <Text style={[pdfStyles.colAmount, pdfStyles.textBold]}>Betrag (CHF)</Text>
+          <Text style={[pdfStyles.colPos, pdfStyles.textBold]}>{isEn ? 'Supplier / Expense Item' : 'Lieferant / Aufwandsposition'}</Text>
+          <Text style={[pdfStyles.colProj, pdfStyles.textBold]}>{isEn ? 'Project / Allocation' : 'Projekt / Zuordnung'}</Text>
+          <Text style={[pdfStyles.colVat, pdfStyles.textBold]}>{isEn ? 'VAT %' : 'MWST %'}</Text>
+          <Text style={[pdfStyles.colAmount, pdfStyles.textBold]}>{isEn ? 'Amount (CHF)' : 'Betrag (CHF)'}</Text>
         </View>
         <View style={pdfStyles.tableRow} wrap={false}>
           <View style={pdfStyles.colPos}>
-            <Text style={[pdfStyles.textBold, { fontSize: 9.5 }]}>{opCostData.description || 'Externe Leistung'}</Text>
-            <Text style={{ color: '#64748b', fontSize: 8, marginTop: 2 }}>Kategorie: {opCostData.category}</Text>
-            {opCostData.bkp && <Text style={{ color: '#0ea5e9', fontSize: 7.5, marginTop: 1 }}>Kostenstelle: {opCostData.bkp}</Text>}
+            <Text style={[pdfStyles.textBold, { fontSize: 9.5 }]}>{opCostData.description || (isEn ? 'External Service' : 'Externe Leistung')}</Text>
+            <Text style={{ color: '#64748b', fontSize: 8, marginTop: 2 }}>{isEn ? 'Category:' : 'Kategorie:'} {opCostData.category}</Text>
+            {opCostData.bkp && <Text style={{ color: '#0ea5e9', fontSize: 7.5, marginTop: 1 }}>{isEn ? 'Cost Center:' : 'Kostenstelle:'} {opCostData.bkp}</Text>}
           </View>
           <View style={pdfStyles.colProj}>
             <Text style={[pdfStyles.textBold, { fontSize: 8.5 }]}>{projectName}</Text>
             <Text style={{ color: '#64748b', fontSize: 7.5, marginTop: 1 }}>
-              {opCostData.projectId === 'global' ? 'Gemeinkosten / Firmenaufwand' : 'Projektbezogene Fremdleistung'}
+              {opCostData.projectId === 'global' ? (isEn ? 'Overhead / Corporate Expense' : 'Gemeinkosten / Firmenaufwand') : (isEn ? 'Project-related External Service' : 'Projektbezogene Fremdleistung')}
             </Text>
           </View>
           <Text style={[pdfStyles.colVat, { fontSize: 8.5 }]}>{opCostData.vatRate}%</Text>
@@ -123,15 +124,15 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
         {/* MWST Aufschlüsselung */}
         <View style={pdfStyles.vatSummaryTable}>
           <View style={pdfStyles.vatSummaryRow}>
-            <Text style={{ fontSize: 8.5, color: '#64748b' }}>Nettobetrag (exkl. MWST):</Text>
+            <Text style={{ fontSize: 8.5, color: '#64748b' }}>{isEn ? 'Net Amount (excl. VAT):' : 'Nettobetrag (exkl. MWST):'}</Text>
             <Text style={{ fontSize: 8.5, fontWeight: 'bold' }}>{formatCHF(netAmount)} CHF</Text>
           </View>
           <View style={pdfStyles.vatSummaryRow}>
-            <Text style={{ fontSize: 8.5, color: '#64748b' }}>MWST ({opCostData.vatRate}%):</Text>
+            <Text style={{ fontSize: 8.5, color: '#64748b' }}>{isEn ? `VAT (${opCostData.vatRate}%):` : `MWST (${opCostData.vatRate}%):`}</Text>
             <Text style={{ fontSize: 8.5, fontWeight: 'bold' }}>{formatCHF(vatAmount)} CHF</Text>
           </View>
           <View style={pdfStyles.vatSummaryTotal}>
-            <Text style={{ fontSize: 9.5, fontWeight: 'bold', color: '#0f172a' }}>Rechnungs-Total (CHF):</Text>
+            <Text style={{ fontSize: 9.5, fontWeight: 'bold', color: '#0f172a' }}>{isEn ? 'Invoice Total (CHF):' : 'Rechnungs-Total (CHF):'}</Text>
             <Text style={{ fontSize: 10.5, fontWeight: 'bold', color: '#0ea5e9' }}>{formatCHF(gross)} CHF</Text>
           </View>
         </View>
@@ -139,7 +140,7 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
         {/* Bank & Zahlungsdetails */}
         {(opCostData.iban || opCostData.qrReference || opCostData.paymentTerms || opCostData.notes) && (
           <View style={pdfStyles.paymentBox}>
-            <Text style={pdfStyles.paymentTitle}>Zahlungskonditionen & Schweizer Bankverbindung</Text>
+            <Text style={pdfStyles.paymentTitle}>{isEn ? 'Payment Terms & Swiss Bank Details' : 'Zahlungskonditionen & Schweizer Bankverbindung'}</Text>
             {opCostData.iban && (
               <View style={pdfStyles.paymentRow}>
                 <Text style={pdfStyles.paymentLabel}>IBAN / QR-IBAN:</Text>
@@ -148,19 +149,19 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
             )}
             {opCostData.qrReference && (
               <View style={pdfStyles.paymentRow}>
-                <Text style={pdfStyles.paymentLabel}>QR-Referenz:</Text>
+                <Text style={pdfStyles.paymentLabel}>{isEn ? 'QR Reference:' : 'QR-Referenz:'}</Text>
                 <Text style={pdfStyles.paymentVal}>{opCostData.qrReference}</Text>
               </View>
             )}
             {opCostData.paymentTerms && (
               <View style={pdfStyles.paymentRow}>
-                <Text style={pdfStyles.paymentLabel}>Konditionen:</Text>
+                <Text style={pdfStyles.paymentLabel}>{isEn ? 'Terms:' : 'Konditionen:'}</Text>
                 <Text style={pdfStyles.paymentVal}>{opCostData.paymentTerms}</Text>
               </View>
             )}
             {opCostData.notes && (
               <View style={pdfStyles.paymentRow}>
-                <Text style={pdfStyles.paymentLabel}>Bemerkung:</Text>
+                <Text style={pdfStyles.paymentLabel}>{isEn ? 'Notes:' : 'Bemerkung:'}</Text>
                 <Text style={pdfStyles.paymentVal}>{opCostData.notes}</Text>
               </View>
             )}
@@ -170,7 +171,7 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
         {/* Beleg-Bilder */}
         {opCostReceipts.length > 0 && (
           <View style={{ marginTop: 14 }}>
-            <Text style={pdfStyles.receiptsTitle}>Angehängte Belege & Rechnungs-Scans ({opCostReceipts.length})</Text>
+            <Text style={pdfStyles.receiptsTitle}>{isEn ? `Attached Receipts & Invoices (${opCostReceipts.length})` : `Angehängte Belege & Rechnungs-Scans (${opCostReceipts.length})`}</Text>
             <View style={pdfStyles.receiptsGrid}>
               {opCostReceipts.map((url: string, i: number) => (
                 <PDFImage key={i} src={url} style={pdfStyles.receiptImage} />
@@ -180,8 +181,8 @@ const OpCostPDFDocument = ({ settings, opCostData, opCostReceipts, projectName, 
         )}
 
         <View style={pdfStyles.footer} fixed>
-          <Text style={pdfStyles.footerText}>{settings.footerText || 'Kreativ Desk OS · Revisionssichere Belegablage'}</Text>
-          <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => `Seite ${pageNumber} von ${totalPages}`} />
+          <Text style={pdfStyles.footerText}>{settings.footerText || (isEn ? 'Kreativ Desk OS · Audit-proof Document Archival' : 'Kreativ Desk OS · Revisionssichere Belegablage')}</Text>
+          <Text style={pdfStyles.footerText} render={({ pageNumber, totalPages }) => isEn ? `Page ${pageNumber} of ${totalPages}` : `Seite ${pageNumber} von ${totalPages}`} />
         </View>
       </Page>
     </Document>
@@ -955,8 +956,8 @@ export default function OpCostStudio({ onClose }: { onClose: () => void }) {
       <UniversalPDFStudio 
         isOpen={isPdfStudioOpen} 
         onClose={() => setIsPdfStudioOpen(false)} 
-        title={`Buchungsbeleg ${opCostData.invoiceNumber || ''}`} 
-        fileName={`Kreditor_${opCostData.invoiceNumber || Date.now()}`} 
+        title={`${language === 'en' ? 'Accounting Receipt' : 'Buchungsbeleg'} ${opCostData.invoiceNumber || ''}`} 
+        fileName={`${language === 'en' ? 'Vendor' : 'Kreditor'}_${opCostData.invoiceNumber || Date.now()}`} 
         onSaveCloud={handleSaveToCloud}
       >
         {(settings) => (

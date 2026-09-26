@@ -1948,8 +1948,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           <UniversalPDFStudio
             isOpen={isPdfStudioOpen}
             onClose={() => setIsPdfStudioOpen(false)}
-            title={printType === 'rapport' ? 'Rapport' : 'Agenda'}
-            fileName={`${printType === 'rapport' ? 'Rapport' : 'Agenda'}`}
+            title={printType === 'rapport' ? (currentLang === 'en' ? 'Site Report' : 'Baurapport') : (currentLang === 'en' ? 'Agenda & Schedule' : 'Agenda & Termine')}
+            fileName={`${printType === 'rapport' ? (currentLang === 'en' ? 'Report' : 'Rapport') : 'Agenda'}`}
             onSaveCloud={handleSavePdfToCloud}
             defaultOrientation="portrait"
           >
