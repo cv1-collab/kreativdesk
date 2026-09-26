@@ -106,4 +106,9 @@ Dieses Dokument dient als zentrale Pendenzenliste für **Kreativ Desk OS**.
      - **DE:** *Innenarchitektur, Architektur, Generalplaner, Generalunternehmer, Bauleitung, Messebau, Events, Szenografie, Design*.
      - **EN:** *Interior Design, Architecture, General Planning, General Contractors, Site Management, Exhibitions, Events, Scenography, Design*.
    - Direkte Sprach-Synchronisation bei Wechsel zwischen Deutsch und Englisch.
+7. **Pitch Deck Studio: Export-Qualität, Keynote/PowerPoint & Navigation [ERLEDIGT ✅]:**
+   - **PDF-Export synchronisiert:** Rendert nun das gewählte Master-Template (z. B. Neo-Brutalismus mit SIA 102 Badge, Swiss mit Schweizer-Kreuz-Badge, Architektur, Cyberpunk etc.) pixelgenau inklusive Hintergrundfarben, Folienrahmen und Foliencounter (`1 / 6`).
+   - **PowerPoint «Repariert»-Meldung behoben:** Bildpfade werden als saubere Base64-Medien ins OOXML-Paket eingebettet. Ungültige Beziehungs-URIs eliminiert. Automatische Umwandlung roher Bullet-Points in native PPTX-Listen sowie `valign: top`-Ausrichtung.
+   - **Apple Keynote Praxisführung:** Export-Modus und Hinweisführung optimiert; nativer 16:9-Export mit Direkt-Tipp für macOS (*Finder ➔ Rechtsklick ➔ «Öffnen mit» ➔ «Keynote»*).
+   - **UI-Kontraste & Barrierefreiheit:** Farbige Badges und Bezeichnungen unter «Projekt-Berichterstattung» in der linken Navigationsleiste für Hell- und Dunkelmodus mit satten, kontraststarken Farben überarbeitet.
 

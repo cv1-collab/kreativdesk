@@ -904,21 +904,21 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   }
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
                   const cleanName = (currentProject?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
-                  await exportDeckToPptx(slides, {}, `${cleanName}-Keynote.pptx`);
-                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                  await exportDeckToPptx(slides, deckSettings, `${cleanName}-Keynote.pptx`);
+                  addToast('Keynote-Präsentation (.pptx) heruntergeladen! 💡 Tipp: Im Finder per Rechtsklick ➔ "Öffnen mit ➔ Keynote" starten.', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
                     🍏
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
                       Apple Keynote (.pptx)
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 uppercase tracking-widest">Mac & iPad</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-600 dark:text-blue-400 uppercase tracking-widest">Mac & iPad</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Nativ kompatibel mit Apple macOS Keynote & iPad im 16:9 Format</p>
+                    <p className="text-xs text-text-muted mt-0.5">Optimiert für Apple Keynote (16:9). Öffnet nativ in Keynote via Rechtsklick ➔ "Öffnen mit Keynote".</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-blue-400 group-hover:translate-x-1 transition-all"/>
@@ -935,21 +935,21 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                   }
                   addToast('PowerPoint Präsentation wird generiert...', 'info');
                   const cleanName = (currentProject?.name || 'Praesentation').replace(/[/\\?%*:|"<>]/g, '-').trim();
-                  await exportDeckToPptx(slides, {}, `${cleanName}-PowerPoint.pptx`);
+                  await exportDeckToPptx(slides, deckSettings, `${cleanName}-PowerPoint.pptx`);
                   addToast('PowerPoint Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-amber-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
                     📊
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
                       Microsoft PowerPoint (.pptx)
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-400 uppercase tracking-widest">Office & PC</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 uppercase tracking-widest">Office & PC</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Standard PowerPoint Format für Windows, Office 365 & Teams</p>
+                    <p className="text-xs text-text-muted mt-0.5">Natives 16:9 PowerPoint-Format für Microsoft 365, Teams & PC (sauber formatiert & repariert).</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-amber-400 group-hover:translate-x-1 transition-all"/>

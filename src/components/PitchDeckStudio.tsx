@@ -1176,6 +1176,20 @@ export default function PitchDeckStudio({
     const pw = docPdf.internal.pageSize.getWidth();
     const ph = docPdf.internal.pageSize.getHeight();
     const isDarkTheme = (deckSettings.colorMode || 'light') === 'dark';
+    const themeStyle = deckSettings.themeStyle || 'scenography';
+
+    const hexToRgb = (hexStr?: string) => {
+      let c = (hexStr || '#3b82f6').replace('#', '').trim();
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      if (isNaN(num)) return { r: 59, g: 130, b: 246 };
+      return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+      };
+    };
+    const accentRgb = hexToRgb(deckSettings.themeColor);
     
     const addSafeImage = async (url: string, x: number, y: number, w: number, h: number, preserveRatio: boolean = false) => {
        try {
@@ -1216,9 +1230,38 @@ export default function PitchDeckStudio({
                 drawW = h * imgRatio;
                 drawX = x + (w - drawW);
             }
-            docPdf.addImage(dataUrl, imgFormat, drawX, drawY, drawW, drawH, '', 'FAST');
+
+            if (themeStyle === 'neo-brutalism') {
+              docPdf.setFillColor(0, 0, 0);
+              docPdf.rect(drawX + 1.8, drawY + 1.8, drawW, drawH, 'F');
+              docPdf.addImage(dataUrl, imgFormat, drawX, drawY, drawW, drawH, '', 'FAST');
+              docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+              docPdf.setLineWidth(1.2);
+              docPdf.rect(drawX, drawY, drawW, drawH, 'S');
+            } else if (themeStyle === 'swiss') {
+              docPdf.addImage(dataUrl, imgFormat, drawX, drawY, drawW, drawH, '', 'FAST');
+              docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+              docPdf.setLineWidth(0.8);
+              docPdf.rect(drawX, drawY, drawW, drawH, 'S');
+            } else {
+              docPdf.addImage(dataUrl, imgFormat, drawX, drawY, drawW, drawH, '', 'FAST');
+            }
          } else {
-            docPdf.addImage(dataUrl, imgFormat, x, y, w, h, '', 'FAST');
+            if (themeStyle === 'neo-brutalism') {
+              docPdf.setFillColor(0, 0, 0);
+              docPdf.rect(x + 1.8, y + 1.8, w, h, 'F');
+              docPdf.addImage(dataUrl, imgFormat, x, y, w, h, '', 'FAST');
+              docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+              docPdf.setLineWidth(1.2);
+              docPdf.rect(x, y, w, h, 'S');
+            } else if (themeStyle === 'swiss') {
+              docPdf.addImage(dataUrl, imgFormat, x, y, w, h, '', 'FAST');
+              docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+              docPdf.setLineWidth(0.8);
+              docPdf.rect(x, y, w, h, 'S');
+            } else {
+              docPdf.addImage(dataUrl, imgFormat, x, y, w, h, '', 'FAST');
+            }
          }
        } catch(e) {
           try {
@@ -1235,48 +1278,171 @@ export default function PitchDeckStudio({
       const slide = slides[i];
       if (i > 0) docPdf.addPage();
       
-      if (isDarkTheme) { docPdf.setFillColor(15, 15, 18); docPdf.rect(0, 0, pw, ph, 'F'); }
-      else { docPdf.setFillColor(255, 255, 255); docPdf.rect(0, 0, pw, ph, 'F'); }
+      // 1. Template Background
+      if (themeStyle === 'neo-brutalism') {
+        if (isDarkTheme) docPdf.setFillColor(24, 24, 27);
+        else docPdf.setFillColor(255, 251, 235); // #fffbeb warm brutalist beige
+      } else if (themeStyle === 'swiss') {
+        if (isDarkTheme) docPdf.setFillColor(24, 24, 27);
+        else docPdf.setFillColor(255, 255, 255);
+      } else if (themeStyle === 'architecture') {
+        if (isDarkTheme) docPdf.setFillColor(15, 23, 42);
+        else docPdf.setFillColor(248, 250, 252);
+      } else if (themeStyle === 'cyberpunk') {
+        if (isDarkTheme) docPdf.setFillColor(3, 7, 18);
+        else docPdf.setFillColor(240, 249, 255);
+      } else if (themeStyle === 'minimal-tech') {
+        if (isDarkTheme) docPdf.setFillColor(27, 34, 24);
+        else docPdf.setFillColor(245, 242, 235);
+      } else if (themeStyle === 'photography') {
+        if (isDarkTheme) docPdf.setFillColor(12, 10, 9);
+        else docPdf.setFillColor(251, 249, 245);
+      } else if (themeStyle === 'glassmorphism') {
+        if (isDarkTheme) docPdf.setFillColor(15, 23, 42);
+        else docPdf.setFillColor(241, 245, 249);
+      } else if (themeStyle === 'scenography') {
+        if (isDarkTheme) docPdf.setFillColor(9, 9, 11);
+        else docPdf.setFillColor(250, 250, 250);
+      } else {
+        if (isDarkTheme) docPdf.setFillColor(15, 15, 18);
+        else docPdf.setFillColor(255, 255, 255);
+      }
+      docPdf.rect(0, 0, pw, ph, 'F');
       
-      docPdf.setFillColor(deckSettings.themeColor);
-      if (deckSettings.themeStyle === 'keynote' || deckSettings.themeStyle === 'scenography') { docPdf.rect(0, 0, pw, 2, 'F'); }
-      if (deckSettings.themeStyle === 'scenography' || deckSettings.themeStyle === 'cyberpunk') { docPdf.rect(0, 0, 2, ph, 'F'); }
+      // 2. Template Borders & Badges
+      if (themeStyle === 'neo-brutalism') {
+        // Thick solid border around slide
+        docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+        docPdf.setLineWidth(2.5);
+        docPdf.rect(2, 2, pw - 4, ph - 4, 'S');
+
+        // SIA 102 Badge in top right corner
+        docPdf.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.rect(pw - 36, 2, 34, 15, 'F');
+        docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+        docPdf.setLineWidth(1.8);
+        docPdf.rect(pw - 36, 2, 34, 15, 'S');
+        docPdf.setFont("helvetica", "bold");
+        docPdf.setFontSize(10);
+        docPdf.setTextColor(255, 255, 255);
+        docPdf.text("SIA 102", pw - 19, 11.5, { align: 'center' });
+      } else if (themeStyle === 'swiss') {
+        // Thick swiss border around slide
+        docPdf.setDrawColor(isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0, isDarkTheme ? 255 : 0);
+        docPdf.setLineWidth(3.0);
+        docPdf.rect(2, 2, pw - 4, ph - 4, 'S');
+
+        // SWISS GRAPHIC Red Badge
+        docPdf.setFillColor(220, 38, 38);
+        docPdf.rect(pw - 42, 5, 36, 8, 'F');
+        docPdf.setFont("helvetica", "bold");
+        docPdf.setFontSize(8.5);
+        docPdf.setTextColor(255, 255, 255);
+        docPdf.text("SWISS GRAPHIC", pw - 24, 10.5, { align: 'center' });
+      } else if (themeStyle === 'architecture') {
+        // Blueprint slate border
+        docPdf.setDrawColor(isDarkTheme ? 71 : 51, isDarkTheme ? 85 : 65, isDarkTheme ? 105 : 85);
+        docPdf.setLineWidth(1.0);
+        docPdf.rect(4, 4, pw - 8, ph - 8, 'S');
+        docPdf.setFont("helvetica", "bold");
+        docPdf.setFontSize(7.5);
+        docPdf.setTextColor(isDarkTheme ? 148 : 100, isDarkTheme ? 163 : 116, isDarkTheme ? 184 : 139);
+        docPdf.text("[ + ] SCALE 1:100 | SIA ARCHITECTURE", pw - 12, 11, { align: 'right' });
+      } else if (themeStyle === 'cyberpunk') {
+        // Neon top line
+        docPdf.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.rect(0, 0, pw, 2, 'F');
+        docPdf.setDrawColor(56, 189, 248);
+        docPdf.setLineWidth(0.8);
+        docPdf.rect(3, 3, pw - 6, ph - 6, 'S');
+      } else if (themeStyle === 'scenography') {
+        // Left accent bar & Top line
+        docPdf.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.rect(0, 0, pw, 2, 'F');
+        docPdf.rect(0, 0, 3.5, ph, 'F');
+      } else if (themeStyle === 'minimal-tech') {
+        // Timber border
+        docPdf.setDrawColor(isDarkTheme ? 59 : 214, isDarkTheme ? 71 : 207, isDarkTheme ? 53 : 192);
+        docPdf.setLineWidth(1.2);
+        docPdf.roundedRect(4, 4, pw - 8, ph - 8, 3, 3, 'S');
+      } else if (themeStyle === 'photography') {
+        // Fine editorial border
+        docPdf.setDrawColor(isDarkTheme ? 41 : 214, isDarkTheme ? 37 : 211, isDarkTheme ? 36 : 209);
+        docPdf.setLineWidth(0.5);
+        docPdf.rect(5, 5, pw - 10, ph - 10, 'S');
+      } else if (themeStyle === 'glassmorphism') {
+        // Rounded card border
+        docPdf.setDrawColor(isDarkTheme ? 51 : 203, isDarkTheme ? 65 : 213, isDarkTheme ? 85 : 225);
+        docPdf.setLineWidth(0.8);
+        docPdf.roundedRect(4, 4, pw - 8, ph - 8, 4, 4, 'S');
+      } else if (themeStyle === 'keynote') {
+        docPdf.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+        docPdf.rect(0, 0, pw, 2, 'F');
+      }
       
-      docPdf.setFontSize(8); docPdf.setTextColor(150, 150, 150); docPdf.text(deckSettings.footerText, 15, ph - 10); docPdf.text(`${t('slide')} ${i + 1}`, pw - 25, ph - 10);
+      // 3. Footer Text & Page Number
+      const pdfFont = themeStyle === 'photography' ? "times" : "helvetica";
+      docPdf.setFont(pdfFont, "normal");
+      docPdf.setFontSize(8);
+      docPdf.setTextColor(isDarkTheme ? 160 : 110);
+      docPdf.text(deckSettings.footerText || 'Vertraulich – Projekt Status Report', 15, ph - 10);
+      docPdf.text(`${i + 1} / ${slides.length}`, pw - 25, ph - 10);
       
       if (deckSettings.logoUrl) {
-         await addSafeImage(deckSettings.logoUrl, pw - 55, ph - 18, 40, 10, true);
+         await addSafeImage(deckSettings.logoUrl, pw - 65, ph - 18, 35, 10, true);
       }
 
-      docPdf.setFont("helvetica", isDarkTheme ? "normal" : "bold");
-      docPdf.setTextColor(isDarkTheme ? 255 : 20);
+      // 4. Slide Typography
+      docPdf.setFont(pdfFont, "bold");
+      let titleTextColor: [number, number, number] = isDarkTheme ? [255, 255, 255] : [20, 20, 20];
+      if (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') {
+        titleTextColor = isDarkTheme ? [255, 255, 255] : [0, 0, 0];
+      } else if (themeStyle === 'cyberpunk') {
+        titleTextColor = isDarkTheme ? [56, 189, 248] : [12, 74, 110];
+      } else if (themeStyle === 'architecture') {
+        titleTextColor = isDarkTheme ? [241, 245, 249] : [15, 23, 42];
+      }
+      docPdf.setTextColor(titleTextColor[0], titleTextColor[1], titleTextColor[2]);
       
       if (slide.layout === 'title-only') { 
-        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.9) : 42); 
-        const tw = docPdf.getTextWidth(slide.title); 
-        docPdf.text(slide.title, (pw - tw)/2, ph/2); 
+        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.9) : 38); 
+        const tw = docPdf.getTextWidth(slide.title || ''); 
+        docPdf.text(slide.title || '', (pw - tw)/2, ph/2 - 5); 
+        if (slide.content) {
+          docPdf.setFont(pdfFont, "normal");
+          docPdf.setFontSize(slide.fontSize || 16);
+          docPdf.setTextColor(isDarkTheme ? 200 : 70);
+          const cLines = docPdf.splitTextToSize(slide.content, pw - 60);
+          docPdf.text(cLines, pw / 2, ph / 2 + 12, { align: 'center' });
+        }
       } else { 
-        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 30); 
-        docPdf.text(slide.title, 15, 25); 
+        docPdf.setFontSize(slide.titleFontSize ? Math.round(slide.titleFontSize * 0.7) : 26); 
+        const maxTitleW = (themeStyle === 'neo-brutalism' || themeStyle === 'swiss') ? pw - 60 : pw - 30;
+        const titleLns = docPdf.splitTextToSize(slide.title || '', maxTitleW);
+        docPdf.text(titleLns, 15, 22); 
       }
 
       if (slide.stamp) {
-        docPdf.setFontSize(9); docPdf.setTextColor(220, 38, 38);
-        docPdf.text(`[ ${slide.stamp} ]`, pw - 50, 25);
+        docPdf.setFontSize(9);
+        const stampRgb = slide.stamp === 'VERTRAULICH' ? [239, 68, 68] : slide.stamp === 'GENEHMIGT' ? [16, 185, 129] : [245, 158, 11];
+        docPdf.setTextColor(stampRgb[0], stampRgb[1], stampRgb[2]);
+        docPdf.text(`[ ${slide.stamp} ]`, pw - 50, 22);
       }
       
-      docPdf.setFontSize(slide.fontSize || 18); docPdf.setTextColor(isDarkTheme ? 220 : 40);
-      const cy = 40;
+      docPdf.setFont(pdfFont, "normal");
+      docPdf.setFontSize(slide.fontSize || 16);
+      docPdf.setTextColor(isDarkTheme ? 220 : 50);
+      const cy = 36;
       
       if (slide.layout === 'text-only') { 
         const lns = docPdf.splitTextToSize(slide.content || '', pw - 30); docPdf.text(lns, 15, cy); 
       }
       else if (slide.layout === 'split' && slide.imageUrl) { 
         const lns = docPdf.splitTextToSize(slide.content || '', (pw/2)-20); docPdf.text(lns, 15, cy); 
-        await addSafeImage(slide.imageUrl, pw/2, cy-5, (pw/2)-15, ph-60);
+        await addSafeImage(slide.imageUrl, pw/2, cy-5, (pw/2)-15, ph-55, true);
       }
       else if (slide.layout === 'image-focus' && slide.imageUrl) { 
-        await addSafeImage(slide.imageUrl, 15, cy-5, pw-30, ph-60);
+        await addSafeImage(slide.imageUrl, 15, cy-5, pw-30, ph-55, true);
       }
       else if (slide.layout === 'smart-calendar' && slide.dataPayload?.milestones) {
          const milestones = slide.dataPayload.milestones;
@@ -3500,7 +3666,7 @@ export default function PitchDeckStudio({
 
                 <div className="grid grid-cols-2 gap-3">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
-                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold cursor-pointer", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-400":"bg-surface border-border text-text-primary")}>{thm.n}</button>
+                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("p-4 rounded-xl border text-center transition-all text-xs font-bold cursor-pointer", deckSettings.themeStyle===thm.id?"bg-purple-500/20 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-surface border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>{thm.n}</button>
                   ))}
                 </div>
 
@@ -3516,7 +3682,7 @@ export default function PitchDeckStudio({
                         key={fx.id}
                         type="button"
                         onClick={() => { updateDeckSettings({ transitionEffect: fx.id as any }); setAnimKey(prev => prev + 1); }}
-                        className={cn("flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/20 border-purple-500 text-purple-400" : "bg-surface border-border text-text-primary")}
+                        className={cn("flex-1 py-2 px-3 rounded-lg border text-xs font-bold transition-all cursor-pointer", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/20 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm" : "bg-surface border-border text-text-primary")}
                       >
                         {fx.label}
                       </button>
@@ -3544,33 +3710,33 @@ export default function PitchDeckStudio({
                 )}
 
                 <div className="grid grid-cols-1 gap-3 pt-2">
-                  <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-4 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center justify-between font-semibold shadow-md">
-                    <span className="flex items-center gap-3"><Layers size={18}/> 3-Varianten-Vergleich</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-purple-500/30 rounded font-sans font-semibold">Pitch</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-3.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/20 dark:hover:bg-purple-900/30 text-purple-950 dark:text-purple-200 border border-purple-200 dark:border-purple-800/40 flex items-center justify-between font-bold shadow-sm">
+                    <span className="flex items-center gap-3"><Layers size={18} className="text-purple-600 dark:text-purple-400"/> 3-Varianten-Vergleich</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200 border border-purple-300/60 dark:border-purple-700/50 rounded-md font-sans font-bold">Pitch</span>
                   </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-4 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-between font-semibold">
-                    <span className="flex items-center gap-3"><DollarSign size={18}/>{t('load_budget')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 rounded font-sans font-semibold">Tabelle</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><DollarSign size={18} className="text-emerald-600 dark:text-emerald-400"/>{t('load_budget')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300/60 dark:border-emerald-700/50 rounded-md font-sans font-bold">{t('badge_table')}</span>
                   </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-4 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-between font-semibold">
-                    <span className="flex items-center gap-3"><PieChart size={18}/> Baukosten Chart</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 rounded font-sans font-semibold">Donut</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-3.5 rounded-xl bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-950 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800/40 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><PieChart size={18} className="text-indigo-600 dark:text-indigo-400"/> Baukosten Chart</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 border border-indigo-300/60 dark:border-indigo-700/50 rounded-md font-sans font-bold">Donut</span>
                   </button>
-                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-4 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-between font-semibold">
-                    <span className="flex items-center gap-3"><CalendarDays size={18}/>{t('generate_roadmap')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-orange-500/20 rounded font-sans font-semibold">Vorlage</span>
+                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><CalendarDays size={18} className="text-amber-600 dark:text-amber-400"/>{t('generate_roadmap')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/50 rounded-md font-sans font-bold">Gantt</span>
                   </button>
-                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-4 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-3"><Users size={18}/>{t('load_team')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 rounded font-sans font-bold">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
+                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-3.5 rounded-xl bg-sky-50 hover:bg-sky-100/80 dark:bg-sky-950/20 dark:hover:bg-sky-900/30 text-sky-950 dark:text-sky-200 border border-sky-200 dark:border-sky-800/40 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><Users size={18} className="text-sky-600 dark:text-sky-400"/>{t('load_team')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-sky-200/80 dark:bg-sky-900/60 text-sky-900 dark:text-sky-200 border border-sky-300/60 dark:border-sky-700/50 rounded-md font-sans font-bold">{hasRealTeam ? 'Live' : 'Vorlage'}</span>
                   </button>
-                  <button type="button" onClick={handleImportDefects} className="w-full p-4 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-3"><AlertTriangle size={18}/>{t('import_defects')}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-red-500/20 rounded font-sans font-bold">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
+                  <button type="button" onClick={handleImportDefects} className="w-full p-3.5 rounded-xl bg-rose-50 hover:bg-rose-100/80 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-950 dark:text-rose-200 border border-rose-200 dark:border-rose-800/40 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><AlertTriangle size={18} className="text-rose-600 dark:text-rose-400"/>{t('import_defects')}</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-rose-200/80 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200 border border-rose-300/60 dark:border-rose-700/50 rounded-md font-sans font-bold">{hasRealDefects ? 'Live' : 'Vorlage'}</span>
                   </button>
-                  <button type="button" onClick={handleImportWhiteboard} className="w-full p-4 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-between font-bold">
-                    <span className="flex items-center gap-3"><PenTool size={18}/> Whiteboard Skizze</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 rounded font-sans font-bold">Import</span>
+                  <button type="button" onClick={handleImportWhiteboard} className="w-full p-3.5 rounded-xl bg-teal-50 hover:bg-teal-100/80 dark:bg-teal-950/20 dark:hover:bg-teal-900/30 text-teal-950 dark:text-teal-200 border border-teal-200 dark:border-teal-800/40 flex items-center justify-between font-bold">
+                    <span className="flex items-center gap-3"><PenTool size={18} className="text-teal-600 dark:text-teal-400"/> Whiteboard Skizze</span>
+                    <span className="text-[10px] px-2 py-0.5 bg-teal-200/80 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 border border-teal-300/60 dark:border-teal-700/50 rounded-md font-sans font-bold">Skizze</span>
                   </button>
                 </div>
               </div>
@@ -3599,9 +3765,9 @@ export default function PitchDeckStudio({
                 <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
                 <div className="grid grid-cols-1 gap-1.5">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
-                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold flex items-center justify-between", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-400 shadow-sm":"bg-background border-border hover:bg-white/5")}>
+                    <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold flex items-center justify-between", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-background border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>
                       <span>{thm.n}</span>
-                      {deckSettings.themeStyle===thm.id && <Check size={12} className="text-purple-400" />}
+                      {deckSettings.themeStyle===thm.id && <Check size={12} className="text-purple-600 dark:text-purple-400" />}
                     </button>
                   ))}
                 </div>
@@ -3618,7 +3784,7 @@ export default function PitchDeckStudio({
                         key={fx.id}
                         type="button"
                         onClick={() => { updateDeckSettings({ transitionEffect: fx.id as any }); setAnimKey(prev => prev + 1); }}
-                        className={cn("py-1.5 px-2 rounded-md border text-center transition-all text-[11px] font-bold cursor-pointer", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/10 border-purple-500 text-purple-400 shadow-sm" : "bg-background border-border text-text-muted hover:text-text-primary")}
+                        className={cn("py-1.5 px-2 rounded-md border text-center transition-all text-[11px] font-bold cursor-pointer", (deckSettings.transitionEffect || 'fade') === fx.id ? "bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm" : "bg-background border-border text-text-muted hover:text-text-primary")}
                       >
                         {fx.label}
                       </button>
@@ -3636,42 +3802,42 @@ export default function PitchDeckStudio({
                   </select>
                 )}
                 <div className="space-y-2">
-                  <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-2.5 rounded-lg bg-purple-500/10 text-purple-300 flex items-center justify-between hover:bg-purple-500/20 transition-all text-xs font-semibold border border-purple-500/30 shadow-sm">
-                    <span className="flex items-center gap-2.5"><Layers size={15}/> {t('comparison_3variant')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-purple-500/20 text-purple-300">Pitch</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('comparison')} className="w-full p-2.5 rounded-lg bg-purple-50 hover:bg-purple-100/80 dark:bg-purple-950/20 dark:hover:bg-purple-900/30 text-purple-950 dark:text-purple-200 border border-purple-200 dark:border-purple-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><Layers size={15} className="text-purple-600 dark:text-purple-400 shrink-0"/> <span className="truncate">{t('comparison_3variant')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-purple-200/80 dark:bg-purple-900/60 text-purple-900 dark:text-purple-200 shrink-0 border border-purple-300/60 dark:border-purple-700/50">Pitch</span>
                   </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-between hover:bg-emerald-500/20 transition-all text-xs font-semibold border border-emerald-500/20">
-                    <span className="flex items-center gap-2.5"><DollarSign size={15}/>{t('load_budget')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-emerald-500/20 text-emerald-300">{t('badge_table')}</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('table')} className="w-full p-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30 text-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><DollarSign size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0"/> <span className="truncate">{t('load_budget')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-emerald-200/80 dark:bg-emerald-900/60 text-emerald-900 dark:text-emerald-200 shrink-0 border border-emerald-300/60 dark:border-emerald-700/50">{t('badge_table')}</span>
                   </button>
-                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-semibold border border-indigo-500/20">
-                    <span className="flex items-center gap-2.5"><PieChart size={15}/> {t('construction_cost_chart')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">Donut</span>
+                  <button type="button" onClick={() => handleOpenBudgetPicker('chart')} className="w-full p-2.5 rounded-lg bg-indigo-50 hover:bg-indigo-100/80 dark:bg-indigo-950/20 dark:hover:bg-indigo-900/30 text-indigo-950 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><PieChart size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0"/> <span className="truncate">{t('construction_cost_chart')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-indigo-200/80 dark:bg-indigo-900/60 text-indigo-900 dark:text-indigo-200 shrink-0 border border-indigo-300/60 dark:border-indigo-700/50">Donut</span>
                   </button>
-                  <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-between hover:bg-indigo-500/20 transition-all text-xs font-semibold border border-indigo-500/20">
-                    <span className="flex items-center gap-2.5"><BookOpen size={15}/> {t('table_of_contents_agenda')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-semibold bg-indigo-500/20 text-indigo-300">{t('badge_template')}</span>
+                  <button type="button" onClick={handleGenerateAgendaSlide} className="w-full p-2.5 rounded-lg bg-blue-50 hover:bg-blue-100/80 dark:bg-blue-950/20 dark:hover:bg-blue-900/30 text-blue-950 dark:text-blue-200 border border-blue-200 dark:border-blue-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><BookOpen size={15} className="text-blue-600 dark:text-blue-400 shrink-0"/> <span className="truncate">{t('table_of_contents_agenda')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-blue-200/80 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 shrink-0 border border-blue-300/60 dark:border-blue-700/50">{t('badge_template')}</span>
                   </button>
-                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-between hover:bg-orange-500/20 transition-all text-xs font-bold border border-orange-500/20">
-                    <span className="flex items-center gap-2.5"><CalendarDays size={15}/>{t('generate_roadmap')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-orange-500/20 text-orange-300">Gantt</span>
+                  <button type="button" onClick={handleGenerateTimelineSlide} className="w-full p-2.5 rounded-lg bg-amber-50 hover:bg-amber-100/80 dark:bg-amber-950/20 dark:hover:bg-amber-900/30 text-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><CalendarDays size={15} className="text-amber-600 dark:text-amber-400 shrink-0"/> <span className="truncate">{t('generate_roadmap')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 shrink-0 border border-amber-300/60 dark:border-amber-700/50">Gantt</span>
                   </button>
-                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-2.5 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-between hover:bg-blue-500/20 transition-all text-xs font-bold border border-blue-500/20">
-                    <span className="flex items-center gap-2.5"><Users size={15}/>{t('load_team')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-blue-500/20 text-blue-300">{hasRealTeam ? 'Live' : t('badge_template')}</span>
+                  <button type="button" onClick={handleGenerateTeamSlide} className="w-full p-2.5 rounded-lg bg-sky-50 hover:bg-sky-100/80 dark:bg-sky-950/20 dark:hover:bg-sky-900/30 text-sky-950 dark:text-sky-200 border border-sky-200 dark:border-sky-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><Users size={15} className="text-sky-600 dark:text-sky-400 shrink-0"/> <span className="truncate">{t('load_team')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-sky-200/80 dark:bg-sky-900/60 text-sky-900 dark:text-sky-200 shrink-0 border border-sky-300/60 dark:border-sky-700/50">{hasRealTeam ? 'Live' : t('badge_template')}</span>
                   </button>
-                  <button type="button" onClick={handleImportDefects} className="w-full p-2.5 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-between hover:bg-red-500/20 transition-all text-xs font-bold border border-red-500/20">
-                    <span className="flex items-center gap-2.5"><AlertTriangle size={15}/>{t('import_defects')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-red-500/20 text-red-300">{hasRealDefects ? 'Live' : t('badge_template')}</span>
+                  <button type="button" onClick={handleImportDefects} className="w-full p-2.5 rounded-lg bg-rose-50 hover:bg-rose-100/80 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-950 dark:text-rose-200 border border-rose-200 dark:border-rose-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><AlertTriangle size={15} className="text-rose-600 dark:text-rose-400 shrink-0"/> <span className="truncate">{t('import_defects')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-rose-200/80 dark:bg-rose-900/60 text-rose-900 dark:text-rose-200 shrink-0 border border-rose-300/60 dark:border-rose-700/50">{hasRealDefects ? 'Live' : t('badge_template')}</span>
                   </button>
                   <div className="w-full h-px bg-border/50 my-1"></div>
-                  <button type="button" onClick={handleImportWhiteboard} className="w-full p-2.5 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-between hover:bg-cyan-500/20 transition-all text-xs font-bold border border-cyan-500/20">
-                    <span className="flex items-center gap-2.5"><PenTool size={15}/> {t('whiteboard_sketch_btn')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-cyan-500/20 text-cyan-300">{t('badge_sketch')}</span>
+                  <button type="button" onClick={handleImportWhiteboard} className="w-full p-2.5 rounded-lg bg-teal-50 hover:bg-teal-100/80 dark:bg-teal-950/20 dark:hover:bg-teal-900/30 text-teal-950 dark:text-teal-200 border border-teal-200 dark:border-teal-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><PenTool size={15} className="text-teal-600 dark:text-teal-400 shrink-0"/> <span className="truncate">{t('whiteboard_sketch_btn')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-teal-200/80 dark:bg-teal-900/60 text-teal-900 dark:text-teal-200 shrink-0 border border-teal-300/60 dark:border-teal-700/50">{t('badge_sketch')}</span>
                   </button>
-                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-between hover:bg-pink-500/20 transition-all text-xs font-bold border border-pink-500/20">
-                    <span className="flex items-center gap-2.5"><Box size={15}/>{t('import_renderings')}</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-pink-500/20 text-pink-300">{t('badge_media')}</span>
+                  <button type="button" onClick={() => openMediaPicker('render', t('import_renderings'))} className="w-full p-2.5 rounded-lg bg-fuchsia-50 hover:bg-fuchsia-100/80 dark:bg-fuchsia-950/20 dark:hover:bg-fuchsia-900/30 text-fuchsia-950 dark:text-fuchsia-200 border border-fuchsia-200 dark:border-fuchsia-800/40 flex items-center justify-between transition-all text-xs font-bold shadow-sm cursor-pointer">
+                    <span className="flex items-center gap-2.5 truncate"><Box size={15} className="text-fuchsia-600 dark:text-fuchsia-400 shrink-0"/> <span className="truncate">{t('import_renderings')}</span></span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-md font-sans font-bold bg-fuchsia-200/80 dark:bg-fuchsia-900/60 text-fuchsia-900 dark:text-fuchsia-200 shrink-0 border border-fuchsia-300/60 dark:border-fuchsia-700/50">{t('badge_media')}</span>
                   </button>
                 </div>
               </div>
@@ -4569,20 +4735,20 @@ export default function PitchDeckStudio({
                   addToast('Apple Keynote Präsentation wird generiert...', 'info');
                   const cleanName = (activeProject?.name || 'PitchDeck').replace(/[/\\?%*:|"<>]/g, '-').trim();
                   await exportDeckToPptx(slides, deckSettings, `${cleanName}-Keynote.pptx`);
-                  addToast('Keynote Präsentation (.pptx) erfolgreich heruntergeladen!', 'success');
+                  addToast('Keynote-Präsentation (.pptx) heruntergeladen! 💡 Tipp: Im Finder per Rechtsklick ➔ "Öffnen mit ➔ Keynote" starten.', 'success');
                 }}
                 className="group p-5 bg-background border border-border/80 hover:border-blue-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
                     🍏
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
                       Apple Keynote (.pptx)
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-400 uppercase tracking-widest">Mac & iPad</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-600 dark:text-blue-400 uppercase tracking-widest">Mac & iPad</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Nativ für Apple macOS Keynote & iOS im 16:9 Breitbild-Format (ohne Formatverlust)</p>
+                    <p className="text-xs text-text-muted mt-0.5">Optimiert für Apple Keynote (16:9). Öffnet nativ in Keynote via Rechtsklick ➔ "Öffnen mit Keynote".</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-blue-400 group-hover:translate-x-1 transition-all"/>
@@ -4601,15 +4767,15 @@ export default function PitchDeckStudio({
                 className="group p-5 bg-background border border-border/80 hover:border-amber-500/60 rounded-2xl transition-all duration-300 flex items-center justify-between text-left hover:shadow-lg cursor-pointer"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">
                     📊
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-text-primary flex items-center gap-2">
                       Microsoft PowerPoint (.pptx)
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-400 uppercase tracking-widest">Office & PC</span>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 uppercase tracking-widest">Office & PC</span>
                     </h4>
-                    <p className="text-xs text-text-muted mt-0.5">Standard PowerPoint Format für Windows, Office 365 & Teams</p>
+                    <p className="text-xs text-text-muted mt-0.5">Natives 16:9 PowerPoint-Format für Microsoft 365, Teams & PC (sauber repariert & formatiert).</p>
                   </div>
                 </div>
                 <ArrowRight size={18} className="text-text-muted group-hover:text-amber-400 group-hover:translate-x-1 transition-all"/>
