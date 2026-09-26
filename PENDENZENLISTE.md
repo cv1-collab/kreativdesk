@@ -111,4 +111,21 @@ Dieses Dokument dient als zentrale Pendenzenliste für **Kreativ Desk OS**.
    - **PowerPoint «Repariert»-Meldung behoben:** Bildpfade werden als saubere Base64-Medien ins OOXML-Paket eingebettet. Ungültige Beziehungs-URIs eliminiert. Automatische Umwandlung roher Bullet-Points in native PPTX-Listen sowie `valign: top`-Ausrichtung.
    - **Apple Keynote Praxisführung:** Export-Modus und Hinweisführung optimiert; nativer 16:9-Export mit Direkt-Tipp für macOS (*Finder ➔ Rechtsklick ➔ «Öffnen mit» ➔ «Keynote»*).
    - **UI-Kontraste & Barrierefreiheit:** Farbige Badges und Bezeichnungen unter «Projekt-Berichterstattung» in der linken Navigationsleiste für Hell- und Dunkelmodus mit satten, kontraststarken Farben überarbeitet.
+8. **Offizielles Master System-Handbuch & Universal PDF Studio Lokalisierung [ERLEDIGT ✅]:**
+   - **14-seitiges Schweizer Master-Handbuch:** Vollständig in Universal PDF Studio integriert (`GlobalSystemHandbookModal.tsx`) mit SIA-Normen 102/112/118, BKP 1–9 Kostenmatrix, Rollen-Governance und Quickstarts.
+   - **PDF-Typografie & Glyphen-Bereinigung:** Emoji-Glyphen durch saubere ASCII/Unicode-Zeichen ersetzt, um Zeichensatzfehler und Layoutbrüche in jsPDF zu eliminieren.
+   - **Zweisprachige Lokalisierung (DE/EN):** Sämtliche Werkzeuge und Formulare des Universal PDF Studio vollständig lokalisiert.
+   - **Professionelle Baukosten-Optik:** Überflüssige Neon-Akzentfarben in Baukostentabellen entfernt für revisionssichere, bankentaugliche Dokumente.
+9. **Authentische Schweizer Demo-Daten & Fachbereiche [ERLEDIGT ✅]:**
+   - **Echte 3D BIM-Daten:** Echtes GLB/IFC-Modell (`davos_promenade_base.glb`) statt minimalistischer Dummy-Kuben hinterlegt.
+   - **BKP 1–9 Budgetstrukturen:** Vollständiges Schweizer Baukosten-Ledger mit Soll/Ist-Vergleichen in Demo-Projekten geladen.
+   - **SIA 118 Mängel & SIA 112 Gantt:** Realistische Baustellen-Tickets mit Fristen und Meilensteinen im Demomodus.
+10. **Tour Guide Re-Engineering (Alle 12 Module) & Vercel Cleanup [ERLEDIGT ✅]:**
+    - **Ghost-Button & Beacon-Bug behoben:** Roter Joyride-Beacon deaktiviert (`skipBeacon: true`, `disableBeacon: true`), kein Flackern oder Seitenneuladen beim Klick mehr.
+    - **Header- und Guide-Button-Fehlplatzierungen eliminiert:** Joyride zielt niemals mehr auf leere Header-Bereiche oder auf den `[? Modul-Guide]`-Button selbst.
+    - **Semantische CSS-Klassen in allen 12 Modulen:** Spezifische Klassen (`.tour-overview-budget`, `.tour-finance-table`, `.tour-bim-viewport`, `.tour-defects-board` etc.) gewährleisten exakte Ausrichtung auf beschriebene Funktionen.
+    - **Zentrierter Modal-Fallback:** Bei ausgeblendeten Elementen automatischer Fallback auf zentrierten Dialog ohne störende Pfeile (`hideArrow: true`, `placement: 'center'`, `disableScrolling: true`).
+    - **Schließen-Button (X):** Direkter Schließen-Button oben rechts in jeder Tour-Karte integriert.
+    - **Vercel Bereinigung:** 15 veraltete Deployments gelöscht, Speicherkapazität maximiert und saubere Produktionsumgebung hergestellt.
+
 
