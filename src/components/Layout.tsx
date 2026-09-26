@@ -509,17 +509,20 @@ export default function Layout() {
               <Globe size={14} className="text-accent-ai" /> <span className="hidden sm:inline">{language}</span>
             </button>
 
-            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}>
-              <HelpCircle size={18} />
-            </button>
-
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
-              className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" 
-              title={language === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
-            >
-              <BookOpen size={18} className="text-blue-500" />
-            </button>
+            {/* HILFE & MASTER-HANDBUCH (ZUSAMMENGEFÜHRT) */}
+            <div className="flex items-center bg-background border border-border rounded-lg p-0.5 shadow-sm">
+              <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-md hover:bg-white/5 transition-colors cursor-pointer" title={t('start_tour')}>
+                <HelpCircle size={16} />
+              </button>
+              <div className="w-px h-3.5 bg-border/80 my-auto" />
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
+                className="p-1.5 sm:p-2 text-blue-500 hover:text-blue-400 rounded-md hover:bg-white/5 transition-colors cursor-pointer" 
+                title={language === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
+              >
+                <BookOpen size={16} />
+              </button>
+            </div>
 
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">
               {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}

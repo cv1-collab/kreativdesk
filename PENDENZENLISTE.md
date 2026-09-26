@@ -127,5 +127,16 @@ Dieses Dokument dient als zentrale Pendenzenliste für **Kreativ Desk OS**.
     - **Zentrierter Modal-Fallback:** Bei ausgeblendeten Elementen automatischer Fallback auf zentrierten Dialog ohne störende Pfeile (`hideArrow: true`, `placement: 'center'`, `disableScrolling: true`).
     - **Schließen-Button (X):** Direkter Schließen-Button oben rechts in jeder Tour-Karte integriert.
     - **Vercel Bereinigung:** 15 veraltete Deployments gelöscht, Speicherkapazität maximiert und saubere Produktionsumgebung hergestellt.
+11. **CAD Plans: Werkzeugleiste, Direkt-Messung & Header-Konsolidierung [ERLEDIGT ✅]:**
+    - **Messwerkzeug (Lineal) repositioniert:** Das Messwerkzeug (`measure` 📏) wurde von Position 11 (unterer Rand / auf kleineren Bildschirmen abgeschnitten) direkt an Position 2 unter `pan` (Hand) verschoben, unmittelbar gefolgt von `scalebar`.
+    - **Kompakte Werkzeugleiste & Lokalisierung:** Werkzeugleiste auf `w-11 sm:w-12`, `gap-1` und `max-h-[calc(100%-1.5rem)]` optimiert. Sämtliche Tooltips zweisprachig (DE/EN) lokalisiert (`TOOL_LABELS`).
+    - **Direkte Planmessung:** Beim Ziehen mit dem Messwerkzeug wird die Distanz in Echtzeit live als Bubble (`XX.X m`) am Mittelpunkt der Messlinie eingeblendet und bleibt nach dem Absetzen sauber sichtbar.
+    - **TrueScale™ Kalibrierungs-Workflow repariert:** Klick auf `📐 Kalibrieren` öffnet kein blockierendes Modal mehr, sondern aktiviert einen interaktiven Kalibriermodus mit Hinweisleiste (`isCalibratingMode`). Der Benutzer zieht eine Referenzlinie auf dem Plan (z.B. 1-Meter-Raster oder Wandmass). Erst beim Loslassen öffnet sich das Kalibriermodal mit der gemessenen Pixelstrecke und berechnetem Massstabsfaktor.
+    - **Konsolidierte Header-Aktionsleiste:** Unübersichtliche Einzelbuttons im CAD-Header zu logischen Segmented Controls zusammengeführt:
+      1. Format & Massstab-Pille: `[ Format | Ausrichtung | 1:50 | 📐 Kalibrieren ]`.
+      2. Plan-Arbeitspille: `[ + Plan hochladen ]` + `[ Speichern ]`.
+      3. Dropdown-Menü: `[ Exportieren ▾ ]` bündelt `PDF Plan exportieren (SIA)` und `Pitch Deck Folie`.
+      4. Header-Layout: Tour `[ ? ]` und Master-Handbuch `[ 📖 ]` zu einer einheitlichen Navigationsgruppe zusammengeführt.
+
 
 

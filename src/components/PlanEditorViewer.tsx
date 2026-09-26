@@ -6,7 +6,7 @@ import {
   UploadCloud, Image as ImageIcon, MapPin, Square, Circle,
   Trash2, Settings, Layers, Hexagon, Check, LayoutTemplate, MoveHorizontal, Loader2,
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
-  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X
+  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
@@ -60,7 +60,14 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     truescale_modal_title: 'TrueScale™ Scale Calibration',
     truescale_modal_desc: 'Draw a reference line over a known distance (e.g. a wall) and enter the exact value in meters. The CAD system calculates the scale automatically (1:50, 1:100 etc.).',
     known_real_length: 'Known real length in meters (m)',
-    apply_calibration_btn: 'Apply Scale Calibration'
+    apply_calibration_btn: 'Apply Scale Calibration',
+    calibrate_truescale_tooltip: 'Calibrate plan scale with known reference distance (TrueScale™)',
+    export_dropdown: 'Export',
+    export_pdf_title: 'Export PDF Plan',
+    export_pdf_sub: 'Print-ready plan with SIA title block in Universal PDF Studio',
+    export_pitch_title: 'Pitch Deck Slide',
+    export_pitch_sub: 'Send current plan snapshot to presentation deck',
+    plan_layout: 'Layout'
   },
   de: {
     save: 'Speichern', upload_success: 'Upload erfolgreich!', upload_failed: 'Upload fehlgeschlagen.',
@@ -95,8 +102,29 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     truescale_modal_title: 'TrueScale™ Maßstabs-Kalibrierung',
     truescale_modal_desc: 'Zeichne eine Referenzlinie über eine bekannte Distanz (z.B. eine Wand) und gib den exakten Wert in Metern ein. Das CAD-System berechnet automatisch den Maßstab (1:50, 1:100 etc.).',
     known_real_length: 'Bekannte Reallänge in Metern (m)',
-    apply_calibration_btn: 'Maßstab Kalibrieren'
+    apply_calibration_btn: 'Maßstab Kalibrieren',
+    calibrate_truescale_tooltip: 'Plan-Maßstab anhand Referenzlinie kalibrieren (TrueScale™)',
+    export_dropdown: 'Export',
+    export_pdf_title: 'PDF Plan exportieren',
+    export_pdf_sub: 'Druckfertiger Plan mit SIA-Plankopf im Universal PDF Studio',
+    export_pitch_title: 'Pitch Deck Folie',
+    export_pitch_sub: 'Aktuellen Plan-Snapshot direkt an Pitch Deck senden',
+    plan_layout: 'Format'
   }
+};
+
+const TOOL_LABELS: Record<string, { de: string; en: string }> = {
+  pan: { de: 'Auswählen & Verschieben', en: 'Select & Pan' },
+  measure: { de: 'Messen / Maßstab (Distanz)', en: 'Measure (Distance)' },
+  scalebar: { de: 'Grafischer Maßstabsbalken', en: 'Graphic Scale Bar' },
+  polygon: { de: 'Polygon / Raumfläche', en: 'Polygon / Room Area' },
+  rect: { de: 'Rechteck', en: 'Rectangle' },
+  circle: { de: 'Kreis', en: 'Circle' },
+  pen: { de: 'Stift / Freihandzeichnung', en: 'Freehand Pen' },
+  text: { de: 'Text einfügen', en: 'Insert Text' },
+  defect: { de: 'SIA 118 Mangel-Pin', en: 'SIA 118 Defect Pin' },
+  titleblock: { de: 'SIA Plankopf einfügen', en: 'SIA Title Block' },
+  image: { de: 'Bild / Plan überlagern', en: 'Overlay Image' },
 };
 
 type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygon' | 'titleblock' | 'rect' | 'circle' | 'scalebar' | 'image';
@@ -479,13 +507,45 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   const [calibrationMetersInput, setCalibrationMetersInput] = useState('5.0');
   const [isCalibratingMode, setIsCalibratingMode] = useState(false);
   const [calibrationLine, setCalibrationLine] = useState<{start: {x:number, y:number}, end: {x:number, y:number}} | null>(null);
+  const [calibPaperDistMm, setCalibPaperDistMm] = useState<number>(0);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [showMobileRightPanel, setShowMobileRightPanel] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    if (exportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [exportMenuOpen]);
+
+  const handleStartCalibration = () => {
+    if (isDemoMode || currentProjectId === 'demo-1') {
+      addToast(t('truescale_demo_info'), 'info');
+      return;
+    }
+    setIsCalibratingMode(true);
+    setCalibrationLine(null);
+    setCalibPaperDistMm(0);
+    setActiveTool('pan');
+    addToast(
+      currentLang === 'de' 
+        ? '📐 TrueScale™: Ziehe eine Referenzlinie auf dem Plan (z.B. über eine Wand bekannter Länge).' 
+        : '📐 TrueScale™: Draw a reference line across a known distance (e.g. a wall).', 
+      'info'
+    );
+  };
 
   const handleApplyScaleCalibration = () => {
     if (!calibrationLine) return;
     const knownMeters = parseFloat(calibrationMetersInput);
     if (isNaN(knownMeters) || knownMeters <= 0) {
-      addToast('Bitte eine gültige Distanz eingeben', 'error');
+      addToast(currentLang === 'de' ? 'Bitte eine gültige Distanz in Metern eingeben' : 'Please enter a valid distance in meters', 'error');
       return;
     }
 
@@ -496,12 +556,18 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     if (lineDistanceOnPaper_mm > 0) {
       const computedScaleRatio = Math.round((knownMeters * 1000) / lineDistanceOnPaper_mm);
       setPlanScale(computedScaleRatio);
-      addToast(`TrueScale™ kalibriert auf 1:${computedScaleRatio}!`, 'success');
+      addToast(
+        currentLang === 'de' 
+          ? `TrueScale™ Maßstab erfolgreich kalibriert auf 1:${computedScaleRatio}!` 
+          : `TrueScale™ scale successfully calibrated to 1:${computedScaleRatio}!`, 
+        'success'
+      );
     }
 
     setCalibrationModalOpen(false);
     setIsCalibratingMode(false);
     setCalibrationLine(null);
+    setCalibPaperDistMm(0);
   };
 
   const handleSaveSnapshotToPitchDeck = async () => {
@@ -1036,7 +1102,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleMainPointerDown = (e: React.PointerEvent) => {
-    if (activeTool === 'pan' && planImage && !draggingElementId && !draggingVertex) {
+    if (!isCalibratingMode && activeTool === 'pan' && planImage && !draggingElementId && !draggingVertex) {
       isPanning.current = true;
       startPan.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch(err) { console.error(err); }
@@ -1075,12 +1141,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handleElementPointerDown = (e: React.PointerEvent, el: PlanElement) => { 
-    if (activeTool !== 'pan') return; 
+    if (activeTool !== 'pan' || isCalibratingMode) return; 
     e.stopPropagation(); setDraggingElementId(el.id); setSelectedElement(el); 
   };
 
   const handleVertexPointerDown = (e: React.PointerEvent, elId: string, vIndex: number) => { 
-    if (activeTool !== 'pan') return; 
+    if (activeTool !== 'pan' || isCalibratingMode) return; 
     e.stopPropagation(); setDraggingVertex({ elementId: elId, vertexIndex: vIndex }); 
   };
 
@@ -1095,6 +1161,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handlePaperPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
+
+    // KALIBRIERUNGS-MODUS: REFERENZLINIE STARTEN
+    if (isCalibratingMode) {
+      e.stopPropagation();
+      setCalibrationLine({ start: {x: nx, y: ny}, end: {x: nx, y: ny} });
+      try { (e.currentTarget as unknown as HTMLElement).setPointerCapture(e.pointerId); } catch(err){ console.error(err); }
+      return;
+    }
+
     if (activeTool === 'pan' || !planImage) return;
     
     const activeLayer = layers.find(l => l.id === activeLayerId);
@@ -1102,8 +1178,6 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         addToast("Die aktive Ebene ist gesperrt.", "error");
         return;
     }
-
-    const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
     
     if (activeTool === 'polygon') { 
       e.stopPropagation();
@@ -1145,8 +1219,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handlePaperPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
+
+    // KALIBRIERUNGS-MODUS: LINIE WEITERZIEHEN
+    if (isCalibratingMode && calibrationLine) {
+      e.stopPropagation();
+      setCalibrationLine(prev => prev ? { ...prev, end: {x: nx, y: ny} } : null);
+      return;
+    }
+
     if (!draftElement || !planImage || activeTool === 'pan' || activeTool === 'polygon') return;
-    e.stopPropagation(); const { nx, ny } = getRelativeCoords(e.clientX, e.clientY);
+    e.stopPropagation();
     if (draftElement.type === 'pen') setDraftElement({ ...draftElement, points: [...draftElement.points, {x: nx, y: ny}] });
     else if (draftElement.type === 'measure') setDraftElement({ ...draftElement, end: {x: nx, y: ny} });
     else if (draftElement.type === 'rect') setDraftElement({ ...draftElement, w: nx - draftElement.x, h: ny - draftElement.y });
@@ -1154,8 +1237,39 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   };
 
   const handlePaperPointerUp = (e: React.PointerEvent<SVGSVGElement>) => { 
+    // KALIBRIERUNGS-MODUS: LINIE ABSCHLIESSEN & MODAL ÖFFNEN
+    if (isCalibratingMode && calibrationLine) {
+      e.stopPropagation();
+      const dxReal_mm = (calibrationLine.end.x - calibrationLine.start.x) * paperW_mm;
+      const dyReal_mm = (calibrationLine.end.y - calibrationLine.start.y) * paperH_mm;
+      const lineDistMm = Math.sqrt(dxReal_mm * dxReal_mm + dyReal_mm * dyReal_mm);
+      
+      if (lineDistMm > 3) {
+        setCalibPaperDistMm(lineDistMm);
+        const estimatedMeters = ((lineDistMm * planScale) / 1000).toFixed(1);
+        setCalibrationMetersInput(parseFloat(estimatedMeters) > 0.05 ? estimatedMeters : '5.0');
+        setCalibrationModalOpen(true);
+      } else {
+        setCalibrationLine(null);
+      }
+      return;
+    }
+
     if (activeTool === 'polygon') return; 
-    if (draftElement) { setElements([...elements, draftElement]); setDraftElement(null); setActiveTool('pan'); } 
+    if (draftElement) {
+      if (draftElement.type === 'measure') {
+        const dist = parseFloat(calculateDistance(draftElement.start, (draftElement as Measurement).end));
+        if (dist > 0.02) {
+          setElements([...elements, draftElement]);
+          setSelectedElement(draftElement);
+        }
+      } else {
+        setElements([...elements, draftElement]);
+        setSelectedElement(draftElement);
+      }
+      setDraftElement(null);
+      setActiveTool('pan');
+    } 
   };
 
   const finishPolygon = () => { 
@@ -1479,6 +1593,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
       <header className="min-h-14 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-row items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-3 overflow-x-auto custom-scrollbar">
+        {/* PLAN AUSWAHL & LÖSCHEN */}
         <div className="flex items-center gap-2 shrink-0">
           {projectPlans.length > 0 ? (
             <div className="flex items-center gap-2 bg-background border border-border px-3 py-1.5 rounded-xl shadow-sm">
@@ -1503,75 +1618,160 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           )}
         </div>
 
+        {/* PLAN FORMAT, MASSSTAB & KALIBRIERUNG (ZUSAMMENGEFÜHRT) */}
         {planImage && (
-          <div className="hidden lg:flex items-center gap-3 bg-background border border-border px-4 py-1.5 rounded-xl shadow-inner mx-2 shrink-0">
-             <Layers size={14} className="text-text-muted"/>
+          <div className="hidden lg:flex items-center gap-2.5 bg-background border border-border px-3.5 py-1.5 rounded-xl shadow-inner mx-2 shrink-0">
+             <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">{t('plan_layout')}:</span>
              <select value={paperFormat} onChange={e => setPaperFormat(e.target.value)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                {Object.keys(PAPER_DIMENSIONS).map(f => <option key={f} value={f} className="bg-surface">{f}</option>)}
              </select>
-             <select value={paperOrientation} onChange={e => setPaperOrientation(e.target.value as any)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer ml-1">
+             <select value={paperOrientation} onChange={e => setPaperOrientation(e.target.value as any)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                <option value="landscape" className="bg-surface">{t('landscape')}</option>
                <option value="portrait" className="bg-surface">{t('portrait')}</option>
              </select>
-             <div className="w-px h-4 bg-border mx-1"></div>
+             <div className="w-px h-4 bg-border/60 mx-0.5"></div>
              <span className="text-xs font-bold text-text-muted">1:</span>
              <select value={planScale} onChange={e => setPlanScale(Number(e.target.value))} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                <option value={20} className="bg-surface">20</option><option value={50} className="bg-surface">50</option><option value={100} className="bg-surface">100</option><option value={200} className="bg-surface">200</option><option value={500} className="bg-surface">500</option>
              </select>
+             <button 
+               onClick={handleStartCalibration} 
+               className={cn(
+                 "ml-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer",
+                 isCalibratingMode 
+                   ? "bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/25 animate-pulse" 
+                   : "bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border-purple-500/30"
+               )}
+               title={t('calibrate_truescale_tooltip')}
+             >
+               <Ruler size={13}/>
+               <span className="hidden xl:inline text-[11px]">{t('truescale_calibrate_short')}</span>
+             </button>
           </div>
         )}
 
+        {/* RECHTE BUTTONS (ZUSAMMENGEFÜHRT: ARBEIT, EXPORT & GUIDE) */}
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => { 
-            if (isDemoMode || currentProjectId === 'demo-1') {
-              addToast(t('truescale_demo_info'), 'info');
-              return;
-            }
-            setIsCalibratingMode(true); 
-            setCalibrationModalOpen(true); 
-          }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-purple-500/10 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-bold hover:bg-purple-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-            <Ruler size={14}/> <span className="hidden sm:inline">TrueScale™</span> {t('truescale_calibrate_short')}
-          </button>
-          <button onClick={() => {
-            if (isDemoMode || currentProjectId === 'demo-1') {
-              addToast('Snapshot an Pitch Deck ist in der Demo deaktiviert.', 'info');
-              return;
-            }
-            handleSaveSnapshotToPitchDeck();
-          }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
-            <ImageIcon size={14}/> Pitch Deck
-          </button>
+          {/* PRIMÄRE ARBEITS-AKTIONEN: UPLOAD & SPEICHERN */}
+          <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm">
+            <label 
+              onClick={(e) => {
+                if (isDemoMode || currentProjectId === 'demo-1') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
+                }
+              }}
+              title={t('upload_plan_tooltip')}
+              className={cn(
+                "tour-plan-upload flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all whitespace-nowrap",
+                (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
+              )}
+            >
+              {isUploading ? <Loader2 size={13} className="animate-spin"/> : <UploadCloud size={13}/>}
+              <span className="hidden sm:inline">{t('upload_plan_btn')}</span>
+              <span className="sm:hidden">{t('upload_btn_short')}</span>
+              <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
+            </label>
+
+            <button 
+              onClick={handleManualSave} 
+              disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} 
+              className="flex items-center gap-1.5 px-3 py-1.5 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer" 
+              title={t('save_layers_tooltip')}
+            >
+              {isSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
+              <span className="hidden sm:inline">{t('save')}</span>
+            </button>
+          </div>
+
+          {/* EXPORT & WEITERGABE DROPDOWN (PDF EXPORT + PITCH DECK FOLIE) */}
+          <div className="relative" ref={exportMenuRef}>
+            <button 
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              disabled={!planImage}
+              className={cn(
+                "tour-plan-pdf flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-sm whitespace-nowrap cursor-pointer",
+                exportMenuOpen 
+                  ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
+                  : "bg-surface hover:bg-white/5 text-text-primary border-border"
+              )}
+              title={planImage ? (language === 'de' ? 'Exportieren & Präsentieren' : 'Export & Presentation') : t('export_pdf_tooltip_disabled')}
+            >
+              <Download size={13} className="text-text-muted" />
+              <span>{t('export_dropdown')}</span>
+              <ChevronDown size={13} className={cn("transition-transform duration-200 text-text-muted", exportMenuOpen && "rotate-180")} />
+            </button>
+
+            <AnimatePresence>
+              {exportMenuOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                  className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-50 space-y-1"
+                >
+                  <button
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      if (isDemoMode || currentProjectId === 'demo-1') {
+                        addToast('PDF Export ist in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!', 'info');
+                        return;
+                      }
+                      handleOpenPdfStudio();
+                    }}
+                    disabled={isGeneratingPdf || !planImage}
+                    className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40"
+                  >
+                    <div className="p-1.5 rounded-md bg-red-500/10 text-red-400 group-hover:bg-red-500/20 shrink-0 mt-0.5">
+                      {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14} />}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold flex items-center gap-1.5">
+                        {t('export_pdf_title')}
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-red-500/15 text-red-400 font-extrabold">SIA</span>
+                      </div>
+                      <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                        {t('export_pdf_sub')}
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setExportMenuOpen(false);
+                      if (isDemoMode || currentProjectId === 'demo-1') {
+                        addToast('Snapshot an Pitch Deck ist in der Demo deaktiviert.', 'info');
+                        return;
+                      }
+                      handleSaveSnapshotToPitchDeck();
+                    }}
+                    disabled={!planImage}
+                    className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-white/5 text-left text-text-primary transition-colors group cursor-pointer disabled:opacity-40"
+                  >
+                    <div className="p-1.5 rounded-md bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 shrink-0 mt-0.5">
+                      <ImageIcon size={14} />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold flex items-center gap-1.5">
+                        {t('export_pitch_title')}
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-pink-500/15 text-pink-400 font-extrabold">Folie</span>
+                      </div>
+                      <div className="text-[10px] text-text-muted leading-tight mt-0.5">
+                        {t('export_pitch_sub')}
+                      </div>
+                    </div>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* MODUL GUIDE */}
           <ModuleGuideButton moduleId="plans" compact className="sm:px-3 sm:py-2 text-xs" />
-          <label 
-            onClick={(e) => {
-              if (isDemoMode || currentProjectId === 'demo-1') {
-                e.preventDefault();
-                e.stopPropagation();
-                addToast('Upload von neuen Plänen ist in der Demo deaktiviert. Erstelle einen kostenlosen Account!', 'info');
-              }
-            }}
-            title={t('upload_plan_tooltip')}
-            className={cn(
-              "tour-plan-upload flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/30 rounded-xl text-xs font-bold shadow-md transition-all whitespace-nowrap",
-              (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
-            )}
-          >
-            {isUploading ? <Loader2 size={14} className="animate-spin"/> : <UploadCloud size={14}/>} <span className="hidden sm:inline">{t('upload_plan_btn')}</span><span className="sm:hidden">{t('upload_btn_short')}</span>
-            <input type="file" accept="image/*,application/pdf" onChange={handleFileChange} disabled={isUploading || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
-          </label>
-          <button onClick={() => {
-            if (isDemoMode || currentProjectId === 'demo-1') {
-              addToast('PDF Export ist in der Demo blockiert. Erstelle einen kostenlosen Account für diese Funktion!', 'info');
-              return;
-            }
-            handleOpenPdfStudio();
-          }} disabled={isGeneratingPdf || !planImage} className="tour-plan-pdf hidden md:flex px-3 sm:px-4 py-1.5 sm:py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-colors shadow-sm items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={planImage ? t('export_pdf_tooltip') : t('export_pdf_tooltip_disabled')}>
-            {isGeneratingPdf ? <Loader2 size={14} className="animate-spin"/> : <Download size={14}/>} <span>PDF Export</span>
-          </button>
-          <button onClick={handleManualSave} disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} className="px-3 sm:px-5 py-1.5 sm:py-2 bg-surface hover:bg-white/5 border border-border text-text-primary rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap" title={t('save_layers_tooltip')}>
-            {isSaving ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>} {t('save')}
-          </button>
-          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center">
+
+          {/* MOBIL EBENEN-TOGGLE */}
+          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center cursor-pointer">
             <Layers size={16}/>
           </button>
         </div>
@@ -1579,9 +1779,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       <div className="flex-1 flex overflow-hidden relative bg-background touch-none">
         
-        {/* WERKZEUGLEISTE LINKS */}
-        <aside className="tour-plan-toolbar absolute left-2 sm:left-6 top-2 sm:top-6 w-10 sm:w-14 flex flex-col items-center gap-1 sm:gap-2 py-1.5 sm:py-3 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-xl sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[75%] custom-scrollbar">
-           {['pan', 'image', 'polygon', 'rect', 'circle', 'titleblock', 'scalebar', 'defect', 'text', 'pen', 'measure'].map(tool => (
+        {/* WERKZEUGLEISTE LINKS (MESSWERKZEUG AN POS 2 DIREKT UNTER PAN) */}
+        <aside className="tour-plan-toolbar absolute left-2 sm:left-4 top-2 sm:top-4 w-11 sm:w-12 flex flex-col items-center gap-1 py-1.5 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-y-auto max-h-[calc(100%-1.5rem)] custom-scrollbar">
+           {(['pan', 'measure', 'scalebar', 'polygon', 'rect', 'circle', 'pen', 'text', 'defect', 'titleblock', 'image'] as ToolType[]).map(tool => (
              <button 
                key={tool} 
                onClick={() => {
@@ -1592,28 +1792,34 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                    }
                    imageInputRef.current?.click();
                  } else {
+                   if (isCalibratingMode) setIsCalibratingMode(false);
                    setActiveTool(tool as ToolType);
                  }
                }} 
-               className={cn("p-2 sm:p-2.5 rounded-xl transition-all relative", activeTool === tool ? "bg-blue-600 text-white shadow-md shadow-blue-500/20 scale-105 sm:scale-110" : "text-text-muted hover:bg-white/5 hover:text-text-primary")}
-               title={tool.charAt(0).toUpperCase() + tool.slice(1)}
+               className={cn(
+                 "p-2 rounded-xl transition-all relative group shrink-0 cursor-pointer", 
+                 activeTool === tool 
+                   ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-105" 
+                   : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+               )}
+               title={TOOL_LABELS[tool]?.[currentLang as 'de' | 'en'] || tool}
              >
-               {tool === 'pan' && <MousePointer2 size={16} className="sm:w-[18px] sm:h-[18px]"/>}
+               {tool === 'pan' && <MousePointer2 size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'measure' && <Ruler size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'scalebar' && <MoveHorizontal size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'polygon' && <Hexagon size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'rect' && <Square size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'circle' && <Circle size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'pen' && <PenTool size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'text' && <Type size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'defect' && <MapPin size={16} className="sm:w-[17px] sm:h-[17px]"/>}
+               {tool === 'titleblock' && <LayoutTemplate size={16} className="sm:w-[17px] sm:h-[17px]"/>}
                {tool === 'image' && (
                   <>
-                    {isUploadingOverlay ? <Loader2 size={16} className="animate-spin text-indigo-400 sm:w-[18px] sm:h-[18px]"/> : <ImagePlus size={16} className="sm:w-[18px] sm:h-[18px]" />}
+                    {isUploadingOverlay ? <Loader2 size={16} className="animate-spin text-indigo-400 sm:w-[17px] sm:h-[17px]"/> : <ImagePlus size={16} className="sm:w-[17px] sm:h-[17px]" />}
                     <input type="file" ref={imageInputRef} accept="image/*,application/pdf" onChange={handleOverlayUpload} disabled={isUploadingOverlay || isDemoMode || currentProjectId === 'demo-1'} className="hidden" />
                   </>
                )}
-               {tool === 'polygon' && <Hexagon size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'rect' && <Square size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'circle' && <Circle size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'titleblock' && <LayoutTemplate size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'scalebar' && <MoveHorizontal size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'defect' && <MapPin size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'text' && <Type size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'pen' && <PenTool size={16} className="sm:w-[18px] sm:h-[18px]"/>}
-               {tool === 'measure' && <Ruler size={16} className="sm:w-[18px] sm:h-[18px]"/>}
              </button>
            ))}
         </aside>
@@ -1874,7 +2080,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   id="cad-svg-layer" 
                   viewBox={`0 0 ${internalW} ${internalH}`} 
                   className="absolute inset-0 w-full h-full" 
-                  style={{ pointerEvents: activeTool === 'pan' ? 'auto' : 'all' }}
+                  style={{ pointerEvents: (activeTool === 'pan' && !isCalibratingMode) ? 'auto' : 'all' }}
                   onPointerDown={handlePaperPointerDown} 
                   onPointerMove={handlePaperPointerMove} 
                   onPointerUp={handlePaperPointerUp}
@@ -1886,7 +2092,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     width={internalW} 
                     height={internalH} 
                     fill="transparent" 
-                    style={{ pointerEvents: 'all', cursor: activeTool === 'pan' ? 'grab' : 'crosshair' }} 
+                    style={{ pointerEvents: 'all', cursor: (activeTool === 'pan' && !isCalibratingMode) ? 'grab' : 'crosshair' }} 
                   />
                   
                   {/* Fertige Zeichnungen (ohne Bilder) */}
@@ -1905,14 +2111,58 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   {activeTool === 'pen' && draftElement && (
                     <polyline points={(draftElement as FreehandLine).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
                   )}
-                  {activeTool === 'measure' && draftElement && (
-                    <line x1={draftElement.x * internalW} y1={draftElement.y * internalH} x2={(draftElement as Measurement).end.x * internalW} y2={(draftElement as Measurement).end.y * internalH} stroke="#3b82f6" strokeWidth="3" strokeDasharray="8,8" />
-                  )}
+                  {activeTool === 'measure' && draftElement && (() => {
+                    const m = draftElement as Measurement;
+                    const sx = m.start.x * internalW; const sy = m.start.y * internalH;
+                    const ex = m.end.x * internalW; const ey = m.end.y * internalH;
+                    const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
+                    const dist = calculateDistance(m.start, m.end);
+                    return (
+                      <g>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth="3" strokeDasharray="8,8" />
+                        <circle cx={sx} cy={sy} r="6" fill="#3b82f6" />
+                        <circle cx={ex} cy={ey} r="6" fill="#3b82f6" />
+                        <rect x={mx - 28} y={my - 12} width="56" height="22" rx="4" fill="#1d4ed8" />
+                        <text x={mx} y={my + 4} fill="white" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{dist}m</text>
+                      </g>
+                    );
+                  })()}
+
+                  {/* KALIBRIERUNGS-LINIE VORSCHAU */}
+                  {isCalibratingMode && calibrationLine && (() => {
+                    const sx = calibrationLine.start.x * internalW;
+                    const sy = calibrationLine.start.y * internalH;
+                    const ex = calibrationLine.end.x * internalW;
+                    const ey = calibrationLine.end.y * internalH;
+                    const mx = (sx + ex) / 2;
+                    const my = (sy + ey) / 2;
+                    const dxMm = (calibrationLine.end.x - calibrationLine.start.x) * paperW_mm;
+                    const dyMm = (calibrationLine.end.y - calibrationLine.start.y) * paperH_mm;
+                    const distMm = Math.sqrt(dxMm * dxMm + dyMm * dyMm);
+                    return (
+                      <g>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#a855f7" strokeWidth="3.5" strokeDasharray="8,6" />
+                        <circle cx={sx} cy={sy} r="6" fill="#a855f7" />
+                        <circle cx={ex} cy={ey} r="6" fill="#a855f7" />
+                        <rect x={mx - 34} y={my - 12} width="68" height="22" rx="4" fill="#9333ea" />
+                        <text x={mx} y={my + 4} fill="white" fontSize="11" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{distMm.toFixed(1)} mm</text>
+                      </g>
+                    );
+                  })()}
                 </svg>
               </div>
             </div>
           )}
         </main>
+
+        {/* KALIBRIERUNGS-MODUS BANNER */}
+        {isCalibratingMode && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-purple-600/95 backdrop-blur-md text-white px-4 md:px-6 py-2.5 rounded-2xl shadow-2xl border border-purple-400/40 text-xs md:text-sm font-bold animate-in fade-in slide-in-from-top-2">
+             <Ruler size={16} className="text-purple-200 animate-pulse shrink-0" />
+             <span>{currentLang === 'de' ? 'TrueScale™: Klicke und ziehe eine Referenzlinie auf dem Plan (z.B. über eine bekannte Wand)' : 'TrueScale™: Click & drag a reference line on the plan (e.g. across a known wall)'}</span>
+             <button onClick={() => { setIsCalibratingMode(false); setCalibrationLine(null); }} className="ml-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-xs font-bold transition-colors cursor-pointer">{t('cancel')}</button>
+          </div>
+        )}
 
         {activeTool === 'polygon' && draftElement && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 md:gap-4 bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-2xl shadow-2xl whitespace-nowrap">
@@ -2005,8 +2255,19 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
               <h3 className="font-semibold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> {t('truescale_modal_title')}</h3>
-              <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={18}/></button>
+              <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); setCalibrationLine(null); }} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg cursor-pointer"><X size={18}/></button>
             </div>
+
+            {calibPaperDistMm > 0 && (
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300 flex items-center gap-2.5">
+                <Check size={16} className="text-purple-400 shrink-0" />
+                <span>
+                  {currentLang === 'de' 
+                    ? `Referenzlinie erfasst (${calibPaperDistMm.toFixed(1)} mm auf dem Plan). Gib die tatsächliche Reallänge ein:` 
+                    : `Reference line captured (${calibPaperDistMm.toFixed(1)} mm on sheet). Enter the actual real length:`}
+                </span>
+              </div>
+            )}
 
             <p className="text-xs text-text-muted leading-relaxed">
               {t('truescale_modal_desc')}
@@ -2014,19 +2275,29 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('known_real_length')}</label>
-              <input 
-                type="number"
-                step="0.1"
-                value={calibrationMetersInput}
-                onChange={e => setCalibrationMetersInput(e.target.value)}
-                className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-purple-500"
-                placeholder="z.B. 5.0"
-              />
+              <div className="relative">
+                <input 
+                  type="number"
+                  step="0.01"
+                  min="0.05"
+                  autoFocus
+                  value={calibrationMetersInput}
+                  onChange={e => setCalibrationMetersInput(e.target.value)}
+                  className="w-full bg-background border border-border/50 rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary outline-none focus:border-purple-500 pr-10"
+                  placeholder="z.B. 5.0"
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted">m</span>
+              </div>
+              {calibPaperDistMm > 0 && parseFloat(calibrationMetersInput) > 0 && (
+                <p className="text-[11px] text-text-muted pt-1">
+                  {currentLang === 'de' ? 'Berechneter Maßstab:' : 'Calculated scale:'} <strong className="text-purple-400 font-mono font-bold text-xs">1:{Math.round((parseFloat(calibrationMetersInput) * 1000) / calibPaperDistMm)}</strong>
+                </p>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-3 border-t border-border/50">
-              <button type="button" onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); }} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary">{t('cancel')}</button>
-              <button type="button" onClick={handleApplyScaleCalibration} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2">
+              <button type="button" onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); setCalibrationLine(null); }} className="px-4 py-2 text-xs font-bold text-text-muted hover:text-text-primary cursor-pointer">{t('cancel')}</button>
+              <button type="button" onClick={handleApplyScaleCalibration} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center gap-2 cursor-pointer">
                 <Check size={16} /> <span>{t('apply_calibration_btn')}</span>
               </button>
             </div>
