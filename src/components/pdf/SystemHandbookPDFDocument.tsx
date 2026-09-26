@@ -238,15 +238,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 14
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9'
+  },
+  moduleHeaderLeft: {
+    flex: 1,
+    paddingRight: 16
   },
   moduleNumberPill: {
     backgroundColor: '#2563EB',
     color: '#FFFFFF',
     fontFamily: 'Helvetica-Bold',
-    fontSize: 8,
-    paddingVertical: 2.5,
-    paddingHorizontal: 8,
+    fontSize: 7.5,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
     borderRadius: 4,
     alignSelf: 'flex-start',
     marginBottom: 5,
@@ -255,14 +262,16 @@ const styles = StyleSheet.create({
   },
   moduleTitle: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 1.25,
     color: '#0F172A',
-    letterSpacing: -0.3
+    marginBottom: 4,
+    letterSpacing: -0.2
   },
   moduleSubtitle: {
-    fontSize: 9,
-    color: '#64748B',
-    marginTop: 2
+    fontSize: 8.5,
+    lineHeight: 1.35,
+    color: '#64748B'
   },
   moduleRightBadge: {
     borderWidth: 1,
@@ -271,7 +280,8 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingVertical: 4,
     paddingHorizontal: 8,
-    alignItems: 'flex-end'
+    alignItems: 'flex-end',
+    flexShrink: 0
   },
   moduleRightBadgeText: {
     fontSize: 7.5,
@@ -289,19 +299,20 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   sectionTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     color: '#0F172A',
-    marginBottom: 4,
+    marginBottom: 5,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 2
+    borderBottomColor: '#E2E8F0',
+    paddingBottom: 3,
+    letterSpacing: 0.3
   },
   bodyParagraph: {
     fontSize: 8.5,
     color: '#334155',
-    lineHeight: 1.35,
-    marginBottom: 6
+    lineHeight: 1.45,
+    marginBottom: 10
   },
 
   // Feature 2-Column Grid
@@ -630,18 +641,24 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>
-              {isEn ? 'Core Concept' : 'Grundprinzip'}
-            </Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'The 2-Tier Architecture Model' : 'Das 2-Ebenen-Architektur-Prinzip'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Separation of macro-management (Company Hub) and operational execution (Project Cockpit)' 
-                : 'Klare Trennung zwischen strategischer Firmenzentrale und operativer Baustellensteuerung'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>
+                {isEn ? 'Core Concept' : 'Grundprinzip'}
+              </Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'The 2-Tier Architecture Model' : 'Das 2-Ebenen-Architektur-Prinzip'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Separation of macro-management (Company Hub) and operational execution (Project Cockpit)' 
+                  : 'Klare Trennung zwischen strategischer Firmenzentrale und operativer Baustellensteuerung'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>{isEn ? 'TIER 1 vs TIER 2' : 'EBENE 1 vs EBENE 2'}</Text>
@@ -747,16 +764,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 01</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? '3D BIM Viewer & IFC Browser Engine' : '3D BIM Viewer & IFC-Browser-Engine'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Interactive 3D navigation, spatial coordination and component inspection directly in browser' 
-                : 'Interaktive 3D-Modellnavigation, Bauteilprüfung und Kollisionskontrolle ohne Zusatzsoftware'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 01</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? '3D BIM Viewer & IFC Browser Engine' : '3D BIM Viewer & IFC-Browser-Engine'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Interactive 3D navigation, spatial coordination and component inspection directly in browser' 
+                  : 'Interaktive 3D-Modellnavigation, Bauteilprüfung und Kollisionskontrolle ohne Zusatzsoftware'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>OPEN BIM</Text>
@@ -856,16 +879,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 02</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? '2D CAD Plans & Precision Pins' : '2D CAD Pläne & Präzisions-Pins'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'TrueScale scale calibration, multi-layer floor plans and millimeter-exact defect pins' 
-                : 'Digitale TrueScale Maßstabskalibrierung und millimetergenaue Mängelverortung im Plan'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 02</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? '2D CAD Plans & Precision Pins' : '2D CAD Pläne & Präzisions-Pins'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'TrueScale scale calibration, multi-layer floor plans and millimeter-exact defect pins' 
+                  : 'Digitale TrueScale Maßstabskalibrierung und millimetergenaue Mängelverortung im Plan'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>TrueScale 1:X</Text>
@@ -964,16 +993,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 03</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'BKP 1–9 Costs & Swiss QR-Bill Engine' : 'BKP 1–9 Baufinanzen & Schweizer QR-Rechnung'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Swiss cost code classification, 3-tier budget variance and ISO 20022 QR-bill generation' 
-                : 'Baukostenplan BKP 1–9, 3-spaltiger Soll/Ist-Vergleich und ISO 20022 QR-Rechnungserstellung'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 03</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'BKP 1–9 Costs & Swiss QR-Bill Engine' : 'BKP 1–9 Baufinanzen & Schweizer QR-Rechnung'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Swiss cost code classification, 3-tier budget variance and ISO 20022 QR-bill generation' 
+                  : 'Baukostenplan BKP 1–9, 3-spaltiger Soll/Ist-Vergleich und ISO 20022 QR-Rechnungserstellung'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>ISO 20022</Text>
@@ -1072,16 +1107,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 04</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'Smart Construction Calendar & Gantt Timeline' : 'Smarter Baukalender & Gantt-Terminplanung'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'SIA phase scheduling, critical path analysis, daily weather logs and site diary' 
-                : 'SIA-Phasenablauf, Kritischer Pfad, digitales Bautagebuch und automatische Wettererfassung'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 04</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'Smart Construction Calendar & Gantt Timeline' : 'Smarter Baukalender & Gantt-Terminplanung'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'SIA phase scheduling, critical path analysis, daily weather logs and site diary' 
+                  : 'SIA-Phasenablauf, Kritischer Pfad, digitales Bautagebuch und automatische Wettererfassung'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>SIA 102/118</Text>
@@ -1181,16 +1222,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 05</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'Defect Management & Offline PWA Sync' : 'Mängelmanagement & Offline PWA Baustellen-Sync'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Zero-connectivity field inspection with local IndexedDB storage and auto-sync' 
-                : 'Mängelerfassung ohne Netzempfang im Untergeschoss mit lokaler Speicherung und Auto-Sync'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 05</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'Defect Management & Offline PWA Sync' : 'Mängelmanagement & Offline PWA Baustellen-Sync'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Zero-connectivity field inspection with local IndexedDB storage and auto-sync' 
+                  : 'Mängelerfassung ohne Netzempfang im Untergeschoss mit lokaler Speicherung und Auto-Sync'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>OFFLINE PWA</Text>
@@ -1264,8 +1311,8 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
           </Text>
           <Text style={styles.calloutText}>
             {isEn
-              ? 'Click "📱 Install App" in the top navigation bar to add Kreativ Desk to your iOS or Android home screen for native fullscreen experience.'
-              : 'Klicke oben rechts auf "📱 App installieren", um Kreativ Desk direkt auf deinem iPhone oder Android-Startbildschirm als native Vollbild-App abzulegen.'}
+              ? 'Click "Install App (PWA)" in the top navigation bar to add Kreativ Desk to your iOS or Android home screen for native fullscreen experience.'
+              : 'Klicke oben rechts auf "App installieren (PWA)", um Kreativ Desk direkt auf deinem iPhone oder Android-Startbildschirm als native Vollbild-App abzulegen.'}
           </Text>
         </View>
 
@@ -1290,16 +1337,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 06</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'AI Whiteboard & Multimodal Concept Engine' : 'KI-Whiteboard & Multimodale Entwurfs-Engine'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Infinite canvas for architectural sketching, sticky notes and Google Gemini plan analysis' 
-                : 'Unendliche Arbeitsfläche für Freihandskizzen, Schnittstellenkoordination und KI-Plananalysen'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 06</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'AI Whiteboard & Multimodal Concept Engine' : 'KI-Whiteboard & Multimodale Entwurfs-Engine'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Infinite canvas for architectural sketching, sticky notes and Google Gemini plan analysis' 
+                  : 'Unendliche Arbeitsfläche für Freihandskizzen, Schnittstellenkoordination und KI-Plananalysen'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>GEMINI 2.5</Text>
@@ -1399,16 +1452,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 07</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'Pitch Deck Studio & Presentation Engine' : 'Pitch Deck Studio & Präsentations-Engine'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? '16:9 widescreen presentation mode with dual export to PDF, Keynote and PowerPoint (.pptx)' 
-                : '16:9 Widescreen Präsentationsmodus mit Dual-Export für PDF, Keynote und PowerPoint (.pptx)'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 07</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'Pitch Deck Studio & Presentation Engine' : 'Pitch Deck Studio & Präsentations-Engine'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? '16:9 widescreen presentation mode with dual export to PDF, Keynote and PowerPoint (.pptx)' 
+                  : '16:9 Widescreen Präsentationsmodus mit Dual-Export für PDF, Keynote und PowerPoint (.pptx)'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>16:9 CINEMA</Text>
@@ -1508,16 +1567,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 08</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'HD Video Meet, Site Chat & Guest Magic Links' : 'HD Video Meet, Baustellen-Chat & Gast-Links'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'WebRTC peer-to-peer conferencing with zero client software installation and screen sharing' 
-                : 'Integrierte Videokonferenzen ohne Fremdsoftware mit 1-Klick-Gastzugang für Bauherren'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 08</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'HD Video Meet, Site Chat & Guest Magic Links' : 'HD Video Meet, Baustellen-Chat & Gast-Links'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'WebRTC peer-to-peer conferencing with zero client software installation and screen sharing' 
+                  : 'Integrierte Videokonferenzen ohne Fremdsoftware mit 1-Klick-Gastzugang für Bauherren'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>WebRTC HD</Text>
@@ -1617,16 +1682,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 09</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'Smart Proposals & Legally Binding E-Signatures' : 'Smart Proposals & Digitale E-Signatur'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Interactive client offer landing pages with real-time options and touch e-signing' 
-                : 'Interaktive Web-Offerten mit Optionen-Kalkulator und rechtssicherer Touchscreen-Signatur'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 09</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'Smart Proposals & Legally Binding E-Signatures' : 'Smart Proposals & Digitale E-Signatur'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Interactive client offer landing pages with real-time options and touch e-signing' 
+                  : 'Interaktive Web-Offerten mit Optionen-Kalkulator und rechtssicherer Touchscreen-Signatur'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>E-SIGN READY</Text>
@@ -1726,16 +1797,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 10</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'Digital Document Vault & Mobile QR Upload' : 'Digitaler Datenraum & Mobiler QR-Upload'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Structured construction file archives, version control and zero-login camera upload' 
-                : 'Revisionssichere Bauakte (01_FINANZEN bis 09_DOKUMENTATION) und mobiler QR-Scan'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 10</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'Digital Document Vault & Mobile QR Upload' : 'Digitaler Datenraum & Mobiler QR-Upload'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Structured construction file archives, version control and zero-login camera upload' 
+                  : 'Revisionssichere Bauakte (01_FINANZEN bis 09_DOKUMENTATION) und mobiler QR-Scan'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>{isEn ? 'SECURE VAULT' : 'REVISIONS-AKTE'}</Text>
@@ -1834,16 +1911,22 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 11 & 12</Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? 'CRM, Granular Roles & Swiss Data Security' : 'CRM, Rollenrechte & Schweizer Datenschutz'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Role-based access control (RBAC), subcontractor isolation, and Swiss DSG / GDPR compliance' 
-                : 'Rollenbasierte Rechteverwaltung, Zero-Data-Leakage und Schweizer DSG / DSGVO Konformität'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>Modul 11 & 12</Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? 'CRM, Granular Roles & Swiss Data Security' : 'CRM, Rollenrechte & Schweizer Datenschutz'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Role-based access control (RBAC), subcontractor isolation, and Swiss DSG / GDPR compliance' 
+                  : 'Rollenbasierte Rechteverwaltung, Zero-Data-Leakage und Schweizer DSG / DSGVO Konformität'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>CH DSG / GDPR</Text>
@@ -1943,18 +2026,24 @@ export default function SystemHandbookPDFDocument({ settings, companyName = 'Kre
         </View>
 
         <View style={styles.moduleHeader}>
-          <View>
-            <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>
-              {isEn ? 'Quick Reference' : 'Schnellreferenz'}
-            </Text>
-            <Text style={styles.moduleTitle}>
-              {isEn ? '5-Step Quickstart & Professional Cheatsheet' : '5-Schritte-Schnellstart & Profi-Tastenkürzel'}
-            </Text>
-            <Text style={styles.moduleSubtitle}>
-              {isEn 
-                ? 'Best practices for rapid onboarding and direct official support access' 
-                : 'Schritt-für-Schritt-Anleitung für neue Projekte und offizielle Supportkanäle'}
-            </Text>
+          <View style={styles.moduleHeaderLeft}>
+            <View style={{ marginBottom: 5 }}>
+              <Text style={[styles.moduleNumberPill, { backgroundColor: accentColor }]}>
+                {isEn ? 'Quick Reference' : 'Schnellreferenz'}
+              </Text>
+            </View>
+            <View style={{ marginBottom: 4 }}>
+              <Text style={styles.moduleTitle}>
+                {isEn ? '5-Step Quickstart & Professional Cheatsheet' : '5-Schritte-Schnellstart & Profi-Tastenkürzel'}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.moduleSubtitle}>
+                {isEn 
+                  ? 'Best practices for rapid onboarding and direct official support access' 
+                  : 'Schritt-für-Schritt-Anleitung für neue Projekte und offizielle Supportkanäle'}
+              </Text>
+            </View>
           </View>
           <View style={styles.moduleRightBadge}>
             <Text style={styles.moduleRightBadgeText}>{isEn ? 'SWISS SUPPORT' : 'CH-SUPPORT'}</Text>

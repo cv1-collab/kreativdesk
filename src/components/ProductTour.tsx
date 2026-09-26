@@ -12,7 +12,7 @@ import {
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
   Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText,
-  BookOpen
+  BookOpen, X
 } from 'lucide-react';
 
 export default function ProductTour() {
@@ -59,6 +59,24 @@ export default function ProductTour() {
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              stopTour();
+            }}
+            className={cn(
+              "w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer shrink-0 ml-3",
+              isDark
+                ? "text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700"
+                : "text-slate-400 hover:text-slate-700 hover:bg-slate-100 border border-transparent hover:border-slate-200"
+            )}
+            title={isGerman ? "Tour beenden" : "Close tour"}
+            aria-label={isGerman ? "Tour beenden" : "Close tour"}
+          >
+            <X size={16} />
+          </button>
         </div>
         {submodules && submodules.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-0.5">
@@ -402,6 +420,9 @@ export default function ProductTour() {
             color: isDark ? '#94a3b8' : '#64748b',
             fontSize: '0.875rem',
             fontWeight: '600',
+          },
+          buttonClose: {
+            display: 'none',
           },
           beaconInner: {
             backgroundColor: '#3b82f6'
