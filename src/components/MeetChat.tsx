@@ -20,6 +20,7 @@ import { sendNotification } from '../lib/notifications';
 import { uploadFileWithFallback } from '../utils/cloudStorageHelper';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const RemoteVideo = ({ stream, peerName }: { stream: MediaStream; peerName?: string }) => {
   const { language } = useLanguage();
@@ -1414,6 +1415,7 @@ export default function MeetChat() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <ModuleGuideButton moduleId="meet" />
             <button onClick={() => setShowChat(!showChat)} className={cn("p-2 rounded-lg border transition-colors", showChat ? "bg-accent-ai/20 border-accent-ai/30 text-accent-ai" : "bg-surface border-border text-text-muted hover:text-text-primary")} title={t('project_chat')}>
               <MessageSquare size={18} />
             </button>

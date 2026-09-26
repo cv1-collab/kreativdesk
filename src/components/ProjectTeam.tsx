@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { checkIsSuperAdmin } from '../config/admins';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -257,9 +258,12 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
             <h1 className="text-2xl font-semibold tracking-tight">{t('project_team')}</h1>
             <p className="text-text-muted text-sm mt-1">{t('team_desc')}</p>
           </div>
-          <button onClick={() => setIsAddMemberModalOpen(true)} className="w-full md:w-auto px-5 py-3 md:py-2 bg-accent-ai text-white rounded-xl md:rounded-lg text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-2">
-            <UserPlus size={18} /> {t('add_person')}
-          </button>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <ModuleGuideButton moduleId="team" />
+            <button onClick={() => setIsAddMemberModalOpen(true)} className="flex-1 md:flex-none px-5 py-3 md:py-2 bg-accent-ai text-white rounded-xl md:rounded-lg text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-2">
+              <UserPlus size={18} /> {t('add_person')}
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-auto bg-surface border border-border rounded-2xl shadow-lg custom-scrollbar">

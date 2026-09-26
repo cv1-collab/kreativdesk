@@ -23,6 +23,7 @@ import PitchDeckStudio from './PitchDeckStudio';
 import { uploadFileWithFallback, deleteFileFromStorage } from '../utils/cloudStorageHelper';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: { 
@@ -996,6 +997,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
+          <ModuleGuideButton moduleId="documents" />
 
           {activeTab !== 'proposals' ? (
             canUpload && (

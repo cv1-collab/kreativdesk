@@ -12,7 +12,7 @@ import {
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
   Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText,
-  BookOpen, X
+  BookOpen, X, PenTool, Search
 } from 'lucide-react';
 
 export default function ProductTour() {
@@ -149,7 +149,7 @@ export default function ProductTour() {
       if (activeModuleTour === 'bim') {
         candidateDefs = [
           {
-            target: '.tour-bim-viewport, canvas, body',
+            target: '.tour-bim-viewport, canvas, .tour-btn-module-guide, body',
             title: isGerman ? '3D BIM Viewer & Navigation' : '3D BIM Viewer & Navigation',
             content: isGerman
               ? 'Interagiere direkt mit dem 3D-BIM-Modell: Linksklick gedrückt halten zum Rotieren (Orbit), Rechtsklick zum Verschieben (Pan) und Scrollrad zum Zoomen. Oben rechts kannst du zwischen Perspektive, Draufsicht und Schnitten umschalten.'
@@ -160,7 +160,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-bim-sidebar, .tour-bim-tools, header, body',
+            target: '.tour-bim-sidebar, .tour-bim-tools, .tour-btn-module-guide, body',
             title: isGerman ? 'Bauteil-Inspektor & IFC-Parameter' : 'Component Inspector & IFC Parameters',
             content: isGerman
               ? 'Wähle ein beliebiges Bauteil (z.B. Decke, Wand, Fenster) im 3D-Modell an, um exakte Geometriedaten, Volumen, BKP-Kostenzuordnung und IFC-Properties (Psets) im Inspektor einzusehen.'
@@ -185,7 +185,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'finance') {
         candidateDefs = [
           {
-            target: '.tour-finance-invoices, header, body',
+            target: '.tour-finance-invoices, .tour-btn-module-guide, header, body',
             title: isGerman ? 'Schweizer BKP 1–9 Kostenstruktur' : 'Swiss BKP 1–9 Cost Structure',
             content: isGerman
               ? 'Deine Baukosten sind nach standardisierter Schweizer BKP-Systematik (BKP 1–9) gegliedert: Vorbereitung, Rohbau, Hülle, Ausbau, Betriebseinrichtungen, Umgebung und SIA 102/108 Baunebenkosten.'
@@ -196,7 +196,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'table, div.overflow-x-auto, header, body',
+            target: 'table, div.overflow-x-auto, .tour-btn-module-guide, body',
             title: isGerman ? '3-Spaltiger Soll/Ist-Vergleich & Prognose' : '3-Column Plan/Actual Comparison',
             content: isGerman
               ? 'Behalte bewilligtes Budget, vergebene Werkverträge und bezahlte Handwerker-Rechnungen in Echtzeit im Blick. Über- oder Unterschreitungen werden sofort farblich signalisiert.'
@@ -221,7 +221,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'plans' || activeModuleTour === 'cad') {
         candidateDefs = [
           {
-            target: 'aside, header, body',
+            target: 'aside, .tour-btn-module-guide, header, body',
             title: isGerman ? 'TrueScale 2D-Grundrisse & Massstab 1:50' : 'TrueScale 2D Plans & 1:50 Scale',
             content: isGerman
               ? 'Prüfe 2D-Architekturpläne in echten SIA-Massstäben (1:50, 1:100). Nutze das Messwerkzeug in der linken Werkzeugleiste zur zentimetergenauen Distanz- und Wandstärkenprüfung.'
@@ -243,7 +243,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'header, button, body',
+            target: 'header, button, .tour-btn-module-guide, body',
             title: isGerman ? 'Plankopf, Freigabe & PDF-Druck' : 'Title Block, Approval & PDF Print',
             content: isGerman
               ? 'Füge SIA-konforme Planköpfe, Nordpfeile und Massstabsleisten ein. Exportiere druckreife Ausführungspläne in A3 oder A4 für die Handwerker auf der Baustelle.'
@@ -257,7 +257,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'defects') {
         candidateDefs = [
           {
-            target: 'header, button, body',
+            target: '.tour-btn-module-guide, header, button, body',
             title: isGerman ? 'Mobile Mängelerfassung & PWA Offline' : 'Mobile Defect Logging & Offline PWA',
             content: isGerman
               ? 'Erfasse Baumängel in Sekunden mit Smartphone oder Tablet: Schiesse Fotos, diktiere Sprachnotizen und weise den Mangel sofort dem zuständigen Handwerker zu.'
@@ -268,7 +268,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: 'header, div, body',
+            target: 'header, div, .tour-btn-module-guide, body',
             title: isGerman ? 'SIA 118 Rügefristen & Statusverfolgung' : 'SIA 118 Deadlines & Status Tracking',
             content: isGerman
               ? 'Verfolge Tickets auf dem Board von Offen über In Arbeit bis zur mängelfreien Abnahme. Gesetzliche Rügefristen nach Schweizer SIA 118 werden automatisch überwacht.'
@@ -293,7 +293,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'calendar') {
         candidateDefs = [
           {
-            target: 'header, body',
+            target: '.tour-calendar-gantt, .tour-btn-module-guide, header, body',
             title: isGerman ? 'SIA-Bauphasen & Gantt-Masterplan' : 'SIA Phases & Gantt Masterplan',
             content: isGerman
               ? 'Strukturiere deine Bauphasen nach SIA 112 (Vorprojekt, Bewilligung, Rohbau, Ausbau, Übergabe) im interaktiven Gantt-Balkenplan mit Meilensteinen und Deadlines.'
@@ -318,7 +318,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'pitch') {
         candidateDefs = [
           {
-            target: 'header, body',
+            target: '.tour-btn-module-guide, header, body',
             title: isGerman ? '16:9 Cinema-Präsentation für Bauherren' : '16:9 Cinema Presentation for Clients',
             content: isGerman
               ? 'Präsentiere dein Architekturprojekt im modernen 16:9 Kino-Vollbildmodus. Zeige fotorealistische Renderings, 3D-BIM-Schnitte, Grundrisse und das interdisziplinäre Planungsteam.'
@@ -337,6 +337,222 @@ export default function ProductTour() {
             IconComponent: Sparkles,
             submodules: isGerman ? ['BKP-Zahlensync', 'Keynote & PowerPoint', 'Universal PDF Studio'] : ['BKP Cost Sync', 'Keynote & PowerPoint', 'Universal PDF Studio'],
             proTip: isGerman ? 'Erstelle individuelle Versionen für Investoren, Baubehörden oder Käufer.' : 'Generate customized decks for investors, authorities, or buyers.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'overview' || activeModuleTour === 'dashboard') {
+        candidateDefs = [
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Projekt-Cockpit & AI Briefing' : 'Project Cockpit & AI Briefing',
+            content: isGerman
+              ? 'Auf einen Blick siehst du den operativen Zustand deines Projekts. Mit dem Button "AI Briefing generieren" analysiert Google Gemini deine Projektdaten in Echtzeit und warnt dich vor Budget- oder Terminüberschreitungen.'
+              : 'Get a real-time pulse of your project. Click "Generate AI Briefing" to let Gemini analyze project health, identifying risks and schedule deviations.',
+            IconComponent: LayoutDashboard,
+            submodules: isGerman ? ['AI Briefing', 'Echtzeit-KPIs', 'Meilenstein-Radar'] : ['AI Briefing', 'Live KPIs', 'Milestone Radar'],
+            proTip: isGerman ? 'Das AI Briefing aggregiert Daten aus Finanzen, Mängeln und Terminen vollautomatisch.' : 'AI briefing aggregates finance, defects, and calendar data seamlessly.',
+            placement: 'bottom'
+          },
+          {
+            target: '.recharts-wrapper, header, body',
+            title: isGerman ? 'Budget-Auslastung & Kosten-Monitoring' : 'Budget Utilization & Cost Monitoring',
+            content: isGerman
+              ? 'Behalte die Baukosten im Griff: Das Diagramm visualisiert BKP-Baukosten, externe Handwerker und interne Stunden. Verfolge Kostenabweichungen proaktiv.'
+              : 'Keep construction expenses under control: Visualizes BKP budgets, contractor invoices, and team hours to prevent cost overruns.',
+            IconComponent: DollarSign,
+            submodules: isGerman ? ['BKP-Budget Soll/Ist', 'Kosten-Split', 'Interne Stunden'] : ['BKP Plan/Actual', 'Cost Split', 'Internal Hours'],
+            proTip: isGerman ? 'Klicke auf "Budget prüfen", um direkt in die Schweizer BKP 1–9 Kostenplanung zu springen.' : 'Click "Review Budget" to jump directly into the Swiss BKP ledger.',
+            placement: 'top'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Executive Summary Report (PDF)' : 'Executive Summary Report (PDF)',
+            content: isGerman
+              ? 'Erstelle mit einem Klick auf "Report erstellen" ein druckreifes Status-Dossier im Universal PDF Studio – perfekt für Bauherrensitzungen und Bauleitungsprotokolle.'
+              : 'Generate an executive summary status dossier with one click in the Universal PDF Studio – ideal for client meetings and reviews.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Universal PDF Studio', 'Status-Dossier', 'Bauherren-Update'] : ['Universal PDF Studio', 'Status Dossier', 'Client Update'],
+            proTip: isGerman ? 'Alle KPIs und Diagramme werden gestochen scharf als Vektorgrafiken gerendert.' : 'All charts and metrics are rendered as crisp vector graphics.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'camera' || activeModuleTour === 'site') {
+        candidateDefs = [
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Live-Baustellenkamera & Zeitraffer' : 'Site Camera & Timelapse',
+            content: isGerman
+              ? 'Verfolge den Baufortschritt oder den Eventaufbau live im Browser. Schalte zwischen mehreren Kameras um, erstelle Zeitraffer-Sequenzen und archiviere Schlüsselmomente.'
+              : 'Monitor construction or installation live in your browser. Switch cameras, generate time-lapse sequences, and archive key milestones.',
+            IconComponent: Camera,
+            submodules: isGerman ? ['Live-Kamera', 'Zeitraffer (Timelapse)', 'Multi-Kamera'] : ['Live Camera', 'Timelapse', 'Multi-Camera'],
+            proTip: isGerman ? 'Automatische Schnappschüsse werden stündlich im Bautagebuch und der Bauakte hinterlegt.' : 'Snapshots are automatically archived hourly in the site journal.',
+            placement: 'bottom'
+          },
+          {
+            target: 'header, div, body',
+            title: isGerman ? 'Live-Wetter & SIA-Sensorik' : 'Live Weather & SIA Sensors',
+            content: isGerman
+              ? 'Echtzeit-Wetterdaten direkt vom Baustellenstandort: Temperatur, Niederschlag und Wind helfen bei der Freigabe von Betonier-, Kran- und Fassadenarbeiten.'
+              : 'Live weather from your job site: Temperature, rain, and wind assist in clearing concrete pours, crane operations, and facade work.',
+            IconComponent: CalendarDays,
+            submodules: isGerman ? ['Betonier-Freigabe', 'Windwarnung', 'Regen-Prognose'] : ['Concrete Clearance', 'Wind Alert', 'Rain Forecast'],
+            proTip: isGerman ? 'Klicke auf "Standort ändern", um den GPS-Standort deiner Baustelle exakt zu kalibrieren.' : 'Click "Change Location" to calibrate site coordinates.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'KI-Sicherheitsaudit (SUVA & Helmpflicht)' : 'AI Safety Audit (SUVA & PPE)',
+            content: isGerman
+              ? 'Die integrierte KI analysiert Kamerabilder auf Einhaltung der SUVA-Arbeitssicherheitsrichtlinien (z.B. Helmpflicht, Schutzwesten, Absperrungen) und protokolliert Auffälligkeiten.'
+              : 'Integrated AI inspects video feeds for SUVA safety compliance (hard hats, high-vis vests, restricted zones) and logs incidents.',
+            IconComponent: Shield,
+            submodules: isGerman ? ['SUVA-Richtlinien', 'PSA-Erkennung', 'Sicherheits-Log'] : ['SUVA Standards', 'PPE Detection', 'Safety Log'],
+            proTip: isGerman ? 'Sicherheitsberichte lassen sich direkt als PDF für die Sicherheitsbeauftragten exportieren.' : 'Safety incident reports export directly to PDF.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'whiteboard') {
+        candidateDefs = [
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Unendliche Skizzen-Leinwand & Ebenen' : 'Infinite Canvas & Vector Layers',
+            content: isGerman
+              ? 'Entwirf Skizzen, Grundrisse und Raumkonzepte auf einer zoom- und schwenkbaren Vektorebene. Nutze Stifte, geometrische Formen und Multi-Layer wie in CAD-Systemen.'
+              : 'Sketch floor plans and spatial concepts on a high-precision zoomable canvas. Use pens, shapes, and multiple layers just like in CAD software.',
+            IconComponent: LayoutTemplate,
+            submodules: isGerman ? ['Multi-Layer Ebenen', 'Vektor-Werkzeuge', 'Zoom & Pan'] : ['Multi-Layer', 'Vector Tools', 'Zoom & Pan'],
+            proTip: isGerman ? 'Halte die Leertaste oder das Mausrad gedrückt, um mit dem Hand-Werkzeug frei über das Board zu gleiten.' : 'Hold spacebar or mouse wheel to pan freely across the canvas.',
+            placement: 'bottom'
+          },
+          {
+            target: 'header, button, body',
+            title: isGerman ? 'KI-Visualisierung & Moodboard-Studio' : 'AI Visualization & Moodboards',
+            content: isGerman
+              ? 'Verwandle Handskizzen per Prompt in fotorealistische Architektur-Renderings mit integrierter Gemini- und Fal.ai-Technologie – ideal für frühe Kundenpräsentationen.'
+              : 'Turn rough sketches into photorealistic architectural renders via AI prompts with Gemini and Fal.ai integration.',
+            IconComponent: Sparkles,
+            submodules: isGerman ? ['Sketch-to-Render', 'Gemini KI-Prompt', 'Fotorealismus'] : ['Sketch-to-Render', 'Gemini AI', 'Photorealism'],
+            proTip: isGerman ? 'Wähle Voreinstellungen wie "Fotorealistisch" oder "Minimalistischer Pavillon" für schnelle Entwürfe.' : 'Pick style presets for rapid client design alternatives.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Audio-Notizen & Universal PDF Export' : 'Audio Memos & PDF Studio',
+            content: isGerman
+              ? 'Nimm Sprachmemos während Baubesprechungen auf: Die KI transkribiert und fasst Beschlüsse zusammen. Exportiere das fertige Board direkt als Folie ins Pitch Deck oder als A3-PDF.'
+              : 'Record voice memos during site meetings: AI transcribes and summarizes decisions. Export to Pitch Deck or high-res A3 PDF.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['KI-Transkription', 'Pitch Deck Sync', 'Universal PDF Studio'] : ['AI Transcription', 'Pitch Deck Sync', 'Universal PDF Studio'],
+            proTip: isGerman ? 'Über "Medien & PDF" im Menü generierst du gestochen scharfe A3-Präsentationspläne.' : 'Export crisp A3 layout plans via the Media & PDF menu.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'meet') {
+        candidateDefs = [
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Integrierte HD-Videokonferenzen' : 'Integrated HD Video Meetings',
+            content: isGerman
+              ? 'Führe Bau- und Planungsbesprechungen direkt im Web-Browser durch – ohne Software-Download. Externe Fachplaner und Bauherren treten per Einladungs-Link sofort bei.'
+              : 'Host coordination and client meetings directly in your browser – no software install. External partners join instantly via invite link.',
+            IconComponent: Video,
+            submodules: isGerman ? ['HD-Video & Audio', 'Screen-Sharing', 'Zero Download'] : ['HD Video & Audio', 'Screen Sharing', 'Zero Download'],
+            proTip: isGerman ? 'Kopiere den Einladungslink mit einem Klick und versende ihn an Handwerker oder Bauherren.' : 'Copy meeting invite link in one click to share with clients.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-meet-modes, header, body',
+            title: isGerman ? 'Kollaboratives Live-Whiteboard' : 'Collaborative Live Whiteboard',
+            content: isGerman
+              ? 'Schalte während des Gesprächs nahtlos auf das interaktive Whiteboard um, um 2D-Pläne und 3D-Bildausschnitte gemeinsam live zu annotieren und Details abzustimmen.'
+              : 'Switch seamlessly to the interactive whiteboard during calls to annotate plans and resolve architectural details collaboratively.',
+            IconComponent: PenTool,
+            submodules: isGerman ? ['Live-Annotation', 'Gemeinsam Skizzieren', 'Split-Screen'] : ['Live Annotation', 'Co-sketching', 'Split Screen'],
+            proTip: isGerman ? 'Alle Skizzen aus dem Anruf werden automatisch in der Projektakte archiviert.' : 'Sketches drawn during calls are automatically archived in project documents.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Sitzungsprotokoll & Historie' : 'Meeting Log & History',
+            content: isGerman
+              ? 'Dokumentiere Beschlüsse im Live-Chat. Nach dem Anruf bleibt das Protokoll mit Teilnehmerliste und Zeitstempel in der Historie revisionssicher nach SIA 102/118 erhalten.'
+              : 'Record agreements in live chat. After the call, transcripts and attendee lists remain securely logged according to SIA 102/118.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Chat-Protokoll', 'Teilnehmer-Nachweis', 'SIA 102 Konform'] : ['Chat Log', 'Attendance Record', 'SIA 102 Compliant'],
+            proTip: isGerman ? 'Ideal für wöchentliche Bauleitungssitzungen und Unternehmersprachen.' : 'Ideal for weekly site coordinator meetings and contractor logs.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'documents' || activeModuleTour === 'bauakte') {
+        candidateDefs = [
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Strukturierte Digitale Bauakte' : 'Structured Digital Project Records',
+            content: isGerman
+              ? 'Organisiere Verträge, Baugenehmigungen, Pläne und Handwerker-Rapporte in einer Schweizer Standard-Ordnerstruktur. Alle Dateien sind revisionssicher verschlüsselt.'
+              : 'Organize contracts, permits, CAD plans, and site reports in a Swiss standard folder structure with encrypted cloud storage.',
+            IconComponent: Folder,
+            submodules: isGerman ? ['Verschlüsselter Cloud-Storage', 'SIA-Ordnerstruktur', 'Revisionssicher'] : ['Encrypted Storage', 'SIA Folders', 'Audit-Proof'],
+            proTip: isGerman ? 'Lege separate Unterordner für jedes BKP-Gewerk an, um Dokumente übersichtlich zu trennen.' : 'Create subfolders per BKP trade for clear contractor separation.',
+            placement: 'bottom'
+          },
+          {
+            target: 'header, input, div, body',
+            title: isGerman ? 'Volltextsuche & OCR-Erkennung' : 'Full-Text Search & OCR',
+            content: isGerman
+              ? 'Finde Bauakten sekundenschnell über die integrierte Volltextsuche. Hochgeladene PDFs, Rechnungen und Fotos werden automatisch per OCR indiziert.'
+              : 'Find files in seconds via full-text search. Uploaded PDFs, invoices, and photos are indexed automatically via OCR.',
+            IconComponent: Search,
+            submodules: isGerman ? ['OCR-Texterkennung', 'Metadaten-Filter', 'Sofort-Suche'] : ['OCR Text Recognition', 'Metadata Filter', 'Instant Search'],
+            proTip: isGerman ? 'Suche nach Rechnungsnummern, BKP-Codes oder Handwerkernamen für Sofort-Treffer.' : 'Search by invoice number, BKP code, or contractor name for instant matches.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Smartphone-Scan & BKP-Sync' : 'Smartphone Scanning & BKP Sync',
+            content: isGerman
+              ? 'Scanne Lieferscheine und Handwerker-Rapporte direkt auf der Baustelle mit dem Smartphone – sie synchronisieren sich in Echtzeit in die Bauakte und das Finanzmodul.'
+              : 'Scan delivery notes and time sheets directly on site with your phone – syncing instantly to documents and finance.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Smartphone QR-Scan', 'PWA-Sync', 'Finanz-Verknüpfung'] : ['Phone QR Scan', 'PWA Sync', 'Finance Link'],
+            proTip: isGerman ? 'Gescannte Handwerkerbelege lassen sich direkt den BKP-Kostenstellen zuweisen.' : 'Scanned receipts link directly to BKP cost items in Finance.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'team' || activeModuleTour === 'access') {
+        candidateDefs = [
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Granulare Schweizer Rollenverwaltung' : 'Granular Swiss Role Permissions',
+            content: isGerman
+              ? 'Steuere exakt, wer Zugriff auf dein Projekt hat: Bauherren (nur Lesezugriff), Fachplaner (Editor) oder Bauleiter (Admin). Schütze vertrauliche Baukosten und Margen.'
+              : 'Control exact permissions: Clients (Read-only), Planners (Editor), or Site Managers (Admin). Protect confidential cost data and profit margins.',
+            IconComponent: Users,
+            submodules: isGerman ? ['Owner & Admins', 'Fachplaner (Editor)', 'Bauherren (Viewer)'] : ['Owner & Admins', 'Planner (Editor)', 'Client (Viewer)'],
+            proTip: isGerman ? 'Bauherren erhalten automatisch eine vereinfachte Sicht ohne interne Firmenmargen.' : 'Clients automatically receive a clean view without internal contractor margins.',
+            placement: 'bottom'
+          },
+          {
+            target: 'header, button, body',
+            title: isGerman ? 'Smarte Einladungs-Links & Externe Partner' : 'Smart Magic Invites & Contractors',
+            content: isGerman
+              ? 'Lade Handwerker und Planer per E-Mail oder Magic Invite Link ein. Externe Partner erhalten sofort Zugang zu ihren spezifischen Aufgaben und Mängeln.'
+              : 'Invite contractors and engineers via email or magic links. External partners gain instant access to their assigned tickets and plans.',
+            IconComponent: Sparkles,
+            submodules: isGerman ? ['Magic Invite Link', 'Gewerke-Zuordnung', 'Schnelleinladung'] : ['Magic Invite Link', 'Trade Mapping', 'Fast Onboarding'],
+            proTip: isGerman ? 'Subunternehmer sehen nur die für sie relevanten Mängel und Pläne.' : 'Subcontractors only see defects and plans relevant to their trade.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, table, header, body',
+            title: isGerman ? 'Revisionssichere Zugriffs-Protokollierung' : 'Audit Logs & DSG Compliance',
+            content: isGerman
+              ? 'Jeder Zugriff und jede Rollenänderung wird im Audit-Trail dokumentiert – konform mit dem Schweizer Datenschutzgesetz (DSG) und der SIA-Norm.'
+              : 'Every access and role modification is recorded in the audit trail – compliant with Swiss Data Protection (DSG) and SIA standards.',
+            IconComponent: Shield,
+            submodules: isGerman ? ['Schweizer DSG konform', 'Audit-Trail', 'Rollenhistorie'] : ['Swiss DSG Compliant', 'Audit Trail', 'Role History'],
+            proTip: isGerman ? 'Passe Rollen jederzeit per Dropdown an – Änderungen werden sofort aktiv.' : 'Adjust roles anytime via dropdown – changes take effect immediately.',
             placement: 'bottom'
           }
         ];
@@ -495,43 +711,66 @@ export default function ProductTour() {
       ];
     }
 
-    const getVisibleTargetElement = (selector: string): HTMLElement | string | null => {
-      if (selector === 'body') return 'body';
-      const elements = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
-      for (const el of elements) {
-        const rect = el.getBoundingClientRect();
-        const isVisible = el.offsetParent !== null || (rect.width > 0 && rect.height > 0);
-        if (isVisible) return el;
+    interface ResolvedTargetResult {
+      target: HTMLElement | string;
+      isBody: boolean;
+    }
+
+    const getVisibleTargetElement = (selectorString: string): ResolvedTargetResult | null => {
+      if (selectorString === 'body') return { target: 'body', isBody: true };
+      
+      // Comma-separated selectors in candidateDefs specify priority from left to right:
+      // e.g. '.tour-finance-invoices, .tour-btn-module-guide, header, body'
+      const selectors = selectorString.split(',').map(s => s.trim()).filter(Boolean);
+      for (const sel of selectors) {
+        if (sel === 'body') {
+          return { target: 'body', isBody: true };
+        }
+        try {
+          const elements = Array.from(document.querySelectorAll(sel)) as HTMLElement[];
+          for (const el of elements) {
+            const rect = el.getBoundingClientRect();
+            const isVisible = el.offsetParent !== null || (rect.width > 0 && rect.height > 0);
+            if (isVisible) return { target: el, isBody: false };
+          }
+        } catch {
+          // invalid selector syntax, continue
+        }
       }
-      return null;
+      return { target: 'body', isBody: true };
     };
 
     // Filter to only step candidates that actually have a visible DOM element
     const resolvedCandidates = candidateDefs
       .map(def => {
-        const visibleTarget = getVisibleTargetElement(def.target);
-        return visibleTarget ? { ...def, resolvedTarget: visibleTarget } : null;
+        const resolved = getVisibleTargetElement(def.target);
+        return resolved ? { ...def, resolvedTarget: resolved.target, isBodyTarget: resolved.isBody } : null;
       })
-      .filter((item): item is (RawStepDef & { resolvedTarget: HTMLElement | string }) => item !== null);
+      .filter((item): item is (RawStepDef & { resolvedTarget: HTMLElement | string; isBodyTarget: boolean }) => item !== null);
 
     const totalSteps = resolvedCandidates.length;
 
     const validSteps: Step[] = resolvedCandidates.map((c, index) => {
       const stepNum = index + 1;
-      const effectivePlacement = isMobile && c.placement !== 'center' ? 'auto' : (c.placement || 'right');
+      const isCenter = c.isBodyTarget || c.placement === 'center';
+      const effectivePlacement = isCenter
+        ? 'center'
+        : (isMobile && c.placement !== 'center' ? 'auto' : (c.placement || 'bottom'));
+
       return {
         target: c.resolvedTarget as any,
         content: buildStepContent(stepNum, totalSteps, c.title, c.content, c.IconComponent, c.proTip, c.submodules),
         placement: effectivePlacement,
-        disableBeacon: !!c.disableBeacon,
-        disableScrolling: isMobile ? false : true,
+        skipBeacon: true, // ✅ CRUCIAL: Eliminates the red pulsing beacon dot in React-Joyride v3
+        disableBeacon: true, // backwards compatibility
+        disableScrolling: isCenter ? true : (isMobile ? false : true),
         disableScrollParentFix: true,
         floaterProps: { disableAnimation: true }
       } as any;
     });
 
     setSteps(validSteps);
-  }, [isTourRunning, activeModuleTour, location.pathname, language, theme, isDark, isGerman]);
+  }, [isTourRunning, activeModuleTour, location.pathname, language, theme, isDark, isGerman, stopTour]);
 
   const handleJoyrideCallback = async (data: any) => {
     const { status, action, type } = data;
@@ -563,6 +802,13 @@ export default function ProductTour() {
         continuous: true,
         showSkipButton: true,
         showProgress: true,
+        hideCloseButton: false,
+        disableOverlayClose: false,
+        spotlightClicks: false,
+        options: {
+          skipBeacon: true,
+          overlayClickAction: 'close',
+        },
         locale: {
           back: isGerman ? 'Zurück' : 'Back',
           close: isGerman ? 'Schließen' : 'Close',

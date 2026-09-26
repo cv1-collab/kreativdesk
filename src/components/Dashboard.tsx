@@ -22,6 +22,7 @@ import { demoTemplates } from '../utils/demoTemplates';
 import { fetchSystemConfigJSON, saveSystemConfigJSON } from '../utils/configHelper';
 import { safeStorage } from '../utils/safeStorage';
 import DailyGoals from './DailyGoals';
+import ModuleGuideButton from './ModuleGuideButton';
 
 // 🚀 NATIVES PDF STUDIO & VEKTOR ENGINE
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
@@ -371,7 +372,8 @@ export default function Dashboard() {
           <h1 className="text-2xl font-semibold tracking-tight">{t('project_overview')}</h1>
           <p className="text-sm text-text-muted mt-1 font-medium">{activeProject?.name}</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+          <ModuleGuideButton moduleId="overview" />
           <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex items-center justify-center gap-2 px-4 py-2 bg-surface border border-border rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-all">
             <FileText size={16} className="text-accent-ai"/> {t('create_report')}
           </button>

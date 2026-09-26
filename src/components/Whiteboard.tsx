@@ -37,6 +37,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useProject } from '../contexts/ProjectContext';
 import { motion, AnimatePresence } from 'motion/react';
 import PremiumFeature from './PremiumFeature';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const WhiteboardPDFModal = React.lazy(() => import('./WhiteboardPDFModal'));
 
@@ -1838,6 +1839,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
+            <ModuleGuideButton moduleId="whiteboard" />
             {/* 1. KI-ASSISTENT DROPDOWN */}
             <div className="relative shrink-0">
               <button

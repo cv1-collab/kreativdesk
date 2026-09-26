@@ -15,6 +15,7 @@ import { useProject } from '../contexts/ProjectContext';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
+import ModuleGuideButton from './ModuleGuideButton';
 
 // === PROVIDER PRESETS FÜR SCHNELLE EINBINDUNG ===
 interface ProviderPreset {
@@ -383,6 +384,9 @@ export default function SiteMonitoring({ projectId: propProjectId }: { projectId
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">{t('site_monitoring_title')}</h1>
               <p className="text-text-muted text-xs sm:text-sm mt-1">{t('site_monitoring_desc')}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ModuleGuideButton moduleId="camera" />
             </div>
           </header>
 

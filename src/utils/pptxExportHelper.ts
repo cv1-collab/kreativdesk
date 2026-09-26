@@ -109,7 +109,7 @@ export async function exportDeckToPptx(
   let bgColor = isDark ? '09090B' : 'FFFFFF';
   let titleColor = isDark ? 'FFFFFF' : '0F172A';
   let textColor = isDark ? 'CBD5E1' : '334155';
-  let mutedColor = isDark ? '71717A' : '94A3B8';
+  const mutedColor = isDark ? '71717A' : '94A3B8';
   let fontFace = 'Arial';
 
   // Apply master template styles
