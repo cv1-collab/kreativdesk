@@ -14,6 +14,7 @@ import { deserializeSlideFromDb } from '../utils/pitchDeckHelpers';
 import { demoTemplates } from '../utils/demoTemplates';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { safeStorage } from '../utils/safeStorage';
+import ModuleGuideButton from './ModuleGuideButton';
 
 interface Slide { 
   id: string; 
@@ -727,6 +728,7 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
+             <ModuleGuideButton moduleId="pitch" />
              <button onClick={async () => {
                setIsShareModalOpen(true);
                try {

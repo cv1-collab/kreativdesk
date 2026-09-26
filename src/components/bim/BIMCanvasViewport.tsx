@@ -90,7 +90,7 @@ function IfcModel({
 
   useEffect(() => {
     const loader = new IFCLoader();
-    loader.ifcManager.setWasmPath('https://unpkg.com/web-ifc@0.0.36/');
+    loader.ifcManager.setWasmPath('/wasm/');
     loader.load(
       url,
       (ifcModel) => {

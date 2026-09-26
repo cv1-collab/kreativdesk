@@ -23,6 +23,7 @@ import { dummySvgPlan } from '../utils/cadDemoPlan';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio from './UniversalPDFStudio';
+import ModuleGuideButton from './ModuleGuideButton';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Svg, Line, Rect, Circle as PDFCircle, Ellipse, G, Polygon, Polyline } from '@react-pdf/renderer';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -102,7 +103,7 @@ type ToolType = 'pan' | 'defect' | 'zone' | 'text' | 'pen' | 'measure' | 'polygo
 type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 interface BaseElement { id: string; type: ToolType; x: number; y: number; layerId?: string; opacity?: number; }
-interface DefectMarker extends BaseElement { type: 'defect'; title: string; description: string; priority?: string; trade?: string; status: 'open' | 'in_progress' | 'closed'; isSynced?: boolean; color?: string; strokeColor?: string;}
+interface DefectMarker extends BaseElement { type: 'defect'; title: string; description: string; priority?: string; trade?: string; status: 'open' | 'in_progress' | 'review' | 'closed' | 'resolved' | string; isSynced?: boolean; color?: string; strokeColor?: string;}
 interface TextMarkup extends BaseElement { type: 'text'; text: string; color: string; size: number; }
 interface FreehandLine extends BaseElement { type: 'pen'; points: {x: number, y: number}[]; color: string; thickness: number; }
 interface Measurement extends BaseElement { type: 'measure'; start: {x: number, y: number}; end: {x: number, y: number}; color: string; }
@@ -227,9 +228,12 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
                 }
                 if (el.type === 'defect') {
                    const x = el.x * SAFE_W; const y = el.y * SAFE_H; const r = 4 * MM_TO_PX * SCALE_AVG;
+                   const pinColor = el.status === 'resolved' || el.status === 'Behoben' ? "#10b981" : 
+                                    el.status === 'review' || el.status === 'Abnahme' || el.status === 'Zur Abnahme' ? "#3b82f6" : 
+                                    el.status === 'in_progress' || el.status === 'In Bearbeitung' ? "#f59e0b" : "#ef4444";
                    return (
                      <G key={el.id} opacity={totalOpacity}>
-                       <PDFCircle cx={x} cy={y} r={r} fill={el.isSynced ? "#10b981" : "#ef4444"} stroke="#ffffff" strokeWidth={0.8 * MM_TO_PX * SCALE_AVG} />
+                       <PDFCircle cx={x} cy={y} r={r} fill={pinColor} stroke="#ffffff" strokeWidth={0.8 * MM_TO_PX * SCALE_AVG} />
                      </G>
                    );
                 }
@@ -343,6 +347,13 @@ const CADPlanPDFDocument = ({ settings, docHeader, planImage, elements, layers, 
     </Document>
   );
 };
+
+const defaultDemoDefectPins: DefectMarker[] = [
+  { id: 'el1', type: 'defect', x: 0.28, y: 0.35, title: 'Riss im Sichtbeton Achse B (Treppenhaus)', description: 'Haarriss Treppenhaus EG-1.OG. SIA 118 Rügefrist läuft. Spachtelung erforderlich.', status: 'open', priority: 'High', trade: 'Baumeister (Gebr. Keller Bau AG)', layerId: 'default' },
+  { id: 'el2', type: 'defect', x: 0.65, y: 0.22, title: 'Fensterdichtung beschädigt Nordfassade', description: 'Dichtungsprofil Wetterseite 1. OG eingedrückt. Vor Montage der Leibung ersetzen.', status: 'in_progress', priority: 'Medium', trade: 'Fensterbau (SwissWindows AG)', layerId: 'default' },
+  { id: 'el3', type: 'defect', x: 0.72, y: 0.70, title: 'Schutzabdeckung Bodenheizung montiert', description: 'Trittschutz vor Einbringen des Unterlagsbodens montiert. Bereit zur Bauleitung-Abnahme.', status: 'review', priority: 'Medium', trade: 'Heizung / Sanitär', layerId: 'default' },
+  { id: 'el4', type: 'defect', x: 0.38, y: 0.78, title: 'Aussparung Steigzone brandschutzverkleidet (SIA 118)', description: 'Aussparung mit Promat EI90 verkleidet und gemäss Brandschutzvorschriften VKF abgenommen.', status: 'resolved', priority: 'Low', trade: 'Brandschutz & Dämmung', layerId: 'default' }
+];
 
 export default function PlanEditorViewer({ projectId: propProjectId }: { projectId?: string }) {
   const { addToast } = useToast();
@@ -588,10 +599,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          paperFormat: 'A3',
          paperOrientation: 'landscape',
          planScale: 50,
-         elements: [
-           { id: 'el1', type: 'defect', x: 0.22, y: 0.85, title: 'Riss im Sichtbeton', description: 'Beispielmangel aus Demo', status: 'open', priority: 'High', layerId: 'default' }
-         ],
-         layers: [{ id: 'default', name: 'Architektur', visible: true, locked: false, opacity: 1 }],
+         elements: [...defaultDemoDefectPins],
+         layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
          activeLayerId: 'default'
        };
        setProjectPlans([mockPlan]);
@@ -614,10 +623,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
          paperFormat: 'A3',
          paperOrientation: 'landscape',
          planScale: 50,
-         elements: [
-           { id: 'el1', type: 'defect', x: 0.22, y: 0.85, title: 'Riss im Sichtbeton', description: 'Beispielmangel aus Demo', status: 'open', priority: 'High', layerId: 'default' }
-         ],
-         layers: [{ id: 'default', name: 'Architektur', visible: true, locked: false, opacity: 1 }],
+         elements: [...defaultDemoDefectPins],
+         layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
          activeLayerId: 'default'
        };
        setProjectPlans([mockPlan]);
@@ -674,10 +681,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               paper_format: 'A3',
               paper_orientation: 'landscape',
               plan_scale: 50,
-              elements: [
-                { id: 'el1', type: 'defect', x: 0.22, y: 0.85, title: 'Riss im Sichtbeton', description: 'Mangel vor Abnahme prüfen', status: 'open', priority: 'High', layerId: 'default' }
-              ],
-              layers: [{ id: 'default', name: 'Architektur', visible: true, locked: false, opacity: 1 }],
+              elements: [...defaultDemoDefectPins],
+              layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
               active_layer_id: 'default'
             };
             setProjectPlans([defaultDemoPlan]);
@@ -1333,9 +1338,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (el.type === 'defect') {
         const d = el as DefectMarker;
         const radius = 4 * MM_TO_PX; 
+        const pinColor = d.status === 'resolved' || d.status === 'Behoben' ? "#10b981" : 
+                         d.status === 'review' || d.status === 'Abnahme' || d.status === 'Zur Abnahme' ? "#3b82f6" : 
+                         d.status === 'in_progress' || d.status === 'In Bearbeitung' ? "#f59e0b" : "#ef4444";
         return (
           <g key={d.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'pointer', pointerEvents: 'auto' }} transform={`translate(${d.x * internalW}, ${d.y * internalH})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, d); }}>
-            <circle cx="0" cy="0" r={`${radius}px`} fill={d.isSynced ? "#10b981" : "#ef4444"} stroke="#ffffff" strokeWidth={`${0.8 * MM_TO_PX}px`} />
+            <circle cx="0" cy="0" r={`${radius}px`} fill={pinColor} stroke="#ffffff" strokeWidth={`${0.8 * MM_TO_PX}px`} />
             <text x="0" y={`${1.5 * MM_TO_PX}px`} fill="#ffffff" fontSize={`${4 * MM_TO_PX}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">!</text>
           </g>
         );
@@ -1533,6 +1541,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           }} className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-pink-500/10 text-pink-400 border border-pink-500/30 rounded-xl text-xs font-bold hover:bg-pink-500/20 transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
             <ImageIcon size={14}/> Pitch Deck
           </button>
+          <ModuleGuideButton moduleId="plans" compact className="sm:px-3 sm:py-2 text-xs" />
           <label 
             onClick={(e) => {
               if (isDemoMode || currentProjectId === 'demo-1') {
@@ -1805,11 +1814,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                         plan_image: dummySvgPlan,
                         paper_format: 'A3',
                         paper_orientation: 'landscape',
-                        plan_scale: 50,
-                        elements: [
-                          { id: 'el1', type: 'defect', x: 0.25, y: 0.70, title: 'Beispiel-Mangel', description: 'Riss im Sichtbeton vor Abnahme', status: 'open', priority: 'High', layerId: 'default' }
-                        ],
-                        layers: [{ id: 'default', name: 'Architektur', visible: true, locked: false, opacity: 1 }],
+                        paper_scale: 50,
+                        elements: [...defaultDemoDefectPins],
+                        layers: [{ id: 'default', name: 'Architektur & Tragwerk', visible: true, locked: false, opacity: 1 }],
                         active_layer_id: 'default'
                       };
                       setProjectPlans(prev => [samplePlan as any, ...prev]);

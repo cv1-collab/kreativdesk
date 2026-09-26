@@ -81,7 +81,8 @@ export const demoMediaAssets = {
   siteConstruction: '/demo-assets/bau_kamera.jpg',
   sitePitch: '/media/michael_engineer_workbench.jpg',
   siteDefect: '/demo-assets/mangel_betonriss.jpg',
-  groundPlanPdf: '/demo-assets/bau_grundriss_eg.pdf'
+  groundPlanPdf: '/demo-assets/bau_grundriss_eg.pdf',
+  bimIfcModel: '/demo-assets/residenz_am_park_3d.ifc'
 };
 
 // ============================================================================
@@ -222,8 +223,9 @@ export const demoConstructionProject = {
   },
 
   bim: {
-    useDefaultModel: true,
-    url: ''
+    useDefaultModel: false,
+    url: '/demo-assets/residenz_am_park_3d.ifc',
+    name: 'Residenz_am_Park_Architektur_Statik.ifc'
   },
 
   camera: {
@@ -231,10 +233,11 @@ export const demoConstructionProject = {
   },
 
   documents: [
-    { name: 'Grundriss_EG_Freigabe.pdf', category: 'projects', url: demoMediaAssets.groundPlanPdf, size: '778 KB' },
-    { name: 'Visualisierung_Projekt.jpg', category: 'projects', url: demoMediaAssets.sitePitch, size: '81 KB' },
-    { name: 'Baukamera_Snapshot.jpg', category: 'projects', url: demoMediaAssets.siteConstruction, size: '804 KB' },
-    { name: 'Mangelprotokoll_Betonriss.jpg', category: 'projects', url: demoMediaAssets.siteDefect, size: '490 KB' }
+    { name: 'Residenz_am_Park_Architektur_Statik.ifc', category: 'projects', url: '/demo-assets/residenz_am_park_3d.ifc', size: '693 KB', type: 'ifc' },
+    { name: 'Grundriss_EG_Freigabe.pdf', category: 'projects', url: demoMediaAssets.groundPlanPdf, size: '778 KB', type: 'application/pdf' },
+    { name: 'Visualisierung_Projekt.jpg', category: 'projects', url: demoMediaAssets.sitePitch, size: '81 KB', type: 'image/jpeg' },
+    { name: 'Baukamera_Snapshot.jpg', category: 'projects', url: demoMediaAssets.siteConstruction, size: '804 KB', type: 'image/jpeg' },
+    { name: 'Mangelprotokoll_Betonriss.jpg', category: 'projects', url: demoMediaAssets.siteDefect, size: '490 KB', type: 'image/jpeg' }
   ],
 
   members: demoTeamMembers,
@@ -243,11 +246,11 @@ export const demoConstructionProject = {
     {
       id: 'def-1',
       title: 'Riss im Sichtbeton Achse B (Treppenhaus)',
-      description: 'Haarriss im Treppenhaus EG-1.OG, statisch gemäss Statikerin Elena Rossi unbedenklich, jedoch optischer Mangel. Feinmörtel-Spachtelung erforderlich.',
+      description: 'Haarriss im Treppenhaus EG-1.OG, statisch gemäss Statikerin Elena Rossi unbedenklich, jedoch optischer Mangel. SIA 118 Rügefrist läuft. Feinmörtel-Spachtelung erforderlich.',
       priority: 'Hoch',
       status: 'In Bearbeitung',
       trade: 'Baumeister (Gebr. Keller Bau AG)',
-      location: 'EG, Haus A',
+      location: 'EG, Treppenhaus Achse B',
       imageUrl: demoMediaAssets.siteDefect
     },
     {
@@ -257,17 +260,27 @@ export const demoConstructionProject = {
       priority: 'Mittel',
       status: 'Offen',
       trade: 'Fensterbau (SwissWindows AG)',
-      location: '1. OG, Raum 104',
+      location: '1. OG, Raum 104 Nord',
       imageUrl: ''
     },
     {
       id: 'def-3',
-      title: 'Schutzabdeckung Bodenheizung fehlt',
-      description: 'Im 2. OG müssen die Heizrohre vor Einbringen des Unterlagsbodens mit Trittschutz versehen werden.',
+      title: 'Schutzabdeckung Bodenheizung montiert',
+      description: 'Im 2. OG wurden die Heizrohre vor Einbringen des Zementunterlagsbodens mit Trittschutz versehen. Bereit zur Bauleitung-Abnahme.',
+      priority: 'Mittel',
+      status: 'Zur Abnahme',
+      trade: 'Heizung / Sanitär',
+      location: '2. OG, Korridor Ost',
+      imageUrl: ''
+    },
+    {
+      id: 'def-4',
+      title: 'Aussparung Steigzone brandschutzverkleidet (SIA 118)',
+      description: 'Aussparung im UG mit Promat EI90 fachgerecht verkleidet und gemäss Brandschutzvorschriften VKF abgenommen.',
       priority: 'Niedrig',
       status: 'Behoben',
-      trade: 'Heizung / Sanitär',
-      location: '2. OG, Korridor',
+      trade: 'Brandschutz & Dämmung',
+      location: 'UG, Steigzone B',
       imageUrl: ''
     }
   ],
@@ -279,7 +292,8 @@ export const demoConstructionProject = {
       title: '100 Vorbereitungsarbeiten',
       items: [
         { id: 'i111', pos: '111', title: 'Terrainfreilegung', description: 'Terrainfreilegung: Rodung und Abtransport von Sträuchern', unit: 'Pausch.', qty: 1, unitPrice: 15000, option: 0, total: 15000, type: 'cost' },
-        { id: 'i112', pos: '112', title: 'Abbruch Gartenmauer', description: 'Abbruch Gartenmauer: Baggerarbeiten inkl. Entsorgung und Transport', unit: 'Std.', qty: 120, unitPrice: 150, option: 0, total: 18000, type: 'cost' }
+        { id: 'i112', pos: '112', title: 'Abbruch Gartenmauer', description: 'Abbruch Gartenmauer: Baggerarbeiten inkl. Entsorgung und Transport', unit: 'Std.', qty: 120, unitPrice: 150, option: 0, total: 18000, type: 'cost' },
+        { id: 'i113', pos: '113', title: 'Baugrunduntersuchung & Geotechnik', description: 'Geotechnische Rammkernsondierungen und Baugrundgutachten', unit: 'Pausch.', qty: 1, unitPrice: 8500, option: 0, total: 8500, type: 'cost' }
       ]
     },
     {
@@ -288,7 +302,8 @@ export const demoConstructionProject = {
       title: '200 Gebäude (Rohbau)',
       items: [
         { id: 'i211', pos: '211', title: 'Aushub & Fundament', description: 'Aushub & Fundament: Aushubarbeiten 1500m3 inkl. Betonbodenplatte', unit: 'm3', qty: 1500, unitPrice: 120, option: 0, total: 180000, type: 'cost' },
-        { id: 'i212', pos: '212', title: 'Betonwände & Decken', description: 'Betonwände & Decken: Sichtbetonwände giessen (EG bis 3. Obergeschoss)', unit: 'm3', qty: 850, unitPrice: 450, option: 0, total: 382500, type: 'cost' }
+        { id: 'i212', pos: '212', title: 'Betonwände & Decken', description: 'Betonwände & Decken: Sichtbetonwände giessen (EG bis 3. Obergeschoss)', unit: 'm3', qty: 850, unitPrice: 450, option: 0, total: 382500, type: 'cost' },
+        { id: 'i214', pos: '214', title: 'Holzbau & Tragkonstruktion', description: 'Vorgefertigte Brettschichtholz-Elemente und Dachtragwerk (CH Holz)', unit: 'm2', qty: 420, unitPrice: 280, option: 0, total: 117600, type: 'cost' }
       ]
     },
     {
@@ -297,7 +312,8 @@ export const demoConstructionProject = {
       title: '220 Gebäudehülle (Fassade)',
       items: [
         { id: 'i221', pos: '221', title: 'Einbau Fenster', description: 'Einbau Fenster: Holz-Metall-Fenster 3-fach verglast nach Mass', unit: 'Stk.', qty: 48, unitPrice: 1250, option: 0, total: 60000, type: 'cost' },
-        { id: 'i222', pos: '222', title: 'Einbau Aussentüren', description: 'Einbau Aussentüren: Sicherheitstüren Eingang (Aluminium/Glas)', unit: 'Stk.', qty: 3, unitPrice: 3800, option: 0, total: 11400, type: 'cost' }
+        { id: 'i222', pos: '222', title: 'Einbau Aussentüren', description: 'Einbau Aussentüren: Sicherheitstüren Eingang (Aluminium/Glas)', unit: 'Stk.', qty: 3, unitPrice: 3800, option: 0, total: 11400, type: 'cost' },
+        { id: 'i224', pos: '224', title: 'Fassadenbekleidung Holzlamellen', description: 'Hinterlüftete Holzfassade Lärche sägeroh mit UV-Schutzlasur', unit: 'm2', qty: 580, unitPrice: 165, option: 0, total: 95700, type: 'cost' }
       ]
     },
     {
@@ -310,6 +326,35 @@ export const demoConstructionProject = {
         { id: 'i281', pos: '281', title: 'Unterlagsboden', description: 'Unterlagsboden: Zementunterlagsboden inkl. Trittschalldämmung', unit: 'm2', qty: 1200, unitPrice: 85, option: 0, total: 102000, type: 'cost' },
         { id: 'i282', pos: '282', title: 'Parkettboden', description: 'Parkettboden: Eichenparkett Landhausdiele verlegen, geölt', unit: 'm2', qty: 1200, unitPrice: 110, option: 0, total: 132000, type: 'cost' },
         { id: 'i283', pos: '283', title: 'Einbau Innentüren', description: 'Einbau Innentüren: Holztüren stumpfeinschlagend, weiss lackiert', unit: 'Stk.', qty: 35, unitPrice: 850, option: 0, total: 29750, type: 'cost' }
+      ]
+    },
+    {
+      id: 'g300',
+      pos: '300',
+      title: '300 Betriebseinrichtungen',
+      items: [
+        { id: 'i311', pos: '311', title: 'Personenaufzug (rollstuhlgängig)', description: 'Personenaufzug: Seilaufzug 630 kg / 8 Personen gemäss EN 81-70 über 4 Geschosse', unit: 'Anlage', qty: 1, unitPrice: 78000, option: 0, total: 78000, type: 'cost' },
+        { id: 'i342', pos: '342', title: 'Photovoltaikanlage 24 kWp', description: 'PV-Anlage: Indach-Solarmodule 24 kWp inkl. Batteriespeicher 15 kWh & Wechselrichter', unit: 'Anlage', qty: 1, unitPrice: 52000, option: 0, total: 52000, type: 'cost' }
+      ]
+    },
+    {
+      id: 'g400',
+      pos: '400',
+      title: '400 Umgebung',
+      items: [
+        { id: 'i411', pos: '411', title: 'Gartenbau & Geländemodellierung', description: 'Gartenbau: Feinplanie, Humusierung und sickerfähige Böschungssicherung', unit: 'm2', qty: 650, unitPrice: 42, option: 0, total: 27300, type: 'cost' },
+        { id: 'i421', pos: '421', title: 'Pflästerung & Vorplatz', description: 'Pflästerung: Sickerfähiger Öko-Verbundsteinbelag für Zufahrt und Besucherparkplätze', unit: 'm2', qty: 220, unitPrice: 95, option: 0, total: 20900, type: 'cost' },
+        { id: 'i451', pos: '451', title: 'Bepflanzung & Gehölze', description: 'Bepflanzung: Einheimische Hochstammbäume (Eichen/Birken) und Vogelschutzhecke', unit: 'Pausch.', qty: 1, unitPrice: 16500, option: 0, total: 16500, type: 'cost' }
+      ]
+    },
+    {
+      id: 'g500',
+      pos: '500',
+      title: '500 Baunebenkosten & Honorare',
+      items: [
+        { id: 'i511', pos: '511', title: 'SIA 102 Honorar Architekt', description: 'Architekturhonorar nach SIA 102 für Ausführungsplanung und Bauleitung (Phasen 31–53)', unit: 'Pausch.', qty: 1, unitPrice: 148000, option: 0, total: 148000, type: 'cost' },
+        { id: 'i512', pos: '512', title: 'SIA 108 Fachplaner Statik ETH & HLKS', description: 'Ingenieurleistungen Tragwerksplanung, Erdbebennachweis und Energiekonzept', unit: 'Pausch.', qty: 1, unitPrice: 64000, option: 0, total: 64000, type: 'cost' },
+        { id: 'i521', pos: '521', title: 'Baubewilligung & amtliche Gebühren', description: 'Gemeindliche Baubewilligungsgebühren, Schnurgerüstkontrolle und Grundbuchabgaben', unit: 'Pausch.', qty: 1, unitPrice: 14500, option: 0, total: 14500, type: 'cost' }
       ]
     }
   ],
@@ -385,6 +430,28 @@ export const demoConstructionProject = {
       description: '30% Anzahlung gemäss SIA-Zahlungsplan (Auftragserteilung Dr. Thomas Keller)',
       title: 'Akontozahlung Bauherr Phase 1',
       status: 'Bezahlt'
+    },
+    {
+      id: 'tx5',
+      category: 'Kreditorenrechnung (Handwerker / Material)',
+      type: 'expense',
+      amount: -39000,
+      date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
+      description: '1. Teilzahlung Personenaufzug (Bestellfreigabe Schachtmasse)',
+      title: 'Schindler Aufzüge AG',
+      status: 'Bezahlt',
+      budgetPosId: 'i311'
+    },
+    {
+      id: 'tx6',
+      category: 'Honorar / Planerleistung',
+      type: 'expense',
+      amount: -44400,
+      date: new Date(Date.now() - 4 * 86400000).toISOString().split('T')[0],
+      description: 'Architekturhonorar Phase 31–33 (Vorprojekt & Baubewilligung)',
+      title: 'Kreativ Desk Architektur GmbH',
+      status: 'Bezahlt',
+      budgetPosId: 'i511'
     }
   ],
 

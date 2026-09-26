@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function ProductTour() {
-  const { isTourRunning, stopTour } = useTour();
+  const { isTourRunning, activeModuleTour, stopTour } = useTour();
   const { language } = useLanguage();
   const { theme } = useTheme();
   const location = useLocation();
@@ -145,7 +145,203 @@ export default function ProductTour() {
 
     let candidateDefs: RawStepDef[] = [];
 
-    if (location.pathname.includes('/project/')) {
+    if (activeModuleTour) {
+      if (activeModuleTour === 'bim') {
+        candidateDefs = [
+          {
+            target: '.tour-bim-viewport, canvas, body',
+            title: isGerman ? '3D BIM Viewer & Navigation' : '3D BIM Viewer & Navigation',
+            content: isGerman
+              ? 'Interagiere direkt mit dem 3D-BIM-Modell: Linksklick gedrückt halten zum Rotieren (Orbit), Rechtsklick zum Verschieben (Pan) und Scrollrad zum Zoomen. Oben rechts kannst du zwischen Perspektive, Draufsicht und Schnitten umschalten.'
+              : 'Interact directly with the 3D BIM model: Left click & drag to orbit, right click to pan, mouse wheel to zoom. Use camera buttons to switch between perspective, top view, and sections.',
+            IconComponent: Box,
+            submodules: isGerman ? ['IFC 2x3 & IFC4', '3D Orbit & Pan', 'Schnittebenen'] : ['IFC 2x3 & IFC4', '3D Orbit & Pan', 'Section Planes'],
+            proTip: isGerman ? 'Klicke auf "Snapshot", um hochauflösende 3D-Bildausschnitte direkt ins Universal PDF Studio zu übertragen.' : 'Click "Snapshot" to export high-res 3D views into the Universal PDF Studio.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-bim-sidebar, .tour-bim-tools, header, body',
+            title: isGerman ? 'Bauteil-Inspektor & IFC-Parameter' : 'Component Inspector & IFC Parameters',
+            content: isGerman
+              ? 'Wähle ein beliebiges Bauteil (z.B. Decke, Wand, Fenster) im 3D-Modell an, um exakte Geometriedaten, Volumen, BKP-Kostenzuordnung und IFC-Properties (Psets) im Inspektor einzusehen.'
+              : 'Select any 3D element (e.g. slab, column, window) to inspect dimensions, volume, BKP cost mappings, and IFC property sets (Psets).',
+            IconComponent: Layers,
+            submodules: isGerman ? ['IFC Psets', 'BKP-Verknüpfung', 'Mengen & Volumen'] : ['IFC Psets', 'BKP Mapping', 'Quantities & Volumes'],
+            proTip: isGerman ? 'Über das Modell-Menü kannst du mehrere IFC-Fachmodelle (Architektur, Statik, Haustechnik) parallel laden.' : 'Use the model dropdown to switch between architectural, structural, and MEP models.',
+            placement: 'left'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? '3D-Mängel-Pins & KI-Audit' : '3D Defect Pins & AI Audit',
+            content: isGerman
+              ? 'Platziere Mängel als Pins direkt auf der 3D-Oberfläche oder starte den KI-Audit, um das Modell automatisch auf Normenkonformität und Kollisionen zu prüfen.'
+              : 'Pinpoint defects directly in 3D space or run the AI Audit to automatically check model compliance and clashes.',
+            IconComponent: Sparkles,
+            submodules: isGerman ? ['3D Mängel-Pins', 'KI-Modell-Audit', 'Universal PDF Export'] : ['3D Defect Pins', 'AI Model Audit', 'Universal PDF Export'],
+            proTip: isGerman ? 'Alle 3D-Mängel synchronisieren sich in Echtzeit mit der Baustellen-Mängelliste und dem 2D-Grundriss.' : 'All 3D defects sync in real time with the mobile defect list and 2D floor plans.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'finance') {
+        candidateDefs = [
+          {
+            target: '.tour-finance-invoices, header, body',
+            title: isGerman ? 'Schweizer BKP 1–9 Kostenstruktur' : 'Swiss BKP 1–9 Cost Structure',
+            content: isGerman
+              ? 'Deine Baukosten sind nach standardisierter Schweizer BKP-Systematik (BKP 1–9) gegliedert: Vorbereitung, Rohbau, Hülle, Ausbau, Betriebseinrichtungen, Umgebung und SIA 102/108 Baunebenkosten.'
+              : 'Construction costs are structured according to the Swiss BKP standard (BKP 1–9): Site Prep, Structure, Facade, Interior, MEP Equipment, Landscaping, and Incidental Fees (SIA 102/108).',
+            IconComponent: DollarSign,
+            submodules: isGerman ? ['BKP 1 bis BKP 9', 'SIA 102 Honorare', 'Versionen & Historie'] : ['BKP 1 to BKP 9', 'SIA 102 Fees', 'Versions & History'],
+            proTip: isGerman ? 'Du kannst jederzeit neue Budget-Versionen (z.B. KV ±10% vs. Abrechnung) für lückenlose Historisierung anlegen.' : 'Create new budget versions anytime (e.g., Cost Estimate vs. Final Accounting) for full audit history.',
+            placement: 'bottom'
+          },
+          {
+            target: 'table, div.overflow-x-auto, header, body',
+            title: isGerman ? '3-Spaltiger Soll/Ist-Vergleich & Prognose' : '3-Column Plan/Actual Comparison',
+            content: isGerman
+              ? 'Behalte bewilligtes Budget, vergebene Werkverträge und bezahlte Handwerker-Rechnungen in Echtzeit im Blick. Über- oder Unterschreitungen werden sofort farblich signalisiert.'
+              : 'Compare approved budget, awarded contracts, and paid invoices in real time. Colored indicators highlight cost variances instantly.',
+            IconComponent: Target,
+            submodules: isGerman ? ['Budget vs. Ist', 'Vergabe-Stand', 'Kostenprognose'] : ['Budget vs. Actual', 'Contract Status', 'Cost Forecast'],
+            proTip: isGerman ? 'Klicke auf eine BKP-Position, um alle verknüpften Handwerker-Teilrechnungen aufzuschlüsseln.' : 'Click any cost line to expand all linked contractor invoices and expenses.',
+            placement: 'top'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'ISO 20022 Schweizer QR-Rechnung & Export' : 'Swiss QR-Bill & PDF Export',
+            content: isGerman
+              ? 'Generiere gesetzeskonforme Schweizer QR-Rechnungen mit QR-IBAN und strukturierter Referenznummer oder exportiere den gesamten Kostenstand per Klick ins Universal PDF Studio.'
+              : 'Issue compliant Swiss QR-bills with QR-IBAN and reference codes, or export complete cost dossiers to the Universal PDF Studio.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Swiss QR-Bill ISO 20022', 'Universal PDF Studio', 'Bexio / CSV Export'] : ['Swiss QR-Bill ISO 20022', 'Universal PDF Studio', 'Bexio / CSV Export'],
+            proTip: isGerman ? 'Banken und Bauherren erhalten druckreife, revisionssichere Baukostenberichte.' : 'Banks and clients receive print-ready, audit-proof cost reports.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'plans' || activeModuleTour === 'cad') {
+        candidateDefs = [
+          {
+            target: 'aside, header, body',
+            title: isGerman ? 'TrueScale 2D-Grundrisse & Massstab 1:50' : 'TrueScale 2D Plans & 1:50 Scale',
+            content: isGerman
+              ? 'Prüfe 2D-Architekturpläne in echten SIA-Massstäben (1:50, 1:100). Nutze das Messwerkzeug in der linken Werkzeugleiste zur zentimetergenauen Distanz- und Wandstärkenprüfung.'
+              : 'Inspect 2D architectural plans at real SIA scales (1:50, 1:100). Use the measurement tool to verify distances and wall thicknesses with centimeter accuracy.',
+            IconComponent: Folder,
+            submodules: isGerman ? ['TrueScale 1:50', 'CAD-Ebenen / Layer', 'Mess-Werkzeug'] : ['TrueScale 1:50', 'CAD Layers', 'Measurement Tool'],
+            proTip: isGerman ? 'Halte die Leertaste oder das Mausrad gedrückt, um blitzschnell im Plan zu navigieren.' : 'Hold spacebar or mouse wheel to pan rapidly across large plans.',
+            placement: 'right'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Farbcodierte Mängel-Pins (SIA 118)' : 'Color-coded Defect Pins (SIA 118)',
+            content: isGerman
+              ? 'Platziere Mängel zentimetergenau mit farbcodierten Pins: Rot (Offen), Gelb (In Arbeit), Blau (Zur Abnahme) und Grün (Behoben). Jeder Pin speichert Gewerk, Frist und Fotos.'
+              : 'Place defect pins directly onto floor plans: Red (Open), Amber (In Progress), Blue (Review), and Green (Resolved). Each pin stores trade, priority, deadline, and photos.',
+            IconComponent: Target,
+            submodules: isGerman ? ['Rot: Offen', 'Gelb: In Bearbeitung', 'Blau: Abnahme', 'Grün: Behoben'] : ['Red: Open', 'Amber: In Progress', 'Blue: Review', 'Green: Resolved'],
+            proTip: isGerman ? 'Klicke auf einen Pin, um Details und Behebungs-Status sofort anzupassen.' : 'Click any pin to edit its status, trade, or photos.',
+            placement: 'bottom'
+          },
+          {
+            target: 'header, button, body',
+            title: isGerman ? 'Plankopf, Freigabe & PDF-Druck' : 'Title Block, Approval & PDF Print',
+            content: isGerman
+              ? 'Füge SIA-konforme Planköpfe, Nordpfeile und Massstabsleisten ein. Exportiere druckreife Ausführungspläne in A3 oder A4 für die Handwerker auf der Baustelle.'
+              : 'Insert SIA title blocks, north arrows, and scale bars. Export print-ready construction plans in A3 or A4 format for site contractors.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['SIA-Plankopf', 'A3/A4 Drucklayout', 'Universal PDF Studio'] : ['SIA Title Block', 'A3/A4 Print Layout', 'Universal PDF Studio'],
+            proTip: isGerman ? 'Im Universal PDF Studio bleiben alle Vektoren und Pins gestochen scharf erhalten.' : 'Vector lines and pins stay ultra-sharp in the Universal PDF Studio.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'defects') {
+        candidateDefs = [
+          {
+            target: 'header, button, body',
+            title: isGerman ? 'Mobile Mängelerfassung & PWA Offline' : 'Mobile Defect Logging & Offline PWA',
+            content: isGerman
+              ? 'Erfasse Baumängel in Sekunden mit Smartphone oder Tablet: Schiesse Fotos, diktiere Sprachnotizen und weise den Mangel sofort dem zuständigen Handwerker zu.'
+              : 'Record defects in seconds via smartphone or tablet: Take photos, record voice memos, and assign tickets directly to contractors.',
+            IconComponent: Target,
+            submodules: isGerman ? ['Smartphone-Kamera', 'Offline PWA-Sync', 'Sprachnotizen'] : ['Smartphone Camera', 'Offline PWA Sync', 'Voice Memos'],
+            proTip: isGerman ? 'Dank Offline-PWA werden Mängel auch im Tiefbau oder Keller ohne Mobilfunkempfang lokal gesichert.' : 'Offline PWA ensures defects recorded in basements without signal are safely preserved.',
+            placement: 'bottom'
+          },
+          {
+            target: 'header, div, body',
+            title: isGerman ? 'SIA 118 Rügefristen & Statusverfolgung' : 'SIA 118 Deadlines & Status Tracking',
+            content: isGerman
+              ? 'Verfolge Tickets auf dem Board von Offen über In Arbeit bis zur mängelfreien Abnahme. Gesetzliche Rügefristen nach Schweizer SIA 118 werden automatisch überwacht.'
+              : 'Track tickets across Kanban columns from Open to Resolved. Statutory SIA 118 notification periods are tracked automatically.',
+            IconComponent: Calendar,
+            submodules: isGerman ? ['SIA 118 2-Jahresfrist', 'Kanban Drag & Drop', 'Gewerke-Filter'] : ['SIA 118 Warranty Period', 'Kanban Drag & Drop', 'Trade Filters'],
+            proTip: isGerman ? 'Filtere nach Unternehmer, um zielgerichtete Pendenzenlisten für Bauleitungssitzungen zu erstellen.' : 'Filter by trade to generate focused task lists for site coordinator meetings.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Offizielles Mängelprotokoll (PDF)' : 'Official Defect Protocol (PDF)',
+            content: isGerman
+              ? 'Erstelle mit einem Klick das rechtssichere Abnahme- und Rügeprotokoll inklusive Vorher/Nachher-Fotos, Unterschriftenfeldern und BKP-Zuordnung für Bauherr und Unternehmer.'
+              : 'Generate legally binding defect and inspection protocols with before/after photos, signature fields, and BKP cost allocations.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Rechtssichere Rüge', 'Vorher/Nachher-Fotos', 'Universal PDF Studio'] : ['Legal Notice', 'Before/After Photos', 'Universal PDF Studio'],
+            proTip: isGerman ? 'Versende Mängelrügen per Mail direkt aus dem System an die ausführenden Betriebe.' : 'Send defect notices directly via email to responsible contractors.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'calendar') {
+        candidateDefs = [
+          {
+            target: 'header, body',
+            title: isGerman ? 'SIA-Bauphasen & Gantt-Masterplan' : 'SIA Phases & Gantt Masterplan',
+            content: isGerman
+              ? 'Strukturiere deine Bauphasen nach SIA 112 (Vorprojekt, Bewilligung, Rohbau, Ausbau, Übergabe) im interaktiven Gantt-Balkenplan mit Meilensteinen und Deadlines.'
+              : 'Structure construction phases following SIA 112 in the interactive Gantt chart with milestones and critical deadlines.',
+            IconComponent: Calendar,
+            submodules: isGerman ? ['SIA 112 Phasen', 'Gantt-Timeline', 'Meilenstein-Marker'] : ['SIA 112 Phases', 'Gantt Timeline', 'Milestone Markers'],
+            proTip: isGerman ? 'Passe Termine per Drag & Drop an – alle abhängigen Termine synchronisieren sich mit.' : 'Drag & drop task bars to dynamically shift timelines.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Bautagebuch, Wetter & PDF-Journal' : 'Site Journal, Weather & PDF Export',
+            content: isGerman
+              ? 'Dokumentiere tägliche Baustellenfortschritte, anwesende Handwerker und Wetterdaten. Exportiere den gesamten Bauzeitenplan als grossformatiges A3-Gantt-PDF.'
+              : 'Document daily progress, active workers, and weather. Export the full project schedule as high-res A3 Gantt PDF.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Bautagebuch', 'Wettererfassung', 'A3 Gantt-PDF'] : ['Site Journal', 'Weather Tracking', 'A3 Gantt PDF'],
+            proTip: isGerman ? 'Perfekt für Bauherrensitzungen und Baustellenbesprechungen.' : 'Ideal for site coordination and client progress reviews.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'pitch') {
+        candidateDefs = [
+          {
+            target: 'header, body',
+            title: isGerman ? '16:9 Cinema-Präsentation für Bauherren' : '16:9 Cinema Presentation for Clients',
+            content: isGerman
+              ? 'Präsentiere dein Architekturprojekt im modernen 16:9 Kino-Vollbildmodus. Zeige fotorealistische Renderings, 3D-BIM-Schnitte, Grundrisse und das interdisziplinäre Planungsteam.'
+              : 'Present your architectural project in cinematic 16:9 fullscreen. Showcase photorealistic renderings, 3D BIM views, plans, and team profiles.',
+            IconComponent: MonitorPlay,
+            submodules: isGerman ? ['16:9 Vollbild', 'Kino-Präsentation', 'Live-Projektdaten'] : ['16:9 Fullscreen', 'Cinema Slides', 'Live Project Data'],
+            proTip: isGerman ? 'Drücke F11 oder klicke den Präsentations-Button für ablenkungsfreie Meetings.' : 'Press F11 or click presentation mode for distraction-free client meetings.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-btn-module-guide, header, body',
+            title: isGerman ? 'Live-Kostensync & Dual-Export (PDF & PPTX)' : 'Live Cost Sync & Dual Export (PDF & PPTX)',
+            content: isGerman
+              ? 'Alle Baukostenzahlen, Meilensteine und Termine aktualisieren sich automatisch aus deinen BKP-Finanzen. Exportiere das Deck wahlweise als druckreifes PDF oder editierbare PowerPoint/Keynote.'
+              : 'All cost figures and milestone dates automatically sync from your BKP ledger. Export as print-ready PDF or editable PowerPoint/Keynote slides.',
+            IconComponent: Sparkles,
+            submodules: isGerman ? ['BKP-Zahlensync', 'Keynote & PowerPoint', 'Universal PDF Studio'] : ['BKP Cost Sync', 'Keynote & PowerPoint', 'Universal PDF Studio'],
+            proTip: isGerman ? 'Erstelle individuelle Versionen für Investoren, Baubehörden oder Käufer.' : 'Generate customized decks for investors, authorities, or buyers.',
+            placement: 'bottom'
+          }
+        ];
+      }
+    } else if (location.pathname.includes('/project/')) {
       candidateDefs = [
         { target: 'body', title: isGerman ? 'Projekt-Workspace' : 'Project Workspace', content: isGerman ? 'Willkommen in deiner zentralen Baustellen- & Projektzentrale! Hier fließen Architektur, Termine, Budgets und Team-Kollaboration nahtlos zusammen.' : 'Welcome to your central project workspace! Architecture, schedules, budgets, and collaboration converge here.', IconComponent: Briefcase, submodules: isGerman ? ['360° Übersicht', 'BIM & CAD', 'Timeline', 'Budget-Sync'] : ['360° Overview', 'BIM & CAD', 'Timeline', 'Budget-Sync'], proTip: isGerman ? 'Nutze die Tabs links zur schnellen Navigation zwischen den Fachbereichen.' : 'Use the left sidebar tabs for rapid navigation.', placement: 'center', disableBeacon: true },
         { target: '.tour-proj-dashboard', title: isGerman ? 'Kommandozentrale' : 'Dashboard', content: isGerman ? 'Generiere per Knopfdruck PDF-Reportings, die Live-Daten aus Budgets, Mängeln und Timelines automatisch vereinen.' : 'Generate live PDF reports combining budgets, defects, and timelines instantly.', IconComponent: LayoutDashboard, submodules: isGerman ? ['Live-Status', 'Universal PDF-Studio', 'Meilensteine'] : ['Live Status', 'Universal PDF Studio', 'Milestones'], proTip: isGerman ? 'Exportiere druckreife Bautagebücher direkt im Universal PDF Studio.' : 'Export print-ready reports in the Universal PDF Studio.', placement: 'right' },
@@ -335,7 +531,7 @@ export default function ProductTour() {
     });
 
     setSteps(validSteps);
-  }, [isTourRunning, location.pathname, language, theme, isDark, isGerman]);
+  }, [isTourRunning, activeModuleTour, location.pathname, language, theme, isDark, isGerman]);
 
   const handleJoyrideCallback = async (data: any) => {
     const { status, action, type } = data;
@@ -343,7 +539,7 @@ export default function ProductTour() {
       stopTour();
       setSteps([]);
       
-      if (currentUser?.uid) {
+      if (!activeModuleTour && currentUser?.uid) {
         safeStorage.setItem(`tour_${currentUser.uid}`, 'true');
         safeStorage.setItem(`tour_completed_${currentUser.uid}`, 'true');
         try {

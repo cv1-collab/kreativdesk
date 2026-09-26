@@ -32,6 +32,7 @@ import { callGeminiAPI } from '../utils/geminiClient';
 import InvoiceStudio from './InvoiceStudio';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import AiBudgetImportModal from './AiBudgetImportModal';
+import ModuleGuideButton from './ModuleGuideButton';
 import { uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { notifyNewDocument } from '../utils/documentNotificationHelper';
 import { demoTemplates } from '../utils/demoTemplates';
@@ -2232,7 +2233,8 @@ export default function Finance() {
 
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
             {/* Primary Action Buttons */}
-            <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto">
+            <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto items-center">
+              <ModuleGuideButton moduleId="finance" className="h-[42px]" />
               <button
                 onClick={() => setShowTimeModal(true)}
                 className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"

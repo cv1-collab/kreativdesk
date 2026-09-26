@@ -28,6 +28,7 @@ import { safeStorage } from '../utils/safeStorage';
 
 // NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
+import ModuleGuideButton from './ModuleGuideButton';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage, Svg, Line, Rect, Ellipse, G, Polygon } from '@react-pdf/renderer';
 
 function formatBytes(bytes: number) {
@@ -1509,6 +1510,7 @@ export default function Calendar() {
           </div>
           
           <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
+            <ModuleGuideButton moduleId="calendar" className="h-[42px]" />
             <div className="relative w-full sm:w-auto">
               <button 
                 onClick={() => setIsLibraryOpen(!isLibraryOpen)} 

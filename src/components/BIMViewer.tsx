@@ -37,6 +37,7 @@ import PremiumFeature from './PremiumFeature';
 import { deleteFileFromStorage } from '../utils/cloudStorageHelper';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
 import { BIMCanvasViewport } from './bim/BIMCanvasViewport';
+import ModuleGuideButton from './ModuleGuideButton';
 
 import { fal } from "@fal-ai/client";
 
@@ -548,7 +549,16 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
 
   useEffect(() => {
     if (isDemoMode) {
-      setCustomModels([]);
+      const demoIfc = {
+        id: 'demo-ifc-1',
+        name: 'Residenz_am_Park_Architektur_Statik.ifc',
+        url: '/demo-assets/residenz_am_park_3d.ifc',
+        file_url: '/demo-assets/residenz_am_park_3d.ifc',
+        type: 'ifc',
+        size: '693 KB'
+      };
+      setCustomModels([demoIfc]);
+      setActiveModelId('demo-ifc-1');
       return;
     }
 
@@ -573,6 +583,9 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
         const savedActive = safeStorage.getItem(bimModelStorageKey);
         if (savedActive && models.some(m => m.id === savedActive)) {
           setActiveModelId(savedActive);
+        } else if (models.length > 0) {
+          const ifcModel = models.find(m => String(m.name || '').toLowerCase().endsWith('.ifc') || m.type === 'ifc') || models[0];
+          setActiveModelId(ifcModel.id);
         }
       }
     };
@@ -1192,7 +1205,8 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           
           {!isMobile && (
             <div className="flex flex-col items-end">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
+                <ModuleGuideButton moduleId="bim" />
                 <button onClick={handleAudit} className={cn("px-4 py-2 border rounded-md text-sm font-medium transition-colors flex items-center gap-2", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
                   <Sparkles size={16} />{auditMode ? t('analyzing_model') : t('audit_report')}
                 </button>

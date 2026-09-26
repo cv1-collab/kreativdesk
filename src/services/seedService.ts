@@ -288,7 +288,7 @@ function getDeterministicUUID(str: string): string {
           url: doc.url,
           file_url: doc.url,
           size: doc.size || '780 KB',
-          type: doc.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
+          type: doc.type || (doc.name.endsWith('.pdf') ? 'application/pdf' : doc.name.endsWith('.ifc') ? 'ifc' : 'image/jpeg'),
           folder_id: 'root',
           is_folder: false,
           created_at: new Date().toISOString(),
@@ -310,7 +310,7 @@ function getDeterministicUUID(str: string): string {
       await supabase.from('cad_plans').insert({
         project_id: projId,
         company_id: realCompanyId,
-        name: 'Grundriss EG - Architektur & Tragwerk',
+        name: 'Grundriss EG - Architektur & Tragwerk (SIA 1:50)',
         elements: [
           {
             id: '__plan_meta__',
@@ -323,12 +323,49 @@ function getDeterministicUUID(str: string): string {
           {
             id: 'el1',
             type: 'defect',
-            x: 0.22,
-            y: 0.85,
-            title: 'Riss im Sichtbeton',
-            description: 'Mangel vor Abnahme prüfen',
+            x: 0.28,
+            y: 0.35,
+            title: 'Riss im Sichtbeton Achse B (Treppenhaus)',
+            description: 'Haarriss Treppenhaus EG-1.OG. SIA 118 Rügefrist läuft. Spachtelung erforderlich.',
             status: 'open',
             priority: 'High',
+            trade: 'Baumeister (Gebr. Keller Bau AG)',
+            layerId: 'default'
+          },
+          {
+            id: 'el2',
+            type: 'defect',
+            x: 0.65,
+            y: 0.22,
+            title: 'Fensterdichtung beschädigt Nordfassade',
+            description: 'Dichtungsprofil Wetterseite 1. OG eingedrückt. Vor Montage der Leibung ersetzen.',
+            status: 'in_progress',
+            priority: 'Medium',
+            trade: 'Fensterbau (SwissWindows AG)',
+            layerId: 'default'
+          },
+          {
+            id: 'el3',
+            type: 'defect',
+            x: 0.72,
+            y: 0.70,
+            title: 'Schutzabdeckung Bodenheizung montiert',
+            description: 'Trittschutz vor Einbringen des Unterlagsbodens montiert. Bereit zur Bauleitung-Abnahme.',
+            status: 'review',
+            priority: 'Medium',
+            trade: 'Heizung / Sanitär',
+            layerId: 'default'
+          },
+          {
+            id: 'el4',
+            type: 'defect',
+            x: 0.38,
+            y: 0.78,
+            title: 'Aussparung Steigzone brandschutzverkleidet (SIA 118)',
+            description: 'Aussparung mit Promat EI90 verkleidet und gemäss Brandschutzvorschriften VKF abgenommen.',
+            status: 'resolved',
+            priority: 'Low',
+            trade: 'Brandschutz & Dämmung',
             layerId: 'default'
           }
         ],

@@ -19,6 +19,7 @@ import { useDefectsQuery } from '../hooks/queries/useDefectsQuery';
 import QRCode from 'react-qr-code';
 
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
+import ModuleGuideButton from './ModuleGuideButton';
 import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
 
@@ -738,6 +739,7 @@ export default function Defects({ projectId: propProjectId }: { projectId?: stri
                 <button onClick={() => setViewMode('list')} className={cn("flex-1 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-2", viewMode === 'list' ? "bg-accent-ai/10 text-accent-ai shadow-sm border border-accent-ai/20 font-bold" : "text-text-muted hover:text-text-primary")}><ListIcon size={16} /> {t('list')}</button>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
+                <ModuleGuideButton moduleId="defects" />
                 <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex px-3.5 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors items-center justify-center gap-1.5 shadow-sm">
                   <FileText size={16} /> <span>PDF Export</span>
                 </button>
