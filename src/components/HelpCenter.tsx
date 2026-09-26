@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Book, PlayCircle, HelpCircle, MessageSquare, ChevronRight, FileText, ArrowLeft, Sparkles, Briefcase, X } from 'lucide-react';
+import { Search, Book, PlayCircle, HelpCircle, MessageSquare, ChevronRight, FileText, ArrowLeft, Sparkles, Briefcase, X, BookOpen, ArrowRight, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../utils';
@@ -145,6 +145,39 @@ export default function HelpCenter() {
               )}
             </div>
           </div>
+
+          {/* 📘 OFFIZIELLES MASTER-SYSTEM-HANDBUCH BANNER */}
+          {!searchQuery && (
+            <div className="relative overflow-hidden rounded-3xl border-2 border-blue-500/40 bg-gradient-to-br from-blue-500/15 via-surface to-background p-6 sm:p-7 shadow-xl shadow-blue-500/10 animate-in fade-in duration-300">
+              <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -z-0" />
+              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="space-y-2.5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-500 text-xs font-bold uppercase tracking-wider">
+                    <Sparkles size={13} />
+                    <span>{currentLang === 'de' ? 'Offizielles Referenzhandbuch 2026' : 'Official Reference Guide 2026'}</span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-text-primary tracking-tight">
+                    {currentLang === 'de' ? 'Kreativ Desk OS – Master-System-Handbuch (PDF)' : 'Kreativ Desk OS – Master System Handbook (PDF)'}
+                  </h2>
+                  <p className="text-sm text-text-muted max-w-2xl leading-relaxed font-medium">
+                    {currentLang === 'de'
+                      ? 'Das umfassende 14-seitige Praxishandbuch für Planer, Bauleiter und Generalunternehmer: Erklärt das 2-Ebenen-Prinzip (Firmenzentrale vs. Projekt-Cockpit), 3D BIM (IFC), CAD-Pläne, Schweizer BKP 1–9 Kostenkontrolle, SIA 102/118, Offline PWA Baustellen-Sync, Whiteboard, Pitch Deck und die Schweizer QR-Rechnung. Jederzeit im Universal PDF Studio als Vektor-PDF ansehen und herunterladen.'
+                      : 'The comprehensive 14-page operations manual for architects, engineers, and general contractors: Explains the 2-tier architecture (Company Hub vs. Project Cockpit), 3D BIM (IFC), CAD floor plans, Swiss BKP 1–9 cost control, SIA 102/118, offline PWA field sync, AI whiteboard, pitch decks, and Swiss QR-bills. Preview and download directly in Universal PDF Studio.'}
+                  </p>
+                </div>
+                <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <button
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))}
+                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-blue-500/25 transition-all cursor-pointer active:scale-95 group"
+                  >
+                    <BookOpen size={18} className="group-hover:scale-110 transition-transform text-blue-200" />
+                    <span>{currentLang === 'de' ? 'Handbuch öffnen (PDF Studio)' : 'Open Handbook (PDF Studio)'}</span>
+                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Kategorien */}
           {!searchQuery && (

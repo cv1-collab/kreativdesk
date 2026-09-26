@@ -11,7 +11,8 @@ import { safeStorage } from '../utils/safeStorage';
 import { 
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
-  Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText
+  Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText,
+  BookOpen
 } from 'lucide-react';
 
 export default function ProductTour() {
@@ -91,6 +92,23 @@ export default function ProductTour() {
             </div>
           </div>
         )}
+
+        <div className={cn("pt-2 mt-0.5 border-t flex items-center justify-between text-[11px]", isDark ? "border-slate-800" : "border-slate-200")}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.dispatchEvent(new CustomEvent('open-system-handbook'));
+            }}
+            className="inline-flex items-center gap-1.5 font-bold text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 transition-colors cursor-pointer"
+            title={isGerman ? 'Offizielles System-Handbuch (PDF) im Universal PDF Studio öffnen' : 'Open Official System Handbook (PDF) in Universal PDF Studio'}
+          >
+            <BookOpen size={12} />
+            <span>{isGerman ? 'Master-Handbuch (PDF)' : 'Master Handbook (PDF)'}</span>
+            <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/10 border border-blue-500/20 font-black">14 S.</span>
+          </button>
+        </div>
       </div>
     );
 

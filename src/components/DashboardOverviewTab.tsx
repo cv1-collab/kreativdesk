@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Building2, Megaphone, Users, ArrowRight, Activity, Target,
-  Sparkles, Plus, Box, Briefcase, Lightbulb, CheckCircle2
+  Sparkles, Plus, Box, Briefcase, Lightbulb, CheckCircle2, BookOpen
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -163,17 +163,29 @@ export default function DashboardOverviewTab({
                 </div>
               </div>
 
-              {projects.length > 0 && (
+              <div className="flex items-center gap-2 self-start sm:self-auto">
                 <button 
-                  onClick={() => {
-                    setIsCompassDismissed(true);
-                    safeStorage.setItem('hide_onboarding_compass', 'true');
-                  }} 
-                  className="text-xs text-text-muted hover:text-text-primary px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 transition-colors font-medium cursor-pointer self-start sm:self-auto"
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-blue-500/25 transition-all cursor-pointer active:scale-95 group"
+                  title={currentLang === 'de' ? 'Offizielles System-Handbuch als PDF im Universal PDF Studio öffnen' : 'Open Official Master Handbook in Universal PDF Studio'}
                 >
-                  {currentLang === 'de' ? 'Ausblenden' : 'Dismiss'}
+                  <BookOpen size={14} className="group-hover:scale-110 transition-transform text-blue-200" />
+                  <span>{currentLang === 'de' ? 'Master-Handbuch (PDF)' : 'Master Handbook (PDF)'}</span>
+                  <span className="px-1.5 py-0.2 rounded bg-white/20 text-[9px] uppercase font-black">14 S.</span>
                 </button>
-              )}
+
+                {projects.length > 0 && (
+                  <button 
+                    onClick={() => {
+                      setIsCompassDismissed(true);
+                      safeStorage.setItem('hide_onboarding_compass', 'true');
+                    }} 
+                    className="text-xs text-text-muted hover:text-text-primary px-3 py-1.5 rounded-lg border border-border hover:bg-white/5 transition-colors font-medium cursor-pointer"
+                  >
+                    {currentLang === 'de' ? 'Ausblenden' : 'Dismiss'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Interaktiver Prozess-Wegweiser (Workflow von Ebene 1 zu Ebene 2) */}
@@ -383,14 +395,24 @@ export default function DashboardOverviewTab({
               </div>
             </div>
 
-            {/* Quick Checklist Footer */}
-            <div className="bg-surface/50 border border-border/50 rounded-xl px-3.5 py-2.5 flex items-center gap-2 text-xs text-text-muted">
-              <Lightbulb size={14} className="text-amber-500 shrink-0" />
-              <span className="font-medium text-[11px] sm:text-xs">
-                {currentLang === 'de' 
-                  ? 'Tipp: Firmen-Vorlagen werden beim Projektstart automatisch verknüpft.'
-                  : 'Tip: Master templates are automatically inherited in new projects.'}
-              </span>
+            {/* Quick Checklist Footer with Master Handbook trigger */}
+            <div className="bg-surface/70 border border-border/70 rounded-xl px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-text-muted">
+              <div className="flex items-center gap-2">
+                <Lightbulb size={14} className="text-amber-500 shrink-0" />
+                <span className="font-medium text-[11px] sm:text-xs">
+                  {currentLang === 'de' 
+                    ? 'Tipp: Firmen-Vorlagen werden beim Projektstart automatisch verknüpft.'
+                    : 'Tip: Master templates are automatically inherited in new projects.'}
+                </span>
+              </div>
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold transition-colors cursor-pointer self-start sm:self-auto text-[11px]"
+              >
+                <BookOpen size={13} />
+                <span>{currentLang === 'de' ? 'Offizielles PDF Master-Handbuch öffnen' : 'Open Official PDF Master Handbook'}</span>
+                <ArrowRight size={12} />
+              </button>
             </div>
 
           </div>
@@ -399,7 +421,14 @@ export default function DashboardOverviewTab({
 
       {/* Wiederaufklappen Button, falls ausgeblendet */}
       {isCompassDismissed && projects.length > 0 && (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))}
+            className="text-xs text-blue-500 hover:text-blue-400 flex items-center gap-1.5 px-3 py-1 rounded-lg border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 transition-colors font-bold cursor-pointer"
+          >
+            <BookOpen size={13} />
+            <span>{currentLang === 'de' ? 'Master-Handbuch (PDF)' : 'Master Handbook (PDF)'}</span>
+          </button>
           <button 
             onClick={() => {
               setIsCompassDismissed(false);

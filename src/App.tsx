@@ -50,6 +50,7 @@ function lazyWithRetry<T extends React.ComponentType<any>>(
 // +++ NEU: Globales Cookie Banner +++
 const CookieBanner = lazyWithRetry(() => import('./components/CookieBanner'));
 const ResetPassword = lazyWithRetry(() => import('./components/ResetPassword'));
+const GlobalSystemHandbookModal = lazyWithRetry(() => import('./components/GlobalSystemHandbookModal'));
 
 // +++ NEU: Der Trial Guard (Paywall) +++
 const TrialGuard = lazyWithRetry(() => import('./components/TrialGuard'));
@@ -145,6 +146,9 @@ export default function App() {
                           </Suspense>
                           <Suspense fallback={null}>
                             <CookieBanner />
+                          </Suspense>
+                          <Suspense fallback={null}>
+                            <GlobalSystemHandbookModal />
                           </Suspense>
                           <GlobalVideoPlayer />
 

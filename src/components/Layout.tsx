@@ -18,7 +18,7 @@ import {
   LayoutDashboard, Calendar, DollarSign, Box, Map,
   Video, PenTool, Presentation, Camera,
   ArrowLeft, ShieldAlert, FileText, UserCheck,
-  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X
+  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X, BookOpen
 } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
@@ -511,6 +511,14 @@ export default function Layout() {
 
             <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}>
               <HelpCircle size={18} />
+            </button>
+
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
+              className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" 
+              title={language === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
+            >
+              <BookOpen size={18} className="text-blue-500" />
             </button>
 
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">
