@@ -149,7 +149,7 @@ export default function ProductTour() {
       if (activeModuleTour === 'bim') {
         candidateDefs = [
           {
-            target: '.tour-bim-viewport, canvas, body',
+            target: '.tour-bim-tools, .tour-bim-viewport, body',
             title: isGerman ? '3D BIM Viewer & Navigation' : '3D BIM Viewer & Navigation',
             content: isGerman
               ? 'Interagiere direkt mit dem 3D-BIM-Modell: Linksklick gedrückt halten zum Rotieren (Orbit), Rechtsklick zum Verschieben (Pan) und Scrollrad zum Zoomen. Oben rechts kannst du zwischen Perspektive, Draufsicht und Schnitten umschalten.'
@@ -276,7 +276,7 @@ export default function ProductTour() {
             IconComponent: Calendar,
             submodules: isGerman ? ['SIA 118 2-Jahresfrist', 'Kanban Drag & Drop', 'Gewerke-Filter'] : ['SIA 118 Warranty Period', 'Kanban Drag & Drop', 'Trade Filters'],
             proTip: isGerman ? 'Filtere nach Unternehmer, um zielgerichtete Pendenzenlisten für Bauleitungssitzungen zu erstellen.' : 'Filter by trade to generate focused task lists for site coordinator meetings.',
-            placement: 'top'
+            placement: 'bottom'
           },
           {
             target: '.tour-defects-pdf, body',
@@ -362,7 +362,7 @@ export default function ProductTour() {
             IconComponent: DollarSign,
             submodules: isGerman ? ['BKP-Budget Soll/Ist', 'Kosten-Split', 'Interne Stunden'] : ['BKP Plan/Actual', 'Cost Split', 'Internal Hours'],
             proTip: isGerman ? 'Klicke auf "Budget prüfen", um direkt in die Schweizer BKP 1–9 Kostenplanung zu springen.' : 'Click "Review Budget" to jump directly into the Swiss BKP ledger.',
-            placement: 'top'
+            placement: 'bottom'
           },
           {
             target: '.tour-overview-report, body',
@@ -387,7 +387,7 @@ export default function ProductTour() {
             IconComponent: Camera,
             submodules: isGerman ? ['Live-Kamera', 'Zeitraffer (Timelapse)', 'Multi-Kamera'] : ['Live Camera', 'Timelapse', 'Multi-Camera'],
             proTip: isGerman ? 'Automatische Schnappschüsse werden stündlich im Bautagebuch und der Bauakte hinterlegt.' : 'Snapshots are automatically archived hourly in the site journal.',
-            placement: 'top'
+            placement: 'bottom'
           },
           {
             target: '.tour-camera-weather, body',
@@ -553,7 +553,7 @@ export default function ProductTour() {
             IconComponent: Shield,
             submodules: isGerman ? ['Schweizer DSG konform', 'Audit-Trail', 'Rollenhistorie'] : ['Swiss DSG Compliant', 'Audit Trail', 'Role History'],
             proTip: isGerman ? 'Passe Rollen jederzeit per Dropdown an – Änderungen werden sofort aktiv.' : 'Adjust roles anytime via dropdown – changes take effect immediately.',
-            placement: 'top'
+            placement: 'bottom'
           }
         ];
       }
@@ -766,9 +766,22 @@ export default function ProductTour() {
     const validSteps: Step[] = resolvedCandidates.map((c, index) => {
       const stepNum = index + 1;
       const isCenter = c.isBodyTarget || c.placement === 'center';
-      const effectivePlacement = isCenter
+      
+      // Determine safe placement: if target is in the upper part of the viewport or requested placement is 'top',
+      // always show downwards ('bottom') to prevent the title/header from getting cut off at the top of the browser!
+      let effectivePlacement = isCenter
         ? 'center'
         : (isMobile && c.placement !== 'center' ? 'auto' : (c.placement || 'bottom'));
+
+      if (!isCenter && typeof c.resolvedTarget === 'object' && c.resolvedTarget instanceof HTMLElement) {
+        const rect = c.resolvedTarget.getBoundingClientRect();
+        // If element is in upper half of window (top < 380px) and placement is top, force bottom
+        if (effectivePlacement === 'top' || (rect.top < 380 && effectivePlacement !== 'right' && effectivePlacement !== 'left')) {
+          effectivePlacement = 'bottom';
+        }
+      } else if (effectivePlacement === 'top') {
+        effectivePlacement = 'bottom';
+      }
 
       return {
         target: c.resolvedTarget as any,
@@ -778,6 +791,18 @@ export default function ProductTour() {
         disableBeacon: true, // backwards compatibility
         disableScrolling: isCenter ? true : false,
         disableScrollParentFix: true,
+        isFixed: true,
+        floatingOptions: {
+          strategy: 'fixed',
+          hideArrow: isCenter,
+          shiftOptions: {
+            padding: 24, // Guarantees tooltip stays at least 24px below viewport top
+          },
+          flipOptions: {
+            padding: 24,
+            fallbackPlacements: ['bottom', 'bottom-start', 'bottom-end', 'right', 'left'],
+          }
+        },
         floaterProps: {
           disableAnimation: true,
           hideArrow: isCenter
@@ -850,6 +875,8 @@ export default function ProductTour() {
             border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.10)',
             padding: '1.25rem',
             boxShadow: isDark ? '0 25px 50px -12px rgba(0, 0, 0, 0.9)' : '0 20px 40px -10px rgba(0, 0, 0, 0.15)',
+            maxHeight: 'calc(100vh - 48px)',
+            overflowY: 'auto',
           },
           tooltipContainer: {
             textAlign: 'left',

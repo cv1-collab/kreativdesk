@@ -1289,6 +1289,8 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
   });
 
   const renderSvgElements = (elementsToRender: PlanElement[], isPdf: boolean = false) => {
+    const invScale = isPdf ? 1 : Math.min(2.5, Math.max(0.12, 1 / scale));
+
     return elementsToRender.map(el => {
       const isSelected = selectedElement?.id === el.id && !isPdf;
       const layer = layers.find(l => l.id === (el.layerId || 'default'));
@@ -1300,8 +1302,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'pen') {
         const pointsStr = el.points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ');
+        const penStroke = (el.thickness || 2) * (isPdf ? MM_TO_PX : Math.max(0.6, MM_TO_PX * invScale));
         return (
-          <polyline key={el.id} points={pointsStr} fill="none" stroke={el.color} strokeWidth={`${el.thickness * MM_TO_PX}px`} strokeLinecap="round" strokeLinejoin="round"
+          <polyline key={el.id} points={pointsStr} fill="none" stroke={el.color} strokeWidth={`${penStroke}px`} strokeLinecap="round" strokeLinejoin="round"
             style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto', filter: isSelected ? 'drop-shadow(0px 0px 4px rgba(0,0,0,0.5))' : 'none' }} 
             onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
           />
@@ -1311,9 +1314,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (el.type === 'rect') {
         const rx = Math.min(el.x, el.x + el.w) * internalW; const ry = Math.min(el.y, el.y + el.h) * internalH;
         const strokeDash = getStrokeDasharray(el.borderStyle, 1.5 * MM_TO_PX);
+        const strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
-            <rect x={`${rx}px`} y={`${ry}px`} width={`${Math.abs(el.w) * internalW}px`} height={`${Math.abs(el.h) * internalH}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth="3" strokeDasharray={strokeDash}
+            <rect x={`${rx}px`} y={`${ry}px`} width={`${Math.abs(el.w) * internalW}px`} height={`${Math.abs(el.h) * internalH}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
               style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
           </g>
@@ -1322,9 +1326,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (el.type === 'circle') {
         const cx = el.x * internalW; const cy = el.y * internalH; const r = el.r * internalW;
         const strokeDash = getStrokeDasharray(el.borderStyle, 1.5 * MM_TO_PX);
+        const strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
-            <circle cx={`${cx}px`} cy={`${cy}px`} r={`${r}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth="3" strokeDasharray={strokeDash}
+            <circle cx={`${cx}px`} cy={`${cy}px`} r={`${r}px`} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
               style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}
             />
           </g>
@@ -1334,13 +1339,14 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       if (el.type === 'polygon') {
         const pStr = el.points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ');
         const strokeDash = getStrokeDasharray(el.borderStyle, 1 * MM_TO_PX);
+        const strokeW = isPdf ? 3 : Math.max(1, 2.5 * invScale);
         return (
           <g key={el.id} style={{ opacity: totalOpacity }}>
-            <polygon points={pStr} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth="3" strokeDasharray={strokeDash}
+            <polygon points={pStr} fill={el.color || '#3b82f6'} fillOpacity={el.opacity || 1} stroke={el.strokeColor || '#2563eb'} strokeWidth={strokeW} strokeDasharray={strokeDash}
               style={{ cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }} 
             />
             {isSelected && !isPdf && el.points.map((pt, i) => (
-              <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${2.5 * MM_TO_PX}px`} fill="white" stroke="#ef4444" strokeWidth="2"
+              <circle key={i} cx={`${pt.x * internalW}px`} cy={`${pt.y * internalH}px`} r={`${Math.max(2.5, 4.5 * invScale)}px`} fill="white" stroke="#ef4444" strokeWidth={`${Math.max(1, 1.5 * invScale)}px`}
                 style={{ cursor: 'crosshair', pointerEvents: 'auto' }} 
                 onPointerDown={(e) => handleVertexPointerDown(e, el.id, i)}
                 onDoubleClick={(e) => { e.stopPropagation(); handleRemoveVertex(el.id, i); }}
@@ -1355,13 +1361,20 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         const ex = el.end.x * internalW; const ey = el.end.y * internalH;
         const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
         const distMeters = calculateDistance(el.start, el.end);
+        const strokeW = isPdf ? 2.5 : Math.max(1, 2 * invScale);
+        const rCircle = isPdf ? 5 : Math.max(2.5, 4.5 * invScale);
+        const fontSize = isPdf ? 12 : Math.max(9, 11 * invScale);
+        const textStr = `${distMeters}m`;
+        const badgeW = isPdf ? 60 : Math.max(38 * invScale, (textStr.length * 7 + 14) * invScale);
+        const badgeH = isPdf ? 20 : 18 * invScale;
+        const badgeRx = isPdf ? 4 : 4 * invScale;
         return (
           <g key={el.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'crosshair', pointerEvents: 'auto' }} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, el); }}>
-            <line x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} stroke={el.color} strokeWidth="3" strokeDasharray={isSelected ? "none" : "8,8"} />
-            <circle cx={`${sx}px`} cy={`${sy}px`} r="6" fill={el.color} />
-            <circle cx={`${ex}px`} cy={`${ey}px`} r="6" fill={el.color} />
-            <rect x={`${mx - 30}px`} y={`${my - 10}px`} width="60px" height="20px" fill={el.color} rx="4px" />
-            <text x={`${mx}px`} y={`${my + 5}px`} fill="white" fontSize="12px" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{distMeters}m</text>
+            <line x1={`${sx}px`} y1={`${sy}px`} x2={`${ex}px`} y2={`${ey}px`} stroke={el.color} strokeWidth={strokeW} strokeDasharray={isSelected ? "none" : `${6 * invScale},${6 * invScale}`} />
+            <circle cx={`${sx}px`} cy={`${sy}px`} r={rCircle} fill={el.color} />
+            <circle cx={`${ex}px`} cy={`${ey}px`} r={rCircle} fill={el.color} />
+            <rect x={`${mx - badgeW / 2}px`} y={`${my - badgeH / 2}px`} width={`${badgeW}px`} height={`${badgeH}px`} fill={el.color} rx={`${badgeRx}px`} />
+            <text x={`${mx}px`} y={`${my + (badgeH * 0.22)}px`} fill="white" fontSize={`${fontSize}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{textStr}</text>
           </g>
         );
       }
@@ -1451,14 +1464,17 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
       if (el.type === 'defect') {
         const d = el as DefectMarker;
-        const radius = 4 * MM_TO_PX; 
+        const radius = isPdf ? (4 * MM_TO_PX) : Math.max(8, 12 * invScale);
+        const strokeW = isPdf ? (0.8 * MM_TO_PX) : Math.max(1, 1.5 * invScale);
+        const textFz = isPdf ? (4 * MM_TO_PX) : Math.max(8, 11 * invScale);
+        const textY = isPdf ? (1.5 * MM_TO_PX) : (3.5 * invScale);
         const pinColor = d.status === 'resolved' || d.status === 'Behoben' ? "#10b981" : 
                          d.status === 'review' || d.status === 'Abnahme' || d.status === 'Zur Abnahme' ? "#3b82f6" : 
                          d.status === 'in_progress' || d.status === 'In Bearbeitung' ? "#f59e0b" : "#ef4444";
         return (
           <g key={d.id} style={{ opacity: totalOpacity, cursor: activeTool === 'pan' ? 'move' : 'pointer', pointerEvents: 'auto' }} transform={`translate(${d.x * internalW}, ${d.y * internalH})`} onPointerDown={(e) => { if(!isPdf) handleElementPointerDown(e, d); }}>
-            <circle cx="0" cy="0" r={`${radius}px`} fill={pinColor} stroke="#ffffff" strokeWidth={`${0.8 * MM_TO_PX}px`} />
-            <text x="0" y={`${1.5 * MM_TO_PX}px`} fill="#ffffff" fontSize={`${4 * MM_TO_PX}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">!</text>
+            <circle cx="0" cy="0" r={`${radius}px`} fill={pinColor} stroke="#ffffff" strokeWidth={`${strokeW}px`} />
+            <text x="0" y={`${textY}px`} fill="#ffffff" fontSize={`${textFz}px`} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">!</text>
           </g>
         );
       }
@@ -1592,7 +1608,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <PremiumFeature>
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
-      <header className="min-h-14 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-row items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-3 overflow-x-auto custom-scrollbar">
+      <header className="min-h-14 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-row items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-3 overflow-visible">
         {/* PLAN AUSWAHL & LÖSCHEN */}
         <div className="flex items-center gap-2 shrink-0">
           {projectPlans.length > 0 ? (
@@ -1686,7 +1702,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
 
           {/* EXPORT & WEITERGABE DROPDOWN (PDF EXPORT + PITCH DECK FOLIE) */}
-          <div className="relative" ref={exportMenuRef}>
+          <div className="relative z-40" ref={exportMenuRef}>
             <button 
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
               disabled={!planImage}
@@ -1709,7 +1725,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   initial={{ opacity: 0, y: 6, scale: 0.96 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.96 }}
-                  className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-50 space-y-1"
+                  className="absolute right-0 top-full mt-1.5 w-64 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[100] space-y-1"
                 >
                   <button
                     onClick={() => {
@@ -1910,6 +1926,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                       </>
                     )}
 
+                    {selectedElement.type === 'measure' && (
+                      <>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">Distanz</label>
+                          <div className="bg-background border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-text-primary">
+                            {calculateDistance((selectedElement as Measurement).start, (selectedElement as Measurement).end)} m
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase mb-1 block">{t('color')}</label>
+                          <input type="color" value={(selectedElement as Measurement).color || '#3b82f6'} onChange={e => updateElement({...selectedElement, color: e.target.value} as any)} className="w-full h-8 rounded border border-border cursor-pointer" />
+                        </div>
+                      </>
+                    )}
+
                     {selectedElement.type === 'text' && (
                       <>
                         <div>
@@ -2100,16 +2131,16 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                   
                   {/* ZEICHEN VORSCHAU (DRAFT) */}
                   {activeTool === 'polygon' && draftElement && (
-                    <polygon points={(draftElement as PolygonMarkup).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth="3" />
+                    <polygon points={(draftElement as PolygonMarkup).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={Math.max(1, 2.5 * (1 / scale))} />
                   )}
                   {activeTool === 'rect' && draftElement && (
-                    <rect x={Math.min(draftElement.x, draftElement.x + (draftElement as RectMarkup).w) * internalW} y={Math.min(draftElement.y, draftElement.y + (draftElement as RectMarkup).h) * internalH} width={Math.abs((draftElement as RectMarkup).w) * internalW} height={Math.abs((draftElement as RectMarkup).h) * internalH} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth="3" />
+                    <rect x={Math.min(draftElement.x, draftElement.x + (draftElement as RectMarkup).w) * internalW} y={Math.min(draftElement.y, draftElement.y + (draftElement as RectMarkup).h) * internalH} width={Math.abs((draftElement as RectMarkup).w) * internalW} height={Math.abs((draftElement as RectMarkup).h) * internalH} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={Math.max(1, 2.5 * (1 / scale))} />
                   )}
                   {activeTool === 'circle' && draftElement && (
-                    <circle cx={draftElement.x * internalW} cy={draftElement.y * internalH} r={(draftElement as CircleMarkup).r * internalW} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth="3" />
+                    <circle cx={draftElement.x * internalW} cy={draftElement.y * internalH} r={(draftElement as CircleMarkup).r * internalW} fill="rgba(59, 130, 246, 0.4)" stroke="#2563eb" strokeWidth={Math.max(1, 2.5 * (1 / scale))} />
                   )}
                   {activeTool === 'pen' && draftElement && (
-                    <polyline points={(draftElement as FreehandLine).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                    <polyline points={(draftElement as FreehandLine).points.map(p => `${p.x * internalW},${p.y * internalH}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth={Math.max(1, 2.5 * (1 / scale))} strokeLinecap="round" strokeLinejoin="round" />
                   )}
                   {activeTool === 'measure' && draftElement && (() => {
                     const m = draftElement as Measurement;
@@ -2117,13 +2148,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const ex = m.end.x * internalW; const ey = m.end.y * internalH;
                     const mx = (sx + ex) / 2; const my = (sy + ey) / 2;
                     const dist = calculateDistance(m.start, m.end);
+                    const invScale = Math.min(2.5, Math.max(0.12, 1 / scale));
+                    const strokeW = Math.max(1, 2 * invScale);
+                    const rCircle = Math.max(2.5, 4.5 * invScale);
+                    const fontSize = Math.max(9, 11 * invScale);
+                    const textStr = `${dist}m`;
+                    const badgeW = Math.max(38 * invScale, (textStr.length * 7 + 14) * invScale);
+                    const badgeH = 18 * invScale;
+                    const badgeRx = 4 * invScale;
                     return (
                       <g>
-                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth="3" strokeDasharray="8,8" />
-                        <circle cx={sx} cy={sy} r="6" fill="#3b82f6" />
-                        <circle cx={ex} cy={ey} r="6" fill="#3b82f6" />
-                        <rect x={mx - 28} y={my - 12} width="56" height="22" rx="4" fill="#1d4ed8" />
-                        <text x={mx} y={my + 4} fill="white" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{dist}m</text>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#3b82f6" strokeWidth={strokeW} strokeDasharray={`${6 * invScale},${6 * invScale}`} />
+                        <circle cx={sx} cy={sy} r={rCircle} fill="#3b82f6" />
+                        <circle cx={ex} cy={ey} r={rCircle} fill="#3b82f6" />
+                        <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#1d4ed8" />
+                        <text x={mx} y={my + (badgeH * 0.22)} fill="white" fontSize={fontSize} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{textStr}</text>
                       </g>
                     );
                   })()}
@@ -2139,13 +2178,21 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                     const dxMm = (calibrationLine.end.x - calibrationLine.start.x) * paperW_mm;
                     const dyMm = (calibrationLine.end.y - calibrationLine.start.y) * paperH_mm;
                     const distMm = Math.sqrt(dxMm * dxMm + dyMm * dyMm);
+                    const invScale = Math.min(2.5, Math.max(0.12, 1 / scale));
+                    const strokeW = Math.max(1.2, 2.5 * invScale);
+                    const rCircle = Math.max(2.5, 4.5 * invScale);
+                    const fontSize = Math.max(9, 11 * invScale);
+                    const textStr = `${distMm.toFixed(1)} mm`;
+                    const badgeW = Math.max(48 * invScale, (textStr.length * 7 + 14) * invScale);
+                    const badgeH = 18 * invScale;
+                    const badgeRx = 4 * invScale;
                     return (
                       <g>
-                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#a855f7" strokeWidth="3.5" strokeDasharray="8,6" />
-                        <circle cx={sx} cy={sy} r="6" fill="#a855f7" />
-                        <circle cx={ex} cy={ey} r="6" fill="#a855f7" />
-                        <rect x={mx - 34} y={my - 12} width="68" height="22" rx="4" fill="#9333ea" />
-                        <text x={mx} y={my + 4} fill="white" fontSize="11" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">{distMm.toFixed(1)} mm</text>
+                        <line x1={sx} y1={sy} x2={ex} y2={ey} stroke="#a855f7" strokeWidth={strokeW} strokeDasharray={`${6 * invScale},${5 * invScale}`} />
+                        <circle cx={sx} cy={sy} r={rCircle} fill="#a855f7" />
+                        <circle cx={ex} cy={ey} r={rCircle} fill="#a855f7" />
+                        <rect x={mx - badgeW / 2} y={my - badgeH / 2} width={badgeW} height={badgeH} rx={badgeRx} fill="#9333ea" />
+                        <text x={mx} y={my + (badgeH * 0.22)} fill="white" fontSize={fontSize} fontFamily="sans-serif" fontWeight="bold" textAnchor="middle" dominantBaseline="middle">{textStr}</text>
                       </g>
                     );
                   })()}

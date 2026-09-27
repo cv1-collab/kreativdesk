@@ -137,6 +137,20 @@ Dieses Dokument dient als zentrale Pendenzenliste für **Kreativ Desk OS**.
       2. Plan-Arbeitspille: `[ + Plan hochladen ]` + `[ Speichern ]`.
       3. Dropdown-Menü: `[ Exportieren ▾ ]` bündelt `PDF Plan exportieren (SIA)` und `Pitch Deck Folie`.
       4. Header-Layout: Tour `[ ? ]` und Master-Handbuch `[ 📖 ]` zu einer einheitlichen Navigationsgruppe zusammengeführt.
+12. **Tour Guide Sichtbarkeit, CAD Export-Menü & Zoom-Skalierung [ERLEDIGT ✅]:**
+    - **Tour Guide nie mehr oben abgeschnitten:**
+      - In allen Modulen (u.a. BIM 3D Viewer, Bau-Kamera / Site, Mängel-Tracking, Dashboard-Overview, Team-Verwaltung) zeigen Hilfekarten nun nach unten (`placement: 'bottom'`), wenn sie Navigationen, Header oder obere Container beschreiben.
+      - Intelligente Viewport-Erkennung: Befindet sich ein Zielelement im oberen Drittel des Fensters (`rect.top < 380px`), wird `placement: 'top'` automatisch auf `bottom` umgeschaltet.
+      - Floating-UI Konfiguration (`strategy: 'fixed'`, `shiftOptions: { padding: 24 }`, `flipOptions: { padding: 24 }`) sowie `maxHeight: calc(100vh - 48px)` mit Scroll-Unterstützung stellen sicher, dass Tooltips und Titel immer 100% vollständig im Browserfenster sichtbar bleiben.
+    - **CAD Pläne Export-Dropdown repariert:**
+      - Durch Entfernen von `overflow-x-auto` und Setzen von `overflow-visible` auf dem CAD-Header wird das Dropdown (`[ Export ▾ ]`) nicht mehr vertikal abgeschnitten.
+      - Klick auf «Export» öffnet nun verlässlich das Dropdown-Menü mit `PDF Plan exportieren (SIA)` und `Pitch Deck Folie` über dem Canvas mit Prioritäts-Z-Index `z-[100]`.
+    - **CAD Zoom-Skalierung für detailliertes Arbeiten (Strichstärken & Texte):**
+      - Dynamische inverse Zoom-Skalierung (`invScale = Math.min(2.5, Math.max(0.12, 1 / scale))`) für alle Messwerkzeuge, TrueScale-Kalibrierungslinien, Mängel-Pins und Vektorkanten eingeführt.
+      - **Messwerkzeug & TrueScale:** Distanz-Badges (z. B. `5.94m`, `43.2 mm`), Endpunkt-Kreise und Messlinien bleiben beim Hineinzoomen auf Bildschirmgrösse konstant scharf und schlank, anstatt riesig zu werden und Pläne/Möbel zu verdecken.
+      - **Mängel-Pins (Pins):** Bleiben beim Zoomen auf einer optimalen Klickgrösse und skalieren nicht ins Unendliche.
+      - **Präzises Detail-Arbeiten:** Bauleiter und Planer können nun tief in Räume hineinzoomen und Millimeter- bzw. Zentimeter-Details millimetergenau bearbeiten.
+
 
 
 
