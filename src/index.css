@@ -100,8 +100,11 @@
   background-size: 100% 100%, 36px 36px, 36px 36px;
 }
 
-body {
+body, input, textarea, select, button {
   font-family: var(--font-sans);
+}
+
+body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   margin: 0;

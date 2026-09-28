@@ -16,7 +16,7 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -332,6 +332,7 @@ export default function PitchDeckStudio({
   const [proposalHeroImageUrl, setProposalHeroImageUrl] = useState('');
   const [proposalHeroPdfUrl, setProposalHeroPdfUrl] = useState('');
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [isUploadingWebsite, setIsUploadingWebsite] = useState(false);
   const [proposalBasePrice, setProposalBasePrice] = useState<number>(45000);
   const [proposalCurrency, setProposalCurrency] = useState('CHF');
   const [proposalExpiryDays, setProposalExpiryDays] = useState(30); // 30 Tage Standard gemäss Kundenwunsch
@@ -1122,7 +1123,7 @@ export default function PitchDeckStudio({
     }
   };
 
-  const handleDirectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, mediaType: 'video' | 'image' | 'pdf') => {
+  const handleDirectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>, mediaType: 'video' | 'image' | 'pdf' | 'website') => {
     const file = e.target.files?.[0];
     if (!file || !currentUser) return;
     const safeCompanyId = currentUser.companyId || (currentUser as any)?.company_id || currentUser.uid;
@@ -1130,12 +1131,13 @@ export default function PitchDeckStudio({
     if (mediaType === 'video') setIsUploadingVideo(true);
     else if (mediaType === 'image') setIsUploadingImage(true);
     else if (mediaType === 'pdf') setIsUploadingPdf(true);
+    else if (mediaType === 'website') setIsUploadingWebsite(true);
 
     addToast(`${file.name} wird hochgeladen...`, 'info');
 
     try {
-      const fileExt = file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : mediaType === 'image' ? 'png' : 'pdf');
-      const folder = mediaType === 'video' ? 'videos' : (mediaType === 'image' ? 'images' : 'documents');
+      const fileExt = file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : mediaType === 'image' ? 'png' : mediaType === 'website' ? 'html' : 'pdf');
+      const folder = mediaType === 'video' ? 'videos' : (mediaType === 'image' ? 'images' : mediaType === 'website' ? 'websites' : 'documents');
       const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filePath = `${safeCompanyId}/${folder}/${Date.now()}_${safeName}`;
       
@@ -1158,6 +1160,9 @@ export default function PitchDeckStudio({
       } else if (mediaType === 'pdf') {
         setProposalHeroPdfUrl(downloadUrl);
         addToast('PDF-Exposé für Offerte hinterlegt!', 'success');
+      } else if (mediaType === 'website') {
+        setProposalWebsiteUrl(downloadUrl);
+        addToast('Webseiten-Entwurf in Supabase Cloud hinterlegt!', 'success');
       }
     } catch (err) {
       console.error('Media upload failed:', err);
@@ -1165,11 +1170,13 @@ export default function PitchDeckStudio({
       if (mediaType === 'video') setProposalHeroVideoUrl(fallbackUrl);
       else if (mediaType === 'image') setProposalHeroImageUrl(fallbackUrl);
       else if (mediaType === 'pdf') setProposalHeroPdfUrl(fallbackUrl);
+      else if (mediaType === 'website') setProposalWebsiteUrl(fallbackUrl);
       addToast('Datei lokal hinterlegt', 'info');
     } finally {
       if (mediaType === 'video') setIsUploadingVideo(false);
       else if (mediaType === 'image') setIsUploadingImage(false);
       else if (mediaType === 'pdf') setIsUploadingPdf(false);
+      else if (mediaType === 'website') setIsUploadingWebsite(false);
       e.target.value = '';
     }
   };
@@ -4842,7 +4849,7 @@ export default function PitchDeckStudio({
                 </div>
 
                 <div className="bg-background border border-border rounded-2xl p-4 flex items-center justify-between gap-3 text-left">
-                  <div className="truncate font-mono text-xs text-blue-400 font-bold select-all">
+                  <div className="truncate font-sans font-semibold text-xs text-blue-600 dark:text-blue-400 select-all tracking-tight">
                     {publishedShareUrl}
                   </div>
                   <button 
@@ -5208,29 +5215,56 @@ export default function PitchDeckStudio({
                       {proposalMediaType === 'website' && (
                         <div className="space-y-3">
                           <div>
-                            <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
                               <span className="text-[11px] font-semibold text-text-muted">Webseiten-URL (Live Staging, Prototyp oder 3D Viewer)</span>
-                              {proposalWebsiteUrl && (
-                                <a 
-                                  href={proposalWebsiteUrl.startsWith('http') ? proposalWebsiteUrl : `https://${proposalWebsiteUrl}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer"
-                                >
-                                  <ExternalLink size={12} />
-                                  <span>Link testen</span>
-                                </a>
-                              )}
+                              <div className="flex items-center gap-3">
+                                <label className="text-[11px] text-blue-500 hover:text-blue-400 font-bold flex items-center gap-1 cursor-pointer">
+                                  {isUploadingWebsite ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                                  <span>{isUploadingWebsite ? t('uploading') : 'HTML-Entwurf hochladen (.html)'}</span>
+                                  <input 
+                                    type="file" 
+                                    accept=".html,.htm" 
+                                    className="hidden" 
+                                    onChange={(e) => handleDirectMediaUpload(e, 'website')} 
+                                  />
+                                </label>
+                                {proposalWebsiteUrl && (
+                                  <a 
+                                    href={proposalWebsiteUrl.startsWith('http') ? proposalWebsiteUrl : `https://${proposalWebsiteUrl}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <ExternalLink size={12} />
+                                    <span>Link testen</span>
+                                  </a>
+                                )}
+                              </div>
                             </div>
                             <input 
                               type="text" 
                               required={proposalMediaType === 'website'}
-                              placeholder="https://ihre-website.ch oder Staging-URL"
+                              placeholder="https://ihre-website.ch, Vercel-Link oder Staging-URL"
                               value={proposalWebsiteUrl}
                               onChange={e => setProposalWebsiteUrl(e.target.value)}
-                              className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                              className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500 font-sans"
                             />
                           </div>
+
+                          {/* LOCALHOST HINT & GUIDANCE */}
+                          {proposalWebsiteUrl.includes('localhost') && (
+                            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs space-y-1.5">
+                              <div className="flex items-center gap-1.5 font-bold">
+                                <AlertCircle size={14} className="shrink-0" />
+                                <span>Achtung: 'localhost:3000' ist nur auf Ihrem Mac erreichbar!</span>
+                              </div>
+                              <p className="text-[11px] text-text-muted leading-relaxed">
+                                Externe Kunden können <code>localhost</code> auf ihren eigenen Computern oder Smartphones nicht öffnen. 
+                                <strong>Lösung:</strong> Stellen Sie das Projekt kostenlos auf <strong>Vercel</strong> oder <strong>Netlify</strong> bereit (1-Klick GitHub Deployment für Next.js/Vite) oder laden Sie Ihren Entwurf oben direkt als <strong>.html-Datei</strong> in die Supabase Cloud hoch.
+                              </p>
+                            </div>
+                          )}
+
                           <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs flex items-start gap-2.5">
                             <Globe size={16} className="shrink-0 mt-0.5" />
                             <div className="space-y-1">
