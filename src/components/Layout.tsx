@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { Outlet, NavLink, useParams, useNavigate, useLocation } from 'react-router-dom';
 import ErrorBoundary from './ErrorBoundary';
 import { useProject } from '../contexts/ProjectContext';
@@ -18,7 +19,7 @@ import {
   LayoutDashboard, Calendar, DollarSign, Box, Map,
   Video, PenTool, Presentation, Camera,
   ArrowLeft, ShieldAlert, FileText, UserCheck,
-  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X, BookOpen
+  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X, BookOpen, Edit2
 } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
@@ -54,7 +55,7 @@ export default function Layout() {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  const { projects, timeEntries } = useProject() as any;
+  const { projects, timeEntries, renameProject, updateProject } = useProject() as any;
   const { currentUser, logout = async () => { } } = useAuth() || {};
   const { theme, toggleTheme } = useTheme();
   const { language, toggleLanguage, t: globalT } = useLanguage();
@@ -182,6 +183,50 @@ export default function Layout() {
   const safeTimeEntries = Array.isArray(timeEntries) ? timeEntries : [];
   const project = safeProjects.find((p: any) => p.id === projectId);
   const projectHours = safeTimeEntries.filter((e: any) => e.projectId === project?.id).reduce((sum: number, e: any) => sum + e.hours, 0) || 0;
+
+  // --- PROJEKT UMBENENNEN & BEARBEITEN ---
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameDescription, setRenameDescription] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+
+  const handleOpenRename = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!project) return;
+    setRenameValue(project.name || '');
+    setRenameDescription(project.description || '');
+    setIsRenameModalOpen(true);
+  };
+
+  const handleSaveRename = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project || !renameValue.trim()) return;
+    setIsRenaming(true);
+    try {
+      if (updateProject) {
+        await updateProject(project.id, {
+          name: renameValue.trim(),
+          description: renameDescription.trim()
+        });
+      } else if (renameProject) {
+        await renameProject(project.id, renameValue.trim());
+      } else {
+        await supabase.from('projects').update({
+          name: renameValue.trim(),
+          description: renameDescription.trim(),
+          updated_at: new Date().toISOString()
+        }).eq('id', project.id);
+      }
+      addToast(currentLang === 'de' ? 'Projekt erfolgreich umbenannt!' : 'Project renamed successfully!', 'success');
+      setIsRenameModalOpen(false);
+    } catch (err) {
+      console.error('Fehler beim Umbenennen des Projekts:', err);
+      addToast(currentLang === 'de' ? 'Fehler beim Umbenennen des Projekts.' : 'Error renaming project.', 'error');
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+  // ---------------------------------------
 
   const { hasPermission } = usePermissions();
   const userRoleStr = (currentUser?.role || '').toLowerCase().trim();
@@ -319,9 +364,20 @@ export default function Layout() {
           <button onClick={() => navigate('/app')} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors text-text-muted hover:text-text-primary shrink-0 cursor-pointer" title={t('back_to_workspace')}>
             <ArrowLeft size={18} />
           </button>
-          <div className="truncate flex-1">
-            <h2 className="font-semibold text-sm truncate text-text-primary">{project?.name || 'Projekt Workspace'}</h2>
-            <p className="text-[10px] text-accent-ai uppercase tracking-widest font-extrabold mt-0.5">Workspace</p>
+          <div className="truncate flex-1 group/projheader flex items-center justify-between">
+            <div className="truncate flex-1">
+              <h2 className="font-semibold text-sm truncate text-text-primary" title={project?.name}>{project?.name || 'Projekt Workspace'}</h2>
+              <p className="text-[10px] text-accent-ai uppercase tracking-widest font-extrabold mt-0.5">Workspace</p>
+            </div>
+            {project && (
+              <button 
+                onClick={handleOpenRename} 
+                className="opacity-0 group-hover/projheader:opacity-100 p-1 text-text-muted hover:text-accent-ai hover:bg-white/5 rounded transition-all cursor-pointer shrink-0" 
+                title={currentLang === 'de' ? 'Projekt umbenennen' : 'Rename Project'}
+              >
+                <Edit2 size={13} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -493,11 +549,20 @@ export default function Layout() {
           className="min-h-14 md:min-h-16 border-b border-border/50 bg-surface/95 backdrop-blur-xl flex items-center justify-between px-3 md:px-6 shrink-0 z-[60] sticky top-0 shadow-sm"
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-2 md:gap-3 group/navproj">
             <button onClick={() => navigate('/app')} className="p-1.5 md:p-2 text-text-muted hover:text-text-primary bg-background rounded-lg border border-border shadow-sm md:hidden cursor-pointer">
               <ArrowLeft size={18} />
             </button>
             <span className="font-semibold text-sm md:text-base truncate max-w-[120px] sm:max-w-[250px]">{project?.name || 'Projekt'}</span>
+            {project && (
+              <button 
+                onClick={handleOpenRename} 
+                className="p-1.5 text-text-muted hover:text-accent-ai hover:bg-white/5 rounded-md transition-colors cursor-pointer" 
+                title={currentLang === 'de' ? 'Projekt umbenennen' : 'Rename Project'}
+              >
+                <Edit2 size={14} />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">
@@ -575,6 +640,58 @@ export default function Layout() {
 
       {showPitchModal && (
         <PitchDeckStudio onClose={() => setShowPitchModal(false)} projectId={projectId} />
+      )}
+
+      {/* QUICK RENAME PROJECT MODAL */}
+      {isRenameModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsRenameModalOpen(false)}>
+          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
+            <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
+              <h3 className="font-bold flex items-center gap-2 text-text-primary text-lg">
+                <Edit2 size={20} className="text-accent-ai" /> {currentLang === 'de' ? 'Projekt umbenennen' : 'Rename Project'}
+              </h3>
+              <button onClick={() => setIsRenameModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border">
+                <X size={20} />
+              </button>
+            </div>
+            <form id="rename-proj-layout-form" onSubmit={handleSaveRename} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">
+                  {currentLang === 'de' ? 'Projektname *' : 'Project Name *'}
+                </label>
+                <input 
+                  type="text" 
+                  required 
+                  value={renameValue} 
+                  onChange={e => setRenameValue(e.target.value)} 
+                  className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none font-bold text-text-primary shadow-sm" 
+                  autoFocus 
+                  placeholder="Projektname eingeben"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-text-muted uppercase tracking-widest">
+                  {currentLang === 'de' ? 'Beschreibung' : 'Description'}
+                </label>
+                <textarea 
+                  value={renameDescription} 
+                  onChange={e => setRenameDescription(e.target.value)} 
+                  className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none resize-none h-28 text-text-primary font-medium shadow-sm custom-scrollbar" 
+                  placeholder="Projektbeschrieb, Notizen..."
+                />
+              </div>
+            </form>
+            <div className="p-4 sm:p-6 border-t border-border/50 bg-surface/90 shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-3 pb-8 sm:pb-6">
+              <button type="button" onClick={() => setIsRenameModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">
+                {currentLang === 'de' ? 'Abbrechen' : 'Cancel'}
+              </button>
+              <button type="submit" form="rename-proj-layout-form" disabled={isRenaming || !renameValue.trim()} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                {isRenaming ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16} />} {currentLang === 'de' ? 'Speichern' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

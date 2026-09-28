@@ -4,7 +4,7 @@ import {
   Plus, Search, Filter, Clock, Eye, CheckCircle2, Share2, Copy,
   ExternalLink, Trash2, Calendar, FileText, Sparkles, RefreshCw,
   TrendingUp, AlertCircle, ArrowUpRight, MessageSquare, Mail, Play, Check,
-  Smartphone, Monitor, X, ShieldCheck, Lock, Sun, Moon, Image as ImageIcon
+  Smartphone, Monitor, X, ShieldCheck, Lock, Sun, Moon, Image as ImageIcon, Globe
 } from 'lucide-react';
 import { getCompanyProposals, extendProposalExpiry, deleteProposal, saveProposal, SmartProposal } from '../services/proposalService';
 import { useAuth } from '../contexts/AuthContext';
@@ -204,14 +204,15 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark');
 
-  const companyId = currentUser?.companyId || currentUser?.uid || 'default-company';
+  const companyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'default-company';
+  const ownerId = currentUser?.uid;
 
   const loadProposals = React.useCallback(async () => {
     setIsLoading(true);
-    const data = await getCompanyProposals(companyId, projectId);
+    const data = await getCompanyProposals(companyId, projectId, ownerId);
     setProposals(data);
     setIsLoading(false);
-  }, [companyId, projectId]);
+  }, [companyId, projectId, ownerId]);
 
   useEffect(() => {
     loadProposals();
@@ -483,19 +484,32 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
                 <div>
                   {/* Top Badges */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    {isAccepted ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-blue-50 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 flex items-center gap-1">
-                        <CheckCircle2 size={11} /> {t('status_accepted')}
-                      </span>
-                    ) : isExpired ? (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-red-50 text-red-800 dark:bg-red-500/20 dark:text-red-400 border border-red-200 dark:border-red-500/30 flex items-center gap-1">
-                        {t('status_expired')}
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
-                        <Clock size={11} /> {t('status_days_left').replace('{days}', String(daysLeft))}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {isAccepted ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-blue-50 text-blue-800 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 flex items-center gap-1">
+                          <CheckCircle2 size={11} /> {t('status_accepted')}
+                        </span>
+                      ) : isExpired ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-red-50 text-red-800 dark:bg-red-500/20 dark:text-red-400 border border-red-200 dark:border-red-500/30 flex items-center gap-1">
+                          {t('status_expired')}
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
+                          <Clock size={11} /> {t('status_days_left').replace('{days}', String(daysLeft))}
+                        </span>
+                      )}
+
+                      {(proposal.mediaType === 'website' || proposal.websiteUrl) && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-500 dark:text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
+                          <Globe size={10} /> Webseite (30T)
+                        </span>
+                      )}
+                      {proposal.mediaType === 'pdf' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 text-purple-500 dark:text-purple-400 border border-purple-500/20 flex items-center gap-1">
+                          <FileText size={10} /> PDF Exposé
+                        </span>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-1 text-[11px] text-text-muted">
                       <Eye size={13} /> {proposal.viewsCount || 0} {t('views_suffix')}

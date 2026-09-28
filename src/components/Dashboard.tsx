@@ -8,7 +8,7 @@ import {
 import { 
   AlertTriangle, TrendingUp, Clock, ArrowRight, 
   Users, Sparkles, Loader2, DollarSign, Activity, FileText, MonitorPlay, Map,
-  PieChart as PieChartIcon, Shield
+  PieChart as PieChartIcon, Shield, Check, Edit2, X
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useAuth } from '../contexts/AuthContext';
@@ -134,7 +134,7 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const { addToast } = useToast();
   
-  const { projects, activeProjectId, defects, projectMembers, timeEntries, isDemoMode, demoData } = useProject() as any;
+  const { projects, activeProjectId, defects, projectMembers, timeEntries, isDemoMode, demoData, renameProject, updateProject } = useProject() as any;
   const { language, t: globalT } = useLanguage();
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
@@ -143,6 +143,42 @@ export default function Dashboard() {
   
   const activeProject = (projects || []).find((p: any) => p.id === (projectId || activeProjectId));
   const currentProjectMembers = (projectMembers || []).filter((m: any) => m.projectId === activeProject?.id);
+
+  // --- INLINE PROJEKTNAME EDITIEREN ---
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const startEditingName = () => {
+    if (!activeProject) return;
+    setEditedName(activeProject.name || '');
+    setIsEditingName(true);
+  };
+
+  const handleSaveInlineName = async () => {
+    if (!activeProject || !editedName.trim() || editedName.trim() === activeProject.name) {
+      setIsEditingName(false);
+      return;
+    }
+    setIsSavingName(true);
+    try {
+      if (renameProject) {
+        await renameProject(activeProject.id, editedName.trim());
+      } else if (updateProject) {
+        await updateProject(activeProject.id, { name: editedName.trim() });
+      } else {
+        await supabase.from('projects').update({ name: editedName.trim() }).eq('id', activeProject.id);
+      }
+      addToast(currentLang === 'de' ? 'Projektname aktualisiert!' : 'Project name updated!', 'success');
+      setIsEditingName(false);
+    } catch (err) {
+      console.error('Fehler beim Aktualisieren des Projektnamens:', err);
+      addToast(currentLang === 'de' ? 'Fehler beim Speichern.' : 'Failed to update name.', 'error');
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+  // ------------------------------------
 
   const userRoleStr = (currentUser?.role || '').toLowerCase().trim();
   const isGuestOrContractor = 
@@ -370,7 +406,52 @@ export default function Dashboard() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t('project_overview')}</h1>
-          <p className="text-sm text-text-muted mt-1 font-medium">{activeProject?.name}</p>
+          {isEditingName ? (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <input
+                type="text"
+                value={editedName}
+                onChange={e => setEditedName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSaveInlineName();
+                  if (e.key === 'Escape') setIsEditingName(false);
+                }}
+                disabled={isSavingName}
+                autoFocus
+                className="bg-surface border border-accent-ai text-text-primary px-2.5 py-1 text-sm rounded-lg font-bold outline-none shadow-sm min-w-[220px]"
+                placeholder="Projektname"
+              />
+              <button 
+                onClick={handleSaveInlineName} 
+                disabled={isSavingName || !editedName.trim()} 
+                className="p-1.5 bg-accent-ai text-white rounded-lg hover:bg-accent-ai/90 disabled:opacity-50 transition-all cursor-pointer shadow-sm"
+                title={currentLang === 'de' ? 'Speichern' : 'Save'}
+              >
+                {isSavingName ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+              </button>
+              <button 
+                onClick={() => setIsEditingName(false)} 
+                disabled={isSavingName}
+                className="p-1.5 bg-surface border border-border text-text-muted hover:text-text-primary rounded-lg transition-colors cursor-pointer"
+                title={currentLang === 'de' ? 'Abbrechen' : 'Cancel'}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 mt-1 group/dtitle">
+              <p className="text-sm text-text-muted font-medium">{activeProject?.name}</p>
+              {activeProject && (
+                <button 
+                  onClick={startEditingName} 
+                  className="opacity-0 group-hover/dtitle:opacity-100 p-1 text-text-muted hover:text-accent-ai hover:bg-surface rounded transition-all cursor-pointer"
+                  title={currentLang === 'de' ? 'Projektname bearbeiten' : 'Edit Project Name'}
+                >
+                  <Edit2 size={13} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <ModuleGuideButton moduleId="overview" />

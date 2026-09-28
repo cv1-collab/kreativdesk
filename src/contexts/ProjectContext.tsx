@@ -46,6 +46,8 @@ interface ProjectContextType {
   setActiveProject: (id: string | null) => void;
   addProject: (project: any) => Promise<any>;
   removeProject: (id: string) => Promise<void>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  renameProject: (id: string, newName: string) => Promise<void>;
   updateProjectStatus: (id: string, status: string) => Promise<void>;
   fetchCompanyUsers: () => Promise<void>;
   fetchProjects: () => Promise<void>;
@@ -312,6 +314,63 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     await fetchProjects();
   };
 
+  const updateProject = async (id: string, updates: Partial<Project>) => {
+    const targetProj = projects.find(p => p.id === id);
+    const safeCompanyId = getSafeCompanyId();
+
+    // 1. Optimistic local state update
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+
+    // 2. Prepare database payload
+    const dbUpdates: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    };
+    if (updates.name !== undefined) dbUpdates.name = updates.name.trim();
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if ((updates as any).siteLocation !== undefined) dbUpdates.site_location = (updates as any).siteLocation;
+    if ((updates as any).site_location !== undefined) dbUpdates.site_location = (updates as any).site_location;
+    if ((updates as any).droneUrl !== undefined) dbUpdates.drone_url = (updates as any).droneUrl;
+    if ((updates as any).drone_url !== undefined) dbUpdates.drone_url = (updates as any).drone_url;
+
+    try {
+      const { error } = await (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+      if (error) {
+        // Fallback: If updated_at column doesn't exist, retry without it
+        if (error.code === 'PGRST204' || error.message?.includes('updated_at')) {
+          delete dbUpdates.updated_at;
+          const retry = await (supabase.from('projects') as any).update(dbUpdates).eq('id', id);
+          if (retry.error) throw retry.error;
+        } else {
+          throw error;
+        }
+      }
+    } catch (err) {
+      console.error("Fehler beim Aktualisieren des Projekts:", err);
+      throw err;
+    }
+
+    // 3. Notification if renamed
+    if (safeCompanyId && updates.name && targetProj && targetProj.name !== updates.name) {
+      try {
+        await sendNotification({
+          companyId: safeCompanyId,
+          title: 'Projekt umbenannt ✏️',
+          message: `Das Projekt "${targetProj.name}" wurde in "${updates.name}" umbenannt.`,
+          type: 'info',
+          link: `/project/${id}/overview`
+        });
+      } catch (e) {}
+    }
+
+    await fetchProjects();
+  };
+
+  const renameProject = async (id: string, newName: string) => {
+    if (!newName || !newName.trim()) return;
+    await updateProject(id, { name: newName.trim() });
+  };
+
   const addCompanyUser = async (_userData: any) => {
     const safeCompanyId = getSafeCompanyId();
     await addTeamUser(safeCompanyId);
@@ -351,7 +410,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   return (
     <ProjectContext.Provider value={{ 
       projects, activeProjectId, companyUsers, projectMembers, timeEntries, defects, 
-      setActiveProject: setActiveProjectId, addProject, removeProject, updateProjectStatus, 
+      setActiveProject: setActiveProjectId, addProject, removeProject, updateProject, renameProject, updateProjectStatus, 
       fetchCompanyUsers, fetchProjects, fetchProjectDetails, refreshAllData,
       addCompanyUser, updateCompanyUser, removeCompanyUser, addProjectMember, updateProjectMemberRole, removeProjectMember, 
       addTimeEntry,

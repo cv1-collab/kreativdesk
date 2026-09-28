@@ -79,7 +79,7 @@ export const LiveDemoProjectProvider = ({ children }: { children: React.ReactNod
       // Mängel aus dem Template durchreichen
       defects: template.defects || [],
 
-      setActiveProject: () => { }, addProject: async () => { }, removeProject: async () => { }, updateProjectStatus: async () => { },
+      setActiveProject: () => { }, addProject: async () => { }, removeProject: async () => { }, updateProject: async () => { }, renameProject: async () => { }, updateProjectStatus: async () => { },
       addCompanyUser: async () => { }, updateCompanyUser: async () => { }, removeCompanyUser: async () => { }, fetchCompanyUsers: async () => { },
       fetchProjects: async () => { }, fetchProjectDetails: async () => { }, refreshAllData: async () => { },
       addProjectMember: async () => { }, updateProjectMemberRole: async () => { }, removeProjectMember: async () => { }, addTimeEntry: async () => { },

@@ -9,7 +9,7 @@ import {
   Check, Lock, AlertCircle, ExternalLink, Presentation, ChevronLeft,
   DollarSign, FileCheck, RefreshCw, Send, Layers, HelpCircle, PenTool,
   RotateCcw, Eye, FileSignature, CheckSquare, Milestone, X, Bot, QrCode, CreditCard, Loader2,
-  Sun, Moon, Printer
+  Sun, Moon, Printer, Monitor, Tablet, Smartphone, Maximize2, Minimize2, Globe
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { getProposalByShareToken, acceptProposalByClient, SmartProposal } from '../services/proposalService';
@@ -1232,6 +1232,11 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Live Interactive Website Preview state
+  const [websiteDeviceMode, setWebsiteDeviceMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [isWebsiteFullscreen, setIsWebsiteFullscreen] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
+
   // View Mode: 'story' (Vertical Scroll Landingpage) vs 'deck' (Classic Slide Deck)
   const [viewMode, setViewMode] = useState<'story' | 'deck'>('story');
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -2423,92 +2428,209 @@ export default function SmartProposalLandingPage({ isDemo = false }: SmartPropos
               </p>
             </div>
 
-            {/* HERO VIDEO / SHOWREEL PLAYER */}
-            {(proposal.heroVideoUrl || proposal.heroImageUrl) && (
-              <div className={cn("mt-10 rounded-3xl overflow-hidden relative group aspect-video max-w-5xl mx-auto border", isLight ? "border-slate-200 bg-slate-100 shadow-xl" : "border-white/15 bg-zinc-900 shadow-2xl")}>
-                {proposal.heroVideoUrl ? (
-                  <>
-                    <video 
-                      ref={videoRef}
-                      src={proposal.heroVideoUrl}
-                      autoPlay
-                      loop
-                      muted={isMuted}
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
-                    
-                    {/* Floating Video Controls */}
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-20">
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => {
-                            if (videoRef.current) {
-                              if (isVideoPlaying) {
-                                videoRef.current.pause();
-                                setIsVideoPlaying(false);
-                              } else {
-                                videoRef.current.play()
-                                  .then(() => setIsVideoPlaying(true))
-                                  .catch(() => setIsVideoPlaying(false));
-                              }
-                            }
-                          }}
-                          className="p-2.5 rounded-xl bg-black/60 backdrop-blur-md text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer"
+            {/* HERO MEDIA: LIVE WEBSITE / SHOWREEL VIDEO / PDF / IMAGE */}
+            {(() => {
+              const isWebsiteProposal = proposal.mediaType === 'website' || Boolean(proposal.websiteUrl) || (
+                typeof proposal.heroVideoUrl === 'string' &&
+                (proposal.heroVideoUrl.startsWith('http://') || proposal.heroVideoUrl.startsWith('https://')) &&
+                !proposal.heroVideoUrl.match(/\.(mp4|webm|mov|ogg|m4v)($|\?)/i)
+              );
+              const effectiveWebsiteUrl = proposal.websiteUrl || (isWebsiteProposal ? proposal.heroVideoUrl : '');
+
+              if (isWebsiteProposal && effectiveWebsiteUrl) {
+                const targetUrl = effectiveWebsiteUrl.startsWith('http') ? effectiveWebsiteUrl : `https://${effectiveWebsiteUrl}`;
+                return (
+                  <div className={cn(
+                    "mt-8 rounded-3xl overflow-hidden transition-all duration-300 border flex flex-col shadow-2xl",
+                    isLight ? "bg-white border-slate-200" : "bg-zinc-950 border-white/15",
+                    isWebsiteFullscreen ? "fixed inset-3 z-[999999] h-[calc(100vh-1.5rem)] mt-0" : "w-full max-w-5xl mx-auto"
+                  )}>
+                    {/* Browser Chrome Header */}
+                    <div className={cn("px-4 py-3 flex items-center justify-between gap-3 border-b shrink-0", isLight ? "bg-slate-100/90 border-slate-200" : "bg-zinc-900/90 border-white/10")}>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                          <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                          <div className="w-3 h-3 rounded-full bg-emerald-500/80"></div>
+                        </div>
+                        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ml-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          30 Tage Live-Webseite aktiv
+                        </span>
+                      </div>
+
+                      {/* URL Display */}
+                      <div className={cn("flex-1 max-w-md mx-2 px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 border truncate", isLight ? "bg-white border-slate-200 text-slate-700" : "bg-zinc-950/80 border-white/10 text-zinc-300")}>
+                        <Lock size={12} className="text-emerald-400 shrink-0" />
+                        <span className="truncate font-mono text-[11px] select-all">{targetUrl}</span>
+                      </div>
+
+                      {/* Viewport Switcher & Actions */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="hidden md:flex items-center p-0.5 rounded-xl border border-border bg-background text-[11px] font-bold">
+                          <button
+                            type="button"
+                            onClick={() => setWebsiteDeviceMode('desktop')}
+                            className={cn("p-1.5 rounded-lg transition-all", websiteDeviceMode === 'desktop' ? "bg-blue-600 text-white" : "text-text-muted hover:text-text-primary")}
+                            title="Desktop Ansicht"
+                          >
+                            <Monitor size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWebsiteDeviceMode('tablet')}
+                            className={cn("p-1.5 rounded-lg transition-all", websiteDeviceMode === 'tablet' ? "bg-blue-600 text-white" : "text-text-muted hover:text-text-primary")}
+                            title="Tablet Ansicht (768px)"
+                          >
+                            <Tablet size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWebsiteDeviceMode('mobile')}
+                            className={cn("p-1.5 rounded-lg transition-all", websiteDeviceMode === 'mobile' ? "bg-blue-600 text-white" : "text-text-muted hover:text-text-primary")}
+                            title="Smartphone Ansicht (390px)"
+                          >
+                            <Smartphone size={14} />
+                          </button>
+                        </div>
+
+                        <a 
+                          href={targetUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-2 rounded-xl border border-white/10 hover:bg-white/10 text-text-primary transition-colors cursor-pointer"
+                          title="In neuem Tab öffnen"
                         >
-                          {isVideoPlaying ? <Pause size={16} /> : <Play size={16} />}
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (videoRef.current) {
-                              videoRef.current.muted = !isMuted;
-                              setIsMuted(!isMuted);
-                            }
-                          }}
-                          className="p-2.5 rounded-xl bg-black/60 backdrop-blur-md text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer"
+                          <ExternalLink size={14} />
+                        </a>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsWebsiteFullscreen(!isWebsiteFullscreen)}
+                          className="p-2 rounded-xl border border-white/10 hover:bg-white/10 text-text-primary transition-colors cursor-pointer"
+                          title={isWebsiteFullscreen ? "Vollbild beenden" : "Vollbild"}
                         >
-                          {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                          {isWebsiteFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
                       </div>
-                      <span className="text-xs font-bold font-sans text-white/80 bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
-                        {t('showreelLabel')}
-                      </span>
                     </div>
-                  </>
-                ) : proposal.heroImageUrl?.toLowerCase().includes('.pdf') ? (
-                  <div className="w-full h-full min-h-[340px] flex flex-col items-center justify-center p-8 bg-zinc-950/90 text-center relative">
-                    <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 shadow-lg shadow-purple-500/10">
-                      <FileText size={32} />
-                    </div>
-                    <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-1">Projekt-Dokumentation</span>
-                    <h3 className="text-xl font-extrabold text-white mb-2 max-w-md">{proposal.title} — Exposé</h3>
-                    <p className="text-xs text-zinc-400 max-w-md mb-6 leading-relaxed">
-                      Interaktives PDF-Exposé mit Baukonzept, Raumprogramm und Spezifikationen.
-                    </p>
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                      <a 
-                        href={proposal.heroImageUrl} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+
+                    {/* Iframe Viewport Container */}
+                    <div className={cn(
+                      "w-full flex-1 flex items-center justify-center p-2 sm:p-4 overflow-hidden relative",
+                      isLight ? "bg-slate-200/70" : "bg-black/70",
+                      isWebsiteFullscreen ? "h-[calc(100%-52px)]" : "h-[540px] sm:h-[640px]"
+                    )}>
+                      <div 
+                        className={cn(
+                          "h-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300 relative bg-white flex flex-col",
+                          websiteDeviceMode === 'desktop' ? "w-full" : 
+                          (websiteDeviceMode === 'tablet' ? "w-[768px] max-w-full" : "w-[390px] max-w-full")
+                        )}
                       >
-                        <Eye size={15} /> PDF im Vollbild öffnen
-                      </a>
-                      <a 
-                        href={proposal.heroImageUrl} 
-                        download 
-                        className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
-                      >
-                        <Download size={15} /> PDF Herunterladen
-                      </a>
+                        <iframe
+                          src={targetUrl}
+                          title={proposal.title}
+                          className="w-full h-full border-0 flex-1"
+                          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                          loading="lazy"
+                        />
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <img src={proposal.heroImageUrl} alt={proposal.title} className="w-full h-full object-cover" />
-                )}
-              </div>
-            )}
+                );
+              }
+
+              if (proposal.heroVideoUrl || proposal.heroImageUrl) {
+                return (
+                  <div className={cn("mt-10 rounded-3xl overflow-hidden relative group aspect-video max-w-5xl mx-auto border", isLight ? "border-slate-200 bg-slate-100 shadow-xl" : "border-white/15 bg-zinc-900 shadow-2xl")}>
+                    {proposal.heroVideoUrl ? (
+                      <>
+                        <video 
+                          ref={videoRef}
+                          src={proposal.heroVideoUrl}
+                          autoPlay
+                          loop
+                          muted={isMuted}
+                          playsInline
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
+                        
+                        {/* Floating Video Controls */}
+                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-20">
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => {
+                                if (videoRef.current) {
+                                  if (isVideoPlaying) {
+                                    videoRef.current.pause();
+                                    setIsVideoPlaying(false);
+                                  } else {
+                                    videoRef.current.play()
+                                      .then(() => setIsVideoPlaying(true))
+                                      .catch(() => setIsVideoPlaying(false));
+                                  }
+                                }
+                              }}
+                              className="p-2.5 rounded-xl bg-black/60 backdrop-blur-md text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer"
+                            >
+                              {isVideoPlaying ? <Pause size={16} /> : <Play size={16} />}
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (videoRef.current) {
+                                  videoRef.current.muted = !isMuted;
+                                  setIsMuted(!isMuted);
+                                }
+                              }}
+                              className="p-2.5 rounded-xl bg-black/60 backdrop-blur-md text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer"
+                            >
+                              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                            </button>
+                          </div>
+                          <span className="text-xs font-bold font-sans text-white/80 bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
+                            {t('showreelLabel')}
+                          </span>
+                        </div>
+                      </>
+                    ) : proposal.heroImageUrl?.toLowerCase().includes('.pdf') ? (
+                      <div className="w-full h-full min-h-[340px] flex flex-col items-center justify-center p-8 bg-zinc-950/90 text-center relative">
+                        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-4 shadow-lg shadow-purple-500/10">
+                          <FileText size={32} />
+                        </div>
+                        <span className="text-xs font-bold uppercase tracking-widest text-purple-400 mb-1">Projekt-Dokumentation</span>
+                        <h3 className="text-xl font-extrabold text-white mb-2 max-w-md">{proposal.title} — Exposé</h3>
+                        <p className="text-xs text-zinc-400 max-w-md mb-6 leading-relaxed">
+                          Interaktives PDF-Exposé mit Baukonzept, Raumprogramm und Spezifikationen.
+                        </p>
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                          <a 
+                            href={proposal.heroImageUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                          >
+                            <Eye size={15} /> PDF im Vollbild öffnen
+                          </a>
+                          <a 
+                            href={proposal.heroImageUrl} 
+                            download 
+                            className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer"
+                          >
+                            <Download size={15} /> PDF Herunterladen
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <img src={proposal.heroImageUrl} alt={proposal.title} className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                );
+              }
+
+              return null;
+            })()}
           </section>
 
           {/* STORY SCROLL MODE: VERTICAL WEBSITE-STYLE PRESENTATION */}

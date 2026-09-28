@@ -37,7 +37,7 @@ import {
   X, Shield, Moon, Sun, FolderOpen, Megaphone, Trash2, Landmark,
   DollarSign, LayoutDashboard, Bell, LayoutTemplate, Layers, BookOpen, CalendarDays, Video,
   Image as ImageIcon, Globe, FileText, Loader2, HelpCircle, Archive, RotateCcw, Lightbulb,
-  Monitor, Smartphone, Apple, Laptop, Download, Box
+  Monitor, Smartphone, Apple, Laptop, Download, Box, Edit2, Pencil
 } from 'lucide-react';
 import { cn } from '../utils';
 import { useTheme } from '../contexts/ThemeContext';
@@ -63,6 +63,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     no_description: 'No description', active: 'Active', archived: 'Archived', created_at: 'Created at',
     finance: 'Finance', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Proposals & Links',
     delete_project: 'Delete Project', active_projects: 'Active Projects',
+    rename_project: 'Rename Project', edit_project: 'Edit Project', save: 'Save', project_renamed_success: 'Project updated successfully!',
     archive: 'Archive', archive_project: 'Archive Project', unarchive_project: 'Restore Project',
     install_app: 'Install App', start_tour: 'Start Tour', admin: 'Admin',
     create_folder: 'Create Folder', folder_name: 'Folder Name',
@@ -87,6 +88,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     active: 'Aktiv', archived: 'Archiviert', created_at: 'Erstellt am',
     finance: 'Finanzen', team: 'CRM & Team', agenda: 'Agenda', leads: 'Leads', proposals: 'Offerten & Links',
     delete_project: 'Projekt löschen', active_projects: 'Aktive Projekte',
+    rename_project: 'Projekt umbenennen', edit_project: 'Projekt bearbeiten', save: 'Speichern', project_renamed_success: 'Projekt erfolgreich aktualisiert!',
     archive: 'Archiv', archive_project: 'Projekt archivieren', unarchive_project: 'Wiederherstellen',
     install_app: 'App installieren', start_tour: 'Tour starten', admin: 'Admin',
     create_folder: 'Ordner erstellen', folder_name: 'Ordnername',
@@ -113,7 +115,7 @@ export default function CompanyDashboard() {
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT?.(key) || key;
   
   const { currentUser, logout = async () => {} } = useAuth() || {};
-  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject, updateProjectStatus, addProject, fetchProjects, refreshAllData } = useProject() as any;
+  const { projects = [], companyUsers = [], setActiveProject = () => {}, removeProject, updateProject, renameProject, updateProjectStatus, addProject, fetchProjects, refreshAllData } = useProject() as any;
   const navigate = useNavigate();
   
   const { startTour } = useTour();
@@ -305,6 +307,51 @@ export default function CompanyDashboard() {
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [collectedLeads, setCollectedLeads] = useState<any[]>([]);
+
+  // --- PROJEKT UMBENENNEN & BEARBEITEN ---
+  const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<any>(null);
+  const [editProjectName, setEditProjectName] = useState('');
+  const [editProjectDescription, setEditProjectDescription] = useState('');
+  const [isSavingEditProject, setIsSavingEditProject] = useState(false);
+
+  const handleOpenEditProject = (p: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setActiveDropdownId(null);
+    setProjectToEdit(p);
+    setEditProjectName(p.name || '');
+    setEditProjectDescription(p.description || '');
+    setIsEditProjectModalOpen(true);
+  };
+
+  const handleSaveEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!projectToEdit || !editProjectName.trim()) return;
+    setIsSavingEditProject(true);
+    try {
+      if (updateProject) {
+        await updateProject(projectToEdit.id, {
+          name: editProjectName.trim(),
+          description: editProjectDescription.trim()
+        });
+      } else {
+        await supabase.from('projects').update({
+          name: editProjectName.trim(),
+          description: editProjectDescription.trim()
+        }).eq('id', projectToEdit.id);
+        if (fetchProjects) await fetchProjects();
+      }
+      addToast(t('project_renamed_success'), 'success');
+      setIsEditProjectModalOpen(false);
+      setProjectToEdit(null);
+    } catch (error) {
+      console.error("Fehler beim Umbenennen des Projekts:", error);
+      addToast('Fehler beim Aktualisieren des Projekts.', 'error');
+    } finally {
+      setIsSavingEditProject(false);
+    }
+  };
+  // ---------------------------------------
   
   const [companyProfile, setCompanyProfile] = useState({ name: 'Kreativ-Desk OS', contactPerson: 'Max Mustermann', email: 'hello@kreativ-desk.com', phone: '+41 44 123 45 67', website: 'www.kreativ-desk.com', uid: 'CHE-123.456.789', vat: 'CHE-123.456.789 MWST', street: 'Bahnhofstrasse 1', zip: '8001', city: 'Zürich', description: 'Wir sind eine führende Agentur für Architektur und innovatives Spatial Design.', twoFactorEnabled: false });
   const [zapierWebhookUrl, setZapierWebhookUrl] = useState('');
@@ -912,6 +959,9 @@ export default function CompanyDashboard() {
                                 <button onClick={(e) => { e.stopPropagation(); setActiveDropdownId(activeDropdownId === p.id ? null : p.id); }} className="p-2 text-text-muted hover:text-text-primary hover:bg-background rounded-lg transition-colors"><MoreVertical size={16} /></button>
                                 {activeDropdownId === p.id && (
                                   <div className="absolute right-0 mt-1 w-48 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-[100] py-1">
+                                    <button onClick={(e) => handleOpenEditProject(p, e)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-text-primary hover:bg-white/5 flex items-center gap-2 transition-colors">
+                                      <Edit2 size={16} className="text-accent-ai" /> {t('rename_project')}
+                                    </button>
                                     
                                     <button onClick={(e) => handleArchiveProject(p.id, p.status, e)} className="w-full text-left px-4 py-2.5 text-sm font-bold text-text-primary hover:bg-white/5 flex items-center gap-2 transition-colors">
                                       {p.status === 'archived' ? <><RotateCcw size={16}/> {t('unarchive_project')}</> : <><Archive size={16}/> {t('archive_project')}</>}
@@ -925,7 +975,19 @@ export default function CompanyDashboard() {
                               </div>
                             )}
                           </div>
-                          <div className="flex-1"><h3 className="font-bold text-base md:text-lg text-text-primary mb-1 group-hover:text-accent-ai transition-colors line-clamp-2">{p.name}</h3><p className="text-text-muted text-xs md:text-sm line-clamp-2">{p.description || t('no_description')}</p></div>
+                          <div className="flex-1">
+                            <div className="flex items-start justify-between gap-1 group/title">
+                              <h3 className="font-bold text-base md:text-lg text-text-primary mb-1 group-hover:text-accent-ai transition-colors line-clamp-2">{p.name}</h3>
+                              <button 
+                                onClick={(e) => handleOpenEditProject(p, e)} 
+                                className="opacity-0 group-hover:opacity-100 p-1 text-text-muted hover:text-accent-ai rounded transition-opacity shrink-0" 
+                                title={t('rename_project')}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                            </div>
+                            <p className="text-text-muted text-xs md:text-sm line-clamp-2">{p.description || t('no_description')}</p>
+                          </div>
                           <div className="mt-4 pt-4 border-t border-border flex items-center justify-between shrink-0">
                             <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border", p.status === 'active' || !p.status || p.status === 'planning' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-zinc-500/10 text-zinc-400 border-zinc-500/20")}>{p.status === 'archived' ? t('archived') : t('active')}</span>
                             <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider">{t('created_at')}: {new Date(p.createdAt || p.created_at || Date.now()).toLocaleDateString('de-CH')}</span>
@@ -1065,6 +1127,48 @@ export default function CompanyDashboard() {
                <button type="button" onClick={() => setIsNewProjectModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
                <button type="submit" form="new-project-form" disabled={isSubmitting || !newProjectData.name} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {t('create_project')}
+               </button>
+             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* EDIT / RENAME PROJECT MODAL */}
+      {isMounted && isEditProjectModalOpen && createPortal(
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsEditProjectModalOpen(false)}>
+          <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
+             <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
+               <h3 className="font-bold flex items-center gap-2 text-text-primary text-lg"><Edit2 size={20} className="text-accent-ai" /> {t('rename_project')}</h3>
+               <button onClick={() => setIsEditProjectModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border"><X size={20}/></button>
+             </div>
+             <form id="edit-project-form" onSubmit={handleSaveEditProject} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
+               <div className="space-y-2">
+                 <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('project_name')} *</label>
+                 <input 
+                   type="text" 
+                   required 
+                   value={editProjectName} 
+                   onChange={e => setEditProjectName(e.target.value)} 
+                   className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none font-bold text-text-primary shadow-sm" 
+                   autoFocus 
+                   placeholder="z.B. Residenz am Park"
+                 />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('description')}</label>
+                 <textarea 
+                   value={editProjectDescription} 
+                   onChange={e => setEditProjectDescription(e.target.value)} 
+                   className="w-full bg-surface border border-border/50 rounded-lg px-4 py-3 text-sm focus:border-accent-ai outline-none resize-none h-28 text-text-primary font-medium shadow-sm custom-scrollbar" 
+                   placeholder="Projektbeschrieb, Eckdaten oder Notizen..."
+                 />
+               </div>
+             </form>
+             <div className="p-4 sm:p-6 border-t border-border/50 bg-surface/90 shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-3 pb-8 sm:pb-6">
+               <button type="button" onClick={() => setIsEditProjectModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
+               <button type="submit" form="edit-project-form" disabled={isSavingEditProject || !editProjectName.trim()} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
+                 {isSavingEditProject ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16} />} {t('save')}
                </button>
              </div>
           </div>

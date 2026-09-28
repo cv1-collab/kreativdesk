@@ -15,7 +15,7 @@ export interface ProposalAttachment {
   name: string;
   url: string;
   size?: string;
-  type: 'pdf' | 'plan' | 'image' | 'doc';
+  type: 'pdf' | 'plan' | 'image' | 'doc' | 'website';
 }
 
 export interface ProposalLegalDoc {
@@ -49,6 +49,8 @@ export interface SmartProposal {
   introText?: string;
   heroVideoUrl?: string;
   heroImageUrl?: string;
+  websiteUrl?: string;
+  mediaType?: 'video' | 'image' | 'pdf' | 'website';
   basePrice: number;
   currency: string;
   options: ProposalConfigOption[];
@@ -87,7 +89,7 @@ const STORAGE_KEY = 'kreativdesk_smart_proposals_v1';
 /**
  * Holt alle Proposals für ein Unternehmen (Mandantentrennung gewährleistet, optional projektspezifisch)
  */
-export async function getCompanyProposals(companyId: string, projectId?: string): Promise<SmartProposal[]> {
+export async function getCompanyProposals(companyId: string, projectId?: string, ownerId?: string): Promise<SmartProposal[]> {
   // Purge obsolete local dummy proposals like "Siemens History Wall"
   try {
     const rawLocal = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
@@ -97,38 +99,66 @@ export async function getCompanyProposals(companyId: string, projectId?: string)
     }
   } catch (_) {}
 
-  if (!companyId || companyId === 'default-company') {
-    return [];
-  }
+  let dbProposals: SmartProposal[] = [];
 
   try {
     if (supabase) {
-      let query = supabase
-        .from('smart_proposals')
-        .select('*')
-        .or(`company_id.eq.${companyId},owner_id.eq.${companyId}`);
+      let query = supabase.from('smart_proposals').select('*');
 
-      if (projectId) {
+      const conditions: string[] = [];
+      if (companyId && companyId !== 'default-company') {
+        conditions.push(`company_id.eq.${companyId}`);
+        conditions.push(`owner_id.eq.${companyId}`);
+      }
+      if (ownerId && ownerId !== companyId && ownerId !== 'default-user') {
+        conditions.push(`owner_id.eq.${ownerId}`);
+        conditions.push(`company_id.eq.${ownerId}`);
+      }
+
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
+      }
+
+      if (projectId && projectId !== 'global') {
         query = query.eq('project_id', projectId);
       }
+
       const { data, error } = await query.order('created_at', { ascending: false });
 
-
-      if (!error && data) {
-        return data.map(mapDbToProposal);
+      if (!error && data && data.length > 0) {
+        dbProposals = data.map(mapDbToProposal);
       }
     }
   } catch (e) {
-    console.warn('Supabase fetch proposals error, fallback to local storage', e);
+    console.warn('Supabase fetch proposals error, checking local storage', e);
   }
 
-  // LocalStorage Fallback (Filter by companyId or ownerId and optional projectId)
-  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
-  return all.filter(p => {
-    const matchComp = p.companyId === companyId || p.ownerId === companyId || !companyId || p.companyId === 'default-company';
-    const matchProj = !projectId || p.projectId === projectId;
-    const isNotSiemens = !p.title?.toLowerCase().includes('siemens');
-    return matchComp && matchProj && isNotSiemens;
+  // LocalStorage Fallback & Sync: Sicherstellen, dass lokale Entwürfe nicht verloren gehen
+  const localList = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []).filter(p => !p.title?.toLowerCase().includes('siemens'));
+
+  if (dbProposals.length > 0) {
+    const mergedMap = new Map<string, SmartProposal>();
+    dbProposals.forEach(p => mergedMap.set(p.id, p));
+    localList.forEach(p => {
+      const matchComp = !companyId || companyId === 'default-company' ||
+        p.companyId === companyId || p.ownerId === companyId ||
+        (ownerId && (p.ownerId === ownerId || p.companyId === ownerId));
+      const matchProj = !projectId || projectId === 'global' || p.projectId === projectId;
+      if (!mergedMap.has(p.id) && matchComp && matchProj) {
+        mergedMap.set(p.id, p);
+      }
+    });
+    const result = Array.from(mergedMap.values());
+    safeStorage.setItem(STORAGE_KEY, result);
+    return result;
+  }
+
+  return localList.filter(p => {
+    const matchComp = !companyId || companyId === 'default-company' ||
+      p.companyId === companyId || p.ownerId === companyId ||
+      (ownerId && (p.ownerId === ownerId || p.companyId === ownerId));
+    const matchProj = !projectId || projectId === 'global' || p.projectId === projectId;
+    return matchComp && matchProj;
   });
 }
 
@@ -163,6 +193,13 @@ export async function getProposalByShareToken(shareToken: string): Promise<Smart
     } as SmartProposal;
   }
 
+  // Local storage lookup by shareToken
+  const all = safeStorage.getItem<SmartProposal[]>(STORAGE_KEY, []);
+  const found = all.find(p => p.shareToken === shareToken);
+  if (found) {
+    return found;
+  }
+
   return null;
 }
 
@@ -174,6 +211,11 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
   const expiresAt = proposal.expiresAt || new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
   
   const token = proposal.shareToken || `${proposal.projectId.replace(/[^a-zA-Z0-9]/g, '-')}-${Math.random().toString(36).substring(2, 7)}`;
+
+  const effectiveMediaType: 'video' | 'image' | 'pdf' | 'website' = proposal.mediaType || 
+    (proposal.websiteUrl ? 'website' : 
+    (proposal.heroImageUrl?.toLowerCase().includes('.pdf') ? 'pdf' : 
+    (proposal.heroImageUrl ? 'image' : 'video')));
 
   const fullProposal: SmartProposal = {
     id: proposal.id || `prop_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
@@ -187,8 +229,10 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
     clientEmail: proposal.clientEmail || '',
     clientPhone: proposal.clientPhone || '',
     introText: proposal.introText || 'Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.',
-    heroVideoUrl: proposal.heroVideoUrl || '',
+    heroVideoUrl: effectiveMediaType === 'website' ? (proposal.websiteUrl || '') : (proposal.heroVideoUrl || ''),
     heroImageUrl: proposal.heroImageUrl || '',
+    websiteUrl: proposal.websiteUrl || (effectiveMediaType === 'website' ? proposal.heroVideoUrl : undefined),
+    mediaType: effectiveMediaType,
     basePrice: proposal.basePrice || 0,
     currency: proposal.currency || 'CHF',
     options: proposal.options || [],
@@ -209,10 +253,15 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
     acceptedBy: proposal.acceptedBy
   };
 
-  // 1. In Supabase speichern
+  // 1. In Supabase speichern mit schema-konformen Spalten
   try {
     if (supabase) {
-      const dbPayload = {
+      // Encode colorMode in theme_style to ensure compatibility without requiring schema alter
+      const encodedThemeStyle = fullProposal.colorMode 
+        ? `${fullProposal.themeStyle || 'scenography'}__mode__${fullProposal.colorMode}`
+        : (fullProposal.themeStyle || 'scenography');
+
+      const dbPayload: Record<string, any> = {
         id: fullProposal.id,
         project_id: fullProposal.projectId,
         company_id: fullProposal.companyId,
@@ -224,17 +273,16 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
         client_email: fullProposal.clientEmail,
         client_phone: fullProposal.clientPhone,
         intro_text: fullProposal.introText,
-        hero_video_url: fullProposal.heroVideoUrl,
-        hero_image_url: fullProposal.heroImageUrl,
+        hero_video_url: fullProposal.heroVideoUrl || fullProposal.websiteUrl || '',
+        hero_image_url: fullProposal.heroImageUrl || '',
         base_price: fullProposal.basePrice,
         currency: fullProposal.currency,
         options: fullProposal.options,
         attachments: fullProposal.attachments,
         legal_documents: fullProposal.legalDocuments,
         payment_milestones: fullProposal.paymentMilestones,
-        theme_style: fullProposal.themeStyle,
+        theme_style: encodedThemeStyle,
         theme_color: fullProposal.themeColor,
-        color_mode: fullProposal.colorMode,
         slides: fullProposal.slides,
         status: fullProposal.status,
         expires_at: fullProposal.expiresAt,
@@ -246,7 +294,10 @@ export async function saveSmartProposal(proposal: Partial<SmartProposal> & { pro
         accepted_by: fullProposal.acceptedBy
       };
 
-      await (supabase.from('smart_proposals') as any).upsert(dbPayload);
+      const { error: upsertErr } = await (supabase.from('smart_proposals') as any).upsert(dbPayload);
+      if (upsertErr) {
+        console.warn('Supabase upsert proposal warning:', upsertErr);
+      }
     }
   } catch (e) {
     console.warn('Supabase upsert proposal warning:', e);
@@ -420,6 +471,35 @@ function saveProposalLocally(proposal: SmartProposal) {
 }
 
 function mapDbToProposal(d: any): SmartProposal {
+  const rawThemeStyle = d.theme_style || d.themeStyle || 'scenography';
+  let themeStyle: any = rawThemeStyle;
+  let parsedColorMode: 'dark' | 'light' | 'auto' = 'dark';
+
+  if (typeof rawThemeStyle === 'string' && rawThemeStyle.includes('__mode__')) {
+    const parts = rawThemeStyle.split('__mode__');
+    themeStyle = parts[0];
+    parsedColorMode = (parts[1] as any) || 'dark';
+  } else if (d.color_mode || d.colorMode) {
+    parsedColorMode = (d.color_mode || d.colorMode) as any;
+  }
+
+  const rawAttachments = Array.isArray(d.attachments) ? d.attachments : [];
+  const webAttachment = rawAttachments.find((a: any) => a.type === 'website');
+  const isDirectWebUrl = typeof d.hero_video_url === 'string' && 
+    (d.hero_video_url.startsWith('http://') || d.hero_video_url.startsWith('https://')) &&
+    !d.hero_video_url.match(/\.(mp4|webm|mov|ogg|m4v)($|\?)/i);
+
+  const websiteUrl = d.website_url || d.websiteUrl || webAttachment?.url || (isDirectWebUrl ? d.hero_video_url : undefined);
+
+  let mediaType: 'video' | 'image' | 'pdf' | 'website' = d.media_type || d.mediaType || 'video';
+  if (websiteUrl || webAttachment || isDirectWebUrl) {
+    mediaType = 'website';
+  } else if (d.hero_image_url && (d.hero_image_url.toLowerCase().includes('.pdf') || rawAttachments.some((a: any) => a.type === 'pdf'))) {
+    mediaType = 'pdf';
+  } else if (d.hero_image_url && !d.hero_video_url) {
+    mediaType = 'image';
+  }
+
   return {
     id: d.id,
     projectId: d.project_id || d.projectId,
@@ -432,17 +512,19 @@ function mapDbToProposal(d: any): SmartProposal {
     clientEmail: d.client_email || d.clientEmail,
     clientPhone: d.client_phone || d.clientPhone,
     introText: d.intro_text || d.introText,
-    heroVideoUrl: d.hero_video_url || d.heroVideoUrl,
+    heroVideoUrl: mediaType === 'website' ? '' : (d.hero_video_url || d.heroVideoUrl),
     heroImageUrl: d.hero_image_url || d.heroImageUrl,
+    websiteUrl,
+    mediaType,
     basePrice: Number(d.base_price || d.basePrice || 0),
     currency: d.currency || 'CHF',
     options: Array.isArray(d.options) ? d.options : [],
-    attachments: Array.isArray(d.attachments) ? d.attachments : [],
+    attachments: rawAttachments,
     legalDocuments: Array.isArray(d.legal_documents || d.legalDocuments) ? (d.legal_documents || d.legalDocuments) : [],
     paymentMilestones: Array.isArray(d.payment_milestones || d.paymentMilestones) ? (d.payment_milestones || d.paymentMilestones) : [],
-    themeStyle: d.theme_style || d.themeStyle || 'scenography',
+    themeStyle,
     themeColor: d.theme_color || d.themeColor || '#3b82f6',
-    colorMode: (d.color_mode || d.colorMode || 'dark') as 'dark' | 'light' | 'auto',
+    colorMode: parsedColorMode,
     slides: Array.isArray(d.slides) ? d.slides : [],
     status: d.status || 'active',
     expiresAt: d.expires_at || d.expiresAt,

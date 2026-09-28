@@ -16,7 +16,7 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -326,8 +326,9 @@ export default function PitchDeckStudio({
   const [proposalClientEmail, setProposalClientEmail] = useState('');
   const [proposalClientPhone, setProposalClientPhone] = useState('');
   const [proposalIntroText, setProposalIntroText] = useState('Vielen Dank für das Vertrauen in unser Team. Nachfolgend präsentieren wir Ihnen das massgeschneiderte Konzept, alle Projekt-Videos, Meilensteine und die verbindliche Kostenaufstellung.');
-  const [proposalMediaType, setProposalMediaType] = useState<'video' | 'image' | 'pdf'>('video');
+  const [proposalMediaType, setProposalMediaType] = useState<'video' | 'image' | 'pdf' | 'website'>('video');
   const [proposalHeroVideoUrl, setProposalHeroVideoUrl] = useState('');
+  const [proposalWebsiteUrl, setProposalWebsiteUrl] = useState('');
   const [proposalHeroImageUrl, setProposalHeroImageUrl] = useState('');
   const [proposalHeroPdfUrl, setProposalHeroPdfUrl] = useState('');
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
@@ -4897,7 +4898,7 @@ export default function PitchDeckStudio({
                 e.preventDefault();
                 setIsPublishingProposal(true);
 
-                const heroVideo = proposalMediaType === 'video' ? proposalHeroVideoUrl.trim() : '';
+                const heroVideo = proposalMediaType === 'video' ? proposalHeroVideoUrl.trim() : (proposalMediaType === 'website' ? proposalWebsiteUrl.trim() : '');
                 const heroImage = proposalMediaType === 'image' ? proposalHeroImageUrl.trim() : (proposalMediaType === 'pdf' ? proposalHeroPdfUrl.trim() : '');
 
                 const mergedAttachments = [
@@ -4907,12 +4908,19 @@ export default function PitchDeckStudio({
                     url: proposalHeroPdfUrl.trim(),
                     type: 'pdf' as const,
                     size: 'PDF'
+                  }] : []),
+                  ...(proposalMediaType === 'website' && proposalWebsiteUrl ? [{
+                    id: `web-${Date.now()}`,
+                    name: 'Live Webseiten-Vorschau (30 Tage)',
+                    url: proposalWebsiteUrl.trim(),
+                    type: 'website' as const,
+                    size: 'Live URL'
                   }] : [])
                 ];
 
                 const proposalData = await saveSmartProposal({
                   projectId: targetId,
-                  companyId: currentUser?.companyId || currentUser?.uid || 'company-default',
+                  companyId: currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid || 'company-default',
                   ownerId: currentUser?.uid || 'user',
                   title: proposalTitle.trim() || activeProject?.name || 'Projekt-Präsentation',
                   clientName: proposalClientName.trim() || 'Sehr geehrte Damen und Herren',
@@ -4922,6 +4930,8 @@ export default function PitchDeckStudio({
                   introText: proposalIntroText.trim(),
                   heroVideoUrl: heroVideo,
                   heroImageUrl: heroImage,
+                  websiteUrl: proposalMediaType === 'website' ? proposalWebsiteUrl.trim() : undefined,
+                  mediaType: proposalMediaType,
                   attachments: mergedAttachments,
                   basePrice: Number(proposalBasePrice) || 0,
                   currency: proposalCurrency,
@@ -5075,6 +5085,17 @@ export default function PitchDeckStudio({
                             <FileText size={11} />
                             <span>PDF Exposé</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => setProposalMediaType('website')}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer",
+                              proposalMediaType === 'website' ? "bg-blue-600 text-white shadow-sm" : "text-text-muted hover:text-text-primary"
+                            )}
+                          >
+                            <Globe size={11} />
+                            <span>Webseite</span>
+                          </button>
                         </div>
                       </div>
 
@@ -5180,6 +5201,45 @@ export default function PitchDeckStudio({
                               </button>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* 4. WENN WEBSEITE */}
+                      {proposalMediaType === 'website' && (
+                        <div className="space-y-3">
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[11px] font-semibold text-text-muted">Webseiten-URL (Live Staging, Prototyp oder 3D Viewer)</span>
+                              {proposalWebsiteUrl && (
+                                <a 
+                                  href={proposalWebsiteUrl.startsWith('http') ? proposalWebsiteUrl : `https://${proposalWebsiteUrl}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[11px] text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1 cursor-pointer"
+                                >
+                                  <ExternalLink size={12} />
+                                  <span>Link testen</span>
+                                </a>
+                              )}
+                            </div>
+                            <input 
+                              type="text" 
+                              required={proposalMediaType === 'website'}
+                              placeholder="https://ihre-website.ch oder Staging-URL"
+                              value={proposalWebsiteUrl}
+                              onChange={e => setProposalWebsiteUrl(e.target.value)}
+                              className="w-full px-3.5 py-2.5 bg-background border border-border rounded-xl text-xs font-medium text-text-primary outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs flex items-start gap-2.5">
+                            <Globe size={16} className="shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="font-semibold text-text-primary">Interaktive 30-Tage Webseiten-Vorschau</p>
+                              <p className="text-[11px] text-text-muted leading-relaxed">
+                                Ihr Kunde kann die Webseite direkt auf der Smart Landingpage im Desktop-, Tablet- und Smartphone-Format interaktiv bedienen und digital freigeben.
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
