@@ -5,7 +5,18 @@
 
 ---
 
-## 🏆 Erfolgsliste von heute (25. September 2026)
+## 🏆 Erfolgsliste von heute (28. September 2026)
+
+### 0. Interaktive Webseiten-Vorschau in Smart Offerten & Schritt-für-Schritt Integration
+* **Iframe-Höhenkollaps behoben:** Webseiten-Vorschau im Browser-Mockup auf eine grosszügige Rahmenhöhe (`h-[640px] sm:h-[760px] min-h-[580px]`) fixiert. Kein Zusammenstauchen mehr auf 180px.
+* **Direkter HTML-Entwurf Upload in Supabase Cloud:** Neuer Upload-Button (`.html`) im Modal. HTML-Entwürfe werden automatisiert in Supabase Storage (`documents/websites/`) abgelegt und mit einer weltweiten HTTPS-URL versorgt.
+* **Intelligente Localhost-Erkennung:** Erkennt automatisch, wenn Entwickler-Adressen wie `localhost:3000` eingegeben werden, und weist freundlich auf die Notwendigkeit einer öffentlichen URL hin.
+* **Harmonisierung der Typografie:** Sämtliche Monospace-/Schreibmaschinen-Schriften («Roboter-Schriften») im Erfolgsdialog und in der Adressleiste durch die moderne Corporate-Schriftart **Inter** (`font-sans`) ersetzt. Globales Formular-Styling in `src/index.css` verankert.
+* **Schritt-für-Schritt Anleitung im System integriert:** Im Eingabemodal des PitchDeckStudio kann nun per Klick eine interaktive 3-Schritte-Anleitung für die 3 typischen Workflows (Webflow/Framer, HTML-Upload, Eigener Code / Netlify / Vercel) aufgerufen werden.
+
+---
+
+## 🏆 Erfolgsliste (25. September 2026)
 
 ### 1. Konsolidierung auf Option B (Kreativ Desk OS Layout als Hauptstandard)
 * **Einheitliches OS-Layout:** Das **Company Dashboard** (`/app`) und das **Admin Dashboard** (`/admin`) nutzen das bewährte, professionelle Kreativ Desk OS Layout (mit linker Sidebar, Workspace-Navigation und Mandantenverwaltung).

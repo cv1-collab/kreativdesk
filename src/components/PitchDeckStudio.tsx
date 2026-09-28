@@ -16,7 +16,7 @@ import {
   Layers, PaintBucket, DownloadCloud, ZoomIn, ZoomOut, Minus, FileText, FileEdit, Upload, ChevronLeft, ChevronRight, Play, Clock,
   Copy, Zap, Check, Edit3, Wand2, Compass, Layers3, Flame, Building2, Trees, Tag, StickyNote, Circle, RotateCcw,
   Sun, Moon, Sliders, Type as TypeIcon, AlignLeft, AlignCenter, AlignRight, ArrowRight,
-  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle
+  Video as VideoIcon, Globe, MessageSquare, CheckCircle2, ShieldCheck, Share2, PlusCircle, ExternalLink, AlertCircle, HelpCircle
 } from 'lucide-react';
 import { exportDeckToPptx } from '../utils/pptxExportHelper';
 import { jsPDF } from 'jspdf';
@@ -333,6 +333,7 @@ export default function PitchDeckStudio({
   const [proposalHeroPdfUrl, setProposalHeroPdfUrl] = useState('');
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [isUploadingWebsite, setIsUploadingWebsite] = useState(false);
+  const [showWebsiteGuide, setShowWebsiteGuide] = useState(false);
   const [proposalBasePrice, setProposalBasePrice] = useState<number>(45000);
   const [proposalCurrency, setProposalCurrency] = useState('CHF');
   const [proposalExpiryDays, setProposalExpiryDays] = useState(30); // 30 Tage Standard gemäss Kundenwunsch
@@ -5264,6 +5265,66 @@ export default function PitchDeckStudio({
                               </p>
                             </div>
                           )}
+
+                          {/* INTERAKTIVE SCHRITT-FÜR-SCHRITT ANLEITUNG */}
+                          <div className="rounded-2xl border border-blue-500/25 bg-blue-500/5 p-3.5 space-y-2.5 transition-all">
+                            <button
+                              type="button"
+                              onClick={() => setShowWebsiteGuide(!showWebsiteGuide)}
+                              className="w-full flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors cursor-pointer"
+                            >
+                              <span className="flex items-center gap-2">
+                                <HelpCircle size={15} className="text-blue-500 shrink-0" />
+                                <span>Schritt-für-Schritt Anleitung: Wie erstelle ich den Webseiten-Link?</span>
+                              </span>
+                              <ChevronDown size={14} className={cn("transition-transform duration-200 shrink-0", showWebsiteGuide && "rotate-180")} />
+                            </button>
+
+                            {showWebsiteGuide && (
+                              <div className="pt-2.5 border-t border-blue-500/15 space-y-3.5 text-xs text-text-primary">
+                                <div className="space-y-1.5">
+                                  <div className="font-bold flex items-center gap-2 text-text-primary">
+                                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                                    <span>Wählen Sie Ihre Ausgangslage:</span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pl-7 pt-1 text-[11px]">
+                                    <div className="p-2.5 bg-surface rounded-xl border border-border space-y-1">
+                                      <strong className="text-blue-500 dark:text-blue-400 block font-bold">A. Webflow, Framer, Wix</strong>
+                                      <p className="text-text-muted leading-relaxed">Kopieren Sie einfach den kostenlosen Vorschau-/Staging-Link direkt aus Ihrem Tool (z. B. <code>entwurf.webflow.io</code>).</p>
+                                    </div>
+                                    <div className="p-2.5 bg-surface rounded-xl border border-border space-y-1">
+                                      <strong className="text-emerald-500 dark:text-emerald-400 block font-bold">B. Fertige HTML-Datei</strong>
+                                      <p className="text-text-muted leading-relaxed">Klicken Sie oben auf <strong>«HTML-Entwurf hochladen»</strong>. Supabase speichert die Datei & generiert die URL automatisch.</p>
+                                    </div>
+                                    <div className="p-2.5 bg-surface rounded-xl border border-border space-y-1">
+                                      <strong className="text-purple-500 dark:text-purple-400 block font-bold">C. Eigener Code (React/Vite)</strong>
+                                      <p className="text-text-muted leading-relaxed">Im Terminal <code>npm run build</code> ausführen & Ordner <code>dist</code> auf <strong>app.netlify.com/drop</strong> ziehen (oder Vercel).</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <div className="font-bold flex items-center gap-2 text-text-primary">
+                                    <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                                    <span>Webseiten-Link oben einfügen & testen:</span>
+                                  </div>
+                                  <p className="text-[11px] text-text-muted pl-7 leading-relaxed">
+                                    Fügen Sie die Web-Adresse mit <code>https://</code> oben in das Feld ein und klicken Sie auf <strong>«Link testen»</strong>, um die Erreichbarkeit zu prüfen.
+                                  </p>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <div className="font-bold flex items-center gap-2 text-text-primary">
+                                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                                    <span>Offerte veröffentlichen & Link an Kunden senden:</span>
+                                  </div>
+                                  <p className="text-[11px] text-text-muted pl-7 leading-relaxed">
+                                    Klicken Sie unten auf <strong>«Kunden-Landingpage veröffentlichen»</strong>. Ihr Kunde kann die Webseite ab sofort auf Smartphone, Tablet und PC interaktiv bedienen – 100% ohne Download!
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
 
                           <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs flex items-start gap-2.5">
                             <Globe size={16} className="shrink-0 mt-0.5" />
