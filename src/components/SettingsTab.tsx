@@ -21,6 +21,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { checkIsSuperAdmin } from '../config/admins';
 import { syncCompanySeats } from '../services/userService';
 import API from './API';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -812,31 +813,34 @@ export default function SettingsTab() {
     <div className="space-y-6 animate-in fade-in duration-300 pb-24">
       {/* Tab Leiste nur für Inhaber / Firmen-Admins */}
       {isCompanyAdmin && (
-        <div className="flex items-center gap-2 border-b border-border/50 pb-4">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('general')}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
-              activeSubTab === 'general'
-                ? "bg-accent-ai text-white border-accent-ai shadow-md"
-                : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
-            )}
-          >
-            <Building2 size={15} /> {t('general_settings')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('api')}
-            className={cn(
-              "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
-              activeSubTab === 'api'
-                ? "bg-accent-ai text-white border-accent-ai shadow-md"
-                : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
-            )}
-          >
-            <Terminal size={15} /> {t('webhooks_api_keys')}
-          </button>
+        <div className="flex items-center justify-between border-b border-border/50 pb-4">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('general')}
+              className={cn(
+                "px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
+                activeSubTab === 'general'
+                  ? "bg-accent-ai text-white border-accent-ai shadow-md"
+                  : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
+              )}
+            >
+              <Building2 size={15} /> {t('general_settings')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('api')}
+              className={cn(
+                "tour-settings-api px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer border",
+                activeSubTab === 'api'
+                  ? "bg-accent-ai text-white border-accent-ai shadow-md"
+                  : "bg-surface text-text-muted border-border hover:bg-white/5 hover:text-text-primary"
+              )}
+            >
+              <Terminal size={15} /> {t('webhooks_api_keys')}
+            </button>
+          </div>
+          <ModuleGuideButton moduleId="settings" />
         </div>
       )}
 
@@ -850,7 +854,7 @@ export default function SettingsTab() {
         
         {/* RECHTE SPALTE (2/3) - PROFIL & EINSTELLUNGEN */}
         <div className="xl:col-span-2 space-y-6">
-          <form onSubmit={handleSaveSettings} className="bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
+          <form onSubmit={handleSaveSettings} className="tour-settings-profile bg-surface border border-border/50 rounded-2xl p-6 shadow-sm space-y-6">
             <h3 className="text-sm font-semibold text-text-muted uppercase tracking-widest flex items-center gap-2 pb-4 border-b border-border/50">
               <Building2 size={16} /> {t('agency_profile')}
             </h3>
@@ -1175,7 +1179,7 @@ export default function SettingsTab() {
 
         {/* LINKE SPALTE (1/3) - STRIPE SUBSCRIPTION ABRECHNUNG */}
         <div className="space-y-6">
-          <div className="bg-surface border border-border rounded-xl p-5 md:p-6 flex flex-col relative shadow-[0_0_30px_rgba(16,185,129,0.1)]">
+          <div className="tour-settings-billing bg-surface border border-border rounded-xl p-5 md:p-6 flex flex-col relative shadow-[0_0_30px_rgba(16,185,129,0.1)]">
             <div className="absolute -top-3 right-4 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest">
               {t('saas_engine')}
             </div>

@@ -1237,8 +1237,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           <p className="text-sm text-text-muted mt-1 font-medium">{t('agenda_desc')}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          <ModuleGuideButton moduleId="calendar" />
+        <div className="tour-agenda-actions flex flex-wrap gap-2 items-center">
+          <ModuleGuideButton moduleId="agenda" />
           <button onClick={handleExportICal} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
             <Download size={14} /> iCal Export (.ics)
           </button>
@@ -1257,7 +1257,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
       </div>
 
       {/* QUICK FILTER BAR */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface border border-border/50 p-3 rounded-2xl shadow-sm">
+      <div className="tour-agenda-filters flex flex-wrap items-center justify-between gap-3 bg-surface border border-border/50 p-3 rounded-2xl shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-text-muted flex items-center gap-1.5 mr-2">
             <Filter size={14} /> Quick-Filter:
@@ -1293,7 +1293,7 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
         {/* LINKE SPALTE (1/3): ZEITERFASSUNG */}
         {canWriteTimeAndEvents && (
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <div className="bg-surface border border-border/50 rounded-xl p-6 shadow-sm h-fit">
+            <div className="tour-agenda-timetracking bg-surface border border-border/50 rounded-xl p-6 shadow-sm h-fit">
               <div className="flex items-center justify-between mb-4"><h3 className="font-semibold flex items-center gap-2 text-text-primary"><Clock size={18} className="text-accent-ai" /> {t('book_time')}</h3></div>
 
               <div className="flex p-1 bg-background border border-border/50 rounded-lg mb-5">

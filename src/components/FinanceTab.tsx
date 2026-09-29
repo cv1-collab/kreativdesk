@@ -493,7 +493,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
             </select>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+        <div className="tour-company-finance-actions flex flex-wrap items-center gap-3 w-full lg:w-auto">
           <ModuleGuideButton moduleId="finance" />
           <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-2"><FileSignature size={16} /> {t('new_quote')}</button>
           <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"><FileText size={16} /> {t('new_invoice')}</button>
@@ -502,7 +502,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="tour-company-finance-kpis grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg"><FileSignature size={18} /></div><h3 className="font-semibold text-sm">{t('open_quotes')}</h3></div><p className="text-2xl font-bold">{quotes.filter(tx => tx.status !== 'Approved' && tx.status !== 'Angenommen' && tx.status !== 'Bezahlt').length}</p></div>
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"><TrendingUp size={18} /></div><h3 className="font-semibold text-sm">{t('invoices_total')}</h3></div><p className="text-2xl font-bold">CHF {totalRevenue.toLocaleString('de-CH')}</p></div>
         <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm"><div className="flex items-center gap-3 mb-2"><div className="p-1.5 bg-orange-500/10 text-orange-500 rounded-lg"><Receipt size={18} /></div><h3 className="font-semibold text-sm">{t('expenses_team')}</h3></div><p className="text-2xl font-bold">CHF {totalSpesen.toLocaleString('de-CH')}</p></div>
@@ -510,7 +510,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
       </div>
 
       {/* PROJECT BUDGETS OVERVIEW */}
-      <div className="bg-surface border border-border/50 p-5 rounded-2xl shadow-sm">
+      <div className="tour-company-finance-budgets bg-surface border border-border/50 p-5 rounded-2xl shadow-sm">
         <h3 className="font-bold flex items-center gap-2 mb-4"><Briefcase size={16} className="text-indigo-500" /> Projekt Budgets (Übersicht)</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -552,7 +552,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
       </div>
 
       {/* SEARCH, FILTER & INTERACTIVE ACTION BAR */}
-      <div className="bg-surface border border-border/50 rounded-2xl p-4 shadow-sm space-y-4">
+      <div className="tour-company-finance-table bg-surface border border-border/50 rounded-2xl p-4 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           {/* SEARCH INPUT */}
           <div className="relative flex-1">

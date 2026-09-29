@@ -331,11 +331,11 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
         </div>
 
         <div className="flex items-center gap-3">
-          <ModuleGuideButton moduleId="pitch" />
+          <ModuleGuideButton moduleId="proposals" />
           {proposals.length > 0 && (
             <button
               onClick={handleTriggerCreate}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
+              className="tour-proposals-new px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <Plus size={16} /> {t('btn_create_new')}
             </button>
@@ -344,7 +344,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
       </div>
 
       {/* KPI METRICS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="tour-proposals-kpis grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-5 rounded-2xl border border-border bg-surface shadow-sm flex items-center justify-between">
           <div>
             <div className="text-xs font-semibold uppercase text-text-muted">{t('stat_active_links')}</div>
@@ -391,7 +391,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
       </div>
 
       {/* SEARCH & FILTERS */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+      <div className="tour-proposals-table flex flex-wrap items-center justify-between gap-4 pt-2">
         <div className="flex items-center gap-2 bg-surface border border-border rounded-xl px-3.5 py-2 w-full max-w-sm">
           <Search size={16} className="text-text-muted shrink-0" />
           <input

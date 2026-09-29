@@ -8,6 +8,7 @@ import {
   Download, Filter, Code, ChevronDown, ChevronUp, Bell, FolderGit2, Users
 } from 'lucide-react';
 import { cn } from '../utils';
+import ModuleGuideButton from './ModuleGuideButton';
 
 interface ParsedDetails {
   title: string | null;
@@ -257,11 +258,12 @@ export default function AuditLogsTab() {
               />
             </div>
 
-            {/* CSV Export Button */}
+            {/* Guide Button & CSV Export */}
+            <ModuleGuideButton moduleId="audit" />
             <button
               onClick={handleExportCSV}
               disabled={filteredLogs.length === 0}
-              className="px-3.5 py-2 bg-background hover:bg-surface border border-border hover:border-sky-500/50 rounded-xl text-xs font-semibold text-text-primary flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+              className="tour-audit-export px-3.5 py-2 bg-background hover:bg-surface border border-border hover:border-sky-500/50 rounded-xl text-xs font-semibold text-text-primary flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
               title="Audit-Protokoll als CSV exportieren"
             >
               <Download size={14} className="text-sky-500" />
@@ -271,7 +273,7 @@ export default function AuditLogsTab() {
         </div>
 
         {/* Filter Tabs / Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+        <div className="tour-audit-filters flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
           <button
             onClick={() => setActiveCategory('all')}
             className={cn(
@@ -368,7 +370,7 @@ export default function AuditLogsTab() {
         </div>
 
         {/* Logs Listing */}
-        <div className="space-y-3">
+        <div className="tour-audit-table space-y-3">
           {loading ? (
             <div className="text-center py-12 text-text-muted font-medium text-sm">
               {language === 'de' ? 'Lade Audit-Logs...' : 'Loading audit logs...'}

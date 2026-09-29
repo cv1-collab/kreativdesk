@@ -5,7 +5,22 @@
 
 ---
 
-## 🏆 Erfolgsliste von heute (28. September 2026)
+## 🏆 Erfolgsliste von heute (29. September 2026)
+
+### 0. Lückenlose Systemprüfung & Behebung sämtlicher Modul-Guides & Produkt-Touren (100% Abdeckung)
+* **Systemweiter Modul-Guide Audit:** Sämtliche Module im Company Dashboard (`/app`) und im Projekt-Workspace (`/project/:id`) wurden systematisch überprüft.
+* **Keine abgeschnittenen Popovers mehr:** Popover-Breite (`max-w-[min(420px,calc(100vw-32px))]`) und Höhe (`max-h-[min(520px,calc(100vh-48px))]`) dynamisch limitiert mit automatischem internen Scrollbalken (`overflow-y-auto`). Kein Text oder Button wird mehr am Bildschirmrand abgeschnitten.
+* **Dynamische Kollisionsvermeidung & Intelligenter Flip:** Über Floating-UI und dynamische Vorberechnung (`spaceBelow < 420 && spaceAbove > spaceBelow ? 'top' : 'bottom'`) weicht das Guide-Fenster automatisch nach oben oder zur Seite aus, wenn nach unten zu wenig Platz ist.
+* **Sticky-Header Kollisionsschutz & Sanftes Auto-Scroll:** Header-Leisten werden beim Zielen ignoriert. Bei Zielen, die unter den Sticky-Header rutschen (`rect.top < 90px`), scrollt das System das Element automatisch um 120px ins freie Sichtfeld.
+* **Kontextbezogene BKP-Trennung:** Firmen-Finanzen (Erfolgsrechnung, Spesen, Cashflow) und Projekt-Finanzen (Schweizer BKP 1–9 Kostenplan) sind im Tour-Text und in den Zielen strikt getrennt – keine Begriffsverwirrung mehr.
+* **Alle Module mit dediziertem Guide ausgestattet:**
+  * Company Hub: `projects` (Neu hinzugefügt), `audit` (Neu hinzugefügt), `settings` (Neu hinzugefügt), `proposals`, `leads`, `finance`, `team`, `agenda`, `templates`, `documents`, `meet`.
+  * Projekt-Workspace: `overview`, `finance` (BKP 1–9), `calendar` (Gantt), `bim`, `plans` (2D CAD), `defects`, `camera` (Baustellen-Kamera), `whiteboard`, `meet`, `documents`, `pitch`, `team`.
+* **TypeScript & Build:** 0 Fehler (`tsc --noEmit`), saubere Ausführung auf allen Viewports.
+
+---
+
+## 🏆 Erfolgsliste (28. September 2026)
 
 ### 0. Interaktive Webseiten-Vorschau in Smart Offerten & Schritt-für-Schritt Integration
 * **Iframe-Höhenkollaps behoben:** Webseiten-Vorschau im Browser-Mockup auf eine grosszügige Rahmenhöhe (`h-[640px] sm:h-[760px] min-h-[580px]`) fixiert. Kein Zusammenstauchen mehr auf 180px.

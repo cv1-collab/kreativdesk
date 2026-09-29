@@ -1366,7 +1366,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           {/* Visitenkarte KI Scanner Button */}
           <button 
             onClick={() => setIsScannerModalOpen(true)} 
-            className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            className="tour-crm-scanner px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
             title="Visitenkarte scannen & per KI auslesen"
           >
             <Camera size={16} /> <span>Visitenkarte scannen</span>
@@ -1375,7 +1375,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           <input type="file" accept=".vcf" ref={vcfInputRef} className="hidden" onChange={handleVcfImport} />
 
           {/* Zusammengefasste Export / Import Dropdown (Nummer 8) */}
-          <div className="relative shrink-0" ref={exportImportRef}>
+          <div className="tour-crm-export relative shrink-0" ref={exportImportRef}>
             <button
               onClick={() => setIsExportImportOpen(!isExportImportOpen)}
               className={cn(
@@ -1488,14 +1488,14 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         <div className="w-full md:w-[380px] bg-surface border border-border rounded-2xl md:rounded-3xl flex flex-col overflow-hidden shadow-sm relative shrink-0">
           <div className="p-4 md:p-5 border-b border-border bg-surface/80 backdrop-blur-md space-y-3 z-10">
             <div className="relative"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted" /><input type="text" placeholder={t('search_contacts')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:border-accent-ai transition-colors placeholder:text-text-muted text-text-primary font-medium" /></div>
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+            <div className="tour-crm-filters flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
               {[{ id: 'alle', label: t('filter_all') }, { id: 'team', label: t('filter_team') }, { id: 'neu', label: t('filter_new_scanned') }, { id: 'lead', label: t('filter_leads') }, { id: 'partner', label: t('filter_partners') }].map(f => (
                 <button key={f.id} onClick={() => setActiveFilter(f.id as any)} className={cn("px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all duration-300 cursor-pointer", activeFilter === f.id ? "bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shadow-sm" : "bg-background text-text-muted border border-border/50 hover:bg-white/5 hover:text-text-primary")}>{f.label}</button>
               ))}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 pb-24 bg-background">
+          <div className="tour-crm-list flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 pb-24 bg-background">
             {filteredContacts.map(contact => {
               const isSelected = selectedContact?.id === contact.id; const isChecked = selectedIds.includes(contact.id); const isTeam = contact.isAppUser || contact.status === 'team' || !contact.isExternal;
               return (

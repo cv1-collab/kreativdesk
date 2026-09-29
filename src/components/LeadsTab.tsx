@@ -733,7 +733,7 @@ export default function LeadsTab() {
           <p className="text-sm text-text-muted mt-1 font-medium">{t('manage_leads')}</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="tour-leads-actions flex flex-wrap items-center gap-3 w-full md:w-auto">
           <ModuleGuideButton moduleId="leads" />
           <button onClick={handleCopyLink} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-md text-sm font-bold transition-colors">
             <LinkIcon size={16}/> {t('copy_link')}
@@ -746,7 +746,7 @@ export default function LeadsTab() {
       </div>
 
       {/* KANBAN PIPELINE STAGE OVERVIEW */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="tour-leads-pipeline grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-surface border border-border p-4 rounded-2xl shadow-sm">
           <div className="text-xs text-text-muted font-bold uppercase tracking-wider">Neu</div>
           <div className="text-2xl font-black text-blue-500 mt-1">{safeLeads.filter(l => l.status === 'New' || l.status === 'Neu').length}</div>
@@ -766,7 +766,7 @@ export default function LeadsTab() {
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <div className="flex bg-surface border border-border/50 rounded-md p-1 shadow-sm">
+        <div className="tour-leads-table flex bg-surface border border-border/50 rounded-md p-1 shadow-sm">
           <button onClick={() => setLeadTab('form')} className={cn("px-3 py-1.5 rounded text-sm font-medium transition-colors", leadTab === 'form' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}>
             {t('preview')}
           </button>

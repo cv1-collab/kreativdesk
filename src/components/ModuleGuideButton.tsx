@@ -5,7 +5,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { cn } from '../utils';
 
 interface ModuleGuideButtonProps {
-  moduleId: 'bim' | 'finance' | 'plans' | 'defects' | 'calendar' | 'pitch' | string;
+  moduleId: 'bim' | 'finance' | 'plans' | 'defects' | 'calendar' | 'pitch' | 'proposals' | 'agenda' | 'templates' | 'leads' | 'team' | string;
   className?: string;
   label?: string;
   compact?: boolean;

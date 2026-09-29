@@ -28,6 +28,7 @@ import FinanceTab from './FinanceTab';
 import SettingsTab from './SettingsTab';
 import AuditLogsTab from './AuditLogsTab';
 import WelcomeOnboarding from './WelcomeOnboarding';
+import ModuleGuideButton from './ModuleGuideButton';
 import { safeStorage } from '../utils/safeStorage';
 import MeetChat from './MeetChat';
 import ProposalManagerDashboard from './ProposalManagerDashboard';
@@ -920,14 +921,17 @@ export default function CompanyDashboard() {
                       <div>
                         <h2 className="text-xl md:text-2xl font-bold tracking-tight text-text-primary">{t('projects')}</h2>
                       </div>
-                      {canCreateProjects && (
-                        <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn w-full sm:w-auto px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
-                          <Plus size={16} /> {t('new_project')}
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        <ModuleGuideButton moduleId="projects" />
+                        {canCreateProjects && (
+                          <button onClick={() => setIsNewProjectModalOpen(true)} className="tour-create-project-btn w-full sm:w-auto px-5 py-2.5 bg-accent-ai text-white rounded-xl text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2">
+                            <Plus size={16} /> {t('new_project')}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-2">
+                    <div className="tour-projects-filters flex items-center gap-2 overflow-x-auto hide-scrollbar pb-2">
                       <button 
                         onClick={() => setActiveProjectFilter('active')}
                         className={cn(
@@ -968,7 +972,7 @@ export default function CompanyDashboard() {
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 w-full">
+                    <div className="tour-projects-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 w-full">
                       {filteredProjects.map((p: any) => (
                         <div key={p.id} onClick={() => handleProjectClick(p.id)} className="bg-surface border border-border hover:border-accent-ai/50 rounded-2xl p-5 cursor-pointer transition-all hover:shadow-lg group flex flex-col relative">
                           <div className="flex justify-between items-start mb-3">

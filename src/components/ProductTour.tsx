@@ -12,7 +12,7 @@ import {
   Sparkles, Shield, DollarSign, Calendar, Target, LayoutDashboard, 
   Settings, Megaphone, Users, Folder, LayoutTemplate, Briefcase, 
   Camera, Video, MonitorPlay, Box, Layers, Globe, CalendarDays, FileText,
-  BookOpen, X, PenTool, Search
+  BookOpen, X, PenTool, Search, Building2, Filter, Clock, Terminal
 } from 'lucide-react';
 
 export default function ProductTour() {
@@ -41,7 +41,7 @@ export default function ProductTour() {
       proTip?: string,
       submodules?: string[]
     ) => (
-      <div className={cn("flex flex-col gap-3 p-1 text-left max-w-sm", isDark ? "text-white" : "text-slate-900")}>
+      <div className={cn("flex flex-col gap-2.5 p-0.5 text-left max-w-[360px]", isDark ? "text-white" : "text-slate-900")}>
         <div className={cn("flex items-center justify-between border-b pb-3 mb-1", isDark ? "border-slate-800" : "border-slate-200")}>
           <div className="flex items-center gap-3">
             <div className={cn(
@@ -183,41 +183,79 @@ export default function ProductTour() {
           }
         ];
       } else if (activeModuleTour === 'finance') {
-        candidateDefs = [
-          {
-            target: '.tour-finance-table, .tour-finance-budget, body',
-            title: isGerman ? 'Schweizer BKP 1–9 Kostenstruktur' : 'Swiss BKP 1–9 Cost Structure',
-            content: isGerman
-              ? 'Deine Baukosten sind nach standardisierter Schweizer BKP-Systematik (BKP 1–9) gegliedert: Vorbereitung, Rohbau, Hülle, Ausbau, Betriebseinrichtungen, Umgebung und SIA 102/108 Baunebenkosten.'
-              : 'Construction costs are structured according to the Swiss BKP standard (BKP 1–9): Site Prep, Structure, Facade, Interior, MEP Equipment, Landscaping, and Incidental Fees (SIA 102/108).',
-            IconComponent: DollarSign,
-            submodules: isGerman ? ['BKP 1 bis BKP 9', 'SIA 102 Honorare', 'Versionen & Historie'] : ['BKP 1 to BKP 9', 'SIA 102 Fees', 'Versions & History'],
-            proTip: isGerman ? 'Du kannst jederzeit neue Budget-Versionen (z.B. KV ±10% vs. Abrechnung) für lückenlose Historisierung anlegen.' : 'Create new budget versions anytime (e.g., Cost Estimate vs. Final Accounting) for full audit history.',
-            placement: 'bottom'
-          },
-          {
-            target: '.tour-finance-tabs, .tour-finance-control, body',
-            title: isGerman ? '3-Spaltiger Soll/Ist-Vergleich & Ansichten' : '3-Column Plan/Actual Comparison & Views',
-            content: isGerman
-              ? 'Wechsle zwischen Budgetplan, Zahlungskontrolle und Cashflow-Analyse. Behalte bewilligtes Budget, vergebene Werkverträge und bezahlte Handwerker-Rechnungen in Echtzeit im Blick.'
-              : 'Switch between Budget Plan, Payment Control, and Cashflow. Compare approved budget, awarded contracts, and paid invoices in real time.',
-            IconComponent: Target,
-            submodules: isGerman ? ['Budget vs. Ist', 'Zahlungskontrolle', 'Kostenprognose'] : ['Budget vs. Actual', 'Payment Control', 'Cost Forecast'],
-            proTip: isGerman ? 'Klicke auf eine BKP-Position, um alle verknüpften Handwerker-Teilrechnungen aufzuschlüsseln.' : 'Click any cost line to expand all linked contractor invoices and expenses.',
-            placement: 'bottom'
-          },
-          {
-            target: '.tour-finance-invoices, .tour-finance-export, .tour-finance-pdf, body',
-            title: isGerman ? 'ISO 20022 Schweizer QR-Rechnung & Export' : 'Swiss QR-Bill & PDF Export',
-            content: isGerman
-              ? 'Generiere gesetzeskonforme Schweizer QR-Rechnungen mit QR-IBAN und strukturierter Referenznummer oder exportiere den gesamten Kostenstand per Klick ins Universal PDF Studio.'
-              : 'Issue compliant Swiss QR-bills with QR-IBAN and reference codes, or export complete cost dossiers to the Universal PDF Studio.',
-            IconComponent: FileText,
-            submodules: isGerman ? ['Swiss QR-Bill ISO 20022', 'Universal PDF Studio', 'Bexio / CSV Export'] : ['Swiss QR-Bill ISO 20022', 'Universal PDF Studio', 'Bexio / CSV Export'],
-            proTip: isGerman ? 'Banken und Bauherren erhalten druckreife, revisionssichere Baukostenberichte.' : 'Banks and clients receive print-ready, audit-proof cost reports.',
-            placement: 'bottom'
-          }
-        ];
+        if (location.pathname.includes('/project/')) {
+          candidateDefs = [
+            {
+              target: '.tour-finance-table, .tour-finance-budget, body',
+              title: isGerman ? 'Schweizer BKP 1–9 Kostenstruktur' : 'Swiss BKP 1–9 Cost Structure',
+              content: isGerman
+                ? 'Deine Baukosten sind nach standardisierter Schweizer BKP-Systematik (BKP 1–9) gegliedert: Vorbereitung, Rohbau, Hülle, Ausbau, Betriebseinrichtungen, Umgebung und SIA 102/108 Baunebenkosten.'
+                : 'Construction costs are structured according to the Swiss BKP standard (BKP 1–9): Site Prep, Structure, Facade, Interior, MEP Equipment, Landscaping, and Incidental Fees (SIA 102/108).',
+              IconComponent: DollarSign,
+              submodules: isGerman ? ['BKP 1 bis BKP 9', 'SIA 102 Honorare', 'Versionen & Historie'] : ['BKP 1 to BKP 9', 'SIA 102 Fees', 'Versions & History'],
+              proTip: isGerman ? 'Du kannst jederzeit neue Budget-Versionen (z.B. KV ±10% vs. Abrechnung) für lückenlose Historisierung anlegen.' : 'Create new budget versions anytime (e.g., Cost Estimate vs. Final Accounting) for full audit history.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-finance-tabs, .tour-finance-control, body',
+              title: isGerman ? '3-Spaltiger Soll/Ist-Vergleich & Ansichten' : '3-Column Plan/Actual Comparison & Views',
+              content: isGerman
+                ? 'Wechsle zwischen Budgetplan, Zahlungskontrolle und Cashflow-Analyse. Behalte bewilligtes Budget, vergebene Werkverträge und bezahlte Handwerker-Rechnungen in Echtzeit im Blick.'
+                : 'Switch between Budget Plan, Payment Control, and Cashflow. Compare approved budget, awarded contracts, and paid invoices in real time.',
+              IconComponent: Target,
+              submodules: isGerman ? ['Budget vs. Ist', 'Zahlungskontrolle', 'Kostenprognose'] : ['Budget vs. Actual', 'Payment Control', 'Cost Forecast'],
+              proTip: isGerman ? 'Klicke auf eine BKP-Position, um alle verknüpften Handwerker-Teilrechnungen aufzuschlüsseln.' : 'Click any cost line to expand all linked contractor invoices and expenses.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-finance-invoices, .tour-finance-export, .tour-finance-pdf, body',
+              title: isGerman ? 'ISO 20022 Schweizer QR-Rechnung & Export' : 'Swiss QR-Bill & PDF Export',
+              content: isGerman
+                ? 'Generiere gesetzeskonforme Schweizer QR-Rechnungen mit QR-IBAN und strukturierter Referenznummer oder exportiere den gesamten Kostenstand per Klick ins Universal PDF Studio.'
+                : 'Issue compliant Swiss QR-bills with QR-IBAN and reference codes, or export complete cost dossiers to the Universal PDF Studio.',
+              IconComponent: FileText,
+              submodules: isGerman ? ['Swiss QR-Bill ISO 20022', 'Universal PDF Studio', 'Bexio / CSV Export'] : ['Swiss QR-Bill ISO 20022', 'Universal PDF Studio', 'Bexio / CSV Export'],
+              proTip: isGerman ? 'Banken und Bauherren erhalten druckreife, revisionssichere Baukostenberichte.' : 'Banks and clients receive print-ready, audit-proof cost reports.',
+              placement: 'bottom'
+            }
+          ];
+        } else {
+          candidateDefs = [
+            {
+              target: '.tour-company-finance-kpis, body',
+              title: isGerman ? 'Finanz-KPIs & Cashflow-Überblick' : 'Financial KPIs & Cashflow',
+              content: isGerman
+                ? 'Behalte alle Firmenfinanzen im Blick: Offene Offerten, fakturierter Gesamtumsatz, verbuchte Team-Spesen und externe Betriebskosten (OpEx) in Echtzeit.'
+                : 'Monitor all company finances at a glance: Open quotes, total revenue, team expenses, and operating expenses (OpEx) in real time.',
+              IconComponent: DollarSign,
+              submodules: isGerman ? ['Echtzeit-Umsatz', 'Offene Offerten', 'Spesen-Monitoring', 'OpEx Kosten'] : ['Live Revenue', 'Open Quotes', 'Expenses', 'OpEx'],
+              proTip: isGerman ? 'Nutze das Jahres-Dropdown oben links, um vergangene Geschäftsjahre historisch zu vergleichen.' : 'Use the year dropdown to compare fiscal years.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-company-finance-actions, body',
+              title: isGerman ? '1-Klick Belegerfassung & Schnell-Aktionen' : '1-Click Invoicing & Quick Actions',
+              content: isGerman
+                ? 'Erstelle neue Angebote mit E-Signatur, gesetzeskonforme Schweizer QR-Rechnungen, erfasse Baustellen-Spesen oder buche externe Rechnungen mit einem Klick.'
+                : 'Issue proposals, Swiss QR-bills, team expense claims, and external operational costs in a single click.',
+              IconComponent: Sparkles,
+              submodules: isGerman ? ['Neue Offerte', 'Neue Rechnung', 'Spesen erfassen', 'Ext. Kosten'] : ['New Quote', 'New Invoice', 'Expenses', 'Ext. Costs'],
+              proTip: isGerman ? 'Gescannte Handwerkerbelege synchronisieren sich direkt mit der Buchhaltung.' : 'Scanned receipts link directly to accounting records.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-company-finance-budgets, .tour-company-finance-table, body',
+              title: isGerman ? 'Projekt-Budgets & Revisionssicherer CSV-Export' : 'Project Budgets & CSV Export',
+              content: isGerman
+                ? 'Überwache Soll-Budgets aller aktiven Projekte auf einen Blick. Filtere Transaktionen nach Kategorien oder exportiere den gesamten Buchungsstand als CSV für Treuhänder oder Bexio.'
+                : 'Review target budgets across all active projects. Filter transactions by category or export the complete ledger to CSV/Excel.',
+              IconComponent: FileText,
+              submodules: isGerman ? ['Projekt-Soll-Budgets', 'Status-Tracking', 'CSV / Excel Export'] : ['Project Budgets', 'Status Tracking', 'CSV / Excel Export'],
+              proTip: isGerman ? 'Klicke auf den CSV-Export, um Buchungszeilen direkt in dein Buchhaltungsprogramm zu importieren.' : 'Export CSV data to import directly into your accounting software.',
+              placement: 'bottom'
+            }
+          ];
+        }
       } else if (activeModuleTour === 'plans' || activeModuleTour === 'cad') {
         candidateDefs = [
           {
@@ -276,7 +314,7 @@ export default function ProductTour() {
             IconComponent: Calendar,
             submodules: isGerman ? ['SIA 118 2-Jahresfrist', 'Kanban Drag & Drop', 'Gewerke-Filter'] : ['SIA 118 Warranty Period', 'Kanban Drag & Drop', 'Trade Filters'],
             proTip: isGerman ? 'Filtere nach Unternehmer, um zielgerichtete Pendenzenlisten für Bauleitungssitzungen zu erstellen.' : 'Filter by trade to generate focused task lists for site coordinator meetings.',
-            placement: 'bottom'
+            placement: 'top'
           },
           {
             target: '.tour-defects-pdf, body',
@@ -290,31 +328,69 @@ export default function ProductTour() {
             placement: 'bottom'
           }
         ];
-      } else if (activeModuleTour === 'calendar') {
-        candidateDefs = [
-          {
-            target: '.tour-calendar-gantt, .tour-calendar-views, body',
-            title: isGerman ? 'SIA-Bauphasen & Gantt-Masterplan' : 'SIA Phases & Gantt Masterplan',
-            content: isGerman
-              ? 'Strukturiere deine Bauphasen nach SIA 112 (Vorprojekt, Bewilligung, Rohbau, Ausbau, Übergabe) im interaktiven Gantt-Balkenplan mit Meilensteinen und Deadlines.'
-              : 'Structure construction phases following SIA 112 in the interactive Gantt chart with milestones and critical deadlines.',
-            IconComponent: Calendar,
-            submodules: isGerman ? ['SIA 112 Phasen', 'Gantt-Timeline', 'Meilenstein-Marker'] : ['SIA 112 Phases', 'Gantt Timeline', 'Milestone Markers'],
-            proTip: isGerman ? 'Passe Termine per Drag & Drop an – alle abhängigen Termine synchronisieren sich mit.' : 'Drag & drop task bars to dynamically shift timelines.',
-            placement: 'bottom'
-          },
-          {
-            target: '.tour-calendar-pdf, body',
-            title: isGerman ? 'Bautagebuch, Wetter & PDF-Journal' : 'Site Journal, Weather & PDF Export',
-            content: isGerman
-              ? 'Dokumentiere tägliche Baustellenfortschritte, anwesende Handwerker und Wetterdaten. Exportiere den gesamten Bauzeitenplan als grossformatiges A3-Gantt-PDF.'
-              : 'Document daily progress, active workers, and weather. Export the full project schedule as high-res A3 Gantt PDF.',
-            IconComponent: FileText,
-            submodules: isGerman ? ['Bautagebuch', 'Wettererfassung', 'A3 Gantt-PDF'] : ['Site Journal', 'Weather Tracking', 'A3 Gantt PDF'],
-            proTip: isGerman ? 'Perfekt für Bauherrensitzungen und Baustellenbesprechungen.' : 'Ideal for site coordination and client progress reviews.',
-            placement: 'bottom'
-          }
-        ];
+      } else if (activeModuleTour === 'calendar' || activeModuleTour === 'agenda') {
+        if (location.pathname.includes('/project/')) {
+          candidateDefs = [
+            {
+              target: '.tour-calendar-gantt, .tour-calendar-views, body',
+              title: isGerman ? 'SIA-Bauphasen & Gantt-Masterplan' : 'SIA Phases & Gantt Masterplan',
+              content: isGerman
+                ? 'Strukturiere deine Bauphasen nach SIA 112 (Vorprojekt, Bewilligung, Rohbau, Ausbau, Übergabe) im interaktiven Gantt-Balkenplan mit Meilensteinen und Deadlines.'
+                : 'Structure construction phases following SIA 112 in the interactive Gantt chart with milestones and critical deadlines.',
+              IconComponent: Calendar,
+              submodules: isGerman ? ['SIA 112 Phasen', 'Gantt-Timeline', 'Meilenstein-Marker'] : ['SIA 112 Phases', 'Gantt Timeline', 'Milestone Markers'],
+              proTip: isGerman ? 'Passe Termine per Drag & Drop an – alle abhängigen Termine synchronisieren sich mit.' : 'Drag & drop task bars to dynamically shift timelines.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-calendar-pdf, body',
+              title: isGerman ? 'Bautagebuch, Wetter & PDF-Journal' : 'Site Journal, Weather & PDF Export',
+              content: isGerman
+                ? 'Dokumentiere tägliche Baustellenfortschritte, anwesende Handwerker und Wetterdaten. Exportiere den gesamten Bauzeitenplan als grossformatiges A3-Gantt-PDF.'
+                : 'Document daily progress, active workers, and weather. Export the full project schedule as high-res A3 Gantt PDF.',
+              IconComponent: FileText,
+              submodules: isGerman ? ['Bautagebuch', 'Wettererfassung', 'A3 Gantt-PDF'] : ['Site Journal', 'Weather Tracking', 'A3 Gantt PDF'],
+              proTip: isGerman ? 'Perfekt für Bauherrensitzungen und Baustellenbesprechungen.' : 'Ideal for site coordination and client progress reviews.',
+              placement: 'bottom'
+            }
+          ];
+        } else {
+          candidateDefs = [
+            {
+              target: '.tour-agenda-timetracking, body',
+              title: isGerman ? 'Digitale Zeiterfassung & Rapporte' : 'Digital Time Tracking & Reports',
+              content: isGerman
+                ? 'Erfasse Projektstunden, Baustellenbesuche und Regieberichte direkt im System. Weise Stunden spezifischen Projekten und BKP-Phasen zu.'
+                : 'Log project hours, site inspections, and time reports. Allocate hours to specific projects and BKP phases.',
+              IconComponent: CalendarDays,
+              submodules: isGerman ? ['Stundenerfassung', 'Projekt-Zuweisung', 'Live-Stoppuhr'] : ['Hours Log', 'Project Link', 'Live Stopwatch'],
+              proTip: isGerman ? 'Nutze die Stoppuhr für sekundengenaue Erfassung laufender Planungsarbeiten.' : 'Use the live stopwatch for precise billing of planning sessions.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-agenda-filters, body',
+              title: isGerman ? 'Smarte Filter & Kalender-Ansichten' : 'Smart Filters & Calendar Views',
+              content: isGerman
+                ? 'Filtere deine Agenda nach Mitarbeitern, Projekten oder Terminkategorien. Wechsle nahtlos zwischen Monats-, Wochen- und Tagesansicht.'
+                : 'Filter your schedule by team member, project, or event category. Toggle month, week, and day views.',
+              IconComponent: Calendar,
+              submodules: isGerman ? ['Mitarbeiter-Filter', 'Projekt-Filter', 'Monat / Woche / Tag'] : ['Team Filter', 'Project Filter', 'Month / Week / Day'],
+              proTip: isGerman ? 'Farbige Tags trennen Baustellenbesuche, Bauherrentermine und interne Planungen optisch ab.' : 'Color-coded tags distinguish site inspections, client meetings, and internal tasks.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-agenda-actions, body',
+              title: isGerman ? 'Neuer Termin, iCal-Sync & PDF-Rapport' : 'New Event, iCal Sync & PDF Report',
+              content: isGerman
+                ? 'Erstelle neue Termine mit Video-Konferenz-Link, synchronisiere deine Agenda via iCal mit Apple Kalender oder Outlook, und exportiere Monatsrapporte als PDF.'
+                : 'Create appointments with video call links, sync via iCal with Outlook/Apple Calendar, and export monthly PDF reports.',
+              IconComponent: Sparkles,
+              submodules: isGerman ? ['iCal / Outlook Sync', 'PDF-Monatsrapport', 'Video-Meeting Link'] : ['iCal / Outlook Sync', 'Monthly PDF Report', 'Video Meeting Link'],
+              proTip: isGerman ? 'Abonniere den iCal-Feed auf deinem Smartphone für automatische Kalender-Updates.' : 'Subscribe to the iCal feed on your phone for automatic calendar syncing.',
+              placement: 'bottom'
+            }
+          ];
+        }
       } else if (activeModuleTour === 'pitch') {
         candidateDefs = [
           {
@@ -379,17 +455,6 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'camera' || activeModuleTour === 'site') {
         candidateDefs = [
           {
-            target: '.tour-camera-feeds, body',
-            title: isGerman ? 'Live-Baustellenkamera & Zeitraffer' : 'Site Camera & Timelapse',
-            content: isGerman
-              ? 'Verfolge den Baufortschritt oder den Eventaufbau live im Browser. Schalte zwischen mehreren Kameras um, erstelle Zeitraffer-Sequenzen und archiviere Schlüsselmomente.'
-              : 'Monitor construction or installation live in your browser. Switch cameras, generate time-lapse sequences, and archive key milestones.',
-            IconComponent: Camera,
-            submodules: isGerman ? ['Live-Kamera', 'Zeitraffer (Timelapse)', 'Multi-Kamera'] : ['Live Camera', 'Timelapse', 'Multi-Camera'],
-            proTip: isGerman ? 'Automatische Schnappschüsse werden stündlich im Bautagebuch und der Bauakte hinterlegt.' : 'Snapshots are automatically archived hourly in the site journal.',
-            placement: 'bottom'
-          },
-          {
             target: '.tour-camera-weather, body',
             title: isGerman ? 'Live-Wetter & SIA-Sensorik' : 'Live Weather & SIA Sensors',
             content: isGerman
@@ -399,6 +464,17 @@ export default function ProductTour() {
             submodules: isGerman ? ['Betonier-Freigabe', 'Windwarnung', 'Regen-Prognose'] : ['Concrete Clearance', 'Wind Alert', 'Rain Forecast'],
             proTip: isGerman ? 'Klicke auf "Standort ändern", um den GPS-Standort deiner Baustelle exakt zu kalibrieren.' : 'Click "Change Location" to calibrate site coordinates.',
             placement: 'bottom'
+          },
+          {
+            target: '.tour-camera-feeds, body',
+            title: isGerman ? 'Live-Baustellenkamera & Zeitraffer' : 'Site Camera & Timelapse',
+            content: isGerman
+              ? 'Verfolge den Baufortschritt oder den Eventaufbau live im Browser. Schalte zwischen mehreren Kameras um, erstelle Zeitraffer-Sequenzen und archiviere Schlüsselmomente.'
+              : 'Monitor construction or installation live in your browser. Switch cameras, generate time-lapse sequences, and archive key milestones.',
+            IconComponent: Camera,
+            submodules: isGerman ? ['Live-Kamera', 'Zeitraffer (Timelapse)', 'Multi-Kamera'] : ['Live Camera', 'Timelapse', 'Multi-Camera'],
+            proTip: isGerman ? 'Automatische Schnappschüsse werden stündlich im Bautagebuch und der Bauakte hinterlegt.' : 'Snapshots are automatically archived hourly in the site journal.',
+            placement: 'top'
           },
           {
             target: '.tour-camera-safety, body',
@@ -520,46 +596,84 @@ export default function ProductTour() {
             placement: 'bottom'
           }
         ];
-      } else if (activeModuleTour === 'team' || activeModuleTour === 'access') {
-        candidateDefs = [
-          {
-            target: '.tour-team-table, table, body',
-            title: isGerman ? 'Granulare Schweizer Rollenverwaltung' : 'Granular Swiss Role Permissions',
-            content: isGerman
-              ? 'Steuere exakt, wer Zugriff auf dein Projekt hat: Bauherren (nur Lesezugriff), Fachplaner (Editor) oder Bauleiter (Admin). Schütze vertrauliche Baukosten und Margen.'
-              : 'Control exact permissions: Clients (Read-only), Planners (Editor), or Site Managers (Admin). Protect confidential cost data and profit margins.',
-            IconComponent: Users,
-            submodules: isGerman ? ['Owner & Admins', 'Fachplaner (Editor)', 'Bauherren (Viewer)'] : ['Owner & Admins', 'Planner (Editor)', 'Client (Viewer)'],
-            proTip: isGerman ? 'Bauherren erhalten automatisch eine vereinfachte Sicht ohne interne Firmenmargen.' : 'Clients automatically receive a clean view without internal contractor margins.',
-            placement: 'bottom'
-          },
-          {
-            target: '.tour-team-add-btn, body',
-            title: isGerman ? 'Smarte Einladungs-Links & Externe Partner' : 'Smart Magic Invites & Contractors',
-            content: isGerman
-              ? 'Lade Handwerker und Planer per E-Mail oder Magic Invite Link ein. Externe Partner erhalten sofort Zugang zu ihren spezifischen Aufgaben und Mängeln.'
-              : 'Invite contractors and engineers via email or magic links. External partners gain instant access to their assigned tickets and plans.',
-            IconComponent: Sparkles,
-            submodules: isGerman ? ['Magic Invite Link', 'Gewerke-Zuordnung', 'Schnelleinladung'] : ['Magic Invite Link', 'Trade Mapping', 'Fast Onboarding'],
-            proTip: isGerman ? 'Subunternehmer sehen nur die für sie relevanten Mängel und Pläne.' : 'Subcontractors only see defects and plans relevant to their trade.',
-            placement: 'bottom'
-          },
-          {
-            target: '.tour-team-table, table, body',
-            title: isGerman ? 'Revisionssichere Zugriffs-Protokollierung' : 'Audit Logs & DSG Compliance',
-            content: isGerman
-              ? 'Jeder Zugriff und jede Rollenänderung wird im Audit-Trail dokumentiert – konform mit dem Schweizer Datenschutzgesetz (DSG) und der SIA-Norm.'
-              : 'Every access and role modification is recorded in the audit trail – compliant with Swiss Data Protection (DSG) and SIA standards.',
-            IconComponent: Shield,
-            submodules: isGerman ? ['Schweizer DSG konform', 'Audit-Trail', 'Rollenhistorie'] : ['Swiss DSG Compliant', 'Audit Trail', 'Role History'],
-            proTip: isGerman ? 'Passe Rollen jederzeit per Dropdown an – Änderungen werden sofort aktiv.' : 'Adjust roles anytime via dropdown – changes take effect immediately.',
-            placement: 'bottom'
-          }
-        ];
+      } else if (activeModuleTour === 'team' || activeModuleTour === 'access' || activeModuleTour === 'crm') {
+        if (location.pathname.includes('/project/')) {
+          candidateDefs = [
+            {
+              target: '.tour-team-table, table, body',
+              title: isGerman ? 'Granulare Schweizer Rollenverwaltung' : 'Granular Swiss Role Permissions',
+              content: isGerman
+                ? 'Steuere exakt, wer Zugriff auf dein Projekt hat: Bauherren (nur Lesezugriff), Fachplaner (Editor) oder Bauleiter (Admin). Schütze vertrauliche Baukosten und Margen.'
+                : 'Control exact permissions: Clients (Read-only), Planners (Editor), or Site Managers (Admin). Protect confidential cost data and profit margins.',
+              IconComponent: Users,
+              submodules: isGerman ? ['Owner & Admins', 'Fachplaner (Editor)', 'Bauherren (Viewer)'] : ['Owner & Admins', 'Planner (Editor)', 'Client (Viewer)'],
+              proTip: isGerman ? 'Bauherren erhalten automatisch eine vereinfachte Sicht ohne interne Firmenmargen.' : 'Clients automatically receive a clean view without internal contractor margins.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-team-add-btn, body',
+              title: isGerman ? 'Smarte Einladungs-Links & Externe Partner' : 'Smart Magic Invites & Contractors',
+              content: isGerman
+                ? 'Lade Handwerker und Planer per E-Mail oder Magic Invite Link ein. Externe Partner erhalten sofort Zugang zu ihren spezifischen Aufgaben und Mängeln.'
+                : 'Invite contractors and engineers via email or magic links. External partners gain instant access to their assigned tickets and plans.',
+              IconComponent: Sparkles,
+              submodules: isGerman ? ['Magic Invite Link', 'Gewerke-Zuordnung', 'Schnelleinladung'] : ['Magic Invite Link', 'Trade Mapping', 'Fast Onboarding'],
+              proTip: isGerman ? 'Subunternehmer sehen nur die für sie relevanten Mängel und Pläne.' : 'Subcontractors only see defects and plans relevant to their trade.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-team-table, table, body',
+              title: isGerman ? 'Revisionssichere Zugriffs-Protokollierung' : 'Audit Logs & DSG Compliance',
+              content: isGerman
+                ? 'Jeder Zugriff und jede Rollenänderung wird im Audit-Trail dokumentiert – konform mit dem Schweizer Datenschutzgesetz (DSG) und der SIA-Norm.'
+                : 'Every access and role modification is recorded in the audit trail – compliant with Swiss Data Protection (DSG) and SIA standards.',
+              IconComponent: Shield,
+              submodules: isGerman ? ['Schweizer DSG konform', 'Audit-Trail', 'Rollenhistorie'] : ['Swiss DSG Compliant', 'Audit Trail', 'Role History'],
+              proTip: isGerman ? 'Passe Rollen jederzeit per Dropdown an – Änderungen werden sofort aktiv.' : 'Adjust roles anytime via dropdown – changes take effect immediately.',
+              placement: 'bottom'
+            }
+          ];
+        } else {
+          candidateDefs = [
+            {
+              target: '.tour-crm-scanner, .tour-crm-export, body',
+              title: isGerman ? 'KI-Visitenkarten-Scanner & Neuer Kontakt' : 'AI Card Scanner & New Contact',
+              content: isGerman
+                ? 'Erfasse Kontakte in Sekunden: Fotografiere gedruckte Visitenkarten ab – die Gemini-KI extrahiert Name, Firma, Telefon, E-Mail und Schweizer UID-Nummer vollautomatisch.'
+                : 'Add contacts in seconds: Scan paper business cards with AI to extract names, company, phone, email, and Swiss UID codes automatically.',
+              IconComponent: Sparkles,
+              submodules: isGerman ? ['KI-Scan per Kamera', 'Schweizer UID-Erkennung', '1-Klick Import'] : ['AI Camera Scan', 'Swiss UID Parsing', '1-Click Import'],
+              proTip: isGerman ? 'Gescannte Handwerker und Planer können direkt mit Bauprojekten und BKP-Gewerken verknüpft werden.' : 'Scanned contacts link directly to projects and BKP trades.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-crm-filters, body',
+              title: isGerman ? 'Smarte Filter & Segmentierung' : 'Smart Filters & Segmentation',
+              content: isGerman
+                ? 'Segmentiere dein Adressbuch blitzschnell nach Teammitgliedern, neu gescannten Kontakten, B2B-Leads oder externen Partnern und Handwerkerbetrieben.'
+                : 'Filter your address book by team members, freshly scanned cards, B2B leads, or external contractors and trade partners.',
+              IconComponent: Users,
+              submodules: isGerman ? ['Team & Mitarbeiter', 'Partner & Handwerker', 'Neu gescannt', 'Leads'] : ['Team & Staff', 'Partners & Trades', 'Newly Scanned', 'Leads'],
+              proTip: isGerman ? 'Filtere nach "Neu gescannt", um kürzlich auf Messen oder Baustellen erfasste Visitenkarten schnell nachzubearbeiten.' : 'Filter by "Newly Scanned" to quickly process cards collected on site.',
+              placement: 'bottom'
+            },
+            {
+              target: '.tour-crm-list, .tour-crm-export, body',
+              title: isGerman ? 'Partner-Netzwerk & CSV/VCF-Export' : 'Partner Network & CSV/VCF Export',
+              content: isGerman
+                ? 'Verwalte dein gesamtes Firmen- und Partnernetzwerk an einem zentralen Ort. Exportiere Kontakte per Klick als CSV für Buchhaltung oder als vCard für Apple Kontakte und Outlook.'
+                : 'Manage your entire company directory and partner network. Export contacts to CSV or vCard for Apple Contacts and Outlook.',
+              IconComponent: FileText,
+              submodules: isGerman ? ['vCard & Apple Sync', 'Bexio / CSV Export', 'Zentrale Kontaktdaten'] : ['vCard & Apple Sync', 'Bexio / CSV Export', 'Central Contacts'],
+              proTip: isGerman ? 'Über "Export / Import" kannst du auch bestehende Excel- oder Adresslisten in Sekunden importieren.' : 'Use Export/Import to batch import existing Excel address lists.',
+              placement: 'bottom'
+            }
+          ];
+        }
       } else if (activeModuleTour === 'templates') {
         candidateDefs = [
           {
-            target: '.tour-templates-list, body',
+            target: '.tour-templates-banner, body',
             title: isGerman ? 'Schweizer Vorlagen-Bibliothek & SIA-Standards' : 'Swiss Template Library & SIA Standards',
             content: isGerman
               ? 'Nutze vordefinierte, SIA-konforme Schweizer Projektvorlagen (z.B. Wohnungsbau, Umbau, Gewerbe) inklusive fertiger BKP-Kostenstrukturen und Phasenpläne.'
@@ -570,7 +684,18 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-templates-create, body',
+            target: '.tour-templates-grid, body',
+            title: isGerman ? 'Muster-Projekte & Schnellstarter' : 'Starter Templates & Quick Setup',
+            content: isGerman
+              ? 'Wähle aus kuratierten Vorlagen für Neubau, Sanierung oder Innenausbau. Alle BKP-Positionen und Ausführungsphasen sind bereits optimal vorkonfiguriert.'
+              : 'Choose curated templates for new builds, renovations, or interior projects. All BKP cost lines are pre-configured.',
+            IconComponent: Folder,
+            submodules: isGerman ? ['Einfamilienhaus', 'Gewerbebau', 'Umbau & Sanierung'] : ['Single Family Home', 'Commercial', 'Renovation'],
+            proTip: isGerman ? 'Klicke auf "Projekt aus Vorlage erstellen", um sofort mit einem vorkonfigurierten Workspace zu starten.' : 'Click "Create from template" to start immediately with a preconfigured workspace.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-templates-list, body',
             title: isGerman ? 'Eigene Unternehmens-Vorlagen erstellen' : 'Create Custom Company Templates',
             content: isGerman
               ? 'Mache erfolgreiche Bau- und Architekturprojekte zur Blaupause für deine Kanzlei: Speichere bewährte Checklisten, Vertragstexte und Zeitpläne dauerhaft ab.'
@@ -584,7 +709,7 @@ export default function ProductTour() {
       } else if (activeModuleTour === 'leads') {
         candidateDefs = [
           {
-            target: '.tour-leads-table, body',
+            target: '.tour-leads-pipeline, body',
             title: isGerman ? 'B2B Lead Pipeline & Akquise-Cockpit' : 'B2B Lead Pipeline & Acquisition Cockpit',
             content: isGerman
               ? 'Erfasse und verfolge potenzielle Bauherren, Ausschreibungen und Wettbewerbe von der ersten Anfrage bis zum unterzeichneten SIA 102 Planervertrag.'
@@ -595,15 +720,170 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-leads-export, body',
-            title: isGerman ? 'Status-Reporting & PDF Pipeline Dossier' : 'Status Reporting & PDF Pipeline Dossier',
+            target: '.tour-leads-table, body',
+            title: isGerman ? 'Lead-Übersicht & Detailverwaltung' : 'Lead Overview & Management',
             content: isGerman
-              ? 'Exportiere deine Vertriebspipeline mit einem Klick ins Universal PDF Studio für Geschäftsleitungs- und Partnermeetings.'
-              : 'Export your sales pipeline in one click to the Universal PDF Studio for executive and partner reviews.',
-            IconComponent: FileText,
-            submodules: isGerman ? ['Universal PDF Studio', 'Umsatzprognose', 'Konversions-Rate'] : ['Universal PDF Studio', 'Revenue Forecast', 'Conversion Rates'],
+              ? 'Behalte alle Anfragen, geschätzte Auftragsvolumina und den aktuellen Verhandlungsstatus im Detail im Blick. Filtere nach Status oder Zuständigkeit.'
+              : 'Keep all inquiries, estimated contract values, and negotiation statuses in view. Filter by status or owner.',
+            IconComponent: Target,
+            submodules: isGerman ? ['Volumen in CHF', 'Status-Tracking', 'Zuständigkeiten'] : ['Volume in CHF', 'Status Tracking', 'Assignees'],
             proTip: isGerman ? 'Gewonnene Leads lassen sich per Klick direkt in ein aktives Projekt mit Workspace umwandeln.' : 'Won leads convert directly into active project workspaces with one click.',
             placement: 'bottom'
+          },
+          {
+            target: '.tour-leads-actions, body',
+            title: isGerman ? 'Neuer Lead, Public Form & PDF-Dossier' : 'New Lead, Public Form & PDF Dossier',
+            content: isGerman
+              ? 'Erfasse neue Anfragen manuell, kopiere deinen öffentlichen Anfrage-Link oder exportiere deine Vertriebspipeline mit einem Klick ins Universal PDF Studio.'
+              : 'Record new inquiries, copy public forms, or export your sales pipeline to the Universal PDF Studio.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Öffentliches Formular', 'Universal PDF Studio', 'Sofort-Erfassung'] : ['Public Form', 'Universal PDF Studio', 'Quick Entry'],
+            proTip: isGerman ? 'Binde das öffentliche Anfrageformular per Link direkt auf deiner Büro-Website ein.' : 'Embed the public inquiry link directly into your studio website.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'proposals' || activeModuleTour === 'offers') {
+        candidateDefs = [
+          {
+            target: '.tour-proposals-new, body',
+            title: isGerman ? 'Interaktive Web-Offerten mit E-Signatur' : 'Interactive Web Proposals & E-Sign',
+            content: isGerman
+              ? 'Erstelle professionelle Web-Offerten für Bauherren mit dynamischer Leistungsauswahl und rechtsgültiger digitaler E-Signatur direkt im Browser.'
+              : 'Create modern interactive proposals with option selection and legally binding digital e-signatures.',
+            IconComponent: Globe,
+            submodules: isGerman ? ['Web-Offerte', 'Digitale E-Signatur', 'Varianten-Kalkulation'] : ['Web Proposal', 'Digital E-Signature', 'Option Calculator'],
+            proTip: isGerman ? 'Bauherren erhalten einen individuellen Link und können das Angebot sofort digital unterschreiben.' : 'Clients receive a personal link and can sign the proposal digitally.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-proposals-kpis, body',
+            title: isGerman ? 'Offerten-Pipeline & Abschluss-KPIs' : 'Proposal Pipeline & KPIs',
+            content: isGerman
+              ? 'Überwache den gesamten Pipeline-Wert: Offene Offerten, angenommene Verträge und deine monatliche Abschlussquote auf einen Blick.'
+              : 'Track pipeline value: Open proposals, accepted contracts, and conversion rates at a glance.',
+            IconComponent: Target,
+            submodules: isGerman ? ['Pipeline-Volumen', 'Angenommene Verträge', 'Konversions-Rate'] : ['Pipeline Value', 'Accepted Deals', 'Conversion Rate'],
+            proTip: isGerman ? 'Behalte offene Offerten im Blick und setze automatisierte Wiedervorlagen für Nachfass-Gespräche.' : 'Keep track of open proposals and follow up with clients proactively.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-proposals-table, body',
+            title: isGerman ? 'Revisionssichere Verwaltung & Universal PDF Export' : 'Proposal Management & PDF Export',
+            content: isGerman
+              ? 'Verwalte alle Versionen deiner Angebote, verfolge Aufrufe und exportiere druckreife Offert-Dossiers mit Plankopf direkt ins Universal PDF Studio.'
+              : 'Manage all offer versions, track client views, and export print-ready dossiers to the Universal PDF Studio.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['SIA-Plankopf', 'Universal PDF Studio', 'Echtzeit-Tracking'] : ['SIA Title Block', 'Universal PDF Studio', 'Real-time Tracking'],
+            proTip: isGerman ? 'Sobald ein Angebot angenommen wird, lässt sich mit einem Klick das zugehörige Projekt anlegen.' : 'Once accepted, an offer converts into an active project workspace in one click.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'projects') {
+        candidateDefs = [
+          {
+            target: '.tour-create-project-btn, .tour-projects-grid, body',
+            title: isGerman ? 'Projekt-Übersicht & Neues Projekt' : 'Projects Overview & New Project',
+            content: isGerman
+              ? 'Erstelle neue Bau- und Architekturprojekte mit wenigen Klicks. Wähle zwischen Standard-Projekten oder lade ein voll strukturiertes BKP-Musterprojekt.'
+              : 'Create new architecture and construction projects. Choose standard projects or load structured BKP demo setups.',
+            IconComponent: Building2,
+            submodules: isGerman ? ['Projekt-Initialisierung', 'BKP 1–9 Vorlagen', 'Status-Cockpit'] : ['Project Setup', 'BKP Templates', 'Status Cockpit'],
+            proTip: isGerman ? 'Nutze "Musterprojekt laden" um ein voll befülltes BKP-Referenzprojekt mit BIM und Plänen zu testen.' : 'Use demo project loading to test full BKP structures with BIM and CAD.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-projects-filters, body',
+            title: isGerman ? 'Status-Filter & Projekt-Archiv' : 'Status Filters & Project Archive',
+            content: isGerman
+              ? 'Filtere deine Projekte nach aktiven Baustellen, Planungsphasen oder durchsuche archivierte Projekte vergangener Geschäftsjahre.'
+              : 'Filter your portfolio by active sites, planning stages, or browse archived projects by fiscal year.',
+            IconComponent: Filter,
+            submodules: isGerman ? ['Aktive Projekte', 'Archiv nach Jahren', 'Schnellsuche'] : ['Active Projects', 'Yearly Archives', 'Quick Search'],
+            proTip: isGerman ? 'Archivierte Projekte bleiben revisionssicher gespeichert und können jederzeit reaktiviert werden.' : 'Archived projects remain tamper-proof and can be reactivated anytime.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-projects-grid, body',
+            title: isGerman ? 'Projekt-Kacheln & Direkter Workspace-Zugriff' : 'Project Cards & Workspace Access',
+            content: isGerman
+              ? 'Jede Projekt-Kachel bietet Schnellzugriff auf Bauphasen, Budget-Status und das Aktionsmenü (Umbenennen, Archivieren, Löschen).'
+              : 'Each project card provides rapid access to stages, budget status, and actions (rename, archive, delete).',
+            IconComponent: Layers,
+            submodules: isGerman ? ['Workspace-Einstieg', 'Aktionsmenü', 'Live-Projektstatus'] : ['Workspace Entry', 'Action Menu', 'Live Status'],
+            proTip: isGerman ? 'Klicke auf eine Kachel, um direkt in den 360° Projekt-Workspace (BIM, CAD, BKP) einzutauchen.' : 'Click any card to enter the full 360° workspace (BIM, CAD, BKP).',
+            placement: 'top'
+          }
+        ];
+      } else if (activeModuleTour === 'audit') {
+        candidateDefs = [
+          {
+            target: '.tour-audit-export, body',
+            title: isGerman ? 'Audit-Logs & Revisionssichere Governance' : 'Audit Logs & Governance',
+            content: isGerman
+              ? 'Lückenlose Dokumentation sämtlicher Aktionen: Projektänderungen, Rollenzuweisungen, Dokumentenuploads und Abrechnungen.'
+              : 'Tamper-proof log of all company actions: project changes, role updates, uploads, and billing.',
+            IconComponent: Shield,
+            submodules: isGerman ? ['ISO/SIA-Revisionssicherheit', 'CSV Export', 'Ereignis-Tracking'] : ['Compliance Ready', 'CSV Export', 'Event Tracking'],
+            proTip: isGerman ? 'Exportiere das Audit-Protokoll als CSV für Wirtschaftsprüfer oder interne Jahresabschlüsse.' : 'Export audit protocols as CSV for external auditors or compliance reporting.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-audit-filters, body',
+            title: isGerman ? 'Kategorie-Filter & Schnellsuche' : 'Category Filters & Search',
+            content: isGerman
+              ? 'Filtere gezielt nach Projekten, Team-Aktivitäten, Finanzbuchungen oder Sicherheits-Mitteilungen.'
+              : 'Filter specifically by projects, team activities, finance bookings, or security notices.',
+            IconComponent: Filter,
+            submodules: isGerman ? ['Projekt-Ereignisse', 'Team & Rollen', 'Finanz-Aktivitäten'] : ['Project Events', 'Team & Roles', 'Finance Activities'],
+            proTip: isGerman ? 'Nutze das Volltext-Suchfeld, um nach bestimmten Benutzern, Daten oder Aktionen zu filtern.' : 'Use full-text search to filter by specific users, dates, or action types.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-audit-table, body',
+            title: isGerman ? 'Detailliertes Ereignis-Protokoll' : 'Detailed Event History',
+            content: isGerman
+              ? 'Jeder Eintrag enthält Zeitstempel, ausführenden Benutzer und bei Bedarf den Rohdaten-Payload zur genauen Rekonstruktion.'
+              : 'Each entry contains precise timestamps, acting users, and raw payload data for deep forensics.',
+            IconComponent: Clock,
+            submodules: isGerman ? ['Zeitstempel (Sekundengenau)', 'Benutzer-Identifikation', 'JSON-Payload Details'] : ['Precise Timestamp', 'User Identification', 'JSON Payload'],
+            proTip: isGerman ? 'Klicke auf einen Eintrag, um das vollständige technische JSON-Protokoll auszuklappen.' : 'Click any entry to expand the full technical JSON payload.',
+            placement: 'top'
+          }
+        ];
+      } else if (activeModuleTour === 'settings') {
+        candidateDefs = [
+          {
+            target: '.tour-settings-profile, body',
+            title: isGerman ? 'Firmenprofil & Briefkopf-Branding' : 'Company Profile & Branding',
+            content: isGerman
+              ? 'Hinterlege dein Firmenlogo, UID/MwSt.-Nummern, Bankverbindungen und Kontaktdaten. Diese fließen automatisch in Rechnungen und Offerten ein.'
+              : 'Configure your company logo, VAT/UID numbers, IBAN, and contacts. These sync into invoices and offers.',
+            IconComponent: Building2,
+            submodules: isGerman ? ['Firmenlogo (SIA-Kopf)', 'UID & MwSt.-Nummer', 'IBAN & Bankdaten'] : ['Company Logo', 'UID & VAT Number', 'IBAN & Banking'],
+            proTip: isGerman ? 'Ein transparentes PNG-Logo sorgt für gestochen scharfe Ausdrücke im Universal PDF Studio.' : 'A transparent PNG logo ensures crisp prints across all generated PDFs.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-settings-billing, body',
+            title: isGerman ? 'SaaS-Abrechnung & Team-Lizenzen' : 'SaaS Billing & Team Licenses',
+            content: isGerman
+              ? 'Verwalte deinen aktuellen Subscription-Plan, Team-Sitze und Cloud-Speicher. Passe deine Skalierung flexibel an dein Projektvolumen an.'
+              : 'Manage your active subscription plan, team seats, and storage. Scale flexibly with your workload.',
+            IconComponent: DollarSign,
+            submodules: isGerman ? ['Aktiver Plan', 'Lizenzen & Sitze', 'Cloud-Speicher-Limit'] : ['Active Plan', 'Seats & Licenses', 'Cloud Storage Limits'],
+            proTip: isGerman ? 'Das Stripe Kundenportal erlaubt dir jederzeit den Wechsel von Plänen oder das Ändern der Zahlungsmethode.' : 'The Stripe customer portal allows seamless plan switches and billing updates.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-settings-api, body',
+            title: isGerman ? 'Webhooks & B2B API-Schnittstellen' : 'Webhooks & B2B API',
+            content: isGerman
+              ? 'Verbinde Kreativ Desk OS mit externen ERP-Systemen, Buchhaltungssoftware oder automatisiere Workflows über Webhooks (Zapier/Make).'
+              : 'Connect Kreativ Desk OS to external ERPs, accounting tools, or automate via Zapier/Make webhooks.',
+            IconComponent: Terminal,
+            submodules: isGerman ? ['Echtzeit-Webhooks', 'API-Schlüssel', 'Externe ERP-Konnektivität'] : ['Real-time Webhooks', 'API Keys', 'ERP Connectivity'],
+            proTip: isGerman ? 'Neue Leads oder genehmigte Rechnungen können vollautomatisch an deine Finanzbuchhaltung gemeldet werden.' : 'New leads or approved invoices can trigger real-time webhooks directly to your accounting.',
+            placement: 'top'
           }
         ];
       }
@@ -789,7 +1069,7 @@ export default function ProductTour() {
           const elements = Array.from(document.querySelectorAll(sel)) as HTMLElement[];
           for (const el of elements) {
             // Strictly exclude anything inside or matching .tour-btn-module-guide or <header> tags
-            if (el.closest('.tour-btn-module-guide') || el.tagName.toLowerCase() === 'header') {
+            if (el.closest('.tour-btn-module-guide') || el.tagName.toLowerCase() === 'header' || el.closest('header')) {
               continue;
             }
             const rect = el.getBoundingClientRect();
@@ -817,20 +1097,27 @@ export default function ProductTour() {
       const stepNum = index + 1;
       const isCenter = c.isBodyTarget || c.placement === 'center';
       
-      // Determine safe placement: if target is in the upper part of the viewport or requested placement is 'top',
-      // always show downwards ('bottom') to prevent the title/header from getting cut off at the top of the browser!
       let effectivePlacement = isCenter
         ? 'center'
         : (isMobile && c.placement !== 'center' ? 'auto' : (c.placement || 'bottom'));
 
       if (!isCenter && typeof c.resolvedTarget === 'object' && c.resolvedTarget instanceof HTMLElement) {
         const rect = c.resolvedTarget.getBoundingClientRect();
-        // If element is in upper half of window (top < 380px) and placement is top, force bottom
-        if (effectivePlacement === 'top' || (rect.top < 380 && effectivePlacement !== 'right' && effectivePlacement !== 'left')) {
-          effectivePlacement = 'bottom';
+        const vh = window.innerHeight;
+        const spaceBelow = vh - rect.bottom;
+        const spaceAbove = rect.top;
+        const neededHeight = 420;
+
+        // If requested placement isn't strictly horizontal (left/right):
+        if (effectivePlacement !== 'left' && effectivePlacement !== 'right') {
+          // If not enough room below AND more room above, flip to top to avoid cutting off at bottom!
+          if (spaceBelow < neededHeight && spaceAbove > spaceBelow) {
+            effectivePlacement = 'top';
+          } else if (spaceAbove < 280) {
+            // If near top of screen, place downwards
+            effectivePlacement = 'bottom';
+          }
         }
-      } else if (effectivePlacement === 'top') {
-        effectivePlacement = 'bottom';
       }
 
       return {
@@ -839,18 +1126,18 @@ export default function ProductTour() {
         placement: effectivePlacement,
         skipBeacon: true, // ✅ CRUCIAL: Eliminates the red pulsing beacon dot in React-Joyride v3
         disableBeacon: true, // backwards compatibility
-        disableScrolling: isCenter ? true : false,
+        disableScrolling: false, // Allow smooth scrolling to keep target in view
         disableScrollParentFix: true,
-        isFixed: true,
+        isFixed: false,
         floatingOptions: {
           strategy: 'fixed',
           hideArrow: isCenter,
           shiftOptions: {
-            padding: 24, // Guarantees tooltip stays at least 24px below viewport top
+            padding: 16, // Guarantees tooltip stays at least 16px inside viewport
           },
           flipOptions: {
-            padding: 24,
-            fallbackPlacements: ['bottom', 'bottom-start', 'bottom-end', 'right', 'left'],
+            padding: 16,
+            fallbackPlacements: ['top', 'bottom', 'top-start', 'bottom-start', 'top-end', 'bottom-end', 'right', 'left'],
           }
         },
         floaterProps: {
@@ -864,7 +1151,35 @@ export default function ProductTour() {
   }, [isTourRunning, activeModuleTour, location.pathname, language, theme, isDark, isGerman, stopTour]);
 
   const handleJoyrideCallback = async (data: any) => {
-    const { status, action, type } = data;
+    const { status, action, type, step, lifecycle } = data;
+
+    // Smoothly scroll target into view if obscured behind top header or below viewport
+    if (type === 'step:before' || lifecycle === 'ready' || type === 'tour:start') {
+      const target = step?.target;
+      let targetEl: HTMLElement | null = null;
+      if (target instanceof HTMLElement) {
+        targetEl = target;
+      } else if (typeof target === 'string' && target !== 'body') {
+        try {
+          targetEl = document.querySelector(target);
+        } catch {}
+      }
+
+      if (targetEl && targetEl !== document.body) {
+        const rect = targetEl.getBoundingClientRect();
+        const isBehindHeader = rect.top < 90;
+        const isBelowFold = rect.bottom > (window.innerHeight - 80);
+
+        if (isBehindHeader || isBelowFold) {
+          try {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+          } catch {
+            // graceful fallback
+          }
+        }
+      }
+    }
+
     if (['finished', 'skipped'].includes(status) || action === 'close') {
       stopTour();
       setSteps([]);
@@ -925,8 +1240,10 @@ export default function ProductTour() {
             border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid rgba(0, 0, 0, 0.10)',
             padding: '1.25rem',
             boxShadow: isDark ? '0 25px 50px -12px rgba(0, 0, 0, 0.9)' : '0 20px 40px -10px rgba(0, 0, 0, 0.15)',
-            maxHeight: 'calc(100vh - 48px)',
+            maxHeight: 'min(520px, calc(100vh - 48px))',
+            maxWidth: 'min(420px, calc(100vw - 32px))',
             overflowY: 'auto',
+            boxSizing: 'border-box' as const,
           },
           tooltipContainer: {
             textAlign: 'left',

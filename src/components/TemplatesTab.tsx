@@ -571,7 +571,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
       </header>
 
       {/* 💡 ARCHITEKTUR-HINWEIS: FIRMEN-MASTERFILES VS. PROJEKT-WORKSPACE */}
-      <div className="p-5 bg-gradient-to-r from-blue-500/10 via-surface to-background border border-blue-500/25 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+      <div className="tour-templates-banner p-5 bg-gradient-to-r from-blue-500/10 via-surface to-background border border-blue-500/25 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-start gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
             <Briefcase size={20} />
@@ -602,7 +602,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
       </div>
 
       {/* Quick Launch Cards (Existing Suite) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 w-full">
+      <div className="tour-templates-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 w-full">
         {templates.map((template) => (
           <div key={template.id} onClick={template.action} className={cn("bg-surface border border-border p-6 rounded-2xl shadow-sm cursor-pointer transition-all group flex flex-col h-full", template.border)}>
             <div className="flex justify-between items-start mb-4">
@@ -621,7 +621,7 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
       {/* ========================================================================= */}
       {/* MASTER CONTRACT & DOCUMENT CATALOG (BILINGUAL DE/EN, SIA & OR ALIGNED)     */}
       {/* ========================================================================= */}
-      <section className="space-y-6 pt-4 border-t border-border/60">
+      <section className="tour-templates-list space-y-6 pt-4 border-t border-border/60">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 text-[11px] font-semibold uppercase tracking-wider mb-2">
