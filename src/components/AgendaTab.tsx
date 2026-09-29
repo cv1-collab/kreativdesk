@@ -27,9 +27,9 @@ if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
 }
 
-// NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import ModuleGuideButton from './ModuleGuideButton';
 
 // === LOKALE ÜBERSETZUNGEN ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -1237,7 +1237,8 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
           <p className="text-sm text-text-muted mt-1 font-medium">{t('agenda_desc')}</p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <ModuleGuideButton moduleId="calendar" />
           <button onClick={handleExportICal} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
             <Download size={14} /> iCal Export (.ics)
           </button>

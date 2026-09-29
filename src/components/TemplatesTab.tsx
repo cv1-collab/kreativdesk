@@ -18,6 +18,7 @@ import { sendNotification } from '../lib/notifications';
 import { safeStorage } from '../utils/safeStorage';
 import { MASTER_TEMPLATES, TEMPLATE_CATEGORIES, MasterTemplate } from '../data/masterTemplates';
 import { bindTemplateVariables, getCachedCompanyProfile } from '../utils/templateVariableEngine';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const TAG_TRANSLATIONS: Record<string, string> = {
   'Architektur': 'Architecture',
@@ -558,11 +559,14 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
           <p className="text-text-muted mt-1.5 text-sm font-medium">{t('templates_desc')}</p>
         </div>
 
-        {/* Company Active Branding Indicator */}
-        <div className="flex items-center gap-2.5 px-3.5 py-2 bg-surface/80 border border-border/70 rounded-xl text-xs font-semibold text-text-muted backdrop-blur-sm self-start sm:self-auto shadow-sm">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Branding:</span>
-          <span className="text-text-primary font-semibold">{companyProfile.name}</span>
+        {/* Actions & Company Active Branding Indicator */}
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          <ModuleGuideButton moduleId="templates" />
+          <div className="flex items-center gap-2.5 px-3.5 py-2 bg-surface/80 border border-border/70 rounded-xl text-xs font-semibold text-text-muted backdrop-blur-sm shadow-sm">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Branding:</span>
+            <span className="text-text-primary font-semibold">{companyProfile.name}</span>
+          </div>
         </div>
       </header>
 

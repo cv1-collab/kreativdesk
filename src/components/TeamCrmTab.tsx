@@ -11,7 +11,7 @@ import {
   X, Loader2, FileUp, Camera, Smartphone, Globe, MapPin, FileText, Briefcase,
   Edit2, Trash2, Contact, Download, CheckSquare, ListChecks, PenTool, Image as ImageIcon, ZoomOut, ZoomIn, Cloud,
   Link as LinkIcon, Send, UserCheck, Copy,
-  Building2, Hammer, Compass, Package, Landmark, Sparkles, Percent, DollarSign, Award, FolderKanban, ShieldCheck, UserCog, BadgePercent, Clock, Tag, User, Layers
+  Building2, Hammer, Compass, Package, Landmark, Sparkles, Percent, DollarSign, Award, FolderKanban, ShieldCheck, UserCog, BadgePercent, Clock, Tag, User, Layers, ChevronDown
 } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { cn, sanitizeUrl } from '../utils';
@@ -24,6 +24,7 @@ import { offboardCompanyUser, syncCompanySeats } from '../services/userService';
 import { uploadFileWithFallback, uploadPdfBlobWithFallback } from '../utils/cloudStorageHelper';
 import { callGeminiAPI } from '../utils/geminiClient';
 import { safeStorage } from '../utils/safeStorage';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -1168,6 +1169,8 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
 
   const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
   const [isScannerModalOpen, setIsScannerModalOpen] = useState(false);
+  const [isExportImportOpen, setIsExportImportOpen] = useState(false);
+  const exportImportRef = useRef<HTMLDivElement>(null);
   const [isScanningCard, setIsScanningCard] = useState(false);
   const [scannedCardPreview, setScannedCardPreview] = useState<string | null>(null);
   const scannerInputRef = useRef<HTMLInputElement>(null);
@@ -1357,6 +1360,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
         </div>
         
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 w-full md:w-auto">
+          {/* Modul-Guide Button (Nummer 9) */}
+          <ModuleGuideButton moduleId="team" />
+
           {/* Visitenkarte KI Scanner Button */}
           <button 
             onClick={() => setIsScannerModalOpen(true)} 
@@ -1367,9 +1373,71 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           </button>
 
           <input type="file" accept=".vcf" ref={vcfInputRef} className="hidden" onChange={handleVcfImport} />
-          <button onClick={() => { setDocHeader(prev => ({...prev, title: (selectedContact && !isSelectionMode) ? 'Contact Dossier' : 'CRM Report'})); setIsPrintModalOpen(true); }} className="hidden md:flex px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><Download size={15} /> <span>{t('export_pdf')}</span></button>
-          <button onClick={handleExportCSV} className="px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><FileText size={15} /> <span className="hidden sm:inline">{t('export_csv')}</span></button>
-          <button onClick={() => vcfInputRef.current?.click()} className="px-3 py-2 bg-surface border border-border text-text-primary rounded-xl text-xs md:text-sm font-bold hover:bg-background transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer"><FileUp size={15} /> <span className="hidden sm:inline">{t('vcf_import')}</span></button>
+
+          {/* Zusammengefasste Export / Import Dropdown (Nummer 8) */}
+          <div className="relative shrink-0" ref={exportImportRef}>
+            <button
+              onClick={() => setIsExportImportOpen(!isExportImportOpen)}
+              className={cn(
+                "px-3 py-2 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
+                isExportImportOpen 
+                  ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
+                  : "bg-surface border-border text-text-primary hover:bg-background"
+              )}
+              title="Export & Import"
+            >
+              <Download size={15} />
+              <span>Export / Import</span>
+              <ChevronDown size={14} className={cn("transition-transform duration-200 text-text-muted", isExportImportOpen && "rotate-180")} />
+            </button>
+
+            <AnimatePresence>
+              {isExportImportOpen && (
+                <>
+                  <div className="fixed inset-0 z-[100]" onClick={() => setIsExportImportOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.96 }}
+                    className="absolute right-0 top-full mt-1.5 w-56 bg-surface border border-border rounded-xl shadow-2xl p-1.5 z-[101] space-y-1"
+                  >
+                    <button
+                      onClick={() => {
+                        setIsExportImportOpen(false);
+                        setDocHeader(prev => ({...prev, title: (selectedContact && !isSelectionMode) ? 'Contact Dossier' : 'CRM Report'}));
+                        setIsPrintModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                    >
+                      <Download size={14} className="text-red-400 shrink-0" />
+                      <span>{t('export_pdf')} (PDF Report)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsExportImportOpen(false);
+                        handleExportCSV();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors cursor-pointer"
+                    >
+                      <FileText size={14} className="text-emerald-400 shrink-0" />
+                      <span>{t('export_csv')} (Excel / CSV)</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsExportImportOpen(false);
+                        vcfInputRef.current?.click();
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/5 text-left text-xs font-semibold text-text-primary transition-colors border-t border-border/50 cursor-pointer"
+                    >
+                      <FileUp size={14} className="text-blue-400 shrink-0" />
+                      <span>{t('vcf_import')} (vCard .vcf)</span>
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
           <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("px-3 py-2 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={15} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
           {hasPermission('canManageUsers') && (
             <button 

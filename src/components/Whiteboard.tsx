@@ -515,7 +515,6 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showAiMenu, setShowAiMenu] = useState(false);
-  const [showMediaMenu, setShowMediaMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   const [imageFilters, setImageFilters] = useState({ brightness: 0, contrast: 0, saturation: 0 });
@@ -1839,20 +1838,20 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
-            <ModuleGuideButton moduleId="whiteboard" />
+            <ModuleGuideButton moduleId="whiteboard" className="h-9 px-3 rounded-lg" />
             {/* 1. KI-ASSISTENT DROPDOWN */}
             <div className="relative shrink-0">
               <button
-                onClick={() => { setShowAiMenu(!showAiMenu); setShowMediaMenu(false); setShowExportMenu(false); }}
+                onClick={() => { setShowAiMenu(!showAiMenu); setShowExportMenu(false); }}
                 className={cn(
-                  "tour-whiteboard-ai px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  "tour-whiteboard-ai h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border cursor-pointer shrink-0",
                   showAiMenu
                     ? "bg-accent-ai/20 border-accent-ai text-accent-ai"
                     : "bg-accent-ai/10 text-accent-ai border-accent-ai/20 hover:bg-accent-ai/20"
                 )}
                 title={t('ai_tools_title')}
               >
-                <Sparkles size={16} />
+                <Sparkles size={15} />
                 <span className="hidden sm:inline">{t('ai_tools')}</span>
                 <ChevronDown size={14} className={cn("transition-transform duration-150", showAiMenu && "rotate-180")} />
               </button>
@@ -1865,7 +1864,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       initial={{ opacity: 0, y: 5, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 5, scale: 0.96 }}
-                      className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                      className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                     >
                       <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
                         {t('ai_tools_header')}
@@ -1876,7 +1875,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           setShowAiMenu(false);
                           openAiRenderStudio();
                         }}
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-accent-ai/10 hover:text-accent-ai transition-colors cursor-pointer"
                       >
                         <Wand2 size={16} className="text-accent-ai shrink-0" />
                         <div>
@@ -1890,7 +1889,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           setShowAiMenu(false);
                           handleRunAiAudit();
                         }}
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-400 transition-colors border-t border-border/50 cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-400 transition-colors border-t border-border/50 cursor-pointer"
                       >
                         <Sparkles size={16} className="text-purple-400 shrink-0" />
                         <div>
@@ -1904,84 +1903,32 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               </AnimatePresence>
             </div>
 
-            {/* 2. MEDIEN & PDF DROPDOWN */}
+            {/* 2. DIREKTER MEDIEN-IMPORT */}
             <div className="relative shrink-0">
               <input type="file" ref={fileInputRef} accept="image/*,application/pdf" onChange={handleImageUpload} className="hidden" />
               <button
-                onClick={() => { setShowMediaMenu(!showMediaMenu); setShowAiMenu(false); setShowExportMenu(false); }}
-                className={cn(
-                  "tour-whiteboard-media px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
-                  showMediaMenu
-                    ? "bg-surface border-text-primary text-text-primary"
-                    : "bg-surface border-border text-text-primary hover:bg-background"
-                )}
-                title={t('media_pdf_title')}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingMedia}
+                className="tour-whiteboard-media h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border border-border bg-surface hover:bg-background text-text-primary cursor-pointer disabled:opacity-50 shrink-0"
+                title={t('import_media_sub')}
               >
-                <UploadCloud size={16} />
-                <span className="hidden sm:inline">{t('media_pdf')}</span>
-                <ChevronDown size={14} className={cn("transition-transform duration-150", showMediaMenu && "rotate-180")} />
+                {isUploadingMedia ? <Loader2 size={15} className="animate-spin text-accent-primary shrink-0" /> : <UploadCloud size={15} className="text-blue-500 shrink-0" />}
+                <span className="hidden sm:inline">{isUploadingMedia ? t('saving_cloud') : (language === 'de' ? 'Importieren' : 'Import')}</span>
               </button>
-
-              <AnimatePresence>
-                {showMediaMenu && (
-                  <>
-                    <div className="fixed inset-0 z-[1000]" onClick={() => setShowMediaMenu(false)} />
-                    <motion.div
-                      initial={{ opacity: 0, y: 5, scale: 0.96 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 5, scale: 0.96 }}
-                      className="fixed top-20 right-auto mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
-                    >
-                      <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
-                        {t('media_pdf_header')}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setShowMediaMenu(false);
-                          fileInputRef.current?.click();
-                        }}
-                        disabled={isUploadingMedia}
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
-                      >
-                        {isUploadingMedia ? <Loader2 size={16} className="animate-spin text-text-muted shrink-0" /> : <UploadCloud size={16} className="text-blue-400 shrink-0" />}
-                        <div>
-                          <div className="leading-tight">{isUploadingMedia ? t('saving_cloud') : t('import_media')}</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('import_media_sub')}</div>
-                        </div>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShowMediaMenu(false);
-                          executePdfExport();
-                        }}
-                        className="hidden md:flex w-full text-left px-3 py-2.5 text-xs font-bold items-center gap-2.5 text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors border-t border-border/50 cursor-pointer"
-                      >
-                        <FileDown size={16} className="text-red-400 shrink-0" />
-                        <div>
-                          <div className="leading-tight">PDF Studio</div>
-                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('pdf_studio_sub')}</div>
-                        </div>
-                      </button>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* REALTIME SYNC STATUS BADGE */}
             {!isDemo && projectId && (
               <div 
                 className={cn(
-                  "px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all shrink-0",
+                  "h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all shrink-0",
                   isLiveConnected 
                     ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
                     : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
                 )}
                 title={isLiveConnected ? t('live_team_title') : t('connecting_title')}
               >
-                <span className={cn("w-2 h-2 rounded-full", isLiveConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
+                <span className={cn("w-2 h-2 rounded-full shrink-0", isLiveConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
                 <span className="hidden lg:inline">{isLiveConnected ? t('live_team') : t('connecting')}</span>
               </div>
             )}
@@ -1990,19 +1937,19 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             <button
               onClick={handleSaveToCloud}
               disabled={isSavingToCloud}
-              className="px-3 py-2 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-xl text-sm font-bold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
+              className="h-9 px-3 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-lg text-xs sm:text-sm font-semibold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer shrink-0"
               title={t('save_cloud_title')}
             >
-              {isSavingToCloud ? <Loader2 size={16} className="animate-spin" /> : <Cloud size={16} />}
+              {isSavingToCloud ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Cloud size={15} className="shrink-0" />}
               <span className="hidden md:inline">{isSavingToCloud ? t('saving_cloud') : t('save_cloud')}</span>
             </button>
 
-            {/* 4. EXPORT & FREIGABE DROPDOWN */}
+            {/* 4. EXPORT & FREIGABE DROPDOWN (Konsolidiert inkl. PDF Studio) */}
             <div className="relative shrink-0">
               <button
-                onClick={() => { setShowExportMenu(!showExportMenu); setShowAiMenu(false); setShowMediaMenu(false); }}
+                onClick={() => { setShowExportMenu(!showExportMenu); setShowAiMenu(false); }}
                 className={cn(
-                  "px-3 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-sm border cursor-pointer",
+                  "h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border cursor-pointer shrink-0",
                   showExportMenu
                     ? "bg-purple-500/20 border-purple-500 text-purple-300"
                     : "bg-surface border-border text-text-primary hover:bg-background"
@@ -2022,7 +1969,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       initial={{ opacity: 0, y: 5, scale: 0.96 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 5, scale: 0.96 }}
-                      className="fixed top-20 right-4 md:right-8 mt-1 bg-surface border border-border rounded-2xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
+                      className="fixed top-20 right-4 md:right-8 mt-1 bg-surface border border-border rounded-xl shadow-2xl z-[1001] w-64 py-2 overflow-hidden text-left"
                     >
                       <div className="px-3 py-1 text-[9px] font-bold text-text-muted uppercase tracking-widest border-b border-border mb-1">
                         {t('export_header')}
@@ -2031,9 +1978,23 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       <button
                         onClick={() => {
                           setShowExportMenu(false);
+                          executePdfExport();
+                        }}
+                        className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
+                      >
+                        <FileDown size={16} className="text-red-400 shrink-0" />
+                        <div>
+                          <div className="leading-tight">PDF Studio</div>
+                          <div className="text-[10px] font-normal text-text-muted mt-0.5">{t('pdf_studio_sub')}</div>
+                        </div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
                           handleExportImage();
                         }}
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-white/10 transition-colors cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-emerald-500/10 hover:text-emerald-400 transition-colors border-t border-border/50 cursor-pointer"
                       >
                         <Download size={16} className="text-emerald-400 shrink-0" />
                         <div>
@@ -2048,7 +2009,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           handleSendToSlides();
                         }}
                         disabled={isSending || sendSuccess}
-                        className="w-full text-left px-3 py-2.5 text-xs font-bold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-300 transition-colors border-t border-border/50 disabled:opacity-50 cursor-pointer"
+                        className="w-full text-left px-3 py-2.5 text-xs font-semibold flex items-center gap-2.5 text-text-primary hover:bg-purple-500/10 hover:text-purple-300 transition-colors border-t border-border/50 disabled:opacity-50 cursor-pointer"
                       >
                         {isSending ? <Loader2 size={16} className="animate-spin text-purple-400 shrink-0" /> : sendSuccess ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : <Presentation size={16} className="text-purple-400 shrink-0" />}
                         <div>

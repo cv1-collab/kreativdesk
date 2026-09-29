@@ -1612,7 +1612,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         {/* PLAN AUSWAHL & LÖSCHEN */}
         <div className="flex items-center gap-2 shrink-0">
           {projectPlans.length > 0 ? (
-            <div className="flex items-center gap-2 bg-background border border-border px-3 py-1.5 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 bg-background border border-border px-3 h-9 rounded-xl shadow-sm">
               <Layers size={14} className="text-text-muted shrink-0" />
               <select 
                 value={activePlanId || ''} 
@@ -1622,13 +1622,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
               </select>
               {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
-                <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded" title={t('delete_plan')}>
+                <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer" title={t('delete_plan')}>
                   <Trash2 size={14}/>
                 </button>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-sm">
+            <div className="flex items-center gap-2 px-3 h-9 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-sm">
               <Layers size={14} className="text-text-muted" /> <span>Kein Plan geladen</span>
             </div>
           )}
@@ -1636,7 +1636,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
 
         {/* PLAN FORMAT, MASSSTAB & KALIBRIERUNG (ZUSAMMENGEFÜHRT) */}
         {planImage && (
-          <div className="hidden lg:flex items-center gap-2.5 bg-background border border-border px-3.5 py-1.5 rounded-xl shadow-inner mx-2 shrink-0">
+          <div className="hidden lg:flex items-center gap-2 bg-background border border-border px-3 h-9 rounded-xl shadow-inner mx-2 shrink-0 text-xs">
              <span className="text-[10px] font-extrabold uppercase tracking-wider text-text-muted">{t('plan_layout')}:</span>
              <select value={paperFormat} onChange={e => setPaperFormat(e.target.value)} className="bg-transparent text-xs font-bold text-text-primary outline-none cursor-pointer">
                {Object.keys(PAPER_DIMENSIONS).map(f => <option key={f} value={f} className="bg-surface">{f}</option>)}
@@ -1653,7 +1653,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
              <button 
                onClick={handleStartCalibration} 
                className={cn(
-                 "ml-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer",
+                 "ml-1 px-2.5 h-7 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer",
                  isCalibratingMode 
                    ? "bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/25 animate-pulse" 
                    : "bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border-purple-500/30"
@@ -1669,7 +1669,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         {/* RECHTE BUTTONS (ZUSAMMENGEFÜHRT: ARBEIT, EXPORT & GUIDE) */}
         <div className="flex items-center gap-2 shrink-0">
           {/* PRIMÄRE ARBEITS-AKTIONEN: UPLOAD & SPEICHERN */}
-          <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm">
+          <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm h-9">
             <label 
               onClick={(e) => {
                 if (isDemoMode || currentProjectId === 'demo-1') {
@@ -1680,7 +1680,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               }}
               title={t('upload_plan_tooltip')}
               className={cn(
-                "tour-plan-upload flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all whitespace-nowrap",
+                "tour-plan-upload flex items-center gap-1.5 px-3 h-8 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold shadow-sm transition-all whitespace-nowrap",
                 (isDemoMode || currentProjectId === 'demo-1') ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
               )}
             >
@@ -1693,7 +1693,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
             <button 
               onClick={handleManualSave} 
               disabled={isSaving || !activePlanId || activePlanId === 'demo-cad-1' || activePlanId === 'system-fallback-plan' || isDemoMode} 
-              className="flex items-center gap-1.5 px-3 py-1.5 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer" 
+              className="flex items-center gap-1.5 px-3 h-8 text-text-primary hover:bg-white/5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer" 
               title={t('save_layers_tooltip')}
             >
               {isSaving ? <Loader2 size={13} className="animate-spin"/> : <Save size={13}/>}
@@ -1707,7 +1707,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
               onClick={() => setExportMenuOpen(!exportMenuOpen)}
               disabled={!planImage}
               className={cn(
-                "tour-plan-pdf flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-sm whitespace-nowrap cursor-pointer",
+                "tour-plan-pdf flex items-center gap-1.5 px-3 h-9 rounded-xl text-xs font-bold border transition-all shadow-sm whitespace-nowrap cursor-pointer",
                 exportMenuOpen 
                   ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
                   : "bg-surface hover:bg-white/5 text-text-primary border-border"
@@ -1784,10 +1784,10 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
           </div>
 
           {/* MODUL GUIDE */}
-          <ModuleGuideButton moduleId="plans" compact className="sm:px-3 sm:py-2 text-xs" />
+          <ModuleGuideButton moduleId="plans" compact className="h-9 px-3 rounded-xl text-xs flex items-center justify-center" />
 
           {/* MOBIL EBENEN-TOGGLE */}
-          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden p-2 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center cursor-pointer">
+          <button onClick={() => setShowMobileRightPanel(!showMobileRightPanel)} className="md:hidden h-9 w-9 p-0 bg-surface border border-border rounded-xl text-text-primary text-xs font-bold flex items-center justify-center cursor-pointer">
             <Layers size={16}/>
           </button>
         </div>

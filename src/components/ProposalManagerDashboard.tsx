@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { cn, copyToClipboard } from '../utils';
 import { audioFeedback } from '../utils/audioFeedback';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de' | 'fr', Record<string, string>> = {
   en: {
@@ -313,8 +314,7 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
       {/* HEADER & STATS */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2.5">
-            <Sparkles className="text-blue-500" size={24} />
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
             {t('dashboard_title')}
           </h1>
           <p className="text-xs sm:text-sm text-text-muted mt-1">
@@ -330,14 +330,17 @@ export default function ProposalManagerDashboard({ onCreateNew, embedded, projec
           </div>
         </div>
 
-        {proposals.length > 0 && (
-          <button
-            onClick={handleTriggerCreate}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
-          >
-            <Plus size={16} /> {t('btn_create_new')}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <ModuleGuideButton moduleId="pitch" />
+          {proposals.length > 0 && (
+            <button
+              onClick={handleTriggerCreate}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <Plus size={16} /> {t('btn_create_new')}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* KPI METRICS */}

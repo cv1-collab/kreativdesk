@@ -828,13 +828,29 @@ export default function CompanyDashboard() {
             const roleKey = `role_${userRole?.toLowerCase()}`;
             const displayRole = localTranslations[currentLang]?.[roleKey] || userRole;
             return (
-              <button title={currentUser?.email} onClick={() => setActiveTab('settings')} className="w-full flex items-center justify-start gap-3 px-3 py-2.5 bg-background border border-border rounded-xl transition-all text-sm font-bold shadow-sm hover:bg-white/5 cursor-pointer">
-                <div className="w-8 h-8 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0">{userDisplayName.charAt(0).toUpperCase()}</div>
-                <div className="text-left overflow-hidden">
-                  <div className="truncate text-sm font-bold text-text-primary">{userDisplayName}</div>
-                  <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black">{displayRole}</div>
-                </div>
-              </button>
+              <div className="flex items-center justify-between gap-2 px-2.5 py-2 bg-background border border-border rounded-xl shadow-sm">
+                <button 
+                  title={currentUser?.email} 
+                  onClick={() => setActiveTab('settings')} 
+                  className="flex items-center gap-2.5 overflow-hidden min-w-0 flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full bg-accent-ai/20 border border-accent-ai/30 flex items-center justify-center text-accent-ai font-bold shrink-0 text-xs">
+                    {userDisplayName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="overflow-hidden min-w-0">
+                    <div className="truncate text-xs sm:text-sm font-bold text-text-primary leading-tight">{userDisplayName}</div>
+                    <div className="text-[10px] text-accent-ai uppercase tracking-widest font-black leading-none mt-0.5">{displayRole}</div>
+                  </div>
+                </button>
+                <button 
+                  onClick={handleLogout} 
+                  title={t('logout')} 
+                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 transition-colors shrink-0 border border-red-500/20 hover:border-red-500/40 cursor-pointer"
+                  aria-label={t('logout')}
+                >
+                  <LogOut size={15} />
+                </button>
+              </div>
             );
           })()}
         </div>
@@ -855,14 +871,20 @@ export default function CompanyDashboard() {
               📱 <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
             <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-semibold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer"><Globe size={14} className="text-accent-ai" /><span className="hidden sm:inline">{language}</span></button>
-            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" title={t('start_tour')}><HelpCircle size={18} /></button>
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
-              className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer" 
-              title={currentLang === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
-            >
-              <BookOpen size={18} className="text-blue-500" />
-            </button>
+            {/* HILFE & MASTER-HANDBUCH (ZUSAMMENGEFÜHRT) */}
+            <div className="flex items-center bg-background border border-border rounded-lg p-0.5 shadow-sm">
+              <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-md hover:bg-white/5 transition-colors cursor-pointer" title={t('start_tour')}>
+                <HelpCircle size={16} />
+              </button>
+              <div className="w-px h-3.5 bg-border/80 my-auto" />
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
+                className="p-1.5 sm:p-2 text-blue-500 hover:text-blue-400 rounded-md hover:bg-white/5 transition-colors cursor-pointer" 
+                title={currentLang === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
+              >
+                <BookOpen size={16} />
+              </button>
+            </div>
             <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
             <button aria-label="Notifications" onClick={(e) => { e.stopPropagation(); setIsNotificationOpen(!isNotificationOpen); setUnreadNotifications(0); safeStorage.removeItem('has_new_document'); }} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"><Bell size={18} />{(unreadNotifications > 0 || safeStorage.getString('has_new_document') === 'true') && <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>}</button>
             {isSuperAdmin && (
@@ -870,9 +892,6 @@ export default function CompanyDashboard() {
                 <Shield size={16} /> <span className="hidden sm:inline text-xs font-semibold">{t('admin')}</span>
               </button>
             )}
-            <button onClick={handleLogout} className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 bg-red-500/10 text-red-500 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors">
-              <LogOut size={16} /> <span className="hidden sm:inline text-xs font-semibold">{t('logout')}</span>
-            </button>
           </div>
         </header>
 

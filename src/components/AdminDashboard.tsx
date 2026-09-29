@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Shield, Users, CreditCard, Activity, Terminal, 
-  ArrowLeft, Moon, Sun, LogOut, MessageSquare, Network, Globe, Palette, Bell, HelpCircle, Megaphone
+  ArrowLeft, Moon, Sun, LogOut, MessageSquare, Network, Globe, Palette, Bell, HelpCircle, Megaphone, BookOpen
 } from 'lucide-react';
 import { cn } from '../utils';
 
@@ -200,18 +200,35 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4 relative z-30">
-            <button onClick={toggleLanguage} className="flex items-center gap-1 px-2 sm:px-3 py-1 bg-background border border-border/50 rounded-md text-xs font-semibold text-text-primary hover:bg-white/5 transition-colors uppercase cursor-pointer"><Globe size={14} className="text-red-500" /> <span className="hidden sm:inline">{language}</span></button>
-            <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer" title={t('start_tour')}><HelpCircle size={16} /></button>
-            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-full transition-colors bg-surface border border-border/50 cursor-pointer">{theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}</button>
-            <button onClick={() => setShowNotifications(true)} className="p-2 text-text-muted hover:text-text-primary rounded-full transition-colors relative cursor-pointer bg-background border border-border/50 shadow-sm">
+          <div className="flex items-center gap-2 sm:gap-3 relative z-30">
+            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-semibold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer">
+              <Globe size={14} className="text-red-500" /> <span className="hidden sm:inline">{language}</span>
+            </button>
+            {/* HILFE & MASTER-HANDBUCH (ZUSAMMENGEFÜHRT) */}
+            <div className="flex items-center bg-background border border-border rounded-lg p-0.5 shadow-sm">
+              <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-md hover:bg-white/5 transition-colors cursor-pointer" title={t('start_tour')}>
+                <HelpCircle size={16} />
+              </button>
+              <div className="w-px h-3.5 bg-border/80 my-auto" />
+              <button 
+                onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
+                className="p-1.5 sm:p-2 text-blue-500 hover:text-blue-400 rounded-md hover:bg-white/5 transition-colors cursor-pointer" 
+                title={language === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
+              >
+                <BookOpen size={16} />
+              </button>
+            </div>
+            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer">
+              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+            <button onClick={() => setShowNotifications(true)} className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer">
               <Bell size={18} />
               {(newLeadsCount > 0 || unreadNotifsCount > 0) && (
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse" />
+                <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse" />
               )}
             </button>
-            <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white text-xs font-semibold shadow-lg shadow-red-500/20 border-2 border-white/10 shrink-0 ml-1">
-                {currentUser?.email?.charAt(0).toUpperCase()}
+            <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-500 text-xs font-bold shadow-sm shrink-0 ml-1">
+              {currentUser?.email?.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>

@@ -556,6 +556,56 @@ export default function ProductTour() {
             placement: 'bottom'
           }
         ];
+      } else if (activeModuleTour === 'templates') {
+        candidateDefs = [
+          {
+            target: '.tour-templates-list, body',
+            title: isGerman ? 'Schweizer Vorlagen-Bibliothek & SIA-Standards' : 'Swiss Template Library & SIA Standards',
+            content: isGerman
+              ? 'Nutze vordefinierte, SIA-konforme Schweizer Projektvorlagen (z.B. Wohnungsbau, Umbau, Gewerbe) inklusive fertiger BKP-Kostenstrukturen und Phasenpläne.'
+              : 'Use pre-configured Swiss SIA project templates (residential, renovation, commercial) with ready-to-use BKP structures and milestones.',
+            IconComponent: LayoutTemplate,
+            submodules: isGerman ? ['SIA 112 Vorlagen', 'BKP 1–9 Kostenstrukturen', '1-Klick Projektstart'] : ['SIA 112 Templates', 'BKP 1–9 Structures', '1-Click Setup'],
+            proTip: isGerman ? 'Wähle eine passende Vorlage, um ein neues Projekt in unter 30 Sekunden schlüsselfertig anzulegen.' : 'Select a template to provision a complete project workspace in under 30 seconds.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-templates-create, body',
+            title: isGerman ? 'Eigene Unternehmens-Vorlagen erstellen' : 'Create Custom Company Templates',
+            content: isGerman
+              ? 'Mache erfolgreiche Bau- und Architekturprojekte zur Blaupause für deine Kanzlei: Speichere bewährte Checklisten, Vertragstexte und Zeitpläne dauerhaft ab.'
+              : 'Turn successful projects into blueprints for your firm: Save proven checklists, contracts, and timelines permanently.',
+            IconComponent: Sparkles,
+            submodules: isGerman ? ['Eigene Blaupausen', 'Standardisierte Prozesse', 'Qualitätssicherung'] : ['Custom Blueprints', 'Standardized Workflows', 'QA Assurance'],
+            proTip: isGerman ? 'Neue Mitarbeiter arbeiten sofort nach den Qualitätsstandards deines Büros.' : 'New team members immediately follow your studio\'s established quality standards.',
+            placement: 'bottom'
+          }
+        ];
+      } else if (activeModuleTour === 'leads') {
+        candidateDefs = [
+          {
+            target: '.tour-leads-table, body',
+            title: isGerman ? 'B2B Lead Pipeline & Akquise-Cockpit' : 'B2B Lead Pipeline & Acquisition Cockpit',
+            content: isGerman
+              ? 'Erfasse und verfolge potenzielle Bauherren, Ausschreibungen und Wettbewerbe von der ersten Anfrage bis zum unterzeichneten SIA 102 Planervertrag.'
+              : 'Capture and track potential clients, tenders, and competitions from first inquiry to signed SIA 102 planning contract.',
+            IconComponent: Megaphone,
+            submodules: isGerman ? ['Pipeline-Phasen', 'Lead-Scoring', 'SIA 102 Verträge'] : ['Pipeline Stages', 'Lead Scoring', 'SIA 102 Contracts'],
+            proTip: isGerman ? 'Teile den öffentlichen Anfrage-Link mit Interessenten, um Anfragen direkt automatisiert im System zu empfangen.' : 'Share your public inquiry link to collect project requests automatically.',
+            placement: 'bottom'
+          },
+          {
+            target: '.tour-leads-export, body',
+            title: isGerman ? 'Status-Reporting & PDF Pipeline Dossier' : 'Status Reporting & PDF Pipeline Dossier',
+            content: isGerman
+              ? 'Exportiere deine Vertriebspipeline mit einem Klick ins Universal PDF Studio für Geschäftsleitungs- und Partnermeetings.'
+              : 'Export your sales pipeline in one click to the Universal PDF Studio for executive and partner reviews.',
+            IconComponent: FileText,
+            submodules: isGerman ? ['Universal PDF Studio', 'Umsatzprognose', 'Konversions-Rate'] : ['Universal PDF Studio', 'Revenue Forecast', 'Conversion Rates'],
+            proTip: isGerman ? 'Gewonnene Leads lassen sich per Klick direkt in ein aktives Projekt mit Workspace umwandeln.' : 'Won leads convert directly into active project workspaces with one click.',
+            placement: 'bottom'
+          }
+        ];
       }
     } else if (location.pathname.includes('/project/')) {
       candidateDefs = [

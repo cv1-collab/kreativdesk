@@ -23,6 +23,7 @@ import { useProjectsQuery } from '../hooks/queries/useProjectsQuery';
 import UniversalPDFStudio from './UniversalPDFStudio';
 import OpCostStudio from './OpCostStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import ModuleGuideButton from './ModuleGuideButton';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   de: {
@@ -493,6 +494,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <ModuleGuideButton moduleId="finance" />
           <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-2"><FileSignature size={16} /> {t('new_quote')}</button>
           <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"><FileText size={16} /> {t('new_invoice')}</button>
           <button onClick={() => setShowExpenseModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2"><Receipt size={16} /> {t('record_expenses')}</button>

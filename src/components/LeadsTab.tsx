@@ -22,9 +22,9 @@ if (typeof window !== 'undefined' && typeof window.Buffer === 'undefined') {
   window.Buffer = { from: () => new Uint8Array(), isBuffer: () => false } as any;
 }
 
-// NATIVE PDF ENGINE IMPORTS
 import UniversalPDFStudio, { PDFSettings } from './UniversalPDFStudio';
 import { Document, Page, Text, View, StyleSheet, Image as PDFImage } from '@react-pdf/renderer';
+import ModuleGuideButton from './ModuleGuideButton';
 
 // === LOKALE ÜBERSETZUNGEN ===
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
@@ -734,6 +734,7 @@ export default function LeadsTab() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <ModuleGuideButton moduleId="leads" />
           <button onClick={handleCopyLink} className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-md text-sm font-bold transition-colors">
             <LinkIcon size={16}/> {t('copy_link')}
           </button>
