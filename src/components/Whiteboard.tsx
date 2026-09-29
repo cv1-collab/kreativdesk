@@ -2485,21 +2485,6 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               </button>
             </div>
 
-            {/* REALTIME SYNC STATUS BADGE */}
-            {!isDemo && projectId && (
-              <div 
-                className={cn(
-                  "h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all shrink-0",
-                  isLiveConnected 
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
-                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25"
-                )}
-                title={isLiveConnected ? t('live_team_title') : t('connecting_title')}
-              >
-                <span className={cn("w-2 h-2 rounded-full shrink-0", isLiveConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500")} />
-                <span className="hidden lg:inline">{isLiveConnected ? t('live_team') : t('connecting')}</span>
-              </div>
-            )}
 
             {/* 3. DIREKTER 1-KLICK SPEICHER-BUTTON (CLOUD) */}
             <button
@@ -2862,16 +2847,16 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             >
               <div className={cn("absolute inset-0 bg-[size:30px_30px] opacity-100 pointer-events-none", isDark ? "bg-[radial-gradient(#27272a_1px,transparent_1px)]" : "bg-[radial-gradient(#e5e5e5_1px,transparent_1px)]")}></div>
               
-              {/* MINI-PHOTOSHOP FLOATING IMAGE CONTEXT TOOLBAR */}
+              {/* MINI-PHOTOSHOP FLOATING IMAGE CONTEXT TOOLBAR (Unten zentriert platziert, um Überlappung mit den oberen Zeichen-Werkzeugen zu verhindern) */}
               {selectedItem && selectedItem.type === 'image' && tool === 'select' && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-1.5 md:gap-2 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-1.5 md:gap-2 animate-in fade-in slide-in-from-bottom-3 max-w-[calc(100%-8rem)] overflow-x-auto custom-scrollbar">
                   <span className="text-[11px] font-bold text-text-muted px-2 border-r border-border truncate max-w-[120px]">
                     {selectedItem.name || 'Bild'}
                   </span>
 
                   <button
                     onClick={() => startCropMode(selectedItem)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer shrink-0"
                     title="Zuschneiden (Crop Tool)"
                   >
                     <Crop size={14} className="text-accent-ai" />
@@ -2880,7 +2865,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
                   <button
                     onClick={() => openFreistellenModal(selectedItem)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer shrink-0"
                     title="Hintergrund freistellen (KI & Chroma Key)"
                   >
                     <Scissors size={14} className="text-purple-400" />
@@ -2890,7 +2875,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   <button
                     onClick={() => setShowItemFilters(!showItemFilters)}
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm cursor-pointer",
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm cursor-pointer shrink-0",
                       showItemFilters
                         ? "bg-accent-ai text-white border-accent-ai"
                         : "bg-surface hover:bg-background text-text-primary border-border"
@@ -2901,18 +2886,18 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     <span>{language === 'de' ? 'Filter' : 'Adjust'}</span>
                   </button>
 
-                  <div className="w-[1px] h-5 bg-border mx-0.5" />
+                  <div className="w-[1px] h-5 bg-border mx-0.5 shrink-0" />
 
                   <button
                     onClick={() => bringItemForward(selectedItem.id)}
-                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer shrink-0"
                     title="Nach vorne bringen"
                   >
                     <ArrowUp size={14} />
                   </button>
                   <button
                     onClick={() => sendItemBackward(selectedItem.id)}
-                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer shrink-0"
                     title="Nach hinten stellen"
                   >
                     <ArrowDown size={14} />
@@ -2920,7 +2905,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
                   <button
                     onClick={() => duplicateItem(selectedItem.id)}
-                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer shrink-0"
                     title="Duplizieren"
                   >
                     <Copy size={14} />
@@ -2928,17 +2913,26 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
                   <button
                     onClick={deleteSelectedItem}
-                    className="p-1.5 rounded-lg bg-surface hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg bg-surface hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border transition-colors cursor-pointer shrink-0"
                     title="Löschen"
                   >
                     <Trash2 size={14} />
                   </button>
+
+                  <div className="w-[1px] h-5 bg-border mx-0.5 shrink-0" />
+                  <button
+                    onClick={() => { setSelectedShapeId(null); setShowItemFilters(false); }}
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer shrink-0"
+                    title={language === 'de' ? 'Auswahl aufheben (Schließen)' : 'Deselect'}
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               )}
 
-              {/* FLOATING IMAGE FILTERS POPOVER */}
+              {/* FLOATING IMAGE FILTERS POPOVER (Öffnet nach oben über der unteren Toolbar) */}
               {showItemFilters && selectedItem && selectedItem.type === 'image' && (
-                <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 w-72 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-1">
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-72 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2">
                   <div className="flex items-center justify-between pb-2 border-b border-border">
                     <span className="text-xs font-bold text-text-primary flex items-center gap-1.5">
                       <SlidersHorizontal size={14} className="text-accent-ai" /> Bild-Anpassungen
