@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams } from 'react-router-dom';
-import { Stage, Layer as KonvaLayer, Line, Rect, Circle as KonvaCircle, Text as KonvaText, Image as KonvaImage, Group } from 'react-konva';
+import { Stage, Layer as KonvaLayer, Line, Rect, Circle as KonvaCircle, Text as KonvaText, Image as KonvaImage, Group, Transformer } from 'react-konva';
 import Konva from 'konva';
 import { 
   PenTool, Mic, Square, Circle, Type, Image as ImageIcon, Sparkles, Send, Eraser, 
   CheckCircle2, Loader2, Play, Square as StopIcon, FileAudio, FileText, Download, 
   Hexagon, FileDown, UploadCloud, SlidersHorizontal, X, MousePointer2, Hand, ZoomIn, ZoomOut, Maximize, Minimize, Focus, Trash2, Layers, Plus, Eye, EyeOff, Wand2, ImagePlus, Cloud, Check, RefreshCw,
-  ChevronDown, Share2, Presentation
+  ChevronDown, Share2, Presentation, Crop, Scissors, Lock, Unlock, Copy, ArrowUp, ArrowDown, RotateCw, Palette, SunMedium, Move
 } from 'lucide-react';
 import { cn } from '../utils';
 import { safeRequestFullscreen, safeExitFullscreen, isFullscreenActive, addFullscreenChangeListener } from '../utils/fullscreen';
@@ -41,7 +41,14 @@ import ModuleGuideButton from './ModuleGuideButton';
 
 const WhiteboardPDFModal = React.lazy(() => import('./WhiteboardPDFModal'));
 
-interface LayerData { id: string; name: string; visible: boolean; items: any[]; }
+interface LayerData { 
+  id: string; 
+  name: string; 
+  visible: boolean; 
+  locked?: boolean;
+  opacity?: number;
+  items: any[]; 
+}
 
 let wbCache = {
   layers: [{ id: 'layer-1', name: 'Ebene 1 (Basis)', visible: true, items: [] }] as LayerData[],
@@ -247,7 +254,100 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+const KonvaImageItem: React.FC<{
+  item: any;
+  isSelected: boolean;
+  tool: string;
+  stageScale: number;
+  layerLocked?: boolean;
+  onSelect: (id: string) => void;
+  onUpdate: (id: string, updateFn: (old: any) => any) => void;
+}> = ({ item, isSelected, tool, stageScale, layerLocked, onSelect, onUpdate }) => {
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const imageRef = useRef<any>(null);
 
+  useEffect(() => {
+    if (!item.src) return;
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = item.src;
+    img.onload = () => {
+      setImage(img);
+    };
+  }, [item.src]);
+
+  useEffect(() => {
+    if (image && imageRef.current) {
+      try {
+        imageRef.current.cache();
+        imageRef.current.getLayer()?.batchDraw();
+      } catch (e) {
+        // Tainted canvas fallback
+      }
+    }
+  }, [image, item.brightness, item.contrast, item.saturation]);
+
+  if (!image) return null;
+
+  return (
+    <Group
+      id={item.id}
+      name="canvas-item"
+      x={item.x}
+      y={item.y}
+      rotation={item.rotation || 0}
+      scaleX={item.scaleX || 1}
+      scaleY={item.scaleY || 1}
+      draggable={tool === 'select' && !layerLocked}
+      listening={tool === 'select' && !layerLocked}
+      onClick={(e) => {
+        if (tool === 'select' && !layerLocked) {
+          e.cancelBubble = true;
+          onSelect(item.id);
+        }
+      }}
+      onTap={(e) => {
+        if (tool === 'select' && !layerLocked) {
+          e.cancelBubble = true;
+          onSelect(item.id);
+        }
+      }}
+      onDragEnd={(e) => {
+        e.cancelBubble = true;
+        onUpdate(item.id, old => ({ ...old, x: Math.round(e.target.x()), y: Math.round(e.target.y()) }));
+      }}
+      onTransformEnd={(e) => {
+        const node = e.target;
+        const scaleX = node.scaleX();
+        const scaleY = node.scaleY();
+        node.scaleX(1);
+        node.scaleY(1);
+        onUpdate(item.id, old => ({
+          ...old,
+          x: Math.round(node.x()),
+          y: Math.round(node.y()),
+          rotation: Math.round(node.rotation()),
+          width: Math.max(20, Math.round((old.width || 100) * scaleX)),
+          height: Math.max(20, Math.round((old.height || 100) * scaleY)),
+          scaleX: 1,
+          scaleY: 1
+        }));
+      }}
+    >
+      <KonvaImage
+        ref={imageRef}
+        image={image}
+        width={item.width}
+        height={item.height}
+        opacity={item.opacity ?? 1}
+        filters={[Konva.Filters.Brighten, Konva.Filters.Contrast, Konva.Filters.HSL]}
+        brightness={item.brightness || 0}
+        contrast={item.contrast || 0}
+        luminance={item.saturation || 0}
+      />
+    </Group>
+  );
+};
 
 export default function Whiteboard({ projectId: propProjectId }: { projectId?: string }) {
   const { id: routeProjectId } = useParams<{ id: string }>();
@@ -287,6 +387,36 @@ export default function Whiteboard({ projectId: propProjectId }: { projectId?: s
   const wbChannelRef = useRef<any>(null);
   const isReceivingRemoteRef = useRef<boolean>(false);
   const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
+
+  // Transformer Ref for Photoshop-like free scaling & rotation
+  const transformerRef = useRef<Konva.Transformer | null>(null);
+
+  // Photoshop / Image Tools State
+  const [isCropping, setIsCropping] = useState<boolean>(false);
+  const [cropTargetItem, setCropTargetItem] = useState<any | null>(null);
+  const [cropRect, setCropRect] = useState<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 200, height: 200 });
+  const [cropRatio, setCropRatio] = useState<'free' | '1:1' | '4:3' | '16:9' | '3:2'>('free');
+
+  // Freistellen (Background Removal) State
+  const [showFreistellenModal, setShowFreistellenModal] = useState<boolean>(false);
+  const [freistellenTargetItem, setFreistellenTargetItem] = useState<any | null>(null);
+  const [isRemovingBg, setIsRemovingBg] = useState<boolean>(false);
+  const [bgRemovalMode, setBgRemovalMode] = useState<'ai' | 'chroma'>('ai');
+  const [bgRemovalColor, setBgRemovalColor] = useState<string>('#ffffff');
+  const [bgRemovalTolerance, setBgRemovalTolerance] = useState<number>(25);
+
+  // Image Filters / Adjustments Popover for Selected Item
+  const [showItemFilters, setShowItemFilters] = useState<boolean>(false);
+
+  // Selected item computed
+  const selectedItem = useMemo(() => {
+    if (!selectedShapeId) return null;
+    for (const l of layers) {
+      const found = (l.items || []).find(it => it.id === selectedShapeId);
+      if (found) return found;
+    }
+    return null;
+  }, [selectedShapeId, layers]);
 
   // 1. Cloud-Datenbank & lokaler Entwurf synchron laden
   useEffect(() => {
@@ -653,6 +783,445 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
     })); 
   };
 
+  // Transformer attachment for free resize & rotation
+  useEffect(() => {
+    if (selectedShapeId && transformerRef.current && stageRef.current && tool === 'select') {
+      const selectedNode = stageRef.current.findOne('#' + selectedShapeId);
+      if (selectedNode) {
+        transformerRef.current.nodes([selectedNode]);
+        transformerRef.current.getLayer()?.batchDraw();
+      } else {
+        transformerRef.current.nodes([]);
+        transformerRef.current.getLayer()?.batchDraw();
+      }
+    } else if (transformerRef.current) {
+      transformerRef.current.nodes([]);
+      transformerRef.current.getLayer()?.batchDraw();
+    }
+  }, [selectedShapeId, tool, layers]);
+
+  // Layer Management Methods (Photoshop Style)
+  const toggleLayerLock = (id: string) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, locked: !l.locked } : l));
+  };
+
+  const setLayerOpacity = (id: string, opacity: number) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, opacity } : l));
+  };
+
+  const duplicateLayer = (id: string) => {
+    const target = layers.find(l => l.id === id);
+    if (!target) return;
+    const newId = `layer-${Date.now()}`;
+    const duplicatedItems = (target.items || []).map(item => ({
+      ...item,
+      id: `${item.type || 'item'}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      x: (item.x || 0) + 20,
+      y: (item.y || 0) + 20
+    }));
+    const newLayer: LayerData = {
+      id: newId,
+      name: `${target.name} (Kopie)`,
+      visible: true,
+      locked: false,
+      opacity: target.opacity ?? 1,
+      items: duplicatedItems
+    };
+    setLayers([...layers, newLayer]);
+    setActiveLayerId(newId);
+    addToast('Ebene dupliziert!', 'success');
+  };
+
+  const moveLayerUp = (id: string) => {
+    const index = layers.findIndex(l => l.id === id);
+    if (index >= layers.length - 1) return;
+    const newLayers = [...layers];
+    const temp = newLayers[index];
+    newLayers[index] = newLayers[index + 1];
+    newLayers[index + 1] = temp;
+    setLayers(newLayers);
+  };
+
+  const moveLayerDown = (id: string) => {
+    const index = layers.findIndex(l => l.id === id);
+    if (index <= 0) return;
+    const newLayers = [...layers];
+    const temp = newLayers[index];
+    newLayers[index] = newLayers[index - 1];
+    newLayers[index - 1] = temp;
+    setLayers(newLayers);
+  };
+
+  const bringItemForward = (itemId: string) => {
+    setLayers(prev => prev.map(layer => {
+      const items = layer.items || [];
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx > -1 && idx < items.length - 1) {
+        const newItems = [...items];
+        const item = newItems.splice(idx, 1)[0];
+        newItems.push(item);
+        return { ...layer, items: newItems };
+      }
+      return layer;
+    }));
+  };
+
+  const sendItemBackward = (itemId: string) => {
+    setLayers(prev => prev.map(layer => {
+      const items = layer.items || [];
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx > 0) {
+        const newItems = [...items];
+        const item = newItems.splice(idx, 1)[0];
+        newItems.unshift(item);
+        return { ...layer, items: newItems };
+      }
+      return layer;
+    }));
+  };
+
+  const duplicateItem = (itemId: string) => {
+    const item = selectedItem;
+    if (!item) return;
+    const newItem = {
+      ...item,
+      id: `${item.type || 'item'}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      x: (item.x || 0) + 30,
+      y: (item.y || 0) + 30
+    };
+    const activeLayer = getEnsureActiveLayer();
+    addItemToActiveLayer(newItem, activeLayer.id);
+    setSelectedShapeId(newItem.id);
+    addToast('Element dupliziert!', 'success');
+  };
+
+  // Add Image to Canvas as layer item
+  const addImageToCanvas = (src: string, name?: string) => {
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+    img.onload = () => {
+      let w = img.naturalWidth || 500;
+      let h = img.naturalHeight || 400;
+      const maxDim = 540;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
+
+      const stage = stageRef.current;
+      const cx = stage ? (-stage.x() + stage.width() / 2) / stage.scaleX() - w / 2 : 120;
+      const cy = stage ? (-stage.y() + stage.height() / 2) / stage.scaleY() - h / 2 : 120;
+
+      const newImageItem = {
+        id: `img-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        type: 'image',
+        name: name || (language === 'de' ? 'Bild-Ebene' : 'Image Layer'),
+        src,
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+        x: Math.round(cx),
+        y: Math.round(cy),
+        width: w,
+        height: h,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        brightness: 0,
+        contrast: 0,
+        saturation: 0
+      };
+
+      const activeLayer = getEnsureActiveLayer();
+      addItemToActiveLayer(newImageItem, activeLayer.id);
+      setSelectedShapeId(newImageItem.id);
+      setTool('select');
+      addToast(language === 'de' ? 'Bild auf Ebene eingefügt!' : 'Image added to layer!', 'success');
+    };
+    img.onerror = () => {
+      addToast('Bild konnte nicht geladen werden.', 'error');
+    };
+  };
+
+  // Crop Studio Methods
+  const startCropMode = (item: any) => {
+    if (!item || !item.src) return;
+    setCropTargetItem(item);
+    const nw = item.naturalWidth || item.width || 400;
+    const nh = item.naturalHeight || item.height || 300;
+    setCropRect({
+      x: 0,
+      y: 0,
+      width: nw,
+      height: nh
+    });
+    setCropRatio('free');
+    setIsCropping(true);
+  };
+
+  const handleSetCropRatio = (ratio: 'free' | '1:1' | '4:3' | '16:9' | '3:2') => {
+    setCropRatio(ratio);
+    if (!cropTargetItem) return;
+    const nw = cropTargetItem.naturalWidth || cropTargetItem.width || 400;
+    const nh = cropTargetItem.naturalHeight || cropTargetItem.height || 300;
+
+    let targetW = nw;
+    let targetH = nh;
+    if (ratio === '1:1') {
+      const minSide = Math.min(nw, nh);
+      targetW = minSide;
+      targetH = minSide;
+    } else if (ratio === '4:3') {
+      if (nw / nh > 4 / 3) {
+        targetW = Math.round(nh * (4 / 3));
+        targetH = nh;
+      } else {
+        targetW = nw;
+        targetH = Math.round(nw * (3 / 4));
+      }
+    } else if (ratio === '16:9') {
+      if (nw / nh > 16 / 9) {
+        targetW = Math.round(nh * (16 / 9));
+        targetH = nh;
+      } else {
+        targetW = nw;
+        targetH = Math.round(nw * (9 / 16));
+      }
+    } else if (ratio === '3:2') {
+      if (nw / nh > 3 / 2) {
+        targetW = Math.round(nh * (3 / 2));
+        targetH = nh;
+      } else {
+        targetW = nw;
+        targetH = Math.round(nw * (2 / 3));
+      }
+    }
+
+    setCropRect({
+      x: Math.max(0, Math.round((nw - targetW) / 2)),
+      y: Math.max(0, Math.round((nh - targetH) / 2)),
+      width: targetW,
+      height: targetH
+    });
+  };
+
+  const updateCropWidth = (w: number) => {
+    setCropRect(prev => {
+      let h = prev.height;
+      if (cropRatio === '1:1') h = w;
+      else if (cropRatio === '4:3') h = Math.round(w * (3 / 4));
+      else if (cropRatio === '16:9') h = Math.round(w * (9 / 16));
+      else if (cropRatio === '3:2') h = Math.round(w * (2 / 3));
+      return { ...prev, width: w, height: h };
+    });
+  };
+
+  const updateCropHeight = (h: number) => {
+    setCropRect(prev => {
+      let w = prev.width;
+      if (cropRatio === '1:1') w = h;
+      else if (cropRatio === '4:3') w = Math.round(h * (4 / 3));
+      else if (cropRatio === '16:9') w = Math.round(h * (16 / 9));
+      else if (cropRatio === '3:2') w = Math.round(h * (3 / 2));
+      return { ...prev, width: w, height: h };
+    });
+  };
+
+  const applyCrop = (asNewLayer: boolean = false) => {
+    if (!cropTargetItem || !cropTargetItem.src) return;
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = cropTargetItem.src;
+    img.onload = () => {
+      const natW = img.naturalWidth || cropTargetItem.width;
+      const natH = img.naturalHeight || cropTargetItem.height;
+
+      const safeX = Math.max(0, Math.min(natW - 10, cropRect.x));
+      const safeY = Math.max(0, Math.min(natH - 10, cropRect.y));
+      const safeW = Math.max(10, Math.min(natW - safeX, cropRect.width));
+      const safeH = Math.max(10, Math.min(natH - safeY, cropRect.height));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = safeW;
+      canvas.height = safeH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(img, safeX, safeY, safeW, safeH, 0, 0, safeW, safeH);
+      const croppedDataUrl = canvas.toDataURL('image/png');
+
+      if (asNewLayer) {
+        const newItem = {
+          ...cropTargetItem,
+          id: `img-crop-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name: `${cropTargetItem.name || 'Bild'} (Ausschnitt)`,
+          src: croppedDataUrl,
+          naturalWidth: safeW,
+          naturalHeight: safeH,
+          width: Math.round(cropTargetItem.width * (safeW / natW)),
+          height: Math.round(cropTargetItem.height * (safeH / natH)),
+          x: cropTargetItem.x + 30,
+          y: cropTargetItem.y + 30
+        };
+        const activeLayer = getEnsureActiveLayer();
+        addItemToActiveLayer(newItem, activeLayer.id);
+        setSelectedShapeId(newItem.id);
+        addToast(language === 'de' ? 'Ausschnitt als neue Ebene erstellt!' : 'Cropped to new layer!', 'success');
+      } else {
+        updateItemById(cropTargetItem.id, old => ({
+          ...old,
+          src: croppedDataUrl,
+          naturalWidth: safeW,
+          naturalHeight: safeH,
+          width: Math.round(cropTargetItem.width * (safeW / natW)),
+          height: Math.round(cropTargetItem.height * (safeH / natH))
+        }));
+        addToast(language === 'de' ? 'Bild erfolgreich zugeschnitten!' : 'Image cropped successfully!', 'success');
+      }
+      setIsCropping(false);
+      setCropTargetItem(null);
+    };
+  };
+
+  // Freistellen (Background Removal) Methods
+  const openFreistellenModal = (item: any) => {
+    setFreistellenTargetItem(item);
+    setShowFreistellenModal(true);
+  };
+
+  const handleExecuteFreistellen = async () => {
+    if (!freistellenTargetItem || !freistellenTargetItem.src) return;
+    setIsRemovingBg(true);
+
+    try {
+      if (bgRemovalMode === 'ai') {
+        try {
+          const res: any = await fal.subscribe("fal-ai/birefnet", {
+            input: {
+              image_url: freistellenTargetItem.src
+            }
+          });
+          if (res?.image?.url) {
+            updateItemById(freistellenTargetItem.id, old => ({
+              ...old,
+              src: res.image.url
+            }));
+            addToast('Hintergrund per KI erfolgreich freigestellt!', 'success');
+            setShowFreistellenModal(false);
+            setFreistellenTargetItem(null);
+            return;
+          }
+        } catch (aiErr) {
+          console.warn("fal.ai BiRefNet error, falling back to local chroma removal:", aiErr);
+        }
+      }
+
+      // Local Canvas Color / Alpha Removal
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = freistellenTargetItem.src;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 800;
+        canvas.height = img.naturalHeight || 600;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+
+        const hex = bgRemovalColor.replace('#', '');
+        const rT = parseInt(hex.substring(0, 2), 16) || 255;
+        const gT = parseInt(hex.substring(2, 4), 16) || 255;
+        const bT = parseInt(hex.substring(4, 6), 16) || 255;
+        const maxDist = (bgRemovalTolerance / 100) * 441.67;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const dist = Math.sqrt(Math.pow(r - rT, 2) + Math.pow(g - gT, 2) + Math.pow(b - bT, 2));
+          if (dist <= maxDist) {
+            data[i + 3] = 0; // Transparent
+          }
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+        const resultUrl = canvas.toDataURL('image/png');
+        updateItemById(freistellenTargetItem.id, old => ({
+          ...old,
+          src: resultUrl
+        }));
+        addToast(language === 'de' ? 'Hintergrund erfolgreich transparent freigestellt!' : 'Background made transparent!', 'success');
+        setShowFreistellenModal(false);
+        setFreistellenTargetItem(null);
+      };
+    } catch (err) {
+      console.error("Freistellen failed:", err);
+      addToast('Fehler beim Freistellen des Bildes.', 'error');
+    } finally {
+      setIsRemovingBg(false);
+    }
+  };
+
+  // Canvas Drag & Drop Image Handler
+  const handleCanvasDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          if (dataUrl) {
+            addImageToCanvas(dataUrl, file.name.replace(/\.[^/.]+$/, ""));
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  // Clipboard Paste Image Handler (Cmd+V / Ctrl+V)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable);
+      if (isInput) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const dataUrl = ev.target?.result as string;
+              if (dataUrl) {
+                addImageToCanvas(dataUrl, `Screenshot_${new Date().toLocaleTimeString('de-CH')}`);
+              }
+            };
+            reader.readAsDataURL(blob);
+            addToast('Bild aus Zwischenablage eingefügt!', 'success');
+          }
+          break;
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [layers, activeLayerId]);
+
   useEffect(() => { wbCache = { layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor }; }, [layers, activeLayerId, bgImageSrc, bgImagePos, stageScale, stagePos, activeColor]);
 
   useEffect(() => {
@@ -789,8 +1358,7 @@ Formatiere die Antwort übersichtlich in Markdown mit fetten Überschriften und 
         downloadUrl = urlData.publicUrl;
       }
       if (downloadUrl) {
-        setBgImageSrc(downloadUrl);
-        addToast('Bild erfolgreich eingefügt!', 'success');
+        addImageToCanvas(downloadUrl, file.name.replace(/\.[^/.]+$/, ""));
       }
     } catch (error) {
       console.error("Error uploading image:", error);
@@ -2092,24 +2660,163 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             </div>
 
             <div className="absolute top-14 md:top-auto md:bottom-4 right-4 z-20">
-              <button onClick={() => setShowLayersPanel(!showLayersPanel)} className={cn("p-2.5 md:p-3 rounded-full shadow-lg transition-all border", showLayersPanel ? "bg-accent-ai text-white border-accent-ai" : "bg-background/90 backdrop-blur-md text-text-primary border-border hover:bg-surface")}><Layers size={18} /></button>
+              <button 
+                onClick={() => setShowLayersPanel(!showLayersPanel)} 
+                className={cn("p-2.5 md:p-3 rounded-full shadow-lg transition-all border flex items-center gap-2", showLayersPanel ? "bg-accent-ai text-white border-accent-ai" : "bg-background/90 backdrop-blur-md text-text-primary border-border hover:bg-surface")}
+                title={language === 'de' ? 'Ebenen verwalten' : 'Manage Layers'}
+              >
+                <Layers size={18} />
+                <span className="text-xs font-bold hidden sm:inline">{layers.length}</span>
+              </button>
               <AnimatePresence>
                 {showLayersPanel && (
-                  <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute top-12 md:top-auto md:bottom-14 right-0 w-56 md:w-64 bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-2xl overflow-hidden flex flex-col">
+                  <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} className="absolute top-12 md:top-auto md:bottom-14 right-0 w-72 md:w-80 bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col z-30">
                     <div className="p-3 border-b border-border/50 flex justify-between items-center bg-surface/50">
-                      <h4 className="text-[10px] md:text-xs font-bold uppercase tracking-widest">{t('layers')}</h4>
-                      <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-md transition-colors" title={t('add_layer')}><Plus size={14}/></button>
+                      <div className="flex items-center gap-2">
+                        <Layers size={15} className="text-accent-ai" />
+                        <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">{language === 'de' ? 'Ebenen (Photoshop)' : 'Layers'}</h4>
+                        <span className="text-[10px] bg-accent-ai/10 text-accent-ai font-bold px-1.5 py-0.5 rounded-full">{layers.length}</span>
+                      </div>
+                      <button onClick={handleAddLayer} className="p-1.5 bg-accent-ai/10 text-accent-ai hover:bg-accent-ai/20 rounded-md transition-colors flex items-center gap-1 text-xs font-bold" title={t('add_layer')}>
+                        <Plus size={14}/>
+                        <span>{language === 'de' ? 'Neue Ebene' : 'Add Layer'}</span>
+                      </button>
                     </div>
-                    <div className="flex-1 max-h-64 overflow-y-auto custom-scrollbar p-2 space-y-1">
-                      {[...layers].reverse().map(layer => (
-                        <div key={layer.id} onClick={() => setActiveLayerId(layer.id)} className={cn("flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors border", activeLayerId === layer.id ? "bg-accent-ai/10 border-accent-ai/30" : "bg-surface border-transparent hover:border-border")}>
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <button onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }} className="text-text-muted hover:text-text-primary">{layer.visible ? <Eye size={14}/> : <EyeOff size={14} className="opacity-50"/>}</button>
-                            <span className={cn("text-[10px] md:text-xs font-bold truncate", activeLayerId === layer.id ? "text-accent-ai" : "text-text-primary", !layer.visible && "opacity-50")}>{layer.name}</span>
+
+                    {/* Active Layer Opacity Slider */}
+                    {(() => {
+                      const activeL = layers.find(l => l.id === activeLayerId);
+                      if (!activeL) return null;
+                      return (
+                        <div className="px-3 py-2 bg-surface/30 border-b border-border/40">
+                          <div className="flex justify-between text-[10px] font-bold text-text-muted mb-1">
+                            <span>{language === 'de' ? 'Deckkraft aktive Ebene' : 'Active Layer Opacity'}</span>
+                            <span>{Math.round((activeL.opacity ?? 1) * 100)}%</span>
                           </div>
-                          <button onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }} className="text-text-muted hover:text-red-500 opacity-0 hover:opacity-100 transition-opacity ml-2"><Trash2 size={12}/></button>
+                          <input
+                            type="range"
+                            min="0.05"
+                            max="1"
+                            step="0.05"
+                            value={activeL.opacity ?? 1}
+                            onChange={(e) => setLayerOpacity(activeL.id, parseFloat(e.target.value))}
+                            className="w-full accent-accent-ai h-1.5"
+                          />
                         </div>
-                      ))}
+                      );
+                    })()}
+
+                    {/* Layers List (reversed so top layer is first) */}
+                    <div className="flex-1 max-h-72 overflow-y-auto custom-scrollbar p-2 space-y-1.5">
+                      {[...layers].reverse().map((layer) => {
+                        const actualIdx = layers.findIndex(l => l.id === layer.id);
+                        const isTop = actualIdx === layers.length - 1;
+                        const isBottom = actualIdx === 0;
+                        const itemsCount = (layer.items || []).length;
+
+                        return (
+                          <div
+                            key={layer.id}
+                            onClick={() => setActiveLayerId(layer.id)}
+                            className={cn(
+                              "flex flex-col p-2 rounded-xl cursor-pointer transition-all border text-xs group",
+                              activeLayerId === layer.id
+                                ? "bg-accent-ai/10 border-accent-ai/40 shadow-sm"
+                                : "bg-surface/80 border-border/50 hover:border-border hover:bg-surface"
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-1.5">
+                              {/* Left Controls: Eye & Lock */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }}
+                                  className={cn("p-1 rounded text-text-muted hover:text-text-primary transition-colors", !layer.visible && "text-amber-500 opacity-70")}
+                                  title={layer.visible ? "Ebene ausblenden" : "Ebene einblenden"}
+                                >
+                                  {layer.visible ? <Eye size={13}/> : <EyeOff size={13}/>}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer.id); }}
+                                  className={cn("p-1 rounded text-text-muted hover:text-text-primary transition-colors", layer.locked && "text-red-400 opacity-90")}
+                                  title={layer.locked ? "Ebene entsperren" : "Ebene sperren"}
+                                >
+                                  {layer.locked ? <Lock size={13}/> : <Unlock size={13} className="opacity-40 hover:opacity-100"/>}
+                                </button>
+                              </div>
+
+                              {/* Layer Name & Item Count */}
+                              <div className="flex items-center gap-1.5 flex-1 min-w-0 ml-1">
+                                <span className={cn("font-bold truncate text-xs", activeLayerId === layer.id ? "text-accent-ai" : "text-text-primary", (!layer.visible || layer.locked) && "opacity-75")}>
+                                  {layer.name}
+                                </span>
+                                <span className="text-[10px] text-text-muted bg-background/60 px-1.5 py-0.5 rounded border border-border/40 shrink-0 font-medium">
+                                  {itemsCount}
+                                </span>
+                              </div>
+
+                              {/* Layer Actions: Up/Down, Duplicate, Delete */}
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <button
+                                  type="button"
+                                  disabled={isTop}
+                                  onClick={(e) => { e.stopPropagation(); moveLayerUp(layer.id); }}
+                                  className="p-1 rounded hover:bg-background text-text-muted hover:text-text-primary disabled:opacity-20 transition-colors"
+                                  title="Ebene nach oben"
+                                >
+                                  <ArrowUp size={12}/>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isBottom}
+                                  onClick={(e) => { e.stopPropagation(); moveLayerDown(layer.id); }}
+                                  className="p-1 rounded hover:bg-background text-text-muted hover:text-text-primary disabled:opacity-20 transition-colors"
+                                  title="Ebene nach unten"
+                                >
+                                  <ArrowDown size={12}/>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); duplicateLayer(layer.id); }}
+                                  className="p-1 rounded hover:bg-background text-text-muted hover:text-accent-ai transition-colors"
+                                  title="Ebene duplizieren"
+                                >
+                                  <Copy size={12}/>
+                                </button>
+                                {layers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); deleteLayer(layer.id); }}
+                                    className="p-1 rounded hover:bg-red-500/10 text-text-muted hover:text-red-500 transition-colors"
+                                    title="Ebene löschen"
+                                  >
+                                    <Trash2 size={12}/>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Convert static background image to editable layer item */}
+                      {bgImageSrc && (
+                        <div className="mt-2 pt-2 border-t border-border/50 flex items-center justify-between p-2 rounded-lg bg-background/50 border border-border/30 text-xs">
+                          <span className="text-text-muted text-[11px] font-medium truncate">Hintergrund-Bild</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              addImageToCanvas(bgImageSrc, 'Hintergrund');
+                              setBgImageSrc(null);
+                              addToast('Hintergrundbild in verschiebbare Ebene umgewandelt!', 'success');
+                            }}
+                            className="px-2 py-1 bg-accent-ai/10 hover:bg-accent-ai/20 text-accent-ai rounded text-[10px] font-bold transition-colors"
+                          >
+                            In Ebene umwandeln
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -2147,9 +2854,168 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                </div>
             )}
 
-            <div className={cn("flex-1 relative w-full h-full overflow-hidden transition-colors duration-200", isDark ? "bg-[#121214]" : "bg-white")} style={{ cursor: tool === 'pan' ? 'grab' : tool === 'select' ? 'default' : 'crosshair', touchAction: 'none' }}>
+            <div 
+              className={cn("flex-1 relative w-full h-full overflow-hidden transition-colors duration-200", isDark ? "bg-[#121214]" : "bg-white")} 
+              style={{ cursor: tool === 'pan' ? 'grab' : tool === 'select' ? 'default' : 'crosshair', touchAction: 'none' }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleCanvasDrop}
+            >
               <div className={cn("absolute inset-0 bg-[size:30px_30px] opacity-100 pointer-events-none", isDark ? "bg-[radial-gradient(#27272a_1px,transparent_1px)]" : "bg-[radial-gradient(#e5e5e5_1px,transparent_1px)]")}></div>
               
+              {/* MINI-PHOTOSHOP FLOATING IMAGE CONTEXT TOOLBAR */}
+              {selectedItem && selectedItem.type === 'image' && tool === 'select' && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-1.5 md:gap-2 animate-in fade-in slide-in-from-top-2">
+                  <span className="text-[11px] font-bold text-text-muted px-2 border-r border-border truncate max-w-[120px]">
+                    {selectedItem.name || 'Bild'}
+                  </span>
+
+                  <button
+                    onClick={() => startCropMode(selectedItem)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer"
+                    title="Zuschneiden (Crop Tool)"
+                  >
+                    <Crop size={14} className="text-accent-ai" />
+                    <span>{language === 'de' ? 'Zuschneiden' : 'Crop'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => openFreistellenModal(selectedItem)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer"
+                    title="Hintergrund freistellen (KI & Chroma Key)"
+                  >
+                    <Scissors size={14} className="text-purple-400" />
+                    <span>{language === 'de' ? 'Freistellen' : 'Cutout'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setShowItemFilters(!showItemFilters)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors shadow-sm cursor-pointer",
+                      showItemFilters
+                        ? "bg-accent-ai text-white border-accent-ai"
+                        : "bg-surface hover:bg-background text-text-primary border-border"
+                    )}
+                    title="Bildanpassungen (Helligkeit, Kontrast, etc.)"
+                  >
+                    <SlidersHorizontal size={14} className={showItemFilters ? "text-white" : "text-amber-400"} />
+                    <span>{language === 'de' ? 'Filter' : 'Adjust'}</span>
+                  </button>
+
+                  <div className="w-[1px] h-5 bg-border mx-0.5" />
+
+                  <button
+                    onClick={() => bringItemForward(selectedItem.id)}
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer"
+                    title="Nach vorne bringen"
+                  >
+                    <ArrowUp size={14} />
+                  </button>
+                  <button
+                    onClick={() => sendItemBackward(selectedItem.id)}
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer"
+                    title="Nach hinten stellen"
+                  >
+                    <ArrowDown size={14} />
+                  </button>
+
+                  <button
+                    onClick={() => duplicateItem(selectedItem.id)}
+                    className="p-1.5 rounded-lg bg-surface hover:bg-background text-text-muted hover:text-text-primary border border-border transition-colors cursor-pointer"
+                    title="Duplizieren"
+                  >
+                    <Copy size={14} />
+                  </button>
+
+                  <button
+                    onClick={deleteSelectedItem}
+                    className="p-1.5 rounded-lg bg-surface hover:bg-red-500/10 text-text-muted hover:text-red-500 border border-border transition-colors cursor-pointer"
+                    title="Löschen"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )}
+
+              {/* FLOATING IMAGE FILTERS POPOVER */}
+              {showItemFilters && selectedItem && selectedItem.type === 'image' && (
+                <div className="absolute top-16 left-1/2 -translate-x-1/2 z-30 w-72 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-top-1">
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <span className="text-xs font-bold text-text-primary flex items-center gap-1.5">
+                      <SlidersHorizontal size={14} className="text-accent-ai" /> Bild-Anpassungen
+                    </span>
+                    <button onClick={() => setShowItemFilters(false)} className="text-text-muted hover:text-text-primary">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-medium text-text-muted mb-1">
+                      <span>Helligkeit</span>
+                      <span>{selectedItem.brightness || 0}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-1"
+                      max="1"
+                      step="0.05"
+                      value={selectedItem.brightness || 0}
+                      onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, brightness: parseFloat(e.target.value) }))}
+                      className="w-full accent-accent-ai"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-medium text-text-muted mb-1">
+                      <span>Kontrast</span>
+                      <span>{selectedItem.contrast || 0}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-100"
+                      max="100"
+                      step="5"
+                      value={selectedItem.contrast || 0}
+                      onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, contrast: parseFloat(e.target.value) }))}
+                      className="w-full accent-accent-ai"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-medium text-text-muted mb-1">
+                      <span>Sättigung</span>
+                      <span>{selectedItem.saturation || 0}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="-2"
+                      max="2"
+                      step="0.1"
+                      value={selectedItem.saturation || 0}
+                      onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, saturation: parseFloat(e.target.value) }))}
+                      className="w-full accent-accent-ai"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[11px] font-medium text-text-muted mb-1">
+                      <span>Deckkraft</span>
+                      <span>{Math.round((selectedItem.opacity ?? 1) * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="1"
+                      step="0.05"
+                      value={selectedItem.opacity ?? 1}
+                      onChange={(e) => updateItemById(selectedItem.id, old => ({ ...old, opacity: parseFloat(e.target.value) }))}
+                      className="w-full accent-accent-ai"
+                    />
+                  </div>
+                  <button
+                    onClick={() => updateItemById(selectedItem.id, old => ({ ...old, brightness: 0, contrast: 0, saturation: 0, opacity: 1 }))}
+                    className="w-full py-1.5 text-xs font-semibold rounded-lg bg-surface border border-border text-text-muted hover:text-text-primary hover:bg-background transition-colors"
+                  >
+                    Filter zurücksetzen
+                  </button>
+                </div>
+              )}
+
               {stageSize.width > 0 && (
                 <Stage 
                   width={stageSize.width} height={stageSize.height} ref={stageRef} 
@@ -2166,9 +3032,23 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   </KonvaLayer>
                   {layers.map(layer => (
                     layer.visible && (
-                      <KonvaLayer key={layer.id}>
+                      <KonvaLayer key={layer.id} opacity={layer.opacity ?? 1} listening={!layer.locked}>
                         {(layer.items || []).map((item, i) => {
                           const isSelected = selectedShapeId === item.id && tool === 'select';
+                          if (item.type === 'image') {
+                            return (
+                              <KonvaImageItem
+                                key={item.id || i}
+                                item={item}
+                                isSelected={isSelected}
+                                tool={tool}
+                                stageScale={stageScale}
+                                layerLocked={layer.locked}
+                                onSelect={(id) => setSelectedShapeId(id)}
+                                onUpdate={(id, updateFn) => updateItemById(id, updateFn)}
+                              />
+                            );
+                          }
                           if (item.type === 'line') {
                             return (
                               <Group key={item.id || i}>
@@ -2399,6 +3279,22 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                       <Line points={currentPolygon} stroke={activeColor} strokeWidth={3 / stageScale} strokeDasharray={[5 / stageScale, 5 / stageScale]} />
                     </KonvaLayer>
                   )}
+                  <KonvaLayer name="transformer-layer">
+                    <Transformer
+                      ref={transformerRef}
+                      boundBoxFunc={(oldBox, newBox) => {
+                        if (Math.abs(newBox.width) < 15 || Math.abs(newBox.height) < 15) return oldBox;
+                        return newBox;
+                      }}
+                      enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right', 'middle-left', 'middle-right', 'top-center', 'bottom-center']}
+                      rotateEnabled={true}
+                      anchorSize={8}
+                      anchorCornerRadius={2}
+                      borderStroke="#3b82f6"
+                      borderStrokeWidth={1.5}
+                      borderDash={[4, 4]}
+                    />
+                  </KonvaLayer>
                 </Stage>
               )}
             </div>
@@ -2557,6 +3453,351 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                           {t('generate_render')}
                         </button>
                       )}
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* CROP STUDIO MODAL (MINI-PHOTOSHOP) */}
+            {isCropping && cropTargetItem && (
+              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-surface border border-border rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                >
+                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-accent-ai/10 text-accent-ai">
+                        <Crop size={18} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-text-primary">Bild zuschneiden (Crop Studio)</h3>
+                        <p className="text-xs text-text-muted">Wähle den Bildausschnitt und das Seitenverhältnis</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setIsCropping(false); setCropTargetItem(null); }}
+                      className="p-1.5 text-text-muted hover:text-text-primary rounded-lg transition-colors hover:bg-white/5 cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    <div className="flex-1 bg-background/90 p-6 flex items-center justify-center relative overflow-hidden select-none min-h-[320px]">
+                      <div className="relative inline-block max-w-full max-h-[60vh] shadow-2xl rounded-lg overflow-hidden border border-border/50">
+                        <img
+                          src={cropTargetItem.src}
+                          alt="Crop Source"
+                          className="max-w-full max-h-[60vh] object-contain block"
+                        />
+                        <div
+                          className="absolute border-2 border-accent-ai shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] pointer-events-none transition-all"
+                          style={{
+                            left: `${((cropRect.x) / (cropTargetItem.naturalWidth || cropTargetItem.width || 1)) * 100}%`,
+                            top: `${((cropRect.y) / (cropTargetItem.naturalHeight || cropTargetItem.height || 1)) * 100}%`,
+                            width: `${((cropRect.width) / (cropTargetItem.naturalWidth || cropTargetItem.width || 1)) * 100}%`,
+                            height: `${((cropRect.height) / (cropTargetItem.naturalHeight || cropTargetItem.height || 1)) * 100}%`
+                          }}
+                        >
+                          <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-40">
+                            <div className="border-r border-b border-white" />
+                            <div className="border-r border-b border-white" />
+                            <div className="border-b border-white" />
+                            <div className="border-r border-b border-white" />
+                            <div className="border-r border-b border-white" />
+                            <div className="border-b border-white" />
+                            <div className="border-r border-white" />
+                            <div className="border-r border-white" />
+                            <div />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="w-full md:w-80 bg-surface border-t md:border-t-0 md:border-l border-border p-5 flex flex-col justify-between shrink-0 space-y-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-2">
+                            Seitenverhältnis
+                          </label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { id: 'free', label: 'Frei' },
+                              { id: '1:1', label: '1:1 Quadrat' },
+                              { id: '4:3', label: '4:3 Foto' },
+                              { id: '16:9', label: '16:9 Breit' },
+                              { id: '3:2', label: '3:2 Standard' }
+                            ].map(r => (
+                              <button
+                                key={r.id}
+                                onClick={() => handleSetCropRatio(r.id as any)}
+                                className={cn(
+                                  "py-2 px-2 rounded-lg text-xs font-semibold border transition-all text-center cursor-pointer",
+                                  cropRatio === r.id
+                                    ? "bg-accent-ai text-white border-accent-ai shadow-sm"
+                                    : "bg-background border-border text-text-muted hover:text-text-primary hover:bg-surface"
+                                )}
+                              >
+                                {r.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 pt-2 border-t border-border">
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold text-text-muted mb-1">
+                              <span>Breite</span>
+                              <span>{cropRect.width}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="20"
+                              max={cropTargetItem.naturalWidth || cropTargetItem.width || 800}
+                              value={cropRect.width}
+                              onChange={(e) => updateCropWidth(parseInt(e.target.value))}
+                              className="w-full accent-accent-ai"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold text-text-muted mb-1">
+                              <span>Höhe</span>
+                              <span>{cropRect.height}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="20"
+                              max={cropTargetItem.naturalHeight || cropTargetItem.height || 600}
+                              value={cropRect.height}
+                              onChange={(e) => updateCropHeight(parseInt(e.target.value))}
+                              className="w-full accent-accent-ai"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold text-text-muted mb-1">
+                              <span>Position X</span>
+                              <span>{cropRect.x}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max={Math.max(0, (cropTargetItem.naturalWidth || cropTargetItem.width || 800) - cropRect.width)}
+                              value={cropRect.x}
+                              onChange={(e) => setCropRect(prev => ({ ...prev, x: parseInt(e.target.value) }))}
+                              className="w-full accent-accent-ai"
+                            />
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold text-text-muted mb-1">
+                              <span>Position Y</span>
+                              <span>{cropRect.y}px</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max={Math.max(0, (cropTargetItem.naturalHeight || cropTargetItem.height || 600) - cropRect.height)}
+                              value={cropRect.y}
+                              onChange={(e) => setCropRect(prev => ({ ...prev, y: parseInt(e.target.value) }))}
+                              className="w-full accent-accent-ai"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-4 border-t border-border">
+                        <button
+                          onClick={() => applyCrop(false)}
+                          className="w-full py-2.5 bg-accent-ai hover:bg-accent-ai/90 text-white rounded-xl text-xs font-bold shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <Check size={16} /> Zuschneiden
+                        </button>
+                        <button
+                          onClick={() => applyCrop(true)}
+                          className="w-full py-2.5 bg-surface hover:bg-background border border-border text-text-primary rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                          title="Erstellt eine neue Ebene mit diesem Ausschnitt (wie Strg+J in Photoshop)"
+                        >
+                          <Copy size={14} className="text-accent-ai" /> Als neue Ebene ausschneiden
+                        </button>
+                        <button
+                          onClick={() => { setIsCropping(false); setCropTargetItem(null); }}
+                          className="w-full py-2 text-xs font-semibold text-text-muted hover:text-text-primary transition-colors text-center cursor-pointer"
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
+            {/* FREISTELLEN MODAL (MINI-PHOTOSHOP) */}
+            {showFreistellenModal && freistellenTargetItem && (
+              <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col"
+                >
+                  <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400">
+                        <Scissors size={18} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-text-primary">Hintergrund freistellen</h3>
+                        <p className="text-xs text-text-muted">Motive isolieren und Hintergrund transparent machen</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setShowFreistellenModal(false); setFreistellenTargetItem(null); }}
+                      className="p-1.5 text-text-muted hover:text-text-primary rounded-lg transition-colors hover:bg-white/5 cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+
+                  <div className="p-6 space-y-5">
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setBgRemovalMode('ai')}
+                        className={cn(
+                          "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                          bgRemovalMode === 'ai'
+                            ? "bg-purple-500/15 border-purple-500/50 text-text-primary shadow-sm"
+                            : "bg-background border-border text-text-muted hover:bg-surface"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sparkles size={16} className="text-purple-400" />
+                          <span className="text-xs font-bold">1-Klick KI Freistellen</span>
+                        </div>
+                        <p className="text-[11px] text-text-muted leading-tight">
+                          BiRefNet Neuronales Netzwerk erkennt Personen, Gebäude & Objekte automatisch.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setBgRemovalMode('chroma')}
+                        className={cn(
+                          "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                          bgRemovalMode === 'chroma'
+                            ? "bg-accent-ai/15 border-accent-ai/50 text-text-primary shadow-sm"
+                            : "bg-background border-border text-text-muted hover:bg-surface"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Palette size={16} className="text-accent-ai" />
+                          <span className="text-xs font-bold">Farbe entfernen (Chroma)</span>
+                        </div>
+                        <p className="text-[11px] text-text-muted leading-tight">
+                          Weißer, grüner oder einfarbiger Hintergrund wird sofort lokal transparent gestanzt.
+                        </p>
+                      </button>
+                    </div>
+
+                    {bgRemovalMode === 'chroma' && (
+                      <div className="p-4 bg-background rounded-xl border border-border space-y-4 animate-in fade-in">
+                        <div>
+                          <label className="text-[11px] font-bold text-text-muted uppercase tracking-wider block mb-2">
+                            Hintergrundfarbe wählen
+                          </label>
+                          <div className="flex items-center gap-3">
+                            {[
+                              { color: '#ffffff', label: 'Weiß' },
+                              { color: '#000000', label: 'Schwarz' },
+                              { color: '#00ff00', label: 'Green Screen' },
+                              { color: '#121214', label: 'Dunkelgrau' }
+                            ].map(c => (
+                              <button
+                                key={c.color}
+                                type="button"
+                                onClick={() => setBgRemovalColor(c.color)}
+                                className={cn(
+                                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer",
+                                  bgRemovalColor.toLowerCase() === c.color.toLowerCase()
+                                    ? "border-accent-ai bg-accent-ai/10 text-text-primary ring-2 ring-accent-ai/20"
+                                    : "border-border bg-surface text-text-muted hover:text-text-primary"
+                                )}
+                              >
+                                <span className="w-3.5 h-3.5 rounded-full border border-black/20" style={{ backgroundColor: c.color }} />
+                                <span>{c.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-[11px] font-semibold text-text-muted mb-1">
+                            <span>Farbtoleranz / Sensitivität</span>
+                            <span>{bgRemovalTolerance}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="5"
+                            max="80"
+                            value={bgRemovalTolerance}
+                            onChange={(e) => setBgRemovalTolerance(parseInt(e.target.value))}
+                            className="w-full accent-accent-ai"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-3 bg-background rounded-xl border border-border flex items-center gap-4">
+                      <img
+                        src={freistellenTargetItem.src}
+                        alt="Target"
+                        className="w-20 h-20 object-contain rounded-lg border border-border/50 bg-black/20"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-text-primary truncate">{freistellenTargetItem.name || 'Bild'}</h4>
+                        <p className="text-[11px] text-text-muted mt-0.5">
+                          {freistellenTargetItem.width} × {freistellenTargetItem.height} px
+                        </p>
+                        <p className="text-[11px] text-purple-400 mt-1">
+                          {bgRemovalMode === 'ai' ? '✦ Bereit für KI-Verarbeitung' : `✦ Transparenz für Farbwert ${bgRemovalColor}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => { setShowFreistellenModal(false); setFreistellenTargetItem(null); }}
+                        disabled={isRemovingBg}
+                        className="px-4 py-2 text-xs font-semibold text-text-muted hover:text-text-primary transition-colors cursor-pointer"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleExecuteFreistellen}
+                        disabled={isRemovingBg}
+                        className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-purple-500/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                      >
+                        {isRemovingBg ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span>Freistellen läuft...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Scissors size={16} />
+                            <span>Hintergrund entfernen</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </motion.div>
