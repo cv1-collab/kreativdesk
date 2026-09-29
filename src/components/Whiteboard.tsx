@@ -2502,7 +2502,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <button
                 onClick={() => { setShowExportMenu(!showExportMenu); setShowAiMenu(false); }}
                 className={cn(
-                  "h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border cursor-pointer shrink-0",
+                  "tour-whiteboard-export h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border cursor-pointer shrink-0",
                   showExportMenu
                     ? "bg-purple-500/20 border-purple-500 text-purple-300"
                     : "bg-surface border-border text-text-primary hover:bg-background"
@@ -2847,10 +2847,10 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             >
               <div className={cn("absolute inset-0 bg-[size:30px_30px] opacity-100 pointer-events-none", isDark ? "bg-[radial-gradient(#27272a_1px,transparent_1px)]" : "bg-[radial-gradient(#e5e5e5_1px,transparent_1px)]")}></div>
               
-              {/* MINI-PHOTOSHOP FLOATING IMAGE CONTEXT TOOLBAR (Unten zentriert platziert, um Überlappung mit den oberen Zeichen-Werkzeugen zu verhindern) */}
+              {/* MINI-PHOTOSHOP FLOATING IMAGE CONTEXT TOOLBAR (Auf Stufe bottom-16 platziert, damit es vollständig über den Zoom-Werkzeugen auf bottom-4 schwebt) */}
               {selectedItem && selectedItem.type === 'image' && tool === 'select' && (
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl px-3 py-2 flex items-center gap-1.5 md:gap-2 animate-in fade-in slide-in-from-bottom-3 max-w-[calc(100%-8rem)] overflow-x-auto custom-scrollbar">
-                  <span className="text-[11px] font-bold text-text-muted px-2 border-r border-border truncate max-w-[120px]">
+                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl px-2.5 py-1.5 md:px-3 md:py-2 flex items-center gap-1 md:gap-1.5 animate-in fade-in slide-in-from-bottom-3 max-w-[calc(100%-2rem)] overflow-x-auto custom-scrollbar">
+                  <span className="text-[11px] font-bold text-text-muted px-2 border-r border-border truncate max-w-[100px] shrink-0">
                     {selectedItem.name || 'Bild'}
                   </span>
 
@@ -2859,7 +2859,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer shrink-0"
                     title="Zuschneiden (Crop Tool)"
                   >
-                    <Crop size={14} className="text-accent-ai" />
+                    <Crop size={14} className="text-accent-ai shrink-0" />
                     <span>{language === 'de' ? 'Zuschneiden' : 'Crop'}</span>
                   </button>
 
@@ -2868,7 +2868,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface hover:bg-background text-text-primary text-xs font-semibold border border-border transition-colors shadow-sm cursor-pointer shrink-0"
                     title="Hintergrund freistellen (KI & Chroma Key)"
                   >
-                    <Scissors size={14} className="text-purple-400" />
+                    <Scissors size={14} className="text-purple-400 shrink-0" />
                     <span>{language === 'de' ? 'Freistellen' : 'Cutout'}</span>
                   </button>
 
@@ -2882,7 +2882,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                     )}
                     title="Bildanpassungen (Helligkeit, Kontrast, etc.)"
                   >
-                    <SlidersHorizontal size={14} className={showItemFilters ? "text-white" : "text-amber-400"} />
+                    <SlidersHorizontal size={14} className={cn("shrink-0", showItemFilters ? "text-white" : "text-amber-400")} />
                     <span>{language === 'de' ? 'Filter' : 'Adjust'}</span>
                   </button>
 
@@ -2932,7 +2932,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
               {/* FLOATING IMAGE FILTERS POPOVER (Öffnet nach oben über der unteren Toolbar) */}
               {showItemFilters && selectedItem && selectedItem.type === 'image' && (
-                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 w-72 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-30 w-72 bg-surface/95 backdrop-blur-xl border border-border shadow-2xl rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2">
                   <div className="flex items-center justify-between pb-2 border-b border-border">
                     <span className="text-xs font-bold text-text-primary flex items-center gap-1.5">
                       <SlidersHorizontal size={14} className="text-accent-ai" /> Bild-Anpassungen
@@ -3294,7 +3294,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             </div>
           </div>
 
-          <div className={cn("w-full lg:w-96 bg-surface border-l border-border flex-col shrink-0 overflow-hidden h-full lg:h-auto", mobileTab === 'audio' ? 'flex' : 'hidden lg:flex')}>
+          <div className={cn("tour-whiteboard-audio w-full lg:w-96 bg-surface border-l border-border flex-col shrink-0 overflow-hidden h-full lg:h-auto", mobileTab === 'audio' ? 'flex' : 'hidden lg:flex')}>
             <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0">
               <h3 className="font-bold text-text-primary flex items-center gap-2"><Mic size={18} className="text-accent-ai" /> Audio Hub</h3>
               {isAnalyzingAudio && <span className="text-[10px] font-bold uppercase tracking-widest text-accent-ai flex items-center gap-2 bg-accent-ai/10 px-2 py-1 rounded-md"><Loader2 size={12} className="animate-spin" /> {t('ai_analyzing')}</span>}

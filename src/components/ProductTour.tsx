@@ -513,7 +513,7 @@ export default function ProductTour() {
             placement: 'bottom'
           },
           {
-            target: '.tour-whiteboard-media, body',
+            target: '.tour-whiteboard-audio, .tour-whiteboard-export, .tour-whiteboard-media, body',
             title: isGerman ? 'Audio-Notizen & Universal PDF Export' : 'Audio Memos & PDF Studio',
             content: isGerman
               ? 'Nimm Sprachmemos während Baubesprechungen auf: Die KI transkribiert und fasst Beschlüsse zusammen. Exportiere das fertige Board direkt als Folie ins Pitch Deck oder als A3-PDF.'
@@ -521,7 +521,7 @@ export default function ProductTour() {
             IconComponent: FileText,
             submodules: isGerman ? ['KI-Transkription', 'Pitch Deck Sync', 'Universal PDF Studio'] : ['AI Transcription', 'Pitch Deck Sync', 'Universal PDF Studio'],
             proTip: isGerman ? 'Über "Medien & PDF" im Menü generierst du gestochen scharfe A3-Präsentationspläne.' : 'Export crisp A3 layout plans via the Media & PDF menu.',
-            placement: 'bottom'
+            placement: 'left'
           }
         ];
       } else if (activeModuleTour === 'meet') {
@@ -1068,8 +1068,8 @@ export default function ProductTour() {
         try {
           const elements = Array.from(document.querySelectorAll(sel)) as HTMLElement[];
           for (const el of elements) {
-            // Strictly exclude anything inside or matching .tour-btn-module-guide or <header> tags
-            if (el.closest('.tour-btn-module-guide') || el.tagName.toLowerCase() === 'header' || el.closest('header')) {
+            // Strictly exclude anything matching .tour-btn-module-guide or bare <header> tag
+            if (el.closest('.tour-btn-module-guide') || el.tagName.toLowerCase() === 'header') {
               continue;
             }
             const rect = el.getBoundingClientRect();
