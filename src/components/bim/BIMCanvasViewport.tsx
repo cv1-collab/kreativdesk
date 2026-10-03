@@ -533,11 +533,12 @@ function BIMCanvasViewportComponent({
 }: BIMCanvasViewportProps) {
   return (
     <Canvas
+      dpr={isMobile ? [1, 1.5] : [1, 2]}
       camera={{ position: [15, 12, 15], fov: 50 }}
       gl={{
         preserveDrawingBuffer: true,
-        powerPreference: 'high-performance',
-        antialias: true,
+        powerPreference: isMobile ? 'default' : 'high-performance',
+        antialias: !isMobile,
         failIfMajorPerformanceCaveat: false,
       }}
       ref={canvasRef}
@@ -545,7 +546,7 @@ function BIMCanvasViewportComponent({
         if (!measureMode && !defectMode) setSelectedId(null);
       }}
     >
-      {!isMobile && <SnapshotHelper />}
+      <SnapshotHelper />
       <CameraRig isTouring={isTouring} />
       <color attach="background" args={[theme === 'dark' ? '#09090b' : '#f4f4f5']} />
       <ambientLight intensity={isMobile ? 1.0 : 0.5} />

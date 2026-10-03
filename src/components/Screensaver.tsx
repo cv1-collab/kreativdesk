@@ -9,6 +9,10 @@ const DEFAULT_SCREENSAVER_BG = "https://images.unsplash.com/photo-1618005182384-
 export default function Screensaver() {
   const { currentUser } = useAuth();
   const [isActive, setIsActive] = useState(false);
+  const [isEnabled, setIsEnabled] = useState<boolean>(() => {
+    const cached = safeStorage.getItem<boolean | null>('screensaver_active', null);
+    return cached !== null ? cached : true; // Standardmässig AKTIV beim Einloggen
+  });
   const [time, setTime] = useState(new Date());
   const [bgImg, setBgImg] = useState(() => safeStorage.getString('ws_screensaver_bg') || DEFAULT_SCREENSAVER_BG);
   const [timeoutMinutes, setTimeoutMinutes] = useState(5);
@@ -20,11 +24,24 @@ export default function Screensaver() {
     const handleTrigger = () => {
       setIsActive(true);
     };
+    const handleSettingsChanged = (e: any) => {
+      if (e.detail?.active !== undefined) {
+        setIsEnabled(Boolean(e.detail.active));
+      }
+      if (e.detail?.timeout !== undefined) {
+        setTimeoutMinutes(Number(e.detail.timeout));
+      }
+      if (e.detail?.image) {
+        setBgImg(e.detail.image);
+      }
+    };
     window.addEventListener('ws_screensaver_bg_changed', handleUpdate);
     window.addEventListener('triggerScreensaver', handleTrigger);
+    window.addEventListener('screensaver_settings_changed', handleSettingsChanged as any);
     return () => {
       window.removeEventListener('ws_screensaver_bg_changed', handleUpdate);
       window.removeEventListener('triggerScreensaver', handleTrigger);
+      window.removeEventListener('screensaver_settings_changed', handleSettingsChanged as any);
     };
   }, []);
 
@@ -51,6 +68,11 @@ export default function Screensaver() {
         }
 
         const isCompActive = compData && compData.screensaver_active !== null && compData.screensaver_active !== undefined;
+        // Screensaver ist standardmässig AKTIV beim Einloggen (true)
+        const activeSetting = isCompActive ? compData.screensaver_active : (sysConf.screensaverActive ?? true);
+        setIsEnabled(Boolean(activeSetting));
+        safeStorage.setItem('screensaver_active', Boolean(activeSetting));
+
         let image = (isCompActive && compData.screensaver_image) || sysConf.screensaverImage || safeStorage.getString('ws_screensaver_bg') || '';
         if (image && (image.includes('1618221118493') || image.includes('1600607686527'))) {
           image = DEFAULT_SCREENSAVER_BG;
@@ -71,6 +93,8 @@ export default function Screensaver() {
     const resetTimer = () => {
       setIsActive(false);
       clearTimeout(timeoutId);
+      // Nur automatisch auslösen wenn Screensaver aktiviert ist
+      if (!isEnabled) return;
       timeoutId = setTimeout(
         () => setIsActive(true),
         timeoutMinutes * 60 * 1000
@@ -93,7 +117,7 @@ export default function Screensaver() {
         document.removeEventListener(event, resetTimer)
       );
     };
-  }, [timeoutMinutes]);
+  }, [timeoutMinutes, isEnabled]);
 
   useEffect(() => {
     if (!isActive) return;

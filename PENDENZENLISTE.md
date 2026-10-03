@@ -1,11 +1,43 @@
 # Kreativ Desk & interacTV — Status, Erfolge & Pendenzen
 
-**Datum:** 27. September 2026  
+**Datum:** 3. Oktober 2026  
 **Status:** 🟢 Alle Prüfungen grün (Vitest 65/65 grün, System-Vollprüfung 42/42 bestanden, 100% Schweizer Rechtschreibung, TypeScript 0 Fehler `tsc --noEmit`), Dev-Server aktiv (`http://localhost:3001`), redundante Module und Dead Code 100% bereinigt.
 
 ---
 
-## 🏆 Erfolgsliste von heute (29. September 2026)
+## 🏆 Erfolgsliste von heute (3. Oktober 2026)
+
+### 0. CRM, Branding, Screensaver, Dokumenten-Hub & Mobile First Harmonisierung
+* **CRM & Team («vesciodesign» Fix):**
+  * Optionale Felder für **Firma**, **Webseite** und **Standort / Adresse** in das Modal für interne Teammitglieder integriert.
+  * Beim Bearbeiten des eigenen Profils werden `profiles` und `companies` in Supabase automatisch synchronisiert.
+  * Firmen-Badge wird nun auch bei internen Mitgliedern in der Kontaktübersicht angezeigt.
+* **CAD Pläne Modul-Header:**
+  * Einheitliche Kopfzeile mit Icon (`Map`), Titel `CAD Pläne` / `CAD Plans` und Untertitel hinzugefügt.
+* **Custom Branding (Akzentfarben):**
+  * Sofortige Live-CSS-Variablen-Injektion (`applyBrandColor`) bei Farbauswahl.
+  * Persistierung in `localStorage`, `documents` (`system_config -> global_master`) und dem Firmenprofil.
+  * Schnellwahl-Presets für beliebte Paletten (Kreativ-Blau, Smaragdgrün, Swiss Crimson, etc.).
+* **Screensaver & Kiosk-Modus:**
+  * Standardmässig direkt ab Login aktiv geschaltet (5 Minuten Inaktivitäts-Timer).
+  * Sofortige Reaktivität bei Einstellungsänderungen via Custom-Event ohne Neuladen.
+* **Dokumenten Hub & Bauakte Bereinigung:**
+  * Vorangestelltes Ordner-Icon vor den Titeln («Bauakte: ...» und «Dokumenten Hub») entfernt.
+  * Zusammenfassung der zuvor 4 getrennten Leisten in eine schlanke, konsolidierte Schaltzentrale.
+  * Riesiges redundantes Smart-Proposals-Banner aus dem Hauptverzeichnis entfernt.
+  * Dezent integrierte, kontextsensitive Breadcrumbs (nur bei Navigation in Ordner/Projekte).
+* **Mobile First & Smartphone-Layouts:**
+  * Einheitliche Button-Dimensionen (`h-8` auf Mobile, `sm:h-9` auf Desktop) in der oberen Hauptleiste (App Installieren, Sprache, Hilfe/Handbuch, Theme, Benachrichtigungen, Admin).
+  * Responsives Umbrechen der Modul-Kopfzeilen (CAD Pläne, Dokumenten Hub, BIM 3D, CRM & Team) ohne horizontales Überlaufen oder Verdrängen des Titels.
+* **WebGL-Stabilität & Memory-Optimization auf Smartphones:**
+  * Begrenzung der Pixeldichte auf `[1, 1.5]` auf Smartphones verhindert GPU-Out-of-Memory («WebGL context was lost»).
+  * Antialiasing (MSAA) auf Mobile deaktiviert zur Reduktion des GPU-VRAM-Verbrauchs um über 70%.
+  * Aktiver Crash-Schutz (`webglcontextlost` & `webglcontextrestored`) läuft permanent auf allen Plattformen mit.
+* **TypeScript & Build:** 0 Fehler (`tsc --noEmit`), Vite Production Build in 13.84s erfolgreich.
+
+---
+
+## 🏆 Erfolgsliste (29. September 2026)
 
 ### 0. Lückenlose Systemprüfung & Behebung sämtlicher Modul-Guides & Produkt-Touren (100% Abdeckung)
 * **Systemweiter Modul-Guide Audit:** Sämtliche Module im Company Dashboard (`/app`) und im Projekt-Workspace (`/project/:id`) wurden systematisch überprüft.

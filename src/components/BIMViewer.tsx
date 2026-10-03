@@ -1197,28 +1197,24 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     <PremiumFeature>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="absolute inset-0 flex flex-col bg-background p-4 md:p-6 gap-4">
         
-        <header className="flex flex-col md:flex-row md:items-start justify-between gap-4 shrink-0">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{t('viewer_title')}</h1>
-            <p className="text-text-muted text-sm mt-1">{activeModel ? activeModel.name : 'Munich Tech Campus - Main Building v2.4'}</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('viewer_title')}</h1>
+            <p className="text-text-muted text-xs sm:text-sm mt-0.5 truncate max-w-sm">{activeModel ? activeModel.name : 'Munich Tech Campus - Main Building v2.4'}</p>
           </div>
           
-          {!isMobile && (
-            <div className="flex flex-col items-end">
-              <div className="flex flex-wrap gap-2 items-center">
-                <ModuleGuideButton moduleId="bim" />
-                <button onClick={handleAudit} className={cn("tour-bim-audit px-4 py-2 border rounded-md text-sm font-medium transition-colors flex items-center gap-2", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
-                  <Sparkles size={16} />{auditMode ? t('analyzing_model') : t('audit_report')}
-                </button>
-                <button onClick={handleOpenPdfStudio} className="tour-bim-pdf hidden md:flex px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-medium hover:bg-background transition-colors items-center gap-2 shadow-sm">
-                  <FileText size={16} /> <span>{t('create_pdf_btn')}</span>
-                </button>
-                <button onClick={handleOpenRenderModal} className="px-4 py-2 bg-accent-ai text-white rounded-md text-sm font-medium hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 flex items-center gap-2">
-                  <Camera size={16} />{t('ai_render')}
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <ModuleGuideButton moduleId="bim" />
+            <button onClick={handleAudit} className={cn("tour-bim-audit px-3 py-1.5 sm:px-4 sm:py-2 border rounded-xl text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer", auditMode ? "bg-accent-warning/20 border-accent-warning text-accent-warning" : "bg-surface border-accent-ai/50 text-accent-ai hover:bg-accent-ai/10")}>
+              <Sparkles size={14} /><span>{auditMode ? t('analyzing_model') : t('audit_report')}</span>
+            </button>
+            <button onClick={handleOpenPdfStudio} className="tour-bim-pdf hidden sm:flex px-3 py-1.5 sm:px-4 sm:py-2 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-semibold hover:bg-background transition-colors items-center gap-1.5 shadow-sm h-8.5 sm:h-9 cursor-pointer">
+              <FileText size={14} /> <span>{t('create_pdf_btn')}</span>
+            </button>
+            <button onClick={handleOpenRenderModal} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-semibold hover:bg-accent-ai/90 transition-colors shadow-md flex items-center gap-1.5 h-8.5 sm:h-9 cursor-pointer">
+              <Camera size={14} /><span>{t('ai_render')}</span>
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden">

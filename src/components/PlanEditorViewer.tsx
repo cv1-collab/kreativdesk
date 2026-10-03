@@ -6,7 +6,7 @@ import {
   UploadCloud, Image as ImageIcon, MapPin, Square, Circle,
   Trash2, Settings, Layers, Hexagon, Check, LayoutTemplate, MoveHorizontal, Loader2,
   ZoomIn, ZoomOut, MousePointer2, Save, Download, ShieldAlert, Camera as LucideCamera,
-  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown
+  Eye, EyeOff, Lock, Unlock, Plus, SlidersHorizontal, ImagePlus, BringToFront, SendToBack, Type, PenTool, Ruler, X, ChevronDown, Map
 } from 'lucide-react';
 import { cn, sanitizeUrl } from '../utils';
 import { useToast } from '../contexts/ToastContext';
@@ -67,9 +67,13 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     export_pdf_sub: 'Print-ready plan with SIA title block in Universal PDF Studio',
     export_pitch_title: 'Pitch Deck Slide',
     export_pitch_sub: 'Send current plan snapshot to presentation deck',
-    plan_layout: 'Layout'
+    plan_layout: 'Layout',
+    cad_title: 'CAD Plans',
+    cad_subtitle: '2D blueprints, TrueScale™ calibration & SIA-118 defect pins'
   },
   de: {
+    cad_title: 'CAD Pläne',
+    cad_subtitle: '2D-Baupläne, TrueScale™ Vermessung & SIA-118 Mängel-Pins',
     save: 'Speichern', upload_success: 'Upload erfolgreich!', upload_failed: 'Upload fehlgeschlagen.',
     polygon_click_corners: 'Ecken klicken.', close_shape: 'Schließen', upload_cad_plan: 'Plan hochladen',
     upload_cad_desc: 'Ziehe eine Datei (JPG, PNG, PDF) herein.', true_scale_engine: 'TrueScale™ Engine',
@@ -1608,30 +1612,49 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
     <PremiumFeature>
     <div className="absolute inset-0 bg-background text-text-primary flex flex-col overflow-hidden">
       
-      <header className="min-h-14 py-2 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-row items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-3 overflow-visible">
-        {/* PLAN AUSWAHL & LÖSCHEN */}
-        <div className="flex items-center gap-2 shrink-0">
-          {projectPlans.length > 0 ? (
-            <div className="flex items-center gap-2 bg-background border border-border px-3 h-9 rounded-xl shadow-sm">
-              <Layers size={14} className="text-text-muted shrink-0" />
-              <select 
-                value={activePlanId || ''} 
-                onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} 
-                className="bg-transparent font-bold text-xs sm:text-sm outline-none cursor-pointer max-w-[140px] sm:max-w-[200px] truncate text-text-primary"
-              >
-                {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
-              </select>
-              {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
-                <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer" title={t('delete_plan')}>
-                  <Trash2 size={14}/>
-                </button>
-              )}
+      <header className="min-h-14 sm:min-h-16 py-2 sm:py-2.5 border-b border-border bg-surface/95 backdrop-blur-xl flex flex-col sm:flex-row sm:items-center justify-between px-3 sm:px-6 shrink-0 z-30 shadow-sm gap-2.5 sm:gap-3 overflow-visible">
+        {/* MODUL TITEL & PLAN AUSWAHL */}
+        <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-4 shrink-0 min-w-0 w-full sm:w-auto">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Map size={18} />
             </div>
-          ) : (
-            <div className="flex items-center gap-2 px-3 h-9 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-sm">
-              <Layers size={14} className="text-text-muted" /> <span>Kein Plan geladen</span>
+            <div>
+              <h1 className="text-sm sm:text-base font-bold tracking-tight text-text-primary leading-tight whitespace-nowrap">
+                {t('cad_title')}
+              </h1>
+              <p className="text-[11px] text-text-muted hidden xl:block leading-tight">
+                {t('cad_subtitle')}
+              </p>
             </div>
-          )}
+          </div>
+
+          <div className="hidden sm:block w-px h-6 bg-border/60 mx-0.5" />
+
+          {/* PLAN AUSWAHL & LÖSCHEN */}
+          <div className="flex items-center gap-2 shrink-0">
+            {projectPlans.length > 0 ? (
+              <div className="flex items-center gap-2 bg-background border border-border px-3 h-9 rounded-xl shadow-sm">
+                <Layers size={14} className="text-text-muted shrink-0" />
+                <select 
+                  value={activePlanId || ''} 
+                  onChange={e => loadPlanDataToEditor(projectPlans.find(p=>p.id===e.target.value))} 
+                  className="bg-transparent font-bold text-xs sm:text-sm outline-none cursor-pointer max-w-[130px] sm:max-w-[190px] truncate text-text-primary"
+                >
+                  {projectPlans.map(p => <option key={p.id} value={p.id} className="bg-surface">{p.planName || p.plan_name || 'Unbenannter Plan'}</option>)}
+                </select>
+                {activePlanId && activePlanId !== 'demo-cad-1' && activePlanId !== 'system-fallback-plan' && (
+                  <button onClick={handleDeletePlan} className="text-red-500 p-1 hover:bg-red-500/10 rounded cursor-pointer" title={t('delete_plan')}>
+                    <Trash2 size={14}/>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-3 h-9 bg-background border border-border rounded-xl text-xs font-semibold text-text-muted shadow-sm">
+                <Layers size={14} className="text-text-muted" /> <span>Kein Plan geladen</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* PLAN FORMAT, MASSSTAB & KALIBRIERUNG (ZUSAMMENGEFÜHRT) */}
@@ -1667,7 +1690,7 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         )}
 
         {/* RECHTE BUTTONS (ZUSAMMENGEFÜHRT: ARBEIT, EXPORT & GUIDE) */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end overflow-x-auto hide-scrollbar py-0.5">
           {/* PRIMÄRE ARBEITS-AKTIONEN: UPLOAD & SPEICHERN */}
           <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-sm h-9">
             <label 

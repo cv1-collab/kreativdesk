@@ -565,35 +565,35 @@ export default function Layout() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 relative z-[1000]">
-            <button onClick={handleInstallApp} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-lg text-xs font-bold transition-all shadow-sm cursor-pointer">
-              📱 <span className="hidden sm:inline">{t('install_app')}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2.5 relative z-[1000]">
+            <button onClick={handleInstallApp} className="h-8 sm:h-9 px-2 sm:px-3 flex items-center justify-center gap-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer" title={t('install_app')}>
+              <span className="text-sm">📱</span> <span className="hidden sm:inline">{t('install_app')}</span>
             </button>
 
-            <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-sm cursor-pointer">
-              <Globe size={14} className="text-accent-ai" /> <span className="hidden sm:inline">{language}</span>
+            <button onClick={toggleLanguage} className="h-8 sm:h-9 px-2 sm:px-3 flex items-center justify-center gap-1.5 bg-background border border-border rounded-xl text-xs font-bold hover:bg-white/5 transition-colors uppercase text-text-primary shadow-xs cursor-pointer" title="Sprache / Language">
+              <Globe size={14} className="text-accent-ai" /> <span className="text-[11px] sm:text-xs">{language}</span>
             </button>
 
             {/* HILFE & MASTER-HANDBUCH (ZUSAMMENGEFÜHRT) */}
-            <div className="flex items-center bg-background border border-border rounded-lg p-0.5 shadow-sm">
-              <button onClick={startTour} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary rounded-md hover:bg-white/5 transition-colors cursor-pointer" title={t('start_tour')}>
-                <HelpCircle size={16} />
+            <div className="flex items-center bg-background border border-border rounded-xl p-0.5 shadow-xs h-8 sm:h-9">
+              <button onClick={startTour} className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-text-muted hover:text-text-primary rounded-lg hover:bg-white/5 transition-colors cursor-pointer" title={t('start_tour')}>
+                <HelpCircle size={15} />
               </button>
               <div className="w-px h-3.5 bg-border/80 my-auto" />
               <button 
                 onClick={() => window.dispatchEvent(new CustomEvent('open-system-handbook'))} 
-                className="p-1.5 sm:p-2 text-blue-500 hover:text-blue-400 rounded-md hover:bg-white/5 transition-colors cursor-pointer" 
+                className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center text-blue-500 hover:text-blue-400 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" 
                 title={language === 'de' ? 'Offizielles Master-System-Handbuch (PDF)' : 'Official Master System Handbook (PDF)'}
               >
-                <BookOpen size={16} />
+                <BookOpen size={15} />
               </button>
             </div>
 
-            <button onClick={toggleTheme} className="p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm">
-              {theme === 'dark' ? <Moon size={16} /> : <Sun size={16} />}
+            <button onClick={toggleTheme} className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border rounded-xl hover:bg-white/5 transition-colors shadow-xs cursor-pointer" title="Design wechseln">
+              {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
             </button>
 
-            <div>
+            <div className="relative">
               <button
                 onClick={() => {
                   setShowNotifications(true);
@@ -602,11 +602,12 @@ export default function Layout() {
                   setHasNewDocBadge(false);
                   safeStorage.removeItem('has_new_document');
                 }}
-                className="relative p-1.5 sm:p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg hover:bg-white/5 transition-colors shadow-sm cursor-pointer"
+                className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border rounded-xl hover:bg-white/5 transition-colors shadow-xs cursor-pointer relative"
+                title="Benachrichtigungen"
               >
-                <Bell size={18} />
+                <Bell size={16} />
                 {(hasUnread || unreadNotifCount > 0 || hasNewDocBadge) && (
-                  <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-surface animate-pulse"></span>
                 )}
               </button>
               <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />

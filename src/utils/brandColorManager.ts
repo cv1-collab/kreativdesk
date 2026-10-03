@@ -159,9 +159,29 @@ export function applyBrandColor(hex: string, persist: boolean = true): ColorShad
  */
 export async function initBrandColor(): Promise<string> {
   // Step 1: Immediate cache read
-  const cachedColor = safeStorage.getItem<string>(STORAGE_KEY, DEFAULT_BRAND_COLOR);
-  if (cachedColor && cachedColor !== DEFAULT_BRAND_COLOR) {
+  const cachedColor = safeStorage.getItem<string>(STORAGE_KEY, '');
+  if (cachedColor) {
     applyBrandColor(cachedColor, false);
+  } else {
+    // Check if company profile has a saved brand color
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const allKeys = Object.keys(localStorage);
+        for (const k of allKeys) {
+          if (k.startsWith('company_profile_')) {
+            const raw = localStorage.getItem(k);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.primaryColor) {
+                applyBrandColor(parsed.primaryColor, true);
+                return parsed.primaryColor;
+              }
+            }
+          }
+        }
+      }
+    } catch (_) {}
+    applyBrandColor(DEFAULT_BRAND_COLOR, false);
   }
 
   // Step 2: Remote sync

@@ -974,8 +974,7 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-surface border border-border p-4 md:p-6 rounded-3xl shadow-sm gap-4">
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h3 className="text-lg md:text-xl font-semibold text-text-primary flex items-center gap-2">
-              <FolderOpen className={isProjectMode ? "text-emerald-500" : "text-blue-500"} size={22} />
+            <h3 className="text-lg md:text-xl font-bold text-text-primary flex items-center gap-2">
               {isProjectMode ? `Bauakte: ${currentProject?.name || 'Projekt'}` : t('document_hub')}
             </h3>
             {isProjectMode && (
@@ -996,38 +995,38 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto justify-end">
+        <div className="flex items-center gap-2 w-full md:w-auto justify-between sm:justify-end overflow-x-auto hide-scrollbar py-0.5">
           <ModuleGuideButton moduleId="documents" />
 
           {activeTab !== 'proposals' ? (
             canUpload && (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsCreatingFolder(true)}
-                  className="flex-1 sm:flex-none px-4 py-2.5 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  className="px-3 sm:px-4 h-9 bg-surface hover:bg-background border border-border text-text-primary font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap"
                 >
-                  <FolderPlus size={16} />
-                  {t('new_folder')}
+                  <FolderPlus size={15} />
+                  <span>{t('new_folder')}</span>
                 </button>
 
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
                 <button 
                   onClick={() => fileInputRef.current?.click()} 
                   disabled={isUploading}
-                  className="tour-docs-upload flex-1 sm:flex-none px-4 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-all disabled:opacity-50 cursor-pointer"
+                  className="tour-docs-upload px-3 sm:px-4 h-9 bg-blue-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 hover:bg-blue-500 transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap"
                 >
-                  {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-                  {t('upload')}
+                  {isUploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+                  <span>{t('upload')}</span>
                 </button>
               </div>
             )
           ) : (
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-2">
               <a
                 href="/proposals"
                 target="_blank"
                 rel="noreferrer"
-                className="px-3.5 py-2.5 bg-surface hover:bg-background border border-border text-text-muted hover:text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
+                className="px-3.5 h-9 bg-surface hover:bg-background border border-border text-text-muted hover:text-text-primary text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm"
                 title={t('open_proposals_fullscreen')}
               >
                 <ExternalLink size={15} />
@@ -1038,154 +1037,176 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
         </div>
       </div>
 
-      {/* Main Category Tabs: Firmenunterlagen vs. Projektunterlagen vs. Kunden-Offerten & Layout Switcher */}
-      <div className="tour-docs-tabs flex flex-row justify-between items-center gap-2 border-b border-border/70 pb-1 overflow-x-auto custom-scrollbar">
-        <div className="flex border-b border-transparent gap-1.5 shrink-0">
-          {!isProjectMode && (
+      {/* ========================================================= */}
+      {/* ZUSAMMENGEFASSTE SCHALTLEISTE (KATEGORIEN, FILTER, SUCHE & ANSICHTEN) */}
+      {/* ========================================================= */}
+      <div className="bg-surface border border-border rounded-2xl p-2.5 shadow-sm space-y-2.5">
+        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2.5">
+          {/* 1. Category Switcher (Pill Style) */}
+          <div className="tour-docs-tabs flex items-center gap-1 bg-background/80 p-1 rounded-xl border border-border/60 overflow-x-auto custom-scrollbar shrink-0">
+            {!isProjectMode && (
+              <button
+                onClick={() => {
+                  setActiveTab('company');
+                  setCurrentFolderId('root');
+                  setSelectedProjectId(null);
+                  setSelectedDocIds([]);
+                  setFolderPath([{ id: 'root', name: 'Root' }]);
+                }}
+                className={cn(
+                  "px-3.5 py-1.5 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+                  activeTab === 'company'
+                    ? "bg-surface text-blue-600 dark:text-blue-400 shadow-sm border border-border/60"
+                    : "text-text-muted hover:text-text-primary"
+                )}
+              >
+                <Building2 size={15} />
+                {t('company_docs')}
+              </button>
+            )}
+
             <button
               onClick={() => {
-                setActiveTab('company');
+                setActiveTab('projects');
+                setCurrentFolderId('root');
+                if (!isProjectMode) setSelectedProjectId(null);
+                setSelectedDocIds([]);
+                setFolderPath([{ id: 'root', name: 'Root' }]);
+              }}
+              className={cn(
+                "px-3.5 py-1.5 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+                activeTab === 'projects'
+                  ? "bg-surface text-emerald-600 dark:text-emerald-400 shadow-sm border border-border/60"
+                  : "text-text-muted hover:text-text-primary"
+              )}
+            >
+              <Briefcase size={15} />
+              {isProjectMode ? 'Bauakte & Unterlagen' : t('project_docs')}
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab('proposals');
+                setCurrentFolderId('root');
+                setSelectedDocIds([]);
+              }}
+              className={cn(
+                "px-3.5 py-1.5 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap",
+                activeTab === 'proposals'
+                  ? "bg-surface text-purple-600 dark:text-purple-400 shadow-sm border border-border/60"
+                  : "text-text-muted hover:text-text-primary"
+              )}
+            >
+              <Sparkles size={15} className={activeTab === 'proposals' ? "text-purple-500 animate-pulse" : "text-purple-400"} />
+              {t('proposals_tab')}
+            </button>
+          </div>
+
+          {/* 2. Controls & Search Cluster (Rechts zusammengefasst) */}
+          {activeTab !== 'proposals' && (
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+              {/* Suche */}
+              <div className="tour-docs-search relative flex-1 sm:w-52">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder={t('search_placeholder')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-background border border-border/70 rounded-xl pl-8 pr-7 py-1.5 text-xs font-semibold text-text-primary focus:border-blue-500 outline-none shadow-sm"
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs">✕</button>
+                )}
+              </div>
+
+              {/* Sortierung */}
+              <div className="flex items-center gap-1 bg-background border border-border/70 rounded-xl px-2 py-1 shadow-sm shrink-0">
+                <ArrowUpDown size={13} className="text-text-muted shrink-0" />
+                <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value as any)}
+                  className="bg-transparent text-xs font-semibold text-text-primary focus:outline-none cursor-pointer pr-1"
+                >
+                  <option value="newest">Neueste</option>
+                  <option value="oldest">Älteste</option>
+                  <option value="name_asc">A – Z</option>
+                  <option value="name_desc">Z – A</option>
+                </select>
+              </div>
+
+              {/* Ansicht-Umschalter (Kacheln / Liste) */}
+              <div className="flex items-center gap-0.5 bg-background border border-border/70 p-0.5 rounded-xl shadow-sm shrink-0">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                    viewMode === 'grid' ? "bg-surface text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
+                  )}
+                  title={t('grid_view')}
+                >
+                  <LayoutGrid size={14} />
+                  <span className="hidden xl:inline">{t('grid_view')}</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer",
+                    viewMode === 'list' ? "bg-surface text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
+                  )}
+                  title={t('list_view')}
+                >
+                  <List size={14} />
+                  <span className="hidden xl:inline">{t('list_view')}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Schlanke Breadcrumbs (nur sichtbar wenn im Ordner oder Projekt gewählt) */}
+        {activeTab !== 'proposals' && (folderPath.length > 1 || selectedProjectId) && (
+          <div className="pt-2 border-t border-border/50 flex items-center gap-1.5 text-xs font-semibold text-text-muted flex-wrap">
+            <button
+              onClick={() => {
                 setCurrentFolderId('root');
                 setSelectedProjectId(null);
                 setSelectedDocIds([]);
                 setFolderPath([{ id: 'root', name: 'Root' }]);
               }}
-              className={cn(
-                "px-3.5 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
-                activeTab === 'company'
-                  ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-500/10 shadow-sm"
-                  : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
-              )}
+              className="text-text-primary hover:text-blue-500 transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <Building2 size={16} />
-              {t('company_docs')}
+              {activeTab === 'company' ? t('company_docs') : (isProjectMode ? 'Bauakte' : t('project_docs'))}
             </button>
-          )}
-
-          <button
-            onClick={() => {
-              setActiveTab('projects');
-              setCurrentFolderId('root');
-              if (!isProjectMode) setSelectedProjectId(null);
-              setSelectedDocIds([]);
-              setFolderPath([{ id: 'root', name: 'Root' }]);
-            }}
-            className={cn(
-              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
-              activeTab === 'projects'
-                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shadow-sm"
-                : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
-            )}
-          >
-            <Briefcase size={16} />
-            {isProjectMode ? 'Bauakte & Unterlagen' : t('project_docs')}
-          </button>
-
-          <button
-            onClick={() => {
-              setActiveTab('proposals');
-              setCurrentFolderId('root');
-              setSelectedDocIds([]);
-            }}
-            className={cn(
-              "px-3.5 sm:px-6 py-2.5 sm:py-3 font-semibold text-xs sm:text-sm border-b-2 transition-all flex items-center gap-2 rounded-t-xl cursor-pointer whitespace-nowrap",
-              activeTab === 'proposals'
-                ? "border-purple-500 text-purple-600 dark:text-purple-400 bg-purple-500/10 shadow-sm"
-                : "border-transparent text-text-muted hover:text-text-primary hover:bg-white/5"
-            )}
-          >
-            <Sparkles size={16} className={activeTab === 'proposals' ? "text-purple-500 animate-pulse" : "text-purple-400"} />
-            {t('proposals_tab')}
-          </button>
-        </div>
-
-        {/* View Mode Toggle: Grid Kacheln vs Liste */}
-        {activeTab !== 'proposals' && (
-          <div className="flex items-center gap-1 bg-surface border border-border p-1 rounded-xl shadow-sm shrink-0">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={cn(
-                "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                viewMode === 'grid' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
-              )}
-              title={t('grid_view')}
-            >
-              <LayoutGrid size={16} />
-              <span className="hidden sm:inline">{t('grid_view')}</span>
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={cn(
-                "p-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer",
-                viewMode === 'list' ? "bg-background text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary"
-              )}
-              title={t('list_view')}
-            >
-              <List size={16} />
-              <span className="hidden sm:inline">{t('list_view')}</span>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Breadcrumb Navigation & Search/Sort Controls */}
-      {activeTab !== 'proposals' && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface/50 border border-border px-4 py-3 rounded-2xl">
-          <div className="flex items-center gap-2 text-xs font-bold text-text-muted flex-wrap">
-            <span className="text-text-primary">{activeTab === 'company' ? t('company_docs') : t('project_docs')}</span>
             {selectedProjectId && (
               <>
-                <ChevronRight size={14} className="text-text-muted" />
+                <ChevronRight size={13} className="text-text-muted/60" />
                 <span className="text-emerald-500 font-bold">
                   {projects.find((p: any) => p.id === selectedProjectId)?.name || 'Projekt'}
                 </span>
               </>
             )}
-            {folderPath.map((item, idx) => (
-              <React.Fragment key={item.id}>
-                <ChevronRight size={14} className="text-text-muted" />
-                <button
-                  onClick={() => navigateBreadcrumb(idx)}
-                  className={cn("hover:underline cursor-pointer", idx === folderPath.length - 1 ? "text-blue-500 font-extrabold" : "text-text-muted")}
-                >
-                  {item.name === 'Root' ? t('root') : item.name}
-                </button>
-              </React.Fragment>
-            ))}
+            {folderPath.map((item, idx) => {
+              if (item.name === 'Root') return null;
+              const isLast = idx === folderPath.length - 1;
+              return (
+                <React.Fragment key={item.id}>
+                  <ChevronRight size={13} className="text-text-muted/60" />
+                  <button
+                    onClick={() => navigateBreadcrumb(idx)}
+                    className={cn(
+                      "transition-colors cursor-pointer",
+                      isLast ? "text-blue-500 font-bold" : "text-text-muted hover:text-text-primary"
+                    )}
+                  >
+                    {item.name}
+                  </button>
+                </React.Fragment>
+              );
+            })}
           </div>
-
-          {/* Search & Sort Dropdown */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <div className="tour-docs-search relative flex-1 sm:w-48">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-              <input
-                type="text"
-                placeholder={t('search_placeholder')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-background border border-border/70 rounded-xl pl-9 pr-7 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none shadow-sm"
-              />
-              {searchTerm && (
-                <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary text-xs">✕</button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              <ArrowUpDown size={14} className="text-text-muted" />
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value as any)}
-                className="bg-background border border-border/70 rounded-xl px-3 py-1.5 text-xs font-bold text-text-primary focus:border-blue-500 outline-none cursor-pointer shadow-sm"
-              >
-                <option value="newest">📅 Neueste zuerst</option>
-                <option value="oldest">📅 Älteste zuerst</option>
-                <option value="name_asc">🔤 Name (A – Z)</option>
-                <option value="name_desc">🔤 Name (Z – A)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Create Folder Form Modal */}
       {isCreatingFolder && (
@@ -1238,40 +1259,6 @@ export default function Documents({ projectId: propProjectId }: { projectId?: st
       {/* ========================================================= */}
       {activeTab === 'company' && currentFolderId === 'root' && !searchTerm && (
         <div className="space-y-6">
-          {/* SMART PROPOSALS QUICK ACCESS HUB */}
-          <div className="p-5 rounded-3xl bg-gradient-to-r from-blue-50/90 via-white to-purple-50/70 dark:from-blue-950/40 dark:via-surface dark:to-purple-950/30 border border-blue-200/90 dark:border-blue-500/30 shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-500/30 shadow-inner">
-                <Sparkles size={24} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="font-semibold text-sm sm:text-base text-text-primary">
-                    Digitale Kunden-Offerten & Landingpages (Smart Proposals)
-                  </h4>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/20">
-                    30 Tage Cloud-Aktiv
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-300 dark:border-blue-500/20">
-                    🔒 Mandantensicher
-                  </span>
-                </div>
-                <p className="text-xs text-text-muted mt-0.5">
-                  Interaktive Kunden-Webseiten mit Videos, 3D-Plänen, Preis-Konfigurator, SIA-Zahlungsplan & digitaler E-Signatur.
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => {
-                setActiveTab('proposals');
-              }}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-600/20 flex items-center gap-2 cursor-pointer transition-all shrink-0 active:scale-95"
-            >
-              <Eye size={15} /> Zu den Offerten & Landingpages →
-            </button>
-          </div>
-
           <div className="flex justify-between items-center pt-2">
             <h4 className="text-xs font-semibold uppercase tracking-widest text-text-muted flex items-center gap-2">
               <Building2 size={16} className="text-blue-500" />

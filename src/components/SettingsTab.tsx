@@ -20,8 +20,20 @@ import { safeStorage } from '../utils/safeStorage';
 import { usePermissions } from '../hooks/usePermissions';
 import { checkIsSuperAdmin } from '../config/admins';
 import { syncCompanySeats } from '../services/userService';
+import { applyBrandColor, DEFAULT_BRAND_COLOR } from '../utils/brandColorManager';
+import { saveSystemConfigJSON, fetchSystemConfigJSON } from '../utils/configHelper';
 import API from './API';
 import ModuleGuideButton from './ModuleGuideButton';
+
+const BRAND_COLOR_PRESETS = [
+  { name: 'Kreativ Blue (Standard)', hex: '#3b82f6' },
+  { name: 'Swiss Crimson', hex: '#ef4444' },
+  { name: 'Emerald Grün', hex: '#10b981' },
+  { name: 'Indigo Deep', hex: '#6366f1' },
+  { name: 'Royal Purple', hex: '#8b5cf6' },
+  { name: 'Amber Gold', hex: '#f59e0b' },
+  { name: 'Dark Slate / Cyan', hex: '#06b6d4' }
+];
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -267,7 +279,7 @@ export default function SettingsTab() {
   const [logoUrl, setLogoUrl] = useState('');
 
   // Neue States für Features
-  const [primaryColor, setPrimaryColor] = useState('#10b981');
+  const [primaryColor, setPrimaryColor] = useState<string>(() => safeStorage.getItem<string>('custom_accent_color', DEFAULT_BRAND_COLOR));
   const [termsPdfUrl, setTermsPdfUrl] = useState('');
   const [privacyPdfUrl, setPrivacyPdfUrl] = useState('');
   const [slackIntegration, setSlackIntegration] = useState(false);
@@ -396,8 +408,9 @@ export default function SettingsTab() {
         setIban(loadedConfig.iban || '');
         setWebhookUrl(loadedConfig.webhookUrl || '');
         setLogoUrl(loadedConfig.logoUrl || '');
-        setPrimaryColor(loadedConfig.primaryColor || '#10b981');
-        setTermsPdfUrl(loadedConfig.termsPdfUrl || '');
+        const savedBrand = loadedConfig.primaryColor || safeStorage.getItem<string>('custom_accent_color', DEFAULT_BRAND_COLOR);
+        setPrimaryColor(savedBrand);
+        if (savedBrand) applyBrandColor(savedBrand, false);
         setPrivacyPdfUrl(loadedConfig.privacyPdfUrl || '');
         setCurrency(loadedConfig.currency || 'CHF');
         setVatRate(loadedConfig.vatRate !== undefined ? loadedConfig.vatRate : 8.1);
@@ -539,6 +552,13 @@ export default function SettingsTab() {
     }
   };
 
+  // Live Akzentfarbe ändern & anwenden
+  const handleBrandColorChange = (newColor: string) => {
+    setPrimaryColor(newColor);
+    applyBrandColor(newColor, true);
+    safeStorage.setItem('custom_accent_color', newColor);
+  };
+
   // Einstellungen speichern
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -578,6 +598,14 @@ export default function SettingsTab() {
       };
 
       await updateCompanyProfileConfig(profileConfig);
+
+      // Persist brand color across instance and storage
+      applyBrandColor(primaryColor, true);
+      safeStorage.setItem('custom_accent_color', primaryColor);
+      try {
+        const existingGlobal = await fetchSystemConfigJSON<any>('global_master', 'global') || {};
+        await saveSystemConfigJSON('global_master', { ...existingGlobal, accentColor: primaryColor }, 'global', currentUser?.uid || 'global');
+      } catch (_) {}
 
       // Update existing columns on companies table
       await supabase.from('companies').update({
@@ -974,11 +1002,46 @@ export default function SettingsTab() {
                 <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2">
                   <Palette size={16} className="text-accent-ai" /> Custom Branding
                 </h4>
-                <div className="flex items-center gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
-                  <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="w-12 h-12 rounded cursor-pointer bg-transparent border-0 p-0" />
-                  <div className="space-y-1">
-                    <label className="block text-xs font-bold text-text-muted uppercase tracking-widest">Hauptfarbe (Hex)</label>
-                    <input type="text" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-sm outline-none text-text-primary font-mono shadow-inner w-32" />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-background/30 rounded-xl border border-border/30">
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="color" 
+                      value={primaryColor} 
+                      onChange={e => handleBrandColorChange(e.target.value)} 
+                      className="w-12 h-12 rounded-xl cursor-pointer bg-transparent border-0 p-0 shadow-sm" 
+                    />
+                    <div className="space-y-1">
+                      <label className="block text-xs font-bold text-text-muted uppercase tracking-widest">Hauptfarbe (Hex)</label>
+                      <input 
+                        type="text" 
+                        value={primaryColor} 
+                        onChange={e => handleBrandColorChange(e.target.value)} 
+                        className="bg-background border border-border/50 rounded-lg px-3 py-1.5 text-sm outline-none text-text-primary font-mono shadow-inner w-32 font-bold" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Farbauswahl Quick-Presets */}
+                  <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+                    {BRAND_COLOR_PRESETS.map((preset) => (
+                      <button
+                        key={preset.hex}
+                        type="button"
+                        onClick={() => handleBrandColorChange(preset.hex)}
+                        title={preset.name}
+                        className={cn(
+                          "w-7 h-7 rounded-full transition-all border-2 flex items-center justify-center cursor-pointer hover:scale-110",
+                          primaryColor.toLowerCase() === preset.hex.toLowerCase() 
+                            ? "border-white ring-2 ring-blue-500 scale-110 shadow-md" 
+                            : "border-transparent opacity-80 hover:opacity-100"
+                        )}
+                        style={{ backgroundColor: preset.hex }}
+                      >
+                        {primaryColor.toLowerCase() === preset.hex.toLowerCase() && (
+                          <Check size={12} className="text-white drop-shadow" />
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1294,7 +1357,8 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
   const currentLang = typeof language === 'string' && language.toLowerCase().includes('de') ? 'de' : 'en';
   const t = (key: string) => localTranslations[currentLang]?.[key] || globalT(key) || key;
 
-  const [active, setActive] = useState(false);
+  // Standardmässig aktiv beim Einloggen (Default: true)
+  const [active, setActive] = useState<boolean>(() => safeStorage.getItem<boolean>('screensaver_active', true));
   const [timeout, setTimeoutVal] = useState(5);
   // Default Bild für Kreativ Desk (Architektur/Design)
   const defaultImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2000&auto=format&fit=crop';
@@ -1315,7 +1379,10 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
     const fetchSettings = async () => {
       const { data: d } = await supabase.from('company_settings').select('*').eq('company_id', safeCompanyId).maybeSingle();
       if (d) {
-        setActive(d.screensaver_active ?? false);
+        // Screensaver ist standardmässig aktiviert (true), falls noch nicht explizit deaktiviert
+        const isAct = d.screensaver_active ?? true;
+        setActive(isAct);
+        safeStorage.setItem('screensaver_active', isAct);
         setTimeoutVal(d.screensaver_timeout ?? 5);
         // If it was the legacy bedroom image, upgrade to colorful abstract gradient
         const savedImg = d.screensaver_image;
@@ -1329,6 +1396,23 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
     fetchSettings();
   }, [currentUser]);
 
+  const handleToggleActive = async (newVal: boolean) => {
+    setActive(newVal);
+    safeStorage.setItem('screensaver_active', newVal);
+    window.dispatchEvent(new CustomEvent('screensaver_settings_changed', { detail: { active: newVal, timeout, image } }));
+    const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
+    if (safeCompanyId) {
+      try {
+        await supabase.from('company_settings').upsert({
+          company_id: safeCompanyId,
+          screensaver_active: newVal,
+          screensaver_timeout: Number(timeout),
+          screensaver_image: image
+        });
+      } catch (_) {}
+    }
+  };
+
   const handleSave = async () => {
     const safeCompanyId = currentUser?.companyId || (currentUser as any)?.company_id || currentUser?.uid;
     if (!safeCompanyId) return;
@@ -1339,7 +1423,9 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
         screensaver_timeout: Number(timeout),
         screensaver_image: image
       });
+      safeStorage.setItem('screensaver_active', active);
       safeStorage.setItem('ws_screensaver_bg', image);
+      window.dispatchEvent(new CustomEvent('screensaver_settings_changed', { detail: { active, timeout: Number(timeout), image } }));
       window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
       addToast(currentLang === 'de' ? 'Screensaver-Einstellungen gespeichert!' : 'Screensaver settings saved!', 'success');
     } catch (err) { addToast('Save failed', 'error'); } 
@@ -1359,6 +1445,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
       setImage(url);
       safeStorage.setItem('ws_screensaver_bg', url);
       window.dispatchEvent(new Event('ws_screensaver_bg_changed'));
+      window.dispatchEvent(new CustomEvent('screensaver_settings_changed', { detail: { active, timeout: Number(timeout), image: url } }));
       await supabase.from('company_settings').upsert({ company_id: safeCompanyId, screensaver_image: url });
       addToast(currentLang === 'de' ? 'Hintergrundbild erfolgreich hochgeladen!' : 'Background image uploaded!', 'success');
     } catch (err) { addToast('Upload failed', 'error'); } 
@@ -1373,7 +1460,7 @@ function ScreensaverSettingsCard({ currentUser }: { currentUser: any }) {
         </h3>
         <label className="flex items-center cursor-pointer">
           <div className="relative">
-            <input type="checkbox" className="sr-only" checked={active} onChange={(e) => setActive(e.target.checked)} />
+            <input type="checkbox" className="sr-only" checked={active} onChange={(e) => handleToggleActive(e.target.checked)} />
             <div className={cn("block w-10 h-6 rounded-full transition-colors", active ? "bg-accent-ai" : "bg-background border border-border")} />
             <div className={cn("absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform", active ? "transform translate-x-4" : "")} />
           </div>

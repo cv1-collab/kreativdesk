@@ -228,13 +228,19 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
       };
     });
 
+    const companyProfileCache = safeStorage.getItem<any>(`company_profile_${safeCompanyId}`, null);
+    const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'vesciodesign';
+
     const mappedProfiles = (profilesData || []).map((p: any) => ({
       id: p.id,
       firstName: p.name?.split(' ')[0] || p.name || 'Team',
       lastName: p.name?.split(' ').slice(1).join(' ') || '',
       name: p.name || p.email || 'Team Member',
       email: p.email || '',
-      company: p.company_name || 'Kreativ Desk',
+      company: p.company_name || p.company || defaultWorkspaceCompany,
+      website: p.website || companyProfileCache?.website || '',
+      street: p.street || companyProfileCache?.address || '',
+      zipCity: p.zip_city || (companyProfileCache?.zipCode ? `${companyProfileCache.zipCode} ${companyProfileCache.city || ''}`.trim() : ''),
       status: 'team',
       role: p.role || 'owner',
       isExternal: false,
@@ -259,10 +265,11 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
             ...existing, 
             ...c, 
             isAppUser: true, // If it had a profile, it is an active app user
-            company: c.company || existing.company,
-            street: c.street || existing.street,
-            zipCity: c.zipCity || existing.zipCity,
-            phone: c.phone || existing.phone
+            company: c.company || existing.company || defaultWorkspaceCompany,
+            website: c.website || existing.website || '',
+            street: c.street || existing.street || '',
+            zipCity: c.zipCity || existing.zipCity || '',
+            phone: c.phone || existing.phone || ''
           });
         } else {
           combinedMap.set(key, c);
@@ -806,6 +813,10 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         ? `${newContact.description}\n\n__CRM_META__:${JSON.stringify(extraMeta)}`
         : `__CRM_META__:${JSON.stringify(extraMeta)}`;
 
+      const companyProfileCache = safeStorage.getItem<any>(`company_profile_${safeCompanyId}`, null);
+      const defaultWorkspaceCompany = companyProfileCache?.agencyName || (currentUser as any)?.companyName || (currentUser as any)?.company || 'vesciodesign';
+      const resolvedCompany = newContact.company || (!isExt ? defaultWorkspaceCompany : null);
+
       // Full payload with all CRM fields
       const fullDbPayload: any = {
         company_id: safeCompanyId,
@@ -814,7 +825,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         name: fullName || newContact.company || t('unknown'),
         email: newContact.email || null,
         phone: newContact.phone || null,
-        company: newContact.company || (!isExt ? ((currentUser as any)?.companyName || (currentUser as any)?.company || 'Kreativ Desk') : null),
+        company: resolvedCompany,
         street: newContact.street || null,
         zip_city: newContact.zipCity || null,
         website: newContact.website || null,
@@ -846,7 +857,7 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         ...extraMeta,
         firstName: newContact.firstName,
         lastName: newContact.lastName,
-        company: newContact.company || (!isExt ? ((currentUser as any)?.companyName || (currentUser as any)?.company || 'Kreativ Desk') : ''),
+        company: resolvedCompany || '',
         street: newContact.street,
         zipCity: newContact.zipCity,
         website: newContact.website,
@@ -883,6 +894,25 @@ export default function TeamCrmTab({ companyUsers, userRole }: TeamCrmTabProps) 
         const updatedContact = { ...selectedContact, ...fullContactObject };
         setCrmUsers((prev: any[]) => prev.map(u => u.id === newContact.id ? updatedContact : u));
         setSelectedContact(updatedContact);
+
+        // Falls das eigene Profil aktualisiert wird, auch profiles & companies synchronisieren
+        if (newContact.id === currentUser?.uid || newContact.email?.toLowerCase() === currentUser?.email?.toLowerCase()) {
+          try {
+            await (supabase.from('profiles').update({
+              name: fullName,
+              company_name: newContact.company || defaultWorkspaceCompany,
+              phone: newContact.phone || undefined
+            } as any) as any).eq('id', currentUser.uid);
+          } catch (_) {}
+          if (newContact.company) {
+            try {
+              await supabase.from('companies').update({
+                name: newContact.company
+              }).eq('id', safeCompanyId);
+            } catch (_) {}
+          }
+        }
+
         addToast(t('save') + ' ' + t('completed'), 'success');
       } else {
         fullDbPayload.created_at = new Date().toISOString();
@@ -1366,10 +1396,10 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           {/* Visitenkarte KI Scanner Button */}
           <button 
             onClick={() => setIsScannerModalOpen(true)} 
-            className="tour-crm-scanner px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+            className="tour-crm-scanner h-9 px-3 sm:px-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
             title="Visitenkarte scannen & per KI auslesen"
           >
-            <Camera size={16} /> <span>Visitenkarte scannen</span>
+            <Camera size={15} /> <span>Visitenkarte scannen</span>
           </button>
 
           <input type="file" accept=".vcf" ref={vcfInputRef} className="hidden" onChange={handleVcfImport} />
@@ -1379,7 +1409,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
             <button
               onClick={() => setIsExportImportOpen(!isExportImportOpen)}
               className={cn(
-                "px-3 py-2 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
+                "h-9 px-3 sm:px-3.5 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer",
                 isExportImportOpen 
                   ? "bg-accent-ai/15 text-accent-ai border-accent-ai/40" 
                   : "bg-surface border-border text-text-primary hover:bg-background"
@@ -1438,7 +1468,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
             </AnimatePresence>
           </div>
 
-          <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("px-3 py-2 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={15} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
+          <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedIds([]); }} className={cn("h-9 px-3 sm:px-3.5 border rounded-xl text-xs md:text-sm font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0 cursor-pointer", isSelectionMode ? "bg-accent-ai/20 border-accent-ai text-accent-ai" : "bg-surface border-border text-text-primary hover:bg-background")}><ListChecks size={15} /> <span className="hidden sm:inline">{isSelectionMode ? t('cancel_selection') : t('select')}</span></button>
           {hasPermission('canManageUsers') && (
             <button 
               onClick={() => { 
@@ -1473,9 +1503,9 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 });
                 setIsAddModalOpen(true); 
               }} 
-              className="px-3.5 py-2 bg-accent-ai text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:bg-accent-ai/90 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+              className="h-9 px-3 sm:px-3.5 bg-accent-ai text-white rounded-xl text-xs md:text-sm font-bold shadow-md hover:bg-accent-ai/90 transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
             >
-              <UserPlus size={16} /> <span>{t('new_contact')}</span>
+              <UserPlus size={15} /> <span>{t('new_contact')}</span>
             </button>
           )}
         </div>
@@ -1589,6 +1619,11 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                         <span className="text-purple-600 dark:text-purple-400 font-bold bg-purple-500/10 border border-purple-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
                           <Users size={13} /> {t('internal_team')}
                         </span>
+                        {selectedContact.company && (
+                          <span className="text-blue-500 font-bold bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
+                            <Building size={13} /> {selectedContact.company}
+                          </span>
+                        )}
                         {selectedContact.jobTitle && (
                           <span className="text-text-primary font-bold bg-surface border border-border px-3 py-1 rounded-full text-xs flex items-center gap-1.5">
                             <Briefcase size={13} className="text-accent-ai" /> {selectedContact.jobTitle}
@@ -2086,7 +2121,7 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                           <div className="bg-accent-ai/5 border border-accent-ai/20 rounded-xl p-3 flex items-center gap-2.5">
                             <UserCheck size={16} className="text-accent-ai shrink-0" />
                             <p className="text-xs font-medium text-text-primary">
-                              Internes Mitarbeiter-Profil. Firmenangaben wie UID und MwSt.-Nummer werden hier nicht benötigt.
+                              Internes Mitarbeiter-Profil. Firma, Webseite und Standort können hier direkt hinterlegt werden.
                             </p>
                           </div>
 
@@ -2143,6 +2178,62 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                             <div className="space-y-1.5">
                               <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5"><Phone size={14}/> {t('phone')}</label>
                               <input type="text" value={newContact.phone} onChange={e => setNewContact((prev: any) => ({...prev, phone: e.target.value}))} placeholder="+41 79 123 45 67" className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" />
+                            </div>
+                          </div>
+
+                          {/* Firma & Webseite (Optional für Agentur / Inhaber / Team) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                                <Building size={14}/> Firma / Unternehmen (Optional)
+                              </label>
+                              <input 
+                                type="text" 
+                                value={newContact.company} 
+                                onChange={e => setNewContact((prev: any) => ({...prev, company: e.target.value}))} 
+                                placeholder={(currentUser as any)?.companyName || "z. B. vesciodesign"} 
+                                className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai font-medium text-text-primary" 
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                                <Globe size={14}/> Webseite (Optional)
+                              </label>
+                              <input 
+                                type="text" 
+                                value={newContact.website} 
+                                onChange={e => setNewContact((prev: any) => ({...prev, website: e.target.value}))} 
+                                placeholder="z. B. www.vesciodesign.ch" 
+                                className="w-full bg-surface border border-border/60 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-accent-ai font-medium text-text-primary" 
+                              />
+                            </div>
+                          </div>
+
+                          {/* Standort / Adresse (Optional) */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border/60 bg-surface/40 shadow-sm">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider flex items-center gap-1.5">
+                                <MapPin size={14}/> Strasse & Hausnummer (Optional)
+                              </label>
+                              <input 
+                                type="text" 
+                                value={newContact.street} 
+                                onChange={e => setNewContact((prev: any) => ({...prev, street: e.target.value}))} 
+                                placeholder="Gewerbestrasse 10" 
+                                className="w-full bg-background border border-border/60 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" 
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-bold text-text-muted uppercase tracking-wider">
+                                PLZ & Ort (Optional)
+                              </label>
+                              <input 
+                                type="text" 
+                                value={newContact.zipCity} 
+                                onChange={e => setNewContact((prev: any) => ({...prev, zipCity: e.target.value}))} 
+                                placeholder="8000 Zürich" 
+                                className="w-full bg-background border border-border/60 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent-ai text-text-primary font-medium" 
+                              />
                             </div>
                           </div>
 
