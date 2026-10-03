@@ -579,6 +579,9 @@
 - [x] **End-to-End Workflow-Verknüpfung:**
   - Projekt erstellen ➔ Content im Express Studio bearbeiten ➔ Auf Screens spiegeln mit 1 Klick aus dem Projektdashboard verknüpft.
 
-### Priorität 2: Git-Remote Synchronisation
+### Priorität 2: Git-Remote Synchronisation & Production Deployment
 - [x] Lokalen konsolidierten Stand mit sprechendem Commit sichern.
-- [ ] Sobald gewünscht, den lokalen konsolidierten Stand auf den Remote-Branch pushen.
+- [x] Erfolgreicher Push auf den Remote-Branch `main` (`https://github.com/cv1-collab/kreativdesk.git`).
+- [x] Vollständiges Vercel Production Deployment erfolgreich abgeschlossen (`https://www.kreativdesk.ch`).
+- [x] Customer Journey, Registrierung, 30 Tage Free Trial, Handwerker- & Partner-Lizenzen 100% verifiziert.
+- [x] Systemweiter Build (`tsc --noEmit && vite build && esbuild server.ts`) 100% fehlerfrei (0 Fehler, 53/53 Vitest grün).
