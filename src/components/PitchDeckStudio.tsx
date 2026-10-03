@@ -3960,15 +3960,6 @@ export default function PitchDeckStudio({
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">
               <button 
                 type="button" 
-                onClick={() => setIsAiGeneratorOpen(true)} 
-                className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-bold gap-1.5 items-center shadow-sm transition-all flex shrink-0"
-                title={currentLang === 'de' ? 'KI Pitch Deck automatisch generieren' : 'Generate AI Pitch Deck automatically'}
-              >
-                <Sparkles size={14}/> <span className="hidden xl:inline">{t('ai_create_deck')}</span><span className="xl:hidden">KI</span>
-              </button>
-              
-              <button 
-                type="button" 
                 onClick={() => { 
                   const activeIdx = slides.findIndex(s => s.id === activeSlideId); 
                   setPresenterIndex(activeIdx >= 0 ? activeIdx : 0); 
@@ -4057,7 +4048,7 @@ export default function PitchDeckStudio({
           <div className={cn("flex-1 overflow-hidden p-8 flex flex-col justify-center items-center relative transition-colors", deckSettings.colorMode === 'light' ? "bg-slate-200/70" : "bg-background/50")}>
             
             {/* CAD-WERKZEUGLEISTE LINKS (SCHWEBEND WIE BEIM CAD PLAN EDITOR) */}
-            {!isPreviewMode && activeSlide && (
+            {!isPreviewMode && (
               <aside 
                 className="tour-pitch-toolbar absolute left-3 sm:left-6 top-6 w-11 sm:w-12 flex flex-col items-center gap-1.5 py-2 z-30 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl select-none"
                 style={{ touchAction: 'none' }}
@@ -4066,210 +4057,226 @@ export default function PitchDeckStudio({
                 <div className="text-[8px] font-black uppercase tracking-wider text-text-muted/60 mb-0.5">
                   CAD
                 </div>
+
+                {/* KI PITCH DECK GENERATOR */}
+                <button
+                  type="button"
+                  title={currentLang === 'de' ? 'KI Pitch Deck automatisch generieren' : 'Generate AI Pitch Deck automatically'}
+                  onClick={() => setIsAiGeneratorOpen(true)}
+                  className="p-2 rounded-xl transition-all cursor-pointer relative group shrink-0 bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 hover:text-white shadow-sm shadow-purple-500/25"
+                >
+                  <Sparkles size={16} className="text-purple-400 group-hover:scale-110 group-hover:text-amber-300 transition-all" />
+                </button>
+
+                <div className="w-6 h-px bg-border my-0.5" />
                 
-                {/* 6 FOLIEN-LAYOUTS */}
-                {[
-                  { id: 'title-only', icon: Type, title: 'Titel-Folie' },
-                  { id: 'split', icon: Columns, title: 'Text & Bild' },
-                  { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
-                  { id: 'video-focus', icon: VideoIcon, title: 'Video-Fokus' },
-                  { id: 'text-only', icon: Layout, title: 'Nur Text' },
-                  { id: 'chart-donut', icon: PieChart, title: 'Baukosten Donut Chart' }
-                ].map((l) => (
-                  <button 
-                    type="button" 
-                    key={l.id} 
-                    title={l.title}
-                    onClick={() => handleLayoutChange(l.id as Slide['layout'])} 
-                    className={cn(
-                      "p-2 rounded-xl transition-all cursor-pointer relative group shrink-0", 
-                      activeSlide.layout === l.id 
-                        ? "bg-purple-600 text-white shadow-md shadow-purple-500/25 scale-105" 
-                        : "text-text-muted hover:bg-white/5 hover:text-text-primary"
-                    )}
-                  >
-                    <l.icon size={16} />
-                  </button>
-                ))}
+                {activeSlide && (
+                  <>
+                    {/* 6 FOLIEN-LAYOUTS */}
+                    {[
+                      { id: 'title-only', icon: Type, title: 'Titel-Folie' },
+                      { id: 'split', icon: Columns, title: 'Text & Bild' },
+                      { id: 'image-focus', icon: ImageIcon, title: 'Bild-Fokus' },
+                      { id: 'video-focus', icon: VideoIcon, title: 'Video-Fokus' },
+                      { id: 'text-only', icon: Layout, title: 'Nur Text' },
+                      { id: 'chart-donut', icon: PieChart, title: 'Baukosten Donut Chart' }
+                    ].map((l) => (
+                      <button 
+                        type="button" 
+                        key={l.id} 
+                        title={l.title}
+                        onClick={() => handleLayoutChange(l.id as Slide['layout'])} 
+                        className={cn(
+                          "p-2 rounded-xl transition-all cursor-pointer relative group shrink-0", 
+                          activeSlide.layout === l.id 
+                            ? "bg-purple-600 text-white shadow-md shadow-purple-500/25 scale-105" 
+                            : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+                        )}
+                      >
+                        <l.icon size={16} />
+                      </button>
+                    ))}
 
-                <div className="w-6 h-px bg-border my-1" />
+                    <div className="w-6 h-px bg-border my-1" />
 
-                {/* TYPOGRAFIE FLYOUT TOGGLE */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    title={t('typography') || 'Typografie & Schriftgrössen'}
-                    onClick={() => {
-                      setShowTypoFlyout(!showTypoFlyout);
-                      setShowStampFlyout(false);
-                    }}
-                    className={cn(
-                      "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
-                      showTypoFlyout 
-                        ? "bg-purple-600 text-white shadow-md shadow-purple-500/25" 
-                        : "text-text-muted hover:bg-white/5 hover:text-text-primary"
-                    )}
-                  >
-                    <Sliders size={16} />
-                  </button>
+                    {/* TYPOGRAFIE FLYOUT TOGGLE */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        title={t('typography') || 'Typografie & Schriftgrössen'}
+                        onClick={() => {
+                          setShowTypoFlyout(!showTypoFlyout);
+                          setShowStampFlyout(false);
+                        }}
+                        className={cn(
+                          "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
+                          showTypoFlyout 
+                            ? "bg-purple-600 text-white shadow-md shadow-purple-500/25" 
+                            : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+                        )}
+                      >
+                        <Sliders size={16} />
+                      </button>
 
-                  {/* TYPOGRAFIE FLYOUT */}
-                  <AnimatePresence>
-                    {showTypoFlyout && (
-                      <>
-                        <div className="fixed inset-0 z-[100]" onClick={() => setShowTypoFlyout(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, x: -8, scale: 0.95 }}
-                          animate={{ opacity: 1, x: 0, scale: 1 }}
-                          exit={{ opacity: 0, x: -8, scale: 0.95 }}
-                          className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-52 flex flex-col gap-2.5 text-left"
-                        >
-                          <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border pb-1">
-                            {t('typography') || 'Typografie'}
-                          </div>
+                      {/* TYPOGRAFIE FLYOUT */}
+                      <AnimatePresence>
+                        {showTypoFlyout && (
+                          <>
+                            <div className="fixed inset-0 z-[100]" onClick={() => setShowTypoFlyout(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, x: -8, scale: 0.95 }}
+                              animate={{ opacity: 1, x: 0, scale: 1 }}
+                              exit={{ opacity: 0, x: -8, scale: 0.95 }}
+                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-52 flex flex-col gap-2.5 text-left"
+                            >
+                              <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border pb-1">
+                                {t('typography') || 'Typografie'}
+                              </div>
 
-                          {/* TITEL SCHRIFTGRÖSSE */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-text-muted">{t('title_label')}</span>
-                            <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
-                              <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Minus size={11} /></button>
-                              <span className="text-xs font-bold tabular-nums w-5 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
-                              <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Plus size={11} /></button>
-                            </div>
-                          </div>
+                              {/* TITEL SCHRIFTGRÖSSE */}
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-text-muted">{t('title_label')}</span>
+                                <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
+                                  <button type="button" onClick={() => handleTitleFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Minus size={11} /></button>
+                                  <span className="text-xs font-bold tabular-nums w-5 text-center text-purple-400">{activeSlide.titleFontSize || 36}</span>
+                                  <button type="button" onClick={() => handleTitleFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Plus size={11} /></button>
+                                </div>
+                              </div>
 
-                          {/* TEXT SCHRIFTGRÖSSE */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-text-muted">{t('text_label')}</span>
-                            <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
-                              <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Minus size={11} /></button>
-                              <span className="text-xs font-bold tabular-nums w-5 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
-                              <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Plus size={11} /></button>
-                            </div>
-                          </div>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
+                              {/* TEXT SCHRIFTGRÖSSE */}
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-text-muted">{t('text_label')}</span>
+                                <div className="flex items-center gap-1 bg-background border border-border rounded-lg px-1.5 py-0.5">
+                                  <button type="button" onClick={() => handleContentFontSizeChange(-2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Minus size={11} /></button>
+                                  <span className="text-xs font-bold tabular-nums w-5 text-center text-text-primary">{activeSlide.fontSize || 18}</span>
+                                  <button type="button" onClick={() => handleContentFontSizeChange(2)} className="p-0.5 text-text-muted hover:text-text-primary cursor-pointer"><Plus size={11} /></button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
-                <div className="w-6 h-px bg-border my-1" />
+                    <div className="w-6 h-px bg-border my-1" />
 
-                {/* BILD EINFÜGEN */}
-                <button
-                  type="button"
-                  title={t('choose_image')}
-                  onClick={() => openMediaPicker('render', t('choose_image'), 'slide')}
-                  className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
-                >
-                  <ImagePlus size={16} />
-                </button>
+                    {/* BILD EINFÜGEN */}
+                    <button
+                      type="button"
+                      title={t('choose_image')}
+                      onClick={() => openMediaPicker('render', t('choose_image'), 'slide')}
+                      className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
+                    >
+                      <ImagePlus size={16} />
+                    </button>
 
-                {/* VIDEO HOCHLADEN */}
-                <button
-                  type="button"
-                  title={currentLang === 'de' ? 'Video einbetten' : 'Embed Video'}
-                  onClick={() => videoInputRef.current?.click()}
-                  className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
-                  disabled={isUploadingVideo}
-                >
-                  {isUploadingVideo ? <Loader2 size={16} className="animate-spin text-purple-400" /> : <VideoIcon size={16} />}
-                  <input
-                    ref={videoInputRef}
-                    type="file"
-                    accept="video/mp4,video/webm,video/quicktime"
-                    onChange={(e) => handleDirectVideoUpload(e, 'slide', activeSlide.id)}
-                    className="hidden"
-                    disabled={isUploadingVideo}
-                  />
-                </button>
+                    {/* VIDEO HOCHLADEN */}
+                    <button
+                      type="button"
+                      title={currentLang === 'de' ? 'Video einbetten' : 'Embed Video'}
+                      onClick={() => videoInputRef.current?.click()}
+                      className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
+                      disabled={isUploadingVideo}
+                    >
+                      {isUploadingVideo ? <Loader2 size={16} className="animate-spin text-purple-400" /> : <VideoIcon size={16} />}
+                      <input
+                        ref={videoInputRef}
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime"
+                        onChange={(e) => handleDirectVideoUpload(e, 'slide', activeSlide.id)}
+                        className="hidden"
+                        disabled={isUploadingVideo}
+                      />
+                    </button>
 
-                {/* STEMPEL & PRÜFVERMERKE FLYOUT */}
-                <div className="relative">
-                  <button
-                    type="button"
-                    title={t('stamp_label')}
-                    onClick={() => {
-                      setShowStampFlyout(!showStampFlyout);
-                      setShowTypoFlyout(false);
-                    }}
-                    className={cn(
-                      "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
-                      activeSlide.stamp || showStampFlyout
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "text-text-muted hover:bg-white/5 hover:text-text-primary"
-                    )}
-                  >
-                    <CheckSquare size={16} />
-                  </button>
+                    {/* STEMPEL & PRÜFVERMERKE FLYOUT */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        title={t('stamp_label')}
+                        onClick={() => {
+                          setShowStampFlyout(!showStampFlyout);
+                          setShowTypoFlyout(false);
+                        }}
+                        className={cn(
+                          "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
+                          activeSlide.stamp || showStampFlyout
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                            : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+                        )}
+                      >
+                        <CheckSquare size={16} />
+                      </button>
 
-                  {/* STEMPEL FLYOUT */}
-                  <AnimatePresence>
-                    {showStampFlyout && (
-                      <>
-                        <div className="fixed inset-0 z-[100]" onClick={() => setShowStampFlyout(false)} />
-                        <motion.div
-                          initial={{ opacity: 0, x: -8, scale: 0.95 }}
-                          animate={{ opacity: 1, x: 0, scale: 1 }}
-                          exit={{ opacity: 0, x: -8, scale: 0.95 }}
-                          className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-48 flex flex-col gap-2 text-left"
-                        >
-                          <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border pb-1">
-                            {t('stamp_label')}
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => {
-                                  handleSetStamp(activeSlide.stamp === st ? '' : st);
-                                  setShowStampFlyout(false);
-                                }}
-                                className={cn(
-                                  "px-2.5 py-1.5 rounded-lg text-xs font-bold text-left transition-colors cursor-pointer",
-                                  activeSlide.stamp === st
-                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/50"
-                                    : "hover:bg-white/5 text-text-muted hover:text-text-primary"
-                                )}
-                              >
-                                {st}
-                              </button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      </>
-                    )}
-                  </AnimatePresence>
-                </div>
+                      {/* STEMPEL FLYOUT */}
+                      <AnimatePresence>
+                        {showStampFlyout && (
+                          <>
+                            <div className="fixed inset-0 z-[100]" onClick={() => setShowStampFlyout(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, x: -8, scale: 0.95 }}
+                              animate={{ opacity: 1, x: 0, scale: 1 }}
+                              exit={{ opacity: 0, x: -8, scale: 0.95 }}
+                              className="absolute left-14 top-0 bg-surface/95 backdrop-blur-xl border border-border rounded-2xl shadow-2xl p-3 z-[101] w-48 flex flex-col gap-2 text-left"
+                            >
+                              <div className="text-[10px] font-bold text-text-muted uppercase tracking-wider border-b border-border pb-1">
+                                {t('stamp_label')}
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                {['VERTRAULICH', 'GENEHMIGT', 'IN PRÜFUNG', 'SIA 102', 'ENTWURF'].map((st) => (
+                                  <button
+                                    key={st}
+                                    type="button"
+                                    onClick={() => {
+                                      handleSetStamp(activeSlide.stamp === st ? '' : st);
+                                      setShowStampFlyout(false);
+                                    }}
+                                    className={cn(
+                                      "px-2.5 py-1.5 rounded-lg text-xs font-bold text-left transition-colors cursor-pointer",
+                                      activeSlide.stamp === st
+                                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/50"
+                                        : "hover:bg-white/5 text-text-muted hover:text-text-primary"
+                                    )}
+                                  >
+                                    {st}
+                                  </button>
+                                ))}
+                              </div>
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
-                {/* SPEAKER NOTES */}
-                <button
-                  type="button"
-                  title={`${t('notes_label')} (Speaker Notes)`}
-                  onClick={() => setShowNotesDrawer(!showNotesDrawer)}
-                  className={cn(
-                    "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
-                    showNotesDrawer
-                      ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
-                      : "text-text-muted hover:bg-white/5 hover:text-text-primary"
-                  )}
-                >
-                  <StickyNote size={16} />
-                  {activeSlide.notes && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-purple-400 ring-2 ring-surface" />
-                  )}
-                </button>
+                    {/* SPEAKER NOTES */}
+                    <button
+                      type="button"
+                      title={`${t('notes_label')} (Speaker Notes)`}
+                      onClick={() => setShowNotesDrawer(!showNotesDrawer)}
+                      className={cn(
+                        "p-2 rounded-xl transition-all cursor-pointer relative shrink-0",
+                        showNotesDrawer
+                          ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                          : "text-text-muted hover:bg-white/5 hover:text-text-primary"
+                      )}
+                    >
+                      <StickyNote size={16} />
+                      {activeSlide.notes && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-purple-400 ring-2 ring-surface" />
+                      )}
+                    </button>
 
-                {/* FOLIE DUPLIZIEREN */}
-                <button
-                  type="button"
-                  title={t('duplicate_slide')}
-                  onClick={handleDuplicateSlide}
-                  className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
-                >
-                  <Copy size={16} />
-                </button>
+                    {/* FOLIE DUPLIZIEREN */}
+                    <button
+                      type="button"
+                      title={t('duplicate_slide')}
+                      onClick={handleDuplicateSlide}
+                      className="p-2 rounded-xl transition-all cursor-pointer text-text-muted hover:bg-white/5 hover:text-text-primary shrink-0"
+                    >
+                      <Copy size={16} />
+                    </button>
+                  </>
+                )}
               </aside>
             )}
             
