@@ -254,14 +254,19 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
     <div className="flex-1 flex flex-col h-full bg-background text-text-primary min-h-0 relative">
       <div className="flex-1 flex flex-col p-4 md:p-6 space-y-6 overflow-hidden">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{t('project_team')}</h1>
-            <p className="text-text-muted text-sm mt-1">{t('team_desc')}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Users size={18} />
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('project_team')}</h1>
+              <p className="text-text-muted text-xs sm:text-sm mt-0.5 font-medium">{t('team_desc')}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
-            <ModuleGuideButton moduleId="team" />
-            <button onClick={() => setIsAddMemberModalOpen(true)} className="tour-team-add-btn flex-1 md:flex-none px-5 py-3 md:py-2 bg-accent-ai text-white rounded-xl md:rounded-lg text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-lg shadow-accent-ai/20 flex items-center justify-center gap-2">
-              <UserPlus size={18} /> {t('add_person')}
+            <ModuleGuideButton moduleId="team" className="h-9" />
+            <button onClick={() => setIsAddMemberModalOpen(true)} className="tour-team-add-btn flex-1 md:flex-none h-9 px-3.5 sm:px-4 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-accent-ai/90 transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
+              <UserPlus size={16} /> {t('add_person')}
             </button>
           </div>
         </header>

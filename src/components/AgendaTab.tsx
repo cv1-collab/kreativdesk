@@ -1232,25 +1232,30 @@ export default function AgendaTab({ projects = [], companyUsers = [], companyPro
   return (
     <div className="space-y-6 animate-in fade-in duration-300 text-text-primary">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{t('agenda_rapport')}</h2>
-          <p className="text-sm text-text-muted mt-1 font-medium">{t('agenda_desc')}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Calendar size={18} />
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('agenda_rapport')}</h2>
+            <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{t('agenda_desc')}</p>
+          </div>
         </div>
 
         <div className="tour-agenda-actions flex flex-wrap gap-2 items-center">
-          <ModuleGuideButton moduleId="agenda" />
-          <button onClick={handleExportICal} className="flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+          <ModuleGuideButton moduleId="agenda" className="h-9" />
+          <button onClick={handleExportICal} className="h-9 flex items-center gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
             <Download size={14} /> iCal Export (.ics)
           </button>
-          <button onClick={handleGenerateAIRapport} disabled={isGeneratingAIRapport} className="flex items-center gap-2 px-3.5 py-2 bg-accent-ai/10 border border-accent-ai/20 text-accent-ai hover:bg-accent-ai/20 rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50">
+          <button onClick={handleGenerateAIRapport} disabled={isGeneratingAIRapport} className="h-9 flex items-center gap-2 px-3 sm:px-3.5 bg-accent-ai/10 border border-accent-ai/20 text-accent-ai hover:bg-accent-ai/20 rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer">
             {isGeneratingAIRapport ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} KI-Baustellenrapport
           </button>
           {canWriteTimeAndEvents && (
-            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="hidden md:flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+            <button onClick={() => { setPrintType('rapport'); setIsPdfStudioOpen(true); }} className="hidden md:flex h-9 items-center gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
               <FileText size={14} /> {t('rapport')} PDF
             </button>
           )}
-          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="hidden md:flex items-center gap-2 px-3 py-2 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-sm">
+          <button onClick={() => { setPrintType('agenda'); setIsPdfStudioOpen(true); }} className="hidden md:flex h-9 items-center gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 hover:bg-background text-text-primary rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer">
             <FileText size={14} /> {t('agenda')} PDF
           </button>
         </div>

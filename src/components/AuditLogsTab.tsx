@@ -233,16 +233,20 @@ export default function AuditLogsTab() {
         
         {/* Header Title & Actions */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-border/50 pb-5">
-          <div>
-            <h3 className="text-lg sm:text-xl font-semibold text-text-primary flex items-center gap-2">
-              <Shield className="text-sky-500 shrink-0" size={24} />
-              <span>{language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance'}</span>
-            </h3>
-            <p className="text-text-muted text-xs sm:text-sm font-medium mt-1">
-              {language === 'de' 
-                ? 'Revisionssichere, lückenlose Dokumentation aller Firmenaktivitäten und Änderungen.' 
-                : 'Tamper-proof, audit-ready log of all organization activities.'}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Shield size={18} />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold tracking-tight text-text-primary">
+                {language === 'de' ? 'Audit-Logs & Governance' : 'Audit Logs & Governance'}
+              </h3>
+              <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
+                {language === 'de' 
+                  ? 'Revisionssichere, lückenlose Dokumentation aller Firmenaktivitäten und Änderungen.' 
+                  : 'Tamper-proof, audit-ready log of all organization activities.'}
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2.5 w-full lg:w-auto flex-wrap">
@@ -254,16 +258,16 @@ export default function AuditLogsTab() {
                 placeholder={language === 'de' ? 'Logs durchsuchen...' : 'Search logs...'}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl pl-9 pr-4 py-2 text-xs sm:text-sm outline-none focus:border-sky-500 text-text-primary font-medium transition-colors"
+                className="w-full h-9 bg-background border border-border/50 rounded-xl pl-9 pr-4 text-xs sm:text-sm outline-none focus:border-sky-500 text-text-primary font-medium transition-colors shadow-xs"
               />
             </div>
 
             {/* Guide Button & CSV Export */}
-            <ModuleGuideButton moduleId="audit" />
+            <ModuleGuideButton moduleId="audit" className="h-9" />
             <button
               onClick={handleExportCSV}
               disabled={filteredLogs.length === 0}
-              className="tour-audit-export px-3.5 py-2 bg-background hover:bg-surface border border-border hover:border-sky-500/50 rounded-xl text-xs font-semibold text-text-primary flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+              className="tour-audit-export h-9 px-3.5 bg-background hover:bg-surface border border-border/50 hover:border-sky-500/50 rounded-xl text-xs font-bold text-text-primary flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shadow-xs"
               title="Audit-Protokoll als CSV exportieren"
             >
               <Download size={14} className="text-sky-500" />

@@ -128,15 +128,19 @@ export default function CRM() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-surface border border-border p-6 rounded-3xl shadow-sm gap-4">
-        <div>
-          <h3 className="text-xl font-black text-text-primary flex items-center gap-2">
-            <Users className="text-blue-500" size={24} />
-            {t('crm_docs')}
-          </h3>
-          <p className="text-text-muted text-sm font-medium">{t('crm_docs_desc')}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Users size={18} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold tracking-tight text-text-primary">
+              {t('crm_docs')}
+            </h3>
+            <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">{t('crm_docs_desc')}</p>
+          </div>
         </div>
 
-        <button onClick={() => setIsModalOpen(true)} className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg flex items-center gap-2">
+        <button onClick={() => setIsModalOpen(true)} className="h-9 px-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer">
           <UserPlus size={16} /> {t('add_contact')}
         </button>
       </div>

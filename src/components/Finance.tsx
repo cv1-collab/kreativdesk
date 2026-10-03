@@ -1818,19 +1818,24 @@ export default function Finance() {
         <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 p-4 lg:p-6 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
 
           <div className="flex justify-between items-center mb-4 shrink-0">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-accent-ai"><RotateCw size={20} /> Tabellenansicht</h2>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                <RotateCw size={16} />
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-text-primary tracking-tight">Tabellenansicht</h2>
+            </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsRotatedCss(prev => !prev)}
-                className={cn("px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-surface border-border/50 text-text-primary hover:bg-white/5")}
+                className={cn("h-9 px-3 rounded-xl border text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs", isRotatedCss ? "bg-accent-ai text-white border-accent-ai" : "bg-surface border-border/50 text-text-primary hover:bg-white/5")}
               >
                 <RotateCw size={14} /> <span>90° Ansicht</span>
               </button>
               <button
                 onClick={() => { setIsLandscapeMode(false); setForceLandscapeView(false); setIsRotatedCss(false); }}
-                className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-2 cursor-pointer"
+                className="h-9 px-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-colors font-bold flex items-center gap-1.5 cursor-pointer shadow-xs text-xs"
               >
-                <X size={18} /> <span className="hidden sm:inline">Schließen</span>
+                <X size={16} /> <span className="hidden sm:inline">Schließen</span>
               </button>
             </div>
           </div>
@@ -2216,15 +2221,20 @@ export default function Finance() {
       <header className="flex flex-col gap-4 shrink-0 z-40 px-4 sm:px-0 pt-4 sm:pt-0 pb-4 border-b border-border/50 sm:border-none bg-surface/50 sm:bg-transparent">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="flex items-start justify-between w-full xl:w-auto">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-                <DollarSign className="text-accent-ai" size={24} /> {t('finance_budget')}
-              </h1>
-              <p className="text-sm text-text-muted mt-1 font-medium">{projectHeader.project}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                <DollarSign size={18} />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+                  {t('finance_budget')}
+                </h1>
+                <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{projectHeader.project}</p>
+              </div>
             </div>
             <button
               onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); setIsRotatedCss(true); }}
-              className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
+              className="lg:hidden flex items-center gap-1.5 h-9 px-3 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl font-bold shadow-xs active:scale-95 transition-transform"
               title="Tabelle im Querformat (90°) anzeigen"
             >
               <RotateCw size={14} /> <span className="text-xs">{t('rotate')}</span>
@@ -2234,34 +2244,34 @@ export default function Finance() {
           <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
             {/* Primary Action Buttons */}
             <div className="grid grid-cols-2 sm:flex flex-wrap gap-2 w-full sm:w-auto items-center">
-              <ModuleGuideButton moduleId="finance" className="h-[42px]" />
+              <ModuleGuideButton moduleId="finance" className="h-9" />
               <button
                 onClick={() => setShowTimeModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-orange-400 transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
               >
                 <Clock size={16} className="text-orange-400 shrink-0" /> <span>{t('book_hours')}</span>
               </button>
               <button
                 onClick={() => setShowQuoteModal(true)}
-                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
               >
                 <FileSignature size={16} className="text-accent-ai shrink-0" /> <span>{t('quote')}</span>
               </button>
               <button
                 onClick={() => { setReceiptType('expense'); setShowReceiptStudio(true); }}
-                className="flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-red-400 transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
               >
                 <Receipt size={16} className="text-red-400 shrink-0" /> <span>{t('book_receipt')}</span>
               </button>
               <button
                 onClick={() => setShowInvoiceModal(true)}
-                className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs sm:text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer"
+                className="tour-finance-invoices flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-3.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-xs sm:text-sm font-bold hover:bg-emerald-500/20 transition-colors shadow-xs gap-1.5 h-9 cursor-pointer"
               >
                 <Send size={16} className="shrink-0" /> <span>{t('invoice')}</span>
               </button>
               <button
                 onClick={() => setIsPdfStudioOpen(true)}
-                className="tour-finance-pdf hidden md:flex items-center justify-center p-2 sm:px-3.5 sm:py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+                className="tour-finance-pdf hidden md:flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 hover:text-accent-ai transition-colors shadow-xs gap-1.5 h-9 cursor-pointer shrink-0"
               >
                 <FileText size={16} className="text-accent-ai shrink-0" /> <span>PDF Studio</span>
               </button>
@@ -2273,7 +2283,7 @@ export default function Finance() {
             <div className="relative" ref={csvMenuRef}>
               <button
                 onClick={() => setShowCsvMenu(prev => !prev)}
-                className="tour-finance-export flex items-center justify-center px-3 sm:px-3.5 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs font-bold hover:bg-white/5 transition-all shadow-sm gap-1.5 h-[42px] cursor-pointer shrink-0"
+                className="tour-finance-export flex items-center justify-center px-3 sm:px-3.5 bg-surface border border-border/50 text-text-primary rounded-xl text-xs font-bold hover:bg-white/5 transition-all shadow-xs gap-1.5 h-9 cursor-pointer shrink-0"
                 title="CSV Export- & Import-Aktionen"
               >
                 <Download size={15} className="text-accent-ai shrink-0" />
@@ -2331,11 +2341,11 @@ export default function Finance() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 w-full">
-          <div className="tour-finance-tabs flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full sm:w-auto h-[42px] shrink-0">
-            <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={16} />{t('overview')}</button>
-            <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Calculator size={16} />{t('budget_plan')}</button>
-            <button onClick={() => setActiveTab('control')} className={cn("tour-finance-control flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Receipt size={16} />{t('payment_control')}</button>
-            <button onClick={() => setActiveTab('cashflow')} className={cn("tour-finance-cashflow flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Clock size={16} />{t('cashflow')}</button>
+          <div className="tour-finance-tabs flex bg-surface border border-border/50 rounded-xl p-0.5 shadow-xs overflow-x-auto hide-scrollbar w-full sm:w-auto h-9 shrink-0 items-center">
+            <button onClick={() => setActiveTab('overview')} className={cn("flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", activeTab === 'overview' ? "bg-accent-ai/10 text-accent-ai shadow-xs" : "text-text-muted hover:text-text-primary")}><PieChartIcon size={15} />{t('overview')}</button>
+            <button onClick={() => setActiveTab('budget')} className={cn("tour-finance-budget flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", activeTab === 'budget' ? "bg-accent-ai/10 text-accent-ai shadow-xs" : "text-text-muted hover:text-text-primary")}><Calculator size={15} />{t('budget_plan')}</button>
+            <button onClick={() => setActiveTab('control')} className={cn("tour-finance-control flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", activeTab === 'control' ? "bg-accent-ai/10 text-accent-ai shadow-xs" : "text-text-muted hover:text-text-primary")}><Receipt size={15} />{t('payment_control')}</button>
+            <button onClick={() => setActiveTab('cashflow')} className={cn("tour-finance-cashflow flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", activeTab === 'cashflow' ? "bg-accent-ai/10 text-accent-ai shadow-xs" : "text-text-muted hover:text-text-primary")}><Clock size={15} />{t('cashflow')}</button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
@@ -2345,7 +2355,7 @@ export default function Finance() {
                   setTempRates({ ...exchangeRates });
                   setShowFxSettingsModal(true);
                 }}
-                className="hidden sm:flex items-center gap-1.5 px-3 h-[42px] bg-purple-500/10 border border-purple-500/25 hover:border-purple-500/40 rounded-lg text-xs font-semibold text-purple-300 shrink-0 cursor-pointer transition-colors"
+                className="hidden sm:flex items-center gap-1.5 px-3 h-9 bg-purple-500/10 border border-purple-500/25 hover:border-purple-500/40 rounded-xl text-xs font-bold text-purple-300 shrink-0 cursor-pointer transition-colors shadow-xs"
                 title="Klicken, um den Wechselkurs zu ändern"
               >
                 <Coins size={14} className="text-purple-400" />
@@ -2353,9 +2363,9 @@ export default function Finance() {
               </div>
             )}
             {activeTab !== 'budget' && (
-              <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
-                <CalendarDays size={16} className="text-text-muted mr-1.5 shrink-0" />
-                <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value as any)} className="bg-transparent text-sm font-bold focus:outline-none py-1 cursor-pointer outline-none w-28 truncate shrink-0">
+              <div className="flex items-center bg-surface border border-border/50 rounded-xl px-2.5 h-9 shrink-0 shadow-xs">
+                <CalendarDays size={15} className="text-text-muted mr-1.5 shrink-0" />
+                <select value={timeFilter} onChange={(e) => setTimeFilter(e.target.value as any)} className="bg-transparent text-xs sm:text-sm font-bold focus:outline-none py-1 cursor-pointer outline-none w-28 truncate shrink-0">
                   <option value="all" className="bg-surface">{t('all_time')}</option>
                   <option value="year" className="bg-surface">{t('this_year')}</option>
                   <option value="month" className="bg-surface">{t('this_month')}</option>
@@ -2366,7 +2376,7 @@ export default function Finance() {
 
             {activeTab === 'budget' && (
               <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center bg-surface border border-border/50 rounded-lg px-2 h-[42px] shrink-0">
+                <div className="flex items-center bg-surface border border-border/50 rounded-xl px-2.5 h-9 shrink-0 shadow-xs">
                   {isEditingVersionName ? (
                     <div className="flex items-center gap-1">
                       <input
@@ -2379,12 +2389,12 @@ export default function Finance() {
                         }}
                         autoFocus
                         placeholder="z.B. Konzept 1"
-                        className="bg-background border border-accent-ai rounded px-2 py-1 text-xs font-semibold text-text-primary outline-none w-36 sm:w-48"
+                        className="bg-background border border-accent-ai rounded px-2 py-0.5 text-xs font-semibold text-text-primary outline-none w-36 sm:w-48"
                       />
                       <button
                         type="button"
                         onClick={handleSaveVersionName}
-                        className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors shrink-0"
+                        className="p-1 text-emerald-400 hover:text-emerald-300 transition-colors shrink-0 cursor-pointer"
                         title="Speichern"
                       >
                         <Check size={14} />
@@ -2392,7 +2402,7 @@ export default function Finance() {
                       <button
                         type="button"
                         onClick={() => setIsEditingVersionName(false)}
-                        className="p-1 text-text-muted hover:text-red-400 transition-colors shrink-0"
+                        className="p-1 text-text-muted hover:text-red-400 transition-colors shrink-0 cursor-pointer"
                         title="Abbrechen"
                       >
                         <X size={14} />
@@ -2400,14 +2410,14 @@ export default function Finance() {
                     </div>
                   ) : (
                     <>
-                      <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-sm font-semibold focus:outline-none px-2 py-1 cursor-pointer outline-none w-28 sm:w-36 truncate shrink-0 appearance-none">
+                      <select value={activeVersionId} onChange={(e) => setActiveVersionId(e.target.value)} className="bg-transparent text-xs sm:text-sm font-semibold focus:outline-none px-1.5 py-0.5 cursor-pointer outline-none w-28 sm:w-36 truncate shrink-0 appearance-none">
                         {versions.map(v => <option key={v.id} value={v.id} className={cn("bg-surface text-text-primary", v.status === 'approved' ? "font-semibold text-emerald-400" : "")}>{v.name} {v.status === 'approved' ? ` (${t('approved')})` : ''}</option>)}
                       </select>
                       {!isReadOnly && (
                         <button
                           type="button"
                           onClick={handleStartRenameVersion}
-                          className="p-1 text-text-muted hover:text-accent-ai transition-colors shrink-0 mr-1"
+                          className="p-1 text-text-muted hover:text-accent-ai transition-colors shrink-0 mr-1 cursor-pointer"
                           title="Variante umbenennen (z.B. Konzept 1: Historische Werkbank)"
                         >
                           <Edit2 size={13} />
@@ -2424,7 +2434,7 @@ export default function Finance() {
                     <button
                       onClick={handleToggleApproveVersion}
                       className={cn(
-                        "p-1 px-2.5 rounded-md text-xs font-semibold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-sm",
+                        "h-7 px-2.5 rounded-lg text-xs font-semibold transition-all border mr-1 whitespace-nowrap flex items-center gap-1.5 cursor-pointer shadow-xs",
                         activeVersion.status === 'approved'
                           ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20"
                           : "bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20"
@@ -2444,23 +2454,23 @@ export default function Finance() {
                       )}
                     </button>
                   )}
-                  <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0" title={t('new_variant')}><Plus size={16} /></button>
-                  <button onClick={handleDuplicateVersion} className="p-1 hover:text-accent-ai text-text-muted transition-colors shrink-0" title={t('duplicate_variant')}><Copy size={14} /></button>
-                  <button onClick={() => handleDeleteVersion(activeVersionId)} className="p-1 hover:text-red-500 text-text-muted transition-colors shrink-0" title={t('delete_variant')}><Trash2 size={14} /></button>
+                  <button onClick={handleCreateNewVersion} className="p-1 hover:text-emerald-400 text-text-muted transition-colors shrink-0 cursor-pointer" title={t('new_variant')}><Plus size={15} /></button>
+                  <button onClick={handleDuplicateVersion} className="p-1 hover:text-accent-ai text-text-muted transition-colors shrink-0 cursor-pointer" title={t('duplicate_variant')}><Copy size={13} /></button>
+                  <button onClick={() => handleDeleteVersion(activeVersionId)} className="p-1 hover:text-red-500 text-text-muted transition-colors shrink-0 cursor-pointer" title={t('delete_variant')}><Trash2 size={14} /></button>
                 </div>
               </div>
             )}
 
             {/* Currency Selector & FX Switcher - Placed directly to the right of Papierkorb (Budget) / Date filter (Other tabs) */}
-            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-[42px] shrink-0">
+            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-xl p-0.5 shadow-xs h-9 shrink-0">
               {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
                 <button
                   key={c}
                   onClick={() => handleCurrencyChange(c)}
                   className={cn(
-                    "px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer",
+                    "h-7.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center",
                     currency === c
-                      ? "bg-accent-ai text-white shadow-sm font-black"
+                      ? "bg-accent-ai text-white shadow-xs font-black"
                       : "text-text-muted hover:text-text-primary hover:bg-white/5"
                   )}
                   title={`Währung auf ${c} umstellen`}
@@ -2475,7 +2485,7 @@ export default function Finance() {
               <button
                 onClick={() => handleCurrencyModeChange(currencyMode === 'fx' ? 'display' : 'fx')}
                 className={cn(
-                  "flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer border",
+                  "flex items-center gap-1 h-7.5 px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer border",
                   currencyMode === 'fx'
                     ? "bg-purple-500/15 text-purple-300 border-purple-500/30 hover:bg-purple-500/25"
                     : "bg-background/80 text-text-muted border-border/40 hover:text-text-primary"
@@ -2496,7 +2506,7 @@ export default function Finance() {
                   setTempRates({ ...exchangeRates });
                   setShowFxSettingsModal(true);
                 }}
-                className="p-1.5 rounded-md text-text-muted hover:text-accent-ai hover:bg-white/5 transition-colors cursor-pointer"
+                className="h-7.5 w-7.5 flex items-center justify-center rounded-lg text-text-muted hover:text-accent-ai hover:bg-white/5 transition-colors cursor-pointer"
                 title="Wechselkurse (FX) anpassen"
               >
                 <Settings2 size={14} />

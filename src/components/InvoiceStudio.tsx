@@ -298,18 +298,30 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
       <div className="fixed inset-0 z-[90000] flex items-end md:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4">
         <div className="bg-background w-full h-[100dvh] md:h-[95vh] md:max-h-[900px] md:rounded-2xl shadow-2xl max-w-4xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 md:zoom-in-95 duration-200">
           <div className="p-4 md:p-6 border-b border-border/50 bg-surface/90 backdrop-blur-md sticky top-0 z-20 flex justify-between items-center shrink-0">
-            <h2 className="text-xl font-bold tracking-tight text-text-primary flex items-center gap-2">{type === 'invoice' ? <Send className="text-emerald-500" /> : <FileSignature className="text-blue-500" />}{type === 'invoice' ? t('new_invoice') : t('new_quote')}</h2>
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs border",
+                type === 'invoice'
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+              )}>
+                {type === 'invoice' ? <Send size={18} /> : <FileSignature size={18} />}
+              </div>
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-text-primary">
+                {type === 'invoice' ? t('new_invoice') : t('new_quote')}
+              </h2>
+            </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-9">
+              <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-xl p-0.5 shadow-xs h-9">
                 {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCurrency(c)}
                     className={cn(
-                      "px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer",
+                      "h-7.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center",
                       currency === c
-                        ? "bg-accent-ai text-white shadow-sm font-black"
+                        ? "bg-accent-ai text-white shadow-xs font-black"
                         : "text-text-muted hover:text-text-primary hover:bg-white/5"
                     )}
                     title={`Währung auf ${c} umstellen`}
@@ -318,7 +330,7 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
                   </button>
                 ))}
               </div>
-              <button onClick={onClose} className="p-2 text-text-muted hover:text-text-primary bg-background border border-border rounded-lg transition-colors"><X size={20} /></button>
+              <button onClick={onClose} className="h-9 w-9 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs"><X size={18} /></button>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 md:space-y-8 custom-scrollbar pb-32">

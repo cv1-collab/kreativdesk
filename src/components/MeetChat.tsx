@@ -1822,8 +1822,13 @@ export default function MeetChat() {
           <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
             <div className="bg-surface border border-border/50 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
               <div className="flex items-center justify-between mb-6 border-b border-border/50 pb-4 bg-surface/50">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-text-primary"><Calendar size={20} className="text-accent-ai" /> {t('schedule_video_call')}</h2>
-                <button onClick={() => setIsScheduleModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-1.5 rounded-lg"><X size={20} /></button>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <Calendar size={16} />
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">{t('schedule_video_call')}</h2>
+                </div>
+                <button onClick={() => setIsScheduleModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-1.5 rounded-lg border border-border/50 cursor-pointer"><X size={18} /></button>
               </div>
               <form onSubmit={handleScheduleCall} className="space-y-4">
                 <div>

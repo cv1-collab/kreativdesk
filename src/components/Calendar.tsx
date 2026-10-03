@@ -1492,38 +1492,43 @@ export default function Calendar() {
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6 shrink-0 z-50 px-4 sm:px-0 mt-4 sm:mt-0">
           
           <div className="flex items-start justify-between w-full sm:w-auto">
-            <div>
-              <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-                <CalendarIcon className="text-accent-ai" size={24} /> {t('calendar_title')}
-              </h1>
-              <p className="text-sm text-text-muted mt-1 font-medium">{project ? project.name : 'Workspace'}</p>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                <CalendarIcon size={18} />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+                  {t('calendar_title')}
+                </h1>
+                <p className="text-xs sm:text-sm text-text-muted mt-0.5 font-medium">{project ? project.name : 'Workspace'}</p>
+              </div>
             </div>
             
             {viewMode === 'gantt' && (
                <button 
                  onClick={() => { setIsLandscapeMode(true); setForceLandscapeView(true); }} 
-                 className="md:hidden flex items-center gap-1.5 px-3 py-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg font-bold shadow-sm active:scale-95 transition-transform"
+                 className="md:hidden flex items-center gap-1.5 h-9 px-3 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-xl font-bold shadow-xs active:scale-95 transition-transform"
                >
-                  <RotateCw size={16}/> <span className="text-xs">{t('rotate')}</span>
+                  <RotateCw size={14}/> <span className="text-xs">{t('rotate')}</span>
                </button>
             )}
           </div>
           
-          <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
-            <ModuleGuideButton moduleId="calendar" className="h-[42px]" />
+          <div className="flex flex-wrap gap-2.5 items-center w-full sm:w-auto">
+            <ModuleGuideButton moduleId="calendar" className="h-9" />
             <div className="relative w-full sm:w-auto">
               <button 
                 onClick={() => setIsLibraryOpen(!isLibraryOpen)} 
-                className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 px-4 py-2 bg-surface border border-border/50 rounded-lg text-sm font-bold shadow-sm hover:bg-white/5 transition-colors h-[42px]"
+                className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 px-3 sm:px-3.5 bg-surface border border-border/50 rounded-xl text-xs sm:text-sm font-bold shadow-xs hover:bg-white/5 transition-colors h-9 cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <ListTree size={18} className="text-accent-ai shrink-0"/> 
+                  <ListTree size={16} className="text-accent-ai shrink-0"/> 
                   <div className="flex flex-col text-left">
-                    <span className="text-[9px] text-text-muted uppercase tracking-widest leading-none mb-0.5">{t('schedules_library')}</span>
+                    <span className="text-[8px] text-text-muted uppercase tracking-widest leading-none mb-0.5">{t('schedules_library')}</span>
                     <span className="leading-none text-text-primary truncate max-w-[120px]">{activeSchedule?.name || t('master_plan')}</span>
                   </div>
                 </div>
-                <ChevronDown size={16} className="text-text-muted shrink-0"/>
+                <ChevronDown size={14} className="text-text-muted shrink-0"/>
               </button>
               
               {isLibraryOpen && (
@@ -1559,16 +1564,16 @@ export default function Calendar() {
 
             <div className="w-px h-6 bg-border/50 mx-1 hidden sm:block"></div>
 
-            <div className="flex items-center justify-between sm:justify-start gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm w-full sm:w-auto h-[42px]">
-              <button onClick={() => setTargetYearHelper(targetYear - 1)} className="p-1.5 hover:bg-white/5 rounded-md text-text-muted hover:text-text-primary transition-colors"><ChevronLeft size={16}/></button>
-              <span className="text-sm font-extrabold text-text-primary w-12 text-center">{targetYear}</span>
-              <button onClick={() => setTargetYearHelper(targetYear + 1)} className="p-1.5 hover:bg-white/5 rounded-md text-text-muted hover:text-text-primary transition-colors"><ChevronRight size={16}/></button>
+            <div className="flex items-center justify-between sm:justify-start gap-1 bg-surface border border-border/50 rounded-xl p-0.5 shadow-xs w-full sm:w-auto h-9">
+              <button onClick={() => setTargetYearHelper(targetYear - 1)} className="h-7.5 w-7.5 flex items-center justify-center hover:bg-white/5 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"><ChevronLeft size={14}/></button>
+              <span className="text-xs sm:text-sm font-extrabold text-text-primary w-12 text-center">{targetYear}</span>
+              <button onClick={() => setTargetYearHelper(targetYear + 1)} className="h-7.5 w-7.5 flex items-center justify-center hover:bg-white/5 rounded-lg text-text-muted hover:text-text-primary transition-colors cursor-pointer"><ChevronRight size={14}/></button>
             </div>
 
-            <div className="flex bg-surface border border-border/50 rounded-lg p-1 shadow-sm overflow-x-auto hide-scrollbar w-full lg:w-auto h-[42px] shrink-0">
-              <button onClick={() => setViewMode('gantt')} className={cn("tour-calendar-gantt flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'gantt' ? "bg-accent-ai/10 text-accent-ai shadow-sm" : "text-text-muted hover:text-text-primary")}><Columns size={16}/> {t('master_plan')}</button>
-              <button onClick={() => setViewMode('month')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'month' ? "bg-white/10 text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}><LayoutTemplate size={16}/> {t('month_focus')}</button>
-              <button onClick={() => setViewMode('day')} className={cn("flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap", viewMode === 'day' ? "bg-white/10 text-text-primary shadow-sm border border-border/50" : "text-text-muted hover:text-text-primary")}><AlignJustify size={16}/> {t('day_focus')}</button>
+            <div className="flex bg-surface border border-border/50 rounded-xl p-0.5 shadow-xs overflow-x-auto hide-scrollbar w-full lg:w-auto h-9 shrink-0 items-center">
+              <button onClick={() => setViewMode('gantt')} className={cn("tour-calendar-gantt flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", viewMode === 'gantt' ? "bg-accent-ai/10 text-accent-ai shadow-xs" : "text-text-muted hover:text-text-primary")}><Columns size={14}/> {t('master_plan')}</button>
+              <button onClick={() => setViewMode('month')} className={cn("flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", viewMode === 'month' ? "bg-white/10 text-text-primary shadow-xs border border-border/50" : "text-text-muted hover:text-text-primary")}><LayoutTemplate size={14}/> {t('month_focus')}</button>
+              <button onClick={() => setViewMode('day')} className={cn("flex-1 sm:flex-none h-7.5 px-3 sm:px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap", viewMode === 'day' ? "bg-white/10 text-text-primary shadow-xs border border-border/50" : "text-text-muted hover:text-text-primary")}><AlignJustify size={14}/> {t('day_focus')}</button>
             </div>
 
             <button 
@@ -1576,9 +1581,9 @@ export default function Calendar() {
                 setPdfExportMode(viewMode);
                 setIsPdfStudioOpen(true);
               }} 
-              className="tour-calendar-pdf hidden md:flex px-3 sm:px-4 py-2 bg-surface border border-border/50 text-text-primary rounded-lg text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-sm items-center gap-1.5 sm:gap-2 h-[42px] cursor-pointer shrink-0"
+              className="tour-calendar-pdf hidden md:flex px-3 sm:px-3.5 bg-surface border border-border/50 text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-white/5 transition-colors shadow-xs items-center gap-1.5 h-9 cursor-pointer shrink-0"
             >
-               <FileText size={16} /> <span>{t('generate_pdf')}</span>
+               <FileText size={15} /> <span>{t('generate_pdf')}</span>
             </button>
           </div>
         </header>

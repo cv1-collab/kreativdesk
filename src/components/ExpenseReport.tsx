@@ -363,18 +363,23 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
       <div className="bg-surface border-t sm:border border-border sm:rounded-2xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-[100dvh] sm:h-[90vh] sm:max-h-[900px] mt-auto sm:mt-0 animate-in slide-in-from-bottom sm:zoom-in-95">
         
         <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0 sticky top-0 z-30">
-          <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><Receipt className="text-orange-500"/> {t('expense_studio')}</h3>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Receipt size={18} />
+            </div>
+            <h3 className="font-bold text-lg text-text-primary tracking-tight">{t('expense_studio')}</h3>
+          </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-lg p-1 shadow-sm h-9">
+            <div className="flex items-center gap-1 bg-surface border border-border/50 rounded-xl p-0.5 shadow-xs h-9">
               {(['CHF', 'EUR', 'USD'] as Currency[]).map(c => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => setCurrency(c)}
                   className={cn(
-                    "px-2.5 py-0.5 rounded-md text-xs font-bold transition-all cursor-pointer",
+                    "h-7.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center",
                     currency === c
-                      ? "bg-orange-500 text-white shadow-sm font-black"
+                      ? "bg-orange-500 text-white shadow-xs font-black"
                       : "text-text-muted hover:text-text-primary hover:bg-white/5"
                   )}
                   title={`Währung auf ${c} umstellen`}
@@ -383,7 +388,7 @@ export default function ExpenseReport({ onClose, onSave, initialCurrency }: Expe
                 </button>
               ))}
             </div>
-            <button onClick={onClose} className="text-text-muted hover:text-text-primary p-2 bg-background rounded-lg border border-border transition-colors"><X size={20}/></button>
+            <button onClick={onClose} className="h-9 w-9 flex items-center justify-center text-text-muted hover:text-text-primary bg-background rounded-xl border border-border/50 transition-colors cursor-pointer shadow-xs"><X size={18}/></button>
           </div>
         </div>
 

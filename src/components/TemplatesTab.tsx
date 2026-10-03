@@ -552,18 +552,23 @@ Auftraggeber (Bauherr)                    Auftragnehmer (Planer / Architekt)`;
     <div className="w-full h-full flex flex-col space-y-8 md:space-y-10 animate-in fade-in duration-300 pb-24">
       {/* Top Header */}
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-text-primary flex items-center gap-2.5">
-            <LayoutTemplate className="text-accent-ai" size={24} /> {t('templates_hub')}
-          </h1>
-          <p className="text-text-muted mt-1.5 text-sm font-medium">{t('templates_desc')}</p>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+            <LayoutTemplate size={18} />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">
+              {t('templates_hub')}
+            </h1>
+            <p className="text-text-muted mt-0.5 text-xs sm:text-sm font-medium">{t('templates_desc')}</p>
+          </div>
         </div>
 
         {/* Actions & Company Active Branding Indicator */}
-        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          <ModuleGuideButton moduleId="templates" />
-          <div className="flex items-center gap-2.5 px-3.5 py-2 bg-surface/80 border border-border/70 rounded-xl text-xs font-semibold text-text-muted backdrop-blur-sm shadow-sm">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <ModuleGuideButton moduleId="templates" className="h-9" />
+          <div className="h-9 flex items-center gap-2.5 px-3.5 bg-surface/80 border border-border/70 rounded-xl text-xs font-semibold text-text-muted backdrop-blur-sm shadow-xs">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Branding:</span>
             <span className="text-text-primary font-semibold">{companyProfile.name}</span>
           </div>

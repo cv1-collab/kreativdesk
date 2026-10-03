@@ -237,18 +237,22 @@ export default function API() {
       {/* API KEYS CARD */}
       <div className="bg-surface border border-border/60 p-6 rounded-3xl shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h3 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              <Key className="text-blue-500" size={24} />
-              {isDe ? 'API Schlüssel' : 'API Keys'}
-            </h3>
-            <p className="text-text-muted text-sm font-medium">
-              {isDe ? 'Verwalte deine API-Zugänge zur sicheren Anbindung externer Systeme.' : 'Manage your API credentials for secure integrations.'}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Key size={18} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-text-primary">
+                {isDe ? 'API Schlüssel' : 'API Keys'}
+              </h3>
+              <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
+                {isDe ? 'Verwalte deine API-Zugänge zur sicheren Anbindung externer Systeme.' : 'Manage your API credentials for secure integrations.'}
+              </p>
+            </div>
           </div>
           <button 
             onClick={handleCreateKey}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-xs shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all"
+            className="h-9 px-3.5 sm:px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus size={16} /> {isDe ? 'Neuen Key erstellen' : 'Create New Key'}
           </button>
@@ -283,18 +287,22 @@ export default function API() {
       {/* WEBHOOK AUTOMATION SECTION */}
       <div className="bg-surface border border-border/60 p-6 rounded-3xl shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h3 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-              <Webhook className="text-emerald-500" size={24} />
-              {isDe ? 'Outgoing Webhooks & Integrationen' : 'Outgoing Webhooks'}
-            </h3>
-            <p className="text-text-muted text-sm font-medium">
-              {isDe ? 'Sende Echtzeit-Events an Slack, Make, Zapier oder deine eigenen Server.' : 'Send real-time event payloads to Slack, Make, Zapier, or your custom endpoints.'}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Webhook size={18} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-text-primary">
+                {isDe ? 'Outgoing Webhooks & Integrationen' : 'Outgoing Webhooks'}
+              </h3>
+              <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
+                {isDe ? 'Sende Echtzeit-Events an Slack, Make, Zapier oder deine eigenen Server.' : 'Send real-time event payloads to Slack, Make, Zapier, or your custom endpoints.'}
+              </p>
+            </div>
           </div>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all"
+            className="h-9 px-3.5 sm:px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus size={16} /> {isDe ? 'Webhook hinzufügen' : 'Add Webhook'}
           </button>

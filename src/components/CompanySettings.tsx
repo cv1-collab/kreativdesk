@@ -140,10 +140,14 @@ export default function CompanySettings() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-xl font-black text-text-primary mb-2 flex items-center gap-2">
-          <Building2 className="text-blue-500" size={24} />
-          {t('title')}
-        </h3>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Building2 size={18} />
+          </div>
+          <h3 className="text-xl font-bold tracking-tight text-text-primary">
+            {t('title')}
+          </h3>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
           <div className="bg-background border border-border/50 p-5 rounded-2xl">
@@ -159,7 +163,7 @@ export default function CompanySettings() {
             </div>
             <button 
               onClick={handleGenerateLink}
-              className="mt-4 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
+              className="mt-4 h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
               <UserPlus size={16} /> {t('generate_link')}
             </button>

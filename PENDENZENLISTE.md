@@ -7,7 +7,41 @@
 
 ## 🏆 Erfolgsliste von heute (3. Oktober 2026)
 
-### 0. Desktop-Navigation & Header-Harmonisierung aller Module
+### 0. Gesamtsystem-Audit: Eliminierung roher Titel-Icons & Button-Standardisierung (`h-9 rounded-xl`)
+* **Lückenlose Überprüfung aller Module & Komponenten auf Designsystem-Inkonsistenzen:**
+  * **Projekt Finanzen BKP 1–9 (`Finance.tsx`):**
+    * Rohes Dollar-Icon direkt im `<h1>` entfernt und durch die standardisierte Icon-Badge (`w-9 h-9 rounded-xl bg-accent-ai/10`) ersetzt.
+    * Alle Aktionsbuttons (Stunden buchen, Offerte, Beleg buchen, Rechnung, PDF Studio, CSV & Export) von uneinheitlichem `h-[42px] rounded-lg` auf `h-9 rounded-xl font-bold` standardisiert.
+    * Tab-Leiste (`tour-finance-tabs`) und Währungsumschalter auf einheitliche `h-9 rounded-xl` und Sub-Tabs auf `h-7.5 rounded-lg` gebracht.
+    * Header der Vollbild-Tabellenansicht von rohem Icon im `<h2>` auf strukturierte Icon-Badge umgestellt.
+  * **Terminplan & Masterplan (`Calendar.tsx`):**
+    * Rohes Kalender-Icon direkt im `<h1>` entfernt und durch standardisierte Icon-Badge (`CalendarIcon`) ersetzt.
+    * Alle Aktionsbuttons (Masterplan-Bibliothek, Jahresumschalter, Gantt/Monat/Tag-Umschalter, PDF generieren) von veraltetem `h-[42px]` auf das Designsystem `h-9 rounded-xl` vereinheitlicht.
+  * **Baustellen-Kamera & Sensorik (`SiteMonitoring.tsx`):**
+    * Kopfzeile mit Icon-Badge (`Camera`) ausgestattet und Sub-Tab-Leiste (Übersicht, KI-Sicherheit, Zutritt, Logistik, Drohnen) auf standardisierte `h-9 rounded-xl` mit `h-7.5` Tab-Pills gebracht.
+  * **Vorlagen Hub (`TemplatesTab.tsx`):**
+    * Rohes Icon im `<h1>` entfernt und durch standardisierte Icon-Badge (`LayoutTemplate`) ersetzt; Branding-Indikator auf einheitliche `h-9 rounded-xl` angepasst.
+  * **Agenda & Baustellenrapport (`AgendaTab.tsx`):**
+    * Fehlende Icon-Badge (`Calendar`) im Modulheader ergänzt; alle Aktionsbuttons (iCal Export, KI-Baustellenrapport, PDF) auf `h-9 rounded-xl` vereinheitlicht.
+  * **Projekt-Team (`ProjectTeam.tsx`):**
+    * Icon-Badge (`Users`) im Header ergänzt; Button «Person hinzufügen» auf `h-9 rounded-xl` standardisiert.
+  * **CRM & Kontakte (`CRM.tsx`):**
+    * Rohes Icon im `<h3>` entfernt und durch standardisierte Icon-Badge (`Users`) ersetzt; Button «Kontakt hinzufügen» auf `h-9 rounded-xl` standardisiert.
+  * **Rechnung & Offerten Studio (`InvoiceStudio.tsx`):**
+    * Rohes Icon direkt im `<h2>` entfernt und durch standardisierte Icon-Badge (`Send` / `FileSignature`) ersetzt; Währungsumschalter und Schliessen-Button auf `h-9` vereinheitlicht.
+  * **Spesen Studio (`ExpenseReport.tsx`):**
+    * Rohes Icon im `<h3>` entfernt und durch standardisierte Icon-Badge (`Receipt`) ersetzt; Steuerelemente vereinheitlicht.
+  * **API & Webhooks (`API.tsx`):**
+    * Rohe Icons in den Kartentiteln entfernt und durch saubere Icon-Badges (`Key`, `Webhook`) ersetzt; Aktionsbuttons auf `h-9 rounded-xl` standardisiert.
+  * **Firmen-Einstellungen (`CompanySettings.tsx`):**
+    * Rohes Icon im `<h3>` entfernt und durch standardisierte Icon-Badge (`Building2`) ersetzt; Einladungslink-Button auf `h-9 rounded-xl` vereinheitlicht.
+  * **Audit-Logs & Governance (`AuditLogsTab.tsx`):**
+    * Rohes Icon im `<h3>` entfernt und durch standardisierte Icon-Badge (`Shield`) ersetzt; Suchfeld und CSV-Export-Button auf `h-9 rounded-xl` vereinheitlicht.
+  * **Meet & Chat Termin-Modal (`MeetChat.tsx`):**
+    * Rohes Kalender-Icon im Modal-Header durch standardisierte Icon-Badge ersetzt.
+* **TypeScript & Build:** 0 Fehler (`tsc --noEmit`), Vite Production Build in 15.09s erfolgreich.
+
+### 1. Desktop-Navigation & Header-Harmonisierung aller Module
 * **Prüfung der Desktop-Ansichten (Anpassungen-Audit):**
   * Sämtliche 32 Screenshots aus `/Users/carlo/Desktop/Anpassungen` analysiert (waren im Firefox Responsive-Design-Modus `418x642` aufgenommen).
   * Systematische Desktop-Prüfung aller oberen Kopfzeilen und Aktionsleisten (1280px, 1440px, 1920px).
