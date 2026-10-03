@@ -719,15 +719,15 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
   return (
     <div className="flex flex-col w-full h-full bg-background text-text-primary rounded-xl overflow-hidden border border-border relative">
       {!isFullscreen && (
-        <header className="min-h-16 py-2 border-b border-border flex flex-wrap items-center justify-between px-3 sm:px-6 shrink-0 bg-surface gap-2">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-accent-ai/10 text-accent-ai shrink-0"><Presentation size={16} /></div>
+        <header className="min-h-16 py-2.5 border-b border-border flex flex-wrap items-center justify-between px-3 sm:px-6 shrink-0 bg-surface/95 backdrop-blur-xl gap-2 shadow-xs">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shrink-0 shadow-xs"><Presentation size={17} /></div>
             <div>
               <h2 className="font-bold text-xs sm:text-sm text-text-primary">Pitch Deck</h2>
               <p className="text-[9px] sm:text-[10px] text-text-muted uppercase tracking-widest font-bold">{t('presentation_viewer')}</p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
              <ModuleGuideButton moduleId="pitch" />
              <button onClick={async () => {
                setIsShareModalOpen(true);
@@ -739,21 +739,21 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
                  console.warn("Clipboard access limited:", e);
                }
                addToast(t('link_copied'), "success");
-             }} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
+             }} className="h-9 px-3 sm:px-3.5 bg-background border border-border hover:bg-surface rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
                <Share2 size={14} /> <span className="hidden sm:inline">{t('share')}</span>
              </button>
              <button 
                 onClick={() => setIsFormatModalOpen(true)}
                 disabled={slides.length === 0}
-                className="tour-pitch-export px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md hover:brightness-110"
+                className="tour-pitch-export h-9 px-3 sm:px-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs hover:brightness-110"
                 title={t('export_tooltip')}
               >
                 <Download size={14} /> <span>{t('export')}</span>
               </button>
-             <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="px-2.5 sm:px-4 py-1.5 sm:py-2 bg-background border border-border hover:bg-surface rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5">
+             <button id="btn-open-pitch-studio" onClick={() => setShowStudio(true)} className="h-9 px-3 sm:px-3.5 bg-background border border-border hover:bg-surface rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-xs cursor-pointer">
                <Settings size={14} /> <span className="hidden xs:inline">{t('open_studio')}</span>
              </button>
-             <button onClick={toggleFullscreen} className="tour-pitch-present px-2.5 sm:px-4 py-1.5 sm:py-2 bg-accent-ai text-white rounded-lg text-xs font-bold shadow-lg hover:bg-accent-ai/90 transition-colors flex items-center gap-1.5">
+             <button onClick={toggleFullscreen} className="tour-pitch-present h-9 px-3.5 sm:px-4 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-sm hover:bg-accent-ai/90 transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
                <Play size={14} className="fill-current" /> <span className="hidden sm:inline">{t('presentation_mode')}</span>
              </button>
           </div>

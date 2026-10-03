@@ -1405,26 +1405,26 @@ export default function MeetChat() {
           </div>
 
           {/* 🔥 HIER SIND DIE BEIDEN KLASSEN HINZUGEFÜGT (tour-meet-modes) */}
-          <div className="tour-meet-modes flex bg-surface border border-border rounded-lg p-1 shadow-sm shrink-0">
-            <button onClick={() => setActiveView('video')} className={cn("tour-meet-video px-4 py-1.5 rounded-md text-sm font-bold transition-colors flex items-center gap-2", activeView === 'video' ? "bg-accent-ai/10 text-accent-ai" : "text-text-muted hover:text-text-primary")}>
-              <Video size={16} /> {t('video')}
+          <div className="tour-meet-modes flex items-center bg-surface border border-border rounded-xl p-0.5 h-9 shadow-xs shrink-0">
+            <button onClick={() => setActiveView('video')} className={cn("tour-meet-video h-7.5 px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 cursor-pointer", activeView === 'video' ? "bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shadow-xs" : "text-text-muted hover:text-text-primary border border-transparent")}>
+              <Video size={15} /> {t('video')}
             </button>
-            <button onClick={() => setActiveView('whiteboard')} className={cn("px-4 py-1.5 rounded-md text-sm font-bold transition-colors flex items-center gap-2", activeView === 'whiteboard' ? "bg-accent-ai/10 text-accent-ai" : "text-text-muted hover:text-text-primary")}>
-              <PenTool size={16} /> {t('whiteboard')}
+            <button onClick={() => setActiveView('whiteboard')} className={cn("h-7.5 px-3.5 rounded-lg text-xs sm:text-sm font-bold transition-colors flex items-center gap-1.5 cursor-pointer", activeView === 'whiteboard' ? "bg-accent-ai/10 text-accent-ai border border-accent-ai/20 shadow-xs" : "text-text-muted hover:text-text-primary border border-transparent")}>
+              <PenTool size={15} /> {t('whiteboard')}
             </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <ModuleGuideButton moduleId="meet" />
-            <button onClick={() => setShowChat(!showChat)} className={cn("p-2 rounded-lg border transition-colors", showChat ? "bg-accent-ai/20 border-accent-ai/30 text-accent-ai" : "bg-surface border-border text-text-muted hover:text-text-primary")} title={t('project_chat')}>
-              <MessageSquare size={18} />
+            <button onClick={() => setShowChat(!showChat)} className={cn("w-9 h-9 rounded-xl border transition-colors flex items-center justify-center cursor-pointer shadow-xs", showChat ? "bg-accent-ai/20 border-accent-ai/30 text-accent-ai" : "bg-surface border-border text-text-muted hover:text-text-primary")} title={t('project_chat')}>
+              <MessageSquare size={16} />
             </button>
-            <div className="w-px h-6 bg-border mx-1"></div>
-            <button onClick={openHistoryModal} className="tour-meet-history px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 shadow-sm cursor-pointer" title="Videocall-Verlauf anzeigen">
-              <History size={16} className="text-accent-ai" /> {currentLang === 'de' ? 'Historie' : 'History'}
+            <div className="w-px h-6 bg-border mx-0.5"></div>
+            <button onClick={openHistoryModal} className="tour-meet-history h-9 px-3.5 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-background transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer" title="Videocall-Verlauf anzeigen">
+              <History size={15} className="text-accent-ai" /> {currentLang === 'de' ? 'Historie' : 'History'}
             </button>
-            <button onClick={openScheduleModal} className="tour-meet-schedule px-4 py-2 bg-surface border border-border text-text-primary rounded-md text-sm font-bold hover:bg-white/5 transition-colors flex items-center gap-2 shadow-sm">
-              <Calendar size={16} /> {t('schedule_call')}
+            <button onClick={openScheduleModal} className="tour-meet-schedule h-9 px-3.5 bg-surface border border-border text-text-primary rounded-xl text-xs sm:text-sm font-bold hover:bg-background transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+              <Calendar size={15} /> {t('schedule_call')}
             </button>
           </div>
         </header>

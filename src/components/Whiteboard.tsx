@@ -2406,13 +2406,13 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
-            <ModuleGuideButton moduleId="whiteboard" className="h-9 px-3 rounded-lg" />
+            <ModuleGuideButton moduleId="whiteboard" className="h-9 px-3 rounded-xl" />
             {/* 1. KI-ASSISTENT DROPDOWN */}
             <div className="relative shrink-0">
               <button
                 onClick={() => { setShowAiMenu(!showAiMenu); setShowExportMenu(false); }}
                 className={cn(
-                  "tour-whiteboard-ai h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border cursor-pointer shrink-0",
+                  "tour-whiteboard-ai h-9 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shadow-xs border cursor-pointer shrink-0",
                   showAiMenu
                     ? "bg-accent-ai/20 border-accent-ai text-accent-ai"
                     : "bg-accent-ai/10 text-accent-ai border-accent-ai/20 hover:bg-accent-ai/20"
@@ -2477,7 +2477,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingMedia}
-                className="tour-whiteboard-media h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border border-border bg-surface hover:bg-background text-text-primary cursor-pointer disabled:opacity-50 shrink-0"
+                className="tour-whiteboard-media h-9 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shadow-xs border border-border bg-surface hover:bg-background text-text-primary cursor-pointer disabled:opacity-50 shrink-0"
                 title={t('import_media_sub')}
               >
                 {isUploadingMedia ? <Loader2 size={15} className="animate-spin text-accent-primary shrink-0" /> : <UploadCloud size={15} className="text-blue-500 shrink-0" />}
@@ -2490,7 +2490,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             <button
               onClick={handleSaveToCloud}
               disabled={isSavingToCloud}
-              className="h-9 px-3 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-lg text-xs sm:text-sm font-semibold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer shrink-0"
+              className="h-9 px-3 bg-blue-500/10 text-blue-500 border border-blue-500/25 rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-500/20 transition-all flex items-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer shrink-0"
               title={t('save_cloud_title')}
             >
               {isSavingToCloud ? <Loader2 size={15} className="animate-spin shrink-0" /> : <Cloud size={15} className="shrink-0" />}
@@ -2502,7 +2502,7 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
               <button
                 onClick={() => { setShowExportMenu(!showExportMenu); setShowAiMenu(false); }}
                 className={cn(
-                  "tour-whiteboard-export h-9 px-3 rounded-lg text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 shadow-sm border cursor-pointer shrink-0",
+                  "tour-whiteboard-export h-9 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 shadow-xs border cursor-pointer shrink-0",
                   showExportMenu
                     ? "bg-purple-500/20 border-purple-500 text-purple-300"
                     : "bg-surface border-border text-text-primary hover:bg-background"

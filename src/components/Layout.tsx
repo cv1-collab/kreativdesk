@@ -19,7 +19,7 @@ import {
   LayoutDashboard, Calendar, DollarSign, Box, Map,
   Video, PenTool, Presentation, Camera,
   ArrowLeft, ShieldAlert, FileText, UserCheck,
-  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X, BookOpen, Edit2
+  Moon, Sun, Globe, MonitorPlay, Clock, CheckCircle2, LogOut, Bell, Loader2, HelpCircle, Megaphone, Eye, X, BookOpen, Edit2, Shield
 } from 'lucide-react';
 import { cn } from '../utils';
 import { supabase } from '../lib/supabase';
@@ -27,6 +27,7 @@ import { fetchNotifications } from '../lib/notifications';
 import { checkUpcomingEventReminders } from '../utils/calendarReminderHelper';
 import { offlineSyncManager } from '../utils/offlineSyncManager';
 import { safeStorage } from '../utils/safeStorage';
+import { checkIsSuperAdmin } from '../config/admins';
 
 const localTranslations: Record<'en' | 'de', Record<string, string>> = {
   en: {
@@ -37,7 +38,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     bau_akte: 'Document Hub', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Team Access', booked: 'Booked',
     status: 'Status', active: 'Active', logout: 'Logout',
     install_app: 'Install App', start_tour: 'Start Tour', back_to_workspace: 'Back to Workspace',
-    offline_banner: 'Offline mode active – Data is saved locally on site and synced when connected.'
+    offline_banner: 'Offline mode active – Data is saved locally on site and synced when connected.', admin: 'Admin'
   },
   de: {
     steuerung: 'Steuerung', project_overview: 'Projektübersicht', finance_budget: 'Finanzen & Budget',
@@ -47,7 +48,7 @@ const localTranslations: Record<'en' | 'de', Record<string, string>> = {
     bau_akte: 'Bauakte', pitch_deck: 'Pitch Deck', projekt_zugriffe: 'Projekt-Zugriffe', booked: 'Gebucht',
     status: 'Status', active: 'Aktiv', logout: 'Abmelden',
     install_app: 'App installieren', start_tour: 'Tour starten', back_to_workspace: 'Zurück zum Workspace',
-    offline_banner: 'Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.'
+    offline_banner: 'Offline-Modus aktiv – Daten werden lokal auf der Baustelle gespeichert & bei Verbindung synchronisiert.', admin: 'Admin'
   }
 };
 
@@ -612,6 +613,12 @@ export default function Layout() {
               </button>
               <NotificationCenter isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
             </div>
+
+            {checkIsSuperAdmin(currentUser?.email) && (
+              <button onClick={() => navigate('/admin')} className="h-8 sm:h-9 px-2 sm:px-3 flex items-center justify-center gap-1.5 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer" title={t('admin')}>
+                <Shield size={15} /> <span className="hidden sm:inline text-xs font-semibold">{t('admin')}</span>
+              </button>
+            )}
           </div>
         </header>
 

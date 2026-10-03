@@ -483,7 +483,7 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="bg-background border border-border/50 rounded px-2 py-1 text-sm font-bold focus:border-accent-ai outline-none text-text-primary"
+              className="bg-background border border-border/60 rounded-xl px-2.5 py-1 text-xs font-bold focus:border-accent-ai outline-none text-text-primary h-7 shadow-xs cursor-pointer"
             >
               <option value="all">{t('all_years')}</option>
               <option value="2024">2024</option>
@@ -493,12 +493,12 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
             </select>
           </div>
         </div>
-        <div className="tour-company-finance-actions flex flex-wrap items-center gap-3 w-full lg:w-auto">
+        <div className="tour-company-finance-actions flex flex-wrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
           <ModuleGuideButton moduleId="finance" />
-          <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-blue-600 transition-all flex items-center justify-center gap-2"><FileSignature size={16} /> {t('new_quote')}</button>
-          <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"><FileText size={16} /> {t('new_invoice')}</button>
-          <button onClick={() => setShowExpenseModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2"><Receipt size={16} /> {t('record_expenses')}</button>
-          <button onClick={() => setShowOpCostModal(true)} className="flex-1 sm:flex-none px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-purple-600 transition-all flex items-center justify-center gap-2"><Landmark size={16} /> {t('record_ext_cost')}</button>
+          <button onClick={() => setShowQuoteModal(true)} className="flex-1 sm:flex-none h-9 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"><FileSignature size={15} /> {t('new_quote')}</button>
+          <button onClick={() => setShowInvoiceModal(true)} className="flex-1 sm:flex-none h-9 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"><FileText size={15} /> {t('new_invoice')}</button>
+          <button onClick={() => setShowExpenseModal(true)} className="flex-1 sm:flex-none h-9 px-3.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"><Receipt size={15} /> {t('record_expenses')}</button>
+          <button onClick={() => setShowOpCostModal(true)} className="flex-1 sm:flex-none h-9 px-3.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"><Landmark size={15} /> {t('record_ext_cost')}</button>
         </div>
       </div>
 

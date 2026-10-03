@@ -7,7 +7,21 @@
 
 ## 🏆 Erfolgsliste von heute (3. Oktober 2026)
 
-### 0. CRM, Branding, Screensaver, Dokumenten-Hub & Mobile First Harmonisierung
+### 0. Desktop-Navigation & Header-Harmonisierung aller Module
+* **Prüfung der Desktop-Ansichten (Anpassungen-Audit):**
+  * Sämtliche 32 Screenshots aus `/Users/carlo/Desktop/Anpassungen` analysiert (waren im Firefox Responsive-Design-Modus `418x642` aufgenommen).
+  * Systematische Desktop-Prüfung aller oberen Kopfzeilen und Aktionsleisten (1280px, 1440px, 1920px).
+* **Harmonisierung der Desktop-Kopfzeilen & Buttons:**
+  * **Admin Dashboard:** Obere Navigationsbuttons auf exakt identische `h-8 sm:h-9 rounded-xl` Abmessungen wie CompanyDashboard und Layout vereinheitlicht.
+  * **Projekt Workspace Header (`Layout.tsx`):** Root-Admin-Schnellzugriff (`Shield`) nun auch im Projekt-Header für Super-Admins integriert.
+  * **Finanzen (`FinanceTab.tsx`):** Aktionsbuttons (Offerte, Rechnung, Spesen, Fremdkosten) auf einheitliche `h-9 rounded-xl` mit standardisierten Icons und Abständen angepasst; Jahresauswahl als schlankes Pill-Dropdown.
+  * **Mängelmanagement (`Defects.tsx`):** Header-Aktionsleiste konsolidiert; KI-Insights-Button elegant neben Board/Liste-Umschalter und PDF-Export integriert, wodurch die separate untere Leerzeile entfällt.
+  * **Whiteboard (`Whiteboard.tsx`):** Sämtliche Werkzeug- und Exportbuttons (KI-Assistent, Import, Cloud-Speichern, Export) auf einheitliche `h-9 rounded-xl font-bold` standardisiert.
+  * **Pitch Deck (`PitchDeck.tsx`):** Kopfzeilen-Aktionen (Teilen, Export, Studio, Präsentationsmodus) mit einheitlichen `h-9 rounded-xl` Buttons ausgestattet.
+  * **Meet & Chat (`MeetChat.tsx`):** Video/Whiteboard-Umschalter und Aktionsbuttons (Historie, Termin planen) auf `h-9 rounded-xl` vereinheitlicht.
+* **TypeScript & Build:** 0 Fehler (`tsc --noEmit`), Vite Production Build in 14.54s erfolgreich.
+
+### 1. CRM, Branding, Screensaver, Dokumenten-Hub & Mobile First Harmonisierung
 * **CRM & Team («vesciodesign» Fix):**
   * Optionale Felder für **Firma**, **Webseite** und **Standort / Adresse** in das Modal für interne Teammitglieder integriert.
   * Beim Bearbeiten des eigenen Profils werden `profiles` und `companies` in Supabase automatisch synchronisiert.
