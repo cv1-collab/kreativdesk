@@ -1685,7 +1685,12 @@ export default function MeetChat() {
 
           <div className={cn("bg-surface border border-border/50 rounded-3xl flex flex-col shrink-0 transition-all duration-300 relative z-40 shadow-sm", showChat ? "h-[40vh] md:h-auto md:w-[400px] opacity-100" : "h-0 md:w-0 opacity-0 overflow-hidden border-none")}>
             <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/80 shrink-0">
-              <h3 className="font-bold text-sm uppercase tracking-widest flex items-center gap-2 text-text-primary"><MessageSquare size={16} className="text-text-muted" /> {t('project_chat')}</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <MessageSquare size={15} />
+                </div>
+                <h3 className="font-bold text-sm uppercase tracking-widest text-text-primary">{t('project_chat')}</h3>
+              </div>
               <div className="flex items-center gap-2">
                 <button onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="px-3 py-1.5 bg-accent-ai/10 text-accent-ai rounded-md text-xs font-bold hover:bg-accent-ai/20 transition-colors flex items-center gap-1.5 disabled:opacity-50 shadow-sm">
                   {isGeneratingSummary ? <Loader2 size={12} className="animate-spin" /> : <FileCheck size={12} />} {t('ai_summary')}
@@ -1695,7 +1700,12 @@ export default function MeetChat() {
             </div>
 
             <div className="p-4 border-b border-border/50 bg-background/30 shrink-0">
-              <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Clock size={14} /> {t('upcoming_calls')}</h3>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 h-6 rounded-lg bg-text-muted/10 text-text-muted border border-border/50 flex items-center justify-center shrink-0">
+                  <Clock size={13} />
+                </div>
+                <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('upcoming_calls')}</h3>
+              </div>
               {upcomingCalls.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {upcomingCalls.slice(0, 2).map((call, idx) => (

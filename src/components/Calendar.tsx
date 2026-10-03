@@ -1405,16 +1405,20 @@ export default function Calendar() {
           <div className="flex flex-wrap items-center justify-between border-b border-border/50 pb-4 gap-3">
             <div>
               <span className="text-xs font-bold uppercase tracking-widest text-text-muted">{t('day_agenda')}</span>
-              <h3 className="text-lg sm:text-xl font-semibold text-text-primary flex items-center gap-2 mt-0.5">
-                <CalendarIcon className="text-accent-ai" size={20} />
-                {selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </h3>
+              <div className="flex items-center gap-2.5 mt-1">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <CalendarIcon size={16} />
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-text-primary tracking-tight">
+                  {selectedCalendarDate.toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                </h3>
+              </div>
             </div>
 
             {!isDemoMode && (
               <button
                 onClick={handleAddPhase}
-                className="px-4 py-2 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all cursor-pointer"
+                className="h-9 px-4 bg-accent-ai text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs hover:bg-accent-ai/90 transition-all cursor-pointer"
               >
                 <Plus size={16} /> <span>{t('add_phase')}</span>
               </button>
@@ -1638,9 +1642,14 @@ export default function Calendar() {
             >
               <div className="bg-surface lg:rounded-2xl border-0 lg:border border-border/50 shadow-2xl flex-1 flex flex-col min-h-0 overflow-hidden w-full h-full">
                 <div className="flex items-center justify-between p-3 border-b border-border/50 shrink-0 bg-surface z-50 relative">
-                   <h3 className="font-bold text-sm text-text-primary flex items-center gap-2">
-                      <CalendarIcon size={16} className="text-accent-ai"/> {docHeader.title}
-                   </h3>
+                   <div className="flex items-center gap-2.5">
+                     <div className="w-7 h-7 rounded-lg bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                       <CalendarIcon size={14} />
+                     </div>
+                     <h3 className="font-bold text-sm text-text-primary">
+                        {docHeader.title}
+                     </h3>
+                   </div>
                    <div className="flex items-center gap-2">
                      <button 
                        onClick={() => setIsRotatedCss(prev => !prev)} 
@@ -2147,7 +2156,12 @@ export default function Calendar() {
               <div className="flex-1 p-4 sm:p-8 overflow-y-auto custom-scrollbar flex flex-col items-center bg-background">
                 <div className="w-full max-w-4xl">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 border-b border-border/50 pb-4 gap-4">
-                    <h3 className="text-xl sm:text-2xl font-bold flex items-center gap-3"><AlignJustify className="text-accent-ai"/> {t('daily_standup')}</h3>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                        <AlignJustify size={18} />
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-text-primary">{t('daily_standup')}</h3>
+                    </div>
                     <span className="text-sm font-bold text-text-primary bg-accent-ai/10 text-accent-ai px-4 py-1.5 rounded-lg border border-accent-ai/20">{new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'de-CH', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
                   </div>
 
@@ -2202,9 +2216,9 @@ export default function Calendar() {
       <AnimatePresence>
         {editingTask && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
-              <h3 className="font-bold text-lg">{t('edit_phase')}</h3>
-              <button onClick={() => setEditingTask(null)} className="p-2 hover:bg-white/5 rounded-full text-text-muted hover:text-text-primary"><X size={20}/></button>
+            <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center bg-background/50">
+              <h3 className="font-bold text-base sm:text-lg text-text-primary">{t('edit_phase')}</h3>
+              <button onClick={() => setEditingTask(null)} className="h-8 w-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary bg-background border border-border/50 hover:bg-white/5 transition-colors cursor-pointer shadow-xs"><X size={16}/></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
               <div>
@@ -2245,9 +2259,14 @@ export default function Calendar() {
 
         {isAddingMarker && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
-              <h3 className="font-bold text-lg flex items-center gap-2"><Milestone size={18} className="text-orange-500"/> {t('add_milestone')}</h3>
-              <button onClick={() => setIsAddingMarker(false)} className="p-2 hover:bg-white/5 rounded-full text-text-muted hover:text-text-primary"><X size={20}/></button>
+            <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center bg-background/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Milestone size={16} />
+                </div>
+                <h3 className="font-bold text-base sm:text-lg text-text-primary">{t('add_milestone')}</h3>
+              </div>
+              <button onClick={() => setIsAddingMarker(false)} className="h-8 w-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary bg-background border border-border/50 hover:bg-white/5 transition-colors cursor-pointer shadow-xs"><X size={16}/></button>
             </div>
             <div className="flex-1 p-6 space-y-6 overflow-y-auto">
               <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Titel</label><input type="text" value={newMarker.label} onChange={e => setNewMarker({...newMarker, label: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai" /></div>
@@ -2276,9 +2295,14 @@ export default function Calendar() {
 
         {editingMarker && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
-              <h3 className="font-bold text-lg flex items-center gap-2"><Milestone size={18} className="text-orange-500"/> Meilenstein bearbeiten</h3>
-              <button onClick={() => setEditingMarker(null)} className="p-2 hover:bg-white/5 rounded-full text-text-muted hover:text-text-primary"><X size={20}/></button>
+            <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center bg-background/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Milestone size={16} />
+                </div>
+                <h3 className="font-bold text-base sm:text-lg text-text-primary">Meilenstein bearbeiten</h3>
+              </div>
+              <button onClick={() => setEditingMarker(null)} className="h-8 w-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary bg-background border border-border/50 hover:bg-white/5 transition-colors cursor-pointer shadow-xs"><X size={16}/></button>
             </div>
             <div className="flex-1 p-6 space-y-6 overflow-y-auto">
               <div><label className="block text-xs font-bold text-text-muted uppercase tracking-widest mb-2">Titel</label><input type="text" value={editingMarker.label} onChange={e => setEditingMarker({...editingMarker, label: e.target.value})} className="w-full bg-background border border-border/50 rounded-xl px-4 py-3 text-sm font-bold text-text-primary focus:outline-none focus:border-accent-ai" /></div>
@@ -2303,9 +2327,14 @@ export default function Calendar() {
 
         {editingShape && !isDemoMode && (
           <motion.aside initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="absolute top-0 right-0 h-full w-full sm:w-96 bg-surface border-l border-border shadow-2xl z-[200] flex flex-col">
-            <div className="p-5 border-b border-border flex justify-between items-center bg-background/50">
-              <h3 className="font-bold text-lg flex items-center gap-2"><Edit2 size={18} className="text-blue-500"/> Notiz / Element bearbeiten</h3>
-              <button onClick={() => setEditingShape(null)} className="p-2 hover:bg-white/5 rounded-full text-text-muted hover:text-text-primary"><X size={20}/></button>
+            <div className="p-4 sm:p-5 border-b border-border flex justify-between items-center bg-background/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Edit2 size={16} />
+                </div>
+                <h3 className="font-bold text-base sm:text-lg text-text-primary">Notiz / Element bearbeiten</h3>
+              </div>
+              <button onClick={() => setEditingShape(null)} className="h-8 w-8 flex items-center justify-center rounded-lg text-text-muted hover:text-text-primary bg-background border border-border/50 hover:bg-white/5 transition-colors cursor-pointer shadow-xs"><X size={16}/></button>
             </div>
             <div className="flex-1 p-6 space-y-6 overflow-y-auto">
               {(editingShape.type === 'note' || editingShape.type === 'text') && (

@@ -1047,7 +1047,12 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
     <>
       <div className="bg-surface border border-border rounded-xl p-4 flex flex-col min-h-0 shrink-0">
         <div className="flex justify-between items-center mb-3 shrink-0">
-          <h3 className="font-medium flex items-center gap-2 text-sm"><Box size={16} className="text-text-muted" />{t('model_library')}</h3>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-surface border border-border/40 flex items-center justify-center text-text-muted shrink-0 shadow-xs">
+              <Box size={13} />
+            </div>
+            <h3 className="font-medium text-sm text-text-primary">{t('model_library')}</h3>
+          </div>
           
           <label 
             htmlFor="upload-model-header" 
@@ -1101,7 +1106,12 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
       </div>
 
       <div className="bg-surface border border-border rounded-xl p-4 flex flex-col min-h-0 shrink-0">
-        <h3 className="font-medium mb-4 flex items-center gap-2 text-sm shrink-0"><Layers size={16} className="text-text-muted" />{t('model_layers')}</h3>
+        <div className="flex items-center gap-2 mb-4 shrink-0">
+          <div className="w-6 h-6 rounded-md bg-surface border border-border/40 flex items-center justify-center text-text-muted shrink-0 shadow-xs">
+            <Layers size={13} />
+          </div>
+          <h3 className="font-medium text-sm text-text-primary">{t('model_layers')}</h3>
+        </div>
         
         {activeModel ? (
           <div className="flex items-center justify-center text-center p-4 bg-background rounded-lg border border-dashed border-border overflow-hidden">
@@ -1374,8 +1384,13 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-surface border border-border rounded-2xl w-full max-w-5xl shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh] overflow-hidden">
                 <div className="p-5 border-b border-border flex items-center justify-between bg-surface shrink-0">
-                  <h2 className="text-xl font-bold flex items-center gap-3 text-text-primary"><Sparkles className="text-accent-ai" size={22} />{t('ai_high_end_rendering')}</h2>
-                  <button onClick={(e) => { e.stopPropagation(); setShowRenderModal(false); }} className="text-text-muted hover:text-text-primary p-2 rounded-lg hover:bg-background transition-colors"><X size={20} /></button>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                      <Sparkles size={16} />
+                    </div>
+                    <h2 className="text-xl font-bold text-text-primary">{t('ai_high_end_rendering')}</h2>
+                  </div>
+                  <button onClick={(e) => { e.stopPropagation(); setShowRenderModal(false); }} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-8 flex flex-col md:flex-row gap-8 bg-surface">
                   <div className="w-full md:w-1/3 flex flex-col gap-5">
@@ -1433,12 +1448,17 @@ export default function BIMViewer({ projectId: propProjectId }: { projectId?: st
           {defectPrompt && (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95">
-                <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2"><ShieldAlert className="text-red-500"/> {t('describe_defect')}</h3>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <ShieldAlert size={16}/>
+                  </div>
+                  <h3 className="text-lg font-bold text-text-primary">{t('describe_defect')}</h3>
+                </div>
                 <form onSubmit={handleDefectSubmit}>
                   <input type="text" value={defectPrompt.value} onChange={(e) => setDefectPrompt({ ...defectPrompt, value: e.target.value })} className="w-full bg-background border border-border rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 mb-5 font-medium shadow-sm transition-all" placeholder={t('defect_placeholder')} autoFocus />
                   <div className="flex justify-end gap-3">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setDefectPrompt(null); }} className="px-5 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                    <button type="submit" className="px-5 py-2.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all shadow-sm">{t('create_ticket')}</button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setDefectPrompt(null); }} className="h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
+                    <button type="submit" className="h-9 px-5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-xs cursor-pointer">{t('create_ticket')}</button>
                   </div>
                 </form>
               </div>

@@ -1111,8 +1111,13 @@ export default function CompanyDashboard() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsNewProjectModalOpen(false)}>
           <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
              <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
-               <h3 className="font-bold flex items-center gap-2 text-text-primary text-lg"><Building2 size={20} className="text-accent-ai" /> {t('create_project')}</h3>
-               <button onClick={() => setIsNewProjectModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border"><X size={20}/></button>
+               <div className="flex items-center gap-2.5">
+                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                   <Building2 size={16} />
+                 </div>
+                 <h3 className="font-bold text-text-primary text-base sm:text-lg">{t('create_project')}</h3>
+               </div>
+               <button onClick={() => setIsNewProjectModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
              </div>
              <form id="new-project-form" onSubmit={handleCreateProject} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
                
@@ -1154,9 +1159,9 @@ export default function CompanyDashboard() {
                </div>
              </form>
              <div className="p-4 sm:p-6 border-t border-border/50 bg-surface/90 shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-3 pb-8 sm:pb-6">
-               <button type="button" onClick={() => setIsNewProjectModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-               <button type="submit" form="new-project-form" disabled={isSubmitting || !newProjectData.name} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
-                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} {t('create_project')}
+               <button type="button" onClick={() => setIsNewProjectModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
+               <button type="submit" form="new-project-form" disabled={isSubmitting || !newProjectData.name} className="w-full sm:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer shadow-xs">
+                 {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />} {t('create_project')}
                </button>
              </div>
           </div>
@@ -1169,8 +1174,13 @@ export default function CompanyDashboard() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsEditProjectModalOpen(false)}>
           <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
              <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
-               <h3 className="font-bold flex items-center gap-2 text-text-primary text-lg"><Edit2 size={20} className="text-accent-ai" /> {t('rename_project')}</h3>
-               <button onClick={() => setIsEditProjectModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border"><X size={20}/></button>
+               <div className="flex items-center gap-2.5">
+                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                   <Edit2 size={16} />
+                 </div>
+                 <h3 className="font-bold text-text-primary text-base sm:text-lg">{t('rename_project')}</h3>
+               </div>
+               <button onClick={() => setIsEditProjectModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
              </div>
              <form id="edit-project-form" onSubmit={handleSaveEditProject} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
                <div className="space-y-2">
@@ -1196,9 +1206,9 @@ export default function CompanyDashboard() {
                </div>
              </form>
              <div className="p-4 sm:p-6 border-t border-border/50 bg-surface/90 shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-3 pb-8 sm:pb-6">
-               <button type="button" onClick={() => setIsEditProjectModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-               <button type="submit" form="edit-project-form" disabled={isSavingEditProject || !editProjectName.trim()} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
-                 {isSavingEditProject ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16} />} {t('save')}
+               <button type="button" onClick={() => setIsEditProjectModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
+               <button type="submit" form="edit-project-form" disabled={isSavingEditProject || !editProjectName.trim()} className="w-full sm:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer shadow-xs">
+                 {isSavingEditProject ? <Loader2 size={15} className="animate-spin" /> : <Edit2 size={15} />} {t('save')}
                </button>
              </div>
           </div>
@@ -1211,8 +1221,13 @@ export default function CompanyDashboard() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsNewFolderModalOpen(false)}>
           <div className="bg-surface border-t md:border border-border/50 md:rounded-2xl w-full max-w-sm shadow-2xl flex flex-col h-[100dvh] md:h-auto animate-in slide-in-from-bottom md:zoom-in-95 mt-auto md:mt-0" onClick={e => e.stopPropagation()}>
              <div className="p-4 md:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
-               <h3 className="font-bold flex items-center gap-2 text-text-primary"><FolderOpen className="text-accent-ai" size={18} /> {t('create_folder')}</h3>
-               <button onClick={() => setIsNewFolderModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border"><X size={20}/></button>
+               <div className="flex items-center gap-2.5">
+                 <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                   <FolderOpen size={16} />
+                 </div>
+                 <h3 className="font-bold text-text-primary text-base sm:text-lg">{t('create_folder')}</h3>
+               </div>
+               <button onClick={() => setIsNewFolderModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
              </div>
              <form id="new-folder-form" onSubmit={handleCreateFolder} className="p-4 md:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50">
                <div className="space-y-2">
@@ -1221,9 +1236,9 @@ export default function CompanyDashboard() {
                </div>
              </form>
              <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-3 border-t border-border/50 bg-surface/90 shrink-0 pb-8 sm:pb-6">
-               <button type="button" onClick={() => setIsNewFolderModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-               <button type="submit" form="new-folder-form" disabled={!newFolderName} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all flex justify-center items-center gap-2 disabled:opacity-50">
-                  <Plus size={16}/> {t('create_folder')}
+               <button type="button" onClick={() => setIsNewFolderModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
+               <button type="submit" form="new-folder-form" disabled={!newFolderName} className="w-full sm:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all flex justify-center items-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs">
+                  <Plus size={15}/> {t('create_folder')}
                </button>
              </div>
           </div>

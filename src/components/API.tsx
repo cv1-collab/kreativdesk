@@ -440,13 +440,17 @@ export default function API() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface border border-border/80 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                <Webhook size={20} className="text-emerald-500" />
-                {isDe ? 'Neuen Outgoing Webhook anlegen' : 'Add Outgoing Webhook'}
-              </h3>
-              <button onClick={() => setShowAddModal(false)} className="p-1 text-text-muted hover:text-text-primary">
-                <X size={18} />
+            <div className="flex items-center justify-between pb-3 border-b border-border/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Webhook size={16} />
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-text-primary">
+                  {isDe ? 'Neuen Outgoing Webhook anlegen' : 'Add Outgoing Webhook'}
+                </h3>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs">
+                <X size={16} />
               </button>
             </div>
 
@@ -501,13 +505,13 @@ export default function API() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 bg-background hover:bg-surface text-text-muted rounded-xl text-xs font-semibold transition-all"
+                  className="h-9 px-5 bg-background border border-border/50 hover:bg-surface text-text-muted hover:text-text-primary rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
                 >
                   {isDe ? 'Abbrechen' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all shadow-md shadow-emerald-500/20"
+                  className="h-9 px-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/20 cursor-pointer shadow-xs"
                 >
                   {isDe ? 'Webhook Speichern' : 'Save Webhook'}
                 </button>

@@ -394,8 +394,13 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
         <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border-t sm:border border-border sm:rounded-3xl rounded-t-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="p-5 border-b border-border flex justify-between items-center bg-surface/50 shrink-0">
-              <h3 className="font-bold text-text-primary flex items-center gap-2"><UserPlus size={20} className="text-accent-ai" /> {t('add_person')}</h3>
-              <button onClick={() => setIsAddMemberModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors bg-background p-2 rounded-xl border border-border/50"><X size={20}/></button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <UserPlus size={16} />
+                </div>
+                <h3 className="font-bold text-text-primary text-base sm:text-lg">{t('add_person')}</h3>
+              </div>
+              <button onClick={() => setIsAddMemberModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
             </div>
             
             <div className="flex p-1.5 gap-1 bg-background border-b border-border shrink-0">
@@ -456,14 +461,14 @@ export default function ProjectTeam({ projectId: propProjectId }: { projectId?: 
               </div>
             </form>
             
-            <div className="p-6 pt-2 border-t border-border/50 bg-surface flex flex-col sm:flex-row justify-end gap-3 shrink-0">
-                <button type="button" onClick={() => setIsAddMemberModalOpen(false)} className="w-full sm:w-auto px-6 py-3.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors border border-border sm:border-transparent rounded-xl">{t('cancel')}</button>
+            <div className="p-5 border-t border-border/50 bg-surface flex flex-col sm:flex-row justify-end gap-3 shrink-0">
+                <button type="button" onClick={() => setIsAddMemberModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary transition-colors border border-border/50 rounded-xl cursor-pointer shadow-xs">{t('cancel')}</button>
                 <button 
                   onClick={handleFormSubmit}
                   disabled={isProcessing || (addMode === 'existing' && !selectedUserId)} 
-                  className="w-full sm:w-auto px-8 py-3.5 bg-accent-ai text-white rounded-xl text-sm font-bold hover:bg-accent-ai/90 transition-colors shadow-lg shadow-accent-ai/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold hover:bg-accent-ai/90 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                 >
-                  {isProcessing && <Loader2 size={18} className="animate-spin" />} {isProcessing ? t('processing') : (addMode === 'new' ? t('invite_and_add') : t('save'))}
+                  {isProcessing && <Loader2 size={15} className="animate-spin" />} {isProcessing ? t('processing') : (addMode === 'new' ? t('invite_and_add') : t('save'))}
                 </button>
             </div>
           </div>

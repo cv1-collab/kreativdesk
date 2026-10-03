@@ -1800,7 +1800,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 )}
                 {selectedContact.description && (
                   <div className="col-span-2 space-y-4">
-                    <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest flex items-center gap-2"><FileText size={12}/> {t('internal_notes')}</h3>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-md bg-text-muted/10 text-text-muted border border-border/50 flex items-center justify-center shrink-0">
+                        <FileText size={11}/>
+                      </div>
+                      <h3 className="text-[10px] uppercase font-bold text-text-muted tracking-widest">{t('internal_notes')}</h3>
+                    </div>
                     <div className="bg-background border border-border/50 p-5 rounded-2xl text-sm leading-relaxed text-text-primary whitespace-pre-wrap font-medium">{selectedContact.description}</div>
                   </div>
                 )}
@@ -2093,7 +2098,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                         {!newContact.id && (
                           <div className="bg-surface border border-blue-500/20 rounded-2xl p-5 flex flex-col items-center text-center relative overflow-hidden group shadow-sm">
                             <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors"></div>
-                            <h4 className="text-sm font-bold text-blue-500 mb-1 flex items-center gap-2 relative z-10"><Smartphone size={16}/> {t('live_qr_scanner')}</h4>
+                            <div className="flex items-center gap-2 mb-1 relative z-10">
+                              <div className="w-6 h-6 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                                <Smartphone size={13}/>
+                              </div>
+                              <h4 className="text-sm font-bold text-blue-500">{t('live_qr_scanner')}</h4>
+                            </div>
                             <p className="text-xs text-text-muted mb-4 relative z-10 font-medium">Scanne Visitenkarten mit dem Handy – KI füllt Firma, Name & Telefon direkt aus!</p>
                             <div className="bg-white p-2 rounded-xl relative z-10 shadow-lg"><QRCode value={mobileUploadUrl} size={120} /></div>
                           </div>
@@ -2474,7 +2484,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           <div className="bg-background border border-border/50 rounded-2xl shadow-2xl w-full max-w-6xl h-[90vh] flex overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="w-80 border-r border-border/50 bg-surface/30 flex flex-col shrink-0">
               <div className="p-6 pb-4 border-b border-border/50 flex items-center justify-between">
-                <h3 className="font-semibold text-lg text-text-primary flex items-center gap-2"><PenTool size={18} className="text-accent-ai" /> {t('export_pdf_title')}</h3>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <PenTool size={16} />
+                  </div>
+                  <h3 className="font-semibold text-lg text-text-primary">{t('export_pdf_title')}</h3>
+                </div>
                 <button onClick={() => setIsPrintModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors"><X size={20} /></button>
               </div>
               <div className="p-6 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
@@ -2584,9 +2599,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
             
             <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
-              <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary">
-                <Camera size={20} className="text-accent-ai" /> Visitenkarte scannen & KI-Erfassung
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Camera size={16} />
+                </div>
+                <h3 className="font-bold text-lg text-text-primary">Visitenkarte scannen & KI-Erfassung</h3>
+              </div>
               <button onClick={() => { setIsScannerModalOpen(false); setScannedCardPreview(null); }} className="text-text-muted hover:text-text-primary p-2">
                 <X size={20} />
               </button>
@@ -2613,7 +2631,12 @@ Antworte AUSSCHLIESSLICH mit dem validen JSON-Code ohne Markdown-Formatierung od
                 </div>
 
                 <div className="bg-background border border-blue-500/20 rounded-xl p-4 flex flex-col items-center text-center">
-                  <h4 className="text-xs font-bold text-blue-500 mb-1 flex items-center gap-1.5"><Smartphone size={14} /> Smartphone QR-Scan</h4>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0">
+                      <Smartphone size={12} />
+                    </div>
+                    <h4 className="text-xs font-bold text-blue-500">Smartphone QR-Scan</h4>
+                  </div>
                   <p className="text-[11px] text-text-muted mb-2 font-medium">Scanne diesen Code mit der Handy-Kamera:</p>
                   <div className="bg-white p-2 rounded-lg border border-border shadow-sm">
                     <QRCode value={mobileUploadUrl} size={110} />

@@ -2574,15 +2574,17 @@ export default function Finance() {
                 <p className="text-2xl font-bold text-text-primary font-medium">CHF {formatCHF(overviewTotalBudget)}</p>
               </div>
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
-                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <ArrowUpRight className="text-emerald-400" size={14} /> {t('revenue')}
-                </h3>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <ArrowUpRight className="text-emerald-400" size={13} />
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('revenue')}</h3>
+                </div>
                 <p className="text-2xl font-bold text-emerald-400 font-medium">CHF {formatCHF(filteredInvoiced)}</p>
               </div>
               <div className="bg-surface border border-border rounded-xl p-5 shadow-sm">
-                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <ArrowDownRight className="text-red-400" size={14} /> {t('costs')}
-                </h3>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <ArrowDownRight className="text-red-400" size={13} />
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('costs')}</h3>
+                </div>
                 <p className="text-2xl font-bold text-red-400 font-medium">CHF {formatCHF(filteredSpent)}</p>
               </div>
               <div className="tour-finance-profit bg-gradient-to-br from-surface to-accent-ai/5 border border-border rounded-xl p-5 shadow-sm">
@@ -2617,9 +2619,14 @@ export default function Finance() {
                 </div>
               </div>
               <div className="lg:col-span-2 bg-surface border border-border rounded-xl p-6 flex flex-col min-h-[380px] min-w-0">
-                <h3 className="text-sm font-semibold mb-6 flex items-center gap-2">
-                  <TrendingUp className="text-accent-ai" size={18} /> {t('planned_vs_actual')}
-                </h3>
+                <div className="flex items-center gap-2.5 mb-6">
+                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <TrendingUp size={16} />
+                  </div>
+                  <h3 className="font-bold text-base text-text-primary tracking-tight">
+                    {t('planned_vs_actual')}
+                  </h3>
+                </div>
                 <div className="flex-1 w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
@@ -3334,8 +3341,13 @@ export default function Finance() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
-              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Clock className="text-orange-400" size={18} /> {t('book_hours')}</h3>
-              <button onClick={() => setShowTimeModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18} /></button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Clock size={16} />
+                </div>
+                <h3 className="font-bold text-base text-text-primary tracking-tight">{t('book_hours')}</h3>
+              </div>
+              <button onClick={() => setShowTimeModal(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
             </div>
             <div className="p-6 overflow-y-auto max-h-[85vh] custom-scrollbar">
               <form id="time-form" onSubmit={handleTimeSubmit} className="space-y-4">
@@ -3607,9 +3619,14 @@ export default function Finance() {
             {/* LEFT SIDE: UNIFIED BELEG- & SCANNER-HUB */}
             <div className="w-full lg:w-5/12 p-5 sm:p-6 border-b lg:border-b-0 lg:border-r border-border bg-background/50 flex flex-col overflow-y-auto custom-scrollbar min-h-0 h-full">
               <div className="flex items-center justify-between gap-2 mb-4 shrink-0">
-                <h3 className="font-bold text-base sm:text-lg flex items-center gap-2 text-text-primary">
-                  <Receipt className="text-red-500 shrink-0" size={20} /> {t('receipts_photos')}
-                </h3>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <Receipt size={16} />
+                  </div>
+                  <h3 className="font-bold text-base sm:text-lg text-text-primary tracking-tight">
+                    {t('receipts_photos')}
+                  </h3>
+                </div>
                 <span className="text-[11px] font-bold bg-red-500/10 text-red-500 px-2.5 py-0.5 rounded-full shrink-0">
                   {incomingReceipts.length} {incomingReceipts.length === 1 ? (currentLang === 'de' ? 'Beleg' : 'Receipt') : (currentLang === 'de' ? 'Belege' : 'Receipts')}
                 </span>
@@ -4089,8 +4106,13 @@ export default function Finance() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 dark:bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/50">
-              <h3 className="font-bold flex items-center gap-2 text-text-primary"><Plus className="text-accent-ai" size={18} /> BKP CSV-Import</h3>
-              <button onClick={() => setShowCsvImportModal(false)} className="text-text-muted hover:text-text-primary p-1 rounded-md bg-background"><X size={18} /></button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Plus size={16} />
+                </div>
+                <h3 className="font-bold text-base text-text-primary tracking-tight">BKP CSV-Import</h3>
+              </div>
+              <button onClick={() => setShowCsvImportModal(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16} /></button>
             </div>
             <div className="p-6 space-y-4">
               <p className="text-xs text-text-muted">Füge CSV-Zeilen im Format <code>Pos;Bezeichnung;Menge;Einheit;Einheitspreis</code> ein:</p>
@@ -4102,8 +4124,8 @@ export default function Finance() {
               />
             </div>
             <div className="p-4 border-t border-border bg-surface flex justify-end gap-3 shrink-0">
-              <button onClick={() => setShowCsvImportModal(false)} className="px-5 py-2 text-sm font-bold text-text-muted border border-border rounded-lg hover:text-text-primary transition-colors">{t('cancel')}</button>
-              <button onClick={handleImportCSV} disabled={!csvImportText.trim()} className="px-5 py-2 bg-accent-ai text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-lg disabled:opacity-50">
+              <button onClick={() => setShowCsvImportModal(false)} className="h-9 px-4 text-xs font-bold text-text-muted border border-border/60 rounded-xl hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
+              <button onClick={handleImportCSV} disabled={!csvImportText.trim()} className="h-9 px-4 bg-accent-ai text-white rounded-xl text-xs font-bold flex items-center gap-2 hover:opacity-90 transition-opacity shadow-xs disabled:opacity-50 cursor-pointer">
                 Positionen Importieren
               </button>
             </div>

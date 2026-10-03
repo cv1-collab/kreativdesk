@@ -822,8 +822,13 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-3">
-              <h3 className="font-bold text-base flex items-center gap-2 text-text-primary"><Share2 className="text-purple-400" size={18}/> Präsentation Teilen</h3>
-              <button onClick={() => setIsShareModalOpen(false)} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={16}/></button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Share2 size={16}/>
+                </div>
+                <h3 className="font-bold text-base text-text-primary">Präsentation Teilen</h3>
+              </div>
+              <button onClick={() => setIsShareModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
             </div>
             
             <p className="text-xs text-text-muted">
@@ -885,13 +890,18 @@ export default function PitchDeck({ projectId: propProjectId }: { projectId?: st
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-6">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
-              <div>
-                <h3 className="font-extrabold text-lg flex items-center gap-2.5 text-text-primary">
-                  <Download className="text-blue-500" size={22}/> Präsentation Exportieren
-                </h3>
-                <p className="text-xs text-text-muted mt-0.5">Wähle das gewünschte Dateiformat für Mac, Windows oder Druck:</p>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Download size={18}/>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg text-text-primary">
+                    Präsentation Exportieren
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">Wähle das gewünschte Dateiformat für Mac, Windows oder Druck:</p>
+                </div>
               </div>
-              <button onClick={() => setIsFormatModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 bg-background border border-border rounded-xl cursor-pointer"><X size={18}/></button>
+              <button onClick={() => setIsFormatModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
             </div>
 
             <div className="grid grid-cols-1 gap-4">

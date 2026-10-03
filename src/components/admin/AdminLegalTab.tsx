@@ -64,13 +64,19 @@ export default function AdminLegalTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-xl font-semibold text-text-primary mb-2 flex items-center gap-2">
-          <Scale className="text-blue-500" size={24} />
-          Rechtliches & Compliance (AGB / AVV)
-        </h3>
-        <p className="text-text-muted text-sm font-medium mb-6">
-          Lade hier die verbindlichen PDF-Dokumente für AGB, AVV und Datenschutz hoch. 
-        </p>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Scale size={20} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold tracking-tight text-text-primary">
+              Rechtliches & Compliance (AGB / AVV)
+            </h3>
+            <p className="text-text-muted text-xs sm:text-sm font-medium mt-0.5">
+              Lade hier die verbindlichen PDF-Dokumente für AGB, AVV und Datenschutz hoch. 
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[

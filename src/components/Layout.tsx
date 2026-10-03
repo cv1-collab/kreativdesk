@@ -655,11 +655,16 @@ export default function Layout() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsRenameModalOpen(false)}>
           <div className="bg-surface border-t sm:border border-border sm:rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-auto animate-in slide-in-from-bottom sm:zoom-in-95 mt-auto sm:mt-0" onClick={e => e.stopPropagation()}>
             <div className="p-4 sm:p-6 border-b border-border/50 flex items-center justify-between bg-surface/90 backdrop-blur-md shrink-0">
-              <h3 className="font-bold flex items-center gap-2 text-text-primary text-lg">
-                <Edit2 size={20} className="text-accent-ai" /> {currentLang === 'de' ? 'Projekt umbenennen' : 'Rename Project'}
-              </h3>
-              <button onClick={() => setIsRenameModalOpen(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg border border-border">
-                <X size={20} />
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Edit2 size={16} />
+                </div>
+                <h3 className="font-bold text-text-primary text-base sm:text-lg">
+                  {currentLang === 'de' ? 'Projekt umbenennen' : 'Rename Project'}
+                </h3>
+              </div>
+              <button onClick={() => setIsRenameModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs">
+                <X size={16} />
               </button>
             </div>
             <form id="rename-proj-layout-form" onSubmit={handleSaveRename} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
@@ -690,11 +695,11 @@ export default function Layout() {
               </div>
             </form>
             <div className="p-4 sm:p-6 border-t border-border/50 bg-surface/90 shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-3 pb-8 sm:pb-6">
-              <button type="button" onClick={() => setIsRenameModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">
+              <button type="button" onClick={() => setIsRenameModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">
                 {currentLang === 'de' ? 'Abbrechen' : 'Cancel'}
               </button>
-              <button type="submit" form="rename-proj-layout-form" disabled={isRenaming || !renameValue.trim()} className="w-full sm:w-auto px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg shadow-accent-ai/20 hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2">
-                {isRenaming ? <Loader2 size={16} className="animate-spin" /> : <Edit2 size={16} />} {currentLang === 'de' ? 'Speichern' : 'Save'}
+              <button type="submit" form="rename-proj-layout-form" disabled={isRenaming || !renameValue.trim()} className="w-full sm:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex justify-center items-center gap-2 cursor-pointer shadow-xs">
+                {isRenaming ? <Loader2 size={15} className="animate-spin" /> : <Edit2 size={15} />} {currentLang === 'de' ? 'Speichern' : 'Save'}
               </button>
             </div>
           </div>

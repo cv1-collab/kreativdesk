@@ -380,8 +380,13 @@ export default function UniversalPDFStudio({
         {/* SIDEBAR */}
         <div className="w-80 bg-surface border-r border-border flex flex-col shrink-0 relative z-20">
           <div className="p-6 border-b border-border flex items-center justify-between">
-            <h3 className="font-bold text-lg text-text-primary flex items-center gap-2"><FileText size={18} className="text-accent-ai" /> {title}</h3>
-            <button onClick={onClose} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title={t('close')}><X size={18} /></button>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                <FileText size={16} />
+              </div>
+              <h3 className="font-bold text-lg text-text-primary">{title}</h3>
+            </div>
+            <button onClick={onClose} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs" title={t('close')}><X size={16} /></button>
           </div>
           
           <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">

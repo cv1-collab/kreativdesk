@@ -544,7 +544,12 @@ export default function Dashboard() {
         {canSeeFinance ? (
           <div className="tour-overview-budget bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[320px]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-base flex items-center gap-2"><PieChartIcon size={18} className="text-accent-ai"/> {t('budget_utilization')}</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <PieChartIcon size={14} />
+                </div>
+                <h3 className="font-bold text-sm sm:text-base text-text-primary tracking-tight">{t('budget_utilization')}</h3>
+              </div>
               {overviewTotalBudget > 0 && (
                 <span className="text-xs font-bold text-text-muted">
                   CHF {formatCHF(overviewTotalBudget)}
@@ -614,10 +619,14 @@ export default function Dashboard() {
         ) : (
           <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[320px]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-base flex items-center gap-2">
-                <Shield size={18} className="text-blue-500"/> 
-                {currentLang === 'de' ? 'Mein Gewerk & Tickets' : 'My Trade & Tickets'}
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Shield size={14} />
+                </div>
+                <h3 className="font-bold text-sm sm:text-base text-text-primary tracking-tight">
+                  {currentLang === 'de' ? 'Mein Gewerk & Tickets' : 'My Trade & Tickets'}
+                </h3>
+              </div>
               <span className="text-xs font-bold text-blue-500 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-full">
                 Zero Leakage
               </span>
@@ -636,7 +645,7 @@ export default function Dashboard() {
               </p>
               <button
                 onClick={() => activeProject?.id && navigate(`/project/${activeProject.id}/defects`)}
-                className="px-4 py-2 bg-accent-ai text-white rounded-xl text-xs font-bold hover:bg-accent-ai/90 transition-colors shadow-md"
+                className="h-9 px-4 bg-accent-ai text-white rounded-xl text-xs font-bold hover:bg-accent-ai/90 transition-colors shadow-sm cursor-pointer"
               >
                 {currentLang === 'de' ? 'Zur Mängel-Übersicht' : 'View Punch List'}
               </button>
@@ -649,7 +658,12 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-surface border border-border rounded-xl p-5 shadow-sm flex flex-col min-h-[300px]">
-          <h3 className="font-semibold text-base flex items-center gap-2 mb-4"><Activity size={18} className="text-accent-ai"/> {t('recent_activities')}</h3>
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Activity size={14} />
+            </div>
+            <h3 className="font-bold text-sm sm:text-base text-text-primary tracking-tight">{t('recent_activities')}</h3>
+          </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar -mx-2 px-2">
             {recentActivities.length === 0 ? (
               <div className="text-sm text-text-muted italic">{t('no_recent_activities')}</div>

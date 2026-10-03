@@ -858,8 +858,12 @@ export default function LeadsTab() {
             {!isMobileOrTablet && (
               <div className="lg:col-span-1 space-y-6">
                 <div className="bg-background border border-blue-500/20 rounded-xl p-6 flex flex-col items-center text-center relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors"></div>
-                  <h4 className="text-sm font-bold text-blue-500 mb-2 flex items-center gap-2 relative z-10"><Smartphone size={16}/> {t('qr_scanner_title')}</h4>
+                  <div className="flex items-center gap-2 mb-2 relative z-10">
+                    <div className="w-6 h-6 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                      <Smartphone size={13}/>
+                    </div>
+                    <h4 className="text-sm font-bold text-blue-500">{t('qr_scanner_title')}</h4>
+                  </div>
                   <p className="text-xs text-text-muted mb-4 relative z-10">{t('qr_scanner_desc')}</p>
                   <div className="bg-white p-2 rounded-lg relative z-10 shadow-sm border border-border">
                     <QRCode value={mobileUploadUrl} size={150}/>
@@ -1008,8 +1012,13 @@ export default function LeadsTab() {
                 className="m-auto bg-surface md:border border-border md:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[100dvh] md:h-auto md:max-h-[90vh]"
               >
                 <div className="p-4 border-b border-border/50 flex justify-between items-center bg-surface/90 sticky top-0 z-20 shrink-0">
-                  <h3 className="font-bold flex items-center gap-2 text-text-primary"><Megaphone size={18} className="text-orange-500"/> Lead Details</h3>
-                  <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary p-2 bg-background rounded-lg border border-border"><X size={20}/></button>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                      <Megaphone size={16} />
+                    </div>
+                    <h3 className="font-bold text-base sm:text-lg text-text-primary">Lead Details</h3>
+                  </div>
+                  <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-background/50 custom-scrollbar">
@@ -1068,9 +1077,9 @@ export default function LeadsTab() {
                 </div>
                 
                 <div className="p-4 md:p-6 border-t border-border/50 bg-surface/90 flex justify-end gap-3 shrink-0 sticky bottom-0 z-30">
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-bold border border-border sm:border-transparent rounded-lg text-text-muted hover:text-text-primary">{t('cancel')}</button>
-                  <button form="edit-lead-form" type="submit" disabled={isSubmittingScanner} className="w-full sm:w-auto px-8 py-3 bg-orange-500 text-white rounded-lg text-sm font-bold shadow-lg hover:bg-orange-600 flex items-center justify-center gap-2">
-                    {isSubmittingScanner ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle2 size={18}/>} {t('save')}
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold border border-border/50 hover:bg-surface rounded-xl text-text-muted hover:text-text-primary transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
+                  <button form="edit-lead-form" type="submit" disabled={isSubmittingScanner} className="w-full sm:w-auto h-9 px-6 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 cursor-pointer shadow-xs">
+                    {isSubmittingScanner ? <Loader2 size={15} className="animate-spin"/> : <CheckCircle2 size={16}/>} {t('save')}
                   </button>
                 </div>
               </motion.div>

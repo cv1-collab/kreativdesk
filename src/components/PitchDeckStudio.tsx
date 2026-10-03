@@ -3773,7 +3773,12 @@ export default function PitchDeckStudio({
 
               {/* MASTER TEMPLATES & ANIMATIONS */}
               <div className="tour-deck-template">
-                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><Palette size={14}/> {t('master_templates')}</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
+                    <Palette size={12}/>
+                  </div>
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('master_templates')}</h3>
+                </div>
                 <div className="grid grid-cols-1 gap-1.5">
                   {[ {id:'keynote',n:t('keynote')},{id:'scenography',n:t('scenography')},{id:'architecture',n:t('architecture')},{id:'swiss',n:t('swiss')},{id:'photography',n:t('photography')},{id:'neo-brutalism',n:t('neo_brutalism')},{id:'glassmorphism',n:t('glassmorphism')},{id:'cyberpunk',n:t('cyberpunk')},{id:'minimal-tech',n:t('minimal_tech')}].map(thm=>(
                     <button type="button" key={thm.id} onClick={()=>updateDeckSettings({themeStyle:thm.id as any})} className={cn("w-full p-2.5 rounded-lg border text-left transition-all text-xs font-bold flex items-center justify-between", deckSettings.themeStyle===thm.id?"bg-purple-500/10 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm":"bg-background border-border text-text-primary hover:bg-black/5 dark:hover:bg-white/5")}>
@@ -3784,7 +3789,12 @@ export default function PitchDeckStudio({
                 </div>
 
                 <div className="pt-4 border-t border-border mt-4">
-                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 flex items-center gap-2"><Wand2 size={14}/> {t('slide_animation_header')}</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
+                      <Wand2 size={12}/>
+                    </div>
+                    <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('slide_animation_header')}</h3>
+                  </div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {[
                       { id: 'fade', label: 'Fade' },
@@ -3805,7 +3815,12 @@ export default function PitchDeckStudio({
               </div>
 
               <div className="pt-4 border-t border-border">
-                <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3 flex items-center gap-2"><LayoutDashboard size={14}/> {t('import_app_data')}</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-5 h-5 rounded-md bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0">
+                    <LayoutDashboard size={12}/>
+                  </div>
+                  <h3 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('import_app_data')}</h3>
+                </div>
                 {!projectId && (
                   <select value={importProjectId} onChange={(e) => setImportProjectId(e.target.value)} className="w-full bg-background border border-border/50 rounded-lg px-3 py-2 text-xs focus:border-accent-ai outline-none font-medium mb-3 text-text-primary cursor-pointer">
                     <option value="" className="bg-surface text-text-muted">-- Projekt wählen --</option>
@@ -4306,7 +4321,12 @@ export default function PitchDeckStudio({
               
               <div className={cn("w-full lg:w-80 border-b lg:border-b-0 lg:border-r flex flex-col shrink-0 h-[45dvh] lg:h-full z-20", deckSettings.colorMode === 'light' ? "border-slate-200 bg-slate-50" : "border-white/10 bg-black/30")}>
                 <div className={cn("p-4 lg:p-6 pb-4 border-b flex flex-row items-center justify-between sticky top-0 z-10 shrink-0", deckSettings.colorMode === 'light' ? "border-slate-200 bg-white" : "border-white/10 bg-black/90")}>
-                  <h3 className={cn("font-semibold text-lg flex items-center gap-2", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")}><PenTool size={18} className="text-accent-ai" /> {t('export_pdf_title')}</h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                      <PenTool size={16} />
+                    </div>
+                    <h3 className={cn("font-semibold text-lg", deckSettings.colorMode === 'light' ? "text-slate-900" : "text-white")}>{t('export_pdf_title')}</h3>
+                  </div>
                   <button type="button" onClick={() => setIsPdfModalOpen(false)} className="p-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 cursor-pointer" title={t('close_done') || 'Schliessen'}><X size={20}/></button>
                 </div>
                 
@@ -4651,7 +4671,12 @@ export default function PitchDeckStudio({
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-xl shadow-2xl p-6 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary"><Sparkles className="text-purple-400" size={20}/> KI-Präsentations-Generator</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Sparkles size={16} />
+                </div>
+                <h3 className="font-bold text-lg text-text-primary">KI-Präsentations-Generator</h3>
+              </div>
               <button onClick={() => setIsAiGeneratorOpen(false)} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg"><X size={18}/></button>
             </div>
 

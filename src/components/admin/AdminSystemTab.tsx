@@ -144,11 +144,15 @@ export default function AdminSystemTab() {
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
-        <h3 className="font-semibold text-lg text-text-primary mb-4 flex items-center gap-2">
-          <Terminal size={20} className="text-blue-500" />
-          {t('live_system_logs')}
-        </h3>
+      <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Terminal size={16} />
+          </div>
+          <h3 className="font-bold text-base sm:text-lg text-text-primary">
+            {t('live_system_logs')}
+          </h3>
+        </div>
         <div className="bg-background border border-border rounded-xl p-4 font-sans text-xs max-h-96 overflow-y-auto space-y-1.5">
           {isLoading ? (
             <div className="text-text-muted text-center py-8">{t('loading_logs')}</div>

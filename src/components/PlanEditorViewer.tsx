@@ -2245,7 +2245,12 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
       {isMounted && defectPrompt && createPortal(
         <div className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="bg-surface border-t sm:border border-border sm:rounded-2xl rounded-t-3xl p-6 w-full max-w-md shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95">
-            <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2"><ShieldAlert className="text-red-500"/> {t('describe_defect')}</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                <ShieldAlert size={16} />
+              </div>
+              <h3 className="text-lg font-bold text-text-primary tracking-tight">{t('describe_defect')}</h3>
+            </div>
             <form onSubmit={handleDefectSubmit}>
               <div className="space-y-4 mb-6">
                 <div>
@@ -2287,9 +2292,9 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
                 </div>
               </div>
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setDefectPrompt(null)} className="px-5 py-2.5 text-sm font-bold text-text-muted hover:text-text-primary transition-colors">{t('cancel')}</button>
-                <button type="submit" disabled={isSavingDefect} className="px-5 py-2.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-all shadow-sm flex items-center gap-2 disabled:opacity-50">
-                   {isSavingDefect && <Loader2 size={16} className="animate-spin" />}
+                <button type="button" onClick={() => setDefectPrompt(null)} className="h-9 px-4 text-xs font-bold text-text-muted hover:text-text-primary transition-colors cursor-pointer">{t('cancel')}</button>
+                <button type="submit" disabled={isSavingDefect} className="h-9 px-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-xs font-bold hover:bg-red-500/20 transition-all shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer">
+                   {isSavingDefect && <Loader2 size={14} className="animate-spin" />}
                    {t('create_ticket')}
                 </button>
               </div>
@@ -2324,8 +2329,13 @@ export default function PlanEditorViewer({ projectId: propProjectId }: { project
         <div className="fixed inset-0 z-[150000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-5">
             <div className="flex justify-between items-center border-b border-border/50 pb-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2 text-text-primary"><Ruler className="text-purple-400" size={20}/> {t('truescale_modal_title')}</h3>
-              <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); setCalibrationLine(null); }} className="text-text-muted hover:text-text-primary p-1 bg-background rounded-lg cursor-pointer"><X size={18}/></button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Ruler size={16} />
+                </div>
+                <h3 className="font-bold text-base sm:text-lg text-text-primary tracking-tight">{t('truescale_modal_title')}</h3>
+              </div>
+              <button onClick={() => { setCalibrationModalOpen(false); setIsCalibratingMode(false); setCalibrationLine(null); }} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
             </div>
 
             {calibPaperDistMm > 0 && (

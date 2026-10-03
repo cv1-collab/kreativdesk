@@ -344,19 +344,31 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
               <div className="space-y-2"><label className="text-[10px] uppercase font-bold text-text-muted tracking-widest">{t('recipient_client')}</label><textarea value={formData.recipient} onChange={e => setFormData({...formData, recipient: e.target.value})} rows={4} className="w-full bg-surface border border-border/50 rounded-xl px-4 py-3 outline-none focus:border-accent-ai transition-colors text-sm font-bold text-text-primary resize-none shadow-sm custom-scrollbar" /></div>
             </div>
             <div className="space-y-4">
-              <div className="flex justify-between items-center"><h3 className="text-xs font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Calculator size={14}/> {t('invoice_positions')}</h3>{budgetGroups && budgetGroups.length > 0 && (<button onClick={() => setShowBudgetImport(true)} className="text-[10px] font-bold bg-accent-ai/10 text-accent-ai px-3 py-1.5 rounded-full border border-accent-ai/20 hover:bg-accent-ai/20 transition-colors flex items-center gap-1"><Cloud size={12}/> {t('import_budget')}</button>)}</div>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-surface border border-border/40 flex items-center justify-center text-text-muted shrink-0 shadow-xs">
+                    <Calculator size={13}/>
+                  </div>
+                  <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest">{t('invoice_positions')}</h3>
+                </div>
+                {budgetGroups && budgetGroups.length > 0 && (
+                  <button onClick={() => setShowBudgetImport(true)} className="text-[10px] font-bold bg-accent-ai/10 text-accent-ai px-3 py-1.5 rounded-full border border-accent-ai/20 hover:bg-accent-ai/20 transition-colors flex items-center gap-1 cursor-pointer">
+                    <Cloud size={12}/> {t('import_budget')}
+                  </button>
+                )}
+              </div>
               <div className="space-y-3">
                 {positions.length === 0 && <div className="text-center py-6 border border-dashed border-border/50 rounded-xl text-text-muted text-sm">{t('no_positions')}</div>}
                 {positions.map((pos, index) => (
                   <div key={pos.id} className="bg-surface p-4 rounded-xl border border-border/50 shadow-sm relative flex flex-col gap-3 group">
-                    <button onClick={() => setPositions(positions.filter((_, i) => i !== index))} className="absolute top-3 right-3 text-text-muted hover:text-red-500 bg-background p-1.5 rounded border border-border/50 transition-colors opacity-0 group-hover:opacity-100"><Trash2 size={14}/></button>
+                    <button onClick={() => setPositions(positions.filter((_, i) => i !== index))} className="absolute top-3 right-3 text-text-muted hover:text-red-500 bg-background p-1.5 rounded border border-border/50 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"><Trash2 size={14}/></button>
                     <div className="grid grid-cols-4 md:grid-cols-12 gap-3 pr-8"><div className="col-span-1 md:col-span-2"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('pos_label')}</label><input value={pos.pos} onChange={e => { const newP = [...positions]; newP[index].pos = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div><div className="col-span-3 md:col-span-10"><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('title_label')}</label><input value={pos.title} onChange={e => { const newP = [...positions]; newP[index].title = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary focus:border-accent-ai transition-colors" /></div></div>
                     <div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('desc_label')}</label><input value={pos.description} onChange={e => { const newP = [...positions]; newP[index].description = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-medium text-text-primary focus:border-accent-ai transition-colors" /></div>
                     <div className="grid grid-cols-3 gap-3 border-t border-border/50 pt-3 mt-1"><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('qty_label')}</label><input type="number" value={pos.qty === 0 ? '0' : (pos.qty || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].qty = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('unit_label')}</label><input value={pos.unit} onChange={e => { const newP = [...positions]; newP[index].unit = e.target.value; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-text-primary text-center focus:border-accent-ai transition-colors" /></div><div><label className="text-[10px] uppercase font-bold text-text-muted block mb-1">{t('price_label')} ({currency})</label><input type="number" value={pos.unitPrice === 0 ? '0' : (pos.unitPrice || '')} onChange={e => { const val = e.target.value === '' ? 0 : parseFloat(e.target.value) || 0; const newP = [...positions]; newP[index].unitPrice = val; setPositions(newP); }} className="w-full bg-background border border-border/50 rounded-md px-3 py-2 outline-none text-sm font-bold text-blue-500 text-right focus:border-accent-ai transition-colors" /></div></div>
                   </div>
                 ))}
               </div>
-              <button onClick={() => setPositions([...positions, { id: `pos_${Date.now()}`, pos: `${positions.length + 1}.0`, title: '', description: '', qty: 1, unit: 'Stk.', unitPrice: 0, total: 0 }])} className="w-full py-3 bg-blue-500/5 text-blue-500 border border-dashed border-blue-500/30 rounded-xl text-sm font-bold hover:bg-blue-500/10 flex items-center justify-center gap-2 transition-colors"><Plus size={16} /> {t('add_position')}</button>
+              <button onClick={() => setPositions([...positions, { id: `pos_${Date.now()}`, pos: `${positions.length + 1}.0`, title: '', description: '', qty: 1, unit: 'Stk.', unitPrice: 0, total: 0 }])} className="w-full py-3 bg-blue-500/5 text-blue-500 border border-dashed border-blue-500/30 rounded-xl text-sm font-bold hover:bg-blue-500/10 flex items-center justify-center gap-2 transition-colors cursor-pointer"><Plus size={16} /> {t('add_position')}</button>
             </div>
             <div className="w-full h-px bg-border/50"></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
@@ -365,8 +377,8 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
             </div>
           </div>
           <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col md:flex-row justify-end gap-3 sticky bottom-0 z-30 shrink-0">
-            <button onClick={onClose} className="px-6 py-3 text-sm font-bold text-text-muted hover:text-text-primary transition-colors border border-border md:border-transparent rounded-lg w-full md:w-auto">{t('cancel')}</button>
-            <button onClick={() => setIsPdfStudioOpen(true)} className="hidden md:flex px-8 py-3 bg-accent-ai text-white rounded-lg text-sm font-bold shadow-lg hover:bg-accent-ai/90 transition-all items-center justify-center gap-2"><FileText size={18} /> {t('generate_pdf')}</button>
+            <button onClick={onClose} className="h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary transition-colors border border-border/50 hover:bg-surface rounded-xl w-full md:w-auto cursor-pointer shadow-xs">{t('cancel')}</button>
+            <button onClick={() => setIsPdfStudioOpen(true)} className="h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"><FileText size={15} /> {t('generate_pdf')}</button>
           </div>
         </div>
       </div>
@@ -374,11 +386,28 @@ export default function InvoiceStudio({ onClose, onSave, budgetGroups = [], type
         {showBudgetImport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[90010] flex items-center justify-center p-4">
             <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-full">
-              <div className="p-5 border-b border-border/50 flex justify-between items-center bg-surface/90"><h3 className="font-bold text-lg text-text-primary flex items-center gap-2"><Cloud className="text-blue-500"/> {t('import_budget')}</h3><button onClick={() => setShowBudgetImport(false)} className="text-text-muted hover:text-text-primary bg-background p-2 rounded-lg transition-colors"><X size={20}/></button></div>
+              <div className="p-5 border-b border-border/50 flex justify-between items-center bg-surface/90">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <Cloud size={16} />
+                  </div>
+                  <h3 className="font-bold text-lg text-text-primary">{t('import_budget')}</h3>
+                </div>
+                <button onClick={() => setShowBudgetImport(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs">
+                  <X size={16}/>
+                </button>
+              </div>
               <div className="p-5 overflow-y-auto space-y-3 custom-scrollbar">
                 {budgetGroups.length === 0 ? (<div className="text-center py-8 text-text-muted font-medium">{t('budget_not_found')}</div>) : (budgetGroups.map(g => { const groupTotal = g.items?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0; return (<label key={g.id} className={cn("flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors", selectedBudgetIds.includes(g.id) ? "bg-blue-500/10 border-blue-500/30" : "bg-background border-border/50 hover:border-blue-500/30")}><input type="checkbox" checked={selectedBudgetIds.includes(g.id)} onChange={(e) => { if (e.target.checked) setSelectedBudgetIds([...selectedBudgetIds, g.id]); else setSelectedBudgetIds(selectedBudgetIds.filter(id => id !== g.id)); }} className="w-5 h-5 rounded border-border text-blue-500 focus:ring-blue-500 bg-background cursor-pointer" /><div className="flex-1 flex justify-between items-center"><div className="font-bold text-text-primary text-sm">{g.pos} {g.title}</div><div className="font-bold text-blue-500 text-lg">{currency} {formatAmount(groupTotal, currency)}</div></div></label>);}))}
               </div>
-              <div className="p-5 border-t border-border/50 flex justify-between items-center bg-surface/80"><button onClick={() => setSelectedBudgetIds(budgetGroups.map((g:any)=>g.id))} className="text-sm font-bold text-blue-500 flex items-center gap-2 hover:underline"><CheckSquare size={18}/> {t('select_all')}</button><button onClick={executeBudgetImport} disabled={selectedBudgetIds.length === 0} className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50">{t('take_over_as_flat_rate')}</button></div>
+              <div className="p-5 border-t border-border/50 flex justify-between items-center bg-surface/80">
+                <button onClick={() => setSelectedBudgetIds(budgetGroups.map((g:any)=>g.id))} className="text-xs font-bold text-blue-500 flex items-center gap-1.5 hover:underline cursor-pointer">
+                  <CheckSquare size={16}/> {t('select_all')}
+                </button>
+                <button onClick={executeBudgetImport} disabled={selectedBudgetIds.length === 0} className="h-9 px-5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-500 transition-colors shadow-xs disabled:opacity-50 cursor-pointer">
+                  {t('take_over_as_flat_rate')}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}

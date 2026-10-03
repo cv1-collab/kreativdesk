@@ -511,7 +511,12 @@ Antworte AUSSCHLIESSLICH mit dem JSON-Code ohne Markdown-Formatierung.`;
 
       {/* PROJECT BUDGETS OVERVIEW */}
       <div className="tour-company-finance-budgets bg-surface border border-border/50 p-5 rounded-2xl shadow-sm">
-        <h3 className="font-bold flex items-center gap-2 mb-4"><Briefcase size={16} className="text-indigo-500" /> Projekt Budgets (Übersicht)</h3>
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Briefcase size={15} />
+          </div>
+          <h3 className="font-bold text-base text-text-primary tracking-tight">Projekt Budgets (Übersicht)</h3>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-background/50 text-text-muted text-xs uppercase">

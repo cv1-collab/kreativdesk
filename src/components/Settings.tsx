@@ -339,7 +339,12 @@ export default function Settings() {
 
         {/* PROFIL & ACCOUNT */}
         <section className="space-y-4">
-          <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2"><LucideUser className="w-5 h-5 text-accent-ai" /> {t('settings_profile')}</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+              <LucideUser className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight text-text-primary">{t('settings_profile')}</h2>
+          </div>
           <div className="bg-surface rounded-2xl border border-border p-4 md:p-8 shadow-sm">
             <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start">
               
@@ -386,7 +391,7 @@ export default function Settings() {
                 </div>
                 
                 <div className="pt-4 flex justify-end">
-                  <button type="submit" disabled={isUpdatingProfile} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-accent-ai text-white rounded-lg font-bold shadow-lg hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                  <button type="submit" disabled={isUpdatingProfile} className="w-full md:w-auto h-9 px-6 bg-accent-ai text-white rounded-xl text-xs font-bold shadow-md hover:bg-accent-ai/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs">
                     {isUpdatingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : (profileSuccess ? <CheckCircle2 className="w-4 h-4" /> : null)}
                     {profileSuccess ? t('save') : t('update_profile')}
                   </button>
@@ -398,13 +403,18 @@ export default function Settings() {
 
         {/* SICHERHEIT */}
         <section className="space-y-4">
-          <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2"><LucideShield className="w-5 h-5 text-accent-ai" /> {t('settings_security')}</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+              <LucideShield className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight text-text-primary">{t('settings_security')}</h2>
+          </div>
           <div className="bg-surface rounded-2xl border border-border p-4 md:p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
             <div>
               <h3 className="font-semibold text-text-primary mb-1">{t('password_reset')}</h3>
               <p className="text-text-muted text-sm">{t('password_reset_desc')}</p>
             </div>
-            <button onClick={handlePasswordReset} disabled={isSendingReset || resetSuccess} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-background border border-border hover:bg-white/5 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+            <button onClick={handlePasswordReset} disabled={isSendingReset || resetSuccess} className="w-full md:w-auto h-9 px-5 bg-background border border-border/50 hover:bg-surface rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer shadow-xs">
               {isSendingReset ? <Loader2 className="w-4 h-4 animate-spin" /> : (resetSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <KeyRound className="w-4 h-4" />)}
               {resetSuccess ? t('link_sent') : t('send_link')}
             </button>
@@ -413,7 +423,12 @@ export default function Settings() {
 
         {/* ABONNEMENT */}
         <section className="space-y-4">
-          <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2"><LucideShield className="w-5 h-5 text-accent-ai" /> {t('settings_sub')}</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <LucideShield className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight text-text-primary">{t('settings_sub')}</h2>
+          </div>
           <div className="bg-gradient-to-br from-accent-ai/10 to-purple-500/10 rounded-2xl border border-accent-ai/20 p-4 md:p-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
             <div>
               <h3 className="font-semibold text-text-primary mb-2 flex items-center justify-center md:justify-start gap-2">{t('current_plan')}: <span className="bg-accent-ai text-white px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase ml-1">{dbData?.plan || 'PRO'}</span></h3>
@@ -423,7 +438,7 @@ export default function Settings() {
             <button 
               onClick={handleManageSubscription} 
               disabled={isPortalLoading || !dbData?.stripeCustomerId} 
-              className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-background border border-border hover:bg-white/5 rounded-lg font-bold transition-all flex items-center justify-center gap-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full md:w-auto h-9 px-5 bg-background border border-border/50 hover:bg-surface rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-text-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
             >
               {isPortalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4 text-accent-ai" />} {t('open_portal')}
             </button>
@@ -432,10 +447,15 @@ export default function Settings() {
 
         {/* DSGVO */}
         <section className="space-y-4">
-          <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2"><LucideDownload className="w-5 h-5 text-accent-ai" /> {t('settings_data')}</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+              <LucideDownload className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight text-text-primary">{t('settings_data')}</h2>
+          </div>
           <div className="bg-surface rounded-2xl border border-border p-4 md:p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
             <p className="text-text-muted text-sm max-w-md">{t('gdpr_desc')}</p>
-            <button onClick={handleExportData} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-background border border-border hover:bg-white/5 rounded-lg font-bold transition-all flex items-center justify-center gap-2 text-text-primary shrink-0">
+            <button onClick={handleExportData} className="w-full md:w-auto h-9 px-5 bg-background border border-border/50 hover:bg-surface rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 text-text-primary shrink-0 cursor-pointer shadow-xs">
               <LucideDownload className="w-4 h-4" /> {t('download_data')}
             </button>
           </div>
@@ -443,13 +463,18 @@ export default function Settings() {
 
         {/* DANGER ZONE */}
         <section className="space-y-4 pt-8">
-          <h2 className="text-lg md:text-xl font-semibold flex items-center gap-2 text-red-500"><AlertTriangle className="w-5 h-5" /> {t('danger_zone')}</h2>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <AlertTriangle className="w-4 h-4" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold tracking-tight text-red-500">{t('danger_zone')}</h2>
+          </div>
           <div className="bg-red-500/5 rounded-2xl border border-red-500/20 p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
             <div>
               <h3 className="font-semibold text-red-500 mb-1">{t('delete_account')}</h3>
               <p className="text-text-muted text-sm max-w-lg">{t('delete_account_warn')}</p>
             </div>
-            <button onClick={handleDeleteAccount} disabled={isDeletingAccount} className="w-full md:w-auto px-6 py-3 md:py-2.5 bg-red-500 text-white rounded-lg font-bold shadow-lg hover:bg-red-600 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50">
+            <button onClick={handleDeleteAccount} disabled={isDeletingAccount} className="w-full md:w-auto h-9 px-5 bg-red-500 text-white rounded-xl text-xs font-bold shadow-md hover:bg-red-600 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 cursor-pointer shadow-xs">
               {isDeletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
               {isDeletingAccount ? 'Wird gelöscht...' : t('delete_account_btn')}
             </button>

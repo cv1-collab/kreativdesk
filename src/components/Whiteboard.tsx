@@ -2818,8 +2818,13 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             {showFilters && bgImage && (
                <div className="absolute top-20 left-4 w-56 md:w-64 bg-background/95 backdrop-blur-xl border border-border rounded-2xl p-4 md:p-5 shadow-2xl z-20 animate-in slide-in-from-left-4">
                   <div className="flex items-center justify-between mb-4 border-b border-border/50 pb-2">
-                     <h4 className="text-xs md:text-sm font-bold flex items-center gap-2"><SlidersHorizontal size={14} className="text-accent-ai"/> {t('img_adjust')}</h4>
-                     <button onClick={() => setShowFilters(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0">
+                        <SlidersHorizontal size={12}/>
+                      </div>
+                      <h4 className="text-xs md:text-sm font-bold text-text-primary">{t('img_adjust')}</h4>
+                    </div>
+                    <button onClick={() => setShowFilters(false)} className="text-text-muted hover:text-text-primary"><X size={14}/></button>
                   </div>
                   <div className="space-y-4">
                      <div>
@@ -3296,7 +3301,12 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
 
           <div className={cn("tour-whiteboard-audio w-full lg:w-96 bg-surface border-l border-border flex-col shrink-0 overflow-hidden h-full lg:h-auto", mobileTab === 'audio' ? 'flex' : 'hidden lg:flex')}>
             <div className="p-4 border-b border-border flex items-center justify-between bg-surface shrink-0">
-              <h3 className="font-bold text-text-primary flex items-center gap-2"><Mic size={18} className="text-accent-ai" /> Audio Hub</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <Mic size={16} />
+                </div>
+                <h3 className="font-bold text-text-primary">Audio Hub</h3>
+              </div>
               {isAnalyzingAudio && <span className="text-[10px] font-bold uppercase tracking-widest text-accent-ai flex items-center gap-2 bg-accent-ai/10 px-2 py-1 rounded-md"><Loader2 size={12} className="animate-spin" /> {t('ai_analyzing')}</span>}
             </div>
 
@@ -3326,11 +3336,21 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   {activeNoteId === note.id && (
                     <div className="mt-4 pt-4 border-t border-border/50 space-y-4 animate-in fade-in slide-in-from-top-2">
                       <div className="bg-accent-ai/10 border border-accent-ai/20 rounded-xl p-4">
-                        <h5 className="text-[10px] font-bold text-accent-ai flex items-center gap-1.5 mb-2 uppercase tracking-widest"><Sparkles size={14} /> {t('ai_summary')}</h5>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <div className="w-5 h-5 rounded-md bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0">
+                            <Sparkles size={11} />
+                          </div>
+                          <h5 className="text-[10px] font-bold text-accent-ai uppercase tracking-widest">{t('ai_summary')}</h5>
+                        </div>
                         <p className="text-sm font-medium text-text-primary leading-relaxed">{note.aiSummary}</p>
                       </div>
                       <div>
-                        <h5 className="text-[10px] font-bold text-text-muted flex items-center gap-1.5 mb-2 uppercase tracking-widest"><FileText size={14} /> {t('full_transcript')}</h5>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <div className="w-5 h-5 rounded-md bg-text-muted/10 text-text-muted border border-border/50 flex items-center justify-center shrink-0">
+                            <FileText size={11} />
+                          </div>
+                          <h5 className="text-[10px] font-bold text-text-muted uppercase tracking-widest">{t('full_transcript')}</h5>
+                        </div>
                         <p className="text-xs text-text-muted leading-relaxed font-medium bg-surface p-3 rounded-lg border border-border/50">"{note.transcription}"</p>
                       </div>
                     </div>
@@ -3392,7 +3412,12 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
                   <div className="w-full md:w-1/2 p-8 flex flex-col">
                     <div className="flex justify-between items-start mb-6">
                       <div>
-                        <h3 className="text-xl font-bold text-text-primary flex items-center gap-2"><Sparkles className="text-accent-ai" /> {t('ai_render')}</h3>
+                        <div className="flex items-center gap-2.5 mb-1">
+                          <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                            <Sparkles size={16} />
+                          </div>
+                          <h3 className="text-xl font-bold text-text-primary">{t('ai_render')}</h3>
+                        </div>
                         <p className="text-xs text-text-muted mt-1">{t('ai_render_desc')}</p>
                       </div>
                       <button onClick={() => setShowAiRender(false)} className="text-text-muted hover:text-text-primary"><X size={20} /></button>
@@ -3803,7 +3828,12 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
           {textPrompt && (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
               <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95">
-                <h3 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2"><Type size={18} className="text-accent-ai"/> {t('enter_text')}</h3>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-xl bg-accent-ai/10 text-accent-ai border border-accent-ai/20 flex items-center justify-center shrink-0 shadow-xs">
+                    <Type size={16} />
+                  </div>
+                  <h3 className="text-lg font-bold text-text-primary">{t('enter_text')}</h3>
+                </div>
                 <form onSubmit={handleTextSubmit}>
                   <input type="text" value={textPrompt.value} onChange={(e) => setTextPrompt({ ...textPrompt, value: e.target.value })} className="w-full bg-background border border-border/50 rounded-lg px-4 py-3 text-text-primary font-medium focus:outline-none focus:border-accent-ai mb-6" placeholder={t('type_text_here')} autoFocus />
                   <div className="flex justify-end gap-3">
@@ -3819,9 +3849,12 @@ Output ONLY the final English prompt text string without quotes or preamble.`;
             <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm pointer-events-auto">
               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-surface border border-border/50 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden relative flex flex-col max-h-[85vh]">
                 <div className="p-4 border-b border-border/50 flex items-center justify-between bg-surface/50">
-                  <h3 className="font-bold text-lg flex items-center gap-2 text-text-primary">
-                    <Sparkles size={20} className="text-purple-400" /> Whiteboard KI-Audit & Entwurfsanalyse
-                  </h3>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                      <Sparkles size={16} />
+                    </div>
+                    <h3 className="font-bold text-lg text-text-primary">Whiteboard KI-Audit & Entwurfsanalyse</h3>
+                  </div>
                   <button onClick={() => setIsAiAuditModalOpen(false)} className="text-text-muted hover:text-text-primary p-2">
                     <X size={20} />
                   </button>

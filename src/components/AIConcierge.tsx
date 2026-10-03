@@ -277,12 +277,17 @@ WICHTIG: Wenn der Nutzer dich bittet, eine Aufgabe, einen Mangel oder ein Ticket
                   <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{t('online_syncing')}</p>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="p-2 text-text-muted hover:text-text-primary hover:bg-white/5 rounded-full transition-colors"><Minimize2 className="w-4 h-4" /></button>
+              <button onClick={() => setIsOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><Minimize2 className="w-4 h-4" /></button>
             </div>
 
             {warnings.length > 0 && (
               <div className="bg-red-500/10 border-b border-red-500/20 p-3 max-h-32 overflow-y-auto">
-                <h4 className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2 flex items-center gap-1"><AlertTriangle size={12}/> {warnings.length} Active System Alerts</h4>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-5 h-5 rounded-md bg-red-500/20 text-red-500 flex items-center justify-center shrink-0">
+                    <AlertTriangle size={11} />
+                  </div>
+                  <h4 className="text-[10px] font-bold text-red-500 uppercase tracking-widest">{warnings.length} Active System Alerts</h4>
+                </div>
                 <div className="space-y-2">
                   {warnings.map(warn => (
                     <div key={warn.id} className="text-xs text-red-400 bg-background/50 p-2 rounded border border-red-500/10">

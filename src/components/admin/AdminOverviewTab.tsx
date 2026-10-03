@@ -150,11 +150,15 @@ export default function AdminOverviewTab({ stats }: { stats?: any }) {
         </div>
       </div>
 
-      <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-          <TrendingUp size={20} className="text-emerald-500" />
-          {t('revenue_growth')}
-        </h3>
+      <div className="bg-surface border border-border p-6 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <TrendingUp size={16} />
+          </div>
+          <h3 className="font-bold text-base sm:text-lg text-text-primary">
+            {t('revenue_growth')}
+          </h3>
+        </div>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={revChartData}>

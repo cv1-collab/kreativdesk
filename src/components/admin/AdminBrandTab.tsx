@@ -191,19 +191,23 @@ export default function AdminBrandTab() {
 
         {/* Header Box */}
         <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-semibold text-text-primary mb-1 flex items-center gap-2">
-              <Palette className="text-blue-500" size={24} />
-              {t('global_branding')}
-            </h3>
-            <p className="text-text-muted text-sm font-medium">{t('branding_desc')}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+              <Palette size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold tracking-tight text-text-primary mb-0.5">
+                {t('global_branding')}
+              </h3>
+              <p className="text-text-muted text-xs sm:text-sm font-medium">{t('branding_desc')}</p>
+            </div>
           </div>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shrink-0 cursor-pointer"
+            className="h-9 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 shrink-0 cursor-pointer shadow-xs"
           >
-            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={18} />}
+            {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={16} />}
             {t('save_branding')}
           </button>
         </div>

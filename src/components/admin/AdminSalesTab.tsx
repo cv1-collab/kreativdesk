@@ -195,8 +195,13 @@ export default function AdminSalesTab() {
         <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-4 md:p-6 border-b border-border/50 flex items-center justify-between bg-surface/50">
-              <h3 className="font-semibold flex items-center gap-2 text-text-primary"><CreditCard size={18} className="text-emerald-500"/> {t('details')}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-text-muted hover:text-text-primary transition-colors p-1.5 bg-background rounded-lg border border-border"><X size={20}/></button>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0 shadow-xs">
+                  <CreditCard size={16} />
+                </div>
+                <h3 className="font-bold text-base sm:text-lg text-text-primary">{t('details')}</h3>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="h-8 w-8 flex items-center justify-center text-text-muted hover:text-text-primary bg-background border border-border/50 rounded-lg cursor-pointer transition-colors shadow-xs"><X size={16}/></button>
             </div>
             
             <div className="p-4 md:p-6 flex-1 overflow-y-auto bg-background/50">
@@ -228,14 +233,14 @@ export default function AdminSalesTab() {
             </div>
 
             <div className="p-4 md:p-6 border-t border-border bg-surface/90 backdrop-blur-md flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0 sticky bottom-0 z-30">
-              <button type="button" onClick={() => handleDeleteTrx(selectedTrx.id)} disabled={isSubmitting} className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-red-500 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
+              <button type="button" onClick={() => handleDeleteTrx(selectedTrx.id)} disabled={isSubmitting} className="w-full sm:w-auto h-9 px-4 text-xs font-bold text-red-500 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer shadow-xs">
                 Löschen
               </button>
               <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-text-primary border border-border sm:border-transparent rounded-lg transition-colors">{t('cancel')}</button>
-                <button form="edit-trx-form" type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 bg-emerald-600 text-white rounded-lg text-sm font-semibold shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-                  {isSubmitting && <Loader2 size={16} className="animate-spin"/>} 
-                  <CheckCircle2 size={18} /> {t('save_changes')}
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto h-9 px-5 text-xs font-bold text-text-muted hover:text-text-primary border border-border/50 rounded-xl transition-colors cursor-pointer shadow-xs">{t('cancel')}</button>
+                <button form="edit-trx-form" type="submit" disabled={isSubmitting} className="w-full sm:w-auto h-9 px-6 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-xs">
+                  {isSubmitting && <Loader2 size={15} className="animate-spin"/>} 
+                  <CheckCircle2 size={16} /> {t('save_changes')}
                 </button>
               </div>
             </div>

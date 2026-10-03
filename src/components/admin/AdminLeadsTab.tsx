@@ -92,10 +92,14 @@ export default function AdminLeadsTab() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="bg-surface border border-border p-6 rounded-3xl shadow-sm">
-        <h3 className="text-xl font-semibold text-text-primary mb-6 flex items-center gap-2">
-          <Megaphone className="text-blue-500" size={24} />
-          {t('website_leads')}
-        </h3>
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-xs">
+            <Megaphone size={20} />
+          </div>
+          <h3 className="text-xl font-bold tracking-tight text-text-primary">
+            {t('website_leads')}
+          </h3>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading ? (
